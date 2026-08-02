@@ -93,7 +93,13 @@ swift build --package-path Packages/PowerliftingCore -Xswiftc -no-warnings-as-er
 
 **Weights are `Int` grams.** No floating-point weight is ever persisted. Use the
 `Weight` type for every weight-bearing value; kilograms and pounds are display
-concerns only.
+concerns only. `Weight` is the enforcement, not just the convention — the only
+initialisers that accept a `Double` are `init?(kilograms:rounding:)` and
+`init?(pounds:rounding:)`, both of which make you name a `RoundingStrategy`, and
+both of which return `nil` rather than trapping on NaN or overflow. It is signed,
+because it doubles as a delta (an increment, a deload, a target-versus-loaded
+gap). Display goes through `formatted(in:precision:)`, which renders digits only
+— appending "kg" is the UI layer's job, since localisation is Foundation.
 
 **Derived values are recomputed, never stored as truth.** Estimated 1RMs,
 personal records and training maxes are calculated from logged sets. Cached
@@ -145,6 +151,15 @@ swift test --package-path Packages/Persistence
 ```
 
 The app target has no tests: it is a composition root with an empty scene.
+
+`PowerliftingCoreTests` is held to the same no-Apple-frameworks rule as the
+module it tests — a suite that drifts from its module's constraints stops being
+evidence about that module, and it runs on the Linux job too. In particular,
+`Codable` is asserted through the hand-rolled `Encoder`/`Decoder` in
+`Tests/PowerliftingCoreTests/CodableProbe.swift`, **not** `JSONEncoder`. Note
+that CI will not catch you here: the Linux job rejects `import SwiftUI`, but
+Foundation ships on Linux, so a `JSONEncoder` round-trip compiles and goes green
+everywhere while quietly breaking the rule.
 
 ### Coverage
 
