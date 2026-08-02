@@ -51,7 +51,10 @@ The dependency rule runs one way only: `Persistence` may import
 constraints are load-bearing rather than stylistic:
 
 - **`PowerliftingCore` imports no Apple framework** — not `Foundation`, not
-  `SwiftUI`. It must compile on Linux, and CI proves it.
+  `SwiftUI`. It must compile on Linux, and the `linux` CI job builds and tests
+  the package in a Swift container to prove it. Note the job catches the
+  `SwiftUI`/`SwiftData` half only: Foundation ships on Linux too, so a stray
+  `import Foundation` stays green there and is caught by review alone for now.
 - **Only `Persistence` imports `SwiftData`.** Everything else reaches storage
   through repository protocols that expose value types and DTOs.
 
@@ -151,10 +154,19 @@ target with `if which swiftlint > /dev/null; then swiftlint; fi` and untick
 
 `.github/workflows/ci.yml` builds the app, runs both package test suites with
 coverage, builds `DesignSystem` (it has no test target, so nothing else compiles
-it), audits `@unchecked Sendable`, and runs SwiftLint on every push and pull
-request to `main`.
+it), audits `@unchecked Sendable`, builds and tests `PowerliftingCore` on Linux,
+and runs SwiftLint on every push and pull request to `main`.
 
-Three caveats worth knowing before reading a red run:
+The **`linux`** job ("Linux core build") runs on `ubuntu-latest` inside
+`container: swift:6.3.3-noble` and covers `PowerliftingCore` only — `Persistence`
+and `DesignSystem` are Apple-only by design and are not expected to compile
+there. It is the enforcement behind the no-Apple-framework rule above; nothing
+else in the workflow would notice an `import SwiftUI` in the domain layer,
+because that compiles fine on macOS. It does **not** catch `import Foundation`,
+which compiles on Linux as well — see the rule above. The image tag is pinned to
+an exact patch version on purpose — see the comment above the job.
+
+Four caveats worth knowing before reading a red run:
 
 - The `build` and `lint` jobs still run on `macos-15`, which ships Xcode 16.x and
   can build neither the iOS 26 deployment target nor the tools-version 6.2
@@ -163,7 +175,10 @@ Three caveats worth knowing before reading a red run:
   block a merge.
 - Warnings are errors, and the runner image label moves. A toolchain bump that
   introduces a new deprecation warning can redden CI with no commit behind it.
-  That is the gate working, not a flake — fix the warning.
+  That is the gate working, not a flake — fix the warning. On the `linux` job
+  this is why the container tag is pinned rather than floating.
+- The `linux` job has not run yet. It is written and expected to pass, but "the
+  Linux build is green" is a claim until the first push, not a fact.
 
-The `test` job on `macos-26` is the only one currently green, which is why it
-also carries the `DesignSystem` build and the `@unchecked Sendable` audit.
+The `test` job on `macos-26` is the only one currently known green, which is why
+it also carries the `DesignSystem` build and the `@unchecked Sendable` audit.

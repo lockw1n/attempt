@@ -70,6 +70,61 @@ jobs:
       - name: Audit @unchecked Sendable
         run: ./scripts/audit-unchecked-sendable.sh
 
+  # TR-0.1.1 / NFR-0.2 / DOD-0.2: the mechanical proof that no *Apple-platform* framework leaked
+  # into the domain layer. An `import SwiftUI` or `import SwiftData` in PowerliftingCore compiles
+  # perfectly well on Darwin, so every other job in this file stays green while the constraint is
+  # being violated. This job is the only one that notices.
+  #
+  # KNOWN LIMIT, do not overstate this job: it does NOT catch `import Foundation`.
+  # Foundation ships on Linux (swift-corelibs-foundation), so Foundation — and Date, UUID, Data
+  # with it — compiles here and this job stays green. NFR-0.2 as written also forbids Foundation
+  # in the core; that half is enforced by review only, until a lint rule covers it (T-0.05).
+  # Treating a green run here as proof of "Foundation-free" is the one wrong conclusion to draw.
+  #
+  # Builds PowerliftingCore ONLY. Persistence (SwiftData) and DesignSystem (SwiftUI) are
+  # Apple-only by design and are not expected to compile here — adding them would turn a
+  # requirement into a permanent red job.
+  #
+  # The image tag is pinned to an exact patch version, not `swift:latest` and not `swift:6.3`:
+  #   - This package's manifest is tools-version 6.2 and uses `.defaultIsolation(nil)` and
+  #     `.treatAllWarnings(as:)`, both PackageDescription 6.2 APIs. (The `.iOS(.v26)` that forces
+  #     6.2 elsewhere is deliberately absent here — PowerliftingCore declares no `platforms:`.)
+  #     An older image fails at manifest parse, before it reaches a single line of code — a
+  #     confusing way to go red.
+  #   - Warnings are errors on this job too, from `.treatAllWarnings(as: .error)` in the
+  #     manifest. A floating tag can introduce a new diagnostic with no commit behind it, and
+  #     that lands hardest here, where the Linux toolchain is not the compiler anyone ran at
+  #     their desk. Bump this tag deliberately, in its own commit.
+  #     The tag still floats over base-OS rebuilds — only a `swift@sha256:...` digest is truly
+  #     immutable — but it fixes the *compiler* version, which is what decides the diagnostics.
+  # Do NOT reach for `-Xswiftc -no-warnings-as-errors` if this job reddens on a warning: it
+  # would exempt the one job DOD-0.2 depends on. Fix the warning.
+  linux:
+    name: Linux core build
+    runs-on: ubuntu-latest
+    container: swift:6.3.3-noble
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain version
+        run: swift --version
+
+      # Two steps rather than one, though `swift test` would build the target anyway: it
+      # separates the signal. A red build step means Apple API reached Sources/ — the NFR-0.2
+      # violation this job exists to catch. A red test step means something else.
+      - name: Build PowerliftingCore
+        run: swift build --package-path Packages/PowerliftingCore
+
+      - name: Test PowerliftingCore
+        run: swift test --package-path Packages/PowerliftingCore
+
+      # Deliberately NOT run here (T-0.08 notes):
+      #   scripts/coverage.sh              — needs python3, which the Swift images do not
+      #                                      reliably ship. Coverage is measured once, on macOS.
+      #   scripts/audit-unchecked-sendable.sh — toolchain-independent and already in `test`.
+      # Both would give this job a second way to fail for reasons that have nothing to do with
+      # Linux, which is the one thing it is here to tell us about.
+
   lint:
     name: SwiftLint
     runs-on: macos-15
