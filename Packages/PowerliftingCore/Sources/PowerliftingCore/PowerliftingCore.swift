@@ -6,15 +6,15 @@
 //   A Linux CI job (T-0.08) enforces this, because a review convention will not.
 // - No I/O. Everything here is a pure function or a value type. Persistence lives in the
 //   Persistence package, behind repository protocols (TR-0.1.2).
-// - Weights are Int grams (G-1.1). No floating-point weight is ever persisted, and the Weight
-//   type (T-0.10) is the only representation the rest of the module accepts.
-// - Value types are Sendable (TR-0.1.3).
+// - Weights are Int grams (G-1.1). No floating-point weight is ever persisted, and `Weight`
+//   (T-0.10) is the only representation the rest of the module accepts.
+// - Value types are Sendable (TR-0.1.3), declared explicitly: implicit synthesis does not apply
+//   to `public` types, so an omitted conformance compiles here and fails at the first consumer.
 // - Public API documents units and valid ranges (NFR-0.3).
 //
-// This file exists because SwiftPM requires at least one source file per target. It declares no
-// types deliberately: a type sharing its module's name causes Swift lookup ambiguity, and any
-// API added before a requirement calls for it is a guess. Delete this file once T-0.10 lands
-// the Weight type.
+// This file declares no types on purpose, and should keep declaring none: a type sharing its
+// module's name causes Swift lookup ambiguity. It exists to carry the constraints above, which
+// are otherwise recorded nowhere in the source tree.
 //
 // The Linux CI job's tripwire was verified against this file on 2026-08-02 (T-0.08): an
 // `import CoreGraphics` here failed the `Build PowerliftingCore` step with "no such module

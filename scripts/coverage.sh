@@ -24,6 +24,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$REPO_ROOT/scripts/swift-strict-flags.sh"
 
 PACKAGE_PATH="Packages/PowerliftingCore"
 PACKAGE_NAME=""
@@ -56,10 +57,13 @@ ABS_PACKAGE_PATH="$REPO_ROOT/$PACKAGE_PATH"
 [[ -d "$ABS_PACKAGE_PATH" ]] || { echo "coverage.sh: no package at $ABS_PACKAGE_PATH" >&2; exit 66; }
 [[ -n "$PACKAGE_NAME" ]] || PACKAGE_NAME="$(basename "$PACKAGE_PATH")"
 
+# G-6.4: the strict flags travel with every build path, this one included. Without them this
+# script would compile the suite with warnings merely warned about, quietly creating a hole in the
+# gate for exactly the code the coverage number is about. See scripts/swift-strict-flags.sh.
 echo "==> Testing $PACKAGE_NAME with coverage"
-swift test --package-path "$ABS_PACKAGE_PATH" --enable-code-coverage
+swift test --package-path "$ABS_PACKAGE_PATH" --enable-code-coverage "${SWIFT_STRICT_FLAGS[@]}"
 
-CODECOV_JSON="$(swift test --package-path "$ABS_PACKAGE_PATH" --enable-code-coverage --show-codecov-path | tail -1)"
+CODECOV_JSON="$(swift test --package-path "$ABS_PACKAGE_PATH" --enable-code-coverage "${SWIFT_STRICT_FLAGS[@]}" --show-codecov-path | tail -1)"
 [[ -f "$CODECOV_JSON" ]] || { echo "coverage.sh: no coverage report at $CODECOV_JSON" >&2; exit 70; }
 
 python3 - "$CODECOV_JSON" "$ABS_PACKAGE_PATH" "$PACKAGE_NAME" "$THRESHOLD" <<'PYTHON'
@@ -95,12 +99,27 @@ for entry in export["data"][0]["files"]:
     total += lines["count"]
     covered += lines["covered"]
 
+# TR-0.6.1 (T-0.07): the same numbers also go to the GitHub run summary when running in Actions,
+# so a reviewer sees coverage on the run page instead of unfolding a log. Appended, never
+# truncated — other steps may write here too. Outside Actions the variable is unset and this is a
+# no-op, which keeps local output identical to CI's.
+summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+summary = []
+
 print()
 print(f"{package_name} line coverage (Sources/ only)")
 print("-" * 60)
+summary.append(f"### {package_name} line coverage")
+summary.append("")
+summary.append("Production sources only — `Sources/**`, excluding the test target and Swift")
+summary.append("Testing's generated runner.")
+summary.append("")
+summary.append("| File | Lines | Covered |")
+summary.append("|---|---:|---:|")
 for filename, lines in sorted(counted, key=lambda item: item[0]):
     name = os.path.relpath(filename, os.path.realpath(package_path))
     print(f"  {floor2(lines['percent']):6.2f}%  {lines['covered']:5d}/{lines['count']:<5d}  {name}")
+    summary.append(f"| `{name}` | {lines['count']} | {floor2(lines['percent']):.2f}% ({lines['covered']}) |")
 
 if total == 0:
     # Every source file is comments-only, so llvm-cov emits no line records at all. There is no
@@ -110,6 +129,11 @@ if total == 0:
     print("-" * 60)
     print("  no executable lines found — nothing to measure yet")
     print(f"\nTOTAL: n/a (threshold {threshold:g}%) — PASS (nothing to measure)")
+    if summary_path:
+        summary.append("")
+        summary.append(f"**TOTAL: n/a** (threshold {threshold:g}%) — PASS, nothing to measure yet.")
+        with open(summary_path, "a") as handle:
+            handle.write("\n".join(summary) + "\n")
     sys.exit(0)
 
 percent = 100.0 * covered / total
@@ -118,6 +142,18 @@ print(f"  {floor2(percent):6.2f}%  {covered:5d}/{total:<5d}  TOTAL")
 
 verdict = "PASS" if percent >= threshold else "FAIL"
 print(f"\nTOTAL: {floor2(percent):.2f}% (threshold {threshold:g}%) — {verdict}")
+
+if summary_path:
+    icon = "\u2705" if verdict == "PASS" else "\u274c"
+    summary.append(f"| **TOTAL** | **{total}** | **{floor2(percent):.2f}% ({covered})** |")
+    summary.append("")
+    summary.append(f"{icon} **{verdict}** — {floor2(percent):.2f}% against a {threshold:g}% threshold.")
+    if threshold == 0:
+        summary.append("")
+        summary.append("> The threshold is still 0. T-0.61 raises it to `G-6.1`'s 90%, which is when")
+        summary.append("> this line starts being a gate rather than a readout.")
+    with open(summary_path, "a") as handle:
+        handle.write("\n".join(summary) + "\n")
 
 if verdict == "FAIL":
     sys.exit(1)

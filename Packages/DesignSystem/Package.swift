@@ -14,7 +14,6 @@ import PackageDescription
 let strictSettings: [SwiftSetting] = [
     .swiftLanguageMode(.v6),
     .defaultIsolation(nil),
-    .treatAllWarnings(as: .error)
 ]
 
 // TR-0.1: design tokens, components and theme.

@@ -13,13 +13,25 @@ concurrency:
 jobs:
   build:
     name: Build
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Show Xcode version
         run: xcodebuild -version
 
+      # G-6.4 (T-0.03): the app target's four Swift settings live in a hand-managed `.pbxproj`,
+      # because TR-0.6.3's generator was deferred to Phase 1. A regression there is invisible in
+      # review, so it is asserted rather than trusted. Runs before the build: if the settings have
+      # drifted, that is more useful to know than whatever the build does next.
+      - name: Audit app-target build settings
+        run: ./scripts/audit-app-build-settings.sh
+
+      # No SUPPRESS_WARNINGS workaround here any more. It was needed while the manifests carried
+      # `.treatAllWarnings(as: .error)`, which conflicted with the `-suppress-warnings` Xcode
+      # injects into package dependencies. T-0.03 moved the warnings gate to command-line flags
+      # (scripts/swift-strict-flags.sh) precisely so this job — and a plain Xcode build — work
+      # unaided. The app target's own SWIFT_TREAT_WARNINGS_AS_ERRORS still applies to app code.
       - name: Build
         run: |
           xcodebuild build \
@@ -30,22 +42,23 @@ jobs:
             | xcbeautify --renderer github-actions || exit ${PIPESTATUS[0]}
 
   # G-6.3: tests run on every push, and this job failing blocks the merge.
-  # Runs the packages directly with SwiftPM rather than through the Xcode scheme — the packages
-  # are not linked into Attempt.xcodeproj yet (deferred to T-0.03), and the domain suite has no
-  # reason to need a simulator.
+  # Runs the packages directly with SwiftPM rather than through the Xcode scheme. The packages
+  # are linked into Attempt.xcodeproj as of T-0.03, but a domain suite has no reason to need a
+  # simulator, and SwiftPM gives a far faster and clearer failure.
   #
-  # Also carries T-0.06's G-6.4 gates. Warnings-as-errors needs no flag here — every target sets
-  # `.treatAllWarnings(as: .error)` in its manifest, so `swift build`/`swift test` fail on a
-  # warning wherever they run, CI and desk alike.
+  # Also carries T-0.06's G-6.4 gates. Warnings-as-errors DOES need a flag here as of T-0.03 —
+  # it is no longer in the manifests. Every invocation goes through scripts/, which sources the
+  # single definition in scripts/swift-strict-flags.sh. Do not add a bare `swift build` or
+  # `swift test` step to this job; it would silently escape the gate.
   #
-  # macos-26, not the macos-15 used by the jobs around it: the manifests are tools-version 6.2
-  # (required by the .iOS(.v26) decision in Q-0.1) and macos-15 ships Xcode 16.x, which fails at
-  # manifest parse. Bumping the other two jobs is T-0.07.
+  # Every macOS job is on macos-26 as of 2026-08-02. It is not optional here: the manifests are
+  # tools-version 6.2 (required by the .iOS(.v26) decision in Q-0.1) and macos-15 ships Xcode
+  # 16.x, which fails at manifest parse before reaching any code.
   test:
     name: Package tests
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Show toolchain version
         run: swift --version
@@ -55,18 +68,27 @@ jobs:
       - name: Test PowerliftingCore and report coverage
         run: ./scripts/coverage.sh --package-path Packages/PowerliftingCore
 
-      - name: Test Persistence
-        run: swift test --package-path Packages/Persistence
+      # G-6.4: every package built and tested with warnings-as-errors, discovered by glob rather
+      # than listed — a new package under Packages/ is covered the moment it exists. This also
+      # subsumes the old explicit "Build DesignSystem" step: a package with no test target is
+      # otherwise never compiled, so its warnings would be enforced on nobody.
+      # PowerliftingCore's suite runs here as well as under coverage.sh above; the overlap is
+      # deliberate and costs milliseconds, and keeps the gate in exactly one place.
+      - name: Build and test all packages with warnings as errors
+        run: ./scripts/build-packages.sh --test
 
-      # G-6.4: DesignSystem has no test target (it has no code — see coverage.md "Known gaps" §1),
-      # so nothing above would ever compile it. Built explicitly, or its manifest's
-      # warnings-as-errors setting would be enforced on no one.
-      - name: Build DesignSystem
-        run: swift build --package-path Packages/DesignSystem
+      # G-6.4: proves the flags above still turn a warning into a failure, by building a fixture
+      # that warns — once without the flags expecting success, once with them expecting failure.
+      # Without this, a typo in the flag name leaves every build green and nothing enforced.
+      - name: Verify the warnings gate fires
+        run: ./scripts/verify-warnings-gate.sh
 
-      # G-6.4: `@unchecked Sendable` needs a written justification. Runs here rather than in the
-      # `lint` job because `lint` is on macos-15 and red until T-0.07 — a gate in a job that never
-      # passes is not a gate. Moving it next to SwiftLint is fair game once T-0.07 fixes that.
+      # G-6.4: `@unchecked Sendable` needs a written justification. It lives here rather than in
+      # `lint` for historical reasons — `lint` was on macos-15 and believed red, and a gate in a
+      # job that never passes is not a gate. Both premises are gone now, so it *could* move next
+      # to SwiftLint — T-0.05 has since widened `.swiftlint.yml`'s `included:` to cover
+      # `Packages/`, so the objection that `lint` proved nothing about them no longer holds.
+      # Moving it is T-0.07's call, not a drive-by.
       - name: Audit @unchecked Sendable
         run: ./scripts/audit-unchecked-sendable.sh
 
@@ -77,22 +99,23 @@ jobs:
   #
   # KNOWN LIMIT, do not overstate this job: it does NOT catch `import Foundation`.
   # Foundation ships on Linux (swift-corelibs-foundation), so Foundation — and Date, UUID, Data
-  # with it — compiles here and this job stays green. NFR-0.2 as written also forbids Foundation
-  # in the core; that half is enforced by review only, until a lint rule covers it (T-0.05).
-  # Treating a green run here as proof of "Foundation-free" is the one wrong conclusion to draw.
+  # with it — compiles here and this job stays green. NFR-0.2 also forbids Foundation in the core;
+  # that half is covered by T-0.05's `no_foundation_in_core` SwiftLint rule, in the `lint` job.
+  # Treating a green run *here* as proof of "Foundation-free" is still the wrong conclusion — the
+  # two jobs enforce different halves and neither substitutes for the other.
   #
   # Builds PowerliftingCore ONLY. Persistence (SwiftData) and DesignSystem (SwiftUI) are
   # Apple-only by design and are not expected to compile here — adding them would turn a
   # requirement into a permanent red job.
   #
   # The image tag is pinned to an exact patch version, not `swift:latest` and not `swift:6.3`:
-  #   - This package's manifest is tools-version 6.2 and uses `.defaultIsolation(nil)` and
-  #     `.treatAllWarnings(as:)`, both PackageDescription 6.2 APIs. (The `.iOS(.v26)` that forces
-  #     6.2 elsewhere is deliberately absent here — PowerliftingCore declares no `platforms:`.)
-  #     An older image fails at manifest parse, before it reaches a single line of code — a
-  #     confusing way to go red.
-  #   - Warnings are errors on this job too, from `.treatAllWarnings(as: .error)` in the
-  #     manifest. A floating tag can introduce a new diagnostic with no commit behind it, and
+  #   - This package's manifest is tools-version 6.2 and uses `.defaultIsolation(nil)`, a
+  #     PackageDescription 6.2 API. (The `.iOS(.v26)` that forces 6.2 elsewhere is deliberately
+  #     absent here — PowerliftingCore declares no `platforms:`.) An older image fails at manifest
+  #     parse, before it reaches a single line of code — a confusing way to go red.
+  #   - Warnings are errors on this job too, via the flags in scripts/swift-strict-flags.sh, which
+  #     is why the steps below go through the script. A floating tag can introduce a new
+  #     diagnostic with no commit behind it, and
   #     that lands hardest here, where the Linux toolchain is not the compiler anyone ran at
   #     their desk. Bump this tag deliberately, in its own commit.
   #     The tag still floats over base-OS rebuilds — only a `swift@sha256:...` digest is truly
@@ -104,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     container: swift:6.3.3-noble
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Show toolchain version
         run: swift --version
@@ -113,10 +136,10 @@ jobs:
       # separates the signal. A red build step means Apple API reached Sources/ — the NFR-0.2
       # violation this job exists to catch. A red test step means something else.
       - name: Build PowerliftingCore
-        run: swift build --package-path Packages/PowerliftingCore
+        run: ./scripts/build-packages.sh Packages/PowerliftingCore
 
       - name: Test PowerliftingCore
-        run: swift test --package-path Packages/PowerliftingCore
+        run: ./scripts/build-packages.sh --test Packages/PowerliftingCore
 
       # Deliberately NOT run here (T-0.08 notes):
       #   scripts/coverage.sh              — needs python3, which the Swift images do not
@@ -125,12 +148,33 @@ jobs:
       # Both would give this job a second way to fail for reasons that have nothing to do with
       # Linux, which is the one thing it is here to tell us about.
 
+  # TR-0.6.2 / G-7.7 / TR-0.1.2 / NFR-0.2 (T-0.05).
+  #
+  # As of 2026-08-02 this job means something: `.swiftlint.yml`'s `included:` covers `Packages/`
+  # as well as `Attempt/`. Before that it was `[Attempt]` alone, so a green run here said nothing
+  # whatsoever about the packages — worth remembering if you are tempted to move a gate into this
+  # job on the strength of it being green.
   lint:
     name: SwiftLint
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
       - name: Install SwiftLint
         run: brew install swiftlint
+
       - name: Lint
         run: swiftlint lint --strict --reporter github-actions-logging
+
+      # Proves the five custom rules actually fire, against fixtures that violate them on purpose,
+      # plus two guards that they do NOT fire on comments that merely mention a banned import.
+      # A rule with a broken regex or a path filter matching nothing leaves the step above green
+      # while enforcing nothing — that failure mode is invisible because it looks like success.
+      - name: Verify custom lint rules fire
+        run: ./scripts/verify-lint-rules.sh
+
+      # TR-0.6.2's formatter half. `swift format` ships with the toolchain, so there is nothing to
+      # install. Config is `.swift-format`: 4-space indent and a 120-column limit, matching
+      # `.editorconfig` and SwiftLint's `line_length` rather than the tool's own defaults.
+      - name: Check formatting
+        run: swift format lint --strict --recursive Attempt Packages

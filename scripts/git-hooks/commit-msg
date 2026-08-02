@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+#
+# T-0.09: warn when a commit subject carries no requirement ID.
+#
+# Enable with:
+#
+#     git config core.hooksPath scripts/git-hooks
+#
+# Disable with `git config --unset core.hooksPath`. Nothing else in the repo depends on this
+# hook being installed — it is a convenience, and CI does not check commit subjects.
+#
+# WARNS, NEVER BLOCKS. This script always exits 0. A commit-msg hook that rejects runs at the
+# worst possible moment: the message is already written and the commit is already staged, so a
+# hard failure costs more than the missing `git log --grep` hit it was protecting. The warning
+# prints after the commit is created; fix it with `git commit --amend` if it matters, which is
+# cheap while the commit is still local.
+#
+# See docs/phase-0/tasks/T-0.09-commit-conventions.md.
+
+set -euo pipefail
+
+msg_file="${1:?usage: commit-msg <message-file>}"
+subject="$(head -n 1 "$msg_file")"
+
+# Generated or inherited subjects — a warning on these is pure noise. Merge and revert subjects
+# are written by git, and the autosquash prefixes are copied from the commit being fixed.
+case "$subject" in
+    "Merge "*|"Revert "*|"fixup! "*|"squash! "*|"amend! "*) exit 0 ;;
+esac
+
+# Requirement ID vocabulary, from docs/requirements.md: G-*, FR-*, NFR-*, TR-*, OUT-*, DOD-*, D-*.
+# One or more, comma-separated, then a colon. The numeric part is any dotted depth, so this
+# accepts G-1, TR-0.2 and TR-0.2.11 alike.
+id='(G|FR|NFR|TR|OUT|DOD|D)-[0-9]+(\.[0-9]+)*'
+if printf '%s' "$subject" | grep -Eq "^${id}([[:space:]]*,[[:space:]]*${id})*:"; then
+    exit 0
+fi
+
+cat >&2 <<'EOF'
+
+  warning: commit subject has no requirement ID.
+
+    expected   TR-0.2.1: add Weight value type
+               G-6.4, TR-0.1.3: enable strict concurrency
+
+  IDs are G-*, FR-*, NFR-*, TR-*, OUT-*, DOD-*, D-*. They keep `git log --grep TR-0.2`
+  meaningful, and cannot be backfilled once the commit is pushed.
+
+  The commit was created anyway. While it is still local:  git commit --amend
+
+EOF
+
+exit 0

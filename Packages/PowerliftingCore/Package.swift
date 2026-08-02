@@ -21,14 +21,15 @@ import PackageDescription
 //                                have teeth: flipping it to .defaultIsolation(MainActor.self)
 //                                makes nonisolated access to a plain class property an error.
 //
-//   .treatAllWarnings(as:.error) G-6.4's zero-warnings rule, enforced by the compiler rather than
-//                                by review. Deliberately in the manifest and not only in CI, so a
-//                                warning fails at the desk where it was written. To iterate past
-//                                one locally: swift build -Xswiftc -no-warnings-as-errors.
+// G-6.4's zero-warnings rule is NOT here. `.treatAllWarnings(as: .error)` used to be, and was
+// removed in T-0.03 (2026-08-02) because it makes the app unbuildable from Xcode: Xcode injects
+// `-suppress-warnings` into package targets it builds as dependencies, and the compiler rejects
+// that together with `-warnings-as-errors`. Do not add it back without reading
+// scripts/swift-strict-flags.sh, which explains what was tried and where the gate lives now
+// (`scripts/build-packages.sh`, with `scripts/verify-warnings-gate.sh` proving it still fires).
 let strictSettings: [SwiftSetting] = [
     .swiftLanguageMode(.v6),
     .defaultIsolation(nil),
-    .treatAllWarnings(as: .error)
 ]
 
 // TR-0.1: pure Swift domain layer.
@@ -57,6 +58,6 @@ let package = Package(
             name: "PowerliftingCoreTests",
             dependencies: ["PowerliftingCore"],
             swiftSettings: strictSettings
-        )
+        ),
     ]
 )
