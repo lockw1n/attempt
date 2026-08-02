@@ -20,6 +20,12 @@ let package = Package(
             name: "Persistence",
             dependencies: ["PowerliftingCore"],
             swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        // G-6.3. No coverage threshold applies here — G-6.1 names PowerliftingCore only.
+        .testTarget(
+            name: "PersistenceTests",
+            dependencies: ["Persistence"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]
 )

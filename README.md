@@ -82,19 +82,34 @@ through an explicit purge routine.
 
 ## Testing
 
-There is no test target yet. Adding one needs Xcode's UI, because a new target
-means new build settings and phases in the `.pbxproj`:
-
-1. **File → New → Target… → Unit Testing Bundle**, name it `AttemptTests`.
-2. Repeat with **UI Testing Bundle** for `AttemptUITests` if you want UI tests.
-3. Uncomment the test step in `.github/workflows/ci.yml`.
-
-New targets in Xcode 26 default to Swift Testing (`@Test` / `#expect`) rather
-than XCTest. Once the target exists:
+`PowerliftingCore` and `Persistence` each have a Swift Testing target (`@Test` /
+`#expect`, not XCTest). The packages are not linked into `Attempt.xcodeproj`
+yet, so there is no root package and no umbrella scheme — run each in place:
 
 ```bash
-xcodebuild test -project Attempt.xcodeproj -scheme Attempt -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+swift test --package-path Packages/PowerliftingCore
 ```
+
+```bash
+swift test --package-path Packages/Persistence
+```
+
+The app target has no tests: it is a composition root with an empty scene.
+
+### Coverage
+
+`PowerliftingCore` is held to ≥ 90% line coverage. `scripts/coverage.sh` runs
+the suite with coverage collection and reports the figure:
+
+```bash
+./scripts/coverage.sh --threshold 90
+```
+
+It exits non-zero below the threshold, which defaults to `0` until the gate is
+switched on. It counts only files under the package's `Sources/` — the raw
+llvm-cov totals include the test target and Swift Testing's generated runner,
+which reported 85% coverage back when the module contained no code at all.
+Requires `python3`.
 
 ## Linting
 
@@ -112,5 +127,11 @@ target with `if which swiftlint > /dev/null; then swiftlint; fi` and untick
 
 ## CI
 
-`.github/workflows/ci.yml` builds the app and runs SwiftLint on every push and
-pull request to `main`. The test job is commented out until a test target exists.
+`.github/workflows/ci.yml` builds the app, runs both package test suites with
+coverage, and runs SwiftLint on every push and pull request to `main`.
+
+Two caveats worth knowing before reading a red run: the `build` and `lint` jobs
+still run on `macos-15`, which ships Xcode 16.x and can build neither the iOS 26
+deployment target nor the tools-version 6.2 manifests — so they fail for reasons
+that predate the current work. And no job is a required check in branch
+protection yet, so a red run does not block a merge.

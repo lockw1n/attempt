@@ -22,6 +22,14 @@ let package = Package(
         .target(
             name: "PowerliftingCore",
             swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        // G-6.1 / G-6.3: the suite whose line coverage the 90% gate measures (T-0.61).
+        // Swift Testing, not XCTest — it ships with the toolchain, so this adds no package
+        // dependency and keeps the empty `dependencies` array above intact (TR-0.1.1).
+        .testTarget(
+            name: "PowerliftingCoreTests",
+            dependencies: ["PowerliftingCore"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]
 )

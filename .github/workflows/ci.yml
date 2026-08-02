@@ -29,15 +29,30 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | xcbeautify --renderer github-actions || exit ${PIPESTATUS[0]}
 
-      # Enable once a test target exists (see README → Testing).
-      # - name: Test
-      #   run: |
-      #     xcodebuild test \
-      #       -project Attempt.xcodeproj \
-      #       -scheme Attempt \
-      #       -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-      #       CODE_SIGNING_ALLOWED=NO \
-      #       | xcbeautify --renderer github-actions || exit ${PIPESTATUS[0]}
+  # G-6.3: tests run on every push, and this job failing blocks the merge.
+  # Runs the packages directly with SwiftPM rather than through the Xcode scheme — the packages
+  # are not linked into Attempt.xcodeproj yet (deferred to T-0.03), and the domain suite has no
+  # reason to need a simulator.
+  #
+  # macos-26, not the macos-15 used by the jobs around it: the manifests are tools-version 6.2
+  # (required by the .iOS(.v26) decision in Q-0.1) and macos-15 ships Xcode 16.x, which fails at
+  # manifest parse. Bumping the other two jobs is T-0.07.
+  test:
+    name: Package tests
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain version
+        run: swift --version
+
+      # Also runs the PowerliftingCore suite — the script tests before it measures.
+      # The threshold stays at its default of 0 until T-0.61 raises it to the G-6.1 90%.
+      - name: Test PowerliftingCore and report coverage
+        run: ./scripts/coverage.sh --package-path Packages/PowerliftingCore
+
+      - name: Test Persistence
+        run: swift test --package-path Packages/Persistence
 
   lint:
     name: SwiftLint
