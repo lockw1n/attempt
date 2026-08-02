@@ -301,11 +301,18 @@ an exact patch version on purpose — see the comment above the job.
 All three macOS jobs run on **`macos-26`** (Xcode 26), and every job checks out
 with `actions/checkout@v7`. Both were bumped on 2026-08-02: `macos-15` ships
 Xcode 16.x, which cannot parse the tools-version 6.2 manifests at all and only
-*warned* about the iOS 26.5 deployment target before clamping it. One caveat
-remains:
+*warned* about the iOS 26.5 deployment target before clamping it.
 
-- No job is a required check in branch protection yet, so a red run does not
-  block a merge.
+**All four jobs are required checks on `main`**, so a red run blocks the merge —
+verified with a deliberately failing test, not assumed. The whole workflow runs
+in about a minute.
+
+Two things to know if you edit the workflow. A required check is matched by its
+**display name**, so renaming a job silently drops it from the protection rule:
+the old name stays listed as required and never reports again, leaving `main`
+either permanently blocked or quietly unprotected. And a **newly added** job is
+unprotected until its first run, because GitHub cannot offer a check as required
+until it has reported once — add the job, let it run, then re-open the rule.
 
 One further thing worth knowing: warnings are errors, and runner image labels
 move — a toolchain bump can redden CI with no commit behind it, which is the gate
