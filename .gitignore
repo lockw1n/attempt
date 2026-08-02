@@ -1,0 +1,56 @@
+## macOS
+.DS_Store
+
+## Xcode user-specific state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+## Other IDEs
+.idea/
+.vscode/
+
+## Build products
+build/
+DerivedData/
+*.o
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.moved-aside
+*.xcarchive
+
+## Swift Package Manager
+.build/
+.swiftpm/
+# No `Packages/` rule here on purpose: TR-0.1 puts our own local packages
+# (PowerliftingCore, Persistence, DesignSystem) in Packages/, and they must be
+# committed. Fetched dependencies land in .build/, which is already ignored.
+# Package.resolved is committed — this is an app, so dependency versions should
+# be pinned for reproducible CI builds.
+
+## Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+## Dependency managers (only relevant if adopted)
+Pods/
+Carthage/Build/
+
+## Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+## Secrets — never commit
+*.xcconfig.local
+Secrets.plist
+.env
+
+## Local-only working notes — deliberately not committed
+docs/
+CLAUDE.md
+.claude/
