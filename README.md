@@ -25,48 +25,57 @@ xcodebuild -project Attempt.xcodeproj -scheme Attempt -destination 'platform=iOS
 
 ## Project structure
 
-The project uses Xcode's **file-system synchronized groups**, so the folder tree
-on disk *is* the project structure — create a folder in Finder or your editor and
-it appears in Xcode automatically. There is no need to add files to the
-`.pbxproj` by hand.
+Domain and infrastructure live in local Swift packages. The app target is a
+composition root — entry point and dependency wiring, nothing else.
 
 ```
+Packages/
+├── PowerliftingCore/        Pure Swift domain layer: value types, formulas, resolvers
+├── Persistence/             SwiftData models, schema versioning, repositories
+└── DesignSystem/            Tokens, components, theme (empty until Phase 1)
 Attempt/
-├── App/                     App entry point, root scene, app-wide wiring
-├── Features/                One folder per feature; views + view models together
-│   └── Home/
-├── Models/                  Domain types shared across features
-├── Core/                    Reusable infrastructure, no feature knowledge
-│   ├── Networking/          APIClient, Endpoint
-│   ├── DesignSystem/        Theme tokens (spacing, radii, animation)
-│   └── Extensions/          Extensions on system types
+├── App/                     App entry point and DI wiring
 ├── Resources/               String catalogs, fonts, data files
 └── Assets.xcassets          Colors, images, app icon
 ```
 
-The rule of thumb: `Features/` may import from `Core/` and `Models/`, but never
-the other way round. If something in `Core/` needs to know about a feature, it
-belongs in that feature instead.
+Build the packages from the command line:
+
+```bash
+cd Packages/PowerliftingCore && swift build
+```
+
+The dependency rule runs one way only: `Persistence` may import
+`PowerliftingCore`, never the reverse, and the app may import all three. Two
+constraints are load-bearing rather than stylistic:
+
+- **`PowerliftingCore` imports no Apple framework** — not `Foundation`, not
+  `SwiftUI`. It must compile on Linux, and CI proves it.
+- **Only `Persistence` imports `SwiftData`.** Everything else reaches storage
+  through repository protocols that expose value types and DTOs.
+
+The Xcode project still uses **file-system synchronized groups**, so the folder
+tree on disk *is* the project structure for the app target. That project is
+hand-managed for now and will be generated from an XcodeGen manifest, at which
+point the packages get linked into it.
 
 ## Conventions
 
-**Concurrency.** The project builds with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`,
-so every type is implicitly `@MainActor` unless marked otherwise. Anything that
-should run off the main actor — networking, parsing, disk I/O — must be declared
-`nonisolated` explicitly. `Core/Networking` is the worked example.
+**Concurrency.** Packages build in Swift 6 language mode. The app target builds
+with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so its types are implicitly
+`@MainActor` unless marked otherwise; anything running off the main actor must
+be declared `nonisolated` explicitly. Domain types are `Sendable` value types.
 
-**State.** Model loadable content with `ViewState<Value>` (`Models/ViewState.swift`)
-rather than separate `isLoading` / `value` / `error` properties, so a view can
-never be loading and failed at the same time.
+**Weights are `Int` grams.** No floating-point weight is ever persisted. Use the
+`Weight` type for every weight-bearing value; kilograms and pounds are display
+concerns only.
 
-**Errors.** Lower layers map their failures into `AppError` (`Models/AppError.swift`).
-Views should never see a `URLError` or a `DecodingError`.
+**Derived values are recomputed, never stored as truth.** Estimated 1RMs,
+personal records and training maxes are calculated from logged sets. Cached
+copies carry a `computationVersion` that invalidates them.
 
-**View models.** `@MainActor @Observable final class`, dependencies injected
-through the initialiser so tests can substitute stubs. See `Features/Home/HomeViewModel.swift`.
-
-**Design tokens.** Use `Theme.Spacing`, `Theme.Radius`, and `Theme.Animation`
-instead of hard-coded numbers.
+**Deletion is soft.** Entities carry `deletedAt`; hard deletion happens only
+through an explicit purge routine.
 
 **Strings.** User-facing text goes through `String(localized:)` and lands in
 `Resources/Localizable.xcstrings`.
