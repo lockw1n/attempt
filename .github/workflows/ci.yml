@@ -34,6 +34,10 @@ jobs:
   # are not linked into Attempt.xcodeproj yet (deferred to T-0.03), and the domain suite has no
   # reason to need a simulator.
   #
+  # Also carries T-0.06's G-6.4 gates. Warnings-as-errors needs no flag here — every target sets
+  # `.treatAllWarnings(as: .error)` in its manifest, so `swift build`/`swift test` fail on a
+  # warning wherever they run, CI and desk alike.
+  #
   # macos-26, not the macos-15 used by the jobs around it: the manifests are tools-version 6.2
   # (required by the .iOS(.v26) decision in Q-0.1) and macos-15 ships Xcode 16.x, which fails at
   # manifest parse. Bumping the other two jobs is T-0.07.
@@ -53,6 +57,18 @@ jobs:
 
       - name: Test Persistence
         run: swift test --package-path Packages/Persistence
+
+      # G-6.4: DesignSystem has no test target (it has no code — see coverage.md "Known gaps" §1),
+      # so nothing above would ever compile it. Built explicitly, or its manifest's
+      # warnings-as-errors setting would be enforced on no one.
+      - name: Build DesignSystem
+        run: swift build --package-path Packages/DesignSystem
+
+      # G-6.4: `@unchecked Sendable` needs a written justification. Runs here rather than in the
+      # `lint` job because `lint` is on macos-15 and red until T-0.07 — a gate in a job that never
+      # passes is not a gate. Moving it next to SwiftLint is fair game once T-0.07 fixes that.
+      - name: Audit @unchecked Sendable
+        run: ./scripts/audit-unchecked-sendable.sh
 
   lint:
     name: SwiftLint

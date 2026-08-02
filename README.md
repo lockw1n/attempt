@@ -7,7 +7,7 @@ A SwiftUI app for iOS.
 | | |
 |---|---|
 | Xcode | 26.6 (build 17F113) |
-| Swift | 6.3 toolchain, Swift 5 language mode |
+| Swift | 6.3 toolchain, Swift 6 language mode everywhere — packages and app target |
 | Deployment target | iOS 26.5 |
 | Bundle identifier | `lockw1n.Attempt` |
 
@@ -39,10 +39,11 @@ Attempt/
 └── Assets.xcassets          Colors, images, app icon
 ```
 
-Build the packages from the command line:
+Build the packages from the command line — one at a time, since there is no root
+package until the Xcode project is generated:
 
 ```bash
-cd Packages/PowerliftingCore && swift build
+swift build --package-path Packages/PowerliftingCore
 ```
 
 The dependency rule runs one way only: `Persistence` may import
@@ -61,10 +62,31 @@ point the packages get linked into it.
 
 ## Conventions
 
-**Concurrency.** Packages build in Swift 6 language mode. The app target builds
-with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so its types are implicitly
-`@MainActor` unless marked otherwise; anything running off the main actor must
-be declared `nonisolated` explicitly. Domain types are `Sendable` value types.
+**Concurrency.** Packages build in Swift 6 language mode with
+`.defaultIsolation(nil)` — declarations are `nonisolated` unless they say
+otherwise, so the domain layer stays actor-agnostic. The app target is the
+deliberate exception: it builds with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`,
+so its types are implicitly `@MainActor` unless marked otherwise, and anything
+running off the main actor must be declared `nonisolated` explicitly. Domain
+types are `Sendable` value types — note that `public` types get no implicit
+`Sendable` synthesis, so write the conformance.
+
+`@unchecked Sendable` is permitted only with a written justification. Put
+`Sendable justification: <why>` on the same line or in the comment block
+immediately above the declaration — a blank line between the two breaks the
+association and fails the audit:
+
+```bash
+./scripts/audit-unchecked-sendable.sh
+```
+
+**Warnings are errors.** Every target sets `.treatAllWarnings(as: .error)`, and
+the app target sets `SWIFT_TREAT_WARNINGS_AS_ERRORS = YES`, so a warning fails
+the build locally and not just in CI. To iterate past one mid-refactor:
+
+```bash
+swift build --package-path Packages/PowerliftingCore -Xswiftc -no-warnings-as-errors
+```
 
 **Weights are `Int` grams.** No floating-point weight is ever persisted. Use the
 `Weight` type for every weight-bearing value; kilograms and pounds are display
@@ -128,10 +150,20 @@ target with `if which swiftlint > /dev/null; then swiftlint; fi` and untick
 ## CI
 
 `.github/workflows/ci.yml` builds the app, runs both package test suites with
-coverage, and runs SwiftLint on every push and pull request to `main`.
+coverage, builds `DesignSystem` (it has no test target, so nothing else compiles
+it), audits `@unchecked Sendable`, and runs SwiftLint on every push and pull
+request to `main`.
 
-Two caveats worth knowing before reading a red run: the `build` and `lint` jobs
-still run on `macos-15`, which ships Xcode 16.x and can build neither the iOS 26
-deployment target nor the tools-version 6.2 manifests — so they fail for reasons
-that predate the current work. And no job is a required check in branch
-protection yet, so a red run does not block a merge.
+Three caveats worth knowing before reading a red run:
+
+- The `build` and `lint` jobs still run on `macos-15`, which ships Xcode 16.x and
+  can build neither the iOS 26 deployment target nor the tools-version 6.2
+  manifests — so they fail for reasons that predate the current work.
+- No job is a required check in branch protection yet, so a red run does not
+  block a merge.
+- Warnings are errors, and the runner image label moves. A toolchain bump that
+  introduces a new deprecation warning can redden CI with no commit behind it.
+  That is the gate working, not a flake — fix the warning.
+
+The `test` job on `macos-26` is the only one currently green, which is why it
+also carries the `DesignSystem` build and the `@unchecked Sendable` audit.
