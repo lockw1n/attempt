@@ -184,8 +184,11 @@ means less than it looks:
 - No job is a required check in branch protection yet, so a red run would not
   block a merge anyway.
 
-Two further things worth knowing: warnings are errors, and runner image labels
+One further thing worth knowing: warnings are errors, and runner image labels
 move — a toolchain bump can redden CI with no commit behind it, which is the gate
 working rather than a flake, and is why the `linux` container tag is pinned
-rather than floating. And the `linux` job's tripwire is untested: it is green, but
-nobody has yet confirmed it goes red when Apple-platform API reaches the core.
+rather than floating.
+
+The `linux` job's tripwire has been tested rather than assumed: an `import
+CoreGraphics` in the domain layer failed its build step while all three macOS
+jobs stayed green (2026-08-02, reverted).

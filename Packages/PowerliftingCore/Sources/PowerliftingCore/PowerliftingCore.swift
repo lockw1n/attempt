@@ -15,3 +15,9 @@
 // types deliberately: a type sharing its module's name causes Swift lookup ambiguity, and any
 // API added before a requirement calls for it is a guess. Delete this file once T-0.10 lands
 // the Weight type.
+//
+// The Linux CI job's tripwire was verified against this file on 2026-08-02 (T-0.08): an
+// `import CoreGraphics` here failed the `Build PowerliftingCore` step with "no such module
+// 'CoreGraphics'" while all three macOS jobs stayed green. The rule above is enforced, not
+// merely asserted — with one exception, `import Foundation`, which compiles on Linux and is
+// caught by review only until T-0.05 adds a lint rule.
