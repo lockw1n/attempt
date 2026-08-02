@@ -166,19 +166,26 @@ because that compiles fine on macOS. It does **not** catch `import Foundation`,
 which compiles on Linux as well — see the rule above. The image tag is pinned to
 an exact patch version on purpose — see the comment above the job.
 
-Four caveats worth knowing before reading a red run:
+**All four jobs are green** as of 2026-08-02. Four caveats, because green here
+means less than it looks:
 
-- The `build` and `lint` jobs still run on `macos-15`, which ships Xcode 16.x and
-  can build neither the iOS 26 deployment target nor the tools-version 6.2
-  manifests — so they fail for reasons that predate the current work.
-- No job is a required check in branch protection yet, so a red run does not
-  block a merge.
-- Warnings are errors, and the runner image label moves. A toolchain bump that
-  introduces a new deprecation warning can redden CI with no commit behind it.
-  That is the gate working, not a flake — fix the warning. On the `linux` job
-  this is why the container tag is pinned rather than floating.
-- The `linux` job has not run yet. It is written and expected to pass, but "the
-  Linux build is green" is a claim until the first push, not a fact.
+- **`build` passes on `macos-15` only because it never touches the packages.**
+  That runner ships Xcode 16.x, which cannot parse the tools-version 6.2
+  manifests — but `xcodebuild` runs against `Attempt.xcodeproj`, and the packages
+  are not linked into it yet. It will go red the moment T-0.03 links them, so the
+  runner image bump is a prerequisite for that task, not just cleanup.
+- **`build` warns rather than fails on the deployment target.** `IPHONEOS_DEPLOYMENT_TARGET`
+  is 26.5 and Xcode 16.4 supports up to 18.5, which is a warning; Xcode clamps and
+  carries on. Warnings-as-errors does not escalate it — that setting covers Swift
+  compiler diagnostics, and this is a build-settings one.
+- **`lint` passes trivially.** `.swiftlint.yml` has `included: [Attempt]`, so
+  nothing under `Packages/` is linted at all. A green SwiftLint run says nothing
+  about the packages until T-0.05 widens the scope.
+- No job is a required check in branch protection yet, so a red run would not
+  block a merge anyway.
 
-The `test` job on `macos-26` is the only one currently known green, which is why
-it also carries the `DesignSystem` build and the `@unchecked Sendable` audit.
+Two further things worth knowing: warnings are errors, and runner image labels
+move — a toolchain bump can redden CI with no commit behind it, which is the gate
+working rather than a flake, and is why the `linux` container tag is pinned
+rather than floating. And the `linux` job's tripwire is untested: it is green, but
+nobody has yet confirmed it goes red when Apple-platform API reaches the core.
