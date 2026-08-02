@@ -105,6 +105,31 @@ through an explicit purge routine.
 **Strings.** User-facing text goes through `String(localized:)` and lands in
 `Resources/Localizable.xcstrings`.
 
+**Commits carry requirement IDs.** Lead the subject with the requirement the work
+traces to, then a colon:
+
+```
+TR-0.2.1: add Weight value type
+G-6.4, TR-0.1.3: enable strict concurrency across the packages
+```
+
+Requirement IDs are `G-*`, `FR-*`, `NFR-*`, `TR-*`, `OUT-*`, `DOD-*` and `D-*`.
+Comma-separate when a commit covers more than one. This is what keeps
+`git log --grep TR-0.2` meaningful, and **it cannot be backfilled** — once a
+commit is pushed, rewriting the subject means rewriting shared history, which
+costs more than the missing search hit. Work that traces to no requirement is
+scope creep; resolve that before committing rather than inventing an ID.
+
+An optional hook warns when a subject has no ID. It never blocks a commit — a
+rejected commit at the wrong moment costs more than a missed grep:
+
+```bash
+git config core.hooksPath scripts/git-hooks
+```
+
+Pull requests use `.github/pull_request_template.md`, which asks for the same IDs
+plus the task ID from `docs/phase-0/tasks.md`.
+
 ## Testing
 
 `PowerliftingCore` and `Persistence` each have a Swift Testing target (`@Test` /
