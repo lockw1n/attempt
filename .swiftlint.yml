@@ -1,10 +1,22 @@
+# T-0.05. `included` covers the app target AND every package — before 2026-08-02 it was
+# `[Attempt]` alone, so a green `swiftlint lint --strict` said nothing whatsoever about
+# Packages/. Anything added under Packages/ is linted from now on.
+#
+# scripts/lint-fixtures/ is deliberately absent from both lists. It holds files that violate the
+# custom rules on purpose, so it must not be linted by a normal run — but it must still be
+# lintable when named explicitly on the command line, which `excluded` would prevent.
+# scripts/verify-lint-rules.sh does exactly that, and proves each rule below actually fires.
 included:
   - Attempt
+  - Packages
 
 excluded:
   - Attempt/Assets.xcassets
   - DerivedData
   - .build
+  - Packages/PowerliftingCore/.build
+  - Packages/Persistence/.build
+  - Packages/DesignSystem/.build
 
 disabled_rules:
   - todo
@@ -70,5 +82,78 @@ identifier_name:
 
 nesting:
   type_level: 2
+
+# ---------------------------------------------------------------------------------------------
+# Custom rules (T-0.05)
+#
+# Two groups with different jobs:
+#
+#   G-7.7   — no hard-coded colours, font sizes or spacing in UI that consumes the design system.
+#             Feature modules do not exist yet; these are written against the path they will
+#             occupy (Packages/Features/...) plus the app target, so they are in place *before*
+#             Phase 1 can break them. DesignSystem itself is excluded — it is where the raw
+#             values are legitimately defined.
+#
+#   layering — TR-0.1.2 and NFR-0.2, the two import bans. Both use `match_kinds` rather than
+#             relying on the regex alone: `import Foundation` and `import SwiftData` both appear
+#             inside *comments* in this repo (PowerliftingCore.swift and Persistence.swift
+#             document the rules they are subject to). A comment's syntax kind is `comment`,
+#             which is not in the list, so those lines cannot match. Without this the rules
+#             would fire on the very files that explain them.
+#
+# Every rule here is `error`, not `warning`: `--strict` promotes warnings anyway, and a rule that
+# reads as advisory in the config but fails the build in CI is just confusing.
+#
+# scripts/verify-lint-rules.sh proves each of these fires. A rule nobody has seen fail is not
+# coverage, it is decoration.
+custom_rules:
+  no_color_literals:
+    name: "Hard-coded colour"
+    regex: '(#colorLiteral\(|\bUIColor\(\s*(red|white|hue):|\bNSColor\(\s*(red|white|hue):|\bColor\(\s*(red|white|hue):)'
+    included:
+      - 'Attempt/.*\.swift'
+      - 'Packages/Features/.*\.swift'
+    message: "G-7.7: use a DesignSystem colour token, not a literal colour."
+    severity: error
+
+  no_raw_font_sizes:
+    name: "Hard-coded font size"
+    regex: '(\.system\(\s*size:|\.systemFont\(\s*ofSize:|Font\.custom\([^)]*,\s*size:|\.monospacedSystemFont\(\s*ofSize:)'
+    included:
+      - 'Attempt/.*\.swift'
+      - 'Packages/Features/.*\.swift'
+    message: "G-7.7: use a DesignSystem typography token, not a raw point size."
+    severity: error
+
+  no_magic_spacing:
+    name: "Magic spacing value"
+    regex: '(\.padding\(\s*-?\d+(\.\d+)?\s*\)|\.padding\(\s*\.\w+\s*,\s*-?\d+(\.\d+)?\s*\)|\bspacing:\s*-?\d+(\.\d+)?|\.frame\(\s*(width|height):\s*-?\d+(\.\d+)?)'
+    included:
+      - 'Attempt/.*\.swift'
+      - 'Packages/Features/.*\.swift'
+    message: "G-7.7: use a DesignSystem spacing token, not a numeric literal."
+    severity: error
+
+  no_swiftdata_outside_persistence:
+    name: "SwiftData imported outside Persistence"
+    regex: '^[ \t]*import[ \t]+SwiftData\b'
+    match_kinds:
+      - keyword
+      - identifier
+    excluded:
+      - 'Packages/Persistence/.*\.swift'
+    message: "TR-0.1.2: only Persistence may import SwiftData. Reach storage through a repository protocol."
+    severity: error
+
+  no_foundation_in_core:
+    name: "Foundation imported into the domain core"
+    regex: '^[ \t]*import[ \t]+(Foundation|FoundationEssentials|FoundationNetworking)\b'
+    match_kinds:
+      - keyword
+      - identifier
+    included:
+      - 'Packages/PowerliftingCore/.*\.swift'
+    message: "NFR-0.2: PowerliftingCore is Foundation-free. The Linux CI job cannot catch this — Foundation compiles there — so this rule is the only enforcement."
+    severity: error
 
 reporter: xcode

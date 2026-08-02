@@ -28,8 +28,9 @@ struct WeightDefaultPrecisionFormattingTests {
     func convenienceOverloadMatchesExplicitDefault() {
         let weight = Weight(grams: 102_499)
         for unit in MassUnit.allCases {
-            #expect(weight.formatted(in: unit)
-                == weight.formatted(in: unit, precision: .default(for: unit)))
+            #expect(
+                weight.formatted(in: unit)
+                    == weight.formatted(in: unit, precision: .default(for: unit)))
         }
     }
 }
@@ -71,7 +72,7 @@ struct WeightDisplayRoundingTests {
         "Rounding to a multiple is exact integer arithmetic",
         arguments: [
             (0, 500, 0), (500, 500, 500), (249, 500, 0), (250, 500, 500), (251, 500, 500),
-            (-249, 500, 0), (-250, 500, -500), (-751, 500, -1_000), (1_250, 1_250, 1_250)
+            (-249, 500, 0), (-250, 500, -500), (-751, 500, -1_000), (1_250, 1_250, 1_250),
         ]
     )
     func roundingToMultipleIsExact(value: Int, step: Int, expected: Int) {

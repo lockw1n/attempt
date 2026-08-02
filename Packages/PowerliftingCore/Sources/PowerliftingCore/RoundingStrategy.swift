@@ -36,11 +36,12 @@ extension RoundingStrategy {
     /// a text field must be rejectable, not fatal.
     func roundedToInt(_ value: Double) -> Int? {
         guard value.isFinite else { return nil }
-        let rounded: Double = switch self {
-        case .nearest: value.rounded(.toNearestOrAwayFromZero)
-        case .down: value.rounded(.down)
-        case .up: value.rounded(.up)
-        }
+        let rounded: Double =
+            switch self {
+            case .nearest: value.rounded(.toNearestOrAwayFromZero)
+            case .down: value.rounded(.down)
+            case .up: value.rounded(.up)
+            }
         return Int(exactly: rounded)
     }
 }

@@ -11,7 +11,6 @@ import PackageDescription
 let strictSettings: [SwiftSetting] = [
     .swiftLanguageMode(.v6),
     .defaultIsolation(nil),
-    .treatAllWarnings(as: .error)
 ]
 
 // TR-0.1: SwiftData models and repository implementations.
@@ -38,6 +37,6 @@ let package = Package(
             name: "PersistenceTests",
             dependencies: ["Persistence"],
             swiftSettings: strictSettings
-        )
+        ),
     ]
 )

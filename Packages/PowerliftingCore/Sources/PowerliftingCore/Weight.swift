@@ -17,8 +17,7 @@
 ///
 /// **Precision.** Kilogram round-trips are lossless. Pound round-trips are lossy by at most half a
 /// gram per conversion, because a pound is not a whole number of grams.
-public struct Weight: Sendable, Hashable, Comparable, Codable, AdditiveArithmetic,
-                      CustomStringConvertible {
+public struct Weight: Sendable, Hashable, Comparable, Codable, AdditiveArithmetic, CustomStringConvertible {
     /// The mass in grams — the sole stored representation (`G-1.1`).
     public let grams: Int
 

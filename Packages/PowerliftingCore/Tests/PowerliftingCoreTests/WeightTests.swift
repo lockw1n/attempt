@@ -109,9 +109,11 @@ struct WeightFloatingPointEntryTests {
         #expect(Weight(kilograms: -2.5004, rounding: .up)?.grams == -2_500)
     }
 
-    @Test("Non-finite input is rejected, not trapped", arguments: [
-        Double.nan, .infinity, -.infinity, .signalingNaN
-    ])
+    @Test(
+        "Non-finite input is rejected, not trapped",
+        arguments: [
+            Double.nan, .infinity, -.infinity, .signalingNaN,
+        ])
     func nonFiniteInputIsRejected(value: Double) {
         #expect(Weight(kilograms: value, rounding: .nearest) == nil)
         #expect(Weight(pounds: value, rounding: .nearest) == nil)
@@ -143,10 +145,13 @@ struct WeightComparisonTests {
     }
 
     @Test("Equal grams are equal and hash alike")
-    func equalGramsHashAlike() {
+    func equalGramsHashAlike() throws {
         let set: Set<Weight> = [Weight(grams: 20_000), Weight(grams: 20_000), Weight(grams: 500)]
         #expect(set.count == 2)
-        #expect(set.contains(Weight(kilograms: 20, rounding: .nearest)!))
+        // `try #require` rather than `!`: a force unwrap here would crash the whole run instead
+        // of failing this one test, and it trips force_unwrapping (T-0.05).
+        let twentyKilograms = try #require(Weight(kilograms: 20, rounding: .nearest))
+        #expect(set.contains(twentyKilograms))
     }
 }
 

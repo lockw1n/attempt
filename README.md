@@ -39,12 +39,15 @@ Attempt/
 └── Assets.xcassets          Colors, images, app icon
 ```
 
-Build the packages from the command line — one at a time, since there is no root
-package until the Xcode project is generated:
+Build every package from the command line, with warnings treated as errors:
 
 ```bash
-swift build --package-path Packages/PowerliftingCore
+./scripts/build-packages.sh --test
 ```
+
+There is no root package, so a bare `swift build` at the repo root fails; the
+script iterates the packages for you. To work on one in isolation, pass its path
+(`./scripts/build-packages.sh Packages/PowerliftingCore`).
 
 The dependency rule runs one way only: `Persistence` may import
 `PowerliftingCore`, never the reverse, and the app may import all three. Two
@@ -54,14 +57,44 @@ constraints are load-bearing rather than stylistic:
   `SwiftUI`. It must compile on Linux, and the `linux` CI job builds and tests
   the package in a Swift container to prove it. Note the job catches the
   `SwiftUI`/`SwiftData` half only: Foundation ships on Linux too, so a stray
-  `import Foundation` stays green there and is caught by review alone for now.
+  `import Foundation` stays green there. That half is caught by the
+  `no_foundation_in_core` SwiftLint rule instead — see **Custom rules** below.
 - **Only `Persistence` imports `SwiftData`.** Everything else reaches storage
   through repository protocols that expose value types and DTOs.
 
-The Xcode project still uses **file-system synchronized groups**, so the folder
-tree on disk *is* the project structure for the app target. That project is
-hand-managed for now and will be generated from an XcodeGen manifest, at which
-point the packages get linked into it.
+All three packages are **linked into the app target** as local package
+references, so `xcodebuild` builds them alongside the app and the layering above
+is real rather than aspirational.
+
+The Xcode project uses **file-system synchronized groups**, so the folder tree on
+disk *is* the project structure for the app target, and adding or removing a file
+does not churn `.pbxproj`.
+
+`Attempt.xcodeproj` is hand-managed and tracked in git. Generating it from an
+XcodeGen manifest was considered and **deferred to Phase 1**: with one committer
+and synchronized groups already in place, the merge conflicts a generator prevents
+cannot currently happen. The app target's four Swift build settings are guarded by
+a CI assertion instead, since a setting buried in `.pbxproj` is easy to regress
+unnoticed:
+
+```bash
+./scripts/audit-app-build-settings.sh
+```
+
+See `docs/phase-0/tasks/T-0.03-*` for the generator re-adoption triggers.
+
+### Building the app
+
+```bash
+xcodebuild build -project Attempt.xcodeproj -scheme Attempt \
+  -destination 'generic/platform=iOS Simulator'
+```
+
+No special flags, and ⌘B in Xcode works. This was briefly not true: while the
+package manifests carried `.treatAllWarnings(as: .error)`, Xcode's
+`-suppress-warnings` for package dependencies conflicted with it and the build
+could only be driven from the command line with `SUPPRESS_WARNINGS=NO`. The
+warnings gate moved to `scripts/` to fix that — see **Warnings are errors** below.
 
 ## Conventions
 
@@ -83,13 +116,26 @@ association and fails the audit:
 ./scripts/audit-unchecked-sendable.sh
 ```
 
-**Warnings are errors.** Every target sets `.treatAllWarnings(as: .error)`, and
-the app target sets `SWIFT_TREAT_WARNINGS_AS_ERRORS = YES`, so a warning fails
-the build locally and not just in CI. To iterate past one mid-refactor:
+**Warnings are errors.** The app target sets
+`SWIFT_TREAT_WARNINGS_AS_ERRORS = YES`. The packages get it from command-line
+flags rather than their manifests — build them through the script and a warning
+fails the build:
 
 ```bash
-swift build --package-path Packages/PowerliftingCore -Xswiftc -no-warnings-as-errors
+./scripts/build-packages.sh --test
 ```
+
+Packages are discovered by globbing `Packages/*/Package.swift`, so a new package
+is covered the moment it exists. The flags have one definition, in
+`scripts/swift-strict-flags.sh`, and `scripts/verify-warnings-gate.sh` proves
+they still turn a warning into a failure.
+
+A bare `swift build` does **not** fail on warnings. That is the accepted cost of
+keeping the app buildable from Xcode: the manifests used to carry
+`.treatAllWarnings(as: .error)`, but Xcode injects `-suppress-warnings` into
+package dependencies and the compiler rejects both flags together, which made
+⌘B impossible once the packages were linked. See `scripts/swift-strict-flags.sh`
+for what was tried. CI catches a stray warning on the next push either way.
 
 **Weights are `Int` grams.** No floating-point weight is ever persisted. Use the
 `Weight` type for every weight-bearing value; kilograms and pounds are display
@@ -139,8 +185,9 @@ plus the task ID from `docs/phase-0/tasks.md`.
 ## Testing
 
 `PowerliftingCore` and `Persistence` each have a Swift Testing target (`@Test` /
-`#expect`, not XCTest). The packages are not linked into `Attempt.xcodeproj`
-yet, so there is no root package and no umbrella scheme — run each in place:
+`#expect`, not XCTest). The packages are linked into `Attempt.xcodeproj`, but
+there is still no root package and no umbrella scheme, so run them via the
+script or one at a time:
 
 ```bash
 swift test --package-path Packages/PowerliftingCore
@@ -176,19 +223,64 @@ llvm-cov totals include the test target and Swift Testing's generated runner,
 which reported 85% coverage back when the module contained no code at all.
 Requires `python3`.
 
-## Linting
+## Linting and formatting
 
 [SwiftLint](https://github.com/realm/SwiftLint) is configured in `.swiftlint.yml`
-but not installed or wired into the build:
+and runs in CI over **both `Attempt/` and `Packages/`**:
 
 ```bash
 brew install swiftlint
-swiftlint lint
+swiftlint lint --strict
 ```
 
-To run it on every build, add a **Run Script** build phase to the `Attempt`
-target with `if which swiftlint > /dev/null; then swiftlint; fi` and untick
-"Based on dependency analysis".
+Formatting is `swift format`, which ships with the toolchain — nothing to
+install. Config lives in `.swift-format`: 4-space indentation and a 120-column
+limit, matching `.editorconfig` and SwiftLint's `line_length` rather than the
+tool's own defaults of 2 and 100.
+
+```bash
+swift format lint --strict --recursive Attempt Packages
+```
+
+```bash
+swift format --in-place --recursive Attempt Packages
+```
+
+**`--strict` is not optional.** Without it, `swift format lint` prints violations
+as warnings and still **exits 0**, so a CI step that omits it is decorative.
+
+### Custom rules
+
+Five rules beyond the standard set, in `.swiftlint.yml` under `custom_rules`:
+
+| Rule | Enforces |
+|---|---|
+| `no_color_literals` | `G-7.7` — colour tokens, not literals |
+| `no_raw_font_sizes` | `G-7.7` — typography tokens, not point sizes |
+| `no_magic_spacing` | `G-7.7` — spacing tokens, not numbers |
+| `no_swiftdata_outside_persistence` | `TR-0.1.2` — only `Persistence` imports SwiftData |
+| `no_foundation_in_core` | `NFR-0.2` — `PowerliftingCore` is Foundation-free |
+
+The last one carries real weight: the Linux CI job **cannot** catch
+`import Foundation`, because Foundation compiles on Linux. This rule is the only
+mechanical enforcement of that half of `NFR-0.2`.
+
+Rules are verified against fixtures that violate them on purpose:
+
+```bash
+./scripts/verify-lint-rules.sh
+```
+
+A rule whose regex is broken, or whose path filter matches nothing, leaves
+`swiftlint lint` green while enforcing nothing — a failure that is invisible
+because it looks like success. The script also guards the opposite direction:
+`PowerliftingCore.swift` and `Persistence.swift` both *mention* their banned
+import in prose, and must not trigger. That works because the two import rules
+set `match_kinds`, which excludes `comment` syntax.
+
+To lint on every build, add a **Run Script** build phase to the `Attempt` target
+with `if which swiftlint > /dev/null; then swiftlint; fi` and untick "Based on
+dependency analysis".
 
 ## CI
 
@@ -206,23 +298,14 @@ because that compiles fine on macOS. It does **not** catch `import Foundation`,
 which compiles on Linux as well — see the rule above. The image tag is pinned to
 an exact patch version on purpose — see the comment above the job.
 
-**All four jobs are green** as of 2026-08-02. Four caveats, because green here
-means less than it looks:
+All three macOS jobs run on **`macos-26`** (Xcode 26), and every job checks out
+with `actions/checkout@v7`. Both were bumped on 2026-08-02: `macos-15` ships
+Xcode 16.x, which cannot parse the tools-version 6.2 manifests at all and only
+*warned* about the iOS 26.5 deployment target before clamping it. One caveat
+remains:
 
-- **`build` passes on `macos-15` only because it never touches the packages.**
-  That runner ships Xcode 16.x, which cannot parse the tools-version 6.2
-  manifests — but `xcodebuild` runs against `Attempt.xcodeproj`, and the packages
-  are not linked into it yet. It will go red the moment T-0.03 links them, so the
-  runner image bump is a prerequisite for that task, not just cleanup.
-- **`build` warns rather than fails on the deployment target.** `IPHONEOS_DEPLOYMENT_TARGET`
-  is 26.5 and Xcode 16.4 supports up to 18.5, which is a warning; Xcode clamps and
-  carries on. Warnings-as-errors does not escalate it — that setting covers Swift
-  compiler diagnostics, and this is a build-settings one.
-- **`lint` passes trivially.** `.swiftlint.yml` has `included: [Attempt]`, so
-  nothing under `Packages/` is linted at all. A green SwiftLint run says nothing
-  about the packages until T-0.05 widens the scope.
-- No job is a required check in branch protection yet, so a red run would not
-  block a merge anyway.
+- No job is a required check in branch protection yet, so a red run does not
+  block a merge.
 
 One further thing worth knowing: warnings are errors, and runner image labels
 move — a toolchain bump can redden CI with no commit behind it, which is the gate

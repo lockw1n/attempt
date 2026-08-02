@@ -36,7 +36,7 @@ struct DisplayPrecisionTests {
         "Fraction digits are the fewest that can represent the step",
         arguments: [
             (1_000, 0), (2_000, 0), (500, 1), (2_500, 1), (100, 1),
-            (250, 2), (1_250, 2), (10, 2), (1, 3), (5, 3), (1_005, 3)
+            (250, 2), (1_250, 2), (10, 2), (1, 3), (5, 3), (1_005, 3),
         ]
     )
     func fractionDigitsAreMinimal(milliUnits: Int, expected: Int) throws {
