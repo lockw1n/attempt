@@ -23,6 +23,18 @@ Then pick a simulator and press ⌘R. From the command line:
 xcodebuild -project Attempt.xcodeproj -scheme Attempt -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
 ```
 
+## Where the requirements live
+
+Requirements carry stable IDs (`G-*`, `FR-n.x`, `NFR-n.x`, `TR-n.x`), and this
+README, the commit log, the task files and a good many source comments all refer
+to them. They are defined in `docs/`, together with the phase plans and the
+per-task notes — **and `docs/` is deliberately not committed.** So a reference
+like "`TR-0.2.2`" or "gap §2 of the Phase 0 coverage matrix" identifies something
+precisely without that something being in the repository. That is intentional,
+not rot: the IDs are stable and never reused, so they stay meaningful as
+citations either way. If you are reading this without `docs/`, treat them as
+labels rather than links.
+
 ## Project structure
 
 Domain and infrastructure live in local Swift packages. The app target is a
@@ -146,6 +158,17 @@ both of which return `nil` rather than trapping on NaN or overflow. It is signed
 because it doubles as a delta (an increment, a deload, a target-versus-loaded
 gap). Display goes through `formatted(in:precision:)`, which renders digits only
 — appending "kg" is the UI layer's job, since localisation is Foundation.
+
+**Enum raw values are a storage contract.** Every domain enum is `String`-backed
+and never ordinal-backed, so reordering the cases is free and **renaming one is a
+migration, not a refactor** — the raw string is what sits in the database, in
+`exercises.json`, and in users' synced records. Each such type says so in its own
+doc comment and pins its spellings with a literal test. Decoding an unrecognised
+value is a decision, not a default: it degrades to `.other` where a catalogue
+re-import restores the real value, keeps the raw string where the value is the
+user's own data, and throws only where the vocabulary is closed by a physical
+fact. `Movement` and `Laterality` are the two ends of that; see
+`docs/phase-0/tasks/T-0.11-*` for the rule.
 
 **Derived values are recomputed, never stored as truth.** Estimated 1RMs,
 personal records and training maxes are calculated from logged sets. Cached
