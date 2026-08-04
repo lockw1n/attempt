@@ -65,12 +65,18 @@ The dependency rule runs one way only: `Persistence` may import
 `PowerliftingCore`, never the reverse, and the app may import all three. Two
 constraints are load-bearing rather than stylistic:
 
-- **`PowerliftingCore` imports no Apple framework** — not `Foundation`, not
-  `SwiftUI`. It must compile on Linux, and the `linux` CI job builds and tests
-  the package in a Swift container to prove it. Note the job catches the
-  `SwiftUI`/`SwiftData` half only: Foundation ships on Linux too, so a stray
-  `import Foundation` stays green there. That half is caught by the
-  `no_foundation_in_core` SwiftLint rule instead — see **Custom rules** below.
+- **`PowerliftingCore` imports nothing at all.** Not `Foundation`, not `SwiftUI`,
+  and not the platform modules (`Darwin`, `Glibc`) either. It must compile on
+  Linux, and the `linux` CI job builds and tests the package in a Swift container
+  to prove it — but that job catches the `SwiftUI`/`SwiftData` half only, since
+  Foundation ships on Linux and a stray `import Foundation` stays green there.
+  Two SwiftLint rules cover the rest: `no_foundation_in_core` and
+  `no_imports_in_core` — see **Custom rules** below.
+
+  The cost is real and worth knowing before you hit it: `pow` and `exp` do not
+  exist here, so `RealMath.swift` implements them from the standard library for
+  the Lombardi and Wathan e1RM equations. Reach for that file rather than an
+  import; the decision was made once, with measurements behind it.
 - **Only `Persistence` imports `SwiftData`.** Everything else reaches storage
   through repository protocols that expose value types and DTOs.
 
@@ -308,7 +314,7 @@ as warnings and still **exits 0**, so a CI step that omits it is decorative.
 
 ### Custom rules
 
-Five rules beyond the standard set, in `.swiftlint.yml` under `custom_rules`:
+Six rules beyond the standard set, in `.swiftlint.yml` under `custom_rules`:
 
 | Rule | Enforces |
 |---|---|
@@ -317,10 +323,17 @@ Five rules beyond the standard set, in `.swiftlint.yml` under `custom_rules`:
 | `no_magic_spacing` | `G-7.7` — spacing tokens, not numbers |
 | `no_swiftdata_outside_persistence` | `TR-0.1.2` — only `Persistence` imports SwiftData |
 | `no_foundation_in_core` | `NFR-0.2` — `PowerliftingCore` is Foundation-free |
+| `no_imports_in_core` | `NFR-0.2` — `PowerliftingCore/Sources` imports nothing |
 
-The last one carries real weight: the Linux CI job **cannot** catch
-`import Foundation`, because Foundation compiles on Linux. This rule is the only
-mechanical enforcement of that half of `NFR-0.2`.
+The last two carry real weight, and neither covers the other. The Linux CI job
+**cannot** catch `import Foundation`, because Foundation compiles on Linux, so
+`no_foundation_in_core` is the only mechanical enforcement of that half.
+`no_imports_in_core` closes the remaining hole: a conditional
+`#if canImport(Darwin) import Darwin #elseif canImport(Glibc) …` compiles clean,
+passes `--strict` and passes the Linux job, while being exactly what `NFR-0.2` is
+about. It bans *every* import rather than a list of module names, because the
+next platform module is not knowable in advance. `Tests/` is deliberately out of
+scope — it needs `import Testing`.
 
 Rules are verified against fixtures that violate them on purpose:
 
@@ -332,8 +345,24 @@ A rule whose regex is broken, or whose path filter matches nothing, leaves
 `swiftlint lint` green while enforcing nothing — a failure that is invisible
 because it looks like success. The script also guards the opposite direction:
 `PowerliftingCore.swift` and `Persistence.swift` both *mention* their banned
-import in prose, and must not trigger. That works because the two import rules
-set `match_kinds`, which excludes `comment` syntax.
+import in prose, and must not trigger. That works because the import rules set
+`match_kinds`, which excludes `comment` syntax.
+
+`match_kinds` is the *only* thing separating code from prose in those three
+rules, and that is deliberate. They used to be anchored with `^[ \t]*import`,
+which filtered most prose for free but left a hole: an **attributed** import does
+not start with `import`, so `@_exported import Foundation` in the domain core
+compiled, passed all three rules under `--strict`, and would have passed the
+Linux job. The anchor is gone; the regexes match `import` anywhere and rely on
+syntax kinds to skip comments and string literals.
+
+Two fixtures hold that in place, and both fail if either half is undone:
+
+- `AttributedImportFixture.swift` — the attributed form. Restoring the anchor
+  makes the rules stop firing on it.
+- `BlockCommentImportFixture.swift` — a block comment starting a line with
+  `import`. Dropping `match_kinds` makes the rules fire on it, and on the real
+  module header in `PowerliftingCore.swift` too.
 
 To lint on every build, add a **Run Script** build phase to the `Attempt` target
 with `if which swiftlint > /dev/null; then swiftlint; fi` and untick "Based on

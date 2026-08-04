@@ -13,10 +13,14 @@
 # Two directions are checked:
 #
 #   POSITIVE  each fixture under scripts/lint-fixtures/ must trigger its rule.
-#   NEGATIVE  real files that merely *mention* a banned import in prose must NOT trigger it.
+#   NEGATIVE  files that merely *mention* a banned import in prose must NOT trigger it.
 #             PowerliftingCore.swift and Persistence.swift both document the rules they are
 #             subject to, so the import bans rely on `match_kinds` to skip `comment` syntax.
 #             Without that they would fire on the very files explaining them.
+#             `no_imports_in_core` (T-0.14) is anchored to the start of a line, so a `//` comment
+#             cannot reach it and PowerliftingCore.swift alone would be a guard that cannot fail.
+#             BlockCommentImportFixture.swift closes that: a block comment *can* start a line with
+#             `import`, and dropping `match_kinds` makes the rule fire on it. Measured, not assumed.
 
 set -euo pipefail
 
@@ -34,12 +38,17 @@ POSITIVE=(
     "scripts/lint-fixtures/Attempt/SpacingFixture.swift:no_magic_spacing"
     "scripts/lint-fixtures/SwiftDataOutsidePersistenceFixture.swift:no_swiftdata_outside_persistence"
     "scripts/lint-fixtures/Packages/PowerliftingCore/FoundationFixture.swift:no_foundation_in_core"
+    "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/PlatformImportFixture.swift:no_imports_in_core"
+    "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/AttributedImportFixture.swift:no_imports_in_core"
+    "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/AttributedImportFixture.swift:no_foundation_in_core"
 )
 
-# real file : rule identifier that must NOT appear (the file mentions the import in a comment)
+# file : rule identifier that must NOT appear (the file mentions the import in a comment)
 NEGATIVE=(
     "Packages/PowerliftingCore/Sources/PowerliftingCore/PowerliftingCore.swift:no_foundation_in_core"
+    "Packages/PowerliftingCore/Sources/PowerliftingCore/PowerliftingCore.swift:no_imports_in_core"
     "Packages/Persistence/Sources/Persistence/Persistence.swift:no_swiftdata_outside_persistence"
+    "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/BlockCommentImportFixture.swift:no_imports_in_core"
 )
 
 failures=0
@@ -93,4 +102,7 @@ if (( failures > 0 )); then
     exit 1
 fi
 
-echo "all ${#POSITIVE[@]} custom rules fire, and ${#NEGATIVE[@]} comment false-positive guards hold."
+# Count distinct rules, not entries: since 2026-08-04 a fixture may be listed against more than one
+# rule (AttributedImportFixture triggers two), so ${#POSITIVE[@]} is a check count, not a rule count.
+rule_count="$(printf '%s\n' "${POSITIVE[@]}" | sed 's/.*://' | sort -u | wc -l | tr -d ' ')"
+echo "all $rule_count custom rules fire across ${#POSITIVE[@]} checks, and ${#NEGATIVE[@]} comment false-positive guards hold."

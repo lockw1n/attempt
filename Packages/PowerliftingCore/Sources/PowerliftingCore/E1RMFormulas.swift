@@ -1,0 +1,158 @@
+// The five closed-form e1RM equations `TR-0.2.4` names.
+//
+// Each equation is given in its published form in the type's doc comment, with the primary source
+// and the unit-free algebraic shape, so the implementation can be read against the citation rather
+// than against whatever was written first. The forms used here are the ones collated by
+// LeSuer, McCormick, Mayhew, Wasserstein & Arnold (1997), "The accuracy of prediction equations
+// for estimating 1-RM performance in the bench press, squat, and deadlift", Journal of Strength
+// and Conditioning Research 11(4): 211–213 — the study that put all five side by side.
+//
+// All five are `weight × f(reps)`, so they conform to `RepOnlyE1RMFormula` and supply only
+// `multiplier(forReps:)`. The rep-range guard, the gram rounding and the overflow check all live
+// once, in that protocol's extension.
+
+/// Epley's equation (1985): `1RM = weight · (1 + reps / 30)`.
+///
+/// Boyd Epley, *Poundage Chart*, Boyd Epley Workout, Lincoln NE: Body Enterprises, 1985.
+///
+/// **At one rep it returns 1.0333 × the weight, not the weight**, and that is the equation, not a
+/// defect. Epley is a straight line through `(0, weight)` fitted to multi-rep work; extended down
+/// to a single rep it does not pass through the point it "should". ``Brzycki`` and ``Lombardi``
+/// both do return the input exactly at one rep — the disagreement is real, is a property of the
+/// published equations, and is tested per formula rather than smoothed over.
+///
+/// Epley and ``Brzycki`` cross at exactly ten reps, where both give 4/3. It is the only rep count
+/// at which they agree, and it makes a useful cross-check of two independent sources.
+public struct Epley: RepOnlyE1RMFormula {
+    public let id = E1RMFormulaID.epley
+    public let validRepRange = E1RMFormulaID.tabulatedRepRange
+
+    /// Creates the formula. It holds no state; every instance is interchangeable.
+    public init() {}
+
+    /// `1 + reps / 30`. See ``RepOnlyE1RMFormula/multiplier(forReps:)`` on the unguarded contract.
+    public func multiplier(forReps reps: Int) -> Double {
+        1 + Double(reps) / 30
+    }
+}
+
+/// Brzycki's equation (1993): `1RM = weight · 36 / (37 − reps)`.
+///
+/// Matt Brzycki, "Strength Testing — Predicting a One-Rep Max from Reps-to-Fatigue",
+/// *Journal of Physical Education, Recreation & Dance* 64(1): 88–90, 1993.
+///
+/// **At one rep it returns the weight exactly** — `36 / 36` — because the equation is built as a
+/// percentage table anchored at 100% for a single rep. Its percentage falls by exactly 1/36 of the
+/// 1RM per rep, which is the linearity the published table shows: 100%, 97.2%, 94.4%, … 75% at ten
+/// reps. Contrast ``Epley``, which returns 1.0333 ×.
+///
+/// **It has a genuine singularity at 37 reps and goes negative above it.** That is far outside
+/// ``E1RMFormula/validRepRange``, so ``RepOnlyE1RMFormula/estimate(weight:reps:)`` can never reach
+/// the division — the guard runs first, and putting that guard in the protocol extension rather
+/// than in this type is what makes it structural rather than a thing this file remembers to do.
+/// ``multiplier(forReps:)`` is unguarded by contract and will return `+∞` there; both are tested.
+public struct Brzycki: RepOnlyE1RMFormula {
+    public let id = E1RMFormulaID.brzycki
+    public let validRepRange = E1RMFormulaID.tabulatedRepRange
+
+    /// Creates the formula. It holds no state; every instance is interchangeable.
+    public init() {}
+
+    /// `36 / (37 − reps)`. Singular at 37 — see the type's note, and
+    /// ``RepOnlyE1RMFormula/multiplier(forReps:)`` on the unguarded contract.
+    public func multiplier(forReps reps: Int) -> Double {
+        36 / (37 - Double(reps))
+    }
+}
+
+/// Lombardi's equation (1989): `1RM = weight · reps^0.10`.
+///
+/// V. Patteson Lombardi, *Beginning Weight Training: The Safe and Effective Way*,
+/// Dubuque IA: Wm. C. Brown, 1989.
+///
+/// **At one rep it returns the weight exactly**, since `1^0.10` is 1 — and exactly, not to within
+/// an ulp, because ``RealMath/logarithm(_:)`` returns a hard zero for 1 and
+/// ``RealMath/exponential(_:)`` a hard one for zero.
+///
+/// The only power law of the five, and the flattest: it predicts 1.259 × at ten reps where
+/// ``Epley`` and ``Brzycki`` predict 1.333 ×. That flatness is why it stays finite where Brzycki
+/// diverges, and it is not a reason to trust it further out — see
+/// ``E1RMFormulaID/tabulatedRepRange``.
+///
+/// This is one of the two equations that needed a transcendental function in a module that imports
+/// nothing; see ``RealMath`` for what that cost and what it was measured against.
+public struct Lombardi: RepOnlyE1RMFormula {
+    public let id = E1RMFormulaID.lombardi
+    public let validRepRange = E1RMFormulaID.tabulatedRepRange
+
+    /// The exponent Lombardi's equation raises the rep count to.
+    private static let exponent = 0.10
+
+    /// Creates the formula. It holds no state; every instance is interchangeable.
+    public init() {}
+
+    /// `reps^0.10`. Zero at zero reps, which is one of the two reasons
+    /// ``E1RMFormulaID/tabulatedRepRange`` starts at 1. See
+    /// ``RepOnlyE1RMFormula/multiplier(forReps:)`` on the unguarded contract.
+    public func multiplier(forReps reps: Int) -> Double {
+        RealMath.power(Double(reps), exponent: Self.exponent)
+    }
+}
+
+/// O'Conner's equation (1989): `1RM = weight · (1 + 0.025 · reps)`.
+///
+/// B. O'Conner, J. Simmons and P. O'Shea, *Weight Training Today*,
+/// St. Paul MN: West Publishing, 1989.
+///
+/// **At one rep it returns 1.025 × the weight**, for the same reason ``Epley`` does not return the
+/// input: it is a straight line fitted to multi-rep work, with a shallower slope. The two differ
+/// only in that slope — 1/30 per rep against 1/40 — so O'Conner is uniformly the more conservative
+/// of the pair, and the most conservative of all five at ten reps.
+public struct OConner: RepOnlyE1RMFormula {
+    public let id = E1RMFormulaID.oConner
+    public let validRepRange = E1RMFormulaID.tabulatedRepRange
+
+    /// Creates the formula. It holds no state; every instance is interchangeable.
+    public init() {}
+
+    /// `1 + 0.025 · reps`. See ``RepOnlyE1RMFormula/multiplier(forReps:)`` on the unguarded
+    /// contract.
+    public func multiplier(forReps reps: Int) -> Double {
+        1 + 0.025 * Double(reps)
+    }
+}
+
+/// Wathan's equation (1994): `1RM = 100 · weight / (48.8 + 53.8 · e^(−0.075 · reps))`.
+///
+/// Dan Wathan, "Load Assignment", in Thomas R. Baechle (ed.), *Essentials of Strength Training and
+/// Conditioning*, 1st ed., Champaign IL: Human Kinetics, 1994, pp. 435–446.
+///
+/// **At one rep it returns 1.0130 × the weight** — closer to the input than ``Epley`` or
+/// ``OConner``, but still not equal to it, because the exponential is asymptotic and never reaches
+/// the anchor.
+///
+/// The only one of the five that is **bounded**: as reps grow the exponential vanishes and the
+/// multiplier approaches `100 / 48.8 ≈ 2.049`. That makes it the best-behaved at high rep counts,
+/// which is a statement about arithmetic and not about accuracy —
+/// ``E1RMFormulaID/tabulatedRepRange`` still stops at ten.
+///
+/// The second of the two equations needing a transcendental function; see ``RealMath``.
+public struct Wathan: RepOnlyE1RMFormula {
+    public let id = E1RMFormulaID.wathan
+    public let validRepRange = E1RMFormulaID.tabulatedRepRange
+
+    /// The three constants of Wathan's regression, named so the equation below reads as its source.
+    private static let asymptote = 48.8
+    private static let amplitude = 53.8
+    private static let decay = -0.075
+
+    /// Creates the formula. It holds no state; every instance is interchangeable.
+    public init() {}
+
+    /// `100 / (48.8 + 53.8 · e^(−0.075 · reps))`. Never singular — the denominator is bounded
+    /// below by 48.8 — so unlike ``Brzycki`` this one is well defined everywhere. See
+    /// ``RepOnlyE1RMFormula/multiplier(forReps:)`` on the unguarded contract.
+    public func multiplier(forReps reps: Int) -> Double {
+        100 / (Self.asymptote + Self.amplitude * RealMath.exponential(Self.decay * Double(reps)))
+    }
+}
