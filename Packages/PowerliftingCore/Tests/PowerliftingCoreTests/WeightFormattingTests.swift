@@ -76,7 +76,7 @@ struct WeightDisplayRoundingTests {
         ]
     )
     func roundingToMultipleIsExact(value: Int, step: Int, expected: Int) {
-        #expect(Weight.rounded(value, toMultipleOf: step) == expected)
+        #expect(Weight.rounded(value, toMultipleOf: step, strategy: .nearest) == expected)
     }
 }
 

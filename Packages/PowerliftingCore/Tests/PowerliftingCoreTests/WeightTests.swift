@@ -246,6 +246,7 @@ struct WeightSendabilityTests {
         requireSendable(MassUnit.self)
         requireSendable(RoundingStrategy.self)
         requireSendable(DisplayPrecision.self)
+        requireSendable(RoundingRule.self)
     }
 
     @Test("Assignment copies rather than aliases")

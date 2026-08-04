@@ -212,7 +212,8 @@ extension Weight {
     ///   - precision: The step to round to, in thousandths of `unit`.
     /// - Returns: A plain decimal string using `.` as the separator and `-` for negatives.
     public func formatted(in unit: MassUnit, precision: DisplayPrecision) -> String {
-        let rounded = Self.rounded(milliUnits(in: unit), toMultipleOf: precision.milliUnits)
+        let rounded = Self.rounded(
+            milliUnits(in: unit), toMultipleOf: precision.milliUnits, strategy: .nearest)
         return Self.decimalString(milliUnits: rounded, fractionDigits: precision.fractionDigits)
     }
 
@@ -237,35 +238,60 @@ extension Weight {
         }
     }
 
-    /// Rounds `value` to the nearest multiple of `step`, ties away from zero.
+    /// Rounds `value` to a multiple of `step` in the direction `strategy` names.
     ///
     /// Pure integer arithmetic — no `Double` anywhere, so the result is exact for every input.
+    /// Deliberately unit-agnostic: it takes a bare `Int`, because the display path applies it to
+    /// milli-pounds as well as to grams. `RoundingRule` (T-0.13) is the gram-flavoured public face
+    /// of it, and this stays internal so there is only one public way to snap a `Weight` to a step.
     ///
-    /// - Precondition: `step != 0`. `DisplayPrecision` guarantees `>= 1`, so no display path can
-    ///   violate it. The check is here for T-0.13: `RoundingRule` is expected to reuse this
-    ///   function, and a zero increment would otherwise surface as "Division by zero in remainder
-    ///   operation" from inside the standard library, with nothing naming the caller. `RoundingRule`
-    ///   should reject a zero increment at its own boundary, the way `DisplayPrecision` does.
+    /// `.down` is floor and `.up` is ceiling — toward negative and positive infinity, *not* toward
+    /// and away from zero. `Weight` is signed because it doubles as a delta, so the distinction is
+    /// real: `-7` rounded `.down` to a step of `5` is `-10`. `.nearest` breaks ties away from zero;
+    /// see ``RoundingStrategy/nearest``.
     ///
-    /// Rounding away from zero near `Int.max` would land outside `Int`, so that one case rounds
-    /// toward zero instead. Like `saturatingRoundToNearest`, this is unreachable from any physical
-    /// load and exists because formatting an already-stored value must not trap.
-    static func rounded(_ value: Int, toMultipleOf step: Int) -> Int {
+    /// - Precondition: `step > 0`. `DisplayPrecision` guarantees `>= 1` and `RoundingRule` rejects
+    ///   a non-positive increment at its own initialiser, so no caller can violate it. A zero step
+    ///   would otherwise surface as "Division by zero in remainder operation" from inside the
+    ///   standard library, with nothing naming the caller. A *negative* step is rejected rather
+    ///   than normalised: the multiples of `-5` are exactly the multiples of `5`, so a sign there
+    ///   carries no meaning and only buys `Int.min` edge cases in the arithmetic below.
+    ///
+    /// Stepping away from the truncated multiple near `Int.max` or `Int.min` would land outside
+    /// `Int`, so that one case stays on the truncated multiple. Like `saturatingRoundToNearest`,
+    /// this is unreachable from any physical load and exists because formatting an already-stored
+    /// value must not trap.
+    static func rounded(_ value: Int, toMultipleOf step: Int, strategy: RoundingStrategy) -> Int {
         // Deliberately without a message: the message is an autoclosure that only evaluates on
         // failure, which llvm-cov scores as an uncovered line forever. `file:line` already names
         // this function, and the doc comment above carries the explanation.
-        precondition(step != 0)
+        precondition(step > 0)
         let remainder = value % step
         if remainder == 0 { return value }
-        // `remainder` carries the sign of `value`, and `|remainder| < step`, so doubling it in
-        // `UInt` cannot overflow.
-        let roundsAway = remainder.magnitude * 2 >= step.magnitude
-        let quotient = value / step
-        guard roundsAway else { return quotient * step }
-        let target = value < 0 ? quotient - 1 : quotient + 1
-        let (product, overflowed) = target.multipliedReportingOverflow(by: step)
-        // `quotient * step` is bounded by `value`, so the fallback always fits.
-        return overflowed ? quotient * step : product
+        // `remainder` carries the sign of `value` and `|remainder| < step`, so this subtraction
+        // moves toward zero and cannot overflow. It is the multiple on `value`'s own side of zero.
+        let truncated = value - remainder
+        switch strategy {
+        case .down:
+            // A positive `value` already sits above its truncated multiple; a negative one sits
+            // below, and truncation moved it the wrong way.
+            return remainder > 0 ? truncated : Self.stepping(truncated, by: -step)
+        case .up:
+            return remainder < 0 ? truncated : Self.stepping(truncated, by: step)
+        case .nearest:
+            // Doubling in `UInt` cannot overflow, since `|remainder| < step <= Int.max`.
+            guard remainder.magnitude * 2 >= step.magnitude else { return truncated }
+            return remainder < 0 ? Self.stepping(truncated, by: -step) : Self.stepping(truncated, by: step)
+        }
+    }
+
+    /// `truncated + step`, falling back to `truncated` when that would leave `Int`.
+    ///
+    /// See the note on overflow in ``rounded(_:toMultipleOf:strategy:)``; the fallback always fits
+    /// because `truncated` is bounded by the original value.
+    private static func stepping(_ truncated: Int, by step: Int) -> Int {
+        let (result, overflowed) = truncated.addingReportingOverflow(step)
+        return overflowed ? truncated : result
     }
 
     /// Rounds to the nearest `Int`, clamping instead of failing.

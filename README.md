@@ -170,6 +170,17 @@ user's own data, and throws only where the vocabulary is closed by a physical
 fact. `Movement` and `Laterality` are the two ends of that; see
 `docs/phase-0/tasks/T-0.11-*` for the rule.
 
+**Wire formats are pinned, not synthesised.** A domain type that is `Codable`
+hand-writes both `init(from:)` and `encode(to:)`, and declares its `CodingKeys`
+explicitly. Neither half is stylistic: synthesised `Decodable` bypasses a
+failable initialiser and will happily reconstruct a value the initialiser would
+have rejected, and synthesised `encode(to:)` makes no promise about key order —
+which is half of what "byte-stable round trip" means. Each type asserts its own
+shape: key spelling, key order, and that a nested value keeps its own format (a
+`Weight` inside a composite is still the bare integer `2500`, not
+`{"grams": 2500}`). Decoding stays order-insensitive; only the output is a
+contract. `RoundingRule` is the worked example.
+
 **Derived values are recomputed, never stored as truth.** Estimated 1RMs,
 personal records and training maxes are calculated from logged sets. Cached
 copies carry a `computationVersion` that invalidates them.
@@ -230,6 +241,12 @@ evidence about that module, and it runs on the Linux job too. In particular,
 that CI will not catch you here: the Linux job rejects `import SwiftUI`, but
 Foundation ships on Linux, so a `JSONEncoder` round-trip compiles and goes green
 everywhere while quietly breaking the rule.
+
+The probe implements the single-value and keyed-object paths and deliberately
+traps on the unkeyed (array) one, so that a type reaching for a shape the probe
+has never modelled fails loudly instead of being silently accommodated. Extend it
+when you need that path — its header says so, and it is the cheaper half of the
+work either way.
 
 ### Coverage
 
