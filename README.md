@@ -170,6 +170,23 @@ user's own data, and throws only where the vocabulary is closed by a physical
 fact. `Movement` and `Laterality` are the two ends of that; see
 `docs/phase-0/tasks/T-0.11-*` for the rule.
 
+The "keep the raw string" answer has a type: `OpenVocabulary<Term>`, generic over
+a `String`-backed term enum, with `SetModifier` its first instantiation. It is a
+struct wrapping the raw spelling rather than a `known`/`unknown` enum, because two
+cases would admit `.unknown("belt")` beside `.known(.belt)` — values that compare
+unequal, hash differently and encode identically.
+
+**A domain collection is canonicalised, not merely stored.** `SetRecord.modifiers`
+is deduplicated and sorted by raw spelling, both when constructed and when
+decoded. A `Set` would iterate nondeterministically, so its encoding could not be
+pinned; a raw array would make belt+sleeves a different record from sleeves+belt.
+Entry order is not preserved, and display order belongs to the UI layer.
+
+**A logged weight is the load on one implement.** A barbell lift is the whole bar;
+a two-dumbbell bench press with 40 kg dumbbells is 40, not 80. The number a lifter
+types has to be the number printed on the equipment, because nothing can recover
+the intended reading from the number afterwards.
+
 **Wire formats are pinned, not synthesised.** A domain type that is `Codable`
 hand-writes both `init(from:)` and `encode(to:)`, and declares its `CodingKeys`
 explicitly. Neither half is stylistic: synthesised `Decodable` bypasses a
