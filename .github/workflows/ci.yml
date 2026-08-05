@@ -178,3 +178,10 @@ jobs:
       # `.editorconfig` and SwiftLint's `line_length` rather than the tool's own defaults.
       - name: Check formatting
         run: swift format lint --strict --recursive Attempt Packages
+
+      # Holds the doc-comment trim in place: `///` lines against code lines across every
+      # Packages/*/Sources tree, aggregated. Deliberately not per-file — that would measure how
+      # declarative a file is rather than how wordy it is, and an eight-case enum cannot document
+      # what its cases mean inside a 1:1 budget. Proven to fire against a 300-line regression.
+      - name: Check doc-comment ratio
+        run: ./scripts/check-doc-ratio.sh
