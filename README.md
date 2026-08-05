@@ -17,10 +17,10 @@ A SwiftUI app for iOS.
 open Attempt.xcodeproj
 ```
 
-Then pick a simulator and press ⌘R. From the command line:
+Pick a simulator and press ⌘R. No special flags are needed. From the command line:
 
 ```bash
-xcodebuild -project Attempt.xcodeproj -scheme Attempt -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+xcodebuild build -project Attempt.xcodeproj -scheme Attempt -destination 'generic/platform=iOS Simulator'
 ```
 
 ## Project structure
@@ -39,120 +39,100 @@ Attempt/
 └── Assets.xcassets          Colors, images, app icon
 ```
 
-Build every package from the command line, with warnings treated as errors:
+Dependencies run one way: `Persistence` may import `PowerliftingCore`, never the
+reverse, and the app may import all three. Two constraints are load-bearing
+rather than stylistic:
 
-```bash
-./scripts/build-packages.sh --test
-```
-
-There is no root package, so a bare `swift build` at the repo root fails; the
-script iterates the packages for you. To work on one in isolation, pass its path
-(`./scripts/build-packages.sh Packages/PowerliftingCore`).
-
-The dependency rule runs one way only: `Persistence` may import
-`PowerliftingCore`, never the reverse, and the app may import all three. Two
-constraints are load-bearing rather than stylistic:
-
-- **`PowerliftingCore` imports no Apple framework** — not `Foundation`, not
-  `SwiftUI`. It must compile on Linux, and the `linux` CI job builds and tests
-  the package in a Swift container to prove it. Note the job catches the
-  `SwiftUI`/`SwiftData` half only: Foundation ships on Linux too, so a stray
-  `import Foundation` stays green there. That half is caught by the
-  `no_foundation_in_core` SwiftLint rule instead — see **Custom rules** below.
+- **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
+  and not the platform modules (`Darwin`, `Glibc`) either. Enforced by the `linux`
+  CI job together with the `no_foundation_in_core` and `no_imports_in_core` lint
+  rules. One consequence to know before you hit it: `pow` and `exp` are
+  unavailable, so use `RealMath.swift` rather than reaching for an import.
 - **Only `Persistence` imports `SwiftData`.** Everything else reaches storage
   through repository protocols that expose value types and DTOs.
 
-All three packages are **linked into the app target** as local package
-references, so `xcodebuild` builds them alongside the app and the layering above
-is real rather than aspirational.
+All three packages are linked into the app target as local package references, so
+`xcodebuild` builds them alongside the app. The project uses **file-system
+synchronized groups**: the folder tree on disk *is* the project structure, and
+adding or removing a file does not churn `.pbxproj`.
 
-The Xcode project uses **file-system synchronized groups**, so the folder tree on
-disk *is* the project structure for the app target, and adding or removing a file
-does not churn `.pbxproj`.
+## Building and testing
 
-`Attempt.xcodeproj` is hand-managed and tracked in git. Generating it from an
-XcodeGen manifest was considered and **deferred to Phase 1**: with one committer
-and synchronized groups already in place, the merge conflicts a generator prevents
-cannot currently happen. The app target's four Swift build settings are guarded by
-a CI assertion instead, since a setting buried in `.pbxproj` is easy to regress
-unnoticed:
-
-```bash
-./scripts/audit-app-build-settings.sh
-```
-
-See `docs/phase-0/tasks/T-0.03-*` for the generator re-adoption triggers.
-
-### Building the app
-
-```bash
-xcodebuild build -project Attempt.xcodeproj -scheme Attempt \
-  -destination 'generic/platform=iOS Simulator'
-```
-
-No special flags, and ⌘B in Xcode works. This was briefly not true: while the
-package manifests carried `.treatAllWarnings(as: .error)`, Xcode's
-`-suppress-warnings` for package dependencies conflicted with it and the build
-could only be driven from the command line with `SUPPRESS_WARNINGS=NO`. The
-warnings gate moved to `scripts/` to fix that — see **Warnings are errors** below.
-
-## Conventions
-
-**Concurrency.** Packages build in Swift 6 language mode with
-`.defaultIsolation(nil)` — declarations are `nonisolated` unless they say
-otherwise, so the domain layer stays actor-agnostic. The app target is the
-deliberate exception: it builds with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`,
-so its types are implicitly `@MainActor` unless marked otherwise, and anything
-running off the main actor must be declared `nonisolated` explicitly. Domain
-types are `Sendable` value types — note that `public` types get no implicit
-`Sendable` synthesis, so write the conformance.
-
-`@unchecked Sendable` is permitted only with a written justification. Put
-`Sendable justification: <why>` on the same line or in the comment block
-immediately above the declaration — a blank line between the two breaks the
-association and fails the audit:
-
-```bash
-./scripts/audit-unchecked-sendable.sh
-```
-
-**Warnings are errors.** The app target sets
-`SWIFT_TREAT_WARNINGS_AS_ERRORS = YES`. The packages get it from command-line
-flags rather than their manifests — build them through the script and a warning
-fails the build:
+Build every package with warnings treated as errors:
 
 ```bash
 ./scripts/build-packages.sh --test
 ```
 
-Packages are discovered by globbing `Packages/*/Package.swift`, so a new package
-is covered the moment it exists. The flags have one definition, in
-`scripts/swift-strict-flags.sh`, and `scripts/verify-warnings-gate.sh` proves
-they still turn a warning into a failure.
+There is no root package, so a bare `swift build` at the repo root fails; pass a
+path to work on one in isolation (`./scripts/build-packages.sh Packages/PowerliftingCore`).
+Note that a bare `swift build` does **not** fail on warnings — that gate lives in
+the script, not in the manifests.
 
-A bare `swift build` does **not** fail on warnings. That is the accepted cost of
-keeping the app buildable from Xcode: the manifests used to carry
-`.treatAllWarnings(as: .error)`, but Xcode injects `-suppress-warnings` into
-package dependencies and the compiler rejects both flags together, which made
-⌘B impossible once the packages were linked. See `scripts/swift-strict-flags.sh`
-for what was tried. CI catches a stray warning on the next push either way.
+`PowerliftingCore` and `Persistence` each have a Swift Testing target (`@Test` /
+`#expect`, not XCTest). The app target has no tests; it is a composition root
+with an empty scene.
 
-**Weights are `Int` grams.** No floating-point weight is ever persisted. Use the
-`Weight` type for every weight-bearing value; kilograms and pounds are display
-concerns only. `Weight` is the enforcement, not just the convention — the only
-initialisers that accept a `Double` are `init?(kilograms:rounding:)` and
-`init?(pounds:rounding:)`, both of which make you name a `RoundingStrategy`, and
-both of which return `nil` rather than trapping on NaN or overflow. It is signed,
-because it doubles as a delta (an increment, a deload, a target-versus-loaded
-gap). Display goes through `formatted(in:precision:)`, which renders digits only
-— appending "kg" is the UI layer's job, since localisation is Foundation.
+```bash
+swift test --package-path Packages/PowerliftingCore
+swift test --package-path Packages/Persistence
+```
 
-**Derived values are recomputed, never stored as truth.** Estimated 1RMs,
-personal records and training maxes are calculated from logged sets. Cached
-copies carry a `computationVersion` that invalidates them.
+`PowerliftingCoreTests` is held to the same no-Apple-frameworks rule as the module
+it tests, and runs on the Linux job too. In particular `Codable` is asserted
+through the hand-rolled `Encoder`/`Decoder` in
+`Tests/PowerliftingCoreTests/CodableProbe*.swift`, never `JSONEncoder`.
 
-**Deletion is soft.** Entities carry `deletedAt`; hard deletion happens only
-through an explicit purge routine.
+`PowerliftingCore` is held to ≥ 90% line coverage. The script counts only files
+under the package's `Sources/`, and requires `python3`:
+
+```bash
+./scripts/coverage.sh --threshold 90
+```
+
+Two CI assertions that also run locally — the first guards the app target's Swift
+build settings, the second the `@unchecked Sendable` justifications:
+
+```bash
+./scripts/audit-app-build-settings.sh
+./scripts/audit-unchecked-sendable.sh
+```
+
+## Conventions
+
+**Concurrency.** Packages build with `.defaultIsolation(nil)`, so declarations are
+`nonisolated` unless they say otherwise and the domain layer stays
+actor-agnostic. The app target is the deliberate exception:
+`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`. Note that `public` types get no
+implicit `Sendable` synthesis — write the conformance. `@unchecked Sendable`
+needs `Sendable justification: <why>` on the same line or directly above the
+declaration; a blank line between the two breaks the association and fails the
+audit.
+
+**Warnings are errors.** The app target sets `SWIFT_TREAT_WARNINGS_AS_ERRORS`;
+the packages get it from `scripts/swift-strict-flags.sh` via
+`build-packages.sh`, which globs `Packages/*/Package.swift` so a new package is
+covered the moment it exists.
+
+**Domain rules.** These are storage contracts — breaking one is a migration, not
+a refactor.
+
+- Weights are `Int` grams. Use `Weight` for every weight-bearing value;
+  kilograms and pounds are display concerns only. It is signed, because it also
+  expresses a delta.
+- A logged weight is the load on **one** implement: two 40 kg dumbbells is 40,
+  not 80.
+- Domain enums are `String`-backed, never ordinal, so reordering cases is free
+  and renaming one is a migration. What an unrecognised value does — degrade,
+  preserve, or throw — is decided per type and documented on that type.
+- `Codable` domain types hand-write `init(from:)`, `encode(to:)` and their
+  `CodingKeys`, and pin key spelling *and* key order by assertion.
+- A domain collection is canonicalised — deduplicated and sorted — both on
+  construction and on decode.
+- Derived values (e1RM, personal records, training maxes) are recomputed, never
+  stored as truth. Cached copies carry a `computationVersion`.
+- Deletion is soft (`deletedAt`); hard deletion happens only through an explicit
+  purge routine.
 
 **Strings.** User-facing text goes through `String(localized:)` and lands in
 `Resources/Localizable.xcstrings`.
@@ -165,93 +145,42 @@ TR-0.2.1: add Weight value type
 G-6.4, TR-0.1.3: enable strict concurrency across the packages
 ```
 
-Requirement IDs are `G-*`, `FR-*`, `NFR-*`, `TR-*`, `OUT-*`, `DOD-*` and `D-*`.
-Comma-separate when a commit covers more than one. This is what keeps
-`git log --grep TR-0.2` meaningful, and **it cannot be backfilled** — once a
-commit is pushed, rewriting the subject means rewriting shared history, which
-costs more than the missing search hit. Work that traces to no requirement is
-scope creep; resolve that before committing rather than inventing an ID.
-
-An optional hook warns when a subject has no ID. It never blocks a commit — a
-rejected commit at the wrong moment costs more than a missed grep:
+IDs are `G-*`, `FR-*`, `NFR-*`, `TR-*`, `OUT-*`, `DOD-*` and `D-*`;
+comma-separate when a commit covers more than one. This keeps
+`git log --grep TR-0.2` meaningful and cannot be backfilled once a commit is
+pushed. Work that traces to no requirement is scope creep — resolve that rather
+than inventing an ID. An optional hook warns on a missing ID and never blocks:
 
 ```bash
 git config core.hooksPath scripts/git-hooks
 ```
 
-Pull requests use `.github/pull_request_template.md`, which asks for the same IDs
-plus the task ID from `docs/phase-0/tasks.md`.
-
-## Testing
-
-`PowerliftingCore` and `Persistence` each have a Swift Testing target (`@Test` /
-`#expect`, not XCTest). The packages are linked into `Attempt.xcodeproj`, but
-there is still no root package and no umbrella scheme, so run them via the
-script or one at a time:
-
-```bash
-swift test --package-path Packages/PowerliftingCore
-```
-
-```bash
-swift test --package-path Packages/Persistence
-```
-
-The app target has no tests: it is a composition root with an empty scene.
-
-`PowerliftingCoreTests` is held to the same no-Apple-frameworks rule as the
-module it tests — a suite that drifts from its module's constraints stops being
-evidence about that module, and it runs on the Linux job too. In particular,
-`Codable` is asserted through the hand-rolled `Encoder`/`Decoder` in
-`Tests/PowerliftingCoreTests/CodableProbe.swift`, **not** `JSONEncoder`. Note
-that CI will not catch you here: the Linux job rejects `import SwiftUI`, but
-Foundation ships on Linux, so a `JSONEncoder` round-trip compiles and goes green
-everywhere while quietly breaking the rule.
-
-### Coverage
-
-`PowerliftingCore` is held to ≥ 90% line coverage. `scripts/coverage.sh` runs
-the suite with coverage collection and reports the figure:
-
-```bash
-./scripts/coverage.sh --threshold 90
-```
-
-It exits non-zero below the threshold, which defaults to `0` until the gate is
-switched on. It counts only files under the package's `Sources/` — the raw
-llvm-cov totals include the test target and Swift Testing's generated runner,
-which reported 85% coverage back when the module contained no code at all.
-Requires `python3`.
+Pull requests use `.github/pull_request_template.md`. The requirement IDs
+themselves are defined in `docs/`, which is deliberately **not committed** — so a
+reference like `TR-0.2.2` is a stable label rather than a link if you are reading
+this without it.
 
 ## Linting and formatting
-
-[SwiftLint](https://github.com/realm/SwiftLint) is configured in `.swiftlint.yml`
-and runs in CI over **both `Attempt/` and `Packages/`**:
 
 ```bash
 brew install swiftlint
 swiftlint lint --strict
 ```
 
-Formatting is `swift format`, which ships with the toolchain — nothing to
-install. Config lives in `.swift-format`: 4-space indentation and a 120-column
-limit, matching `.editorconfig` and SwiftLint's `line_length` rather than the
-tool's own defaults of 2 and 100.
+`swift format` ships with the toolchain. Config is `.swift-format`: 4-space
+indentation and a 120-column limit, matching `.editorconfig` and SwiftLint's
+`line_length` rather than the tool's own defaults.
 
 ```bash
 swift format lint --strict --recursive Attempt Packages
-```
-
-```bash
 swift format --in-place --recursive Attempt Packages
 ```
 
-**`--strict` is not optional.** Without it, `swift format lint` prints violations
-as warnings and still **exits 0**, so a CI step that omits it is decorative.
+**`--strict` is not optional.** Without it `swift format lint` prints violations
+as warnings and still exits 0, so a check that omits it is decorative.
 
-### Custom rules
-
-Five rules beyond the standard set, in `.swiftlint.yml` under `custom_rules`:
+Six custom rules beyond the standard set, in `.swiftlint.yml` under
+`custom_rules`:
 
 | Rule | Enforces |
 |---|---|
@@ -260,65 +189,40 @@ Five rules beyond the standard set, in `.swiftlint.yml` under `custom_rules`:
 | `no_magic_spacing` | `G-7.7` — spacing tokens, not numbers |
 | `no_swiftdata_outside_persistence` | `TR-0.1.2` — only `Persistence` imports SwiftData |
 | `no_foundation_in_core` | `NFR-0.2` — `PowerliftingCore` is Foundation-free |
+| `no_imports_in_core` | `NFR-0.2` — `PowerliftingCore/Sources` imports nothing |
 
-The last one carries real weight: the Linux CI job **cannot** catch
-`import Foundation`, because Foundation compiles on Linux. This rule is the only
-mechanical enforcement of that half of `NFR-0.2`.
-
-Rules are verified against fixtures that violate them on purpose:
+Each is verified against a fixture that violates it on purpose. Run this after
+touching any rule — a broken regex or a path filter that matches nothing leaves
+`swiftlint lint` green while enforcing nothing:
 
 ```bash
 ./scripts/verify-lint-rules.sh
 ```
 
-A rule whose regex is broken, or whose path filter matches nothing, leaves
-`swiftlint lint` green while enforcing nothing — a failure that is invisible
-because it looks like success. The script also guards the opposite direction:
-`PowerliftingCore.swift` and `Persistence.swift` both *mention* their banned
-import in prose, and must not trigger. That works because the two import rules
-set `match_kinds`, which excludes `comment` syntax.
-
 To lint on every build, add a **Run Script** build phase to the `Attempt` target
-with `if which swiftlint > /dev/null; then swiftlint; fi` and untick "Based on
+with `if which swiftlint > /dev/null; then swiftlint; fi`, and untick "Based on
 dependency analysis".
 
 ## CI
 
-`.github/workflows/ci.yml` builds the app, runs both package test suites with
-coverage, builds `DesignSystem` (it has no test target, so nothing else compiles
-it), audits `@unchecked Sendable`, builds and tests `PowerliftingCore` on Linux,
-and runs SwiftLint on every push and pull request to `main`.
+`.github/workflows/ci.yml` runs on every push and pull request to `main`:
 
-The **`linux`** job ("Linux core build") runs on `ubuntu-latest` inside
-`container: swift:6.3.3-noble` and covers `PowerliftingCore` only — `Persistence`
-and `DesignSystem` are Apple-only by design and are not expected to compile
-there. It is the enforcement behind the no-Apple-framework rule above; nothing
-else in the workflow would notice an `import SwiftUI` in the domain layer,
-because that compiles fine on macOS. It does **not** catch `import Foundation`,
-which compiles on Linux as well — see the rule above. The image tag is pinned to
-an exact patch version on purpose — see the comment above the job.
+| Job | What it does |
+|---|---|
+| **Build** | audits the app target's build settings, then builds the app |
+| **Package tests** | both suites with coverage, all packages with warnings as errors, the warnings-gate proof, the `@unchecked Sendable` audit |
+| **Linux core build** | builds and tests `PowerliftingCore` on `ubuntu-latest` in a Swift container |
+| **SwiftLint** | lint, custom-rule verification, format check |
 
-All three macOS jobs run on **`macos-26`** (Xcode 26), and every job checks out
-with `actions/checkout@v7`. Both were bumped on 2026-08-02: `macos-15` ships
-Xcode 16.x, which cannot parse the tools-version 6.2 manifests at all and only
-*warned* about the iOS 26.5 deployment target before clamping it.
+All four are **required checks on `main`**, so a red run blocks the merge. The
+whole workflow takes about a minute.
 
-**All four jobs are required checks on `main`**, so a red run blocks the merge —
-verified with a deliberately failing test, not assumed. The whole workflow runs
-in about a minute.
+The `linux` job covers `PowerliftingCore` only — `Persistence` and `DesignSystem`
+are Apple-only by design. Its container tag is pinned to an exact patch version;
+bump it on its own.
 
-Two things to know if you edit the workflow. A required check is matched by its
-**display name**, so renaming a job silently drops it from the protection rule:
-the old name stays listed as required and never reports again, leaving `main`
-either permanently blocked or quietly unprotected. And a **newly added** job is
-unprotected until its first run, because GitHub cannot offer a check as required
-until it has reported once — add the job, let it run, then re-open the rule.
-
-One further thing worth knowing: warnings are errors, and runner image labels
-move — a toolchain bump can redden CI with no commit behind it, which is the gate
-working rather than a flake, and is why the `linux` container tag is pinned
-rather than floating.
-
-The `linux` job's tripwire has been tested rather than assumed: an `import
-CoreGraphics` in the domain layer failed its build step while all three macOS
-jobs stayed green (2026-08-02, reverted).
+Two things to know before editing the workflow. A required check is matched by
+its **display name**, so renaming a job silently drops it from the protection
+rule — the old name stays listed and never reports again. And a **newly added**
+job is unprotected until its first run, because GitHub cannot mark a check
+required until it has reported once.

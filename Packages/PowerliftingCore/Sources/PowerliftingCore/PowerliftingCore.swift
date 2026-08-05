@@ -2,8 +2,17 @@
 //
 // Constraints on everything in this module:
 //
-// - No Apple framework imports (NFR-0.2). Not Foundation, not SwiftUI, not SwiftData.
-//   A Linux CI job (T-0.08) enforces this, because a review convention will not.
+// - No imports at all (NFR-0.2). Not Foundation, not SwiftUI, not SwiftData — and since T-0.14,
+//   not the platform modules either. Three mechanisms enforce it and none of them overlaps
+//   completely: a Linux CI job (T-0.08) rejects Apple-platform frameworks, `no_foundation_in_core`
+//   catches Foundation, which compiles on Linux and so is invisible to that job, and
+//   `no_imports_in_core` bans the rest — including `Darwin` and `Glibc`, which the other two let
+//   through. Together they hold this directory at zero import lines, which is the property the
+//   coverage matrix cites as evidence rather than any one of the three.
+// - The cost of that is real and paid in RealMath.swift: `pow` and `exp` do not exist here, so
+//   Lombardi's and Wathan's e1RM equations (TR-0.2.4) use hand-rolled ones, measured against the
+//   system maths library before being committed. Read T-0.14's notes before reaching for an
+//   import to avoid a similar cost — the decision was made once, with numbers behind it.
 // - No I/O. Everything here is a pure function or a value type. Persistence lives in the
 //   Persistence package, behind repository protocols (TR-0.1.2).
 // - Weights are Int grams (G-1.1). No floating-point weight is ever persisted, and `Weight`

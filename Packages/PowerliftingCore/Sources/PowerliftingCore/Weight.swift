@@ -1,22 +1,16 @@
 /// A mass, stored as a whole number of grams.
 ///
-/// `G-1.1` is the reason this type exists: no floating-point weight is ever persisted. The only
-/// way to hold that line is to make grams the only representation there is, so `Weight` is the
-/// currency of every formula input and output in this package. Kilograms and pounds exist here
-/// solely as *display* conversions (`G-3.1`, `G-3.2`) — they return `Double`, they are never
-/// stored, and no API accepts one back without an explicit rounding decision.
+/// `G-1.1` is why this type exists: grams are the only representation there is, so `Weight` is the
+/// currency of every formula input and output here. Kilograms and pounds are *display* conversions
+/// only (`G-3.1`, `G-3.2`) — never stored, and no API accepts one back without an explicit rounding
+/// decision. 1 kg = 1000 g exactly; 1 lb = 453.59237 g exactly.
 ///
-/// **Units.** ``grams`` is the storage. 1 kg = 1000 g exactly; 1 lb = 453.59237 g exactly.
+/// **Any `Int`, including negative.** `Weight` is signed because it doubles as a *delta* — an
+/// increment, a deload, a target-versus-loaded gap. That a load is non-negative is a caller's
+/// invariant, not this type's: rejecting negatives here would make subtraction partial and push
+/// every difference through an optional. Arithmetic traps on overflow rather than wrapping.
 ///
-/// **Valid range.** Any `Int`, including negative. `Weight` is signed because it doubles as a
-/// *delta* — a progression increment, a deload, the gap between a target and what was loaded — and
-/// those are genuinely negative. A weight that represents a load is expected to be non-negative,
-/// but that is a caller's invariant, not this type's: rejecting negatives here would make
-/// subtraction partial and push every difference through an optional. Practical loads sit under
-/// 1 000 000 g (1000 kg). Arithmetic traps on `Int` overflow rather than wrapping.
-///
-/// **Precision.** Kilogram round-trips are lossless. Pound round-trips are lossy by at most half a
-/// gram per conversion, because a pound is not a whole number of grams.
+/// Kilogram round-trips are lossless; pound round-trips lose at most half a gram per conversion.
 public struct Weight: Sendable, Hashable, Comparable, Codable, AdditiveArithmetic, CustomStringConvertible {
     /// The mass in grams — the sole stored representation (`G-1.1`).
     public let grams: Int
@@ -37,14 +31,12 @@ public struct Weight: Sendable, Hashable, Comparable, Codable, AdditiveArithmeti
 extension Weight {
     /// Creates a weight from a kilogram value, rounding to whole grams.
     ///
-    /// The `rounding` argument has no default on purpose: `G-1.1` allows floating point at the
-    /// boundary but never inside, so every crossing of that boundary must name the rounding it
-    /// wants. A silent default would make the lossy step invisible at the call site.
+    /// `rounding` has no default on purpose: `G-1.1` allows floating point at the boundary but
+    /// never inside, so every crossing must name the rounding it wants. A silent default would make
+    /// the lossy step invisible at the call site.
     ///
     /// - Parameters:
-    ///   - kilograms: Mass in kilograms. Any finite value whose gram equivalent fits in `Int`;
-    ///     one kilogram is 1000 grams, so the fractional part is exact to three decimal places
-    ///     before rounding applies.
+    ///   - kilograms: Any finite value whose gram equivalent fits in `Int`.
     ///   - rounding: How to resolve a value that is not a whole number of grams.
     /// - Returns: `nil` if `kilograms` is NaN or infinite, or if the result overflows `Int`.
     public init?(kilograms: Double, rounding: RoundingStrategy) {
@@ -56,13 +48,12 @@ extension Weight {
 
     /// Creates a weight from a pound value, rounding to whole grams.
     ///
-    /// See ``init(kilograms:rounding:)`` for why `rounding` is required. Note that pounds are
-    /// lossy in a way kilograms are not: 1 lb is 453.59237 g, so even a whole number of pounds
-    /// does not land on a whole number of grams.
+    /// See ``init(kilograms:rounding:)`` for why `rounding` is required. Pounds are lossy in a way
+    /// kilograms are not: even a whole number of pounds is not a whole number of grams.
     ///
     /// - Parameters:
-    ///   - pounds: Mass in pounds. Any finite value whose gram equivalent fits in `Int`.
-    ///   - rounding: How to resolve the fractional gram that a pound value almost always leaves.
+    ///   - pounds: Any finite value whose gram equivalent fits in `Int`.
+    ///   - rounding: How to resolve the fractional gram a pound value almost always leaves.
     /// - Returns: `nil` if `pounds` is NaN or infinite, or if the result overflows `Int`.
     public init?(pounds: Double, rounding: RoundingStrategy) {
         guard let grams = rounding.roundedToInt(pounds * MassUnit.pounds.gramsPerUnit) else {
@@ -92,7 +83,6 @@ extension Weight {
 
     /// This mass expressed in `unit`. Display only — never persist this value (`G-1.1`).
     ///
-    /// - Parameter unit: The unit to convert to.
     /// - Returns: The mass in `unit`. See ``kilograms`` and ``pounds`` for exactness.
     public func converted(to unit: MassUnit) -> Double {
         switch unit {
@@ -153,10 +143,9 @@ extension Weight {
 extension Weight {
     /// Encodes as a bare integer of grams — `102500`, not `{"grams": 102500}`.
     ///
-    /// Hand-written rather than synthesised so the wire format is pinned rather than incidental.
-    /// It is a single value on purpose: it nests inside `Prescription` and the DTO layer without
-    /// adding a wrapper object, and it is the shape T-0.20's byte-stable round-trip is asserted
-    /// against. Changing it is a storage migration.
+    /// Hand-written so the wire format is pinned rather than incidental. A single value on
+    /// purpose: it nests inside composites without adding a wrapper object. Changing it is a
+    /// storage migration.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
         self.init(grams: try container.decode(Int.self))
@@ -189,30 +178,21 @@ extension Weight {
     /// the unit is a localisation concern and localisation is Foundation, which this package may
     /// not import (`NFR-0.2`); the UI layer appends it.
     ///
-    /// The fraction is rendered to a **fixed** number of digits, derived from `precision`: a
-    /// 0.5 step always yields one decimal, so 102 000 g is `"102.0"` and not `"102"`. Fixed width
-    /// keeps a column of weights aligned and keeps this function deterministic; trimming trailing
-    /// zeros, if wanted, is a presentation choice for the UI layer.
+    /// The fraction is **fixed** width, derived from `precision`: a 0.5 step always yields one
+    /// decimal, so 102 000 g is `"102.0"`. Trimming trailing zeros is the UI layer's choice.
     ///
-    /// Rounding to `precision` is always `.nearest` with ties away from zero, and is **display
-    /// only** — the stored grams are untouched (`G-3.2`). Rounding to something a bar can actually
-    /// hold is a different question, answered by `RoundingRule` (T-0.13).
+    /// Rounding to `precision` is always `.nearest`, ties away from zero, and is **display only** —
+    /// the stored grams are untouched (`G-3.2`). Rounding to something a bar can hold is
+    /// ``RoundingRule``'s question.
     ///
-    /// **Pounds round twice, and very occasionally that shows.** Grams are converted to whole
-    /// milli-pounds first, then rounded to `precision`, so a value sitting within half a
-    /// milli-pound (about 0.23 mg) of an exact tie can be nudged across it and display one step
-    /// away from what rounding the exact ratio in one operation would give. Measured: three gram
-    /// values between 100 kg and 105 kg. It is accepted rather than fixed — at 0.23 mg from a tie
-    /// either answer is defensible, and the alternative reintroduces floating point into the step
-    /// rounding, which is the part `G-1.1` most wants kept integral. Kilograms are unaffected: one
-    /// gram is exactly one milli-kilogram, so that path never converts at all.
+    /// Pounds round twice — grams to milli-pounds, then to `precision` — so a value within half a
+    /// milli-pound of a tie can display one step off. Accepted; see `WeightDisplayRoundingTests`.
     ///
-    /// - Parameters:
-    ///   - unit: The unit to render in.
-    ///   - precision: The step to round to, in thousandths of `unit`.
+    /// - Parameter precision: The step to round to, in thousandths of `unit`.
     /// - Returns: A plain decimal string using `.` as the separator and `-` for negatives.
     public func formatted(in unit: MassUnit, precision: DisplayPrecision) -> String {
-        let rounded = Self.rounded(milliUnits(in: unit), toMultipleOf: precision.milliUnits)
+        let rounded = Self.rounded(
+            milliUnits(in: unit), toMultipleOf: precision.milliUnits, strategy: .nearest)
         return Self.decimalString(milliUnits: rounded, fractionDigits: precision.fractionDigits)
     }
 
@@ -237,42 +217,61 @@ extension Weight {
         }
     }
 
-    /// Rounds `value` to the nearest multiple of `step`, ties away from zero.
+    /// Rounds `value` to a multiple of `step` in the direction `strategy` names.
     ///
-    /// Pure integer arithmetic — no `Double` anywhere, so the result is exact for every input.
+    /// Pure integer arithmetic, so the result is exact for every input. Unit-agnostic on purpose —
+    /// the display path applies it to milli-pounds as well as grams. Stays internal so
+    /// ``RoundingRule`` is the only public way to snap a `Weight` to a step.
     ///
-    /// - Precondition: `step != 0`. `DisplayPrecision` guarantees `>= 1`, so no display path can
-    ///   violate it. The check is here for T-0.13: `RoundingRule` is expected to reuse this
-    ///   function, and a zero increment would otherwise surface as "Division by zero in remainder
-    ///   operation" from inside the standard library, with nothing naming the caller. `RoundingRule`
-    ///   should reject a zero increment at its own boundary, the way `DisplayPrecision` does.
+    /// `.down` is floor and `.up` is ceiling — toward ±infinity, *not* toward and away from zero.
+    /// Since `Weight` is signed, that distinction is real: `-7` rounded `.down` to a step of `5` is
+    /// `-10`.
     ///
-    /// Rounding away from zero near `Int.max` would land outside `Int`, so that one case rounds
-    /// toward zero instead. Like `saturatingRoundToNearest`, this is unreachable from any physical
-    /// load and exists because formatting an already-stored value must not trap.
-    static func rounded(_ value: Int, toMultipleOf step: Int) -> Int {
+    /// - Precondition: `step > 0`. A negative step is rejected rather than normalised — the
+    ///   multiples of `-5` are the multiples of `5`, so a sign carries no meaning and only buys
+    ///   `Int.min` edge cases. Callers cannot violate this: `DisplayPrecision` and `RoundingRule`
+    ///   both enforce it at their own initialisers.
+    ///
+    /// Near `Int.max`/`Int.min`, stepping away from the truncated multiple would leave `Int`, so
+    /// that case stays on the truncated multiple: formatting an already-stored value must not
+    /// trap.
+    static func rounded(_ value: Int, toMultipleOf step: Int, strategy: RoundingStrategy) -> Int {
         // Deliberately without a message: the message is an autoclosure that only evaluates on
         // failure, which llvm-cov scores as an uncovered line forever. `file:line` already names
         // this function, and the doc comment above carries the explanation.
-        precondition(step != 0)
+        precondition(step > 0)
         let remainder = value % step
         if remainder == 0 { return value }
-        // `remainder` carries the sign of `value`, and `|remainder| < step`, so doubling it in
-        // `UInt` cannot overflow.
-        let roundsAway = remainder.magnitude * 2 >= step.magnitude
-        let quotient = value / step
-        guard roundsAway else { return quotient * step }
-        let target = value < 0 ? quotient - 1 : quotient + 1
-        let (product, overflowed) = target.multipliedReportingOverflow(by: step)
-        // `quotient * step` is bounded by `value`, so the fallback always fits.
-        return overflowed ? quotient * step : product
+        // `remainder` carries the sign of `value` and `|remainder| < step`, so this subtraction
+        // moves toward zero and cannot overflow. It is the multiple on `value`'s own side of zero.
+        let truncated = value - remainder
+        switch strategy {
+        case .down:
+            // A positive `value` already sits above its truncated multiple; a negative one sits
+            // below, and truncation moved it the wrong way.
+            return remainder > 0 ? truncated : Self.stepping(truncated, by: -step)
+        case .up:
+            return remainder < 0 ? truncated : Self.stepping(truncated, by: step)
+        case .nearest:
+            // Doubling in `UInt` cannot overflow, since `|remainder| < step <= Int.max`.
+            guard remainder.magnitude * 2 >= step.magnitude else { return truncated }
+            return remainder < 0 ? Self.stepping(truncated, by: -step) : Self.stepping(truncated, by: step)
+        }
+    }
+
+    /// `truncated + step`, falling back to `truncated` when that would leave `Int`.
+    ///
+    /// See the note on overflow in ``rounded(_:toMultipleOf:strategy:)``; the fallback always fits
+    /// because `truncated` is bounded by the original value.
+    private static func stepping(_ truncated: Int, by step: Int) -> Int {
+        let (result, overflowed) = truncated.addingReportingOverflow(step)
+        return overflowed ? truncated : result
     }
 
     /// Rounds to the nearest `Int`, clamping instead of failing.
     ///
-    /// Only used on the pound display path, and only reachable for masses beyond 4.1 × 10¹⁸ grams
-    /// — four thousand trillion tonnes. Formatting has no way to report failure and must not trap
-    /// on a value that is already stored, so it clamps; the alternative is a crash in a view.
+    /// Pound display path only, and reachable only beyond 4.1 × 10¹⁸ grams. Formatting cannot
+    /// report failure and must not trap on an already-stored value, so it clamps.
     static func saturatingRoundToNearest(_ value: Double) -> Int {
         guard !value.isNaN else { return 0 }
         let rounded = value.rounded(.toNearestOrAwayFromZero)

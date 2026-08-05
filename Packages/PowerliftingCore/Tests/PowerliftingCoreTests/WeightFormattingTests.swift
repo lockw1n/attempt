@@ -37,6 +37,17 @@ struct WeightDefaultPrecisionFormattingTests {
 
 @Suite("Weight — display rounding")
 struct WeightDisplayRoundingTests {
+    // **Pounds round twice, and very occasionally that shows.** Grams are converted to whole
+    // milli-pounds first, then rounded to the requested precision, so a value sitting within half a
+    // milli-pound (about 0.23 mg) of an exact tie can be nudged across it and display one step away
+    // from what rounding the exact ratio in a single operation would give. Measured while writing
+    // this suite: three gram values between 100 kg and 105 kg, out of five thousand.
+    //
+    // Accepted rather than fixed. At 0.23 mg from a tie either answer is defensible, and the
+    // alternative reintroduces floating point into the step rounding, which is the part `G-1.1`
+    // most wants kept integral. Kilograms are unaffected: one gram is exactly one milli-kilogram,
+    // so that path never converts at all.
+
     @Test("Rounds to the nearest step")
     func roundsToNearestStep() {
         #expect(Weight(grams: 102_249).formatted(in: .kilograms) == "102.0")
@@ -76,7 +87,7 @@ struct WeightDisplayRoundingTests {
         ]
     )
     func roundingToMultipleIsExact(value: Int, step: Int, expected: Int) {
-        #expect(Weight.rounded(value, toMultipleOf: step) == expected)
+        #expect(Weight.rounded(value, toMultipleOf: step, strategy: .nearest) == expected)
     }
 }
 

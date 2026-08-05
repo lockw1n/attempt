@@ -94,12 +94,32 @@ nesting:
 #             Phase 1 can break them. DesignSystem itself is excluded — it is where the raw
 #             values are legitimately defined.
 #
-#   layering — TR-0.1.2 and NFR-0.2, the two import bans. Both use `match_kinds` rather than
-#             relying on the regex alone: `import Foundation` and `import SwiftData` both appear
-#             inside *comments* in this repo (PowerliftingCore.swift and Persistence.swift
-#             document the rules they are subject to). A comment's syntax kind is `comment`,
-#             which is not in the list, so those lines cannot match. Without this the rules
-#             would fire on the very files that explain them.
+#   NFR-0.2 — `no_imports_in_core` (T-0.14) bans *every* import under
+#             Packages/PowerliftingCore/Sources/, not a list of named modules. It exists because
+#             `no_foundation_in_core` below matches only `Foundation*`, so the workaround for a
+#             missing `pow` — `#if canImport(Darwin) import Darwin #elseif canImport(Glibc) …` —
+#             compiled clean, passed `--strict`, and would have passed the Linux job too, while
+#             being exactly the violation NFR-0.2 is about. Verified 2026-08-04. An enumerated
+#             blocklist cannot anticipate the next platform module; "nothing at all" can, and it is
+#             the property the coverage matrix actually cites as evidence. The Tests target is
+#             deliberately out of scope — it needs `import Testing`.
+#
+#   layering — TR-0.1.2 and NFR-0.2, the three import bans. All three rely on `match_kinds` to
+#             tell code from prose: `import Foundation` and `import SwiftData` both appear inside
+#             *comments* in this repo (PowerliftingCore.swift and Persistence.swift document the
+#             rules they are subject to). A comment's syntax kind is `comment`, which is not in
+#             the list, so those cannot match; nor can a string literal, whose kind is `string`.
+#             Without it the rules would fire on the very files that explain them.
+#
+#             `match_kinds` is now the ONLY thing doing that job, which was not true before
+#             2026-08-04. All three regexes used to start `^[ \t]*import`, and that anchor did
+#             most of the prose filtering. It also left a hole: an *attributed* import does not
+#             start with `import`, so `@_exported import Foundation` in the domain core compiled,
+#             passed all three rules under `--strict`, and would have passed the Linux job. Found
+#             reviewing T-0.14 and measured. The anchor is gone, `\bimport[ \t]+…` matches
+#             anywhere, and AttributedImportFixture.swift is the regression test. Do not
+#             reintroduce the anchor, and do not drop `match_kinds` — BlockCommentImportFixture
+#             .swift guards the second half and fires the moment it is removed.
 #
 # Every rule here is `error`, not `warning`: `--strict` promotes warnings anyway, and a rule that
 # reads as advisory in the config but fails the build in CI is just confusing.
@@ -136,7 +156,7 @@ custom_rules:
 
   no_swiftdata_outside_persistence:
     name: "SwiftData imported outside Persistence"
-    regex: '^[ \t]*import[ \t]+SwiftData\b'
+    regex: '\bimport[ \t]+SwiftData\b'
     match_kinds:
       - keyword
       - identifier
@@ -147,13 +167,24 @@ custom_rules:
 
   no_foundation_in_core:
     name: "Foundation imported into the domain core"
-    regex: '^[ \t]*import[ \t]+(Foundation|FoundationEssentials|FoundationNetworking)\b'
+    regex: '\bimport[ \t]+(Foundation|FoundationEssentials|FoundationNetworking)\b'
     match_kinds:
       - keyword
       - identifier
     included:
       - 'Packages/PowerliftingCore/.*\.swift'
-    message: "NFR-0.2: PowerliftingCore is Foundation-free. The Linux CI job cannot catch this — Foundation compiles there — so this rule is the only enforcement."
+    message: "NFR-0.2: PowerliftingCore is Foundation-free. The Linux CI job cannot catch this — Foundation compiles there. In Sources/ this overlaps no_imports_in_core; in Tests/ it is the only enforcement there is."
+    severity: error
+
+  no_imports_in_core:
+    name: "Import in the domain core"
+    regex: '\bimport[ \t]+\w'
+    match_kinds:
+      - keyword
+      - identifier
+    included:
+      - 'Packages/PowerliftingCore/Sources/.*\.swift'
+    message: "NFR-0.2 (T-0.14): PowerliftingCore/Sources imports nothing at all. `pow` and `exp` are hand-rolled in RealMath.swift rather than importing Darwin or Glibc — read that file's header and T-0.14's notes before adding an import."
     severity: error
 
 reporter: xcode
