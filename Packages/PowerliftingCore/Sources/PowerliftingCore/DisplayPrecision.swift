@@ -4,17 +4,14 @@
 /// a `Double`, so that formatting is exact integer arithmetic end to end. 0.5 kg is `500`,
 /// 1.25 kg is `1250`, 1 lb is `1000`, 0.1 lb is `100`.
 ///
-/// Deliberately unit-agnostic: the same value means 0.5 kg when displaying kilograms and 0.5 lb
-/// when displaying pounds. The unit is supplied at the call site
-/// (``Weight/formatted(in:precision:)``) because display unit and display precision are two
-/// separate user preferences (`G-3.1`, `G-3.3`).
+/// Unit-agnostic on purpose: the same value means 0.5 kg or 0.5 lb, and the unit is supplied at
+/// the call site (``Weight/formatted(in:precision:)``) because unit and precision are two separate
+/// preferences (`G-3.1`, `G-3.3`).
 ///
-/// This is **not** `RoundingRule` (T-0.13). This one decides what a number looks like on screen;
-/// that one decides what can actually be loaded on a bar. A weight displayed as "102.5" may well
-/// be 102 483 g in storage — display rounding never touches stored data (`G-3.2`).
+/// This is **not** ``RoundingRule``: this decides what a number looks like, that decides what can
+/// be loaded on a bar. Display rounding never touches stored data (`G-3.2`).
 ///
-/// Valid range: strictly positive. A step of zero or less has no meaning and is rejected at every
-/// entry point, including decoding.
+/// Must be strictly positive; rejected at every entry point, decoding included.
 public struct DisplayPrecision: Sendable, Hashable, Codable {
     /// The step, in thousandths of the display unit. Always `>= 1`.
     public let milliUnits: Int
@@ -62,8 +59,8 @@ extension DisplayPrecision {
     /// How many digits after the decimal point this step needs in order to be representable.
     ///
     /// 1000 → 0 ("226"), 500 → 1 ("102.5"), 250 → 2 ("101.25"), 1 → 3. Derived rather than stored
-    /// so that the two can never disagree, and chosen so that the step always divides the scaling
-    /// factor exactly — which is what makes the rendering in `Weight.formatted` lossless.
+    /// so the two cannot disagree, and chosen so the step divides the scaling factor exactly, which
+    /// is what makes the rendering lossless.
     var fractionDigits: Int {
         let remainder = milliUnits % 1000
         if remainder == 0 { return 0 }
@@ -76,10 +73,9 @@ extension DisplayPrecision {
 extension DisplayPrecision {
     /// Encodes as a bare integer of milli-units, not as an object.
     ///
-    /// Hand-written rather than synthesised for two reasons: the wire format stays a single
-    /// number (a preference, not a record), and the `milliUnits >= 1` invariant is enforced on the
-    /// way in. Synthesised `Decodable` bypasses `init?(milliUnits:)` entirely and would happily
-    /// produce a zero-step precision that divides by zero downstream.
+    /// Hand-written so the wire format stays a single number and the `milliUnits >= 1` invariant
+    /// is re-checked on the way in — synthesised `Decodable` bypasses `init?(milliUnits:)` and
+    /// would produce a zero-step precision that divides by zero downstream.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
         let value = try container.decode(Int.self)

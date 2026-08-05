@@ -1,18 +1,12 @@
 /// A qualifier applied to a logged set — the nine `FR-1.2.8` names, as spelled on the wire.
 ///
-/// This is the *built-in* list, not the whole list. `FR-1.2.8` calls the set of modifiers
-/// **configurable**, so a value outside these nine is an ordinary event rather than corruption:
-/// a user-added entry, or one from a newer app version syncing down. That is why the persistable
-/// form is ``SetModifier`` — an ``OpenVocabulary`` around this enum — and not this enum itself.
-///
-/// The raw values are the persisted spelling. **Renaming a case is a storage migration, not a
-/// refactor**; reordering the cases changes nothing, which is why they are strings and not
-/// ordinals.
+/// The *built-in* list, not the whole list: `FR-1.2.8` calls the modifier set **configurable**, so
+/// a value outside these nine is ordinary rather than corruption. That is why the persistable form
+/// is ``SetModifier``, an ``OpenVocabulary`` around this enum, and not this enum itself.
 ///
 /// **Deliberately not `Codable`.** Encoding a term directly would give a type that throws on an
-/// unrecognised spelling, which is the behaviour this whole area exists to avoid — so the only
-/// way to persist a modifier is ``SetModifier``, which cannot lose one. Adding `Codable` here
-/// would reintroduce the trap as a convenience.
+/// unrecognised spelling — the exact behaviour this area exists to avoid. Adding `Codable` here
+/// would reintroduce that trap as a convenience.
 public enum SetModifierTerm: String, Sendable, Hashable, CaseIterable {
     /// A lifting belt.
     case belt
@@ -52,8 +46,6 @@ public enum SetModifierTerm: String, Sendable, Hashable, CaseIterable {
 /// anything else; read ``OpenVocabulary/known`` to get back a `SetModifierTerm?`. Encodes as the
 /// bare string `"belt"`.
 ///
-/// An unrecognised spelling is **preserved, never degraded**. A set modifier is the user's own
-/// logged data and nothing upstream re-supplies it, unlike ``Movement`` or ``Equipment``, whose
-/// authoritative copy comes back on the next seed import (T-0.52). See ``OpenVocabulary`` for the
-/// two-question rule that produces both answers.
+/// An unrecognised spelling is **preserved, never degraded** — unlike ``Movement`` or
+/// ``Equipment``, a set modifier is the user's own logged data and nothing re-supplies it.
 public typealias SetModifier = OpenVocabulary<SetModifierTerm>

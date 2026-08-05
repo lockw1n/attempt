@@ -251,6 +251,31 @@ struct E1RMRepRangeTests {
         }
     }
 
+    @Test("The five agree at ten reps and diverge past it, which is why the range ends there")
+    func formulasDivergePastTheTabulatedRange() throws {
+        // The upper bound of `tabulatedRepRange` is a decision, not a citation, and this is the
+        // evidence for it. Measured multipliers, for a lift of any size:
+        //
+        // | reps | Epley | Brzycki | Lombardi | O'Conner | Wathan | spread |
+        // |---|---|---|---|---|---|---|
+        // |  10 | 1.333 | 1.333 | 1.259 | 1.250 | 1.347 | 0.097 |
+        // |  15 | 1.500 | 1.636 | 1.311 | 1.375 | 1.509 | 0.325 |
+        // |  20 | 1.667 | 2.118 | 1.349 | 1.500 | 1.645 | 0.769 |
+        // |  30 | 2.000 | 5.143 | 1.405 | 1.750 | 1.836 | 3.738 |
+        //
+        // Five equations that agree to within 10% and then diverge to 370% are not five
+        // measurements of the same quantity past the point they part company. Ten reps is also
+        // where each was published as a percentage table.
+        func spread(atReps reps: Int) throws -> Double {
+            let multipliers = allFormulas.map { $0.multiplier(forReps: reps) }
+            return try #require(multipliers.max()) - #require(multipliers.min())
+        }
+        #expect(try spread(atReps: 10) < 0.10)
+        #expect(try spread(atReps: 15) > 0.30)
+        #expect(try spread(atReps: 20) > 0.75)
+        #expect(try spread(atReps: 30) > 3.50)
+    }
+
     @Test("Both boundaries of the range produce an estimate")
     func boundariesAreInclusive() throws {
         let weight = Weight(grams: 100_000)

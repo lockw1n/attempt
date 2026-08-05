@@ -13,9 +13,17 @@ import Testing
 // cannot be checked by reading.
 //
 // The agreement with libm was measured separately, while deciding whether to hand-roll these at
-// all, and is recorded in T-0.14's notes: within 1 ulp across the normal range for both functions,
-// and — the measurement that actually mattered — every Lombardi and Wathan result *in grams*
-// identical to libm's, over every rep count 1…10 and seven different loads.
+// all. That measurement is recorded here because this is where the claim is pinned:
+//
+// - `exponential` — within 1 ulp across the whole normal range, and bit-identical to libm at every
+//   overflow and underflow boundary. Below about -708.4 the *result* is subnormal and precision
+//   degrades to ~142 ulp, which is inherent to subnormals rather than to the series.
+// - `logarithm` — within 1 ulp across 2^-1080 … 2^1020, subnormal inputs included.
+//
+// Far tighter than anything here needs: an e1RM is snapped to a whole gram, so a 100 kg lift only
+// asks for a relative accuracy of 1 in 10^5. The measurement that actually settled it — every
+// Lombardi and Wathan result *in grams* identical to libm's, over every rep count 1…10 and seven
+// different loads.
 
 /// Constants to 40 significant figures. Far more than a `Double` holds, on purpose: the literal
 /// then rounds to the nearest representable value instead of encoding a truncation.
