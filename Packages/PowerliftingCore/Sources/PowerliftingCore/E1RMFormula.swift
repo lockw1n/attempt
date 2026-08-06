@@ -61,8 +61,13 @@ extension RepOnlyE1RMFormula {
     /// not a display choice. Rounding to a loadable weight is ``RoundingRule``'s job, and applying
     /// it here would be a category error: nobody loads an estimate.
     ///
+    /// **Unfiltered, and it is the one entry point that stays so.** A caller here has a load and a
+    /// rep count rather than a logged set, so none of `TR-0.2.5`'s refusals apply — including
+    /// ``E1RMCalculator``'s rule that a negative weight has no estimate. Whoever supplies a weight
+    /// this way owns the sign question; see ``estimate(for:)``.
+    ///
     /// - Parameter weight: The load lifted, on one implement — see ``SetRecord/weight``. May be
-    ///   negative; see ``estimate(for:)``.
+    ///   negative.
     /// - Returns: The estimate, or `nil` if `reps` falls outside ``E1RMFormula/validRepRange`` or
     ///   the product will not fit in a `Weight`.
     public func estimate(weight: Weight, reps: Int) -> Weight? {
@@ -77,7 +82,8 @@ extension RepOnlyE1RMFormula {
     /// equations are linear in weight, so a multiplier above 1 makes it *more* negative: more
     /// assistance presented as a heavier maximum. `TR-0.2.5` puts input filtering on the
     /// calculator, not the formula, so guarding here would invent a domain rule no requirement
-    /// states.
+    /// states — and ``E1RMCalculator`` is where that rule now lives, refusing a negative weight
+    /// outright. Reaching a formula directly opts out of it.
     public func estimate(for set: SetRecord) -> Weight? {
         estimate(weight: set.weight, reps: set.reps)
     }
