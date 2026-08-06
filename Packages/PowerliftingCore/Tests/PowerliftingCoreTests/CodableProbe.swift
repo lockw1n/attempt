@@ -35,7 +35,7 @@
 /// `object` keeps its fields in encoding order rather than in a dictionary, so equality is
 /// order-sensitive. That is the point: reordering keys changes the bytes. `array` is ordered for
 /// the same reason, and additionally because an array's order *is* its content.
-enum ProbeValue: Equatable, CustomStringConvertible {
+enum ProbeValue: Equatable, Sendable, CustomStringConvertible {
     case null
     case bool(Bool)
     case string(String)
@@ -58,7 +58,7 @@ enum ProbeValue: Equatable, CustomStringConvertible {
 }
 
 /// One key–value pair of an encoded object, in the position it was written.
-struct ProbeField: Equatable, CustomStringConvertible {
+struct ProbeField: Equatable, Sendable, CustomStringConvertible {
     let key: String
     let value: ProbeValue
 
