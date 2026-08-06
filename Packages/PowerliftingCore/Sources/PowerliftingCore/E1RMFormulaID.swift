@@ -9,8 +9,8 @@
 /// preserved. Callers must not let that throw cost the whole settings record: a row whose formula
 /// name is unreadable falls back to a default formula.
 ///
-/// `TR-0.2.4` names a sixth formula, `RPEBased`, whose case is deliberately absent until the
-/// implementation exists. Adding it later is additive and safe.
+/// A case exists only where an implementation does. That is what makes the throw above defensible,
+/// and it is a rule about this type rather than an observation about its current contents.
 public enum E1RMFormulaID: String, Sendable, Hashable, Codable, CaseIterable {
     /// Epley (1985) — see ``Epley``.
     case epley
@@ -29,10 +29,16 @@ public enum E1RMFormulaID: String, Sendable, Hashable, Codable, CaseIterable {
 
     /// Wathan (1994) — see ``Wathan``.
     case wathan
+
+    /// An RPE/RIR chart rather than a published equation — see ``RPEBased``.
+    ///
+    /// Spelled all-lowercase for the same reason ``oConner`` is: the persisted string is not the
+    /// place to record how Swift capitalises identifiers.
+    case rpeBased = "rpebased"
 }
 
 extension E1RMFormulaID {
-    /// The rep range every formula in this family is valid over — 1 through 10.
+    /// The rep range the five closed-form equations are valid over — 1 through 10.
     ///
     /// The lower bound is arithmetic: a zero-rep set is legal (`FR-1.2.5`) and carries no
     /// information about a maximum, and Lombardi's `reps^0.10` is zero there, so the estimate for a
@@ -41,7 +47,7 @@ extension E1RMFormulaID {
     /// N-rep maxes over the same 1…10.
     ///
     /// **The range is a per-conformance property, not a constant of the protocol.** These five
-    /// agreeing is a finding about them, not a limit on the sixth: `RPEBased` is keyed by RPE, not
-    /// reps, and is free to declare something else.
+    /// agreeing is a finding about them, not a limit on the sixth: ``RPEBased`` takes its range
+    /// from its chart, and does not read this.
     public static let tabulatedRepRange: ClosedRange<Int> = 1...10
 }
