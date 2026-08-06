@@ -88,20 +88,3 @@ extension RepOnlyE1RMFormula {
         estimate(weight: set.weight, reps: set.reps)
     }
 }
-
-extension Weight {
-    /// This mass multiplied by a dimensionless factor, rounded to the nearest whole gram.
-    ///
-    /// Internal on purpose: it is the one place a formula's `Double` result crosses back into
-    /// grams, and a public version would invite scaling weights by floating-point factors at call
-    /// sites with no business doing so (`G-1.1`).
-    ///
-    /// - Returns: The scaled mass, or `nil` if the product is not finite or does not fit in `Int`
-    ///   grams — unreachable from a plausible lift, reachable from an absurd rep count.
-    func scaled(by factor: Double) -> Weight? {
-        guard let scaled = RoundingStrategy.nearest.roundedToInt(Double(grams) * factor) else {
-            return nil
-        }
-        return Weight(grams: scaled)
-    }
-}
