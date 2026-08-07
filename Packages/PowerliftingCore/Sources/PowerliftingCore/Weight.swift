@@ -136,6 +136,25 @@ extension Weight {
     public static func *= (lhs: inout Weight, rhs: Int) {
         lhs = lhs * rhs
     }
+
+    /// This mass multiplied by a dimensionless factor, rounded to the nearest whole gram.
+    ///
+    /// The one place a `Double` crosses back into grams — an e1RM multiplier, a percentage of a
+    /// training max. Internal on purpose: a public version would invite scaling weights by
+    /// floating-point factors at call sites with no business doing so (`G-1.1`).
+    ///
+    /// **Not configurable, and that is the point.** A whole gram is the *storage* resolution, not a
+    /// display or loading choice, so there is nothing here for a caller to decide. Snapping to a
+    /// weight a bar can hold is ``RoundingRule``'s, and it happens after this.
+    ///
+    /// - Returns: The scaled mass, or `nil` if the product is not finite or does not fit in `Int`
+    ///   grams.
+    func scaled(by factor: Double) -> Weight? {
+        guard let scaled = RoundingStrategy.nearest.roundedToInt(Double(grams) * factor) else {
+            return nil
+        }
+        return Weight(grams: scaled)
+    }
 }
 
 // MARK: - Codable

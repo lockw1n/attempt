@@ -12,6 +12,9 @@ import Testing
 /// on trust: `incrementsAreTheStepsTheyClaimToBe` asserts each one against the conversion. A pound
 /// is not a whole number of grams, which is why 5 lb is 2268 g and 1 lb is 454 g.
 enum Increments {
+    /// The identity: every weight is already a multiple of one gram. How a caller asks for a rule
+    /// that does not round — `RoundingRule` has no "none".
+    static let oneGram = Weight(grams: 1)
     static let twoAndAHalfKilograms = Weight(grams: 2_500)
     static let oneAndAQuarterKilograms = Weight(grams: 1_250)
     static let fivePounds = Weight(grams: 2_268)

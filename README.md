@@ -126,8 +126,11 @@ a refactor.
   and renaming one is a migration. What an unrecognised value does — degrade,
   preserve, or throw — is decided per type and documented on that type.
 - `Codable` domain types hand-write `init(from:)`, `encode(to:)` and their
-  `CodingKeys`, and pin key spelling *and* key order by assertion.
-- A domain collection is canonicalised — deduplicated and sorted — both on
+  `CodingKeys`, and pin key spelling *and* key order by assertion. Where the keys
+  are not all known at compile time, the constants and the write order are still
+  declared; only the `CodingKeys` enum gives way to a `CodingKey` struct.
+- A domain collection is canonicalised — sorted, and either deduplicated or, where
+  a repeat is a data-entry error rather than noise, refused outright — both on
   construction and on decode.
 - Derived values (e1RM, personal records, training maxes) are recomputed, never
   stored as truth. Cached copies carry a `computationVersion`.
