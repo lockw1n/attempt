@@ -35,35 +35,84 @@ public struct TrainingMaxResolver: Sendable {
     public func resolve(
         _ configuration: TrainingMaxConfiguration, from sets: [SetRecord]
     ) -> TrainingMaxResolution {
+        traced(configuration, from: sets).resolution
+    }
+
+    /// The same answer, with the chain that produced it (`TR-0.2.12`).
+    ///
+    /// **This is the only implementation** — ``resolve(_:from:)`` calls it and drops the trace — so a
+    /// trace can never describe a computation different from the number it explains.
+    ///
+    /// This is the earlier half of `FR-2.3.4`'s `e1RM → TM → % → rounded → plates`, and a manual
+    /// source is visibly one step: no percentage and no rounding, because neither ran.
+    /// ``PrescriptionResolver/traced(_:in:)`` produces the later half.
+    ///
+    /// - Parameters:
+    ///   - configuration: The source, percentage and rounding rule.
+    ///   - sets: One exercise's sets, oldest first. Unread when the source is manual.
+    public func traced(
+        _ configuration: TrainingMaxConfiguration, from sets: [SetRecord]
+    ) -> TracedTrainingMaxResolution {
         let source: Weight
+        let basis: ResolutionBasis
         switch configuration.source {
         case .manual(let weight):
             source = weight
+            basis = .entered
         case .percentOfE1RM:
-            guard let record = records.bestE1RM(in: sets) else { return .unresolvable(.noSourceData) }
+            guard let record = records.bestE1RM(in: sets) else {
+                return refused(.noSourceData, after: [])
+            }
             source = record.weight
+            basis = .bestEstimatedOneRepMax(formula: records.e1rm.formula.id)
         case .percentOfRepMax(let reps):
             guard PersonalRecords.repRange.contains(reps) else {
-                return .unresolvable(.repCountOutOfRange(reps))
+                return refused(.repCountOutOfRange(reps), after: [])
             }
             guard let record = records.repMax(forReps: reps, in: sets) else {
-                return .unresolvable(.noSourceData)
+                return refused(.noSourceData, after: [])
             }
             source = record.weight
+            basis = .repMax(reps: reps)
         }
+        let read: [ResolutionStep] = [.basis(basis, source)]
 
         // One guard for all three sources rather than one per path, so it cannot be half-removed.
         // Unreachable through `.percentOfE1RM`, which `E1RMCalculator` already refuses a negative
         // weight for; live on the other two, where a negative is real data or a typo.
-        guard source.grams >= 0 else { return .unresolvable(.negativeSourceWeight(source)) }
+        guard source.grams >= 0 else { return refused(.negativeSourceWeight(source), after: read) }
 
         if configuration.source.isManual {
-            return .resolved(TrainingMax(weight: source, sourceWeight: source))
+            return resolved(TrainingMax(weight: source, sourceWeight: source), after: read)
         }
         guard let scaled = source.scaled(by: configuration.percentage) else {
-            return .unresolvable(.notRepresentable)
+            return refused(.notRepresentable, after: read)
         }
-        return .resolved(
-            TrainingMax(weight: configuration.rounding.rounded(scaled), sourceWeight: source))
+        let snapped = configuration.rounding.rounded(scaled)
+        return resolved(
+            TrainingMax(weight: snapped, sourceWeight: source),
+            after: read + [
+                .scaled(by: configuration.percentage, from: source, to: scaled),
+                .rounded(configuration.rounding, from: scaled, to: snapped),
+            ])
+    }
+
+    /// A resolved training max and the chain behind it.
+    private func resolved(
+        _ trainingMax: TrainingMax, after steps: [ResolutionStep]
+    ) -> TracedTrainingMaxResolution {
+        TracedTrainingMaxResolution(
+            resolution: .resolved(trainingMax), trace: ResolutionTrace(steps: steps))
+    }
+
+    /// A refusal, carrying however far the chain got before it.
+    ///
+    /// `steps` is not defaulted, for the reason ``PrescriptionResolver``'s is not: an empty chain is a
+    /// claim, and a claim should be made rather than inherited by omission.
+    private func refused(
+        _ reason: TrainingMaxUnresolvedReason, after steps: [ResolutionStep]
+    ) -> TracedTrainingMaxResolution {
+        TracedTrainingMaxResolution(
+            resolution: .unresolvable(reason), trace: ResolutionTrace(steps: steps))
     }
 }

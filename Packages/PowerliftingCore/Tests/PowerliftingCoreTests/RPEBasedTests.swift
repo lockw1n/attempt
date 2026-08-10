@@ -10,25 +10,35 @@ import Testing
 // values, and contract behaviour. This file has **only the third**, and that is a statement about
 // what is finished rather than a style choice.
 //
-// **There is no cited chart here yet, and no default chart ships.** `RPEBased` has no
-// `.standard` table and its initialiser has no default argument, so nothing in this package can
-// produce an RPE estimate from percentages nobody has checked. Every table below is a *fixture*:
-// its numbers are exact binary fractions chosen so interpolation and gram conversion assert
-// exactly, they are labelled as fixtures, and they are not a chart anyone lifts by. A table of
-// invented percentages carrying a citation is worse than no citation, so `TR-0.2.4` stays partial
-// until the real chart arrives with a source attached.
+// **Every chart in this file is a fixture, and none of them is the shipped one.** That is a choice
+// rather than a gap, because a fixture does two things `RPETable.standard` cannot. Its fractions are
+// exact binary values (15/16, 7/8, 13/16, 3/4, 1/2), so interpolation and the conversion to grams
+// are asserted *exactly* rather than within a tolerance that could hide a digit. And
+// `fixtureChart()` stops its `repRange` at 3 while its rows run to 4, so "inside the rep range but
+// off the end of the chart" is reachable and distinguishable from the rep-range refusal — which the
+// shipped chart, tabulating 13.5 reps to failure across ten columns, cannot exhibit. The fixtures
+// are labelled as fixtures wherever they appear, and they are not charts anyone lifts by.
+//
+// **A default chart does ship, and it is pinned rather than cited.** `RPETable.standard` exists and
+// `RPEBased()` defaults to it, so an estimate this package produces by default rests on percentages
+// transcribed from the chart in wide circulation and **not verified against a primary publication**
+// — the caveat is on the type, and `RPEStandardTableTests` is where those values are pinned, in a
+// different shape and a different unit from the source. That exposure is real, and it is why `G-6.2`
+// is recorded as outstanding rather than met. Nothing here is described as a reference value.
 //
 // **What that does and does not leave untested.** Every behaviour the chart's *values* do not
 // determine is tested here: which effort field wins, how a key between two rows interpolates, all
 // four ways an estimate refuses, that the rep range comes from the chart, and that replacing the
 // chart changes the answer with no call site changing. What is untested is whether the shipped
-// percentages are the published ones — because none are shipped.
+// percentages are the published ones — and no test in this file could establish that, because none
+// of them reads the shipped chart.
 //
-// The one structural claim about the real chart worth pinning early is asserted below as
-// `diagonalCellsAreOneCell`: because a key is `reps + reps in reserve`, a 3-rep set at RPE 9 and a
-// 4-rep set at RPE 10 must give the identical answer. That holds of any correct copy of the chart,
-// so it is checkable against whichever source is chosen, and it is the property that makes a
-// one-dimensional table a faithful representation of a two-dimensional grid.
+// `diagonalCellsAreOneCell` below asserts the property that lets a two-dimensional chart be stored
+// as one sequence: a cell depends only on `reps + reps in reserve`, so 3 reps at RPE 9 and 2 reps at
+// RPE 8 must agree exactly. Read it as a claim about the *representation* rather than about any
+// chart's digits — it runs against a fixture, and the key is computed as `reps + (10 − rpe)`, so it
+// holds whatever the numbers are. The version that can fail on a transcription error is in
+// `RPEStandardTableTests`, against the published grid written out as a literal.
 
 /// A fixture chart. **Not a published table** — the fractions are exact binary values (15/16,
 /// 7/8, 13/16, 3/4, 1/2) picked so that interpolation and the conversion to grams can be asserted

@@ -21,7 +21,7 @@ import Testing
 ///
 /// Anchored by `theseAreEveryPrescriptionType`, so a type dropped from this list fails a test
 /// rather than quietly taking its assertions with it.
-private func everyPrescription() throws -> [Prescription] {
+func everyPrescription() throws -> [Prescription] {
     [
         .fixedWeight(Weight(grams: 100_000)),
         .percentOfTrainingMax(percentage: 0.85),
@@ -37,7 +37,7 @@ private func everyPrescription() throws -> [Prescription] {
 }
 
 /// A context in which every case above resolves.
-private func fullContext() throws -> PrescriptionContext {
+func fullContext() throws -> PrescriptionContext {
     try prescriptionContext(
         trainingMax: prescribedTrainingMax(100_000),
         estimate: Weight(grams: 200_000),
