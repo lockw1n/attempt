@@ -15,6 +15,7 @@
 /// ``validRepRange`` and every percentage come from ``table``, so replacing the chart is
 /// constructing a different value.
 public struct RPEBased: E1RMFormula {
+    /// See ``E1RMFormula/id``.
     public let id = E1RMFormulaID.rpeBased
 
     /// The chart this instance reads.

@@ -166,11 +166,14 @@ jobs:
       - name: Lint
         run: swiftlint lint --strict --reporter github-actions-logging
 
-      # Proves the five custom rules actually fire, against fixtures that violate them on purpose,
-      # plus two guards that they do NOT fire on comments that merely mention a banned import.
-      # A rule with a broken regex or a path filter matching nothing leaves the step above green
-      # while enforcing nothing — that failure mode is invisible because it looks like success.
-      - name: Verify custom lint rules fire
+      # Proves the configured rules actually fire, against fixtures that violate them on purpose,
+      # plus guards that the import bans do NOT fire on comments that merely mention one. A rule
+      # with a broken regex or a path filter matching nothing leaves the step above green while
+      # enforcing nothing — that failure mode is invisible because it looks like success.
+      #
+      # `missing_docs` (NFR-0.3) is covered here as well as the custom rules, because a built-in
+      # whose *default* configuration is the hole needs the same proof a broken regex does.
+      - name: Verify lint rules fire
         run: ./scripts/verify-lint-rules.sh
 
       # TR-0.6.2's formatter half. `swift format` ships with the toolchain, so there is nothing to
@@ -185,3 +188,9 @@ jobs:
       # what its cases mean inside a 1:1 budget. Proven to fire against a 300-line regression.
       - name: Check doc-comment ratio
         run: ./scripts/check-doc-ratio.sh
+
+      # NFR-0.3's other half: `missing_docs` gates whether a doc comment exists, this gates whether
+      # it says what the number is measured in and which values are legal. A proxy, and its own
+      # header says so.
+      - name: Check documented units and ranges
+        run: ./scripts/check-doc-units.sh

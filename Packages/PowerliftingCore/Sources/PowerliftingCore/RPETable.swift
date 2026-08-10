@@ -26,12 +26,19 @@ public struct RPETable: Sendable, Hashable {
         /// A `Double` because the RPE scale is: a half-point RPE puts the key on a half rep. Half
         /// values are exactly representable, so a conventional entry lands on a key exactly rather
         /// than within a tolerance.
+        ///
+        /// Finite, and strictly ascending across a chart's ``RPETable/entries``. Both are enforced
+        /// by ``RPETable/init(entries:repRange:)`` rather than here, since ordering is a fact about
+        /// the sequence and not about one row.
         public let repsToFailure: Double
 
         /// The load as a fraction of a one-rep maximum — `0.837` for a chart's "83.7%".
         ///
         /// A fraction rather than the published percentage, so it reads as the dimensionless ratio
         /// it is and cannot be mistaken for a mass (`G-1.1`).
+        ///
+        /// Within `0 < fraction ≤ 1`, enforced by ``RPETable/init(entries:repRange:)``, whose note
+        /// says why the upper bound is the one that catches a row authored as `83.7`.
         public let fractionOfMax: Double
 
         /// Creates one row. See ``RPETable/init(entries:repRange:)`` for what is rejected.
@@ -44,7 +51,7 @@ public struct RPETable: Sendable, Hashable {
     /// The chart's rows, in strictly ascending ``Entry/repsToFailure`` order.
     public let entries: [Entry]
 
-    /// The rep counts this chart will answer for.
+    /// The rep counts this chart will answer for. Starts at 1 or above.
     ///
     /// Carried as data rather than shared with the closed-form five: it is the extent of this
     /// chart's columns, which is a fact about the chart, and a replacement declares its own. It is
@@ -88,10 +95,12 @@ public struct RPETable: Sendable, Hashable {
     /// multiplier is the reciprocal, so interpolating it instead would give a slightly different
     /// answer — and this way round is the one that reads as "between these two cells of the chart".
     ///
-    /// - Parameter repsToFailure: Reps performed plus reps in reserve.
-    /// - Returns: `nil` past either end of the chart. Not extrapolated: a chart fitted over its own
-    ///   range says nothing outside it, and extending the line produces a confident number at
-    ///   exactly the efforts a lifter reads most closely.
+    /// - Parameter repsToFailure: Reps performed plus reps in reserve, conventionally a whole or
+    ///   half rep. Any finite value; one falling between two rows is interpolated.
+    /// - Returns: A dimensionless fraction within `0 < f ≤ 1`, since interpolating between two rows
+    ///   of ``Entry/fractionOfMax`` cannot leave their bounds. `nil` past either end of the chart —
+    ///   not extrapolated: a chart fitted over its own range says nothing outside it, and extending
+    ///   the line produces a confident number at exactly the efforts a lifter reads most closely.
     public func fractionOfMax(atRepsToFailure repsToFailure: Double) -> Double? {
         guard let upperIndex = entries.firstIndex(where: { $0.repsToFailure >= repsToFailure }) else {
             return nil

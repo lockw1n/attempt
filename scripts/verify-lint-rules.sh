@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 #
-# T-0.05: prove the custom SwiftLint rules actually fire.
+# T-0.05: prove the configured SwiftLint rules actually fire.
 #
 #   scripts/verify-lint-rules.sh
+#
+# Mostly the custom rules, but not only them: `missing_docs` (T-0.23) is a built-in whose default
+# configuration gates nothing on this repo, so it needs the same proof a custom rule does. What is
+# checked here is "a rule we rely on, whose enforcement is invisible when it silently stops working".
 #
 # `swiftlint lint --strict` passing tells you the tree is clean. It does not tell you the rules
 # work — a typo in a `regex:`, a path filter that matches nothing, or a rule silently dropped by a
@@ -41,6 +45,7 @@ POSITIVE=(
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/PlatformImportFixture.swift:no_imports_in_core"
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/AttributedImportFixture.swift:no_imports_in_core"
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/AttributedImportFixture.swift:no_foundation_in_core"
+    "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/MissingDocsFixture.swift:missing_docs"
 )
 
 # file : rule identifier that must NOT appear (the file mentions the import in a comment)
@@ -98,11 +103,11 @@ done
 
 echo
 if (( failures > 0 )); then
-    echo "$failures rule check(s) failed — the custom rules are not enforcing what they claim." >&2
+    echo "$failures rule check(s) failed — the rules are not enforcing what they claim." >&2
     exit 1
 fi
 
 # Count distinct rules, not entries: since 2026-08-04 a fixture may be listed against more than one
 # rule (AttributedImportFixture triggers two), so ${#POSITIVE[@]} is a check count, not a rule count.
 rule_count="$(printf '%s\n' "${POSITIVE[@]}" | sed 's/.*://' | sort -u | wc -l | tr -d ' ')"
-echo "all $rule_count custom rules fire across ${#POSITIVE[@]} checks, and ${#NEGATIVE[@]} comment false-positive guards hold."
+echo "all $rule_count rules fire across ${#POSITIVE[@]} checks, and ${#NEGATIVE[@]} comment false-positive guards hold."

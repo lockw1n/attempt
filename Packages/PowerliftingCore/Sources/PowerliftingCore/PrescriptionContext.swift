@@ -42,7 +42,8 @@ public struct PrescriptionContext: Sendable {
     /// The slot's rep count (`FR-2.2.2`), read only by ``Prescription/rpeTarget(rpe:)``.
     ///
     /// A slot expressing a rep *range* has to pick one before resolving; nothing here can choose for
-    /// it.
+    /// it. To resolve, it must fall within the resolver's chart's ``RPETable/repRange``; outside it
+    /// is ``PrescriptionUnresolvedReason/repCountOutOfRange(_:)`` rather than a rejection here.
     public let reps: Int?
 
     /// The step a derived weight is snapped to, and the direction (`FR-2.2.4`, `FR-2.3.3`).

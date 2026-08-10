@@ -14,12 +14,25 @@
 /// Not `indirect`: the recursion runs through `Array` and `Dictionary`, which are already
 /// heap-allocated.
 public enum PreservedValue: Sendable, Hashable, Codable {
+    /// A JSON null.
     case null
+
+    /// A JSON boolean.
     case bool(Bool)
+
+    /// A JSON number that was whole and fit in an `Int`.
     case int(Int)
+
+    /// A JSON number that was not.
     case double(Double)
+
+    /// A JSON string.
     case string(String)
+
+    /// A JSON array, in source order.
     case array([PreservedValue])
+
+    /// A JSON object, re-encoded sorted by key — see the type's note.
     case object([String: PreservedValue])
 }
 

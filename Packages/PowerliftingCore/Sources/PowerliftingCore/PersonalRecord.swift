@@ -14,6 +14,9 @@ public struct PersonalRecord: Sendable, Hashable {
     public let weight: Weight
 
     /// The position of the record-holding set in the collection this was computed from.
+    ///
+    /// Zero-based. In a value ``PersonalRecordCalculator`` produced it is a valid index into the
+    /// collection that was passed in; a hand-built record is not checked.
     public let setOffset: Int
 
     /// Creates a record.

@@ -11,7 +11,7 @@ public enum ResolutionStep: Sendable, Hashable {
     /// The weight a chain starts from, and where it was read from.
     case basis(ResolutionBasis, Weight)
 
-    /// A factor applied to a weight, with the whole-gram product it landed on.
+    /// A dimensionless factor applied to a weight, with the whole-gram product it landed on.
     ///
     /// In a step either resolver produced the factor is finite and above zero: a percentage is
     /// guarded before it is applied, and a chart fraction is validated when the chart is built. So —
@@ -22,6 +22,11 @@ public enum ResolutionStep: Sendable, Hashable {
 
     /// An RPE target read off the chart: the effort asked for, the reps-to-failure key it collapses
     /// to, and the fraction of a maximum found there.
+    ///
+    /// `reps` is the slot's rep count, within the chart's ``RPETable/repRange``. `rpe` is on
+    /// ``SetRecord/rpeRange``'s scale of 1 through 10. `repsToFailure` is their sum, `reps + (10 −
+    /// rpe)`, so it is a rep count that may land on a half. `fractionOfMax` is dimensionless and
+    /// within `0 < f ≤ 1` — see ``RPETable/Entry/fractionOfMax``.
     ///
     /// The one step no other case has, and it yields no weight: the fraction *is* the factor that
     /// the ``scaled(by:from:to:)`` step after it applies.
@@ -34,13 +39,16 @@ public enum ResolutionStep: Sendable, Hashable {
     ///
     /// A full chain holds **two** of these — one where the training max was rounded and one where
     /// the percentage of it was — and they are different operations. Collapsing them leaves a small
-    /// discrepancy with nothing to explain it.
+    /// discrepancy with nothing to explain it. A chain where no rule ran holds none; the type's note
+    /// says when.
     case rounded(RoundingRule, from: Weight, to: Weight)
 
     /// What an equipment profile makes of an already-decided target.
     ///
     /// Descriptive, and always last: it reports what will go on the bar rather than changing the
-    /// number, so it produces no weight of its own. This is the same value
+    /// number, so it produces no weight of its own. **Absent** when no equipment profile was
+    /// supplied — which is not the same as a step reporting a bar with no plates, that being a
+    /// loading like any other. See the type's note. This is the same value
     /// ``ResolvedPrescription/loading`` holds — placed twice by one line, never computed twice.
     case loaded(Weight, as: PlateLoadingResult)
 
@@ -75,6 +83,8 @@ public enum ResolutionBasis: Sendable, Hashable {
 
     /// The heaviest completed working set at N or more reps — a weight somebody lifted, so there is
     /// no formula to name.
+    ///
+    /// `reps` is that N, within ``PersonalRecords/repRange`` in any step a resolver produced.
     case repMax(reps: Int)
 
     /// A resolved training max. Its own chain precedes this one and is ``TrainingMaxResolver``'s.

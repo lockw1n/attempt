@@ -5,7 +5,10 @@
 /// for exactly that reason — see its own note.
 ///
 /// **Nothing here is validated at construction.** A percentage may be zero, negative or `NaN`, and
-/// an RPE may be 47. Values that cannot produce a weight are *refusals at resolution*
+/// an RPE may be 47. The ranges a payload has to fall in to *resolve* are stated once, here rather
+/// than on each case: every percentage is a dimensionless ratio, finite and greater than zero and
+/// uncapped above — 1.1 is a peaking block, not an error — and an RPE is on ``SetRecord/rpeRange``'s
+/// scale of 1 through 10. Values outside them are *refusals at resolution*
 /// (`TR-0.2.11`), which is where a caller can be told which input was impossible — the same split
 /// ``TrainingMaxSource/percentOfRepMax(reps:)`` makes, and an enum case cannot be failable in any
 /// event. One consequence is worth stating: a `NaN` percentage makes a value that does not equal
