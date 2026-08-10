@@ -90,12 +90,25 @@ under the package's `Sources/`, and requires `python3`:
 ./scripts/coverage.sh --threshold 90
 ```
 
-Two CI assertions that also run locally — the first guards the app target's Swift
-build settings, the second the `@unchecked Sendable` justifications:
+The suite is also held to a runtime budget of 5 seconds. The gate prints the
+reading on every run, and `--self-test` proves it can fail:
+
+```bash
+./scripts/check-suite-runtime.sh
+```
+
+It covers `PowerliftingCore` only, and names it rather than globbing — a package
+with a real store behind its tests is expected to be slower. The script's header
+says what a failure here actually means.
+
+Three CI assertions that also run locally — the app target's Swift build
+settings, the `@unchecked Sendable` justifications, and the runtime gate's own
+proof:
 
 ```bash
 ./scripts/audit-app-build-settings.sh
 ./scripts/audit-unchecked-sendable.sh
+./scripts/check-suite-runtime.sh --self-test
 ```
 
 ## Conventions

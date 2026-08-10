@@ -77,6 +77,25 @@ jobs:
       - name: Build and test all packages with warnings as errors
         run: ./scripts/build-packages.sh --test
 
+      # NFR-0.1: the core suite under 5 seconds. Runs after the step above, so the package is
+      # already built and this measures execution rather than compilation.
+      #
+      # An architectural tripwire, not a performance gate — it sits ~100x above the current
+      # reading, and the script's header explains at length why that is the right budget rather
+      # than an unfired one. Read it before reacting to a failure here: the thing that closes a
+      # 100x gap is I/O arriving in the domain layer, not more tests.
+      - name: Check core suite runtime
+        run: ./scripts/check-suite-runtime.sh
+
+      # And the proof that the gate above can fail, since nothing in normal operation will ever
+      # make it. Seven negative cases, two positive. The negatives assert *which* failure fired,
+      # not merely that one did — a mutation probe found the ambiguity check could be deleted
+      # while the suite stayed green, because another branch caught the fixture and misdiagnosed
+      # it. A gate nobody has watched fail is decoration; one watched failing for the wrong
+      # reason is worse.
+      - name: Verify the runtime gate fires
+        run: ./scripts/check-suite-runtime.sh --self-test
+
       # G-6.4: proves the flags above still turn a warning into a failure, by building a fixture
       # that warns — once without the flags expecting success, once with them expecting failure.
       # Without this, a typo in the flag name leaves every build green and nothing enforced.
