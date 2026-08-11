@@ -455,7 +455,8 @@ struct E1RMFormulaIDTests {
         #expect(E1RMFormulaID.lombardi.rawValue == "lombardi")
         #expect(E1RMFormulaID.oConner.rawValue == "oconner")
         #expect(E1RMFormulaID.wathan.rawValue == "wathan")
-        #expect(E1RMFormulaID.allCases.count == 5)
+        #expect(E1RMFormulaID.rpeBased.rawValue == "rpebased")
+        #expect(E1RMFormulaID.allCases.count == 6)
     }
 
     @Test("Encodes as a bare string and round-trips")
@@ -472,6 +473,16 @@ struct E1RMFormulaIDTests {
         // so a name with nothing behind it cannot be computed with or meaningfully preserved — and
         // nothing upstream re-supplies it. See the type's note for the obligation this places on
         // T-0.32: an unreadable setting must fall back to a default, not cost the settings record.
+        //
+        // The example is "mayhew" — a real published equation with no implementation here, so it
+        // stays a genuine unknown. It used to be "rpeBased", chosen when that formula did not
+        // exist; once the case landed, the string was one capital letter away from a real raw value
+        // and read as an assertion about `rpeBased` rather than about unknown names.
+        #expect(throws: DecodingError.self) {
+            _ = try probeDecode(E1RMFormulaID.self, from: .string("mayhew"))
+        }
+        // The near miss the old example had become, kept deliberately: raw values are matched
+        // exactly, so the Swift spelling of the case is not a name this type accepts.
         #expect(throws: DecodingError.self) {
             _ = try probeDecode(E1RMFormulaID.self, from: .string("rpeBased"))
         }

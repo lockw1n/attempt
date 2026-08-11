@@ -90,12 +90,25 @@ under the package's `Sources/`, and requires `python3`:
 ./scripts/coverage.sh --threshold 90
 ```
 
-Two CI assertions that also run locally — the first guards the app target's Swift
-build settings, the second the `@unchecked Sendable` justifications:
+The suite is also held to a runtime budget of 5 seconds. The gate prints the
+reading on every run, and `--self-test` proves it can fail:
+
+```bash
+./scripts/check-suite-runtime.sh
+```
+
+It covers `PowerliftingCore` only, and names it rather than globbing — a package
+with a real store behind its tests is expected to be slower. The script's header
+says what a failure here actually means.
+
+Three CI assertions that also run locally — the app target's Swift build
+settings, the `@unchecked Sendable` justifications, and the runtime gate's own
+proof:
 
 ```bash
 ./scripts/audit-app-build-settings.sh
 ./scripts/audit-unchecked-sendable.sh
+./scripts/check-suite-runtime.sh --self-test
 ```
 
 ## Conventions
@@ -126,8 +139,11 @@ a refactor.
   and renaming one is a migration. What an unrecognised value does — degrade,
   preserve, or throw — is decided per type and documented on that type.
 - `Codable` domain types hand-write `init(from:)`, `encode(to:)` and their
-  `CodingKeys`, and pin key spelling *and* key order by assertion.
-- A domain collection is canonicalised — deduplicated and sorted — both on
+  `CodingKeys`, and pin key spelling *and* key order by assertion. Where the keys
+  are not all known at compile time, the constants and the write order are still
+  declared; only the `CodingKeys` enum gives way to a `CodingKey` struct.
+- A domain collection is canonicalised — sorted, and either deduplicated or, where
+  a repeat is a data-entry error rather than noise, refused outright — both on
   construction and on decode.
 - Derived values (e1RM, personal records, training maxes) are recomputed, never
   stored as truth. Cached copies carry a `computationVersion`.
@@ -191,13 +207,28 @@ Six custom rules beyond the standard set, in `.swiftlint.yml` under
 | `no_foundation_in_core` | `NFR-0.2` — `PowerliftingCore` is Foundation-free |
 | `no_imports_in_core` | `NFR-0.2` — `PowerliftingCore/Sources` imports nothing |
 
-Each is verified against a fixture that violates it on purpose. Run this after
-touching any rule — a broken regex or a path filter that matches nothing leaves
-`swiftlint lint` green while enforcing nothing:
+One built-in rule is configured rather than left at its defaults: `missing_docs`
+(`NFR-0.3`), repo-wide, with `excludes_inherited_types: false`. At the default it
+skips any type carrying a conformance clause together with all of its members,
+which in `PowerliftingCore` is every type.
+
+Each rule is verified against a fixture that violates it on purpose. Run this
+after touching any rule — a broken regex, a path filter that matches nothing or a
+relaxed option leaves `swiftlint lint` green while enforcing nothing:
 
 ```bash
 ./scripts/verify-lint-rules.sh
 ```
+
+Two documentation gates run in the same CI job:
+
+```bash
+./scripts/check-doc-ratio.sh    # `///` lines against code, Packages/*/Sources, max 1.5 aggregate
+./scripts/check-doc-units.sh    # a public Int or Double under a dimensioned name states its unit and range
+```
+
+Both take `--help`. `check-doc-ratio.sh --per-file` reports every file when the
+aggregate fails; `check-doc-units.sh --list` prints the declarations it checks.
 
 To lint on every build, add a **Run Script** build phase to the `Attempt` target
 with `if which swiftlint > /dev/null; then swiftlint; fi`, and untick "Based on
@@ -212,7 +243,7 @@ dependency analysis".
 | **Build** | audits the app target's build settings, then builds the app |
 | **Package tests** | both suites with coverage, all packages with warnings as errors, the warnings-gate proof, the `@unchecked Sendable` audit |
 | **Linux core build** | builds and tests `PowerliftingCore` on `ubuntu-latest` in a Swift container |
-| **SwiftLint** | lint, custom-rule verification, format check |
+| **SwiftLint** | lint, lint-rule verification, format check, doc-ratio and doc-units gates |
 
 All four are **required checks on `main`**, so a red run blocks the merge. The
 whole workflow takes about a minute.

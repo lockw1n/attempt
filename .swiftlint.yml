@@ -36,6 +36,7 @@ opt_in_rules:
   - joined_default_parameter
   - last_where
   - literal_expression_end_indentation
+  - missing_docs
   - multiline_arguments
   - multiline_parameters
   - operator_usage_whitespace
@@ -82,6 +83,34 @@ identifier_name:
 
 nesting:
   type_level: 2
+
+# T-0.23, NFR-0.3. Three of these four settings differ from the rule's defaults, and the first is
+# the difference between a gate and decoration.
+#
+#   excludes_inherited_types  MUST stay false. At its default of `true` the rule skips any type
+#                             carrying a conformance clause *together with all of its members*, and
+#                             every type in PowerliftingCore conforms to at least Sendable — so at
+#                             the default it gates nothing in the module it was added for. The
+#                             measurement behind that, and the fixture that keeps it honest, are in
+#                             scripts/lint-fixtures/.../MissingDocsFixture.swift.
+#   excludes_extensions       false. Free when set, and it closes the hole where a Codable
+#                             conformance, which lives in an extension here, lands undocumented.
+#   excludes_trivial_init     false, its default, stated so nobody relaxes it as housekeeping. A
+#                             `public init()` has to say which defaults it picks.
+#   error rather than warning matches every custom rule below: --strict promotes warnings anyway, and
+#                             a gate that reads as advisory in the config is just confusing.
+#
+# Scope is the whole repo, deliberately: built-in rules take no path filter, and the nested-config
+# alternative breaks the fixture that proves this one fires. Phase 1's public view surface inherits
+# it.
+#
+# This rule measures the *presence* of a doc comment. NFR-0.3 also asks for units and valid ranges,
+# which nothing mechanical can read; scripts/check-doc-units.sh is the guard for that half.
+missing_docs:
+  excludes_inherited_types: false
+  excludes_extensions: false
+  excludes_trivial_init: false
+  error: [open, public]
 
 # ---------------------------------------------------------------------------------------------
 # Custom rules (T-0.05)

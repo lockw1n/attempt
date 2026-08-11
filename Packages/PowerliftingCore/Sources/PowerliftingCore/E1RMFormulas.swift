@@ -17,7 +17,10 @@
 /// is a straight line fitted to multi-rep work, so extended down to a single rep it misses the
 /// point it "should" pass through. Not smoothed over.
 public struct Epley: RepOnlyE1RMFormula {
+    /// See ``E1RMFormula/id``.
     public let id = E1RMFormulaID.epley
+
+    /// See ``E1RMFormula/validRepRange``.
     public let validRepRange = E1RMFormulaID.tabulatedRepRange
 
     /// Creates the formula; it holds no state.
@@ -42,7 +45,11 @@ public struct Epley: RepOnlyE1RMFormula {
 /// the division; the guard living in the protocol extension rather than here is what makes that
 /// structural. ``multiplier(forReps:)`` is unguarded by contract and returns `+∞` there.
 public struct Brzycki: RepOnlyE1RMFormula {
+    /// See ``E1RMFormula/id``.
     public let id = E1RMFormulaID.brzycki
+
+    /// See ``E1RMFormula/validRepRange``. `1...10` stops far short of the 36 reps this equation is
+    /// arithmetically defined over, which is what keeps the singularity unreachable.
     public let validRepRange = E1RMFormulaID.tabulatedRepRange
 
     /// Creates the formula; it holds no state.
@@ -68,7 +75,10 @@ public struct Brzycki: RepOnlyE1RMFormula {
 /// not a reason to trust it further out. One of two equations needing a transcendental function in
 /// a module that imports nothing — see ``RealMath``.
 public struct Lombardi: RepOnlyE1RMFormula {
+    /// See ``E1RMFormula/id``.
     public let id = E1RMFormulaID.lombardi
+
+    /// See ``E1RMFormula/validRepRange``.
     public let validRepRange = E1RMFormulaID.tabulatedRepRange
 
     /// The exponent Lombardi's equation raises the rep count to.
@@ -94,7 +104,10 @@ public struct Lombardi: RepOnlyE1RMFormula {
 /// input. The two differ only in slope — 1/30 per rep against 1/40 — so this is the more
 /// conservative of the pair.
 public struct OConner: RepOnlyE1RMFormula {
+    /// See ``E1RMFormula/id``.
     public let id = E1RMFormulaID.oConner
+
+    /// See ``E1RMFormula/validRepRange``.
     public let validRepRange = E1RMFormulaID.tabulatedRepRange
 
     /// Creates the formula; it holds no state.
@@ -118,7 +131,10 @@ public struct OConner: RepOnlyE1RMFormula {
 /// The only **bounded** one of the five: as reps grow the multiplier approaches `100 / 48.8`. That
 /// is a statement about arithmetic, not accuracy. The second equation needing ``RealMath``.
 public struct Wathan: RepOnlyE1RMFormula {
+    /// See ``E1RMFormula/id``.
     public let id = E1RMFormulaID.wathan
+
+    /// See ``E1RMFormula/validRepRange``.
     public let validRepRange = E1RMFormulaID.tabulatedRepRange
 
     /// The three constants of Wathan's regression, named so the equation below reads as its source.
