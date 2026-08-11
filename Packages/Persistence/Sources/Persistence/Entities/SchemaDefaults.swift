@@ -19,7 +19,7 @@ import PowerliftingCore
 /// So none of these is a claim about a set or an exercise. Each is a choice of which way to be wrong
 /// in a store we did not write, made toward the reading that loses least.
 enum SchemaDefaults {
-    /// A join key that was never written.
+    /// A reference that was never written — a join key, or the anonymous user id (`TR-1.10`).
     ///
     /// Stable and shared, so every such row carries one recognisable value and a single predicate
     /// finds them. `UUID()` here would instead mint a *distinct* dangling reference per row, and two
@@ -63,4 +63,73 @@ enum SchemaDefaults {
 
     /// See ``isWarmup``.
     static let isCompleted = false
+
+    /// The present, for a bodyweight reading whose date was never written.
+    ///
+    /// The same direction as ``sessionDate`` and for a related reason: a distant-past sentinel would
+    /// anchor the left edge of every bodyweight chart and rolling average (`FR-3.5.1`) to a day
+    /// nobody weighed themselves, and would never fall inside `FR-1.8.2`'s de-duplication window, so
+    /// it would be a permanent phantom. Landing on today is wrong in a way somebody notices at once.
+    static var bodyweightDate: Date { .now }
+
+    /// ``BodyweightSource/manual``, for a reading whose provenance was never written.
+    ///
+    /// Not `.healthKit`, which would make the row a de-duplication candidate (`FR-1.8.2`) and let it
+    /// suppress a reading the user actually typed. A spurious manual entry is a row they can delete.
+    static let bodyweightSource = BodyweightSource.manual.rawValue
+
+    /// The distant past, for a training-max configuration whose effective date was never written.
+    ///
+    /// **The opposite direction from ``sessionDate`` and ``bodyweightDate``, because the lookup runs
+    /// the other way.** A configuration is read as "the latest one effective on or before today", so
+    /// the newest wins — and a row defaulting to *now* would displace the user's real configuration
+    /// from this moment on. Defaulting to the distant past loses every such contest and only ever
+    /// applies where the user has configured nothing.
+    static let effectiveFrom = Date.distantPast
+
+    /// ``TrainingMaxSourceKind/manual``, for a configuration whose source was never written.
+    ///
+    /// The one case that cannot quietly produce a plausible number: `manualWeightGrams` is `nil` on
+    /// such a row, so the configuration refuses to resolve and says so, where `.percentOfE1RM` would
+    /// silently hand back 90% of the user's e1RM as though they had asked for it. It is also
+    /// `FR-1.5.1.5`'s override — the state in which the derived pipeline is *not* running — which is
+    /// the right thing to say about a row this app did not write.
+    static let trainingMaxSource = TrainingMaxSourceKind.manual.rawValue
+
+    /// `FR-1.5.1.2`'s 90%, as the ratio the domain type uses.
+    static let trainingMaxPercentage = TrainingMaxConfiguration.defaultPercentage
+
+    /// A 2.5 kg loading step — one pair of 1.25 kg plates, the smallest change a standard set makes.
+    ///
+    /// Chosen rather than left at zero because zero is **not available**: `RoundingRule` refuses an
+    /// increment below one gram, so a row defaulting to zero could not be mapped to a rule at all.
+    static let roundingIncrementGrams = 2500
+
+    /// ``PowerliftingCore/RoundingStrategy/nearest`` — the direction that moves a target least.
+    static let roundingStrategy = RoundingStrategy.nearest.rawValue
+
+    /// ``PowerliftingCore/MassUnit/kilograms``.
+    ///
+    /// Kilogram display is lossless (1 kg is exactly 1000 g) where pound display is lossy by up to
+    /// half a gram, so this is the unit that cannot misreport a stored weight.
+    static let displayUnit = MassUnit.kilograms.rawValue
+
+    /// ``PowerliftingCore/E1RMFormulaID/defaultFormula``, which is the one place that value is
+    /// decided — the formula a lifter gets before opening settings *and* the fallback for a name
+    /// this app cannot read. Never a second constant: two would drift, invisibly.
+    static let e1RMFormula = E1RMFormulaID.defaultFormula.rawValue
+
+    /// ``ThemePreference/system`` — the case that expresses no preference rather than asserting one.
+    static let theme = ThemePreference.system.rawValue
+
+    /// The distant past, for a cached personal record whose date was never written.
+    ///
+    /// The direction that cannot mint a badge: `FR-1.6.3` announces a record at the moment it is
+    /// logged, and a wrong announcement outlives the row that caused it, so a row this app did not
+    /// write must not be able to read as "achieved just now". Nothing is lost by it looking old.
+    ///
+    /// The same value as ``effectiveFrom`` and a different argument — that one is about losing a
+    /// lookup, this one about losing a badge. Kept apart so neither can be changed on the other's
+    /// reasoning.
+    static let achievedAt = Date.distantPast
 }

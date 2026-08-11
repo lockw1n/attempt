@@ -59,4 +59,67 @@ struct SchemaDefaultsTests {
         #expect(SchemaDefaults.isWarmup == false)
         #expect(SchemaDefaults.isCompleted == false)
     }
+
+    // The three storage vocabularies, by spelling. `manual` twice, for two unrelated reasons: a
+    // reading of unknown provenance must not suppress a typed one under FR-1.8.2's de-duplication,
+    // and a training-max source of unknown kind must refuse to resolve rather than quietly hand back
+    // 90% of the user's e1RM.
+    @Test("The supporting vocabulary defaults are the deliberate cases, by spelling")
+    func supportingVocabularyDefaults() {
+        #expect(SchemaDefaults.bodyweightSource == "manual")
+        #expect(SchemaDefaults.trainingMaxSource == "manual")
+        #expect(SchemaDefaults.roundingStrategy == "nearest")
+        #expect(SchemaDefaults.displayUnit == "kilograms")
+        #expect(SchemaDefaults.e1RMFormula == "epley")
+        #expect(SchemaDefaults.theme == "system")
+    }
+
+    @Test("Each supporting default names a real case")
+    func supportingVocabularyDefaultsResolve() {
+        #expect(BodyweightSource(rawValue: SchemaDefaults.bodyweightSource) == .manual)
+        #expect(TrainingMaxSourceKind(rawValue: SchemaDefaults.trainingMaxSource) == .manual)
+        #expect(RoundingStrategy(rawValue: SchemaDefaults.roundingStrategy) == .nearest)
+        #expect(MassUnit(rawValue: SchemaDefaults.displayUnit) == .kilograms)
+        #expect(E1RMFormulaID(rawValue: SchemaDefaults.e1RMFormula) == .epley)
+        #expect(ThemePreference(rawValue: SchemaDefaults.theme) == .system)
+    }
+
+    // One constant, in the domain layer, doing both jobs — the formula a lifter gets before opening
+    // settings and the fallback for a name this app cannot read. A second one here would drift.
+    @Test("The formula default is the domain layer's, not a copy of it")
+    func e1RMFormulaDefaultIsNotASecondConstant() {
+        #expect(SchemaDefaults.e1RMFormula == E1RMFormulaID.defaultFormula.rawValue)
+    }
+
+    // Zero is not available here: RoundingRule refuses an increment below one gram, so a column
+    // defaulting to zero could not be mapped to a rule at all.
+    @Test("The default rounding increment is loadable, and zero would not be")
+    func roundingIncrementDefaultIsLoadable() {
+        #expect(SchemaDefaults.roundingIncrementGrams == 2_500)
+        #expect(
+            RoundingRule(
+                increment: Weight(grams: SchemaDefaults.roundingIncrementGrams),
+                strategy: .nearest
+            ) != nil
+        )
+        #expect(RoundingRule(increment: Weight(grams: 0), strategy: .nearest) == nil)
+    }
+
+    @Test("The default training-max percentage is the domain layer's 90%, as a ratio")
+    func trainingMaxPercentageDefault() {
+        #expect(SchemaDefaults.trainingMaxPercentage == 0.9)
+    }
+
+    // Two date defaults pointing at *now* and two pointing at the distant past, and the direction is
+    // per column rather than per module: `sessionDate` and `bodyweightDate` must not anchor the far
+    // past, while `effectiveFrom` must lose every lookup against a real configuration and
+    // `achievedAt` must never read as a record set just now.
+    @Test("The four date defaults point in the two directions their lookups need")
+    func dateDefaultDirections() {
+        #expect(SchemaDefaults.bodyweightDate.timeIntervalSinceNow > -1)
+        #expect(SchemaDefaults.bodyweightDate > Date(timeIntervalSince1970: 1_700_000_000))
+        #expect(SchemaDefaults.effectiveFrom == Date.distantPast)
+        #expect(SchemaDefaults.achievedAt == Date.distantPast)
+        #expect(SchemaDefaults.effectiveFrom < SchemaDefaults.sessionDate)
+    }
 }
