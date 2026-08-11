@@ -235,6 +235,15 @@ Two documentation gates run in the same CI job:
 Both take `--help`. `check-doc-ratio.sh --per-file` reports every file when the
 aggregate fails; `check-doc-units.sh --list` prints the declarations it checks.
 
+So does one schema gate, which keeps CloudKit compatible without enabling it —
+no iCloud entitlement, no source naming a `cloudKitDatabase`, no custom migration
+stage, and every `@Model` present in the list the compatibility tests audit:
+
+```bash
+./scripts/check-cloudkit.sh
+./scripts/check-cloudkit.sh --self-test   # each check, in both directions
+```
+
 To lint on every build, add a **Run Script** build phase to the `Attempt` target
 with `if which swiftlint > /dev/null; then swiftlint; fi`, and untick "Based on
 dependency analysis".

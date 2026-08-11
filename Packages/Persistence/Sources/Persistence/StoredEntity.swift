@@ -15,10 +15,13 @@ import SwiftData
 /// join by `UUID` field and declare no relationships — `id` is the only join key there is.
 ///
 /// **The default mints identity, so nothing but `init` may reach it.** `= UUID()` is there to
-/// satisfy CloudKit, not to supply a missing value: a row arriving without one is given a *new*
-/// identity rather than refused, which forks history instead of failing. The same shape is a trap
-/// in migrations — a non-optional `UUID` column added in a later schema version backfills every
-/// existing row from one evaluated default, so they all share a value.
+/// satisfy CloudKit, not to supply a missing value: a row arriving without one is given an identity
+/// rather than refused, which forks history instead of failing. Down the `init` path that identity
+/// is minted per instance — but the **store's** default is frozen once per launch (see
+/// ``SchemaDefaults``), so rows that reach it collide on one id rather than fork, and `G-2.5` forbids
+/// the unique constraint that would notice. The same shape is a trap in migrations: a non-optional
+/// `UUID` column added in a later schema version backfills every existing row from one evaluated
+/// default.
 ///
 /// **`updatedAt` is stamped by the save path**, not by callers — see ``ModelContext/saveStamped(at:)``,
 /// which every mutation reaches the store through. A bare `save()` writes a row whose `updatedAt`

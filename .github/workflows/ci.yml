@@ -213,3 +213,12 @@ jobs:
       # header says so.
       - name: Check documented units and ranges
         run: ./scripts/check-doc-units.sh
+
+      # OUT-0.2, G-1.7 and the half of DOD-0.4 that a test cannot see: no iCloud entitlement, no
+      # source naming a CloudKit database, no custom migration stage, and every @Model actually in
+      # the audited list. The schema audit itself is CloudKitCompatibilityTests in the test job.
+      - name: Check CloudKit stays compatible, not enabled
+        run: ./scripts/check-cloudkit.sh
+
+      - name: Verify the CloudKit gate fires
+        run: ./scripts/check-cloudkit.sh --self-test

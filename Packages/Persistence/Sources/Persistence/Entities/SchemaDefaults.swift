@@ -18,13 +18,19 @@ import PowerliftingCore
 ///
 /// So none of these is a claim about a set or an exercise. Each is a choice of which way to be wrong
 /// in a store we did not write, made toward the reading that loses least.
+///
+/// **Every default here is evaluated once per process, not once per row.** SwiftData freezes the
+/// value into the model's metadata when it is first built, so a `Date` default is the moment the app
+/// launched and a `UUID()` default is one value shared by every row that reaches it — the same value
+/// on this launch, a different one on the next, and a different one again on another device. Writing
+/// a default as a computed `var` does not change that; nothing but the store reads these.
 enum SchemaDefaults {
     /// A reference that was never written — a join key, or the anonymous user id (`TR-1.10`).
     ///
-    /// Stable and shared, so every such row carries one recognisable value and a single predicate
-    /// finds them. `UUID()` here would instead mint a *distinct* dangling reference per row, and two
-    /// devices defaulting the same row would disagree — a conflict `G-2.4` resolves between two
-    /// values that are both meaningless.
+    /// Stable *across* launches and devices, so every such row carries one recognisable value and a
+    /// single predicate finds them all. `UUID()` here would be frozen per launch instead: one
+    /// dangling reference this run, another the next, and two devices defaulting the same row would
+    /// disagree — a conflict `G-2.4` resolves between two values that are both meaningless.
     static let unlinkedID = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
 
     /// ``PowerliftingCore/Movement/other`` — the case that claims nothing.
@@ -50,7 +56,8 @@ enum SchemaDefaults {
     /// The present, for a session whose training date was never written.
     ///
     /// Not a distant-past sentinel, which would sort ahead of every real session and so win every
-    /// personal-record tie-break (`TR-0.2.8`). Computed rather than stored, so each row gets its own.
+    /// personal-record tie-break (`TR-0.2.8`). "The present" means the launch, not the row — see the
+    /// type's note.
     static var sessionDate: Date { .now }
 
     /// A set nobody classified is not a warmup…
@@ -66,10 +73,11 @@ enum SchemaDefaults {
 
     /// The present, for a bodyweight reading whose date was never written.
     ///
-    /// The same direction as ``sessionDate`` and for a related reason: a distant-past sentinel would
-    /// anchor the left edge of every bodyweight chart and rolling average (`FR-3.5.1`) to a day
-    /// nobody weighed themselves, and would never fall inside `FR-1.8.2`'s de-duplication window, so
-    /// it would be a permanent phantom. Landing on today is wrong in a way somebody notices at once.
+    /// The same direction as ``sessionDate``, with the same once-per-launch caveat, and for a related
+    /// reason: a distant-past sentinel would anchor the left edge of every bodyweight chart and
+    /// rolling average (`FR-3.5.1`) to a day nobody weighed themselves, and would never fall inside
+    /// `FR-1.8.2`'s de-duplication window, so it would be a permanent phantom. Landing on today is
+    /// wrong in a way somebody notices at once.
     static var bodyweightDate: Date { .now }
 
     /// ``BodyweightSource/manual``, for a reading whose provenance was never written.
