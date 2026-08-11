@@ -237,7 +237,9 @@ aggregate fails; `check-doc-units.sh --list` prints the declarations it checks.
 
 So does one schema gate, which keeps CloudKit compatible without enabling it —
 no iCloud entitlement, no source naming a `cloudKitDatabase`, no custom migration
-stage, and every `@Model` present in the list the compatibility tests audit:
+stage, and every `@Model` present in `SchemaV1.models` — which is both the store's
+schema and the list the compatibility tests audit, so an entity cannot join one
+without joining the other:
 
 ```bash
 ./scripts/check-cloudkit.sh

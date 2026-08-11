@@ -24,15 +24,15 @@
 #                              CloudKit mirroring cannot perform, and T-0.34 is about to write the
 #                              first SchemaMigrationPlan — this is here before it, not after.
 #
-#   4  DOD-0.4                 Every @Model under Packages/Persistence/Sources/ is in the audited
-#                              list in CloudKitCompatibilityTests.swift. "Every model passes" is a
-#                              claim about a list, and a tenth entity that never joins the list
-#                              passes by not being looked at. Checked by set comparison in both
-#                              directions.
+#   4  DOD-0.4                 Every @Model under Packages/Persistence/Sources/ is in `SchemaV1.models`.
+#                              "Every model passes" is a claim about a list, and a tenth entity that
+#                              never joins the list passes by not being looked at — and, now that
+#                              the list is the schema itself, would not be in the store either.
+#                              Checked by set comparison in both directions.
 #
-# Check 4 is a grep against a Swift array because SchemaV1 does not exist yet. When T-0.34 ships
-# `SchemaV1.models`, the array becomes that list and this check keeps working — the markers are what
-# is parsed, not the contents.
+# Check 4 is a grep against the array between the markers in SchemaV1.swift, which is both the
+# audit's population and the schema's. It was a test-local array until T-0.34; the markers are what
+# is parsed, not the contents, so the swap changed one path.
 #
 # THE POPULATION IS `git ls-files`, NOT A DIRECTORY WALK. Two reasons, and both were review
 # findings. It is the same set of files CI checks out, so a violation cannot hide in a path this
@@ -58,7 +58,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-AUDIT_FILE="Packages/Persistence/Tests/PersistenceTests/CloudKitCompatibilityTests.swift"
+MODEL_LIST_FILE="Packages/Persistence/Sources/Persistence/SchemaV1.swift"
 ENTITY_DIR="Packages/Persistence/Sources/Persistence"
 
 # Two alternatives, and each is self-tested alone. `com.apple.developer.icloud-*` is what an
@@ -145,9 +145,9 @@ audited_models() {
 }
 
 check_audit_covers_models() {
-    local entity_dir="$1" audit_file="$2" declared audited missing extra
+    local entity_dir="$1" model_list_file="$2" declared audited missing extra
     declared="$(declared_models "$entity_dir")"
-    audited="$(audited_models "$audit_file")"
+    audited="$(audited_models "$model_list_file")"
 
     if [[ -z "$declared" ]]; then
         fail "audit coverage" "found no @Model under $entity_dir — the parse is broken, not the tree."
@@ -282,8 +282,8 @@ EOF
     exit 0
 fi
 
-if [[ ! -f "$AUDIT_FILE" ]]; then
-    echo "check-cloudkit.sh: $AUDIT_FILE is missing — the audit it gates no longer exists." >&2
+if [[ ! -f "$MODEL_LIST_FILE" ]]; then
+    echo "check-cloudkit.sh: $MODEL_LIST_FILE is missing — the list it gates no longer exists." >&2
     exit 66
 fi
 
@@ -314,7 +314,7 @@ else
     fi
 fi
 
-if check_audit_covers_models "$ENTITY_DIR" "$AUDIT_FILE"; then
+if check_audit_covers_models "$ENTITY_DIR" "$MODEL_LIST_FILE"; then
     ok "audit coverage" "$(declared_models "$ENTITY_DIR" | wc -l | tr -d ' ') @Model types, all audited"
 fi
 

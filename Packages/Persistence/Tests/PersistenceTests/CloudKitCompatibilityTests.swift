@@ -37,24 +37,10 @@ import Testing
 // broken fixture below reproduces the constraint behind one refusal; what is *not* re-run per commit
 // is CoreData itself.
 
-// The models this audit covers. `scripts/check-cloudkit.sh` compares this list against every
-// `@Model` under `Sources/`, so a tenth entity cannot be added without being audited — the markers
-// below are what that script parses. T-0.34 owns `SchemaV1.models` and should replace the list with
-// it, keeping the markers.
-//
-// audited-models:begin
-let cloudKitAuditedModels: [any PersistentModel.Type] = [
-    ExerciseEntity.self,
-    WorkoutSessionEntity.self,
-    ExerciseEntryEntity.self,
-    SetEntryEntity.self,
-    BodyweightEntryEntity.self,
-    TrainingMaxConfigEntity.self,
-    EquipmentProfileEntity.self,
-    UserSettingsEntity.self,
-    PersonalRecordCacheEntity.self,
-]
-// audited-models:end
+// The models this audit covers are `SchemaV1.models` — the schema itself, not a second list beside
+// it. Two lists that must agree is the drift `scripts/check-cloudkit.sh` check 4 exists to prevent,
+// so it now parses the markers around `SchemaV1.models`; an entity that never joins the store
+// cannot evade the audit by not being in it either.
 
 /// Every way `schema` breaks `G-2.5`, empty when it honours it.
 ///
@@ -115,14 +101,16 @@ func mintedUUIDColumns(in schema: Schema) -> (sentinels: [String], minted: [Stri
 
 @Suite("CloudKit compatibility (G-2.5)")
 struct CloudKitCompatibilityTests {
-    private let schema = Schema(cloudKitAuditedModels)
+    // The versioned form, not `Schema(SchemaV1.models)`: it is what a container actually loads, and
+    // it carries the version identifier a migration keys off.
+    private let schema = Schema(versionedSchema: SchemaV1.self)
 
     @Test("All nine entities are in the audited schema")
     func nineEntities() {
         // Without this the audit passes vacuously on an empty or mis-built schema, which is exactly
         // how a checklist becomes a markdown table.
         #expect(schema.entities.count == 9)
-        #expect(cloudKitAuditedModels.count == 9)
+        #expect(SchemaV1.models.count == 9)
     }
 
     @Test("Every property is optional or defaulted, nothing is unique, nothing is a relationship")
@@ -150,7 +138,7 @@ struct CloudKitCompatibilityTests {
         //
         // Turning red here would mean SwiftData started minting per row, which is better news than
         // the current behaviour and would want the checklist's `id` line rewritten.
-        let rebuilt = Schema(cloudKitAuditedModels)
+        let rebuilt = Schema(versionedSchema: SchemaV1.self)
 
         for name in ["id", "createdAt", "updatedAt"] {
             let first = defaultValue(of: name, on: "ExerciseEntity", in: schema)
