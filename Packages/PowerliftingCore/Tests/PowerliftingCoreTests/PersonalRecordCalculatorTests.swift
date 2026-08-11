@@ -257,6 +257,14 @@ struct PersonalRecordAssistedTests {
         #expect(calculator.records(in: mixed).bestE1RM?.weight == Weight(grams: 5_833))
     }
 
+    // G-1.5. Zero is reserved: it is what a defaulted column holds under G-2.5, so a real version
+    // starting at zero would make "computed by the first rules" indistinguishable from "never
+    // computed", and a stale cache would read as current.
+    @Test("The rules version is at least 1, leaving zero to mean no version recorded")
+    func computationVersionReservesZero() {
+        #expect(PersonalRecordCalculator.computationVersion >= 1)
+    }
+
     @Test("Zero is a real load, and sits between assisted and loaded work")
     func zeroIsRankedNotTreatedAsAbsent() throws {
         let log = [
