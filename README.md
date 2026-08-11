@@ -49,7 +49,10 @@ rather than stylistic:
   rules. One consequence to know before you hit it: `pow` and `exp` are
   unavailable, so use `RealMath.swift` rather than reaching for an import.
 - **Only `Persistence` imports `SwiftData`.** Everything else reaches storage
-  through repository protocols that expose value types and DTOs.
+  through repository protocols that expose value types and DTOs. Entities are
+  `internal` to the package, so a `@Model` cannot escape it; the conventions every
+  entity carries — identity, timestamps, soft delete — are on the `StoredEntity`
+  protocol, which is where to look before adding one.
 
 All three packages are linked into the app target as local package references, so
 `xcodebuild` builds them alongside the app. The project uses **file-system
@@ -195,7 +198,7 @@ swift format --in-place --recursive Attempt Packages
 **`--strict` is not optional.** Without it `swift format lint` prints violations
 as warnings and still exits 0, so a check that omits it is decorative.
 
-Six custom rules beyond the standard set, in `.swiftlint.yml` under
+Eight custom rules beyond the standard set, in `.swiftlint.yml` under
 `custom_rules`:
 
 | Rule | Enforces |
@@ -206,6 +209,8 @@ Six custom rules beyond the standard set, in `.swiftlint.yml` under
 | `no_swiftdata_outside_persistence` | `TR-0.1.2` — only `Persistence` imports SwiftData |
 | `no_foundation_in_core` | `NFR-0.2` — `PowerliftingCore` is Foundation-free |
 | `no_imports_in_core` | `NFR-0.2` — `PowerliftingCore/Sources` imports nothing |
+| `no_hard_delete_outside_purge` | `G-1.3` — deletion is soft outside `Persistence/Purge/` |
+| `no_bare_save_in_persistence` | `G-1.2`/`G-2.4` — `saveStamped(at:)`, not `save()` |
 
 One built-in rule is configured rather than left at its defaults: `missing_docs`
 (`NFR-0.3`), repo-wide, with `excludes_inherited_types: false`. At the default it

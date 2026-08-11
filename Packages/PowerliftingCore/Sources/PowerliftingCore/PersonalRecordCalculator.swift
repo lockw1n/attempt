@@ -34,6 +34,20 @@ public struct PersonalRecordCalculator: Sendable {
         self.init(e1rm: E1RMCalculator(id))
     }
 
+    /// The version of the rules below, which a `G-1.5` cache of these records stores alongside it.
+    ///
+    /// Bump it when a change here would produce a different record from identical sets — a
+    /// different tie-break, a different definition of a working set. A *settings* change is not one
+    /// of these: `TR-1.6` and `FR-1.6.4` make that a separate invalidation trigger, which is why
+    /// the rep-max rules, reading no setting whatsoever, are the half that `TR-0.3.9` may cache.
+    ///
+    /// Always at least 1, so that a stored zero — what a defaulted column yields under `G-2.5` —
+    /// can only mean no version was recorded.
+    ///
+    /// The persistence layer must not declare a version of its own: a copy there is one nobody
+    /// bumps when this file changes.
+    public static let computationVersion = 1
+
     /// Every record `sets` holds.
     ///
     /// - Parameter sets: One exercise's sets, oldest first. Warmups and incomplete sets may be

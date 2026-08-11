@@ -194,6 +194,30 @@ custom_rules:
     message: "TR-0.1.2: only Persistence may import SwiftData. Reach storage through a repository protocol."
     severity: error
 
+  no_bare_save_in_persistence:
+    name: "Bare save() in the persistence layer"
+    regex: '\bsave\(\)'
+    match_kinds:
+      - identifier
+    included:
+      - 'Packages/Persistence/Sources/.*\.swift'
+    excluded:
+      - 'Packages/Persistence/Sources/Persistence/SaveStamping.swift'
+    message: "G-1.2/G-2.4: call saveStamped(at:). A bare save() writes a row whose updatedAt describes the previous write."
+    severity: error
+
+  no_hard_delete_outside_purge:
+    name: "Hard delete outside the purge routine"
+    regex: '\.delete\(|\.deleteAllData\(|\.erase\('
+    match_kinds:
+      - identifier
+    included:
+      - 'Packages/Persistence/.*\.swift'
+    excluded:
+      - 'Packages/Persistence/Sources/Persistence/Purge/.*\.swift'
+    message: "G-1.3: deletion is soft — call markDeleted(at:). Hard deletion lives only in Sources/Persistence/Purge/."
+    severity: error
+
   no_foundation_in_core:
     name: "Foundation imported into the domain core"
     regex: '\bimport[ \t]+(Foundation|FoundationEssentials|FoundationNetworking)\b'

@@ -17,10 +17,17 @@
 # Two directions are checked:
 #
 #   POSITIVE  each fixture under scripts/lint-fixtures/ must trigger its rule.
-#   NEGATIVE  files that merely *mention* a banned import in prose must NOT trigger it.
-#             PowerliftingCore.swift and Persistence.swift both document the rules they are
-#             subject to, so the import bans rely on `match_kinds` to skip `comment` syntax.
-#             Without that they would fire on the very files explaining them.
+#   NEGATIVE  files that merely *mention* a banned construct in prose must NOT trigger it.
+#             PowerliftingCore.swift documents the rules it is subject to and names SwiftData and
+#             Foundation while doing so, so those bans rely on `match_kinds` to skip `comment`
+#             syntax. Without it they would fire on the very file explaining them.
+#             The guard used to be Persistence.swift, which was worthless: that path is `excluded`
+#             from no_swiftdata_outside_persistence, so the rule could not fire on it whatever
+#             match_kinds said. A negative guard has to sit on a file the rule actually scans.
+#             SoftDelete.swift is the same shape for no_hard_delete_outside_purge, and
+#             StoredEntity.swift for no_bare_save_in_persistence — each spells the banned call
+#             in a doc comment, in a file the rule does scan. SaveStamping.swift would NOT do
+#             for the second: it is the rule's own `excluded` path.
 #             `no_imports_in_core` (T-0.14) is anchored to the start of a line, so a `//` comment
 #             cannot reach it and PowerliftingCore.swift alone would be a guard that cannot fail.
 #             BlockCommentImportFixture.swift closes that: a block comment *can* start a line with
@@ -46,13 +53,17 @@ POSITIVE=(
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/AttributedImportFixture.swift:no_imports_in_core"
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/AttributedImportFixture.swift:no_foundation_in_core"
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/MissingDocsFixture.swift:missing_docs"
+    "scripts/lint-fixtures/Packages/Persistence/HardDeleteFixture.swift:no_hard_delete_outside_purge"
+    "scripts/lint-fixtures/Packages/Persistence/Sources/BareSaveFixture.swift:no_bare_save_in_persistence"
 )
 
 # file : rule identifier that must NOT appear (the file mentions the import in a comment)
 NEGATIVE=(
     "Packages/PowerliftingCore/Sources/PowerliftingCore/PowerliftingCore.swift:no_foundation_in_core"
     "Packages/PowerliftingCore/Sources/PowerliftingCore/PowerliftingCore.swift:no_imports_in_core"
-    "Packages/Persistence/Sources/Persistence/Persistence.swift:no_swiftdata_outside_persistence"
+    "Packages/PowerliftingCore/Sources/PowerliftingCore/PowerliftingCore.swift:no_swiftdata_outside_persistence"
+    "Packages/Persistence/Sources/Persistence/SoftDelete.swift:no_hard_delete_outside_purge"
+    "Packages/Persistence/Sources/Persistence/StoredEntity.swift:no_bare_save_in_persistence"
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/BlockCommentImportFixture.swift:no_imports_in_core"
 )
 
