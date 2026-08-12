@@ -5,7 +5,7 @@ import SwiftData
 
 // The five supporting entities. See `RecordMapping.swift` for the three members' contract.
 
-extension BodyweightEntryEntity {
+extension BodyweightEntryEntity: RecordMappable {
     /// This row as a record.
     var record: BodyweightEntry {
         BodyweightEntry(
@@ -40,7 +40,7 @@ extension BodyweightEntryEntity {
     }
 }
 
-extension TrainingMaxConfigEntity {
+extension TrainingMaxConfigEntity: RecordMappable {
     /// This row as a record.
     ///
     /// The payload columns are carried whatever ``sourceRawValue`` says, and the percentage and
@@ -102,7 +102,7 @@ extension TrainingMaxConfigEntity {
     }
 }
 
-extension EquipmentProfileEntity {
+extension EquipmentProfileEntity: RecordMappable {
     /// This row as a record, pairing and all.
     ///
     /// The two lists cross verbatim — unsorted, unpaired and repeats intact if that is what the row
@@ -163,7 +163,7 @@ extension EquipmentProfileEntity {
     }
 }
 
-extension UserSettingsEntity {
+extension UserSettingsEntity: RecordMappable {
     /// This row as a record.
     var record: UserSettings {
         UserSettings(
@@ -222,7 +222,7 @@ extension UserSettingsEntity {
     }
 }
 
-extension PersonalRecordCacheEntity {
+extension PersonalRecordCacheEntity: RecordMappable {
     /// This row as a record.
     var record: PersonalRecordCache {
         PersonalRecordCache(

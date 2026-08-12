@@ -6,7 +6,7 @@ import SwiftData
 // The four training entities. See `RecordMapping.swift` for the three members' contract and for why
 // `update(from:)` leaves the audit columns alone.
 
-extension ExerciseEntity {
+extension ExerciseEntity: RecordMappable {
     /// This row as a record. All four vocabulary columns resolve; none can fail.
     var record: Exercise {
         Exercise(
@@ -65,7 +65,7 @@ extension ExerciseEntity {
     }
 }
 
-extension WorkoutSessionEntity {
+extension WorkoutSessionEntity: RecordMappable {
     /// This row as a record.
     var record: WorkoutSession {
         WorkoutSession(
@@ -111,7 +111,7 @@ extension WorkoutSessionEntity {
     }
 }
 
-extension ExerciseEntryEntity {
+extension ExerciseEntryEntity: RecordMappable {
     /// This row as a record.
     var record: ExerciseEntry {
         ExerciseEntry(
@@ -148,7 +148,7 @@ extension ExerciseEntryEntity {
     }
 }
 
-extension SetEntryEntity {
+extension SetEntryEntity: RecordMappable {
     /// This row as a record.
     ///
     /// `modifiers` is the one column that crosses without a fallback table: an unrecognised spelling

@@ -27,6 +27,10 @@ public protocol ExerciseRepository: Sendable {
     /// restore from forking history into a second row sharing an id. ``Exercise/createdAt`` is
     /// honoured only when the row is new; ``Exercise/updatedAt`` and ``Exercise/deletedAt`` are
     /// ignored.
+    ///
+    /// - Throws: ``RepositoryError/danglingReference(recordID:referencing:)`` if
+    ///   ``Exercise/parentExerciseID`` names an exercise that does not exist. A variation is
+    ///   therefore saved after its parent — the same ordering an entry owes its session.
     func save(_ exercise: Exercise) async throws
 
     /// The training-max configuration in force for `exerciseID` on `date` — the latest entry
