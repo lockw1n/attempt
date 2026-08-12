@@ -17,6 +17,7 @@ excluded:
   - Packages/PowerliftingCore/.build
   - Packages/Persistence/.build
   - Packages/RepositoryInterface/.build
+  - Packages/RepositoryFakes/.build
   - Packages/DesignSystem/.build
 
 disabled_rules:

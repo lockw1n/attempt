@@ -33,6 +33,7 @@ Packages/
 ├── PowerliftingCore/        Pure Swift domain layer: value types, formulas, resolvers
 ├── RepositoryInterface/     The storage boundary: repository protocols, records, wire format
 ├── Persistence/             SwiftData models, schema versioning, repositories
+├── RepositoryFakes/         In-memory repositories, and the conformance suite both must pass
 └── DesignSystem/            Tokens, components, theme (empty until Phase 1)
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -41,7 +42,10 @@ Attempt/
 ```
 
 Dependencies run one way: `Persistence` → `RepositoryInterface` → `PowerliftingCore`,
-never back, and the app may import any of them. Two constraints are load-bearing
+never back, and the app may import any of them. `RepositoryFakes` sits beside
+`Persistence` rather than under it: its library depends on `RepositoryInterface`
+alone, and only its test target depends on `Persistence`, because the conformance
+suite there has to name both implementations. Two constraints are load-bearing
 rather than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
@@ -82,6 +86,20 @@ SwiftData-backed type. Repository reads and writes live in
 `RowResolution.swift`, which carries the one shape every read has and the reason it
 is not a `FetchDescriptor`.
 
+`InMemoryRepositoryStack()` is the same five repositories without a store file, for
+previews and for tests of code that consumes them:
+
+```swift
+let stack = InMemoryRepositoryStack()
+```
+
+It is the only public type in `RepositoryFakes`, for the reason `PersistenceStack`
+is the only public type in `Persistence`. The two are held to one suite: the
+conformance tests in `Packages/RepositoryFakes/Tests/` are parameterized over both
+stacks and so run twice, once per implementation. That suite's header says what is
+in its scope and what is not. The handful of tests beside them covering the fakes'
+own machinery run once.
+
 `PowerliftingCore`, `Persistence` and `DesignSystem` are linked into the app
 target as local package references, so `xcodebuild` builds them alongside the app.
 `RepositoryInterface` arrives transitively through `Persistence`; the composition
@@ -107,14 +125,15 @@ path to work on one in isolation (`./scripts/build-packages.sh Packages/Powerlif
 Note that a bare `swift build` does **not** fail on warnings — that gate lives in
 the script, not in the manifests.
 
-`PowerliftingCore`, `RepositoryInterface` and `Persistence` each have a Swift
-Testing target (`@Test` / `#expect`, not XCTest). The app target has no tests; it
+`PowerliftingCore`, `RepositoryInterface`, `Persistence` and `RepositoryFakes` each
+have a Swift Testing target (`@Test` / `#expect`, not XCTest). The app target has no tests; it
 is a composition root with an empty scene.
 
 ```bash
 swift test --package-path Packages/PowerliftingCore
 swift test --package-path Packages/RepositoryInterface
 swift test --package-path Packages/Persistence
+swift test --package-path Packages/RepositoryFakes
 ```
 
 `PowerliftingCoreTests` is held to the same no-Apple-frameworks rule as the module
