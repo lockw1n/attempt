@@ -32,6 +32,18 @@ extension FetchDescriptor where T: StoredEntity {
         FetchDescriptor<T>(sortBy: sortBy)
     }
 
+    /// Rows matching `predicate`, soft-deleted ones included — the `includingDeleted: true` half of
+    /// a repository read that also filters.
+    ///
+    /// The pair with ``notDeleted(matching:sortBy:)`` is what lets a repository branch on the flag
+    /// by choosing a descriptor rather than by composing a `deletedAt` clause of its own.
+    static func includingDeleted(
+        matching predicate: Predicate<T>,
+        sortBy: [SortDescriptor<T>] = []
+    ) -> FetchDescriptor<T> {
+        FetchDescriptor<T>(predicate: predicate, sortBy: sortBy)
+    }
+
     /// Rows soft-deleted at or before `cutoff` — the population an explicit purge may hard-delete.
     ///
     /// `G-1.3` allows `modelContext.delete(_:)` in a purge routine and nowhere else, which is why

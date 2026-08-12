@@ -1,5 +1,6 @@
 import Foundation
 import PowerliftingCore
+import RepositoryInterface
 import SwiftData
 import Testing
 
@@ -85,19 +86,6 @@ struct SupportingEntitiesTests {
         #expect(stored.date == day)
         #expect(stored.weightGrams == 82_350)
         #expect(stored.sourceRawValue == "healthKit")
-    }
-
-    // TR-0.2.2's rule one layer out: reordering a case must not rewrite history, so the persisted
-    // spellings of the three vocabularies this module declares are pinned to literals.
-    @Test("The storage vocabularies persist as their spellings, not as ordinals")
-    func storageVocabularySpellings() {
-        #expect(BodyweightSource.allCases.map(\.rawValue) == ["manual", "healthKit"])
-        #expect(ThemePreference.allCases.map(\.rawValue) == ["system", "light", "dark"])
-        #expect(
-            TrainingMaxSourceKind.allCases.map(\.rawValue) == [
-                "percentOfE1RM", "percentOfRepMax", "manual",
-            ]
-        )
     }
 
     // G-2.4: saveStamped(at:) walks `any StoredEntity`, so it reaches five types that did not exist

@@ -123,9 +123,24 @@ jobs:
   # Treating a green run *here* as proof of "Foundation-free" is still the wrong conclusion — the
   # two jobs enforce different halves and neither substitutes for the other.
   #
-  # Builds PowerliftingCore ONLY. Persistence (SwiftData) and DesignSystem (SwiftUI) are
-  # Apple-only by design and are not expected to compile here — adding them would turn a
-  # requirement into a permanent red job.
+  # Builds PowerliftingCore and RepositoryInterface. Persistence (SwiftData) and DesignSystem
+  # (SwiftUI) are Apple-only by design and are not expected to compile here — adding them would
+  # turn a requirement into a permanent red job.
+  #
+  # RepositoryInterface was added by T-0.40, and it is not a second domain package riding along:
+  # this job is the ONLY mechanism that can check TR-0.1.2's "no feature module imports SwiftData".
+  # SwiftData ships in the Apple SDKs, so on Darwin every target can import it and no arrangement
+  # of targets proves anything about linkage; here the module does not exist, so an import — or a
+  # dependency edge back to Persistence — is a build failure. That package therefore declares no
+  # `platforms:` clause, for the same reason PowerliftingCore does not. A macOS/iOS floor would
+  # take it out of this job and leave the requirement enforced by review again.
+  #
+  # KNOWN LIMIT on that claim, stated so it is not overread: this proves the package does not
+  # depend on SwiftData. It does not prove a *feature* module reaches storage only through these
+  # protocols — that half is `no_swiftdata_outside_persistence` in the lint job.
+  #
+  # Do NOT rename this job to describe the second package. GitHub drops a renamed job from the
+  # branch-protection rule silently: the old name stays listed and never reports again.
   #
   # The image tag is pinned to an exact patch version, not `swift:latest` and not `swift:6.3`:
   #   - This package's manifest is tools-version 6.2 and uses `.defaultIsolation(nil)`, a
@@ -159,6 +174,15 @@ jobs:
 
       - name: Test PowerliftingCore
         run: ./scripts/build-packages.sh --test Packages/PowerliftingCore
+
+      # TR-0.1.2 / TR-0.4.1. Separate steps for the same reason as the two above: a red build here
+      # means SwiftData — or a dependency on Persistence — reached the storage boundary, which is
+      # the violation this package exists to make impossible. A red test step means something else.
+      - name: Build RepositoryInterface
+        run: ./scripts/build-packages.sh Packages/RepositoryInterface
+
+      - name: Test RepositoryInterface
+        run: ./scripts/build-packages.sh --test Packages/RepositoryInterface
 
       # Deliberately NOT run here (T-0.08 notes):
       #   scripts/coverage.sh              — needs python3, which the Swift images do not

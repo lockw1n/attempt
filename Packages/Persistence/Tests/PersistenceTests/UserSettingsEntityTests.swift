@@ -1,5 +1,6 @@
 import Foundation
 import PowerliftingCore
+import RepositoryInterface
 import SwiftData
 import Testing
 

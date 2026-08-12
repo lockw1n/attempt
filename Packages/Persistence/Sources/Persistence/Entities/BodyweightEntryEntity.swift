@@ -1,4 +1,5 @@
 import Foundation
+import RepositoryInterface
 import SwiftData
 
 /// One bodyweight reading (`TR-0.3.5`).

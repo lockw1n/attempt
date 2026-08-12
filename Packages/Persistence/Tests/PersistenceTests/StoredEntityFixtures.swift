@@ -36,13 +36,9 @@ final class FixtureCacheEntity: CachedDerivedEntity {
     }
 }
 
-/// Serialises `ModelContainer` construction across the suite.
-///
-/// **Building two containers concurrently crashes the process**, measured on Swift 6.3.3 at roughly
-/// 6% of parallel runs against 0 of 20 serial ones. It is a SwiftData constraint rather than
-/// anything about the data: the tests hold no shared state, and each container is a separate
-/// in-memory store. Serialising construction alone keeps the tests parallel and isolated.
-let containerLock = NSLock()
+// The lock these helpers take is `Persistence`'s own ``containerLock``, not a copy. It moved into
+// `Sources/` with T-0.42's container factory, which has the same constraint for the same reason and
+// is the only place production code builds a container.
 
 /// An in-memory store holding the fixture entities. One container per call, so tests cannot see
 /// each other's rows.
