@@ -17,6 +17,11 @@ let strictSettings: [SwiftSetting] = [
 // TR-0.1.2: this is the ONLY target permitted to import SwiftData. Everything else reaches
 // storage through the repository protocols, which expose domain value types and DTOs only
 // (TR-0.4.3).
+//
+// The dependency on RepositoryInterface points this way and only this way. That package holds the
+// protocols this one implements and the record types they are written in, so it must not know
+// about SwiftData — which is why it is a separate package rather than a target here, and why it
+// declares no `platforms:` clause: the Linux job is what proves the separation.
 let package = Package(
     name: "Persistence",
     platforms: [.iOS(.v26), .macOS(.v26)],
@@ -24,12 +29,13 @@ let package = Package(
         .library(name: "Persistence", targets: ["Persistence"])
     ],
     dependencies: [
-        .package(path: "../PowerliftingCore")
+        .package(path: "../PowerliftingCore"),
+        .package(path: "../RepositoryInterface"),
     ],
     targets: [
         .target(
             name: "Persistence",
-            dependencies: ["PowerliftingCore"],
+            dependencies: ["PowerliftingCore", "RepositoryInterface"],
             swiftSettings: strictSettings
         ),
         // G-6.3. No coverage threshold applies here — G-6.1 names PowerliftingCore only.

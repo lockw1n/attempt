@@ -1,5 +1,6 @@
 import Foundation
 import PowerliftingCore
+import RepositoryInterface
 
 /// Every schema default this module *chose* — the ones where more than one value was defensible.
 ///

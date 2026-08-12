@@ -1,5 +1,6 @@
 import Foundation
 import PowerliftingCore
+import RepositoryInterface
 import SwiftData
 
 /// The user's preferences, plus the anonymous identity their data is claimed under (`TR-0.3.8`).

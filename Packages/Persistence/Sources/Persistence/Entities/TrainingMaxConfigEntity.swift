@@ -1,5 +1,6 @@
 import Foundation
 import PowerliftingCore
+import RepositoryInterface
 import SwiftData
 
 /// How one exercise's training max is computed, from a given date (`TR-0.3.6`, `FR-1.5.1.1`).

@@ -36,10 +36,16 @@ let strictSettings: [SwiftSetting] = [
 // TR-0.1.1 / NFR-0.2: this package must compile on Linux, which is the mechanical proof that
 // no Apple framework has leaked in. The `dependencies` array below is empty and must stay that
 // way — see docs/phase-0/tasks/T-0.02-restructure-into-packages.md.
-// No `platforms:` clause on purpose. This package touches no Apple API, so it has nothing to
-// gate on a platform version — and declaring a minimum would be worse than redundant: it would
-// require that SDK to be present just to build, breaking the Linux job (TR-0.1.1) and pinning
-// every CI runner to a specific Xcode. Consumers declare their own minimums.
+// No `platforms:` clause on purpose: this package touches no Apple API and uses nothing carrying
+// an availability annotation, so it has nothing to gate on a platform version. Consumers declare
+// their own minimums.
+//
+// It is NOT because a clause would break the Linux job — that claim used to be here and is false,
+// measured 2026-08-12 in both directions: SwiftPM on Linux parses `platforms:` and ignores it.
+// What a missing clause actually costs is availability-gated API, which is why RepositoryInterface
+// declares one (T-0.40): its `async` requirements need iOS 13, and Xcode builds a clause-less
+// package target against the SDK's own floor. If this package ever needs `Identifiable`, an actor
+// or anything `@available`-annotated, add the clause — the Linux job will not notice.
 let package = Package(
     name: "PowerliftingCore",
     products: [

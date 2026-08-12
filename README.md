@@ -31,6 +31,7 @@ composition root — entry point and dependency wiring, nothing else.
 ```
 Packages/
 ├── PowerliftingCore/        Pure Swift domain layer: value types, formulas, resolvers
+├── RepositoryInterface/     The storage boundary: repository protocols and record types
 ├── Persistence/             SwiftData models, schema versioning, repositories
 └── DesignSystem/            Tokens, components, theme (empty until Phase 1)
 Attempt/
@@ -39,8 +40,8 @@ Attempt/
 └── Assets.xcassets          Colors, images, app icon
 ```
 
-Dependencies run one way: `Persistence` may import `PowerliftingCore`, never the
-reverse, and the app may import all three. Two constraints are load-bearing
+Dependencies run one way: `Persistence` → `RepositoryInterface` → `PowerliftingCore`,
+never back, and the app may import any of them. Two constraints are load-bearing
 rather than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
@@ -49,13 +50,24 @@ rather than stylistic:
   rules. One consequence to know before you hit it: `pow` and `exp` are
   unavailable, so use `RealMath.swift` rather than reaching for an import.
 - **Only `Persistence` imports `SwiftData`.** Everything else reaches storage
-  through repository protocols that expose value types and DTOs. Entities are
-  `internal` to the package, so a `@Model` cannot escape it; the conventions every
-  entity carries — identity, timestamps, soft delete — are on the `StoredEntity`
-  protocol, which is where to look before adding one.
+  through the protocols in `RepositoryInterface`, which expose value types and
+  record types and depend on nothing below them — so a `@Model` is not nameable
+  there even by accident, and entities are `internal` besides. That package is
+  built on the `linux` job for this reason: SwiftData does not exist there, where
+  on Darwin every target can import it. The conventions every entity carries —
+  identity, timestamps, soft delete — are on the `StoredEntity` protocol, and the
+  four rules every repository shares are in `RepositoryInterface.swift`. Both are
+  where to look before adding an entity or a method.
 
-All three packages are linked into the app target as local package references, so
-`xcodebuild` builds them alongside the app. The project uses **file-system
+`PowerliftingCore`, `Persistence` and `DesignSystem` are linked into the app
+target as local package references, so `xcodebuild` builds them alongside the app.
+`RepositoryInterface` arrives transitively through `Persistence`; the composition
+root takes a direct product dependency when app code first imports it.
+
+A package declaring no `platforms:` clause is compiled against the SDK's own
+deployment floor, which is old enough to refuse `async` and `Identifiable`. That
+fails only under `xcodebuild`, not under `swift build`, so run the app build after
+touching a manifest. The clause does not affect the Linux job. The project uses **file-system
 synchronized groups**: the folder tree on disk *is* the project structure, and
 adding or removing a file does not churn `.pbxproj`.
 
@@ -72,12 +84,13 @@ path to work on one in isolation (`./scripts/build-packages.sh Packages/Powerlif
 Note that a bare `swift build` does **not** fail on warnings — that gate lives in
 the script, not in the manifests.
 
-`PowerliftingCore` and `Persistence` each have a Swift Testing target (`@Test` /
-`#expect`, not XCTest). The app target has no tests; it is a composition root
-with an empty scene.
+`PowerliftingCore`, `RepositoryInterface` and `Persistence` each have a Swift
+Testing target (`@Test` / `#expect`, not XCTest). The app target has no tests; it
+is a composition root with an empty scene.
 
 ```bash
 swift test --package-path Packages/PowerliftingCore
+swift test --package-path Packages/RepositoryInterface
 swift test --package-path Packages/Persistence
 ```
 
@@ -258,15 +271,17 @@ dependency analysis".
 |---|---|
 | **Build** | audits the app target's build settings, then builds the app |
 | **Package tests** | both suites with coverage, all packages with warnings as errors, the warnings-gate proof, the `@unchecked Sendable` audit |
-| **Linux core build** | builds and tests `PowerliftingCore` on `ubuntu-latest` in a Swift container |
+| **Linux core build** | builds and tests `PowerliftingCore` and `RepositoryInterface` on `ubuntu-latest` in a Swift container |
 | **SwiftLint** | lint, lint-rule verification, format check, doc-ratio and doc-units gates |
 
 All four are **required checks on `main`**, so a red run blocks the merge. The
 whole workflow takes about a minute.
 
-The `linux` job covers `PowerliftingCore` only — `Persistence` and `DesignSystem`
-are Apple-only by design. Its container tag is pinned to an exact patch version;
-bump it on its own.
+The `linux` job covers `PowerliftingCore` and `RepositoryInterface` —
+`Persistence` and `DesignSystem` are Apple-only by design. It is not just a second
+build: it is the only place `RepositoryInterface`'s independence from SwiftData is
+mechanically checked, since the module does not exist there. Its container tag is
+pinned to an exact patch version; bump it on its own.
 
 Two things to know before editing the workflow. A required check is matched by
 its **display name**, so renaming a job silently drops it from the protection
