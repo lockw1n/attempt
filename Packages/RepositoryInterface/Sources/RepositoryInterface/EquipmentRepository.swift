@@ -30,6 +30,11 @@ public protocol EquipmentRepository: Sendable {
     /// ``makeDefault(profileID:)``: "exactly one default" is a cross-row invariant, and a save that
     /// honoured the flag would let two profiles claim it in two separate writes with nothing
     /// noticing.
+    ///
+    /// - Throws: ``RepositoryError/unusableRecord(recordID:reason:)`` if
+    ///   ``EquipmentProfile/inventory()`` refuses the two plate lists. This is the one save that
+    ///   projects before it writes, and it does so because a profile is *authored* here — a read
+    ///   still returns a malformed one whole, and a restore still writes one.
     func save(_ profile: EquipmentProfile) async throws
 
     /// Makes one profile the default and clears the flag on every other, in one write.

@@ -23,6 +23,20 @@ public enum RepositoryError: Error, Sendable, Hashable {
     /// nothing.
     case danglingReference(recordID: UUID, referencing: UUID)
 
+    /// A save carried a record no projection can interpret — a plate inventory that repeats a
+    /// denomination, a training-max row whose source names a payload column that is `nil`.
+    ///
+    /// **The write path's half of rule 4, and the reason it exists is that a record does not
+    /// validate.** Reading such a row returns it whole, on purpose, so `FR-1.11.3` can export one
+    /// for repair; but a row *authored* on this device has no such excuse, and without this case a
+    /// save would have no way to refuse one. The refusal would otherwise land at read time, in
+    /// `PlateCalculator`, on a screen far from the one that stored it.
+    ///
+    /// **A save that authors a row raises this; a restore does not.** Tolerating a corrupt row is
+    /// the whole point of the record shape, and a restore is the one caller that legitimately writes
+    /// one — which is why it needs its own writer anyway, `deletedAt` being the other reason.
+    case unusableRecord(recordID: UUID, reason: RecordProjectionError)
+
     /// A settings save carried a different anonymous user id from the one already stored
     /// (`TR-1.10`).
     ///

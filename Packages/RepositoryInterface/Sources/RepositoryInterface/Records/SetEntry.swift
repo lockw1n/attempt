@@ -132,3 +132,80 @@ public struct SetEntry: StoredRecord {
         self.completedAt = completedAt
     }
 }
+
+// MARK: - Codable
+
+extension SetEntry {
+    /// The wire format's keys, in the order they are written. See `RecordCoding.swift`.
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case createdAt
+        case updatedAt
+        case deletedAt
+        case entryID
+        case order
+        case weight
+        case reps
+        case rpe
+        case rir
+        case isWarmup
+        case isCompleted
+        case targetWeight
+        case targetReps
+        case modifiers
+        case notes
+        case completedAt
+    }
+
+    /// Decodes the keyed shape on ``CodingKeys``.
+    ///
+    /// **Routed through ``init(id:createdAt:updatedAt:deletedAt:entryID:order:weight:reps:rpe:rir:isWarmup:isCompleted:targetWeight:targetReps:modifiers:notes:completedAt:)``
+    /// so that `modifiers` canonicalises here too.** Without it the format admits two encodings of
+    /// one set, and a decoded record would compare unequal to the same set read from the store.
+    /// Nothing else is validated — an RPE of 47 decodes, as the stored column holds one.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try container.decode(UUID.self, forKey: .id),
+            createdAt: try container.decode(Date.self, forKey: .createdAt),
+            updatedAt: try container.decode(Date.self, forKey: .updatedAt),
+            deletedAt: try container.decodeIfPresent(Date.self, forKey: .deletedAt),
+            entryID: try container.decode(UUID.self, forKey: .entryID),
+            order: try container.decode(Int.self, forKey: .order),
+            weight: try container.decode(Weight.self, forKey: .weight),
+            reps: try container.decode(Int.self, forKey: .reps),
+            rpe: try container.decodeIfPresent(Double.self, forKey: .rpe),
+            rir: try container.decodeIfPresent(Int.self, forKey: .rir),
+            isWarmup: try container.decode(Bool.self, forKey: .isWarmup),
+            isCompleted: try container.decode(Bool.self, forKey: .isCompleted),
+            targetWeight: try container.decodeIfPresent(Weight.self, forKey: .targetWeight),
+            targetReps: try container.decodeIfPresent(Int.self, forKey: .targetReps),
+            modifiers: try container.decode([SetModifier].self, forKey: .modifiers),
+            notes: try container.decode(String.self, forKey: .notes),
+            completedAt: try container.decodeIfPresent(Date.self, forKey: .completedAt)
+        )
+    }
+
+    /// Writes the seventeen keys in declaration order. `modifiers` is always written, as `[]` when
+    /// empty; `isWarmup` and `isCompleted` are never omitted (`G-1.8`).
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(deletedAt, forKey: .deletedAt)
+        try container.encode(entryID, forKey: .entryID)
+        try container.encode(order, forKey: .order)
+        try container.encode(weight, forKey: .weight)
+        try container.encode(reps, forKey: .reps)
+        try container.encodeIfPresent(rpe, forKey: .rpe)
+        try container.encodeIfPresent(rir, forKey: .rir)
+        try container.encode(isWarmup, forKey: .isWarmup)
+        try container.encode(isCompleted, forKey: .isCompleted)
+        try container.encodeIfPresent(targetWeight, forKey: .targetWeight)
+        try container.encodeIfPresent(targetReps, forKey: .targetReps)
+        try container.encode(modifiers, forKey: .modifiers)
+        try container.encode(notes, forKey: .notes)
+        try container.encodeIfPresent(completedAt, forKey: .completedAt)
+    }
+}

@@ -37,8 +37,14 @@ final class EquipmentProfileEntity: StoredEntity {
     /// The denominations stocked, in grams, heaviest first.
     ///
     /// Positionally paired with ``platePairCounts``: index *i* of each describes one denomination.
-    /// Both are `private(set)` and written together by ``replaceInventory(with:)``, so nothing in
-    /// this module can leave them disagreeing in length or in order.
+    /// Both are `private(set)` and can only be written **together**, by one of the two
+    /// `replaceInventory` methods, so neither can be left updated while the other is not.
+    ///
+    /// **That is all `private(set)` buys, and it is not "the columns are always well formed".** The
+    /// raw writer exists because a profile that breaks `PlateInventory`'s invariants has to be
+    /// storable — a restore that could not put one back would lose the profile and its name, which
+    /// is the outcome the whole record shape exists to avoid (`FR-1.11.3`). What such a row costs
+    /// is decided one layer up, by `EquipmentProfile.inventory()`.
     private(set) var plateGrams: [Int] = []
 
     /// How many **pairs** of each denomination in ``plateGrams`` the gym has. Zero is legal.
@@ -56,7 +62,8 @@ final class EquipmentProfileEntity: StoredEntity {
         name: String,
         barWeightGrams: Int,
         collarWeightGrams: Int,
-        inventory: PlateInventory,
+        plateGrams: [Int],
+        platePairCounts: [Int],
         isDefault: Bool = false,
         createdAt: Date = .now,
         updatedAt: Date = .now
@@ -68,19 +75,62 @@ final class EquipmentProfileEntity: StoredEntity {
         self.isDefault = isDefault
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        replaceInventory(with: inventory)
+        replaceInventory(plateGrams: plateGrams, platePairCounts: platePairCounts)
     }
 
-    /// Replaces the stocked denominations. The only way to write ``plateGrams`` and
-    /// ``platePairCounts``.
+    /// Creates a profile from a validated inventory — the initialiser an authoring call site wants.
     ///
-    /// Takes the domain type rather than two arrays because `PlateInventory` is where the invariants
-    /// are — it normalises to heaviest-first and **refuses a repeated denomination rather than
-    /// summing it**, which two free `[Int]` columns could not hold. Reading the columns back is the
-    /// repository's job (`TR-0.4.3`), and so is deciding what a foreign row that breaks either
-    /// invariant costs.
+    /// The raw-array one above exists for the restore and sync paths; see
+    /// ``replaceInventory(plateGrams:platePairCounts:)`` for why both are needed.
+    convenience init(
+        id: UUID = UUID(),
+        name: String,
+        barWeightGrams: Int,
+        collarWeightGrams: Int,
+        inventory: PlateInventory,
+        isDefault: Bool = false,
+        createdAt: Date = .now,
+        updatedAt: Date = .now
+    ) {
+        self.init(
+            id: id,
+            name: name,
+            barWeightGrams: barWeightGrams,
+            collarWeightGrams: collarWeightGrams,
+            plateGrams: inventory.entries.map(\.plate.grams),
+            platePairCounts: inventory.entries.map(\.pairs),
+            isDefault: isDefault,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
+
+    /// Replaces the stocked denominations from a validated inventory.
+    ///
+    /// The writer every call site that is *authoring* a profile should use: `PlateInventory`
+    /// normalises to heaviest-first and refuses a repeated denomination rather than summing it, so
+    /// a profile the app itself produces cannot break either invariant.
     func replaceInventory(with inventory: PlateInventory) {
-        plateGrams = inventory.entries.map(\.plate.grams)
-        platePairCounts = inventory.entries.map(\.pairs)
+        replaceInventory(
+            plateGrams: inventory.entries.map(\.plate.grams),
+            platePairCounts: inventory.entries.map(\.pairs))
+    }
+
+    /// Replaces the stocked denominations verbatim, pairing and all, without asking whether they
+    /// describe a gym.
+    ///
+    /// **For restoring or syncing a row, never for authoring one.** It is the only way to write a
+    /// profile whose lists repeat a denomination or disagree in length — which is exactly what a
+    /// backup of such a row has to be able to reinstate (`FR-1.11.3`), and what
+    /// `replaceInventory(with:)` cannot express because the domain type refuses to represent it.
+    /// The refusal is not lost, it moves: `EquipmentProfile.inventory()` raises it the moment
+    /// anything asks what the profile means.
+    ///
+    /// No normalisation either — a heaviest-first order is `PlateInventory`'s guarantee, not this
+    /// column's, and re-sorting here would silently repair half of a row a repair tool needs to see
+    /// whole.
+    func replaceInventory(plateGrams: [Int], platePairCounts: [Int]) {
+        self.plateGrams = plateGrams
+        self.platePairCounts = platePairCounts
     }
 }

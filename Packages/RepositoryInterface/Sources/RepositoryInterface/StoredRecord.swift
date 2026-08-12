@@ -12,7 +12,12 @@ import Foundation
 /// saves has written nothing. ``createdAt`` is honoured when the row is new and ignored when it is
 /// not, which is what lets an import or a restore keep the history it arrived with (`FR-1.11.3`)
 /// without a later edit relabelling it.
-public protocol StoredRecord: Sendable, Hashable, Identifiable {
+///
+/// **`Codable` is a requirement of this protocol rather than nine separate conformances.** It is
+/// what `TR-0.4.4` and `TR-5.4` ask for and what `FR-1.11.3`'s backup is written in, so a record
+/// that could not be serialised would be a row the backup silently omits. The format's shared rules
+/// live in `RecordCoding.swift`.
+public protocol StoredRecord: Sendable, Hashable, Identifiable, Codable {
     /// Client-generated (`G-1.2`), and **not unique in the store** — see the tiebreak rule in this
     /// module's header.
     var id: UUID { get }

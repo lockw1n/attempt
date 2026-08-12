@@ -31,7 +31,7 @@ composition root — entry point and dependency wiring, nothing else.
 ```
 Packages/
 ├── PowerliftingCore/        Pure Swift domain layer: value types, formulas, resolvers
-├── RepositoryInterface/     The storage boundary: repository protocols and record types
+├── RepositoryInterface/     The storage boundary: repository protocols, records, wire format
 ├── Persistence/             SwiftData models, schema versioning, repositories
 └── DesignSystem/            Tokens, components, theme (empty until Phase 1)
 Attempt/
@@ -58,6 +58,14 @@ rather than stylistic:
   identity, timestamps, soft delete — are on the `StoredEntity` protocol, and the
   four rules every repository shares are in `RepositoryInterface.swift`. Both are
   where to look before adding an entity or a method.
+
+A record is a value type mirroring one stored row, column for column. It is
+`Codable` — that is a requirement of the `StoredRecord` protocol — and the format's
+shared rules are in `RecordCoding.swift`. A record validates nothing; the four
+places a row is refused on account of what it says are the projections in
+`Projections.swift`. Mapping between an entity and its record lives in
+`Packages/Persistence/Sources/Persistence/Mapping/`, which is the only place the
+two are named in one file.
 
 `PowerliftingCore`, `Persistence` and `DesignSystem` are linked into the app
 target as local package references, so `xcodebuild` builds them alongside the app.
@@ -98,6 +106,11 @@ swift test --package-path Packages/Persistence
 it tests, and runs on the Linux job too. In particular `Codable` is asserted
 through the hand-rolled `Encoder`/`Decoder` in
 `Tests/PowerliftingCoreTests/CodableProbe*.swift`, never `JSONEncoder`.
+
+`RepositoryInterfaceTests` is under no such rule and does use `JSONEncoder`. One
+thing not to assert with it: **key order**. It emits keys in per-process hash
+order, so the order differs between runs; assert key spelling and the set of keys
+instead, as `RecordCodingTests` does.
 
 `PowerliftingCore` is held to ≥ 90% line coverage. The script counts only files
 under the package's `Sources/`, and requires `python3`:

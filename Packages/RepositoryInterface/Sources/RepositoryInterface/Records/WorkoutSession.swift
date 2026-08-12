@@ -72,3 +72,56 @@ public struct WorkoutSession: StoredRecord {
         self.scheduledWorkoutID = scheduledWorkoutID
     }
 }
+
+// MARK: - Codable
+
+extension WorkoutSession {
+    /// The wire format's keys, in the order they are written. See `RecordCoding.swift`.
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case createdAt
+        case updatedAt
+        case deletedAt
+        case date
+        case startedAt
+        case endedAt
+        case notes
+        case bodyweight
+        case programRunID
+        case scheduledWorkoutID
+    }
+
+    /// Decodes the keyed shape on ``CodingKeys``. Nothing is validated.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try container.decode(UUID.self, forKey: .id),
+            createdAt: try container.decode(Date.self, forKey: .createdAt),
+            updatedAt: try container.decode(Date.self, forKey: .updatedAt),
+            deletedAt: try container.decodeIfPresent(Date.self, forKey: .deletedAt),
+            date: try container.decode(Date.self, forKey: .date),
+            startedAt: try container.decodeIfPresent(Date.self, forKey: .startedAt),
+            endedAt: try container.decodeIfPresent(Date.self, forKey: .endedAt),
+            notes: try container.decode(String.self, forKey: .notes),
+            bodyweight: try container.decodeIfPresent(Weight.self, forKey: .bodyweight),
+            programRunID: try container.decodeIfPresent(UUID.self, forKey: .programRunID),
+            scheduledWorkoutID: try container.decodeIfPresent(UUID.self, forKey: .scheduledWorkoutID)
+        )
+    }
+
+    /// Writes the eleven keys in declaration order.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(deletedAt, forKey: .deletedAt)
+        try container.encode(date, forKey: .date)
+        try container.encodeIfPresent(startedAt, forKey: .startedAt)
+        try container.encodeIfPresent(endedAt, forKey: .endedAt)
+        try container.encode(notes, forKey: .notes)
+        try container.encodeIfPresent(bodyweight, forKey: .bodyweight)
+        try container.encodeIfPresent(programRunID, forKey: .programRunID)
+        try container.encodeIfPresent(scheduledWorkoutID, forKey: .scheduledWorkoutID)
+    }
+}

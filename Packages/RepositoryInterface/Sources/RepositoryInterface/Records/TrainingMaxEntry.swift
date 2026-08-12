@@ -97,3 +97,68 @@ public struct TrainingMaxEntry: StoredRecord {
         self.effectiveFrom = effectiveFrom
     }
 }
+
+// MARK: - Codable
+
+extension TrainingMaxEntry {
+    /// The wire format's keys, in the order they are written. See `RecordCoding.swift`.
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case createdAt
+        case updatedAt
+        case deletedAt
+        case exerciseID
+        case source
+        case sourceRepCount
+        case manualWeight
+        case percentage
+        case roundingIncrement
+        case roundingStrategy
+        case progressionIncrement
+        case effectiveFrom
+    }
+
+    /// Decodes the keyed shape on ``CodingKeys``.
+    ///
+    /// ``source`` and ``roundingStrategy`` resolve rather than throw, and the payload columns are
+    /// not checked against ``source`` — a `.manual` entry with no ``manualWeight`` decodes, and
+    /// refuses at ``TrainingMaxEntry/configuration()``.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try container.decode(UUID.self, forKey: .id),
+            createdAt: try container.decode(Date.self, forKey: .createdAt),
+            updatedAt: try container.decode(Date.self, forKey: .updatedAt),
+            deletedAt: try container.decodeIfPresent(Date.self, forKey: .deletedAt),
+            exerciseID: try container.decode(UUID.self, forKey: .exerciseID),
+            source: try container.decodeVocabulary(
+                TrainingMaxSourceKind.self, forKey: .source, or: RecordVocabulary.trainingMaxSource),
+            sourceRepCount: try container.decodeIfPresent(Int.self, forKey: .sourceRepCount),
+            manualWeight: try container.decodeIfPresent(Weight.self, forKey: .manualWeight),
+            percentage: try container.decode(Double.self, forKey: .percentage),
+            roundingIncrement: try container.decode(Weight.self, forKey: .roundingIncrement),
+            roundingStrategy: try container.decodeVocabulary(
+                RoundingStrategy.self, forKey: .roundingStrategy, or: RecordVocabulary.roundingStrategy),
+            progressionIncrement: try container.decodeIfPresent(Weight.self, forKey: .progressionIncrement),
+            effectiveFrom: try container.decode(Date.self, forKey: .effectiveFrom)
+        )
+    }
+
+    /// Writes the thirteen keys in declaration order.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(deletedAt, forKey: .deletedAt)
+        try container.encode(exerciseID, forKey: .exerciseID)
+        try container.encodeVocabulary(source, forKey: .source)
+        try container.encodeIfPresent(sourceRepCount, forKey: .sourceRepCount)
+        try container.encodeIfPresent(manualWeight, forKey: .manualWeight)
+        try container.encode(percentage, forKey: .percentage)
+        try container.encode(roundingIncrement, forKey: .roundingIncrement)
+        try container.encodeVocabulary(roundingStrategy, forKey: .roundingStrategy)
+        try container.encodeIfPresent(progressionIncrement, forKey: .progressionIncrement)
+        try container.encode(effectiveFrom, forKey: .effectiveFrom)
+    }
+}

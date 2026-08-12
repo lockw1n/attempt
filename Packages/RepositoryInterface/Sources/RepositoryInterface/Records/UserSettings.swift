@@ -70,3 +70,63 @@ public struct UserSettings: StoredRecord {
         self.defaultRoundingStrategy = defaultRoundingStrategy
     }
 }
+
+// MARK: - Codable
+
+extension UserSettings {
+    /// The wire format's keys, in the order they are written. See `RecordCoding.swift`.
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case createdAt
+        case updatedAt
+        case deletedAt
+        case userID
+        case displayUnit
+        case e1RMFormula
+        case theme
+        case defaultRoundingIncrement
+        case defaultRoundingStrategy
+    }
+
+    /// Decodes the keyed shape on ``CodingKeys``.
+    ///
+    /// All four preference vocabularies resolve rather than throw, ``e1RMFormula`` included — a
+    /// formula name from a newer version must not take the theme, the unit and the rounding
+    /// defaults down with it, still less ``userID``.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try container.decode(UUID.self, forKey: .id),
+            createdAt: try container.decode(Date.self, forKey: .createdAt),
+            updatedAt: try container.decode(Date.self, forKey: .updatedAt),
+            deletedAt: try container.decodeIfPresent(Date.self, forKey: .deletedAt),
+            userID: try container.decode(UUID.self, forKey: .userID),
+            displayUnit: try container.decodeVocabulary(
+                MassUnit.self, forKey: .displayUnit, or: RecordVocabulary.displayUnit),
+            e1RMFormula: try container.decodeVocabulary(
+                E1RMFormulaID.self, forKey: .e1RMFormula, or: RecordVocabulary.e1RMFormula),
+            theme: try container.decodeVocabulary(
+                ThemePreference.self, forKey: .theme, or: RecordVocabulary.theme),
+            defaultRoundingIncrement: try container.decode(Weight.self, forKey: .defaultRoundingIncrement),
+            defaultRoundingStrategy: try container.decodeVocabulary(
+                RoundingStrategy.self,
+                forKey: .defaultRoundingStrategy,
+                or: RecordVocabulary.roundingStrategy)
+        )
+    }
+
+    /// Writes the ten keys in declaration order.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(deletedAt, forKey: .deletedAt)
+        try container.encode(userID, forKey: .userID)
+        try container.encodeVocabulary(displayUnit, forKey: .displayUnit)
+        try container.encodeVocabulary(e1RMFormula, forKey: .e1RMFormula)
+        try container.encodeVocabulary(theme, forKey: .theme)
+        try container.encode(defaultRoundingIncrement, forKey: .defaultRoundingIncrement)
+        try container.encodeVocabulary(defaultRoundingStrategy, forKey: .defaultRoundingStrategy)
+    }
+}

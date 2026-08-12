@@ -76,3 +76,58 @@ public struct EquipmentProfile: StoredRecord {
         self.isDefault = isDefault
     }
 }
+
+// MARK: - Codable
+
+extension EquipmentProfile {
+    /// The wire format's keys, in the order they are written. See `RecordCoding.swift`.
+    ///
+    /// ``plates`` and ``platePairCounts`` are two arrays rather than one array of pairs, mirroring
+    /// the two stored columns: a backup whose lists disagree in length has to say so, and one
+    /// array of pairs could not carry that.
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case createdAt
+        case updatedAt
+        case deletedAt
+        case name
+        case barWeight
+        case collarWeight
+        case plates
+        case platePairCounts
+        case isDefault
+    }
+
+    /// Decodes the keyed shape on ``CodingKeys``. The two lists are not checked against each other;
+    /// see ``EquipmentProfile/inventory()``.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try container.decode(UUID.self, forKey: .id),
+            createdAt: try container.decode(Date.self, forKey: .createdAt),
+            updatedAt: try container.decode(Date.self, forKey: .updatedAt),
+            deletedAt: try container.decodeIfPresent(Date.self, forKey: .deletedAt),
+            name: try container.decode(String.self, forKey: .name),
+            barWeight: try container.decode(Weight.self, forKey: .barWeight),
+            collarWeight: try container.decode(Weight.self, forKey: .collarWeight),
+            plates: try container.decode([Weight].self, forKey: .plates),
+            platePairCounts: try container.decode([Int].self, forKey: .platePairCounts),
+            isDefault: try container.decode(Bool.self, forKey: .isDefault)
+        )
+    }
+
+    /// Writes the ten keys in declaration order.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(deletedAt, forKey: .deletedAt)
+        try container.encode(name, forKey: .name)
+        try container.encode(barWeight, forKey: .barWeight)
+        try container.encode(collarWeight, forKey: .collarWeight)
+        try container.encode(plates, forKey: .plates)
+        try container.encode(platePairCounts, forKey: .platePairCounts)
+        try container.encode(isDefault, forKey: .isDefault)
+    }
+}

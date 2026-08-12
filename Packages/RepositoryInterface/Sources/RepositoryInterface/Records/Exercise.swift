@@ -95,3 +95,73 @@ public struct Exercise: StoredRecord {
         self.notes = notes
     }
 }
+
+// MARK: - Codable
+
+extension Exercise {
+    /// The wire format's keys, in the order they are written. See `RecordCoding.swift`.
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case createdAt
+        case updatedAt
+        case deletedAt
+        case name
+        case movement
+        case parentExerciseID
+        case equipment
+        case laterality
+        case barType
+        case implementCount
+        case isCustom
+        case isArchived
+        case notes
+    }
+
+    /// Decodes the keyed shape on ``CodingKeys``.
+    ///
+    /// All four vocabularies resolve rather than throw, ``laterality`` included — the domain type
+    /// throws on an unrecognised spelling, and letting that reach here would cost the exercise, and
+    /// with it every set logged against the row.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try container.decode(UUID.self, forKey: .id),
+            createdAt: try container.decode(Date.self, forKey: .createdAt),
+            updatedAt: try container.decode(Date.self, forKey: .updatedAt),
+            deletedAt: try container.decodeIfPresent(Date.self, forKey: .deletedAt),
+            name: try container.decode(String.self, forKey: .name),
+            movement: try container.decodeVocabulary(
+                Movement.self, forKey: .movement, or: RecordVocabulary.movement),
+            parentExerciseID: try container.decodeIfPresent(UUID.self, forKey: .parentExerciseID),
+            equipment: try container.decodeVocabulary(
+                Equipment.self, forKey: .equipment, or: RecordVocabulary.equipment),
+            laterality: try container.decodeVocabulary(
+                Laterality.self, forKey: .laterality, or: RecordVocabulary.laterality),
+            barType: try container.decodeVocabulary(
+                BarType.self, forKey: .barType, or: RecordVocabulary.barType),
+            implementCount: try container.decode(Int.self, forKey: .implementCount),
+            isCustom: try container.decode(Bool.self, forKey: .isCustom),
+            isArchived: try container.decode(Bool.self, forKey: .isArchived),
+            notes: try container.decode(String.self, forKey: .notes)
+        )
+    }
+
+    /// Writes the fourteen keys in declaration order.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(deletedAt, forKey: .deletedAt)
+        try container.encode(name, forKey: .name)
+        try container.encodeVocabulary(movement, forKey: .movement)
+        try container.encodeIfPresent(parentExerciseID, forKey: .parentExerciseID)
+        try container.encodeVocabulary(equipment, forKey: .equipment)
+        try container.encodeVocabulary(laterality, forKey: .laterality)
+        try container.encodeVocabulary(barType, forKey: .barType)
+        try container.encode(implementCount, forKey: .implementCount)
+        try container.encode(isCustom, forKey: .isCustom)
+        try container.encode(isArchived, forKey: .isArchived)
+        try container.encode(notes, forKey: .notes)
+    }
+}
