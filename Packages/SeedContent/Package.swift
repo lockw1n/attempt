@@ -39,9 +39,13 @@ let package = Package(
         .package(path: "../PowerliftingCore")
     ],
     targets: [
+        // TR-0.5.1. `.copy` rather than `.process`: `TR-0.5.2` serves this same document from a CDN
+        // and `TR-0.5.3` falls back to the bundled copy, so the two are the same *bytes* and not
+        // merely the same content.
         .target(
             name: "SeedContent",
             dependencies: ["PowerliftingCore"],
+            resources: [.copy("Resources")],
             swiftSettings: strictSettings
         ),
         // G-6.3. The fixtures are files rather than strings built in Swift, because the failure
