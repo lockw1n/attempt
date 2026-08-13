@@ -34,6 +34,7 @@ Packages/
 ├── RepositoryInterface/     The storage boundary: repository protocols, records, wire format
 ├── Persistence/             SwiftData models, schema versioning, repositories
 ├── RepositoryFakes/         In-memory repositories, and the conformance suite both must pass
+├── SeedContent/             The seed payload's schema and its validator, plus SCHEMA.md
 └── DesignSystem/            Tokens, components, theme (empty until Phase 1)
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -45,14 +46,18 @@ Dependencies run one way: `Persistence` → `RepositoryInterface` → `Powerlift
 never back, and the app may import any of them. `RepositoryFakes` sits beside
 `Persistence` rather than under it: its library depends on `RepositoryInterface`
 alone, and only its test target depends on `Persistence`, because the conformance
-suite there has to name both implementations. Two constraints are load-bearing
-rather than stylistic:
+suite there has to name both implementations. `SeedContent` sits off to one side:
+it depends on `PowerliftingCore` alone and nothing depends on it yet. Two
+constraints are load-bearing rather than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
   and not the platform modules (`Darwin`, `Glibc`) either. Enforced by the `linux`
   CI job together with the `no_foundation_in_core` and `no_imports_in_core` lint
-  rules. One consequence to know before you hit it: `pow` and `exp` are
-  unavailable, so use `RealMath.swift` rather than reaching for an import.
+  rules, which are scoped by path and so cover that package's **tests** as well as
+  its sources. Two consequences to know before you hit them: `pow` and `exp` are
+  unavailable, so use `RealMath.swift` rather than reaching for an import; and code
+  that needs Foundation to test the domain layer belongs in another package, which
+  is why `SeedContent` is one.
 - **Only `Persistence` imports `SwiftData`.** Everything else reaches storage
   through the protocols in `RepositoryInterface`, which expose value types and
   record types and depend on nothing below them — so a `@Model` is not nameable
@@ -100,6 +105,22 @@ stacks and so run twice, once per implementation. That suite's header says what 
 in its scope and what is not. The handful of tests beside them covering the fakes'
 own machinery run once.
 
+`SeedContent` holds the shape of `exercises.json` — the catalogue bundled with the
+app and published to the content endpoint — and the validator that gates it:
+
+```swift
+let failures = SeedCatalogueValidator.validate(try Data(contentsOf: url), minimumExercises: 80)
+```
+
+An empty result is the only passing result; every failure names the entry it is in.
+`Packages/SeedContent/SCHEMA.md` documents the document, and is the file to read
+before authoring or editing a catalogue. Two things to know before adding to it: the
+payload is not a storage record and carries no audit columns, and the four
+vocabularies are never restated — the validator resolves through
+`PowerliftingCore`'s enums, so a spelling is checked with `init?(rawValue:)` rather
+than by decoding, which would resolve an unknown value to `other` instead of
+refusing it.
+
 `PowerliftingCore`, `Persistence` and `DesignSystem` are linked into the app
 target as local package references, so `xcodebuild` builds them alongside the app.
 `RepositoryInterface` arrives transitively through `Persistence`; the composition
@@ -125,15 +146,15 @@ path to work on one in isolation (`./scripts/build-packages.sh Packages/Powerlif
 Note that a bare `swift build` does **not** fail on warnings — that gate lives in
 the script, not in the manifests.
 
-`PowerliftingCore`, `RepositoryInterface`, `Persistence` and `RepositoryFakes` each
-have a Swift Testing target (`@Test` / `#expect`, not XCTest). The app target has no tests; it
-is a composition root with an empty scene.
+Every package except `DesignSystem` has a Swift Testing target (`@Test` / `#expect`, not
+XCTest). The app target has no tests; it is a composition root with an empty scene.
 
 ```bash
 swift test --package-path Packages/PowerliftingCore
 swift test --package-path Packages/RepositoryInterface
 swift test --package-path Packages/Persistence
 swift test --package-path Packages/RepositoryFakes
+swift test --package-path Packages/SeedContent
 ```
 
 `PowerliftingCoreTests` is held to the same no-Apple-frameworks rule as the module
@@ -317,7 +338,7 @@ dependency analysis".
 | Job | What it does |
 |---|---|
 | **Build** | audits the app target's build settings, then builds the app |
-| **Package tests** | both suites with coverage, all packages with warnings as errors, the warnings-gate proof, the `@unchecked Sendable` audit |
+| **Package tests** | `PowerliftingCore` with coverage, then every package built and tested with warnings as errors (discovered by glob), the runtime gate and its proof, the warnings-gate proof, the `@unchecked Sendable` audit |
 | **Linux core build** | builds and tests `PowerliftingCore` and `RepositoryInterface` on `ubuntu-latest` in a Swift container |
 | **SwiftLint** | lint, lint-rule verification, format check, doc-ratio and doc-units gates |
 
