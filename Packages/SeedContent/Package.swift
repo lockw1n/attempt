@@ -39,9 +39,10 @@ let package = Package(
         .package(path: "../PowerliftingCore")
     ],
     targets: [
-        // TR-0.5.1. `.copy` rather than `.process`: `TR-0.5.2` serves this same document from a CDN
-        // and `TR-0.5.3` falls back to the bundled copy, so the two are the same *bytes* and not
-        // merely the same content.
+        // TR-0.5.1. `.copy` rather than `.process`, which flattens the directory away: the payload
+        // has to stay at `Resources/exercises.json` inside the bundle, because that is where
+        // `BundledCatalogue` looks for it. Measured — `.process` puts it at the bundle root and
+        // every call throws `PayloadMissing`.
         .target(
             name: "SeedContent",
             dependencies: ["PowerliftingCore"],

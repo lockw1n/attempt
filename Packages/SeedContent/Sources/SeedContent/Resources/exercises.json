@@ -90,7 +90,7 @@
     {"id": "b9619c53-20e7-44cf-99aa-0ef8f35aa11f", "name": "EZ-Bar Curl", "movement": "other", "equipment": "barbell", "laterality": "bilateral", "barType": "ezCurl"},
     {"id": "e58fbf5b-4174-4b21-a2eb-ad974c018f57", "name": "Preacher Curl", "movement": "other", "equipment": "barbell", "laterality": "bilateral", "barType": "ezCurl"},
     {"id": "a6332b21-a1f0-41f2-b086-99e2cf698b9b", "name": "Dumbbell Curl", "movement": "other", "equipment": "dumbbell", "laterality": "bilateral", "barType": "noBar", "implementCount": 2},
-    {"id": "af038dce-5b0c-4fc3-b29b-3fade71e8b80", "name": "Alternating Dumbbell Curl", "movement": "other", "equipment": "dumbbell", "laterality": "alternating", "barType": "noBar", "implementCount": 2},
+    {"id": "af038dce-5b0c-4fc3-b29b-3fade71e8b80", "name": "Alternating Dumbbell Curl", "movement": "other", "equipment": "dumbbell", "laterality": "alternating", "barType": "noBar"},
     {"id": "9aebe453-3fee-4426-9cec-07bb76b981cc", "name": "Hammer Curl", "movement": "other", "equipment": "dumbbell", "laterality": "bilateral", "barType": "noBar", "implementCount": 2},
     {"id": "aaa2325a-dfce-4ec8-a5e5-fcf3ae220774", "name": "Cable Curl", "movement": "other", "equipment": "cable", "laterality": "bilateral", "barType": "noBar"},
     {"id": "d37e3443-82ec-424f-97a6-1e7aa8c43c8c", "name": "Skull Crusher", "movement": "other", "equipment": "barbell", "laterality": "bilateral", "barType": "ezCurl"},

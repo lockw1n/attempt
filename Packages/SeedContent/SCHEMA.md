@@ -58,6 +58,11 @@ check in `TR-0.5.3`.
 | `barType` | string | yes | A `BarType` raw value. Required rather than defaulted: an absent value would resolve to a category the author did not choose. An exercise using no bar says `noBar` — not `none`, not `null`, not nothing. |
 | `implementCount` | integer ≥ 1 | no | How many implements one rep loads. Absent means one. Say `2` on dumbbell pressing and anything else loading a pair; a logged weight is the load on **one** implement, and this is the factor `FR-1.5.1`'s tonnage needs. Do not infer it from `equipment` or `laterality` — a dumbbell bench press and a goblet squat agree on both and differ on this. |
 
+It is what one *rep* loads, which is what decides the `alternating` case: a walking lunge carries
+both dumbbells through every rep and says `2`, an alternating curl moves one and says nothing. The
+distinction is not what the lifter is holding — it is what the rep is working against, because
+tonnage multiplies this by the reps and by the sides.
+
 A key not listed above is rejected rather than ignored, because a typo that decoded silently would
 produce a valid-looking catalogue with a fact missing from it.
 
