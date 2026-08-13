@@ -11,7 +11,11 @@ public enum SeedValidationFailure: Equatable, Sendable {
 
     /// A key no version of this schema declares. Almost always a typo, and `Codable` would drop it
     /// in silence.
-    case unrecognisedField(String)
+    ///
+    /// `location` is the object carrying the key — `exercises[3]`, or empty at the document root.
+    /// It is what names the entry here: a bare key name is not searchable, because the typo an
+    /// author actually makes is a *near* spelling of a real key.
+    case unrecognisedField(name: String, location: String)
 
     /// A shape this reader cannot read. See ``SeedCatalogue/schemaVersion``.
     case unsupportedSchemaVersion(Int)
@@ -56,7 +60,7 @@ extension SeedValidationFailure {
     public enum Kind: String, CaseIterable, Sendable {
         /// See ``SeedValidationFailure/undecodable(_:)``.
         case undecodable
-        /// See ``SeedValidationFailure/unrecognisedField(_:)``.
+        /// See ``SeedValidationFailure/unrecognisedField(name:location:)``.
         case unrecognisedField
         /// See ``SeedValidationFailure/unsupportedSchemaVersion(_:)``.
         case unsupportedSchemaVersion
@@ -102,8 +106,9 @@ extension SeedValidationFailure: CustomStringConvertible {
         switch self {
         case .undecodable(let detail):
             "the payload could not be decoded: \(detail)"
-        case .unrecognisedField(let name):
-            "unrecognised field '\(name)' — this schema declares no such key"
+        case .unrecognisedField(let name, let location):
+            "unrecognised field '\(name)' in \(location.isEmpty ? "the document root" : location)"
+                + " — this schema declares no such key"
         case .unsupportedSchemaVersion(let found):
             "schemaVersion \(found) is not readable here; this build reads "
                 + "\(SeedCatalogue.supportedSchemaVersion)"

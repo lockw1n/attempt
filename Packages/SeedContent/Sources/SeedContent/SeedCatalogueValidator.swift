@@ -19,8 +19,8 @@ public enum SeedCatalogueValidator {
         do {
             let catalogue = try JSONDecoder().decode(SeedCatalogue.self, from: data)
             return validate(catalogue, minimumExercises: minimumExercises)
-        } catch SeedDecodingFailure.unrecognisedField(let name) {
-            return [.unrecognisedField(name)]
+        } catch SeedDecodingFailure.unrecognisedField(let name, let location) {
+            return [.unrecognisedField(name: name, location: location)]
         } catch {
             return [.undecodable(describe(error))]
         }
@@ -144,7 +144,7 @@ public enum SeedCatalogueValidator {
             return String(describing: error)
         }
 
-        let path = context.codingPath.map(\.stringValue).joined(separator: ".")
+        let path = seedLocation(of: context.codingPath)
         return path.isEmpty ? context.debugDescription : "\(path): \(context.debugDescription)"
     }
 }

@@ -48,6 +48,11 @@ let brokenFixtures: [BrokenFixture] = [
     // it. Both fixtures above have the cycle at the start of the walk, and a mutation probe found
     // that between them they could not tell the two apart.
     BrokenFixture("parent-cycle-with-tail", .parentCycle([frontSquatID, dumbbellBenchID])),
+    // An entry hanging *below* a cycle, which is what makes the walk's memo load-bearing: without
+    // it the second walk re-enters the same cycle and reports it twice. In every fixture above, the
+    // walk that finds the cycle also reaches every other entry, so a probe deleting the memo
+    // survived them all.
+    BrokenFixture("cycle-with-descendant", .parentCycle([squatID, frontSquatID])),
     BrokenFixture(
         "unknown-movement",
         .unknownVocabulary(exercise: squatID, field: .movement, value: "sled")),
@@ -68,9 +73,17 @@ let brokenFixtures: [BrokenFixture] = [
     BrokenFixture("blank-name", .blankName(squatID)),
     BrokenFixture("too-few-exercises", .tooFewExercises(count: 0, minimum: 1)),
     // Both containers reject an unrecognised key, and both are exercised: the entry is where a typo
-    // actually happens, the root is where nothing would ever notice one.
-    BrokenFixture("unrecognised-entry-field", .unrecognisedField("parent")),
-    BrokenFixture("unrecognised-root-field", .unrecognisedField("version")),
+    // actually happens, the root is where nothing would ever notice one. The entry's location is
+    // asserted rather than only its key, because a bare `parent` is not searchable in a file where
+    // every variation row carries `parentExerciseID`.
+    BrokenFixture(
+        "unrecognised-entry-field", .unrecognisedField(name: "parent", location: "exercises[0]")),
+    BrokenFixture("unrecognised-root-field", .unrecognisedField(name: "version", location: "")),
+    // Two unrecognised keys in one object, which yields one failure rather than a list: decoding
+    // stops at the first, so there is nothing further to report. The *choice* of `edition` over
+    // `version` is not pinned here — the decoder sorts `allKeys` before this code sees them, so no
+    // payload can tell a sorted pick from an arbitrary one. `SeedDecodingTests` pins that.
+    BrokenFixture("unrecognised-root-fields", .unrecognisedField(name: "edition", location: "")),
     BrokenFixture("malformed-uuid", kind: .undecodable),
     BrokenFixture("missing-field", kind: .undecodable),
 ]
