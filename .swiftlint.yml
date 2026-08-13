@@ -18,6 +18,7 @@ excluded:
   - Packages/Persistence/.build
   - Packages/RepositoryInterface/.build
   - Packages/RepositoryFakes/.build
+  - Packages/SeedContent/.build
   - Packages/DesignSystem/.build
 
 disabled_rules:

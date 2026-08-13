@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "exercises": [
+    { "id": "not-a-uuid", "name": "Back Squat", "movement": "squat", "equipment": "barbell", "laterality": "bilateral", "barType": "standard" }
+  ]
+}
