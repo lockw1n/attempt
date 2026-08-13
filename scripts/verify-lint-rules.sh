@@ -54,6 +54,7 @@ POSITIVE=(
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/AttributedImportFixture.swift:no_foundation_in_core"
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/MissingDocsFixture.swift:missing_docs"
     "scripts/lint-fixtures/Packages/Persistence/HardDeleteFixture.swift:no_hard_delete_outside_purge"
+    "scripts/lint-fixtures/Packages/SeedImport/NetworkingFixture.swift:no_networking_in_seed_import"
     "scripts/lint-fixtures/Packages/Persistence/Sources/BareSaveFixture.swift:no_bare_save_in_persistence"
 )
 
@@ -64,6 +65,7 @@ NEGATIVE=(
     "Packages/PowerliftingCore/Sources/PowerliftingCore/PowerliftingCore.swift:no_swiftdata_outside_persistence"
     "Packages/Persistence/Sources/Persistence/SoftDelete.swift:no_hard_delete_outside_purge"
     "Packages/Persistence/Sources/Persistence/StoredEntity.swift:no_bare_save_in_persistence"
+    "Packages/SeedImport/Sources/SeedImport/SeedImport.swift:no_networking_in_seed_import"
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/BlockCommentImportFixture.swift:no_imports_in_core"
 )
 
