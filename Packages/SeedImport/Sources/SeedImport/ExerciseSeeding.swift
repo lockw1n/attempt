@@ -57,11 +57,20 @@ extension Exercise {
 
     /// `self` with the six seed-owned columns re-supplied from `entry` and every other column kept.
     ///
-    /// **The split is the whole rule, and this is its only home.** ``Exercise/name`` is kept because
-    /// `FR-1.1.4` lets a user rename a built-in and a later import must not undo it; ``notes`` and
-    /// ``isArchived`` are kept for the same reason, being edits the payload cannot express. The
-    /// audit columns are copied so that a caller can compare this against the stored row and learn
-    /// whether the import has anything to write.
+    /// **The split is the whole rule, and this is its only home.** Re-supplied on every import:
+    /// ``Exercise/movement``, ``Exercise/parentExerciseID``, ``Exercise/equipment``,
+    /// ``Exercise/laterality``, ``Exercise/barType``, ``Exercise/implementCount``. Kept:
+    /// ``Exercise/name``, because `FR-1.1.4` lets a user rename a built-in and a later import must
+    /// not undo it; ``Exercise/notes`` and ``Exercise/isArchived`` for the same reason, being edits
+    /// the payload cannot express; ``Exercise/isCustom``, which decides the question rather than
+    /// answering to it. The audit columns are copied so that a caller can compare this against the
+    /// stored row and learn whether the import has anything to write.
+    ///
+    /// **A kept column is kept unconditionally, so the catalogue cannot correct one.** Nothing
+    /// stored records whether a column holds a user's edit or the value the seed last wrote, and
+    /// with no such column a later revision cannot tell a rename it must preserve from a name it
+    /// should fix. Renaming an entry in a published catalogue therefore reaches no installed app.
+    /// Distinguishing the two needs a column, and columns are cheap only before rows exist.
     func reseeded(from entry: SeedExercise) -> Exercise {
         Exercise(
             id: id,
@@ -86,6 +95,12 @@ extension Exercise {
     /// Archiving rather than deleting is not a softer choice here, it is the only one: `FR-1.1.5`
     /// forbids hard-deleting an exercise with logged sets, and ``ExerciseRepository`` offers no soft
     /// delete either — one would orphan every set logged against the row.
+    ///
+    /// **One-way, for the reason ``Exercise/reseeded(from:)`` gives.** ``Exercise/isArchived`` is a
+    /// kept column, so an entry that leaves a published catalogue and returns in a later revision
+    /// stays hidden for everyone who imported the revision in between. Un-archiving on return would
+    /// undo a user hiding a built-in they never use, which `FR-1.1.5` gives them, and nothing stored
+    /// tells the two apart.
     func archived() -> Exercise {
         Exercise(
             id: id,

@@ -1,9 +1,8 @@
 /// What one import did, so that a caller can assert it did nothing.
 ///
 /// **``writeCount`` is the number that matters and the reason this type exists.** A row count is
-/// stable across a re-import whether the import wrote every row or none of them, and the difference
-/// is `G-2.4`'s conflict key on 116 rows — so the observable a caller and a test both need is how
-/// many saves happened, not how many rows there are afterwards.
+/// stable across a re-import whether the import wrote every row or none of them, so it cannot show
+/// what the module header's no-op-save rule turns on. How many saves happened can.
 public struct SeedImportSummary: Equatable, Sendable {
     /// Catalogue entries written as new rows.
     public let inserted: Int

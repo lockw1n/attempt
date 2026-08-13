@@ -9,8 +9,8 @@
 //   - NOTHING HERE TOUCHES THE NETWORK. `NFR-1.7` puts first launch after install in airplane mode
 //     with nothing to fall back to, so the import reads the app bundle and only the app bundle. It
 //     is not a preference this module happens to hold: `no_networking_in_seed_import` fails the
-//     build on `URLSession` and its siblings anywhere under this package. `TR-0.5.3`'s fetcher is a
-//     different layer, and it hands this one bytes.
+//     build on a fetch anywhere under this package, and that rule's entry in `.swiftlint.yml`
+//     carries the argument and the shapes it covers.
 //
 //   - VALIDATE BEFORE WRITING ANYTHING. `SeedCatalogueValidator` over the bytes, and an empty
 //     result is the only passing result. A malformed payload must cost nothing, so the check
@@ -20,11 +20,9 @@
 //   - `isCustom` DECIDES WHETHER A ROW MAY BE OVERWRITTEN, and `Exercise` says so on the property
 //     itself. A row the user authored is never written by an import, whatever its id.
 //
-//   - THE SEED OWNS SIX COLUMNS AND THE ROW OWNS THE REST. Re-supplied on every import: `movement`,
-//     `parentExerciseID`, `equipment`, `laterality`, `barType`, `implementCount`. Never touched:
-//     `name` (`FR-1.1.4` allows renaming a built-in), `notes`, `isArchived`, `isCustom`, and the
-//     three audit columns, which belong to the write path. `Exercise.reseeded(from:)` is the single
-//     place that split is written down.
+//   - THE SEED OWNS SOME COLUMNS AND THE ROW OWNS THE REST. Which are which, and why each falls
+//     where it does, is `Exercise.reseeded(from:)`'s doc comment — the split is that method's whole
+//     body, so listing it a second time here is two copies to keep in step.
 //
 //   - A SAVE THAT CHANGES NOTHING IS STILL A WRITE, so this module does not make one. Every
 //     repository stamps `updatedAt` on the way in whatever the record said, and `updatedAt` is

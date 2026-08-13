@@ -41,7 +41,10 @@ public struct SeedImporter: Sendable {
     ///
     /// - Parameters:
     ///   - data: The payload's bytes, from the bundle or from `TR-0.5.3`'s fetcher.
-    ///   - minimumExercises: How many entries the caller requires.
+    ///   - minimumExercises: How many entries the caller requires. **Deliberately without a
+    ///     default**, unlike the validator it forwards to: `TR-0.5.1` puts the floor at eighty and a
+    ///     caller that has not thought about it is likelier to want that than to want one. A fetched
+    ///     payload short enough to matter is exactly what `TR-0.5.3` has to refuse.
     ///   - now: What a newly written row records as its `createdAt`.
     /// - Returns: What the import did.
     /// - Throws: ``SeedImportError/invalidPayload(_:)`` with every reason the validator found, or
@@ -49,7 +52,7 @@ public struct SeedImporter: Sendable {
     @discardableResult
     public func importCatalogue(
         from data: Data,
-        minimumExercises: Int = 1,
+        minimumExercises: Int,
         at now: Date = Date()
     ) async throws -> SeedImportSummary {
         let failures = SeedCatalogueValidator.validate(data, minimumExercises: minimumExercises)
@@ -65,8 +68,19 @@ public struct SeedImporter: Sendable {
 
     /// Merges a validated catalogue into the store.
     private func apply(_ catalogue: SeedCatalogue, at now: Date) async throws -> SeedImportSummary {
-        // Read before the writes, so the sweep below sees the rows this import did not put there.
+        // ONE READ, NOT ONE PER ENTRY. This runs on first launch, which `NFR-1.1` gives 1.5 s in
+        // total, and the catalogue is 116 entries — a lookup per entry is 116 round trips for rows
+        // this list already holds. Read before the writes, so the sweep below is over the rows this
+        // import did not put there. `includingDeleted:` is `true` because it is the widest read the
+        // protocol offers and a merge that missed a row would insert a second copy of it;
+        // `ExerciseRepository` has no delete at all and says so, which is what makes the flag free
+        // rather than load-bearing.
         let storedBefore = try await repository.exercises(includingDeleted: true)
+        var storedByID: [UUID: Exercise] = [:]
+        var duplicatedIDs: Set<UUID> = []
+        for row in storedBefore where storedByID.updateValue(row, forKey: row.id) != nil {
+            duplicatedIDs.insert(row.id)
+        }
         var inserted = 0
         var updated = 0
         var unchanged = 0
@@ -74,12 +88,19 @@ public struct SeedImporter: Sendable {
 
         for entry in SeedExerciseOrdering.parentsFirst(catalogue.exercises) {
             seeded.insert(entry.id)
-            // By id rather than against `storedBefore`: two rows may share an id (`G-2.5` forbids
-            // the constraint that would prevent it) and this read is where that tiebreak is already
-            // implemented. `includingDeleted:` is `true` so that a row which somehow arrived
-            // soft-deleted is merged rather than inserted alongside itself.
-            guard let existing = try await repository.exercise(id: entry.id, includingDeleted: true)
-            else {
+            // `G-2.5` forbids the unique constraint that would stop two rows sharing an id, and
+            // which of the pair wins is the repository's rule — so an id carried by more than one
+            // row is asked for by id, and nothing here invents a second answer. Every other id,
+            // which on any real launch is all of them, is already in hand. Safe against the loop's
+            // own writes because `SeedCatalogueValidator` refuses a repeated id, so no entry is
+            // visited twice.
+            let existing: Exercise?
+            if duplicatedIDs.contains(entry.id) {
+                existing = try await repository.exercise(id: entry.id, includingDeleted: true)
+            } else {
+                existing = storedByID[entry.id]
+            }
+            guard let existing else {
                 try await repository.save(.seeded(from: entry, at: now))
                 inserted += 1
                 continue
@@ -110,11 +131,10 @@ public struct SeedImporter: Sendable {
     /// run free of writes. Custom rows are skipped: an exercise the user authored was never in the
     /// catalogue, so its absence from one says nothing.
     ///
-    /// `deletedAt` is not consulted, and that is a decision rather than an omission — an exercise row
-    /// has no delete path at all (``ExerciseRepository`` offers none, and a repository ignores the
-    /// column on the way in), so a guard for it would be a branch no call could reach. Two rows
-    /// sharing an id are archived as two rows, because there is no reading under which one of the
-    /// pair should stay in the pickers.
+    /// `deletedAt` is not consulted, and that is a decision rather than an omission: ``ExerciseRepository``
+    /// has no delete, so a guard for it would be a branch no call could reach. Two rows sharing an
+    /// id are archived as two rows, because there is no reading under which one of the pair should
+    /// stay in the pickers.
     private func archiveRemovals(notIn seeded: Set<UUID>, from stored: [Exercise]) async throws -> Int {
         var archived = 0
         for row in stored where !seeded.contains(row.id) && !row.isCustom && !row.isArchived {

@@ -140,8 +140,18 @@ missing_docs:
 #   NFR-1.7 — `no_networking_in_seed_import` (T-0.52). The seed import must work on first launch
 #             after install in airplane mode, so it reads the app bundle and nothing else. No test
 #             can assert the absence of a call nobody wrote, which is why this is a lint rule and
-#             not a test. Scoped to the importer alone: TR-0.5.3's fetcher is a different layer and
-#             is supposed to reach the network.
+#             not a test — and why the rule carries the whole argument, with the module and its
+#             suite naming it rather than restating it. Scoped to the importer alone: TR-0.5.3's
+#             fetcher is a different layer and is supposed to reach the network.
+#
+#             TWO SHAPES, BECAUSE `URLSession` IS NOT THE SHORTEST PATH TO A FETCH. `Data(contentsOf:)`
+#             and `String(contentsOf:)` take a URL of any scheme and block on the network for an
+#             http(s) one, and `URL.resourceBytes`/`.lines` do it asynchronously — none of them
+#             names a networking type, so a regex over `URLSession` and its siblings passes them
+#             all. Measured 2026-08-13: before the second alternative, a fixture calling all four
+#             produced zero violations. The receiving type has to be in the pattern — a bare
+#             `contentsOf` fires on `Array.append(contentsOf:)`, which SeedExerciseOrdering uses.
+#             Both shapes have a fixture; one rule with one fixture would have shipped the hole.
 #
 #   layering — TR-0.1.2 and NFR-0.2, the three import bans. All three rely on `match_kinds` to
 #             tell code from prose: `import Foundation` and `import SwiftData` both appear inside
@@ -230,7 +240,7 @@ custom_rules:
 
   no_networking_in_seed_import:
     name: "Networking in the seed importer"
-    regex: '\b(URLSession|URLRequest|URLProtocol|URLSessionConfiguration|NWConnection|NWPathMonitor)\b|\bimport[ \t]+(FoundationNetworking|Network)\b'
+    regex: '\b(URLSession|URLRequest|URLProtocol|URLSessionConfiguration|NWConnection|NWPathMonitor)\b|\bimport[ \t]+(FoundationNetworking|Network)\b|\b(Data|String|NSData|NSString)\(\s*contentsOf\s*:|\.(resourceBytes|lines)\b'
     match_kinds:
       - keyword
       - identifier

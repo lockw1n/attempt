@@ -103,6 +103,21 @@ struct Subject {
         importer = SeedImporter(exercises: stack.exercises)
     }
 
+    /// Imports `data`, defaulting the floor to one entry.
+    ///
+    /// `importCatalogue(from:minimumExercises:at:)` takes no default on purpose — `TR-0.5.1`'s floor
+    /// is eighty and a production caller should have to say so. These payloads are two or three
+    /// entries, so the floor is this suite's business rather than each test's; the two tests that
+    /// are *about* the floor pass it.
+    @discardableResult
+    func importing(
+        _ data: Data,
+        minimum: Int = 1,
+        at now: Date = Date()
+    ) async throws -> SeedImportSummary {
+        try await importer.importCatalogue(from: data, minimumExercises: minimum, at: now)
+    }
+
     /// Every stored exercise, archived ones included.
     func stored() async throws -> [Exercise] {
         try await exercises.exercises(includingDeleted: true)
@@ -120,11 +135,16 @@ extension Exercise {
     ///
     /// The suite's one restatement of the fourteen-column initialiser; every setup that hand-edits a
     /// seeded row goes through it, so a column added later is added in one place on this side.
+    ///
+    /// ``Exercise/movement`` is here despite being seed-owned rather than user-editable: a row that
+    /// differs from another in a *kept* column is indistinguishable to the merge, so a duplicate
+    /// standing in for one the repository would resolve differently has to differ in an owned one.
     func edited(
         name: String? = nil,
         notes: String? = nil,
         isArchived: Bool? = nil,
-        isCustom: Bool? = nil
+        isCustom: Bool? = nil,
+        movement: Movement? = nil
     ) -> Exercise {
         Exercise(
             id: id,
@@ -132,7 +152,7 @@ extension Exercise {
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             name: name ?? self.name,
-            movement: movement,
+            movement: movement ?? self.movement,
             parentExerciseID: parentExerciseID,
             equipment: equipment,
             laterality: laterality,
@@ -142,6 +162,54 @@ extension Exercise {
             isArchived: isArchived ?? self.isArchived,
             notes: notes ?? self.notes
         )
+    }
+}
+
+/// A repository that reports one extra row, sharing an id with a row the store already holds.
+///
+/// `G-2.5` forbids the unique constraint that would prevent such a pair, so a real store can hold
+/// one — but ``InMemoryExerciseRepository`` keys its store by id and therefore cannot, which would
+/// leave the importer's duplicate branch unreachable and unprobeable.
+///
+/// **Not a second implementation of the protocol**, and not in tension with this package's "one
+/// subject" argument: every call forwards to the fake and exactly one answer is embellished, so the
+/// branch has a state to run in. `exercise(id:)` is forwarded untouched on purpose — the whole
+/// point of the branch is that resolving a duplicated id is the repository's answer to give.
+struct DuplicateIDRepository: ExerciseRepository {
+    let base: any ExerciseRepository
+
+    /// The row reported a second time by ``exercises(includingDeleted:)``.
+    let twin: Exercise
+
+    func exercises(includingDeleted: Bool) async throws -> [Exercise] {
+        try await base.exercises(includingDeleted: includingDeleted) + [twin]
+    }
+
+    func exercise(id: UUID, includingDeleted: Bool) async throws -> Exercise? {
+        try await base.exercise(id: id, includingDeleted: includingDeleted)
+    }
+
+    func save(_ exercise: Exercise) async throws {
+        try await base.save(exercise)
+    }
+
+    func trainingMax(
+        forExerciseID exerciseID: UUID,
+        on date: Date
+    ) async throws -> TrainingMaxEntry? {
+        try await base.trainingMax(forExerciseID: exerciseID, on: date)
+    }
+
+    func trainingMaxHistory(
+        forExerciseID exerciseID: UUID,
+        includingDeleted: Bool
+    ) async throws -> [TrainingMaxEntry] {
+        try await base.trainingMaxHistory(
+            forExerciseID: exerciseID, includingDeleted: includingDeleted)
+    }
+
+    func saveTrainingMax(_ entry: TrainingMaxEntry) async throws {
+        try await base.saveTrainingMax(entry)
     }
 }
 
