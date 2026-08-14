@@ -20,8 +20,11 @@ let strictSettings: [SwiftSetting] = [
 // as the served one. `formulas.json` and `flags.json` have no bundled counterpart: `RPETable`'s
 // default chart is Swift source, and there is nothing to keep byte-identical to a bundle.
 //
-// Depends on `PowerliftingCore` alone, for `RPETable` — same constraint as SeedContent, and the
-// same reason: a public content contract must not be shaped like a storage record.
+// The *library* depends on `PowerliftingCore` alone, for `RPETable` — same constraint as
+// SeedContent, and the same reason: a public content contract must not be shaped like a storage
+// record. The `GenerateRemoteContent` executable also depends on `SeedContent`, which does not
+// weaken that: the executable is the publish tool for all three payloads, and validating the
+// catalogue it publishes needs `SeedCatalogueValidator`. Nothing an app links picks up that edge.
 //
 // Not added to the Linux job, matching SeedContent: nothing here carries a Linux-specific
 // requirement (`NFR-0.2` is PowerliftingCore's alone).
@@ -34,11 +37,13 @@ let package = Package(
         .library(name: "RemoteContent", targets: ["RemoteContent"]),
         // `scripts/generate-remote-content.sh` is the only caller (`TR-0.5.2`'s "scripted,
         // reproducible deploy"). Writes `formulas.json` and `flags.json` fresh on every run —
-        // there is no committed copy for either to drift from.
+        // there is no committed copy for either to drift from — and validates all three published
+        // payloads, the copied catalogue included, before the run is allowed to succeed.
         .executable(name: "GenerateRemoteContent", targets: ["GenerateRemoteContent"]),
     ],
     dependencies: [
-        .package(path: "../PowerliftingCore")
+        .package(path: "../PowerliftingCore"),
+        .package(path: "../SeedContent"),
     ],
     targets: [
         .target(
@@ -54,7 +59,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "GenerateRemoteContent",
-            dependencies: ["RemoteContent", "PowerliftingCore"],
+            dependencies: ["RemoteContent", "PowerliftingCore", "SeedContent"],
             swiftSettings: strictSettings
         ),
     ]

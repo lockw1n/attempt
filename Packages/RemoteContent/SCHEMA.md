@@ -1,9 +1,13 @@
 # `formulas.json` and `flags.json`
 
-The two `TR-0.5.2` payloads with no bundled counterpart — `/content/v1/formulas.json` and
-`/config/v1/flags.json`. Unlike `exercises.json` (`Packages/SeedContent/SCHEMA.md`), neither is
-shipped inside the app; both exist only served, generated at deploy time by
-`scripts/generate-remote-content.sh`.
+The two `TR-0.5.2` payloads with no bundled counterpart — `content/v1/formulas.json` and
+`config/v1/flags.json`, both under `https://lockw1n.github.io/attempt`. Unlike `exercises.json`
+(`Packages/SeedContent/SCHEMA.md`), neither is shipped inside the app; both exist only served,
+generated at deploy time by `scripts/generate-remote-content.sh`.
+
+Both documents are pretty-printed with **sorted keys**, so the examples below are in the order the
+endpoint actually emits — alphabetical, not the order the Swift types declare their fields in. Key
+order is not part of this contract; a reader must not depend on it either way.
 
 Validate before shipping either:
 
@@ -18,17 +22,17 @@ An empty result is the only passing result for either.
 
 ```json
 {
-  "schemaVersion": 1,
   "revision": 1,
-  "verified": false,
   "rpeTable": {
     "entries": [
-      {"repsToFailure": 1, "fractionOfMax": 1.0},
-      {"repsToFailure": 1.5, "fractionOfMax": 0.978}
+      {"fractionOfMax": 1, "repsToFailure": 1},
+      {"fractionOfMax": 0.978, "repsToFailure": 1.5}
     ],
     "repRangeLowerBound": 1,
     "repRangeUpperBound": 10
-  }
+  },
+  "schemaVersion": 1,
+  "verified": false
 }
 ```
 
@@ -46,9 +50,9 @@ Two version numbers for the same reason `exercises.json` has two: one field cann
 
 ```json
 {
-  "schemaVersion": 1,
+  "minimumSupportedVersion": "1.0.0",
   "revision": 1,
-  "minimumSupportedVersion": "1.0.0"
+  "schemaVersion": 1
 }
 ```
 

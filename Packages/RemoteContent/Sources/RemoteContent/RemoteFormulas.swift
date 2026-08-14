@@ -49,8 +49,11 @@ public struct RemoteFormulas: Codable, Equatable, Sendable {
 // MARK: - Codable
 
 extension RemoteFormulas {
-    /// The wire format's keys, declared rather than synthesised so key order is a decision — the
-    /// module-wide convention `RoundingRule` and `RPETable` set.
+    /// The wire format's key spelling, declared rather than synthesised so that renaming a
+    /// property does not silently rename a published field.
+    ///
+    /// Unlike `RoundingRule` and `RPETable`, key *order* is not this type's to decide: the
+    /// published bytes come from ``PublishedContent/makeEncoder()``, which sorts.
     private enum CodingKeys: String, CodingKey {
         case schemaVersion
         case revision
@@ -70,7 +73,8 @@ extension RemoteFormulas {
         rpeTable = try container.decode(RPETable.self, forKey: .rpeTable)
     }
 
-    /// Writes the four keys in declaration order.
+    /// Writes the four keys. Their position in the published document is the encoder's — see
+    /// ``CodingKeys``.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(schemaVersion, forKey: .schemaVersion)

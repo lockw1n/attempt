@@ -33,8 +33,11 @@ public struct RemoteFlags: Codable, Equatable, Sendable {
 // MARK: - Codable
 
 extension RemoteFlags {
-    /// The wire format's keys, declared rather than synthesised — the module-wide convention
-    /// `RoundingRule` and `RPETable` set.
+    /// The wire format's key spelling, declared rather than synthesised so that renaming a
+    /// property does not silently rename a published field.
+    ///
+    /// Unlike `RoundingRule` and `RPETable`, key *order* is not this type's to decide: the
+    /// published bytes come from ``PublishedContent/makeEncoder()``, which sorts.
     private enum CodingKeys: String, CodingKey {
         case schemaVersion
         case revision
@@ -50,7 +53,8 @@ extension RemoteFlags {
         minimumSupportedVersion = try container.decode(String.self, forKey: .minimumSupportedVersion)
     }
 
-    /// Writes the three keys in declaration order.
+    /// Writes the three keys. Their position in the published document is the encoder's — see
+    /// ``CodingKeys``.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(schemaVersion, forKey: .schemaVersion)
