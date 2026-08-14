@@ -35,6 +35,7 @@ Packages/
 ├── Persistence/             SwiftData models, schema versioning, repositories
 ├── RepositoryFakes/         In-memory repositories, and the conformance suite both must pass
 ├── SeedContent/             The seed payload's schema and its validator, plus SCHEMA.md
+├── SeedImport/              Merges the seed catalogue into the exercise repository
 └── DesignSystem/            Tokens, components, theme (empty until Phase 1)
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -47,8 +48,10 @@ never back, and the app may import any of them. `RepositoryFakes` sits beside
 `Persistence` rather than under it: its library depends on `RepositoryInterface`
 alone, and only its test target depends on `Persistence`, because the conformance
 suite there has to name both implementations. `SeedContent` sits off to one side:
-it depends on `PowerliftingCore` alone and nothing depends on it yet. Two
-constraints are load-bearing rather than stylistic:
+it depends on `PowerliftingCore` alone. `SeedImport` sits above both `SeedContent`
+and `RepositoryInterface`, since neither of those may depend on the other, and is
+the only package that names both. Two constraints are load-bearing rather than
+stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
   and not the platform modules (`Darwin`, `Glibc`) either. Enforced by the `linux`
@@ -121,6 +124,19 @@ vocabularies are never restated — the validator resolves through
 than by decoding, which would resolve an unknown value to `other` instead of
 refusing it.
 
+`SeedImport` merges a validated catalogue into `ExerciseRepository`:
+
+```swift
+let summary = try await SeedImporter(exercises: stack.exercises).importBundledCatalogue()
+```
+
+A second run over the same catalogue performs no writes at all — each entry is
+compared against the stored row and saved only when the columns the seed owns have
+moved. It reads the app bundle and never the network, which
+`no_networking_in_seed_import` enforces by lint rather than by test, and its own
+module header names which columns a re-import may overwrite and which belong to
+the row.
+
 `PowerliftingCore`, `Persistence` and `DesignSystem` are linked into the app
 target as local package references, so `xcodebuild` builds them alongside the app.
 `RepositoryInterface` arrives transitively through `Persistence`; the composition
@@ -155,6 +171,7 @@ swift test --package-path Packages/RepositoryInterface
 swift test --package-path Packages/Persistence
 swift test --package-path Packages/RepositoryFakes
 swift test --package-path Packages/SeedContent
+swift test --package-path Packages/SeedImport
 ```
 
 `PowerliftingCoreTests` is held to the same no-Apple-frameworks rule as the module
@@ -279,7 +296,7 @@ swift format --in-place --recursive Attempt Packages
 **`--strict` is not optional.** Without it `swift format lint` prints violations
 as warnings and still exits 0, so a check that omits it is decorative.
 
-Eight custom rules beyond the standard set, in `.swiftlint.yml` under
+Nine custom rules beyond the standard set, in `.swiftlint.yml` under
 `custom_rules`:
 
 | Rule | Enforces |
@@ -292,6 +309,7 @@ Eight custom rules beyond the standard set, in `.swiftlint.yml` under
 | `no_imports_in_core` | `NFR-0.2` — `PowerliftingCore/Sources` imports nothing |
 | `no_hard_delete_outside_purge` | `G-1.3` — deletion is soft outside `Persistence/Purge/` |
 | `no_bare_save_in_persistence` | `G-1.2`/`G-2.4` — `saveStamped(at:)`, not `save()` |
+| `no_networking_in_seed_import` | `NFR-1.7`/`G-2.1` — `SeedImport` reads the app bundle only |
 
 One built-in rule is configured rather than left at its defaults: `missing_docs`
 (`NFR-0.3`), repo-wide, with `excludes_inherited_types: false`. At the default it

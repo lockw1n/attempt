@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 2,
+  "revision": 1,
+  "verified": false,
+  "rpeTable": {
+    "entries": [
+      {"repsToFailure": 1, "fractionOfMax": 1.0}
+    ],
+    "repRangeLowerBound": 1,
+    "repRangeUpperBound": 10
+  }
+}

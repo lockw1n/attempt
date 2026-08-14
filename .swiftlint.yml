@@ -20,6 +20,7 @@ excluded:
   - Packages/RepositoryFakes/.build
   - Packages/SeedContent/.build
   - Packages/SeedImport/.build
+  - Packages/RemoteContent/.build
   - Packages/DesignSystem/.build
 
 disabled_rules:
