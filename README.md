@@ -149,13 +149,15 @@ let failures = RemoteFormulasValidator.validate(try Data(contentsOf: formulasURL
 ```
 
 `Packages/RemoteContent/SCHEMA.md` documents both payloads.
+`PublishedContent` is the one home for the base URL, the three payloads' paths
+under it, and the encoder that produces their bytes.
 `scripts/generate-remote-content.sh` builds all three: it copies `exercises.json`
 verbatim and runs the package's own `GenerateRemoteContent` executable to encode
-`formulas.json` and `flags.json` fresh, validating each against the same call
-above before writing it — the run fails rather than publish anything either
-validator would refuse. `.github/workflows/deploy-content.yml` runs that script
-on every push to `main` touching these sources and publishes the result to
-GitHub Pages.
+`formulas.json` and `flags.json` fresh — validating all three, the copy
+included, before writing any of them, so the run fails rather than publish a
+payload any of the three validators would refuse. `.github/workflows/deploy-content.yml`
+runs that script on every push to `main` touching these sources and publishes
+the result to GitHub Pages, at `PublishedContent.baseURL`.
 
 `PowerliftingCore`, `Persistence` and `DesignSystem` are linked into the app
 target as local package references, so `xcodebuild` builds them alongside the app.
