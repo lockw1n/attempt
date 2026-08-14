@@ -36,6 +36,7 @@ Packages/
 ├── RepositoryFakes/         In-memory repositories, and the conformance suite both must pass
 ├── SeedContent/             The seed payload's schema and its validator, plus SCHEMA.md
 ├── SeedImport/              Merges the seed catalogue into the exercise repository
+├── RemoteContent/           formulas.json/flags.json's schema, validator and generator, plus SCHEMA.md
 └── DesignSystem/            Tokens, components, theme (empty until Phase 1)
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -50,8 +51,10 @@ alone, and only its test target depends on `Persistence`, because the conformanc
 suite there has to name both implementations. `SeedContent` sits off to one side:
 it depends on `PowerliftingCore` alone. `SeedImport` sits above both `SeedContent`
 and `RepositoryInterface`, since neither of those may depend on the other, and is
-the only package that names both. Two constraints are load-bearing rather than
-stylistic:
+the only package that names both. `RemoteContent` sits beside `SeedContent`,
+depending on `PowerliftingCore` alone for the same reason: a content contract
+must not be shaped like a storage record. Two constraints are load-bearing rather
+than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
   and not the platform modules (`Darwin`, `Glibc`) either. Enforced by the `linux`
@@ -137,6 +140,23 @@ moved. It reads the app bundle and never the network, which
 module header names which columns a re-import may overwrite and which belong to
 the row.
 
+`RemoteContent` holds the schema and validator for the other two content
+endpoints — `formulas.json` and `flags.json`, which unlike `exercises.json` have
+no bundled counterpart:
+
+```swift
+let failures = RemoteFormulasValidator.validate(try Data(contentsOf: formulasURL))
+```
+
+`Packages/RemoteContent/SCHEMA.md` documents both payloads.
+`scripts/generate-remote-content.sh` builds all three: it copies `exercises.json`
+verbatim and runs the package's own `GenerateRemoteContent` executable to encode
+`formulas.json` and `flags.json` fresh, validating each against the same call
+above before writing it — the run fails rather than publish anything either
+validator would refuse. `.github/workflows/deploy-content.yml` runs that script
+on every push to `main` touching these sources and publishes the result to
+GitHub Pages.
+
 `PowerliftingCore`, `Persistence` and `DesignSystem` are linked into the app
 target as local package references, so `xcodebuild` builds them alongside the app.
 `RepositoryInterface` arrives transitively through `Persistence`; the composition
@@ -172,6 +192,7 @@ swift test --package-path Packages/Persistence
 swift test --package-path Packages/RepositoryFakes
 swift test --package-path Packages/SeedContent
 swift test --package-path Packages/SeedImport
+swift test --package-path Packages/RemoteContent
 ```
 
 `PowerliftingCoreTests` is held to the same no-Apple-frameworks rule as the module

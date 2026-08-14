@@ -20,9 +20,9 @@ public struct RemoteFlags: Codable, Equatable, Sendable {
     public let minimumSupportedVersion: String
 
     /// Creates a document. Encoding is what the deploy script uses to produce the published
-    /// payload. This initialiser does not reject a blank ``minimumSupportedVersion`` or an
-    /// out-of-range version number — `RemoteFlagsValidator` is where both are checked, so a
-    /// payload failing on more than one axis is reported in one pass.
+    /// payload. This initialiser does not reject a blank ``minimumSupportedVersion`` — that is
+    /// `RemoteFlagsValidator`'s job, along with the other two fields, so a payload failing on more
+    /// than one axis is reported in one pass.
     public init(schemaVersion: Int, revision: Int, minimumSupportedVersion: String) {
         self.schemaVersion = schemaVersion
         self.revision = revision

@@ -14,6 +14,11 @@
 // table names the general form of this trap (gap §22, Phase 2's golden file); `.sortedKeys` is
 // the fix that note already gives, applied here so two runs of this generator produce identical
 // bytes rather than merely identical values.
+//
+// Each document is run through its own validator before it is written — `SCHEMA.md`'s "validate
+// before shipping either" applies to this tool's own output, not only to a body downloaded later,
+// and nothing else in the publish path checks it (`generate-remote-content.sh` fails on this
+// tool's exit code, and the CI workflow uploads only what that script produced).
 
 import Foundation
 import PowerliftingCore
@@ -48,12 +53,23 @@ enum GenerateRemoteContent {
             print("wrote \(relativePath) (\(data.count) bytes)")
         }
 
+        // Fails the run rather than publishing a payload its own validator would refuse — see the
+        // header comment for why this is the only place either validator is called on the way out.
+        func fail(_ relativePath: String, _ failures: [CustomStringConvertible]) -> Never {
+            for failure in failures {
+                FileHandle.standardError.write(Data("\(relativePath): \(failure)\n".utf8))
+            }
+            exit(65)
+        }
+
         let formulas = RemoteFormulas(
             schemaVersion: RemoteFormulas.supportedSchemaVersion,
             revision: 1,
             verified: false,
             rpeTable: .standard
         )
+        let formulasFailures = RemoteFormulasValidator.validate(formulas)
+        guard formulasFailures.isEmpty else { fail("content/v1/formulas.json", formulasFailures) }
         try write(try encoder.encode(formulas), to: "content/v1/formulas.json")
 
         let flags = RemoteFlags(
@@ -61,6 +77,8 @@ enum GenerateRemoteContent {
             revision: 1,
             minimumSupportedVersion: "1.0.0"
         )
+        let flagsFailures = RemoteFlagsValidator.validate(flags)
+        guard flagsFailures.isEmpty else { fail("config/v1/flags.json", flagsFailures) }
         try write(try encoder.encode(flags), to: "config/v1/flags.json")
     }
 }
