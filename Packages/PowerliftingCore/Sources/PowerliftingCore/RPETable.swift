@@ -16,10 +16,10 @@
 /// at RPE 10. That follows from the model, not from the source, and it is deliberate: refusing it
 /// would mean storing the printed rectangle as well as the sequence, to decline efforts the model
 /// answers perfectly well. ``repRange`` still bounds the rep axis.
-public struct RPETable: Sendable, Hashable {
+public struct RPETable: Sendable, Hashable, Codable {
     /// One row of the chart: how far from failure the set was, and what fraction of a maximum that
     /// corresponds to.
-    public struct Entry: Sendable, Hashable {
+    public struct Entry: Sendable, Hashable, Codable {
         /// Reps performed plus reps left in reserve — the reps the set would have reached at
         /// failure.
         ///
@@ -113,5 +113,88 @@ public struct RPETable: Sendable, Hashable {
         let span = upper.repsToFailure - lower.repsToFailure
         let position = (repsToFailure - lower.repsToFailure) / span
         return lower.fractionOfMax + position * (upper.fractionOfMax - lower.fractionOfMax)
+    }
+}
+
+// MARK: - Codable
+
+extension RPETable.Entry {
+    /// `{"repsToFailure": 6, "fractionOfMax": 0.837}` — bare numbers, key spelling and order pinned
+    /// the same way as ``RPETable``'s own keys.
+    private enum CodingKeys: String, CodingKey {
+        case repsToFailure
+        case fractionOfMax
+    }
+
+    /// Hand-written for the same reason as ``RPETable``'s: the module's convention is that a wire
+    /// shape's key order is a decision, not a side effect of synthesis. `Entry` alone has no
+    /// invariant to protect — ``RPETable/init(entries:repRange:)`` is where the sequence is
+    /// validated — so this conformance stores the two fields as given.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.repsToFailure = try container.decode(Double.self, forKey: .repsToFailure)
+        self.fractionOfMax = try container.decode(Double.self, forKey: .fractionOfMax)
+    }
+
+    /// Writes the two fields in declaration order.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(repsToFailure, forKey: .repsToFailure)
+        try container.encode(fractionOfMax, forKey: .fractionOfMax)
+    }
+}
+
+extension RPETable {
+    /// The wire shape `TR-0.5.2` publishes at `/content/v1/formulas.json`: the sequence in
+    /// ``entries`` order, plus ``repRange`` spelled as its two bounds since a `ClosedRange` has no
+    /// shape of its own to encode. Declared rather than synthesised, following ``RoundingRule``'s
+    /// precedent: key spelling and order are pinned, and decoding re-enters
+    /// ``init(entries:repRange:)`` rather than trusting the bytes.
+    private enum CodingKeys: String, CodingKey {
+        case entries
+        case repRangeLowerBound
+        case repRangeUpperBound
+    }
+
+    /// Decodes the shape ``CodingKeys`` describes, refusing anything ``init(entries:repRange:)``
+    /// would have refused.
+    ///
+    /// Hand-written for the reason every composite type in this module is: synthesised `Decodable`
+    /// would build an `RPETable` directly from its stored properties, bypassing the ascending-key,
+    /// finite-value and `0 < fraction ≤ 1` guards and hand a caller a table that divides by zero.
+    /// The bounds are checked before ``ClosedRange`` is constructed from them — `lower...upper`
+    /// **traps** rather than throwing when `lower > upper`, and a remote payload is exactly the
+    /// input that guard exists for.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let entries = try container.decode([Entry].self, forKey: .entries)
+        let lowerBound = try container.decode(Int.self, forKey: .repRangeLowerBound)
+        let upperBound = try container.decode(Int.self, forKey: .repRangeUpperBound)
+        guard lowerBound <= upperBound else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .repRangeUpperBound,
+                in: container,
+                debugDescription:
+                    "RPETable repRangeUpperBound (\(upperBound)) must be >= repRangeLowerBound (\(lowerBound))."
+            )
+        }
+        guard let table = RPETable(entries: entries, repRange: lowerBound...upperBound) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .entries,
+                in: container,
+                debugDescription:
+                    "RPETable entries must be non-empty, finite, strictly ascending and within "
+                    + "0 < fraction <= 1, with repRangeLowerBound >= 1."
+            )
+        }
+        self = table
+    }
+
+    /// Writes ``entries`` then the two bounds of ``repRange``, in that order.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(entries, forKey: .entries)
+        try container.encode(repRange.lowerBound, forKey: .repRangeLowerBound)
+        try container.encode(repRange.upperBound, forKey: .repRangeUpperBound)
     }
 }

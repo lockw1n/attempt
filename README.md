@@ -34,6 +34,9 @@ Packages/
 ├── RepositoryInterface/     The storage boundary: repository protocols, records, wire format
 ├── Persistence/             SwiftData models, schema versioning, repositories
 ├── RepositoryFakes/         In-memory repositories, and the conformance suite both must pass
+├── SeedContent/             The seed payload's schema and its validator, plus SCHEMA.md
+├── SeedImport/              Merges the seed catalogue into the exercise repository
+├── RemoteContent/           formulas.json/flags.json's schema, validator and generator, plus SCHEMA.md
 └── DesignSystem/            Tokens, components, theme (empty until Phase 1)
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -45,14 +48,22 @@ Dependencies run one way: `Persistence` → `RepositoryInterface` → `Powerlift
 never back, and the app may import any of them. `RepositoryFakes` sits beside
 `Persistence` rather than under it: its library depends on `RepositoryInterface`
 alone, and only its test target depends on `Persistence`, because the conformance
-suite there has to name both implementations. Two constraints are load-bearing
-rather than stylistic:
+suite there has to name both implementations. `SeedContent` sits off to one side:
+it depends on `PowerliftingCore` alone. `SeedImport` sits above both `SeedContent`
+and `RepositoryInterface`, since neither of those may depend on the other, and is
+the only package that names both. `RemoteContent` sits beside `SeedContent`,
+depending on `PowerliftingCore` alone for the same reason: a content contract
+must not be shaped like a storage record. Two constraints are load-bearing rather
+than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
   and not the platform modules (`Darwin`, `Glibc`) either. Enforced by the `linux`
   CI job together with the `no_foundation_in_core` and `no_imports_in_core` lint
-  rules. One consequence to know before you hit it: `pow` and `exp` are
-  unavailable, so use `RealMath.swift` rather than reaching for an import.
+  rules, which are scoped by path and so cover that package's **tests** as well as
+  its sources. Two consequences to know before you hit them: `pow` and `exp` are
+  unavailable, so use `RealMath.swift` rather than reaching for an import; and code
+  that needs Foundation to test the domain layer belongs in another package, which
+  is why `SeedContent` is one.
 - **Only `Persistence` imports `SwiftData`.** Everything else reaches storage
   through the protocols in `RepositoryInterface`, which expose value types and
   record types and depend on nothing below them — so a `@Model` is not nameable
@@ -100,6 +111,52 @@ stacks and so run twice, once per implementation. That suite's header says what 
 in its scope and what is not. The handful of tests beside them covering the fakes'
 own machinery run once.
 
+`SeedContent` holds the shape of `exercises.json` — the catalogue bundled with the
+app and published to the content endpoint — and the validator that gates it:
+
+```swift
+let failures = SeedCatalogueValidator.validate(try Data(contentsOf: url), minimumExercises: 80)
+```
+
+An empty result is the only passing result; every failure names the entry it is in.
+`Packages/SeedContent/SCHEMA.md` documents the document, and is the file to read
+before authoring or editing a catalogue. Two things to know before adding to it: the
+payload is not a storage record and carries no audit columns, and the four
+vocabularies are never restated — the validator resolves through
+`PowerliftingCore`'s enums, so a spelling is checked with `init?(rawValue:)` rather
+than by decoding, which would resolve an unknown value to `other` instead of
+refusing it.
+
+`SeedImport` merges a validated catalogue into `ExerciseRepository`:
+
+```swift
+let summary = try await SeedImporter(exercises: stack.exercises).importBundledCatalogue()
+```
+
+A second run over the same catalogue performs no writes at all — each entry is
+compared against the stored row and saved only when the columns the seed owns have
+moved. It reads the app bundle and never the network, which
+`no_networking_in_seed_import` enforces by lint rather than by test, and its own
+module header names which columns a re-import may overwrite and which belong to
+the row.
+
+`RemoteContent` holds the schema and validator for the other two content
+endpoints — `formulas.json` and `flags.json`, which unlike `exercises.json` have
+no bundled counterpart:
+
+```swift
+let failures = RemoteFormulasValidator.validate(try Data(contentsOf: formulasURL))
+```
+
+`Packages/RemoteContent/SCHEMA.md` documents both payloads.
+`scripts/generate-remote-content.sh` builds all three: it copies `exercises.json`
+verbatim and runs the package's own `GenerateRemoteContent` executable to encode
+`formulas.json` and `flags.json` fresh, validating each against the same call
+above before writing it — the run fails rather than publish anything either
+validator would refuse. `.github/workflows/deploy-content.yml` runs that script
+on every push to `main` touching these sources and publishes the result to
+GitHub Pages.
+
 `PowerliftingCore`, `Persistence` and `DesignSystem` are linked into the app
 target as local package references, so `xcodebuild` builds them alongside the app.
 `RepositoryInterface` arrives transitively through `Persistence`; the composition
@@ -125,15 +182,17 @@ path to work on one in isolation (`./scripts/build-packages.sh Packages/Powerlif
 Note that a bare `swift build` does **not** fail on warnings — that gate lives in
 the script, not in the manifests.
 
-`PowerliftingCore`, `RepositoryInterface`, `Persistence` and `RepositoryFakes` each
-have a Swift Testing target (`@Test` / `#expect`, not XCTest). The app target has no tests; it
-is a composition root with an empty scene.
+Every package except `DesignSystem` has a Swift Testing target (`@Test` / `#expect`, not
+XCTest). The app target has no tests; it is a composition root with an empty scene.
 
 ```bash
 swift test --package-path Packages/PowerliftingCore
 swift test --package-path Packages/RepositoryInterface
 swift test --package-path Packages/Persistence
 swift test --package-path Packages/RepositoryFakes
+swift test --package-path Packages/SeedContent
+swift test --package-path Packages/SeedImport
+swift test --package-path Packages/RemoteContent
 ```
 
 `PowerliftingCoreTests` is held to the same no-Apple-frameworks rule as the module
@@ -258,7 +317,7 @@ swift format --in-place --recursive Attempt Packages
 **`--strict` is not optional.** Without it `swift format lint` prints violations
 as warnings and still exits 0, so a check that omits it is decorative.
 
-Eight custom rules beyond the standard set, in `.swiftlint.yml` under
+Nine custom rules beyond the standard set, in `.swiftlint.yml` under
 `custom_rules`:
 
 | Rule | Enforces |
@@ -271,6 +330,7 @@ Eight custom rules beyond the standard set, in `.swiftlint.yml` under
 | `no_imports_in_core` | `NFR-0.2` — `PowerliftingCore/Sources` imports nothing |
 | `no_hard_delete_outside_purge` | `G-1.3` — deletion is soft outside `Persistence/Purge/` |
 | `no_bare_save_in_persistence` | `G-1.2`/`G-2.4` — `saveStamped(at:)`, not `save()` |
+| `no_networking_in_seed_import` | `NFR-1.7`/`G-2.1` — `SeedImport` reads the app bundle only |
 
 One built-in rule is configured rather than left at its defaults: `missing_docs`
 (`NFR-0.3`), repo-wide, with `excludes_inherited_types: false`. At the default it
@@ -317,7 +377,7 @@ dependency analysis".
 | Job | What it does |
 |---|---|
 | **Build** | audits the app target's build settings, then builds the app |
-| **Package tests** | both suites with coverage, all packages with warnings as errors, the warnings-gate proof, the `@unchecked Sendable` audit |
+| **Package tests** | `PowerliftingCore` with coverage, then every package built and tested with warnings as errors (discovered by glob), the runtime gate and its proof, the warnings-gate proof, the `@unchecked Sendable` audit |
 | **Linux core build** | builds and tests `PowerliftingCore` and `RepositoryInterface` on `ubuntu-latest` in a Swift container |
 | **SwiftLint** | lint, lint-rule verification, format check, doc-ratio and doc-units gates |
 

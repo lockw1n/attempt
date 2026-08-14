@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "exercises": [
+    { "id": "22222222-2222-4222-8222-222222222222", "name": "Front Squat", "movement": "squat", "parentExerciseID": "99999999-9999-4999-8999-999999999999", "equipment": "barbell", "laterality": "bilateral", "barType": "standard" }
+  ]
+}

@@ -1,0 +1,90 @@
+name: Deploy content
+
+# TR-0.5.2: publishes /content/v1/* and /config/v1/* to GitHub Pages. See the header comment on
+# scripts/generate-remote-content.sh for what is generated versus copied.
+#
+# HOST — GitHub Pages, chosen over Cloudflare Pages and S3 + CloudFront. It is the only one of the
+# three that needs no account, credential or secret outside this repository, which is what makes
+# "reproducible from the repo, no manual upload step" true rather than aspirational: a deploy is
+# this file plus a script, with nothing to rotate and nothing to configure elsewhere. What it costs
+# is control of Cache-Control — Pages fixes its own (~600s, via its Fastly front end) and accepts
+# no `_headers`-style override, where Cloudflare Pages would have let us set it. 600s is inside
+# what TR-0.5.4's kill switch needs, so the control is not worth the account.
+#
+# WHERE IT LANDS — https://lockw1n.github.io/attempt, which is RemoteContent's
+# `PublishedContent.baseURL`; the paths this workflow publishes are relative to it. A *project*
+# Pages site, so the repository name is in every URL and renaming the repository moves all three.
+# That is the open half of "stable enough to survive to Phase 5": a committed CNAME pointing a
+# domain at this site closes it, and needs a domain the project does not have yet.
+#
+# Runs on every push to main touching the sources these payloads are built from, plus a manual
+# trigger for a content-only republish — bumping a `revision` literal, or swapping RPETable.standard
+# for a sourced chart, with no other code change to land. Republishing a *changed* chart under an
+# unchanged `revision` is invisible to TR-0.5.3's launch check, so the RemoteContent test suite
+# pins the chart against that literal and the `Check content` step below is what stops the deploy.
+#
+# This workflow does not wait for ci.yml — nothing sequences the two — so the checks that matter to
+# what is served have to run here. That is why the tests run in this job as well as that one.
+#
+# Requires GitHub Pages enabled for this repository with source = GitHub Actions
+# (Settings → Pages → Build and deployment → Source) — a one-time change only the repository
+# owner can make, and this workflow cannot make it.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # The whole of SeedContent, not just the catalogue it serves: the `Check content` step
+      # runs that package's tests and GenerateRemoteContent links its validator, so a change to
+      # either changes what this workflow is willing to publish.
+      - "Packages/SeedContent/**"
+      - "Packages/PowerliftingCore/Sources/PowerliftingCore/RPETable*.swift"
+      - "Packages/RemoteContent/**"
+      - "scripts/generate-remote-content.sh"
+      - ".github/workflows/deploy-content.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Serialised with itself, not with the CI workflow: two content pushes racing here would let the
+# older one publish last, which two pushes racing in ci.yml's `build`/`test` do not risk.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build content
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      # Gates the deploy on the two suites that describe what is about to be served: the chart's
+      # fingerprint against `revision`, and the catalogue against its own schema.
+      - name: Check content
+        run: |
+          swift test --package-path Packages/RemoteContent
+          swift test --package-path Packages/SeedContent
+
+      - name: Generate content
+        run: ./scripts/generate-remote-content.sh Content
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: Content
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -18,6 +18,9 @@ excluded:
   - Packages/Persistence/.build
   - Packages/RepositoryInterface/.build
   - Packages/RepositoryFakes/.build
+  - Packages/SeedContent/.build
+  - Packages/SeedImport/.build
+  - Packages/RemoteContent/.build
   - Packages/DesignSystem/.build
 
 disabled_rules:
@@ -135,6 +138,22 @@ missing_docs:
 #             the property the coverage matrix actually cites as evidence. The Tests target is
 #             deliberately out of scope — it needs `import Testing`.
 #
+#   NFR-1.7 — `no_networking_in_seed_import` (T-0.52). The seed import must work on first launch
+#             after install in airplane mode, so it reads the app bundle and nothing else. No test
+#             can assert the absence of a call nobody wrote, which is why this is a lint rule and
+#             not a test — and why the rule carries the whole argument, with the module and its
+#             suite naming it rather than restating it. Scoped to the importer alone: TR-0.5.3's
+#             fetcher is a different layer and is supposed to reach the network.
+#
+#             TWO SHAPES, BECAUSE `URLSession` IS NOT THE SHORTEST PATH TO A FETCH. `Data(contentsOf:)`
+#             and `String(contentsOf:)` take a URL of any scheme and block on the network for an
+#             http(s) one, and `URL.resourceBytes`/`.lines` do it asynchronously — none of them
+#             names a networking type, so a regex over `URLSession` and its siblings passes them
+#             all. Measured 2026-08-13: before the second alternative, a fixture calling all four
+#             produced zero violations. The receiving type has to be in the pattern — a bare
+#             `contentsOf` fires on `Array.append(contentsOf:)`, which SeedExerciseOrdering uses.
+#             Both shapes have a fixture; one rule with one fixture would have shipped the hole.
+#
 #   layering — TR-0.1.2 and NFR-0.2, the three import bans. All three rely on `match_kinds` to
 #             tell code from prose: `import Foundation` and `import SwiftData` both appear inside
 #             *comments* in this repo (PowerliftingCore.swift and Persistence.swift document the
@@ -218,6 +237,18 @@ custom_rules:
     excluded:
       - 'Packages/Persistence/Sources/Persistence/Purge/.*\.swift'
     message: "G-1.3: deletion is soft — call markDeleted(at:). Hard deletion lives only in Sources/Persistence/Purge/."
+    severity: error
+
+  no_networking_in_seed_import:
+    name: "Networking in the seed importer"
+    regex: '\b(URLSession|URLRequest|URLProtocol|URLSessionConfiguration|NWConnection|NWPathMonitor)\b|\bimport[ \t]+(FoundationNetworking|Network)\b|\b(Data|String|NSData|NSString)\(\s*contentsOf\s*:|\.(resourceBytes|lines)\b'
+    match_kinds:
+      - keyword
+      - identifier
+      - typeidentifier
+    included:
+      - 'Packages/SeedImport/.*\.swift'
+    message: "NFR-1.7/G-2.1: the seed import reads the app bundle and never the network. TR-0.5.3's fetcher is a different layer, and it hands this one bytes."
     severity: error
 
   no_foundation_in_core:
