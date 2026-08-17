@@ -5,7 +5,7 @@ import SeedImport
 
 /// Seeds the catalogue, logs a short history, and reads the records back out (`DOD-0.3`).
 ///
-/// **It writes.** A run puts 116 catalogue rows and eight sets into whatever store it is handed, so
+/// **It writes.** A run puts the whole bundled catalogue and eight sets into the store it is handed, so
 /// hand it a throwaway one — the executable opens an in-memory store for exactly that reason.
 /// Running it twice against the same store logs the history twice; the seed half is a merge and
 /// writes nothing the second time, which is the difference worth seeing in the output.

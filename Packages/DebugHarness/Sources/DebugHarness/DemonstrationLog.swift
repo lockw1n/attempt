@@ -45,9 +45,9 @@ struct DemonstrationSession {
 ///
 /// The numbers are chosen so the printed answer is not the obvious one. Read against
 /// `PersonalRecords.repRange`: the 3RM is held by 105 kg from the older session, which the newer
-/// one never beat for three reps; the 4RM and 5RM are held by 102.5 kg; the 1RM and the best e1RM
-/// are held by different sets in the same session, since 120 kg × 1 outranks 112.5 kg × 2 on load
-/// while both estimate above every earlier set.
+/// one never beat for three reps; the 4RM and 5RM are held by 102.5 kg, a set the 3RM ignores; and
+/// 105 kg × 3 estimates *below* 100 kg × 5, so the heavier set of the older session is not the one
+/// holding its best estimate. The top single holds both the 1RM and the best e1RM.
 enum DemonstrationLog {
     /// The exercise the log is written against — a name the seeded catalogue ships (`TR-0.5.1`).
     static let exerciseName = "Back Squat"

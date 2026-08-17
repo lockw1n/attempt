@@ -34,6 +34,11 @@ jobs:
       - name: Check the debug harness is excluded from the app
         run: ./scripts/check-harness-excluded.sh
 
+      # Each of the three checks over a canned tree, in both directions, plus a target that has
+      # moved — a `grep` whose path is wrong finds nothing and would otherwise read as `ok`.
+      - name: Verify the harness-exclusion gate fires
+        run: ./scripts/check-harness-excluded.sh --self-test
+
       # No SUPPRESS_WARNINGS workaround here any more. It was needed while the manifests carried
       # `.treatAllWarnings(as: .error)`, which conflicted with the `-suppress-warnings` Xcode
       # injects into package dependencies. T-0.03 moved the warnings gate to command-line flags

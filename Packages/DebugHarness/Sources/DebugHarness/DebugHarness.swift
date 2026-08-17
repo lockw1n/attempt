@@ -8,8 +8,8 @@
 //
 //   - IT IS DISPOSABLE, AND OUT-0.1 IS WHY. Nothing here is a foundation for Phase 1's UI: no view,
 //     no view model, no state that survives the call. When the first real screen exists this package
-//     is deleted rather than extended, and its manifest publishes no library product so that
-//     nothing can quietly come to depend on it in the meantime.
+//     is deleted rather than extended, and nothing can quietly have come to depend on it in the
+//     meantime — the manifest is where that is arranged, and says how.
 //
 //   - IT NAMES NO STORE. The scenario takes two repository protocols, so the executable target is
 //     the only thing that decides where rows go and the tests can run the identical scenario

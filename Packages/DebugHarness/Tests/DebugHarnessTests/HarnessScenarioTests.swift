@@ -3,6 +3,7 @@ import Foundation
 import Persistence
 import PowerliftingCore
 import RepositoryFakes
+import RepositoryInterface
 import Testing
 
 /// `DOD-0.3`: the harness seeds, logs, and reports the records the fixed log actually holds.
@@ -22,8 +23,9 @@ struct HarnessScenarioTests {
 
     /// The rep maxes the eight logged sets hold.
     ///
-    /// 105 kg × 3 survives from the older session, which the newer one never beat for three reps;
-    /// the 1RM and the best e1RM are held by different sets.
+    /// 105 kg × 3 survives from the older session, which the newer one never beat for three reps.
+    /// The top single holds the 1RM and the best e1RM alike; what differs between them is the
+    /// number, 120 kg lifted against a 124 kg estimate.
     static let expectedRepMaxes = [
         ExpectedRepMax(reps: 1, grams: 120_000, offset: 7),
         ExpectedRepMax(reps: 2, grams: 112_500, offset: 6),
@@ -117,21 +119,70 @@ struct HarnessScenarioTests {
         }
     }
 
-    @Test("the printed report carries the numbers a reader is looking for")
+    @Test("the printed report is exactly this block")
     func renderedText() async throws {
-        let text = try await Self.runOverFakes().text
+        let report = try await Self.runOverFakes()
+        let seeded = report.seed.inserted
 
-        #expect(text.contains("exercise   Back Squat"))
-        #expect(text.contains("formula    epley"))
-        // Kilograms at G-3.3's display precision beside the grams actually stored (G-1.1).
-        #expect(text.contains("102.5 kg × 5"))
-        #expect(text.contains("RPE 8.5"))
-        #expect(text.contains("warmup"))
-        #expect(text.contains("incomplete"))
-        #expect(text.contains(" 1RM  120.0 kg (120000 g)"))
-        #expect(text.contains(" 6RM  —"))
-        #expect(text.contains("best e1RM  124.0 kg (124000 g)"))
-        #expect(text.contains("from set [7]"))
+        // Pinned whole rather than by fragment. The column widths, the trailing-zero trim that
+        // prints `RPE 8` rather than `RPE 8.0`, and the padding stripped off a line ending in `—`
+        // are all invisible to a `contains` check, and each survived a mutation while this test
+        // asserted fragments. Kilograms at `G-3.3`'s display precision sit beside the grams
+        // actually stored (`G-1.1`), which is the pair the harness exists to show. Only the
+        // catalogue's size is interpolated — it belongs to `SeedContent` and changes there.
+        #expect(
+            report.text == """
+                Attempt debug harness — DOD-0.3
+                exercise   Back Squat
+                formula    epley
+                seed       \(seeded) inserted, 0 updated, 0 archived, 0 unchanged — \(seeded) write(s)
+
+                sets, oldest first
+                  [0]   60.0 kg × 5            warmup     e1RM —
+                  [1]  100.0 kg × 5   RPE 8               e1RM 116.5 kg (116667 g)
+                  [2]  105.0 kg × 3   RPE 9               e1RM 115.5 kg (115500 g)
+                  [3]  110.0 kg × 1            incomplete e1RM —
+                  [4]   60.0 kg × 5            warmup     e1RM —
+                  [5]  102.5 kg × 5   RPE 8.5             e1RM 119.5 kg (119583 g)
+                  [6]  112.5 kg × 2   RPE 9               e1RM 120.0 kg (120000 g)
+                  [7]  120.0 kg × 1   RPE 9.5             e1RM 124.0 kg (124000 g)
+
+                rep maxes
+                   1RM  120.0 kg (120000 g)   from set [7]
+                   2RM  112.5 kg (112500 g)   from set [6]
+                   3RM  105.0 kg (105000 g)   from set [2]
+                   4RM  102.5 kg (102500 g)   from set [5]
+                   5RM  102.5 kg (102500 g)   from set [5]
+                   6RM  —
+                   7RM  —
+                   8RM  —
+                   9RM  —
+                  10RM  —
+
+                best e1RM  124.0 kg (124000 g)   from set [7]
+                """)
+    }
+
+    @Test("the two sessions are a week apart, and only a completed set is stamped")
+    func storedDatesAreTheOnesTheLogAsksFor() async throws {
+        let stack = InMemoryRepositoryStack()
+        _ = try await HarnessScenario(exercises: stack.exercises, workouts: stack.workouts)
+            .run(at: Self.now)
+
+        let catalogue = try await stack.exercises.exercises(includingDeleted: false)
+        let squat = try #require(
+            catalogue.first { $0.name == HarnessScenario.loggedExerciseName })
+        let sets = try await stack.workouts.sets(forExerciseID: squat.id, includingDeleted: false)
+
+        // The report carries no date, so nothing above this can tell a week from a minute — and
+        // `DemonstrationSession.daysAgo` is stated in days.
+        #expect(sets[0].createdAt == Self.now.addingTimeInterval(-7 * 24 * 60 * 60))
+        #expect(sets[7].createdAt == Self.now)
+        // `SetEntry.completedAt` is allowed to be nil on a completed set — it means "not tracked
+        // live" rather than "not completed" — so it is asserted here rather than inferred.
+        #expect(sets[7].completedAt == Self.now)
+        #expect(sets[3].isCompleted == false)
+        #expect(sets[3].completedAt == nil)
     }
 
     /// The scenario over one in-memory fake stack, at ``now``.

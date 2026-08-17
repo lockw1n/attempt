@@ -12,8 +12,8 @@ import SwiftUI
 /// `OUT-0.1` puts every screen beyond a throwaway debug harness out of scope for Phase 0, so the
 /// scene below is deliberately a placeholder — and it stays one. `DOD-0.3`'s harness is a
 /// command-line target under `Packages/DebugHarness`, not a screen: a debug screen would be the
-/// one screen Phase 0 ships, and it would be the thing Phase 1 built on. The app cannot link that
-/// package, which publishes no library product.
+/// one screen Phase 0 ships, and it would be the thing Phase 1 built on. This target cannot link
+/// that package; its manifest is where the exclusion is arranged.
 @main
 struct AttemptApp: App {
     var body: some Scene {

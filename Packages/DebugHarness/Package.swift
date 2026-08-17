@@ -58,7 +58,7 @@ let package = Package(
         // a test rather than a claim about the executable nobody runs in CI.
         .testTarget(
             name: "DebugHarnessTests",
-            dependencies: ["DebugHarness", "RepositoryFakes", "Persistence"],
+            dependencies: ["DebugHarness", "RepositoryFakes", "RepositoryInterface", "Persistence"],
             swiftSettings: strictSettings
         ),
     ]
