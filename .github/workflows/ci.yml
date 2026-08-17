@@ -75,10 +75,23 @@ jobs:
       - name: Show toolchain version
         run: swift --version
 
-      # Also runs the PowerliftingCore suite — the script tests before it measures.
-      # The threshold stays at its default of 0 until T-0.61 raises it to the G-6.1 90%.
+      # G-6.1: PowerliftingCore at >= 90% line coverage, no exceptions. Also runs the suite — the
+      # script tests before it measures.
+      #
+      # No --threshold here on purpose. 90 is the script's default, so this step exercises the one
+      # number G-6.1 specifies rather than a copy of it, and the self-test below brackets that
+      # default with the variable unset. Passing it explicitly would leave the default unpinned in
+      # both places at once, which is how T-0.24's sibling gate shipped with an unnoticed 5 -> 500.
       - name: Test PowerliftingCore and report coverage
         run: ./scripts/coverage.sh --package-path Packages/PowerliftingCore
+
+      # And the proof that the gate above can fail, since PowerliftingCore has been at 100% since
+      # T-0.10 and nothing in normal operation will ever make it fire. Twenty cases, fifteen
+      # negative, each asserting *which* failure fired — exit status and message both. Two of them
+      # share an exit status and differ only in the message, and a mutation that merges those
+      # branches is caught by nothing else.
+      - name: Verify the coverage gate fires
+        run: ./scripts/coverage.sh --self-test
 
       # G-6.4: every package built and tested with warnings-as-errors, discovered by glob rather
       # than listed — a new package under Packages/ is covered the moment it exists. This also
