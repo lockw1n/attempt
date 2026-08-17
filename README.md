@@ -174,6 +174,10 @@ let current = fetcher.resolve(.formulas)          // never touches the network
 _ = await fetcher.refresh(.formulas)               // updates the cache for next time
 ```
 
+`fetcher.upgradeDecision(runningVersion:)` reads the resolved `flags.json`'s minimum-supported-version
+against the running build and returns `.allowed`, `.blocked`, or `.allowedByDefault(FailOpenReason)`
+for anything unreadable — see `UpgradeGate` in `RemoteFetch`.
+
 `PowerliftingCore`, `Persistence` and `DesignSystem` are linked into the app
 target as local package references, so `xcodebuild` builds them alongside the app.
 `RepositoryInterface` arrives transitively through `Persistence`; the composition
