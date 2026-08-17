@@ -27,6 +27,13 @@ jobs:
       - name: Audit app-target build settings
         run: ./scripts/audit-app-build-settings.sh
 
+      # OUT-0.1 (T-0.60): DOD-0.3's debug harness must not reach the app. It is excluded by
+      # publishing no library product rather than by a build configuration, so what can regress is
+      # the manifest — asserted here, beside the other claim about the app's build graph that is
+      # invisible in review.
+      - name: Check the debug harness is excluded from the app
+        run: ./scripts/check-harness-excluded.sh
+
       # No SUPPRESS_WARNINGS workaround here any more. It was needed while the manifests carried
       # `.treatAllWarnings(as: .error)`, which conflicted with the `-suppress-warnings` Xcode
       # injects into package dependencies. T-0.03 moved the warnings gate to command-line flags
