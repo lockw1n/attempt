@@ -1,6 +1,7 @@
 import Foundation
 import PowerliftingCore
 import RemoteContent
+import Testing
 
 @testable import RemoteFetch
 
@@ -78,19 +79,28 @@ actor BlockingTransport: ContentTransport {
 
 // MARK: - Fixtures
 
-/// A cache over a directory of its own, removed when this value goes away.
-final class TemporaryCache {
+/// The root every temporary cache in this suite sits under, cleared once when the run starts.
+///
+/// Clearing it *here* rather than in a `deinit` per cache is deliberate. ARC may release a local as
+/// soon as its last mention, and in several tests below that comes before the `resolve` calls that
+/// need the directory to still be there — so a `deinit` is a lifetime the optimiser is free to
+/// shorten, and the tests would pass in debug and fail in release. A run cleans up after the
+/// previous one instead, which needs no lifetime guarantee at all.
+let temporaryCacheRoot: URL = {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("RemoteFetchTests", isDirectory: true)
+    try? FileManager.default.removeItem(at: root)
+    return root
+}()
+
+/// A cache over a directory of its own.
+struct TemporaryCache {
     let cache: ContentCache
 
     init() {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("RemoteFetchTests", isDirectory: true)
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        cache = ContentCache(directory: directory)
-    }
-
-    deinit {
-        try? FileManager.default.removeItem(at: cache.directory)
+        cache = ContentCache(
+            directory: temporaryCacheRoot.appendingPathComponent(
+                UUID().uuidString, isDirectory: true))
     }
 }
 
@@ -115,3 +125,26 @@ let bundledFormulasRevision = RemoteFormulas.published.revision
 
 /// Bytes that are not a JSON document at all.
 let malformedPayload = Data("{ this is not a payload".utf8)
+
+extension Data {
+    /// The first key in this JSON document, whatever whitespace the encoder used.
+    ///
+    /// Key *order* is how a sorted encoder is told from a plain one from the outside: a plain
+    /// `JSONEncoder` emits declaration order, which puts `schemaVersion` first in both payloads
+    /// this build encodes.
+    var firstJSONKey: String? {
+        guard
+            let text = String(bytes: self, encoding: .utf8),
+            let open = text.firstIndex(of: "\""),
+            let close = text[text.index(after: open)...].firstIndex(of: "\"")
+        else { return nil }
+        return String(text[text.index(after: open)..<close])
+    }
+}
+
+/// The file's identity on disk, which is what changes when a write replaces a file rather than
+/// rewriting it in place.
+func inodeNumber(of url: URL) throws -> UInt64 {
+    let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+    return try #require((attributes[.systemFileNumber] as? NSNumber)?.uint64Value)
+}

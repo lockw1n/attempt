@@ -33,6 +33,18 @@ public struct URLSessionTransport: ContentTransport {
         session = URLSession(configuration: configuration)
     }
 
+    /// The seconds this transport's session gives a request and a resource, in that order.
+    ///
+    /// Internal, and it exists because configuring the session is the whole of what
+    /// ``init(timeout:)`` does — a timeout that is never applied is indistinguishable from one that
+    /// is, until a request hangs in front of a user.
+    var configuredTimeouts: (request: TimeInterval, resource: TimeInterval) {
+        (
+            session.configuration.timeoutIntervalForRequest,
+            session.configuration.timeoutIntervalForResource
+        )
+    }
+
     /// Creates a transport over a supplied session.
     ///
     /// Internal: an app has no reason to configure the session, and the answers that are not a

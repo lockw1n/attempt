@@ -39,7 +39,11 @@ public enum RefreshOutcome: Sendable, Equatable {
     case updated(revision: Int)
 
     /// The endpoint's edition is not newer than the one already in use, so nothing was written.
-    case alreadyCurrent(revision: Int)
+    ///
+    /// Both editions are carried because they are different facts: `served` below `inUse` is the
+    /// endpoint having gone *backwards*, which is a bad deploy rather than a quiet launch, and a
+    /// caller that only saw the local number could never tell the two apart.
+    case alreadyCurrent(inUse: Int, served: Int)
 
     /// Nothing was cached, and why.
     case failed(RefreshFailure)

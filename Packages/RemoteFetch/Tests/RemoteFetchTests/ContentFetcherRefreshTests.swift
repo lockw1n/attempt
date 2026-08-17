@@ -28,7 +28,9 @@ struct ContentFetcherRefreshTests {
                 bodies: [.formulas: try formulasPayload(revision: bundledFormulasRevision)]),
             cache: temp.cache)
 
-        #expect(await fetcher.refresh(.formulas) == .alreadyCurrent(revision: bundledFormulasRevision))
+        #expect(
+            await fetcher.refresh(.formulas)
+                == .alreadyCurrent(inUse: bundledFormulasRevision, served: bundledFormulasRevision))
         #expect(temp.cache.data(for: .formulas) == nil)
     }
 
@@ -41,8 +43,46 @@ struct ContentFetcherRefreshTests {
             cache: temp.cache
         ) { _ in try formulasPayload(revision: 5) }
 
-        #expect(await fetcher.refresh(.formulas) == .alreadyCurrent(revision: 5))
+        // Both editions are reported: the endpoint serving 2 against an in-use 5 is a rollback, and
+        // an outcome carrying only the local number could not say so.
+        #expect(await fetcher.refresh(.formulas) == .alreadyCurrent(inUse: 5, served: 2))
         #expect(temp.cache.data(for: .formulas) == nil)
+    }
+
+    @Test("A cached copy this build refuses is discarded rather than re-read on every launch")
+    func unusableCacheEntryIsDiscarded() async throws {
+        let temp = TemporaryCache()
+        try temp.cache.write(malformedPayload, for: .formulas)
+
+        // Served at the bundled edition, so nothing is written — which is the one path that would
+        // otherwise leave the refused copy sitting there.
+        let fetcher = ContentFetcher(
+            transport: RoutingTransport(
+                bodies: [.formulas: try formulasPayload(revision: bundledFormulasRevision)]),
+            cache: temp.cache)
+
+        #expect(
+            await fetcher.refresh(.formulas)
+                == .alreadyCurrent(inUse: bundledFormulasRevision, served: bundledFormulasRevision))
+        #expect(temp.cache.data(for: .formulas) == nil)
+    }
+
+    @Test("A cached copy that is merely not beaten is kept")
+    func usableCacheEntrySurvivesARefreshThatWritesNothing() async throws {
+        let temp = TemporaryCache()
+        let cached = try formulasPayload(revision: bundledFormulasRevision + 4)
+        try temp.cache.write(cached, for: .formulas)
+
+        let fetcher = ContentFetcher(
+            transport: RoutingTransport(
+                bodies: [.formulas: try formulasPayload(revision: bundledFormulasRevision + 1)]),
+            cache: temp.cache)
+
+        #expect(
+            await fetcher.refresh(.formulas)
+                == .alreadyCurrent(
+                    inUse: bundledFormulasRevision + 4, served: bundledFormulasRevision + 1))
+        #expect(temp.cache.data(for: .formulas) == cached)
     }
 
     @Test("Offline: the fetch fails and the bundle still answers — G-2.1, NFR-1.7")
@@ -203,8 +243,14 @@ struct ContentFetcherRefreshTests {
             Issue.record("expected the flags fetch to fail")
             return
         }
-        // Nothing publishes an exercises body to this transport, so it fails too — and the two
-        // failures did not stop the third payload from being cached.
+        // Nothing publishes an exercises body to this transport, so it fails too — asserted rather
+        // than assumed, because a transport that answered instead would leave this test green and
+        // this sentence wrong.
+        guard case .failed(.transport) = outcomes[.exercises] else {
+            Issue.record("expected the exercises fetch to fail")
+            return
+        }
+        // The two failures did not stop the third payload from being cached.
         #expect(temp.cache.data(for: .formulas) != nil)
     }
 }

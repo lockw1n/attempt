@@ -37,6 +37,14 @@ struct RemoteResourceTests {
         #expect(revision >= 1)
     }
 
+    @Test("The two bundled copies this build encodes come out of the published encoder")
+    func bundledCopiesUseThePublishedEncoder() throws {
+        // Sorted keys are what tells the published encoder from a plain one from the outside: a
+        // plain `JSONEncoder` follows declaration order, which puts `schemaVersion` first in both.
+        #expect(try RemoteResource.formulas.bundledData().firstJSONKey == "revision")
+        #expect(try RemoteResource.flags.bundledData().firstJSONKey == "minimumSupportedVersion")
+    }
+
     @Test("Bytes that are not JSON are refused for declaring no revision")
     func malformedBytesAreRefused() {
         #expect(

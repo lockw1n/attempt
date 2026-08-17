@@ -46,6 +46,15 @@ public struct ContentCache: Sendable {
         try data.write(to: fileURL(for: resource), options: .atomic)
     }
 
+    /// Discards `resource`'s cached copy.
+    ///
+    /// A missing entry is not a failure and neither is an unremovable one: this asks for a state —
+    /// nothing usable cached — and every path that fails to reach it leaves the caller where it
+    /// already was, falling back.
+    public func remove(_ resource: RemoteResource) {
+        try? FileManager.default.removeItem(at: fileURL(for: resource))
+    }
+
     /// Where `resource`'s bytes sit, whether or not anything is there yet.
     public func fileURL(for resource: RemoteResource) -> URL {
         directory.appendingPathComponent(resource.cacheFileName, isDirectory: false)

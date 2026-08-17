@@ -12,6 +12,11 @@ class CannedURLProtocol: URLProtocol {
         nil
     }
 
+    /// The body served alongside that response.
+    class func body(for url: URL) -> Data {
+        Data("<html>not a payload</html>".utf8)
+    }
+
     override class func canInit(with request: URLRequest) -> Bool {
         true
     }
@@ -26,7 +31,7 @@ class CannedURLProtocol: URLProtocol {
             return
         }
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Data("<html>not a payload</html>".utf8))
+        client?.urlProtocol(self, didLoad: Self.body(for: url))
         client?.urlProtocolDidFinishLoading(self)
     }
 
@@ -37,6 +42,20 @@ class CannedURLProtocol: URLProtocol {
 class NotFoundURLProtocol: CannedURLProtocol {
     override class func response(for url: URL) -> URLResponse? {
         HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)
+    }
+}
+
+/// The answer the endpoint actually gives: 200, with the payload.
+class ServedPayloadURLProtocol: CannedURLProtocol {
+    /// Bytes distinct enough that handing back *anything* else — including nothing — fails.
+    static let payload = Data(#"{"schemaVersion":1,"revision":3}"#.utf8)
+
+    override class func response(for url: URL) -> URLResponse? {
+        HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)
+    }
+
+    override class func body(for url: URL) -> Data {
+        payload
     }
 }
 
@@ -53,6 +72,21 @@ struct URLSessionTransportTests {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [protocolClass]
         return URLSessionTransport(session: URLSession(configuration: configuration))
+    }
+
+    @Test("A 200 hands back exactly the bytes that were served")
+    func servedBytesArriveUnchanged() async throws {
+        let url = try #require(URL(string: "https://example.invalid/content/v1/formulas.json"))
+        let fetched = try await transport(stubbing: ServedPayloadURLProtocol.self).fetch(url)
+        #expect(fetched == ServedPayloadURLProtocol.payload)
+    }
+
+    @Test("Requests are given the timeout they were built with, not the system's")
+    func timeoutsReachTheSession() {
+        // The default matters as much as the custom one: `URLSession`'s own is sixty seconds, which
+        // is a minute of a launch-time check hanging on a captive portal (`G-2.3`).
+        #expect(URLSessionTransport().configuredTimeouts == (request: 10, resource: 10))
+        #expect(URLSessionTransport(timeout: 2.5).configuredTimeouts == (request: 2.5, resource: 2.5))
     }
 
     @Test("A 404 is a failure rather than a body handed on to the validator")

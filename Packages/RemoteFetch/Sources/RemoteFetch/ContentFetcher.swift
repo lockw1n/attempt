@@ -92,7 +92,8 @@ public struct ContentFetcher: Sendable {
         }
 
         if let current = resolve(resource), current.revision >= revision {
-            return .alreadyCurrent(revision: current.revision)
+            discardUnusableCacheEntry(for: resource)
+            return .alreadyCurrent(inUse: current.revision, served: revision)
         }
 
         do {
@@ -131,6 +132,20 @@ public struct ContentFetcher: Sendable {
     /// The address `resource` would be fetched from, URL or not.
     private func absoluteString(for resource: RemoteResource) -> String {
         "\(baseURL)/\(resource.path)"
+    }
+
+    /// Drops a cached copy this build refuses.
+    ///
+    /// Reached only when the fetched payload is *not* newer, which is the one path that leaves a
+    /// refused entry in place: ``resolve(_:)`` steps over it and answers from the bundle, so
+    /// without this the file would sit there — re-read and re-refused on every launch — until the
+    /// endpoint published something newer than the *bundled* copy. Removing it is free, because a
+    /// copy this build cannot read is not a fallback for anything.
+    private func discardUnusableCacheEntry(for resource: RemoteResource) {
+        guard let data = cache.data(for: resource), case .unusable = resource.inspect(data) else {
+            return
+        }
+        cache.remove(resource)
     }
 
     /// `data` as a resolution, or `nil` when there is nothing there or what is there is refused.
