@@ -123,6 +123,27 @@ func formulasPayload(
 /// The edition `formulas.json` ships compiled into this build.
 let bundledFormulasRevision = RemoteFormulas.published.revision
 
+/// A `flags.json` payload carrying a chosen minimum — the kill switch's input, at whatever edition
+/// the test needs it to outrank the bundled copy at.
+func flagsPayload(
+    revision: Int,
+    minimumSupportedVersion: String,
+    schemaVersion: Int = RemoteFlags.supportedSchemaVersion
+) throws -> Data {
+    try PublishedContent.makeEncoder().encode(
+        RemoteFlags(
+            schemaVersion: schemaVersion,
+            revision: revision,
+            minimumSupportedVersion: minimumSupportedVersion
+        )
+    )
+}
+
+/// A resolution over arbitrary bytes, for the gate tests that do not go through a fetcher.
+func resolved(_ data: Data, revision: Int = 1) -> ResolvedContent {
+    ResolvedContent(data: data, revision: revision, origin: .cache)
+}
+
 /// Bytes that are not a JSON document at all.
 let malformedPayload = Data("{ this is not a payload".utf8)
 
