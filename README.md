@@ -37,6 +37,7 @@ Packages/
 ├── SeedContent/             The seed payload's schema and its validator, plus SCHEMA.md
 ├── SeedImport/              Merges the seed catalogue into the exercise repository
 ├── RemoteContent/           formulas.json/flags.json's schema, validator and generator, plus SCHEMA.md
+├── RemoteFetch/             Fetches, caches and falls back for the three published payloads
 └── DesignSystem/            Tokens, components, theme (empty until Phase 1)
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -53,8 +54,11 @@ it depends on `PowerliftingCore` alone. `SeedImport` sits above both `SeedConten
 and `RepositoryInterface`, since neither of those may depend on the other, and is
 the only package that names both. `RemoteContent` sits beside `SeedContent`,
 depending on `PowerliftingCore` alone for the same reason: a content contract
-must not be shaped like a storage record. Two constraints are load-bearing rather
-than stylistic:
+must not be shaped like a storage record. `RemoteFetch` sits above both
+`RemoteContent` and `SeedContent`, for the same reason `SeedImport` sits above
+`SeedContent` and `RepositoryInterface` — it is the one place that names both,
+because the bundled leg of `exercises.json`'s fallback lives in `SeedContent`.
+Two constraints are load-bearing rather than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
   and not the platform modules (`Darwin`, `Glibc`) either. Enforced by the `linux`
@@ -159,6 +163,17 @@ payload any of the three validators would refuse. `.github/workflows/deploy-cont
 runs that script on every push to `main` touching these sources and publishes
 the result to GitHub Pages, at `PublishedContent.baseURL`.
 
+`RemoteFetch` is what an app actually calls: `ContentFetcher.resolve(_:)` answers
+synchronously from whatever is already cached or bundled, and `refresh(_:)` is
+the async half that fetches, validates and caches a newer edition without ever
+throwing:
+
+```swift
+let fetcher = ContentFetcher(transport: URLSessionTransport(), cache: ContentCache(directory: url))
+let current = fetcher.resolve(.formulas)          // never touches the network
+_ = await fetcher.refresh(.formulas)               // updates the cache for next time
+```
+
 `PowerliftingCore`, `Persistence` and `DesignSystem` are linked into the app
 target as local package references, so `xcodebuild` builds them alongside the app.
 `RepositoryInterface` arrives transitively through `Persistence`; the composition
@@ -195,6 +210,7 @@ swift test --package-path Packages/RepositoryFakes
 swift test --package-path Packages/SeedContent
 swift test --package-path Packages/SeedImport
 swift test --package-path Packages/RemoteContent
+swift test --package-path Packages/RemoteFetch
 ```
 
 `PowerliftingCoreTests` is held to the same no-Apple-frameworks rule as the module
