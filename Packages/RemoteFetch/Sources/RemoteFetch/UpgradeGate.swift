@@ -41,16 +41,21 @@ public enum FailOpenReason: Equatable, Sendable, CustomStringConvertible {
     /// this whole type exists to avoid.
     case undecodableConfiguration(String)
 
-    /// A published minimum that is not a version. Carries what was published.
+    /// A published minimum that is not a version. Carries what was published, untrimmed.
     ///
     /// Reachable: the payload validator refuses only a *blank* minimum, so any non-empty typo
-    /// caches and resolves and arrives here.
+    /// caches and resolves and arrives here. Surrounding whitespace is not one of those — the
+    /// validator calls a minimum blank only after trimming, so a padded one is a payload the
+    /// publish step accepts, and the gate trims to match rather than failing open on it.
     case unreadableMinimumVersion(String)
 
     /// The running build declares no version at all.
     case runningVersionUnavailable
 
     /// The running build declares a version that is not one. Carries what it declared.
+    ///
+    /// Not trimmed, unlike the published minimum: nothing validates `CFBundleShortVersionString`,
+    /// so there is no publish step whose notion of readable this one has to agree with.
     case unreadableRunningVersion(String)
 
     /// A line a reader can act on without opening this file.
@@ -95,8 +100,10 @@ public enum UpgradeGate {
             return .allowedByDefault(.undecodableConfiguration(String(describing: error)))
         }
 
-        guard let minimum = AppVersion(flags.minimumSupportedVersion) else {
-            return .allowedByDefault(.unreadableMinimumVersion(flags.minimumSupportedVersion))
+        let published = flags.minimumSupportedVersion
+        guard let minimum = AppVersion(published.trimmingCharacters(in: .whitespacesAndNewlines))
+        else {
+            return .allowedByDefault(.unreadableMinimumVersion(published))
         }
         guard let runningVersion else { return .allowedByDefault(.runningVersionUnavailable) }
         guard let running = AppVersion(runningVersion) else {
@@ -131,7 +138,7 @@ public enum RunningBuild {
         shortVersionString(in: bundle.infoDictionary)
     }
 
-    /// The same lookup over an info dictionary, which is the only shape a test can supply.
+    /// The same lookup over an info dictionary, which is where the key actually lives.
     static func shortVersionString(in info: [String: Any]?) -> String? {
         info?["CFBundleShortVersionString"] as? String
     }

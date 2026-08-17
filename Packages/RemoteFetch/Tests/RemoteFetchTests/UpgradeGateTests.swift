@@ -32,8 +32,14 @@ struct UpgradeGateTests {
     @Test("At the minimum written to a different width is still at the minimum")
     func atMinimumAcrossWidthsDoesNotBlock() throws {
         // The shipping case: `MARKETING_VERSION` is `1.0` and the published minimum is `1.0.0`.
+        // Asserted as a value and not as `!isBlocking`, which every fail-open path also satisfies —
+        // this has to distinguish "the widths compared equal" from "nothing parsed".
         let payload = try flagsPayload(revision: 1, minimumSupportedVersion: "1.0.0")
-        #expect(!UpgradeGate.decide(runningVersion: "1.0", against: resolved(payload)).isBlocking)
+        let minimum = try #require(AppVersion("1.0.0"))
+        let running = try #require(AppVersion("1.0"))
+        let decision = UpgradeGate.decide(runningVersion: "1.0", against: resolved(payload))
+
+        #expect(decision == .allowed(minimum: minimum, running: running))
     }
 
     @Test("A build above the published minimum is not blocked")
@@ -85,6 +91,21 @@ struct UpgradeGateTests {
         let payload = try flagsPayload(revision: 1, minimumSupportedVersion: "banana")
         #expect(RemoteFlagsValidator.validate(payload).isEmpty)
         #expect(RemoteResource.flags.inspect(payload) == .usable(revision: 1))
+    }
+
+    @Test("A minimum padded with whitespace still fires the switch")
+    func paddedMinimumStillBlocks() throws {
+        // The validator calls a minimum blank only after trimming, so this payload publishes. A
+        // gate reading it untrimmed would fail open on it — the switch dead on every installed
+        // copy, with nothing anyone reads to say so.
+        let payload = try flagsPayload(revision: 1, minimumSupportedVersion: " 2.0.0\n")
+        #expect(RemoteFlagsValidator.validate(payload).isEmpty)
+
+        let minimum = try #require(AppVersion("2.0.0"))
+        let running = try #require(AppVersion("1.9"))
+        let decision = UpgradeGate.decide(runningVersion: "1.9", against: resolved(payload))
+
+        #expect(decision == .blocked(minimum: minimum, running: running))
     }
 
     @Test("A build that declares no version does not block")
@@ -166,9 +187,10 @@ struct UpgradeGateTests {
     @Test("The bundled flags alone do not lock out the version this build ships")
     func bundledFlagsDoNotLockOutTheShippedBuild() throws {
         let fetcher = ContentFetcher(transport: RoutingTransport(), cache: TemporaryCache().cache)
+        let shipped = try shippedMarketingVersion()
         let minimum = try #require(AppVersion(RemoteFlags.published.minimumSupportedVersion))
-        let running = try #require(AppVersion(shippedMarketingVersion))
-        let decision = fetcher.upgradeDecision(runningVersion: shippedMarketingVersion)
+        let running = try #require(AppVersion(shipped))
+        let decision = fetcher.upgradeDecision(runningVersion: shipped)
 
         #expect(!decision.isBlocking)
         #expect(decision == .allowed(minimum: minimum, running: running))
@@ -181,6 +203,18 @@ struct UpgradeGateTests {
         #expect(RunningBuild.shortVersionString(in: ["CFBundleShortVersionString": "4.5"]) == "4.5")
     }
 
+    @Test("A real bundle is read through the same key")
+    func readsShortVersionStringFromARealBundle() throws {
+        let bundle = try fixtureBundle(declaring: ["CFBundleShortVersionString": "4.5"])
+        #expect(RunningBuild.shortVersionString(in: bundle) == "4.5")
+    }
+
+    @Test("A real bundle declaring no short version string declares none")
+    func realBundleWithoutAShortVersionStringIsNil() throws {
+        let bundle = try fixtureBundle(declaring: ["CFBundleVersion": "12"])
+        #expect(RunningBuild.shortVersionString(in: bundle) == nil)
+    }
+
     @Test("A bundle that declares no usable short version string declares none")
     func missingShortVersionStringIsNil() {
         #expect(RunningBuild.shortVersionString(in: nil) == nil)
@@ -191,6 +225,29 @@ struct UpgradeGateTests {
     }
 }
 
-/// The version the app target ships (`MARKETING_VERSION`), written to the width the project writes
-/// it — which is not the width `flags.json` publishes its minimum to.
-private let shippedMarketingVersion = "1.0"
+/// The version the app target ships, read out of the Xcode project rather than copied here.
+///
+/// A literal would keep passing after `MARKETING_VERSION` moved, which is the one drift the test
+/// using it exists to catch — and the project writes it to a narrower width than `flags.json`
+/// publishes its minimum to, so the copy would go stale silently and still look right.
+private func shippedMarketingVersion() throws -> String {
+    let root = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()  // RemoteFetchTests
+        .deletingLastPathComponent()  // Tests
+        .deletingLastPathComponent()  // RemoteFetch
+        .deletingLastPathComponent()  // Packages
+        .deletingLastPathComponent()  // the repository root
+    let project = try String(
+        contentsOf: root.appendingPathComponent("Attempt.xcodeproj/project.pbxproj"),
+        encoding: .utf8
+    )
+    let declared = Set(
+        project.split(separator: "\n").compactMap { line -> String? in
+            guard let assignment = line.range(of: "MARKETING_VERSION = ") else { return nil }
+            return line[assignment.upperBound...]
+                .trimmingCharacters(in: CharacterSet(charactersIn: " \t;"))
+        })
+
+    #expect(declared.count == 1, "the project's configurations disagree about MARKETING_VERSION")
+    return try #require(declared.first)
+}

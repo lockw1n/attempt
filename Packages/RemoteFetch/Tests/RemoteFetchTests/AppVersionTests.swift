@@ -64,6 +64,7 @@ struct AppVersionTests {
             "-1.0",
             "1.0\n",
             "1٫0",
+            // Digits, but not ASCII ones — refused by `Int(_:)`, which takes no other numeral.
             "１.０",
             // Too large for Int, which is refused rather than truncated to something orderable.
             "99999999999999999999.0",

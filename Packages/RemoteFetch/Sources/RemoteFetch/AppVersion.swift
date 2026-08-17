@@ -12,7 +12,9 @@ public struct AppVersion: Comparable, Sendable, CustomStringConvertible {
     /// The version exactly as it was written, which is what an upgrade prompt shows.
     public let text: String
 
-    /// The numbers, trailing zeros dropped so that two widths of the same version compare equal.
+    /// The numbers, trailing zeros dropped so that two widths of the same version compare equal —
+    /// which leaves an all-zero version with none at all, since a missing field already compares as
+    /// zero.
     private let components: [Int]
 
     /// Reads a version, or `nil` when `string` is not one.
@@ -20,20 +22,17 @@ public struct AppVersion: Comparable, Sendable, CustomStringConvertible {
     /// Every field must be a non-empty run of ASCII digits. A field too large for `Int` is refused
     /// rather than truncated.
     public init?(_ string: String) {
-        let fields = string.split(separator: ".", omittingEmptySubsequences: false)
-        guard !fields.isEmpty else { return nil }
-
         var parsed: [Int] = []
-        for field in fields {
-            // The digit check is the load-bearing half: `Int(_:)` accepts a leading sign, so
-            // without it `+1.0` and `-1.0` would both parse as versions. `Int` is here for the
-            // field too large to hold, which no character check can see.
-            guard !field.isEmpty, field.allSatisfy({ $0.isASCII && $0.isNumber }),
-                let value = Int(field)
+        for field in string.split(separator: ".", omittingEmptySubsequences: false) {
+            // Both halves carry weight. `Int(_:)` accepts a leading sign, so without the digit
+            // check `+1.0` and `-1.0` would parse as versions; `Int` is here for the field too
+            // large to hold, which no character check can see, and for the non-ASCII digit that
+            // `isNumber` alone admits.
+            guard !field.isEmpty, field.allSatisfy({ $0.isNumber }), let value = Int(field)
             else { return nil }
             parsed.append(value)
         }
-        while parsed.count > 1, parsed.last == 0 { parsed.removeLast() }
+        while parsed.last == 0 { parsed.removeLast() }
 
         text = string
         components = parsed

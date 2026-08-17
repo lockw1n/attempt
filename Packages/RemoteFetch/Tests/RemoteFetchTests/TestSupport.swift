@@ -139,6 +139,20 @@ func flagsPayload(
     )
 }
 
+/// A real `Bundle` on disk declaring whatever `info` says.
+///
+/// The `Bundle` overload of `RunningBuild.shortVersionString(in:)` is the one line joining the kill
+/// switch to an actual build, and an info dictionary cannot reach it — only a bundle can.
+func fixtureBundle(declaring info: [String: Any]) throws -> Bundle {
+    let container = temporaryCacheRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let root = container.appendingPathComponent("Fixture.bundle", isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    try PropertyListSerialization
+        .data(fromPropertyList: info, format: .xml, options: 0)
+        .write(to: root.appendingPathComponent("Info.plist"))
+    return try #require(Bundle(url: root))
+}
+
 /// A resolution over arbitrary bytes, for the gate tests that do not go through a fetcher.
 func resolved(_ data: Data, revision: Int = 1) -> ResolvedContent {
     ResolvedContent(data: data, revision: revision, origin: .cache)
