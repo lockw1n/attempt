@@ -27,6 +27,18 @@ jobs:
       - name: Audit app-target build settings
         run: ./scripts/audit-app-build-settings.sh
 
+      # OUT-0.1 (T-0.60): DOD-0.3's debug harness must not reach the app. It is excluded by
+      # publishing no library product rather than by a build configuration, so what can regress is
+      # the manifest — asserted here, beside the other claim about the app's build graph that is
+      # invisible in review.
+      - name: Check the debug harness is excluded from the app
+        run: ./scripts/check-harness-excluded.sh
+
+      # Each of the three checks over a canned tree, in both directions, plus a target that has
+      # moved — a `grep` whose path is wrong finds nothing and would otherwise read as `ok`.
+      - name: Verify the harness-exclusion gate fires
+        run: ./scripts/check-harness-excluded.sh --self-test
+
       # No SUPPRESS_WARNINGS workaround here any more. It was needed while the manifests carried
       # `.treatAllWarnings(as: .error)`, which conflicted with the `-suppress-warnings` Xcode
       # injects into package dependencies. T-0.03 moved the warnings gate to command-line flags
@@ -63,10 +75,26 @@ jobs:
       - name: Show toolchain version
         run: swift --version
 
-      # Also runs the PowerliftingCore suite — the script tests before it measures.
-      # The threshold stays at its default of 0 until T-0.61 raises it to the G-6.1 90%.
+      # G-6.1: PowerliftingCore at >= 90% line coverage, no exceptions. Also runs the suite — the
+      # script tests before it measures.
+      #
+      # No --threshold here on purpose. 90 is the script's default, so this step exercises the one
+      # number G-6.1 specifies rather than a copy of it, and the self-test below brackets that
+      # default with the variable unset. Passing it explicitly would leave the default unpinned in
+      # both places at once, which is how T-0.24's sibling gate shipped with an unnoticed 5 -> 500.
       - name: Test PowerliftingCore and report coverage
         run: ./scripts/coverage.sh --package-path Packages/PowerliftingCore
+
+      # And the proof that the gate above can fail, since PowerliftingCore has been at 100% since
+      # T-0.10 and nothing in normal operation will ever make it fire. Each case asserts *which*
+      # failure fired — exit status and message both; the script prints the case counts rather than
+      # this comment repeating them. Several cases share an exit status and differ only in the
+      # message, and a mutation that merges those branches is caught by nothing else.
+      #
+      # This step publishes nothing to the run summary: it unsets $GITHUB_STEP_SUMMARY per case,
+      # so the fixtures cannot bury the real report the step above writes there.
+      - name: Verify the coverage gate fires
+        run: ./scripts/coverage.sh --self-test
 
       # G-6.4: every package built and tested with warnings-as-errors, discovered by glob rather
       # than listed — a new package under Packages/ is covered the moment it exists. This also
