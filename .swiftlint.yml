@@ -21,6 +21,7 @@ excluded:
   - Packages/SeedContent/.build
   - Packages/SeedImport/.build
   - Packages/RemoteContent/.build
+  - Packages/RemoteFetch/.build
   - Packages/DesignSystem/.build
 
 disabled_rules:
