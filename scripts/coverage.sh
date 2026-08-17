@@ -33,10 +33,12 @@
 #
 #    0   at or above the threshold
 #    1   below the threshold — a real coverage regression
-#   64   usage: an unknown argument, or a threshold that is not a number in 0...100
-#   65   the report exists but could not be read — malformed JSON, or a shape llvm-cov no longer
-#        emits. Fails closed on purpose: a parser that has silently stopped matching looks exactly
-#        like a module with nothing to measure
+#   64   usage: an unknown argument, a flag missing its value, or a threshold that is not a number
+#        in 0...100
+#   65   the report exists but could not be read — malformed JSON, bytes that are not UTF-8, a
+#        shape llvm-cov no longer emits, or an I/O error opening it. Fails closed on purpose: a
+#        parser that has silently stopped matching looks exactly like a module with nothing to
+#        measure, and a truncated report must never be reported as a coverage regression
 #   66   --from names no file, or --package-path names no directory
 #   69   the report is well-formed and measures nothing. Two distinct causes, distinguished in the
 #        message: NO file under Sources/ appears in the report at all (the filter matched nothing —
@@ -82,9 +84,10 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# --self-test: twenty canned runs through the real CLI, fifteen of which must fail. The five
-# positive cases are not padding — a script that rejected everything would satisfy "has been seen to
-# fire" while gating nothing, which is the failure mode verify-lint-rules.sh exists to catch.
+# --self-test: canned runs through the real CLI, most of which must fail; the script prints both
+# counts rather than this comment naming them, so they cannot drift. The positive cases are not
+# padding — a script that rejected everything would satisfy "has been seen to fire" while gating
+# nothing, which is the failure mode verify-lint-rules.sh exists to catch.
 #
 # Every case goes through `bash "${BASH_SOURCE[0]}"` rather than a sourced function, because the
 # parser lives in an embedded python program and there is no smaller unit to call. THIS script, not
@@ -100,7 +103,16 @@ done
 # Most cases pass NO threshold, with $COVERAGE_THRESHOLD unset, so they see the DEFAULT — the one
 # number G-6.1 actually specifies, and the number a probe cannot otherwise reach. They bracket 90
 # rather than sitting under it. The flag and the environment variable get their own cases, so that
-# bracketing cannot be satisfied by a hardcoded figure downstream of them.
+# bracketing cannot be satisfied by a hardcoded figure downstream of them. --package is defaulted
+# the same way and for the same reason: only one case passes it.
+#
+# $GITHUB_STEP_SUMMARY is unset for the same reason it is unset in reverse — under Actions this
+# step would otherwise append twenty fixture reports, most of them failures, to the run page
+# directly beneath the real one. The `publishes` field turns it back on for the cases that assert
+# what gets published; those are the only probes the run-summary path has.
+#
+# The two `-u`s are themselves unprobeable from inside a clean environment, which is the one known
+# hole in this suite: a mutation deleting either survives, because there is nothing to leak in.
 if (( SELF_TEST )); then
     scratch="$(mktemp -d)"
     trap 'rm -rf "$scratch"' EXIT
@@ -162,6 +174,10 @@ PYTHON
     make_report "$scratch/zero-lines.json"  "Sources/Weight.swift:0:0"
 
     printf 'not json at all\n' >"$scratch/not-json.txt"
+    # Bytes that are not UTF-8 — a truncated or half-written export. Written through python3 rather
+    # than printf '\xff', whose escape handling is not the same in bash 3.2 as in bash 5.
+    python3 -c 'import sys; open(sys.argv[1], "wb").write(bytes([0xff, 0xfe, 0x00, 0x01]))' \
+        "$scratch/not-utf8.json"
     printf '{"data": []}\n'    >"$scratch/wrong-shape.json"
     printf '{"data": [{"files": [{"filename": "%s/Sources/Weight.swift"}]}]}\n' "$pkg" \
         >"$scratch/missing-summary.json"
@@ -173,18 +189,25 @@ PYTHON
         grep -vE '^[[:space:]]*$|^-+$' <<<"$1" | tail -3 | tr '\n' ' '
     }
 
-    # fixture | extra args | env | expected exit | expected output | what it pins
+    # fixture | extra args | expected exit | expected output | what it pins | env | published
+    #
+    # An EMPTY fixture passes no --from at all, and is only for cases that fail while parsing
+    # arguments — anything reaching the body would try to `swift test` this fake package.
+    # A non-empty `published` runs the case with $GITHUB_STEP_SUMMARY set and asserts that text
+    # reaches the file.
     cases=(
-        "healthy.json||0|TOTAL: 100.00% (threshold 90%) — PASS|a fully covered module is accepted"
+        "healthy.json||0|TOTAL: 100.00% (threshold 90%) — PASS|a fully covered module is accepted||✅ **PASS** — 100.00% against a 90% threshold."
         "healthy.json||0|100/100    Sources/Weight.swift|the per-file breakdown names files relative to the package"
         "just-under.json||1|TOTAL: 89.90% (threshold 90%) — FAIL|below the default threshold fails"
         "boundary.json||0|TOTAL: 90.00% (threshold 90%) — PASS|exactly 90.00 passes — G-6.1 says *at least*"
         "flatters.json||1|TOTAL: 89.99% (threshold 90%) — FAIL|the printed figure never flatters the verdict"
         "inflated.json||1|TOTAL: 50.00% (threshold 90%) — FAIL|Sources/ only — the test target cannot lift the figure"
-        "no-sources.json||69|no files under Sources/|a filter matching nothing fails *as such*, not as a pass"
+        "no-sources.json||69|no files under Sources/|a filter matching nothing fails *as such*, not as a pass||❌ **No files under \`Sources/\`**"
         "empty.json||69|no files under Sources/|a report with zero files is the same failure"
-        "zero-lines.json||69|Sources/ has no executable lines|zero executable lines fails, with its own message"
+        "zero-lines.json||69|FakePackage's Sources/ has no executable lines|zero executable lines fails, with its own message — under the name --package defaults to"
+        "zero-lines.json|--package Renamed|69|Renamed's Sources/ has no executable lines|--package overrides that default, so the case above is not vacuous"
         "not-json.txt||65|the coverage report could not be read|malformed JSON fails closed"
+        "not-utf8.json||65|the coverage report could not be read|a non-UTF-8 report fails closed, rather than as a coverage regression"
         "wrong-shape.json||65|the coverage report could not be read|a shape llvm-cov no longer emits fails closed"
         "missing-summary.json||65|the coverage report could not be read|a file entry with no summary fails closed"
         "just-under.json|--threshold 50|0|(threshold 50%) — PASS|--threshold is honoured downwards"
@@ -193,33 +216,46 @@ PYTHON
         "healthy.json|--threshold abc|64|--threshold must be a number|a non-numeric threshold is rejected, not string-compared into a PASS"
         "healthy.json|--threshold 101|64|--threshold must be a number|a threshold above 100 is rejected"
         "healthy.json|--flibble|64|unknown argument|an unknown argument is rejected"
+        "|--threshold|64|--threshold needs a value|a flag with no value is rejected, not silently given the next one"
         "absent.json||66|no such file|--from naming no file fails, rather than measuring nothing"
         "healthy.json|--package-path SCRATCH/nope|66|no package at|--package-path naming no directory fails"
     )
 
     failures=0
+    negatives=0
     n=0
     total=${#cases[@]}
 
     for spec in "${cases[@]}"; do
-        IFS='|' read -r fixture extra expected_exit expected_output note envspec <<<"$spec"
+        IFS='|' read -r fixture extra expected_exit expected_output note envspec published <<<"$spec"
         n=$((n + 1))
-        printf '%d/%d  %-20s %s\n' "$n" "$total" "$fixture" "$note"
+        printf '%d/%d  %-20s %s\n' "$n" "$total" "${fixture:-—}" "$note"
+        [[ "$expected_exit" == 0 ]] || negatives=$((negatives + 1))
 
         extra="${extra//SCRATCH/$scratch}"
 
         # $COVERAGE_THRESHOLD is unset for every case, then set again only where the case says so.
         # Without the unset, an exported value in the calling shell would silently replace the
-        # default in the thirteen cases that pass no --threshold — and the default is the only
-        # number G-6.1 actually specifies.
-        env_prefix=(env -u COVERAGE_THRESHOLD)
+        # default in the cases that pass no --threshold — and the default is the only number G-6.1
+        # actually specifies. $GITHUB_STEP_SUMMARY is unset so that running this under Actions does
+        # not publish the fixtures; the assignment below re-adds it for the cases that assert one.
+        # Options before operands: env rejects a `-u` that follows a NAME=VALUE.
+        env_prefix=(env -u COVERAGE_THRESHOLD -u GITHUB_STEP_SUMMARY)
         [[ -z "$envspec" ]] || env_prefix+=("$envspec")
+
+        published_file="$scratch/published-$n.md"
+        [[ -z "$published" ]] || env_prefix+=("GITHUB_STEP_SUMMARY=$published_file")
+
+        # An empty fixture means no --from, for the cases that fail during argument parsing.
+        # bash 3.2 has no empty-array expansion under `set -u`, hence the guard.
+        from_args=()
+        [[ -z "$fixture" ]] || from_args=(--from "$scratch/$fixture")
 
         set +e
         # shellcheck disable=SC2086  # $extra is a deliberate word-split of option pairs
         output="$("${env_prefix[@]}" bash "${BASH_SOURCE[0]}" \
-            --package-path "$pkg" --package FakePackage $extra \
-            --from "$scratch/$fixture" 2>&1)"
+            --package-path "$pkg" $extra \
+            ${from_args[@]+"${from_args[@]}"} 2>&1)"
         actual_exit=$?
         set -e
 
@@ -236,6 +272,14 @@ PYTHON
             echo "            expected to say: $expected_output" >&2
             echo "            actually said:   $(said "$output")" >&2
             failures=$((failures + 1))
+        # The run summary is a separate stream from the console, so a case asserting one has to
+        # read the file. Without this the whole publishing path is unprobed — replacing the body of
+        # publish() with a no-op passed every console assertion.
+        elif [[ -n "$published" ]] && ! grep -qF -e "$published" "$published_file" 2>/dev/null; then
+            echo "      FAIL  exited $actual_exit as required, but published the wrong summary." >&2
+            echo "            expected to publish: $published" >&2
+            echo "            actually published:  $(said "$(cat "$published_file" 2>/dev/null)")" >&2
+            failures=$((failures + 1))
         else
             echo "      ok    exited $actual_exit, saying \"$expected_output\""
         fi
@@ -246,7 +290,7 @@ PYTHON
         echo "$failures/$total checks failed — the coverage gate is not proven." >&2
         exit 1
     fi
-    echo "coverage gate verified: $total cases, 15 of them negative."
+    echo "coverage gate verified: $total cases, $negatives of them negative."
     exit 0
 fi
 
@@ -345,8 +389,12 @@ def unreadable(detail):
 try:
     with open(report_path) as handle:
         export = json.load(handle)
-except json.JSONDecodeError as error:
-    unreadable(f"not valid JSON ({error})")
+# Not JSONDecodeError alone. A truncated or non-UTF-8 export raises UnicodeDecodeError and an
+# unreadable-but-present one raises OSError; either escaping as a traceback would exit 1, which is
+# this script's code for a real coverage regression — the single worst place to send the fix.
+# JSONDecodeError is a ValueError, so the malformed-JSON case is still caught here.
+except (OSError, UnicodeDecodeError, ValueError) as error:
+    unreadable(f"not readable as JSON ({type(error).__name__}: {error})")
 
 # Production sources only: <package>/Sources/**, never Tests/ and never the generated runner.
 sources_root = os.path.join(os.path.realpath(package_path), "Sources") + os.sep

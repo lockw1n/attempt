@@ -86,10 +86,13 @@ jobs:
         run: ./scripts/coverage.sh --package-path Packages/PowerliftingCore
 
       # And the proof that the gate above can fail, since PowerliftingCore has been at 100% since
-      # T-0.10 and nothing in normal operation will ever make it fire. Twenty cases, fifteen
-      # negative, each asserting *which* failure fired — exit status and message both. Two of them
-      # share an exit status and differ only in the message, and a mutation that merges those
-      # branches is caught by nothing else.
+      # T-0.10 and nothing in normal operation will ever make it fire. Each case asserts *which*
+      # failure fired — exit status and message both; the script prints the case counts rather than
+      # this comment repeating them. Several cases share an exit status and differ only in the
+      # message, and a mutation that merges those branches is caught by nothing else.
+      #
+      # This step publishes nothing to the run summary: it unsets $GITHUB_STEP_SUMMARY per case,
+      # so the fixtures cannot bury the real report the step above writes there.
       - name: Verify the coverage gate fires
         run: ./scripts/coverage.sh --self-test
 
