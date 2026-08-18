@@ -1,15 +1,22 @@
-// The component layer: cards, the metric tile, buttons and the surface treatment G-7.1 describes.
+// The component layer: the card surface, the grouped section, the metric tile, the primary action
+// and the delta indicator (TR-1.4). Everything here is built from the DesignTokens scales next
+// door and declares no value of its own.
 //
-// Still empty — the components land in T-1.03 (TR-1.4). What is here is the re-export, so a screen
-// importing DesignSystem gets the scales too and never has to import both.
-//
-// The tokens themselves live in the DesignTokens target next door: spacing (G-7.7), the type scale
-// (G-7.6) and the colour vocabulary (G-7.1–G-7.4). A feature module needing only those should
+// The re-export is so a screen importing DesignSystem gets the scales too and never has to import
+// both. A feature module needing only the scales — a store, a formatter, a preview fixture — should
 // import DesignTokens, which carries no view code.
 //
-// Nothing in this module may declare a colour, a font size, a text style or a spacing value of its
-// own, and that is enforced rather than asked for: the G-7.7 lint rules cover this target's path
-// alongside Features/ and the app. The exemption is the DesignTokens target alone, which is where
-// the raw values are supposed to be.
+// TWO RULES THIS MODULE HOLDS ITSELF TO, both of which a component would be the natural place to
+// break:
+//
+//   No raw values. No colour, font size, text style, spacing, radius or opacity is declared here;
+//   they all come from a token. Enforced rather than asked for — the G-7.7 lint rules cover this
+//   target's path alongside Features/ and the app, and the only exemption is the DesignTokens
+//   target itself.
+//
+//   No user-visible strings. Every piece of text arrives as a `Text` the caller built, because a
+//   LocalizedStringKey resolved inside a package resolves against the package's bundle rather than
+//   the app's (G-3.4). This is also what keeps domain knowledge out: a component that named a
+//   string would be a component that knew what it was for.
 
 @_exported import DesignTokens

@@ -5,14 +5,26 @@ import PackageDescription
 // G-6.4 (T-0.06). Same three settings as PowerliftingCore — see the commented block in
 // Packages/PowerliftingCore/Package.swift for what each one buys.
 //
-// `.defaultIsolation(nil)` stays for the token layer, and that is now a decision rather than a
-// placeholder: tokens are pure values with no view code in them, and MainActor-isolating them would
-// force every test that reads a palette entry into an actor hop for nothing. The components target
-// (TR-1.4, T-1.03) is where flipping to `.defaultIsolation(MainActor.self)` becomes the right call —
-// default isolation is a per-target setting for exactly this reason.
-let strictSettings: [SwiftSetting] = [
+// `.defaultIsolation(nil)` stays for the token layer: tokens are pure values with no view code in
+// them, and MainActor-isolating them would force every test that reads a palette entry into an actor
+// hop for nothing.
+let tokenSettings: [SwiftSetting] = [
     .swiftLanguageMode(.v6),
     .defaultIsolation(nil),
+]
+
+// The component layer takes the opposite default, which is what default isolation being a per-target
+// setting is for. Every type here is a `View` or a `ButtonStyle`, both of which SwiftUI already
+// requires on the main actor, so `nil` would mean writing `@MainActor` on each one and getting a
+// diagnostic on whichever one was forgotten.
+//
+// The exception is the data-shaped enums a component's token choices are exposed through —
+// `CardElevation`, `DeltaDirection`. Those are marked `nonisolated` at the declaration: a
+// MainActor-isolated `static var allCases` cannot satisfy `CaseIterable`, whose requirement is not,
+// and a test asserting on a colour mapping should not have to hop to the main actor to read one.
+let componentSettings: [SwiftSetting] = [
+    .swiftLanguageMode(.v6),
+    .defaultIsolation(MainActor.self),
 ]
 
 // TR-1.4: design tokens, components and theme.
@@ -32,17 +44,22 @@ let package = Package(
     targets: [
         .target(
             name: "DesignTokens",
-            swiftSettings: strictSettings
+            swiftSettings: tokenSettings
         ),
         .target(
             name: "DesignSystem",
             dependencies: ["DesignTokens"],
-            swiftSettings: strictSettings
+            swiftSettings: componentSettings
         ),
         .testTarget(
             name: "DesignTokensTests",
             dependencies: ["DesignTokens"],
-            swiftSettings: strictSettings
+            swiftSettings: tokenSettings
+        ),
+        .testTarget(
+            name: "DesignSystemTests",
+            dependencies: ["DesignSystem"],
+            swiftSettings: componentSettings
         ),
     ]
 )

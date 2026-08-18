@@ -26,7 +26,10 @@ struct TokenUsageFixture: View {
         .padding(Spacing.lg.points)
         // The widened frame rule must still pass a token-valued dimension, and `.infinity` beside
         // it: both live in the argument list the rule now scans in full.
-        .frame(maxWidth: .infinity, minHeight: Spacing.xxl.points, alignment: .leading)
-        .background(ColorToken.surface)
+        .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points, alignment: .leading)
+        // A token-valued radius has to pass, in both the shape that names a type and the shorthand
+        // that does not — the radius rule scans the label, so both are the same match to it.
+        .background(ColorToken.surface, in: .rect(cornerRadius: CornerRadius.card.points))
+        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.control.points))
     }
 }

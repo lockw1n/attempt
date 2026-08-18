@@ -9,7 +9,9 @@
 // load-bearing, and this file becomes its proof, only if the matching is ever tightened.
 //
 // Every construct below is one a real screen reaches for, and every one has a token that replaces
-// it. The bottom half was added when a probe found four of them escaping all four rules.
+// it. The middle block was added when a probe found four of them escaping all four rules; the
+// radius block at the bottom arrived with the fifth rule, and is five shapes rather than one
+// because a literal curve can be written five ways (see .swiftlint.yml).
 import SwiftUI
 
 struct LiteralValuesFixture: View {
@@ -37,5 +39,11 @@ struct LiteralValuesFixture: View {
         .frame(maxWidth: 320, minHeight: 44)
         // `.shadow(`'s first label is always `color:`, so this walked through the verb list.
         .shadow(color: .black, radius: 4)
+        // Five ways to write a literal corner radius, only two of which name RoundedRectangle.
+        .cornerRadius(12)
+        .background(Color.gray, in: RoundedRectangle(cornerRadius: 14))
+        .clipShape(.rect(cornerRadius: 16))
+        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12, bottomTrailingRadius: 4))
+        .clipShape(RoundedRectangle(cornerSize: CGSize(width: 12, height: 12)))
     }
 }
