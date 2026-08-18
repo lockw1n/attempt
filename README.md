@@ -41,6 +41,8 @@ Packages/
 ├── DesignSystem/            Two targets: DesignTokens (spacing, type, colour scales) and
 │                            DesignSystem (cards, metric tiles, buttons, delta indicator — built
 │                            from the tokens)
+├── AppNavigation/           The typed navigation model: tabs, one namespaced Route enum, and a
+│                            serializable snapshot for restoration. No views, no user-visible strings.
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -191,7 +193,7 @@ swift run --package-path Packages/DebugHarness attempt-harness
 It publishes an executable product only, so the app target cannot link it — that is the whole of
 how it stays out of release builds, checked by `scripts/check-harness-excluded.sh`.
 
-`PowerliftingCore`, `Persistence` and `DesignSystem` are linked into the app
+`PowerliftingCore`, `Persistence`, `DesignSystem` and `AppNavigation` are linked into the app
 target as local package references, so `xcodebuild` builds them alongside the app.
 `RepositoryInterface` arrives transitively through `Persistence`; the composition
 root takes a direct product dependency when app code first imports it.
@@ -217,7 +219,8 @@ Note that a bare `swift build` does **not** fail on warnings — that gate lives
 the script, not in the manifests.
 
 Every package has a Swift Testing target (`@Test` / `#expect`, not XCTest). The app target has no
-tests; it is a composition root with an empty scene.
+tests; it is a composition root, and the Xcode project has no test target for it (Q-1.3) — anything
+that needs a unit test lives under `Packages/` instead.
 
 ```bash
 swift test --package-path Packages/PowerliftingCore
@@ -229,6 +232,7 @@ swift test --package-path Packages/SeedImport
 swift test --package-path Packages/RemoteContent
 swift test --package-path Packages/RemoteFetch
 swift test --package-path Packages/DesignSystem
+swift test --package-path Packages/AppNavigation
 swift test --package-path Packages/DebugHarness
 ```
 
