@@ -39,7 +39,8 @@ Packages/
 ├── RemoteContent/           formulas.json/flags.json's schema, validator and generator, plus SCHEMA.md
 ├── RemoteFetch/             Fetches, caches and falls back for the three published payloads
 ├── DesignSystem/            Two targets: DesignTokens (spacing, type, colour scales) and
-│                            DesignSystem (components, built from the tokens — still empty)
+│                            DesignSystem (cards, metric tiles, buttons, delta indicator — built
+│                            from the tokens)
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -215,8 +216,8 @@ path to work on one in isolation (`./scripts/build-packages.sh Packages/Powerlif
 Note that a bare `swift build` does **not** fail on warnings — that gate lives in
 the script, not in the manifests.
 
-Every package except `DesignSystem` has a Swift Testing target (`@Test` / `#expect`, not
-XCTest). The app target has no tests; it is a composition root with an empty scene.
+Every package has a Swift Testing target (`@Test` / `#expect`, not XCTest). The app target has no
+tests; it is a composition root with an empty scene.
 
 ```bash
 swift test --package-path Packages/PowerliftingCore
@@ -227,6 +228,7 @@ swift test --package-path Packages/SeedContent
 swift test --package-path Packages/SeedImport
 swift test --package-path Packages/RemoteContent
 swift test --package-path Packages/RemoteFetch
+swift test --package-path Packages/DesignSystem
 swift test --package-path Packages/DebugHarness
 ```
 
