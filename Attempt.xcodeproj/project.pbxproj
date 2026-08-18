@@ -11,6 +11,11 @@
 		D3432941301E887D00DC20FF /* Persistence in Frameworks */ = {isa = PBXBuildFile; productRef = D3432931301E887D00DC20FF /* Persistence */; };
 		D3432942301E887D00DC20FF /* DesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = D3432932301E887D00DC20FF /* DesignSystem */; };
 		D3432943301E887D00DC20FF /* AppNavigation in Frameworks */ = {isa = PBXBuildFile; productRef = D3432933301E887D00DC20FF /* AppNavigation */; };
+		D3432944301E887D00DC20FF /* ExerciseLibrary in Frameworks */ = {isa = PBXBuildFile; productRef = D3432934301E887D00DC20FF /* ExerciseLibrary */; };
+		D3432945301E887D00DC20FF /* Logging in Frameworks */ = {isa = PBXBuildFile; productRef = D3432935301E887D00DC20FF /* Logging */; };
+		D3432946301E887D00DC20FF /* History in Frameworks */ = {isa = PBXBuildFile; productRef = D3432936301E887D00DC20FF /* History */; };
+		D3432947301E887D00DC20FF /* Dashboard in Frameworks */ = {isa = PBXBuildFile; productRef = D3432937301E887D00DC20FF /* Dashboard */; };
+		D3432948301E887D00DC20FF /* Settings in Frameworks */ = {isa = PBXBuildFile; productRef = D3432938301E887D00DC20FF /* Settings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +39,11 @@
 				D3432941301E887D00DC20FF /* Persistence in Frameworks */,
 				D3432942301E887D00DC20FF /* DesignSystem in Frameworks */,
 				D3432943301E887D00DC20FF /* AppNavigation in Frameworks */,
+				D3432944301E887D00DC20FF /* ExerciseLibrary in Frameworks */,
+				D3432945301E887D00DC20FF /* Logging in Frameworks */,
+				D3432946301E887D00DC20FF /* History in Frameworks */,
+				D3432947301E887D00DC20FF /* Dashboard in Frameworks */,
+				D3432948301E887D00DC20FF /* Settings in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -80,6 +90,11 @@
 				D3432931301E887D00DC20FF /* Persistence */,
 				D3432932301E887D00DC20FF /* DesignSystem */,
 				D3432933301E887D00DC20FF /* AppNavigation */,
+				D3432934301E887D00DC20FF /* ExerciseLibrary */,
+				D3432935301E887D00DC20FF /* Logging */,
+				D3432936301E887D00DC20FF /* History */,
+				D3432937301E887D00DC20FF /* Dashboard */,
+				D3432938301E887D00DC20FF /* Settings */,
 			);
 			productName = Attempt;
 			productReference = D343290A301E887D00DC20FF /* Attempt.app */;
@@ -114,6 +129,11 @@
 				D3432921301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Persistence" */,
 				D3432922301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/DesignSystem" */,
 				D3432923301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/AppNavigation" */,
+				D3432924301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/ExerciseLibrary" */,
+				D3432925301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Logging" */,
+				D3432926301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/History" */,
+				D3432927301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Dashboard" */,
+				D3432928301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Settings" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D343290B301E887D00DC20FF /* Products */;
@@ -371,6 +391,26 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/AppNavigation;
 		};
+		D3432924301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/ExerciseLibrary" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/Features/ExerciseLibrary;
+		};
+		D3432925301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Logging" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/Features/Logging;
+		};
+		D3432926301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/History" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/Features/History;
+		};
+		D3432927301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Dashboard" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/Features/Dashboard;
+		};
+		D3432928301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Settings" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/Features/Settings;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -389,6 +429,26 @@
 		D3432933301E887D00DC20FF /* AppNavigation */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AppNavigation;
+		};
+		D3432934301E887D00DC20FF /* ExerciseLibrary */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ExerciseLibrary;
+		};
+		D3432935301E887D00DC20FF /* Logging */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Logging;
+		};
+		D3432936301E887D00DC20FF /* History */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = History;
+		};
+		D3432937301E887D00DC20FF /* Dashboard */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Dashboard;
+		};
+		D3432938301E887D00DC20FF /* Settings */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Settings;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

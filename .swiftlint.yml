@@ -25,6 +25,11 @@ excluded:
   - Packages/DesignSystem/.build
   - Packages/AppNavigation/.build
   - Packages/DebugHarness/.build
+  - Packages/Features/ExerciseLibrary/.build
+  - Packages/Features/Logging/.build
+  - Packages/Features/History/.build
+  - Packages/Features/Dashboard/.build
+  - Packages/Features/Settings/.build
 
 disabled_rules:
   - todo
