@@ -43,6 +43,13 @@ Packages/
 │                            from the tokens)
 ├── AppNavigation/           The typed navigation model: tabs, one namespaced Route enum, and a
 │                            serializable snapshot for restoration. No views, no user-visible strings.
+├── Features/                Feature modules, one level deeper — the level is load-bearing:
+│                            .swiftlint.yml scopes the no-raw-values rules to this path.
+│   ├── ExerciseLibrary/     The exercise catalogue
+│   ├── Logging/             The active session and everything logged into it
+│   ├── History/             Past training: sessions, per-exercise history, calendar, search
+│   ├── Dashboard/           e1RM tiles, the recent-PR feed, the start-workout action
+│   └── Settings/            Preferences, data portability, sync
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -63,6 +70,9 @@ must not be shaped like a storage record. `RemoteFetch` sits above both
 `RemoteContent` and `SeedContent`, for the same reason `SeedImport` sits above
 `SeedContent` and `RepositoryInterface` — it is the one place that names both,
 because the bundled leg of `exercises.json`'s fallback lives in `SeedContent`.
+The five packages under `Packages/Features/` sit at the top: each depends on
+`PowerliftingCore`, `RepositoryInterface`, `DesignSystem` and `AppNavigation`, and
+never on `Persistence` — a feature reaches storage through the protocols alone.
 Two constraints are load-bearing rather than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
@@ -193,10 +203,11 @@ swift run --package-path Packages/DebugHarness attempt-harness
 It publishes an executable product only, so the app target cannot link it — that is the whole of
 how it stays out of release builds, checked by `scripts/check-harness-excluded.sh`.
 
-`PowerliftingCore`, `Persistence`, `DesignSystem` and `AppNavigation` are linked into the app
-target as local package references, so `xcodebuild` builds them alongside the app.
-`RepositoryInterface` arrives transitively through `Persistence`; the composition
-root takes a direct product dependency when app code first imports it.
+`PowerliftingCore`, `Persistence`, `DesignSystem`, `AppNavigation` and the five feature modules
+under `Packages/Features/` are linked into the app target as local package references, so
+`xcodebuild` builds them alongside the app. `RepositoryInterface` arrives transitively
+through `Persistence`; the composition root takes a direct product dependency when app
+code first imports it.
 
 A package declaring no `platforms:` clause is compiled against the SDK's own
 deployment floor, which is old enough to refuse `async` and `Identifiable`. That
@@ -218,7 +229,8 @@ path to work on one in isolation (`./scripts/build-packages.sh Packages/Powerlif
 Note that a bare `swift build` does **not** fail on warnings — that gate lives in
 the script, not in the manifests.
 
-Every package has a Swift Testing target (`@Test` / `#expect`, not XCTest). The app target has no
+Every package outside `Packages/Features/` has a Swift Testing target (`@Test` / `#expect`, not
+XCTest); the feature modules get theirs as their first screens land. The app target has no
 tests; it is a composition root, and the Xcode project has no test target for it (Q-1.3) — anything
 that needs a unit test lives under `Packages/` instead.
 

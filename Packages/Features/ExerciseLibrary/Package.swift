@@ -29,11 +29,15 @@ let settings: [SwiftSetting] = [
 // absence of a fifth is half of TR-0.1.2:
 //
 //   RepositoryInterface   the only way storage is reached. `Persistence` is NOT a dependency, so
-//                         `import Persistence` from a feature does not resolve — a resolution
-//                         failure rather than a review note. It does not, by itself, stop
-//                         `import SwiftData`, which resolves against the SDK from any target on
-//                         Darwin; `no_swiftdata_outside_persistence` is what covers that half, and
-//                         it is path-scoped, so it reached these five the moment they existed.
+//                         `import Persistence` from a feature does not resolve. That is one
+//                         direction only, and the other is NOT enforced: adding
+//                         `.package(path: "../../Persistence")` below makes the import resolve and
+//                         no gate objects, so the absence of that line stays a rule to remember.
+//                         `no_swiftdata_outside_persistence` does not cover it either — it is
+//                         path-scoped and so reached these five the moment they existed, but it
+//                         catches `import SwiftData` (which resolves against the SDK from any
+//                         target on Darwin) and a feature reaching storage through `Persistence`'s
+//                         own API imports `Persistence`, not `SwiftData`.
 //   PowerliftingCore      every record type in the repository signatures above is written in the
 //                         domain's own types (`Weight`, `RoundingRule`), so a feature that touches
 //                         a record needs this edge to name what it got back.

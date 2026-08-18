@@ -88,7 +88,7 @@ files = sorted(
     set(root.glob("Packages/*/Sources/**/*.swift")) | set(root.glob("Packages/*/*/Sources/**/*.swift"))
 )
 if not files:
-    print("check-doc-ratio.sh: no sources found under Packages/*/Sources", file=sys.stderr)
+    print("check-doc-ratio.sh: no sources found under Packages/**/Sources", file=sys.stderr)
     sys.exit(1)
 
 total_doc = total_code = 0
