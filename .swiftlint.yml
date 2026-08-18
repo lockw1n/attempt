@@ -23,6 +23,7 @@ excluded:
   - Packages/RemoteContent/.build
   - Packages/RemoteFetch/.build
   - Packages/DesignSystem/.build
+  - Packages/AppNavigation/.build
   - Packages/DebugHarness/.build
 
 disabled_rules:

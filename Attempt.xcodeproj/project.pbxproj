@@ -10,6 +10,7 @@
 		D3432940301E887D00DC20FF /* PowerliftingCore in Frameworks */ = {isa = PBXBuildFile; productRef = D3432930301E887D00DC20FF /* PowerliftingCore */; };
 		D3432941301E887D00DC20FF /* Persistence in Frameworks */ = {isa = PBXBuildFile; productRef = D3432931301E887D00DC20FF /* Persistence */; };
 		D3432942301E887D00DC20FF /* DesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = D3432932301E887D00DC20FF /* DesignSystem */; };
+		D3432943301E887D00DC20FF /* AppNavigation in Frameworks */ = {isa = PBXBuildFile; productRef = D3432933301E887D00DC20FF /* AppNavigation */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +33,7 @@
 				D3432940301E887D00DC20FF /* PowerliftingCore in Frameworks */,
 				D3432941301E887D00DC20FF /* Persistence in Frameworks */,
 				D3432942301E887D00DC20FF /* DesignSystem in Frameworks */,
+				D3432943301E887D00DC20FF /* AppNavigation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,6 +79,7 @@
 				D3432930301E887D00DC20FF /* PowerliftingCore */,
 				D3432931301E887D00DC20FF /* Persistence */,
 				D3432932301E887D00DC20FF /* DesignSystem */,
+				D3432933301E887D00DC20FF /* AppNavigation */,
 			);
 			productName = Attempt;
 			productReference = D343290A301E887D00DC20FF /* Attempt.app */;
@@ -110,6 +113,7 @@
 				D3432920301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/PowerliftingCore" */,
 				D3432921301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Persistence" */,
 				D3432922301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/DesignSystem" */,
+				D3432923301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/AppNavigation" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D343290B301E887D00DC20FF /* Products */;
@@ -329,36 +333,6 @@
 		};
 /* End XCBuildConfiguration section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		D3432920301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/PowerliftingCore" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = Packages/PowerliftingCore;
-		};
-		D3432921301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Persistence" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = Packages/Persistence;
-		};
-		D3432922301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/DesignSystem" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = Packages/DesignSystem;
-		};
-/* End XCLocalSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		D3432930301E887D00DC20FF /* PowerliftingCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = PowerliftingCore;
-		};
-		D3432931301E887D00DC20FF /* Persistence */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Persistence;
-		};
-		D3432932301E887D00DC20FF /* DesignSystem */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = DesignSystem;
-		};
-/* End XCSwiftPackageProductDependency section */
-
 /* Begin XCConfigurationList section */
 		D3432905301E887D00DC20FF /* Build configuration list for PBXProject "Attempt" */ = {
 			isa = XCConfigurationList;
@@ -379,6 +353,44 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		D3432920301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/PowerliftingCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/PowerliftingCore;
+		};
+		D3432921301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Persistence" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/Persistence;
+		};
+		D3432922301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/DesignSystem" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/DesignSystem;
+		};
+		D3432923301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/AppNavigation" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/AppNavigation;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D3432930301E887D00DC20FF /* PowerliftingCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PowerliftingCore;
+		};
+		D3432931301E887D00DC20FF /* Persistence */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Persistence;
+		};
+		D3432932301E887D00DC20FF /* DesignSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DesignSystem;
+		};
+		D3432933301E887D00DC20FF /* AppNavigation */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AppNavigation;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D3432902301E887D00DC20FF /* Project object */;
 }
