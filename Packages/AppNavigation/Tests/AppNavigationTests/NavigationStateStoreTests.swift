@@ -51,11 +51,32 @@ struct NavigationStateStoreTests {
 
     /// Bytes this version cannot read are indistinguishable from none — the degrade rule, at the
     /// layer where a throw would otherwise reach `AttemptApp.init` and take the launch with it.
+    ///
+    /// The store is proven to be reading the key *before* the bytes are corrupted. Writing to a key
+    /// literal instead would pass on a store that reads some other key entirely, since "no such
+    /// key" and "unreadable" are both `nil` — which is exactly what this test cannot afford to
+    /// confuse.
     @Test("unreadable stored bytes load as no stored state")
     func corruptDataLoadsNil() throws {
         let defaults = try Self.makeDefaults()
-        defaults.set(Data("not a snapshot".utf8), forKey: "navigation.snapshot.v1")
-        #expect(UserDefaultsNavigationStateStore(defaults: defaults).load() == nil)
+        let key = "navigation.snapshot.corrupt"
+        let store = UserDefaultsNavigationStateStore(defaults: defaults, key: key)
+        store.save(NavigationSnapshot(selectedTab: .history))
+        #expect(store.load()?.selectedTab == .history)
+
+        defaults.set(Data("not a snapshot".utf8), forKey: key)
+        #expect(store.load() == nil)
+    }
+
+    /// The default key is what `AttemptApp` stores under, so it is persisted interface in the same
+    /// way `AppTab`'s raw values are: changing it drops every user's position at the next launch.
+    @Test("the default key is pinned")
+    func defaultKeyIsPinned() throws {
+        let defaults = try Self.makeDefaults()
+        UserDefaultsNavigationStateStore(defaults: defaults)
+            .save(NavigationSnapshot(selectedTab: .history))
+
+        #expect(defaults.data(forKey: "navigation.snapshot.v1") != nil)
     }
 
     /// The key is versioned so a future shape can be given its own; that only works if this one

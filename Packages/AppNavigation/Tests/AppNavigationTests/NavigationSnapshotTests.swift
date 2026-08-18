@@ -19,6 +19,18 @@ struct NavigationSnapshotTests {
         ]
     )
 
+    /// Every tab carrying a stack. The ordering test needs all four: with two entries a
+    /// dictionary-ordered encode reproduced the tab-bar order anyway, in eight runs out of eight.
+    static let allTabs = NavigationSnapshot(
+        selectedTab: .home,
+        stacks: [
+            .home: [.dashboard(.recentPersonalRecords)],
+            .train: [.training(.activeSession)],
+            .history: [.history(.session(sessionID: sessionID))],
+            .settings: [.settings(.about)],
+        ]
+    )
+
     private static func encodedObject(_ snapshot: NavigationSnapshot) throws -> [String: Any] {
         let data = try JSONEncoder().encode(snapshot)
         return try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -59,11 +71,17 @@ struct NavigationSnapshotTests {
     /// Ordered by `AppTab.allCases`, so the same state produces the same array twice running. Read
     /// back through `JSONSerialization` because asserting on the encoder's *key* order would be
     /// asserting on a per-process hash seed.
+    ///
+    /// All four tabs, because the assertion is probabilistic: an encode that walked the dictionary
+    /// instead has to draw the tab-bar permutation by chance to survive this, and a two-entry
+    /// fixture let it do so every time. Four leaves one permutation in twenty-four.
     @Test("stacks are encoded in tab-bar order")
     func stacksEncodeInTabOrder() throws {
-        let object = try Self.encodedObject(Self.populated)
+        let object = try Self.encodedObject(Self.allTabs)
         let stacks = try #require(object["stacks"] as? [[String: Any]])
-        #expect(stacks.compactMap { $0["tab"] as? String } == ["train", "history"])
+        #expect(
+            stacks.compactMap { $0["tab"] as? String } == ["home", "train", "history", "settings"]
+        )
     }
 
     /// Degrade, first half: an unreadable selected tab opens Home rather than refusing to launch.
@@ -106,6 +124,23 @@ struct NavigationSnapshotTests {
         let decoded = try Self.decode(object)
         #expect(decoded.stacks.count == 1)
         #expect(decoded.stacks[.history]?.count == 1)
+    }
+
+    /// Two entries naming one tab: the first is kept. Arbitrary between the two, but not arbitrary
+    /// that it is decided — last-wins would let a trailing entry overwrite a stack that decoded.
+    @Test("a tab named twice keeps the first stack")
+    func duplicateTabKeepsTheFirst() throws {
+        var object = try Self.encodedObject(Self.populated)
+        var stacks = try #require(object["stacks"] as? [[String: Any]])
+        stacks.append([
+            "tab": "train",
+            "routes": [["training": ["_0": ["activeSession": [String: Any]()]]]],
+        ])
+        object["stacks"] = stacks
+
+        let decoded = try Self.decode(object)
+        #expect(decoded.stacks[.train] == Self.populated.stacks[.train])
+        #expect(decoded.stacks[.train]?.count == 2)
     }
 
     /// Bytes that are not an object at all are not a navigation state to salvage — the throw is what

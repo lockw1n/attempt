@@ -13,6 +13,10 @@ import Foundation
 /// carries the one destination its area is certain to have, so the shape is exercisable and
 /// `TR-1.13`'s screen inventory has a single source to be derived from.
 ///
+/// **The case names and the associated-value labels are the persisted format** — a stored stack is
+/// written as those spellings — so renaming one is a migration, not a rename, and costs every
+/// stored stack that names it.
+///
 /// A stored route this version cannot decode **throws**, which is the closed-vocabulary answer: the
 /// set of routes is closed by the binary, and nothing upstream re-supplies a navigation position.
 /// ``NavigationSnapshot`` is where that throw is turned into a behaviour.

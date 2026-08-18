@@ -28,7 +28,8 @@ public enum AppTab: String, Hashable, Sendable, Codable, CaseIterable, Identifia
     ///
     /// A name, not a styled image: the symbol takes the tab bar's own treatment, which is what
     /// keeps a tab icon from acquiring a size or a colour this app would then have to maintain
-    /// against two appearances.
+    /// against two appearances. It is also why there is no `DesignSystem` token behind it: an
+    /// unstyled name is the whole of the treatment, so a token would have nothing left to carry.
     public var symbolName: String {
         switch self {
         case .home: "square.grid.2x2"

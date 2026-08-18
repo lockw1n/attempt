@@ -20,6 +20,45 @@ struct RouteTests {
         .settings(.about),
     ]
 
+    /// The keys a route encodes to, outermost first — the case names and the associated-value
+    /// label, which is the whole of the persisted format. Each level holds exactly one key, so
+    /// reading it back this way asserts nothing about the encoder's per-process key order.
+    private static func encodedKeyPath(_ route: Route) throws -> [String] {
+        let data = try JSONEncoder().encode(route)
+        var object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var path: [String] = []
+        while object.count == 1, let key = object.keys.first {
+            path.append(key)
+            guard let next = object[key] as? [String: Any] else { break }
+            object = next
+        }
+        return path
+    }
+
+    /// A round trip cannot see a rename — it encodes and decodes with the same spelling, so both
+    /// sides move together and every stored stack is silently dropped in the field. Cases are added
+    /// to this enum by every feature task, which is what makes the format worth pinning here.
+    @Test("the persisted route spellings are pinned")
+    func wireFormatIsPinned() throws {
+        #expect(
+            try Self.encodedKeyPath(.dashboard(.recentPersonalRecords))
+                == ["dashboard", "_0", "recentPersonalRecords"]
+        )
+        #expect(
+            try Self.encodedKeyPath(.training(.activeSession))
+                == ["training", "_0", "activeSession"]
+        )
+        #expect(
+            try Self.encodedKeyPath(.exerciseLibrary(.exerciseDetail(exerciseID: Self.exerciseID)))
+                == ["exerciseLibrary", "_0", "exerciseDetail", "exerciseID"]
+        )
+        #expect(
+            try Self.encodedKeyPath(.history(.session(sessionID: Self.sessionID)))
+                == ["history", "_0", "session", "sessionID"]
+        )
+        #expect(try Self.encodedKeyPath(.settings(.about)) == ["settings", "_0", "about"])
+    }
+
     /// `D-8`/Q-1.2's split, stated as the mapping the shell actually navigates by. The Train pair is
     /// the interesting row: two feature areas, one tab.
     @Test("each route names the tab that owns it")

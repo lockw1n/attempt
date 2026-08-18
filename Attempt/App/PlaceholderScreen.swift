@@ -9,6 +9,10 @@ import SwiftUI
 /// It does two things a placeholder has to do to be worth having: it pushes a real ``Route`` onto a
 /// real stack, so restoration can be exercised end to end, and it gives Home the "Start workout"
 /// action (`FR-1.9.4`) so that action exists as a navigation from the first build.
+///
+/// **Its own copy is `verbatim`** — scaffolding must not reach the string catalogue and be
+/// translated before it is deleted (`G-3.4`). The exceptions are the two strings that outlive this
+/// file: the tab titles, which come from ``AppTab/title``, and "Start workout".
 struct PlaceholderScreen: View {
     private let tab: AppTab?
     private let route: Route?
@@ -33,7 +37,7 @@ struct PlaceholderScreen: View {
             VStack(alignment: .leading, spacing: Spacing.lg.points) {
                 Card {
                     VStack(alignment: .leading, spacing: Spacing.sm.points) {
-                        Text("Not built yet")
+                        Text(verbatim: "Not built yet")
                             .font(Typography.cardTitle.font)
                             .foregroundStyle(ColorToken.textPrimary)
                         Text(verbatim: descriptor)
@@ -49,7 +53,7 @@ struct PlaceholderScreen: View {
                     }
 
                     NavigationLink(value: Self.sampleRoute(for: tab)) {
-                        Text("Push a route")
+                        Text(verbatim: "Push a route")
                             .font(Typography.actionLabel.font)
                             .foregroundStyle(ColorToken.brandAccent)
                     }
@@ -58,17 +62,17 @@ struct PlaceholderScreen: View {
             .padding(Spacing.lg.points)
         }
         .background(ColorToken.background)
-        .navigationTitle(navigationTitle)
+        .navigationTitle(title)
     }
 
-    private var navigationTitle: LocalizedStringKey {
-        if let tab { return tab.title }
-        return "Placeholder"
+    /// A `Text` rather than a `LocalizedStringKey`, so a tab's real title and a pushed screen's
+    /// scaffolding label can be the two different kinds of string they are.
+    private var title: Text {
+        if let tab { return Text(tab.title) }
+        return Text(verbatim: "Placeholder")
     }
 
-    /// The route in words. `verbatim`, because a case name is diagnostic output rather than copy —
-    /// nothing here should reach the string catalogue and then have to be translated before it is
-    /// deleted.
+    /// The route in words — diagnostic output rather than copy.
     private var descriptor: String {
         if let route { return String(describing: route) }
         if let tab { return "\(tab.rawValue) root" }
