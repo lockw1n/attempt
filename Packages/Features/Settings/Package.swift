@@ -14,6 +14,14 @@ let settings: [SwiftSetting] = [
 // Same shape as every feature package: four dependencies, no `Persistence`, one level deeper than
 // the rest of Packages/. All of that is argued once, in
 // Packages/Features/ExerciseLibrary/Package.swift.
+//
+// THE FIFTH DEPENDENCY IS TEST-ONLY, and it is the same shape `SeedImport` and `DebugHarness` have:
+// `RepositoryFakes` is the subject the state tests run against, so the edge lives on the test target
+// and the module itself still links the four above. The fakes' product carries `PowerliftingCore`
+// and `RepositoryInterface` only — `Persistence` is a dependency of that *package*, for its own
+// conformance suite, and a target that did not name it cannot import it. TR-0.1.2 is intact; what a
+// hand-rolled stub here would lose is the conformance suite that says the fake behaves like the
+// real store.
 let package = Package(
     name: "Settings",
     platforms: [.iOS(.v26), .macOS(.v26)],
@@ -25,6 +33,7 @@ let package = Package(
         .package(path: "../../RepositoryInterface"),
         .package(path: "../../DesignSystem"),
         .package(path: "../../AppNavigation"),
+        .package(path: "../../RepositoryFakes"),
     ],
     targets: [
         .target(
@@ -36,6 +45,11 @@ let package = Package(
                 "AppNavigation",
             ],
             swiftSettings: settings
-        )
+        ),
+        .testTarget(
+            name: "SettingsTests",
+            dependencies: ["Settings", "RepositoryFakes"],
+            swiftSettings: settings
+        ),
     ]
 )

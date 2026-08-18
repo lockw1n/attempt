@@ -1,5 +1,6 @@
 import AppNavigation
 import DesignSystem
+import Settings
 import SwiftUI
 
 /// The four-tab root (`TR-1.1`, `D-8`): Home, Train, History, Settings, each with its own
@@ -11,6 +12,9 @@ import SwiftUI
 /// order, is still `AppTab.allCases` — this view enumerates it rather than restating it.
 struct RootTabView: View {
     @Bindable var navigation: NavigationState
+
+    /// The store the tabs read through. See ``AppDependencies``.
+    let dependencies: AppDependencies
 
     var body: some View {
         TabView(selection: $navigation.selectedTab) {
@@ -31,14 +35,67 @@ struct RootTabView: View {
     /// buys: a screen reachable from two tabs is one case and one `navigationDestination`.
     private func stack(for tab: AppTab) -> some View {
         NavigationStack(path: navigation.binding(for: tab)) {
-            PlaceholderScreen(tab: tab, navigation: navigation)
+            root(for: tab)
                 .navigationDestination(for: Route.self) { route in
                     PlaceholderScreen(route: route)
                 }
         }
     }
+
+    /// A tab's root. Settings is the first real screen; the other three are still scaffolding.
+    ///
+    /// The title is applied here rather than inside the feature package, for the reason
+    /// ``AppTab/title`` gives: the catalogue is this target's (`G-3.4`).
+    @ViewBuilder
+    private func root(for tab: AppTab) -> some View {
+        switch tab {
+        case .settings:
+            settingsRoot
+                .navigationTitle(tab.title)
+        case .home, .train, .history:
+            PlaceholderScreen(tab: tab, navigation: navigation)
+        }
+    }
+
+    /// The Settings tab's landing screen, or the reason it cannot be shown.
+    @ViewBuilder
+    private var settingsRoot: some View {
+        if let settings = dependencies.settings {
+            SettingsLandingView(repository: settings)
+        } else {
+            StoreUnavailableScreen(diagnostic: dependencies.storeFailure)
+        }
+    }
+}
+
+/// What a tab shows when the store did not open — scaffolding, like ``PlaceholderScreen``, and
+/// owned by whichever task takes on the launch failure surface.
+///
+/// Its copy is `verbatim` for the same reason: a string that is going to be deleted must not be
+/// translated first (`G-3.4`).
+private struct StoreUnavailableScreen: View {
+    /// The error's description, or `nil` if there is none to show.
+    let diagnostic: String?
+
+    /// A card naming the failure, and the diagnostic beneath it.
+    var body: some View {
+        ScrollView {
+            Card {
+                VStack(alignment: .leading, spacing: Spacing.sm.points) {
+                    Text(verbatim: "Storage unavailable")
+                        .font(Typography.cardTitle.font)
+                        .foregroundStyle(ColorToken.textPrimary)
+                    Text(verbatim: diagnostic ?? "")
+                        .font(Typography.caption.font)
+                        .foregroundStyle(ColorToken.textTertiary)
+                }
+            }
+            .padding(Spacing.lg.points)
+        }
+        .background(ColorToken.background)
+    }
 }
 
 #Preview {
-    RootTabView(navigation: NavigationState())
+    RootTabView(navigation: NavigationState(), dependencies: .preview)
 }

@@ -14,6 +14,8 @@ let settings: [SwiftSetting] = [
 // Same shape as every feature package: four dependencies, no `Persistence`, one level deeper than
 // the rest of Packages/. All of that is argued once, in
 // Packages/Features/ExerciseLibrary/Package.swift.
+// THE FIFTH DEPENDENCY IS TEST-ONLY — `RepositoryFakes`, on the test target alone. Why that keeps
+// TR-0.1.2 intact is argued once, in Packages/Features/Settings/Package.swift.
 let package = Package(
     name: "Logging",
     platforms: [.iOS(.v26), .macOS(.v26)],
@@ -25,6 +27,7 @@ let package = Package(
         .package(path: "../../RepositoryInterface"),
         .package(path: "../../DesignSystem"),
         .package(path: "../../AppNavigation"),
+        .package(path: "../../RepositoryFakes"),
     ],
     targets: [
         .target(
@@ -36,6 +39,11 @@ let package = Package(
                 "AppNavigation",
             ],
             swiftSettings: settings
-        )
+        ),
+        .testTarget(
+            name: "LoggingTests",
+            dependencies: ["Logging", "RepositoryFakes"],
+            swiftSettings: settings
+        ),
     ]
 )
