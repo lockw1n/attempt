@@ -9,8 +9,9 @@ import SwiftUI
 ///
 /// **The title arrives as a `Text` the caller built.** A `LocalizedStringKey` parameter would be
 /// resolved against this package's bundle rather than the app's, so a design-system component that
-/// took one would quietly break every localized string passed through it (`G-3.4`). Nothing in
-/// `DesignSystem` declares user-visible text; every string in this module comes from its caller.
+/// took one would quietly break every localized string passed through it (`G-3.4`). No component
+/// here takes one; the module's header states where the line between the caller's copy and this
+/// module's own runs.
 public struct GroupedSection<Content: View>: View {
     private let title: Text
     private let content: Content

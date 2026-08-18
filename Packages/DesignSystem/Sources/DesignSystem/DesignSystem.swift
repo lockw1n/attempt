@@ -1,6 +1,6 @@
-// The component layer: the card surface, the grouped section, the metric tile, the primary action
-// and the delta indicator (TR-1.4). Everything here is built from the DesignTokens scales next
-// door and declares no value of its own.
+// The component layer: the card surface, the grouped section, the metric tile, the primary action,
+// the delta indicator and the five state placeholders (TR-1.4, FR-1.13.1, FR-1.13.3). Everything
+// here is built from the DesignTokens scales next door and declares no value of its own.
 //
 // The re-export is so a screen importing DesignSystem gets the scales too and never has to import
 // both. A feature module needing only the scales — a store, a formatter, a preview fixture — should
@@ -15,9 +15,16 @@
 //   six are scoped to Sources/DesignSystem, so DesignTokens, DesignTokensTests and this module's
 //   own tests are outside them.
 //
-//   No user-visible strings. Every piece of text arrives as a `Text` the caller built, because a
-//   LocalizedStringKey resolved inside a package resolves against the package's bundle rather than
-//   the app's (G-3.4). This is also what keeps domain knowledge out: a component that named a
-//   string would be a component that knew what it was for.
+//   No copy the caller could have written. Screen-specific text arrives as a `Text` the caller
+//   built — never as a `LocalizedStringKey` parameter, which would resolve against this package's
+//   bundle rather than the app's (G-3.4) — and that is also what keeps domain knowledge out: a
+//   component that named a screen's string would be a component that knew what it was for.
+//
+//   The exception, and the ONLY one, is copy that is identical on every screen it appears on:
+//   "Try again", the offline explanation, the spinner's VoiceOver label. Those are affordances of
+//   the app rather than of any screen, and the alternative is the same sentence in twelve feature
+//   catalogues. They live in this module's own catalogue, reached through DesignSystemStrings and
+//   bound to Bundle.module. The test in DesignSystemStringsTests is what keeps the two lists in
+//   step; the line between the two kinds is drawn in DesignSystemStrings' own doc.
 
 @_exported import DesignTokens
