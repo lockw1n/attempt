@@ -9,11 +9,10 @@ import SwiftUI
 /// calls its methods, and contains no logic of its own worth testing. The full preferences surface
 /// (`FR-1.10.1`, `FR-1.10.2`) replaces what is shown here.
 ///
-/// **Its copy is `verbatim` scaffolding.** A string declared in a feature package resolves against
-/// that package's bundle rather than the app's catalogue (`G-3.4`), and which bundle a feature's
-/// copy is resolved against is not settled yet — text written before it is settled would be
-/// translated into the wrong one. The screen's title is the tab's, supplied by the app target, for
-/// the same reason.
+/// **Its copy comes from this module's catalogue** (`G-3.4`), through ``SettingsStrings`` — a
+/// string declared in a feature package resolves against that package's bundle rather than the
+/// app's, so the module owns its own. The screen's *title* is still the tab's, supplied by the app
+/// target: a tab and the screen it opens must not be able to disagree about their name.
 public struct SettingsLandingView: View {
     @State private var state: SettingsLandingState
 
@@ -51,31 +50,32 @@ public struct SettingsLandingView: View {
     private func preferences(_ settings: UserSettings) -> some View {
         VStack(alignment: .leading, spacing: Spacing.lg.points) {
             if let writeFailure = state.writeFailure {
-                diagnosticCard(title: "Could not save", detail: writeFailure)
+                diagnosticCard(title: SettingsStrings.writeErrorTitle, detail: writeFailure)
             }
 
-            GroupedSection(Text(verbatim: "Units")) {
+            GroupedSection(Text(SettingsStrings.unitsTitle)) {
                 Picker(selection: unitSelection) {
                     ForEach(MassUnit.allCases, id: \.self) { unit in
-                        Text(verbatim: unit == .kilograms ? "kg" : "lb").tag(unit)
+                        Text(SettingsStrings.unitSymbol(for: unit)).tag(unit)
                     }
                 } label: {
-                    Text(verbatim: "Display unit")
+                    Text(SettingsStrings.unitsPicker)
                 }
                 .pickerStyle(.segmented)
             }
 
-            GroupedSection(Text(verbatim: "Not built yet")) {
-                row("Estimator", settings.e1RMFormula.rawValue)
-                row("Appearance", settings.theme.rawValue)
+            GroupedSection(Text(SettingsStrings.scaffoldTitle)) {
+                row(SettingsStrings.scaffoldEstimator, settings.e1RMFormula.rawValue)
+                row(SettingsStrings.scaffoldAppearance, settings.theme.rawValue)
             }
         }
     }
 
-    /// A read-out pair. Scaffolding, like the copy it lays out.
-    private func row(_ label: String, _ value: String) -> some View {
+    /// A read-out pair. The value is a stored identifier rendered as itself — diagnostic output,
+    /// not copy, which is why it stays `verbatim` while the label does not.
+    private func row(_ label: LocalizedStringResource, _ value: String) -> some View {
         HStack {
-            Text(verbatim: label)
+            Text(label)
                 .font(Typography.body.font)
                 .foregroundStyle(ColorToken.textSecondary)
             Spacer()
@@ -92,20 +92,20 @@ public struct SettingsLandingView: View {
     /// broken for as long as the tab is alive.
     private func failure(_ diagnostic: String) -> some View {
         VStack(alignment: .leading, spacing: Spacing.md.points) {
-            diagnosticCard(title: "Settings unavailable", detail: diagnostic)
+            diagnosticCard(title: SettingsStrings.loadErrorTitle, detail: diagnostic)
             Button {
                 Task { await state.load() }
             } label: {
-                Text(verbatim: "Try again")
+                Text(SettingsStrings.loadErrorRetry)
             }
         }
     }
 
     /// A failure, shown as what it is rather than as a sentence written for the user.
-    private func diagnosticCard(title: String, detail: String) -> some View {
+    private func diagnosticCard(title: LocalizedStringResource, detail: String) -> some View {
         Card {
             VStack(alignment: .leading, spacing: Spacing.sm.points) {
-                Text(verbatim: title)
+                Text(title)
                     .font(Typography.cardTitle.font)
                     .foregroundStyle(ColorToken.textPrimary)
                 Text(verbatim: detail)

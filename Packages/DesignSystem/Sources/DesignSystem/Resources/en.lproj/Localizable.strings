@@ -1,0 +1,2 @@
+/* DesignSystem (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization
+   module doc. Components take their text from the caller, so there is no copy here yet. */

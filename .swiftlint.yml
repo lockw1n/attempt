@@ -30,6 +30,7 @@ excluded:
   - Packages/Features/History/.build
   - Packages/Features/Dashboard/.build
   - Packages/Features/Settings/.build
+  - Packages/Localization/.build
 
 disabled_rules:
   - todo
@@ -229,6 +230,46 @@ missing_docs:
 #             THE SCALE IS TWO STEPS AND G-7.1 IS WHY: the requirement gives a 12–16pt band, not a
 #             scale, and a third step inside a five-point band is a difference nobody can see.
 #
+#   G-3.4   — `no_literal_ui_strings`. Copy in a module comes from that module's catalogue, never
+#             from a literal at the call site. It is the only rule here whose `included` list is
+#             LOAD-BEARING RATHER THAN DECORATIVE, and the reason is the paragraph above: the G-7.7
+#             rules name `Attempt/.*`, which matches the whole repository, while this one names two
+#             package paths and no app-target path — so it really does scan only what it says. That
+#             asymmetry is deliberate and it is the rule's whole shape. A literal in the APP TARGET
+#             is correct: `LocalizedStringKey` resolves against `Bundle.main`, which is the app's
+#             own catalogue. The same literal in a package resolves against `Bundle.module`, which
+#             has no such key and renders the key name at the user. Two fixtures hold the two sides
+#             (LiteralCopyFixture on a feature path, ComponentCopyFixture on the component path),
+#             and AppCopyFixture is the guard that the app target stays out — if anyone ever adds an
+#             `Attempt/.*` entry here, every literal in the repository becomes a violation at once.
+#
+#             THE RULE IS AN ENUMERATED LIST OF SWIFTUI ENTRY POINTS, so it is probed the way
+#             no_magic_corner_radius had to be: with the API's other spellings, not the ones the
+#             regex was written from. Each alternative was measured firing on its own fixture line;
+#             `TextEditor` was in the first draft and was removed after measuring, because it takes
+#             no title and so could never fire — a dead alternative reads as coverage.
+#
+#             `verbatim:` BANS A LITERAL, NOT THE INITIALIZER. `Text(verbatim: value)` renders a
+#             stored identifier or an already-formatted number and is legal; `Text(verbatim: "1RM")`
+#             is copy that can never be translated, which is what the ban is for.
+#
+#             `accessibilityIdentifier` is deliberately absent while `accessibilityLabel`,
+#             `accessibilityHint` and `accessibilityValue` are present: the first is a UI-test
+#             selector and the other three are read aloud to a user. `Image(systemName:)` and
+#             `Image("asset")` are absent for the same reason — a symbol name is an identifier.
+#
+#             THE LAST ALTERNATIVE IS NOT ABOUT LITERALS AT ALL, and it is the one that catches the
+#             failure this whole layer exists to prevent: `String(localized: "k")` and
+#             `LocalizedStringResource("k")` default to `Bundle.main`, so in a package they look up
+#             a key the app's catalogue does not have and render the key name at the user. It fires
+#             only when the call CLOSES after the literal, so the same call carrying `bundle:` — the
+#             correct form, which the module's string enum uses — passes.
+#
+#             `match_kinds` does the same job it does for the import bans: this rule gets explained
+#             in prose that quotes `Text("Units")` as the thing it forbids, and without the filter it
+#             would fire on the file explaining it. CatalogCopyFixture.swift carries exactly that
+#             doc comment and is the guard.
+#
 #   NFR-0.2 — `no_imports_in_core` (T-0.14) bans *every* import under
 #             Packages/PowerliftingCore/Sources/, not a list of named modules. It exists because
 #             `no_foundation_in_core` below matches only `Foundation*`, so the workaround for a
@@ -354,6 +395,22 @@ custom_rules:
       - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
       - 'Packages/DesignSystem/Tests/DesignTokensTests/.*\.swift'
     message: "G-7.7: use an Opacity token, not a numeric literal."
+    severity: error
+
+  no_literal_ui_strings:
+    name: "User-visible string literal"
+    regex: '(\b(Text|Button|Label|Toggle|TextField|SecureField|Link|Menu|Picker|Stepper|Section|DisclosureGroup|NavigationLink|ContentUnavailableView|LabeledContent|GroupBox|Tab)\(\s*"|\.(navigationTitle|navigationSubtitle|navigationBarTitle|alert|confirmationDialog|help|badge|accessibilityLabel|accessibilityHint|accessibilityValue)\(\s*"|\bverbatim:\s*"|\b(String\(localized:|LocalizedStringResource\()\s*"[^"]*"\s*\)|\b(title|titleKey|label|labelKey|message|prompt|placeholder|description|header|footer):\s*")'
+    match_kinds:
+      - identifier
+      - typeidentifier
+      - keyword
+      - argument
+      - parameter
+      - string
+    included:
+      - 'Packages/Features/.*\.swift'
+      - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
+    message: "G-3.4: copy comes from the module's catalogue — add a key and reach it through the module's string enum, not a literal."
     severity: error
 
   no_swiftdata_outside_persistence:

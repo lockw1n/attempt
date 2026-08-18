@@ -34,8 +34,13 @@ let componentSettings: [SwiftSetting] = [
 // `DesignSystem` holds the components built from them (T-1.03) and re-exports the tokens, so a
 // feature that only needs a palette entry — a store, a formatter, a preview fixture — can import
 // the scales without the component surface coming with them.
+// G-3.4: the component target carries a catalogue, the token target does not — a spacing scale has
+// no copy in it. It is empty today because every component takes its text from the caller; it exists
+// so that the first component that does own a string has somewhere to put it, which is what keeps
+// `no_literal_ui_strings` a rule that can be satisfied rather than only failed.
 let package = Package(
     name: "DesignSystem",
+    defaultLocalization: "en",
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
         .library(name: "DesignTokens", targets: ["DesignTokens"]),
@@ -50,6 +55,7 @@ let package = Package(
         .target(
             name: "DesignSystem",
             dependencies: ["DesignTokens"],
+            resources: [.process("Resources")],
             swiftSettings: componentSettings
         ),
         .testTarget(

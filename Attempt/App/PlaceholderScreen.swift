@@ -48,7 +48,7 @@ struct PlaceholderScreen: View {
 
                 if let tab {
                     if tab == .home, let navigation {
-                        Button("Start workout") { navigation.startWorkout() }
+                        Button("app.home.start-workout") { navigation.startWorkout() }
                             .buttonStyle(.primaryAction(.fill))
                     }
 

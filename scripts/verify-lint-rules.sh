@@ -44,6 +44,12 @@
 # because a custom rule's `included` is matched unanchored against the absolute path and this
 # repository's root directory is itself named `Attempt`. Every G-7.7 rule is therefore repo-wide.
 # The measurement and its consequences are in .swiftlint.yml; do not restate them here.
+#
+# no_literal_ui_strings (T-1.14) is the exception to that paragraph, and its entries below DO prove
+# their paths: it names no `Attempt/` path at all, so nothing matches the whole tree by accident.
+# Its two positive fixtures sit on the two paths it scans, and AppCopyFixture.swift — a file full of
+# literals that are correct because the app target resolves against Bundle.main — is the guard that
+# it does not reach a third.
 
 set -euo pipefail
 
@@ -65,6 +71,8 @@ POSITIVE=(
     "scripts/lint-fixtures/Packages/Features/LiteralValuesFixture.swift:no_magic_spacing"
     "scripts/lint-fixtures/Packages/Features/LiteralValuesFixture.swift:no_magic_corner_radius"
     "scripts/lint-fixtures/Packages/Features/LiteralValuesFixture.swift:no_magic_opacity"
+    "scripts/lint-fixtures/Packages/Features/LiteralCopyFixture.swift:no_literal_ui_strings"
+    "scripts/lint-fixtures/Packages/DesignSystem/Sources/DesignSystem/ComponentCopyFixture.swift:no_literal_ui_strings"
     "scripts/lint-fixtures/SwiftDataOutsidePersistenceFixture.swift:no_swiftdata_outside_persistence"
     "scripts/lint-fixtures/Packages/PowerliftingCore/FoundationFixture.swift:no_foundation_in_core"
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/PlatformImportFixture.swift:no_imports_in_core"
@@ -87,6 +95,8 @@ NEGATIVE=(
     "scripts/lint-fixtures/Packages/Features/TokenUsageFixture.swift:no_magic_spacing"
     "scripts/lint-fixtures/Packages/Features/TokenUsageFixture.swift:no_magic_corner_radius"
     "scripts/lint-fixtures/Packages/Features/TokenUsageFixture.swift:no_magic_opacity"
+    "scripts/lint-fixtures/Packages/Features/CatalogCopyFixture.swift:no_literal_ui_strings"
+    "scripts/lint-fixtures/Attempt/AppCopyFixture.swift:no_literal_ui_strings"
 
     "Packages/DesignSystem/Sources/DesignSystem/Card.swift:no_magic_corner_radius"
     "Packages/DesignSystem/Sources/DesignSystem/PrimaryActionButtonStyle.swift:no_magic_opacity"

@@ -1,7 +1,66 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-
+  "sourceLanguage": "en",
+  "strings": {
+    "app.tab.home": {
+      "comment": "Tab bar label and the tab root's title. G-3.4.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home"
+          }
+        }
+      }
+    },
+    "app.tab.train": {
+      "comment": "Tab bar label and the tab root's title. G-3.4.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Train"
+          }
+        }
+      }
+    },
+    "app.tab.history": {
+      "comment": "Tab bar label and the tab root's title. G-3.4.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History"
+          }
+        }
+      }
+    },
+    "app.tab.settings": {
+      "comment": "Tab bar label and the tab root's title. G-3.4.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
+          }
+        }
+      }
+    },
+    "app.home.start-workout": {
+      "comment": "FR-1.9.4's action on Home. Outlives the placeholder that currently carries it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start workout"
+          }
+        }
+      }
+    }
   },
-  "version" : "1.1"
+  "version": "1.1"
 }

@@ -22,8 +22,15 @@ let settings: [SwiftSetting] = [
 // conformance suite, and a target that did not name it cannot import it. TR-0.1.2 is intact; what a
 // hand-rolled stub here would lose is the conformance suite that says the fake behaves like the
 // real store.
+// G-3.4 (T-1.14) adds two lines and a fifth dependency to the shape above. `defaultLocalization`
+// plus `resources:` give the module its own catalogue at Sources/<Target>/Resources/en.lproj/, so
+// its copy resolves against `Bundle.module` rather than the app's; `Localization` carries the key
+// convention and the locale-explicit format styles. Read Localization's module doc before adding a
+// string — a `.xcstrings` here is inert under `swift build`, which is the whole reason for the
+// `.strings` form.
 let package = Package(
     name: "Settings",
+    defaultLocalization: "en",
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
         .library(name: "Settings", targets: ["Settings"])
@@ -33,6 +40,7 @@ let package = Package(
         .package(path: "../../RepositoryInterface"),
         .package(path: "../../DesignSystem"),
         .package(path: "../../AppNavigation"),
+        .package(path: "../../Localization"),
         .package(path: "../../RepositoryFakes"),
     ],
     targets: [
@@ -43,7 +51,9 @@ let package = Package(
                 "RepositoryInterface",
                 "DesignSystem",
                 "AppNavigation",
+                "Localization",
             ],
+            resources: [.process("Resources")],
             swiftSettings: settings
         ),
         .testTarget(
