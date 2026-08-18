@@ -17,6 +17,11 @@
 //   Image(systemName: "..."), Image("...")
 //                                    an SF Symbol name and an asset name. Both are identifiers that
 //                                    happen to be strings.
+//   Text(verbatim: Sample.name)      preview and fixture DATA. A literal bound to a named constant
+//                                    is data; the same literal written at the copy call site is
+//                                    copy. That line is the rule's one deliberate escape hatch —
+//                                    see the Localization module doc, which states it — and a
+//                                    preview showing sample exercises is why it exists.
 //
 // The doc comment below is the fifth thing this file proves: `match_kinds` keeps the rule off
 // prose. Without it, a comment quoting Text("Units") — which is exactly how the rule gets explained
@@ -32,12 +37,19 @@ struct CatalogCopyFixture: View {
         VStack {
             Text(FixtureStrings.unitsTitle)
             Text(verbatim: value)
+            Text(verbatim: Sample.exerciseName)
             Label { Text(FixtureStrings.addSet) } icon: { Image(systemName: "plus") }
             Image("barbell")
         }
         .accessibilityIdentifier("settings-landing")
         .navigationTitle(Text(FixtureStrings.unitsTitle))
     }
+}
+
+/// Preview data. Not copy: it stands in for a row the store would supply, and translating it
+/// would be translating a barbell's name into a language the catalogue never ships.
+enum Sample {
+    static let exerciseName = "Low-bar back squat"
 }
 
 enum FixtureStrings {

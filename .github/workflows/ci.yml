@@ -249,6 +249,12 @@ jobs:
       - name: Verify lint rules fire
         run: ./scripts/verify-lint-rules.sh
 
+      # G-3.4's app-target half. Every feature module proves the same thing in its own test target;
+      # Attempt.xcodeproj has none, and `no_literal_ui_strings` exempts the app target on purpose,
+      # so a mistyped key there is caught by nothing else and ships as the key name.
+      - name: Check app-target strings
+        run: ./scripts/check-app-strings.sh
+
       # TR-0.6.2's formatter half. `swift format` ships with the toolchain, so there is nothing to
       # install. Config is `.swift-format`: 4-space indent and a 120-column limit, matching
       # `.editorconfig` and SwiftLint's `line_length` rather than the tool's own defaults.

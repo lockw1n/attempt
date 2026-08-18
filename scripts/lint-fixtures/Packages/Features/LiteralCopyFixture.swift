@@ -7,6 +7,11 @@
 // from — the same lesson no_magic_corner_radius learned when UnevenRoundedRectangle's second
 // initializer walked through the rule written for that very type.
 //
+// THE ADMISSION CRITERION FOR AN ALTERNATIVE IS THAT IT CAN FIRE. `TextEditor` was measured and
+// removed because it takes no title, so it could never fire and read as coverage it did not give;
+// ProgressView, DatePicker, ShareLink, ColorPicker and TableColumn all take a title and were added
+// after a probe found them escaping — the probe that matters enumerates the API, not the regex.
+//
 // The `verbatim:` block is the one a reader may misread as a false positive. It is not: the ban is
 // on a verbatim LITERAL, which is copy that can never be translated. Text(verbatim: someValue),
 // which renders a stored identifier or a formatted number, is legal and is in the negative fixture.
@@ -35,6 +40,11 @@ struct LiteralCopyFixture: View {
             Menu("More") { EmptyView() }
             GroupBox("Volume") { EmptyView() }
             Tab("Train", systemImage: "figure.strengthtraining.traditional") { EmptyView() }
+            ProgressView("Loading your sessions")
+            DatePicker("Session date", selection: .constant(.now))
+            ShareLink("Export backup", item: URL(string: "file:///x")!)
+            ColorPicker("Accent", selection: .constant(.red))
+            TableColumn("Exercise")
         }
         .navigationTitle("Settings")
         .navigationSubtitle("Preferences")
@@ -47,6 +57,7 @@ struct LiteralCopyFixture: View {
         .alert("Could not save", isPresented: .constant(false)) { EmptyView() }
         .confirmationDialog("Delete this set?", isPresented: .constant(false)) { EmptyView() }
         .searchable(text: .constant(""), prompt: "Search exercises")
+        .accessibilityInputLabels(["Display unit"])
         .toolbar { ToolbarItem { Text("Done") } }
     }
 
@@ -58,10 +69,14 @@ struct LiteralCopyFixture: View {
             row(label: "Bar", labelKey: "Barbell"),
             row(prompt: "Search", placeholder: "Exercise name"),
             row(header: "Today", footer: "Tap to log"),
+            row(subtitle: "Last 7 days", caption: "Tap for detail"),
+            row(hint: "Swipe to delete", message: "No sessions"),
         ]
     }
 
     func row(title: String, message: String) -> String { title + message }
+    func row(subtitle: String, caption: String) -> String { subtitle + caption }
+    func row(hint: String, message: String) -> String { hint + message }
 
     // Neither of these is a literal at a call site, and both are the bug the catalogue exists to
     // prevent: with no bundle they resolve against Bundle.main, which in a package is the app's

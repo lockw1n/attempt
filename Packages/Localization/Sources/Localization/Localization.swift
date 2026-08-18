@@ -30,6 +30,14 @@
 /// a view is not a re-key. Keys are never reused for different copy: a changed meaning is a new
 /// key, because a translation memory keys off the identifier and not the English.
 ///
+/// ## Copy, and what is not copy
+///
+/// A literal at a copy call site is copy and belongs in the catalogue. A literal bound to a named
+/// constant is *data* — a preview's sample exercise, a stored identifier — and reaches the screen
+/// through `Text(verbatim:)`. That is the one shape `no_literal_ui_strings` cannot see, so it is
+/// stated here rather than enforced: a preview writing `Text(verbatim: "Squat")` inline is caught,
+/// and hoisting the literal to a `Sample` constant is the intended fix, not an evasion of the rule.
+///
 /// ## Rendering
 ///
 /// Numbers, weights, dates and percentages go through ``AppFormat``, whose styles all take an

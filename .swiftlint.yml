@@ -251,7 +251,16 @@ missing_docs:
 #
 #             `verbatim:` BANS A LITERAL, NOT THE INITIALIZER. `Text(verbatim: value)` renders a
 #             stored identifier or an already-formatted number and is legal; `Text(verbatim: "1RM")`
-#             is copy that can never be translated, which is what the ban is for.
+#             is copy that can never be translated, which is what the ban is for. Hoisting a
+#             literal to a named constant therefore passes, and that is DELIBERATE rather than a
+#             hole: it is how a preview names sample data. Which literals are data is a decision a
+#             regex cannot make, so it is stated in Localization's module doc instead.
+#
+#             AN ALTERNATIVE IS ADMITTED IF IT CAN FIRE. `TextEditor` was measured and removed for
+#             taking no title; ProgressView, DatePicker, ShareLink, ColorPicker and TableColumn were
+#             added after a probe caught them escaping, which is the probe that matters — enumerate
+#             the API, not the regex. `accessibilityInputLabels` needs its own alternative because
+#             its literal sits inside an array.
 #
 #             `accessibilityIdentifier` is deliberately absent while `accessibilityLabel`,
 #             `accessibilityHint` and `accessibilityValue` are present: the first is a UI-test
@@ -399,7 +408,7 @@ custom_rules:
 
   no_literal_ui_strings:
     name: "User-visible string literal"
-    regex: '(\b(Text|Button|Label|Toggle|TextField|SecureField|Link|Menu|Picker|Stepper|Section|DisclosureGroup|NavigationLink|ContentUnavailableView|LabeledContent|GroupBox|Tab)\(\s*"|\.(navigationTitle|navigationSubtitle|navigationBarTitle|alert|confirmationDialog|help|badge|accessibilityLabel|accessibilityHint|accessibilityValue)\(\s*"|\bverbatim:\s*"|\b(String\(localized:|LocalizedStringResource\()\s*"[^"]*"\s*\)|\b(title|titleKey|label|labelKey|message|prompt|placeholder|description|header|footer):\s*")'
+    regex: '(\b(Text|Button|Label|Toggle|TextField|SecureField|Link|Menu|Picker|Stepper|Section|DisclosureGroup|NavigationLink|ContentUnavailableView|LabeledContent|GroupBox|Tab|ProgressView|DatePicker|ShareLink|ColorPicker|TableColumn)\(\s*"|\.(navigationTitle|navigationSubtitle|navigationBarTitle|alert|confirmationDialog|help|badge|accessibilityLabel|accessibilityHint|accessibilityValue)\(\s*"|\.accessibilityInputLabels\(\s*\[\s*"|\bverbatim:\s*"|\b(String\(localized:|LocalizedStringResource\()\s*"[^"]*"\s*\)|\b(title|titleKey|label|labelKey|message|prompt|placeholder|description|header|footer|subtitle|caption|hint):\s*")'
     match_kinds:
       - identifier
       - typeidentifier
