@@ -44,8 +44,16 @@ public struct SettingsLandingView: View {
     }
 
     /// The loaded row: the one preference this task wires end to end, and the rest as read-outs.
+    ///
+    /// A failed write is reported *above* the controls rather than in place of them: the row is
+    /// still loaded and still editable, so replacing the screen with the error would take away the
+    /// retry, which is the next tap.
     private func preferences(_ settings: UserSettings) -> some View {
         VStack(alignment: .leading, spacing: Spacing.lg.points) {
+            if let writeFailure = state.writeFailure {
+                diagnosticCard(title: "Could not save", detail: writeFailure)
+            }
+
             GroupedSection(Text(verbatim: "Units")) {
                 Picker(selection: unitSelection) {
                     ForEach(MassUnit.allCases, id: \.self) { unit in
@@ -77,14 +85,30 @@ public struct SettingsLandingView: View {
         }
     }
 
-    /// The failed phase. The diagnostic is shown as what it is rather than as a sentence.
+    /// The failed phase, and the retry out of it.
+    ///
+    /// The button is the reason ``SettingsLandingState/Phase/failed(_:)`` is recoverable: `.task`
+    /// runs once per view identity, and a screen whose only read failed would otherwise stay
+    /// broken for as long as the tab is alive.
     private func failure(_ diagnostic: String) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.md.points) {
+            diagnosticCard(title: "Settings unavailable", detail: diagnostic)
+            Button {
+                Task { await state.load() }
+            } label: {
+                Text(verbatim: "Try again")
+            }
+        }
+    }
+
+    /// A failure, shown as what it is rather than as a sentence written for the user.
+    private func diagnosticCard(title: String, detail: String) -> some View {
         Card {
             VStack(alignment: .leading, spacing: Spacing.sm.points) {
-                Text(verbatim: "Settings unavailable")
+                Text(verbatim: title)
                     .font(Typography.cardTitle.font)
                     .foregroundStyle(ColorToken.textPrimary)
-                Text(verbatim: diagnostic)
+                Text(verbatim: detail)
                     .font(Typography.caption.font)
                     .foregroundStyle(ColorToken.textTertiary)
             }

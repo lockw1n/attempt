@@ -60,10 +60,11 @@ struct RootTabView: View {
     /// The Settings tab's landing screen, or the reason it cannot be shown.
     @ViewBuilder
     private var settingsRoot: some View {
-        if let settings = dependencies.settings {
-            SettingsLandingView(repository: settings)
-        } else {
-            StoreUnavailableScreen(diagnostic: dependencies.storeFailure)
+        switch dependencies.state {
+        case .open(let repositories):
+            SettingsLandingView(repository: repositories.settings)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
         }
     }
 }
@@ -74,8 +75,8 @@ struct RootTabView: View {
 /// Its copy is `verbatim` for the same reason: a string that is going to be deleted must not be
 /// translated first (`G-3.4`).
 private struct StoreUnavailableScreen: View {
-    /// The error's description, or `nil` if there is none to show.
-    let diagnostic: String?
+    /// The error's description.
+    let diagnostic: String
 
     /// A card naming the failure, and the diagnostic beneath it.
     var body: some View {
@@ -85,7 +86,7 @@ private struct StoreUnavailableScreen: View {
                     Text(verbatim: "Storage unavailable")
                         .font(Typography.cardTitle.font)
                         .foregroundStyle(ColorToken.textPrimary)
-                    Text(verbatim: diagnostic ?? "")
+                    Text(verbatim: diagnostic)
                         .font(Typography.caption.font)
                         .foregroundStyle(ColorToken.textTertiary)
                 }

@@ -63,15 +63,26 @@ public final class ActiveSessionStore {
     ///   conflict key, so a no-op local write would outrank a real remote edit.
     /// - A record carrying a different `id`: ``adopt(sessionID:)`` is how the session in progress
     ///   is chosen, and a write that could also switch it would let a stale screen adopt one.
+    ///
+    /// A row that is no longer live after its own write is a **failure**, unlike the same answer
+    /// from ``adopt(sessionID:)``. There the id came from a restored navigation position and may
+    /// name a workout the user discarded long ago; here it names the record this call just wrote,
+    /// so it went away underneath a screen that is logging into it, and reporting nothing would
+    /// empty the store silently.
     public func update(_ session: WorkoutSession) async {
         guard let current = self.session, current.id == session.id, current != session else { return }
         do {
             try await repository.save(session)
             // Re-read for the same reason the settings screen does: the save path stamps
             // `updatedAt` itself, so the record handed in describes the write before this one.
-            self.session = try await repository.session(id: session.id, includingDeleted: false)
+            guard let stored = try await repository.session(id: session.id, includingDeleted: false) else {
+                throw RepositoryError.recordNotFound(id: session.id)
+            }
+            self.session = stored
             failure = nil
         } catch {
+            // The held session is left alone: it is stale, but a screen mid-set has to keep
+            // rendering something, and ``adopt(sessionID:)`` is what changes which session that is.
             failure = String(describing: error)
         }
     }
