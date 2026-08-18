@@ -124,11 +124,40 @@ missing_docs:
 #
 # Two groups with different jobs:
 #
-#   G-7.7   — no hard-coded colours, font sizes or spacing in UI that consumes the design system.
-#             Feature modules do not exist yet; these are written against the path they will
-#             occupy (Packages/Features/...) plus the app target, so they are in place *before*
-#             Phase 1 can break them. DesignSystem itself is excluded — it is where the raw
-#             values are legitimately defined.
+#   G-7.7   — no hard-coded colours, font sizes, text styles or spacing in UI that consumes the
+#             design system. Three paths: the app target, Packages/Features/... (written before
+#             Phase 1 can break them, and since T-1.02 there is a fixture on that path — a green
+#             run used to prove only the Attempt/... filter, since every fixture lived there), and
+#             Packages/DesignSystem/Sources/DesignSystem, the component layer.
+#
+#             THE TOKEN TARGET IS THE ONE EXEMPTION, not the whole package, and it is spelled as an
+#             `excluded` rather than left out of `included` — see the next paragraph for why that
+#             distinction is the whole ballgame. T-1.02 split DesignSystem into DesignTokens (the
+#             scales — where a colour, a point size and a spacing value are legitimately written)
+#             and DesignSystem (components built from them). Only the first may hold a raw value,
+#             and T-1.03's components are under these rules like any feature.
+#
+#             `included` ON A CUSTOM RULE IS MATCHED AGAINST THE ABSOLUTE PATH, UNANCHORED — and
+#             this repository's root directory is itself named `Attempt`. So `Attempt/.*\.swift`
+#             matches every Swift file in the tree, and these rules have been repo-wide since
+#             T-0.05 rather than scoped to the two paths they name. Measured 2026-08-18 (T-1.02):
+#             the same fixture produces 7 violations under a path containing `Attempt/` and 0 under
+#             one that does not; the first Phase 1 file to trip it was a *doc comment* in the token
+#             target quoting `.padding(12)` as the thing the rule bans. Two consequences worth
+#             knowing before editing anything here. `excluded` is the only filter that reliably
+#             narrows one of these rules, which is why the token exemption is written that way.
+#             And a path added to `included` documents intent without changing behaviour — the
+#             DesignSystem component path below is exactly that, correct today by accident and
+#             correct on purpose if the matching is ever tightened. Tightening it is not free: the
+#             obvious anchor is wrong on CI, where the checkout is `.../work/Attempt/Attempt`.
+#
+#             `no_raw_font_styles` and the second half of `no_color_literals` are about the
+#             bypasses that are not literals at all: `.font(.title)` and `.foregroundStyle(.red)`
+#             carry no number and no `Color(red:)`, so the original three regexes passed them both.
+#             They are exactly how a screen leaves the type scale and the reserved palette (G-7.3)
+#             without anyone noticing. Apple's own style and colour names are enumerated, which is
+#             what lets a token named anything else through — TokenUsageFixture.swift is the proof
+#             that the rules can be satisfied, not only failed.
 #
 #   NFR-0.2 — `no_imports_in_core` (T-0.14) bans *every* import under
 #             Packages/PowerliftingCore/Sources/, not a list of named modules. It exists because
@@ -181,11 +210,14 @@ missing_docs:
 custom_rules:
   no_color_literals:
     name: "Hard-coded colour"
-    regex: '(#colorLiteral\(|\bUIColor\(\s*(red|white|hue):|\bNSColor\(\s*(red|white|hue):|\bColor\(\s*(red|white|hue):)'
+    regex: '(#colorLiteral\(|\b(UIColor|NSColor|Color)\(\s*(red|white|hue):|\bColor\.(accentColor|indigo|orange|yellow|purple|brown|green|black|white|mint|teal|cyan|blue|pink|gray|grey|red)\b|\.(foregroundStyle|foregroundColor|background|accentColor|shadow|stroke|border|tint|fill)\(\s*\.(accentColor|indigo|orange|yellow|purple|brown|green|black|white|mint|teal|cyan|blue|pink|gray|grey|red)\b)'
     included:
       - 'Attempt/.*\.swift'
       - 'Packages/Features/.*\.swift'
-    message: "G-7.7: use a DesignSystem colour token, not a literal colour."
+      - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
+    excluded:
+      - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
+    message: "G-7.7/G-7.3: use a DesignSystem colour token, not a literal or a system colour."
     severity: error
 
   no_raw_font_sizes:
@@ -194,7 +226,22 @@ custom_rules:
     included:
       - 'Attempt/.*\.swift'
       - 'Packages/Features/.*\.swift'
+      - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
+    excluded:
+      - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
     message: "G-7.7: use a DesignSystem typography token, not a raw point size."
+    severity: error
+
+  no_raw_font_styles:
+    name: "Raw Dynamic Type style"
+    regex: '(\.font\(\s*\.(largeTitle|subheadline|headline|caption2|callout|footnote|caption|title3|title2|title|body)\b|\bFont\.(largeTitle|subheadline|headline|caption2|callout|footnote|caption|title3|title2|title|body)\b)'
+    included:
+      - 'Attempt/.*\.swift'
+      - 'Packages/Features/.*\.swift'
+      - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
+    excluded:
+      - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
+    message: "G-7.6: use a Typography role, not a bare text style — the role carries the weight and the digit treatment too."
     severity: error
 
   no_magic_spacing:
@@ -203,6 +250,9 @@ custom_rules:
     included:
       - 'Attempt/.*\.swift'
       - 'Packages/Features/.*\.swift'
+      - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
+    excluded:
+      - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
     message: "G-7.7: use a DesignSystem spacing token, not a numeric literal."
     severity: error
 

@@ -5,31 +5,44 @@ import PackageDescription
 // G-6.4 (T-0.06). Same three settings as PowerliftingCore — see the commented block in
 // Packages/PowerliftingCore/Package.swift for what each one buys.
 //
-// `.defaultIsolation(nil)` here is the conservative choice for an empty package, not a considered
-// verdict on a UI module: it matches SwiftPM's own default and the other two packages, so nothing
-// is silently decided before there is code. When the tokens and components land in Phase 1
-// (TR-1.4), flipping this package — and only this package — to
-// `.defaultIsolation(MainActor.self)` is a legitimate call; SwiftUI views are MainActor-isolated
-// anyway, and default isolation is a per-target setting for exactly this reason.
+// `.defaultIsolation(nil)` stays for the token layer, and that is now a decision rather than a
+// placeholder: tokens are pure values with no view code in them, and MainActor-isolating them would
+// force every test that reads a palette entry into an actor hop for nothing. The components target
+// (TR-1.4, T-1.03) is where flipping to `.defaultIsolation(MainActor.self)` becomes the right call —
+// default isolation is a per-target setting for exactly this reason.
 let strictSettings: [SwiftSetting] = [
     .swiftLanguageMode(.v6),
     .defaultIsolation(nil),
 ]
 
-// TR-0.1: design tokens, components and theme.
-// Deliberately empty in Phase 0 — G-7 is a constraint on this package, not a Phase 0 deliverable.
-// The tokens arrive in Phase 1 (TR-1.4). See docs/phase-0/coverage.md → "Known gaps" §1.
+// TR-1.4: design tokens, components and theme.
+//
+// TWO TARGETS ON PURPOSE. `DesignTokens` holds the spacing, type and colour scales and no views;
+// `DesignSystem` holds the components built from them (T-1.03) and re-exports the tokens, so a
+// feature that only needs a palette entry — a store, a formatter, a preview fixture — can import
+// the scales without the component surface coming with them.
 let package = Package(
     name: "DesignSystem",
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
-        .library(name: "DesignSystem", targets: ["DesignSystem"])
+        .library(name: "DesignTokens", targets: ["DesignTokens"]),
+        .library(name: "DesignSystem", targets: ["DesignSystem"]),
     ],
     dependencies: [],
     targets: [
         .target(
-            name: "DesignSystem",
+            name: "DesignTokens",
             swiftSettings: strictSettings
-        )
+        ),
+        .target(
+            name: "DesignSystem",
+            dependencies: ["DesignTokens"],
+            swiftSettings: strictSettings
+        ),
+        .testTarget(
+            name: "DesignTokensTests",
+            dependencies: ["DesignTokens"],
+            swiftSettings: strictSettings
+        ),
     ]
 )
