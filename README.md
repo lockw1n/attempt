@@ -39,8 +39,9 @@ Packages/
 ├── RemoteContent/           formulas.json/flags.json's schema, validator and generator, plus SCHEMA.md
 ├── RemoteFetch/             Fetches, caches and falls back for the three published payloads
 ├── DesignSystem/            Two targets: DesignTokens (spacing, type, colour scales) and
-│                            DesignSystem (cards, metric tiles, buttons, delta indicator — built
-│                            from the tokens)
+│                            DesignSystem (cards, metric tiles, buttons, delta indicator, the five
+│                            shared empty/loading/error/offline/insufficient-data states — built
+│                            from the tokens; also owns the copy those five states share)
 ├── AppNavigation/           The typed navigation model: tabs, one namespaced Route enum, and a
 │                            serializable snapshot for restoration. No views, no user-visible strings.
 ├── Localization/            The key convention every module's catalogue follows, plus
