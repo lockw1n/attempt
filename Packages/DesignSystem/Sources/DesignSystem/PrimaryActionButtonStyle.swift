@@ -26,6 +26,17 @@ public struct PrimaryActionButtonStyle: ButtonStyle {
         self.width = width
     }
 
+    /// The fade this control draws at, from the two interaction inputs (``Opacity``).
+    ///
+    /// A `static func` rather than a computed property on the private body view, because that view
+    /// is unreachable from a test: swapping ``Opacity/disabled`` for ``Opacity/pressed`` inside it
+    /// once survived the entire suite. Disabled outranks pressed — a control the user cannot
+    /// operate does not brighten because a finger landed on it.
+    static func opacity(isEnabled: Bool, isPressed: Bool) -> Opacity {
+        guard isEnabled else { return .disabled }
+        return isPressed ? .pressed : .opaque
+    }
+
     /// Draws the filled action. The body is a private `View` rather than modifiers applied here,
     /// so it can read the enabled state out of the environment.
     public func makeBody(configuration: Configuration) -> some View {
@@ -72,8 +83,7 @@ private struct PrimaryActionButton: View {
     let width: PrimaryActionWidth
 
     private var opacity: Opacity {
-        guard isEnabled else { return .disabled }
-        return configuration.isPressed ? .pressed : .opaque
+        PrimaryActionButtonStyle.opacity(isEnabled: isEnabled, isPressed: configuration.isPressed)
     }
 
     var body: some View {

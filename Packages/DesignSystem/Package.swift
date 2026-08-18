@@ -19,9 +19,10 @@ let tokenSettings: [SwiftSetting] = [
 // diagnostic on whichever one was forgotten.
 //
 // The exception is the data-shaped enums a component's token choices are exposed through —
-// `CardElevation`, `DeltaDirection`. Those are marked `nonisolated` at the declaration: a
-// MainActor-isolated `static var allCases` cannot satisfy `CaseIterable`, whose requirement is not,
-// and a test asserting on a colour mapping should not have to hop to the main actor to read one.
+// `CardElevation`, `DeltaDirection`, `PrimaryActionWidth`. Those are marked `nonisolated` at the
+// declaration: a MainActor-isolated `static var allCases` cannot satisfy `CaseIterable`, whose
+// requirement is not, and a test asserting on a colour mapping should not have to hop to the main
+// actor to read one.
 let componentSettings: [SwiftSetting] = [
     .swiftLanguageMode(.v6),
     .defaultIsolation(MainActor.self),

@@ -39,11 +39,20 @@ struct LiteralValuesFixture: View {
         .frame(maxWidth: 320, minHeight: 44)
         // `.shadow(`'s first label is always `color:`, so this walked through the verb list.
         .shadow(color: .black, radius: 4)
-        // Five ways to write a literal corner radius, only two of which name RoundedRectangle.
+        // Seven ways to write a literal corner radius, only two of which name RoundedRectangle.
         .cornerRadius(12)
         .background(Color.gray, in: RoundedRectangle(cornerRadius: 14))
         .clipShape(.rect(cornerRadius: 16))
         .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12, bottomTrailingRadius: 4))
         .clipShape(RoundedRectangle(cornerSize: CGSize(width: 12, height: 12)))
+        // The OTHER UnevenRoundedRectangle initializer. `RectangleCornerRadii`'s labels carry no
+        // `Radius` suffix, so the sibling alternative above cannot see them — this is the shape
+        // that escaped the rule written for this very type.
+        .clipShape(UnevenRoundedRectangle(cornerRadii: RectangleCornerRadii(
+            topLeading: 12, bottomLeading: 4, bottomTrailing: 4, topTrailing: 12)))
+        // ButtonBorderShape spells it `radius:`, with the word `corner` nowhere in the label.
+        .buttonBorderShape(.roundedRectangle(radius: 12))
+        // An interaction state written as a literal rather than an Opacity token.
+        .opacity(0.4)
     }
 }

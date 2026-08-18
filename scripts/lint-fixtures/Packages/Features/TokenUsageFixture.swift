@@ -31,5 +31,12 @@ struct TokenUsageFixture: View {
         // that does not — the radius rule scans the label, so both are the same match to it.
         .background(ColorToken.surface, in: .rect(cornerRadius: CornerRadius.card.points))
         .clipShape(RoundedRectangle(cornerRadius: CornerRadius.control.points))
+        // The four-corner form has to be satisfiable too, not merely failable: the rule matches a
+        // digit after the label, so a token-valued corner passes where a literal one does not.
+        .clipShape(UnevenRoundedRectangle(cornerRadii: RectangleCornerRadii(
+            topLeading: CornerRadius.card.points, bottomLeading: CornerRadius.control.points,
+            bottomTrailing: CornerRadius.control.points, topTrailing: CornerRadius.card.points)))
+        // Interaction state comes from the Opacity scale, which is the whole of that rule.
+        .opacity(Opacity.pressed.value)
     }
 }

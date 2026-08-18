@@ -11,8 +11,9 @@
 //
 //   No raw values. No colour, font size, text style, spacing, radius or opacity is declared here;
 //   they all come from a token. Enforced rather than asked for — the G-7.7 lint rules cover this
-//   target's path alongside Features/ and the app, and the only exemption is the DesignTokens
-//   target itself.
+//   target's path alongside Features/ and the app. What they do NOT reach is any test target: all
+//   six are scoped to Sources/DesignSystem, so DesignTokens, DesignTokensTests and this module's
+//   own tests are outside them.
 //
 //   No user-visible strings. Every piece of text arrives as a `Text` the caller built, because a
 //   LocalizedStringKey resolved inside a package resolves against the package's bundle rather than

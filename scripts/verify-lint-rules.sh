@@ -64,6 +64,7 @@ POSITIVE=(
     "scripts/lint-fixtures/Packages/Features/LiteralValuesFixture.swift:no_raw_font_styles"
     "scripts/lint-fixtures/Packages/Features/LiteralValuesFixture.swift:no_magic_spacing"
     "scripts/lint-fixtures/Packages/Features/LiteralValuesFixture.swift:no_magic_corner_radius"
+    "scripts/lint-fixtures/Packages/Features/LiteralValuesFixture.swift:no_magic_opacity"
     "scripts/lint-fixtures/SwiftDataOutsidePersistenceFixture.swift:no_swiftdata_outside_persistence"
     "scripts/lint-fixtures/Packages/PowerliftingCore/FoundationFixture.swift:no_foundation_in_core"
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/PlatformImportFixture.swift:no_imports_in_core"
@@ -85,8 +86,10 @@ NEGATIVE=(
     "scripts/lint-fixtures/Packages/Features/TokenUsageFixture.swift:no_raw_font_styles"
     "scripts/lint-fixtures/Packages/Features/TokenUsageFixture.swift:no_magic_spacing"
     "scripts/lint-fixtures/Packages/Features/TokenUsageFixture.swift:no_magic_corner_radius"
+    "scripts/lint-fixtures/Packages/Features/TokenUsageFixture.swift:no_magic_opacity"
 
     "Packages/DesignSystem/Sources/DesignSystem/Card.swift:no_magic_corner_radius"
+    "Packages/DesignSystem/Sources/DesignSystem/PrimaryActionButtonStyle.swift:no_magic_opacity"
 
     "Packages/PowerliftingCore/Sources/PowerliftingCore/PowerliftingCore.swift:no_foundation_in_core"
     "Packages/PowerliftingCore/Sources/PowerliftingCore/PowerliftingCore.swift:no_imports_in_core"

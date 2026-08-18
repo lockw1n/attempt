@@ -8,8 +8,11 @@ import SwiftUI
 /// decoration on top of the tint — they are what a red/green-blind reader actually reads, and a
 /// test holds that each of them tells the three cases apart on its own.
 public nonisolated enum DeltaDirection: Sendable, CaseIterable {
-    /// The value went up. Not automatically good — a bodyweight delta is the standing example — so
-    /// the caller decides whether an increase deserves ``ColorToken/positive``.
+    /// The value went up, and `G-7.3` makes a positive delta green whether or not the increase is
+    /// welcome: a bodyweight gain on a cut still draws ``ColorToken/positive``. The tint follows
+    /// the arithmetic rather than the sentiment, and there is deliberately no override — a
+    /// component that knew which direction was *good* would be a component that knew what it was
+    /// measuring.
     case increase
 
     /// The value went down.
@@ -55,8 +58,13 @@ public nonisolated enum DeltaDirection: Sendable, CaseIterable {
 /// A signed change, drawn as glyph + sign + value (`G-7.3`, `G-4.5`).
 ///
 /// Reads as one element to VoiceOver: the glyph is hidden and the sign is spoken as part of the
-/// number ("plus 2.5 kilograms"), so nothing is announced twice and nothing is announced only in
-/// colour (`G-4.2`).
+/// number, so nothing is announced twice and nothing is announced only in colour (`G-4.2`).
+///
+/// **Punctuation is forced on, because the sign is then the only non-visual cue.** Whether
+/// VoiceOver speaks `+` and `−` is otherwise the reader's verbosity setting, and at its lowest
+/// both signed cases announce identically — which leaves direction in the tint alone, exactly what
+/// `G-4.5` forbids. Forcing it settles that without this module naming a word it would then have
+/// to localize against the wrong bundle.
 ///
 /// **The magnitude arrives as a `String`, not as a `Text`** — the one component here that does.
 /// This view has to put a character *in front of* the caller's text, and the sign is only a
@@ -88,5 +96,6 @@ public struct DeltaIndicator: View {
         .font(Typography.metricContext.font)
         .foregroundStyle(direction.tint)
         .accessibilityElement(children: .combine)
+        .speechAlwaysIncludesPunctuation()
     }
 }

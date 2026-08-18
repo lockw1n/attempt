@@ -96,3 +96,39 @@ struct PrimaryActionWidthTests {
         #expect(filled.width == .fill)
     }
 }
+
+/// The fade the primary action draws at — the only branch in the component layer, and until this
+/// suite the only thing in it a mutation could survive: swapping ``Opacity/disabled`` for
+/// ``Opacity/pressed`` inside the private body view left all 32 tests green.
+@Suite("Primary action interaction state")
+struct PrimaryActionOpacityTests {
+    /// The three states, each pinned to its own token rather than to a number.
+    @Test("resting is opaque, pressed fades, disabled fades further")
+    func statesMapToTokens() {
+        #expect(PrimaryActionButtonStyle.opacity(isEnabled: true, isPressed: false) == .opaque)
+        #expect(PrimaryActionButtonStyle.opacity(isEnabled: true, isPressed: true) == .pressed)
+        #expect(PrimaryActionButtonStyle.opacity(isEnabled: false, isPressed: false) == .disabled)
+    }
+
+    /// The one case the two inputs disagree about. A disabled control does not brighten because a
+    /// finger landed on it, so `isEnabled` has to win — the branch order is the assertion.
+    @Test("disabled outranks pressed")
+    func disabledOutranksPressed() {
+        #expect(PrimaryActionButtonStyle.opacity(isEnabled: false, isPressed: true) == .disabled)
+    }
+
+    /// Three states must draw three values, in that order. Two of them equal would make one state
+    /// unobservable, which is how a swapped constant hides.
+    @Test("the reachable states are three distinct values, descending")
+    func statesAreDistinctAndOrdered() {
+        let drawn = [
+            PrimaryActionButtonStyle.opacity(isEnabled: true, isPressed: false),
+            PrimaryActionButtonStyle.opacity(isEnabled: true, isPressed: true),
+            PrimaryActionButtonStyle.opacity(isEnabled: false, isPressed: true),
+        ].map(\.value)
+
+        #expect(Set(drawn).count == drawn.count)
+        #expect(drawn == drawn.sorted(by: >))
+        #expect(drawn.first == 1)
+    }
+}
