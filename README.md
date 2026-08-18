@@ -43,6 +43,8 @@ Packages/
 │                            from the tokens)
 ├── AppNavigation/           The typed navigation model: tabs, one namespaced Route enum, and a
 │                            serializable snapshot for restoration. No views, no user-visible strings.
+├── Localization/            The key convention every module's catalogue follows, plus
+│                            locale-explicit FormatStyles for numbers, weights, dates and percentages.
 ├── Features/                Feature modules, one level deeper — the level is load-bearing:
 │                            .swiftlint.yml scopes the no-raw-values rules to this path.
 │   ├── ExerciseLibrary/     The exercise catalogue
@@ -71,8 +73,9 @@ must not be shaped like a storage record. `RemoteFetch` sits above both
 `SeedContent` and `RepositoryInterface` — it is the one place that names both,
 because the bundled leg of `exercises.json`'s fallback lives in `SeedContent`.
 The five packages under `Packages/Features/` sit at the top: each depends on
-`PowerliftingCore`, `RepositoryInterface`, `DesignSystem` and `AppNavigation`, and
-never on `Persistence` — a feature reaches storage through the protocols alone.
+`PowerliftingCore`, `RepositoryInterface`, `DesignSystem`, `AppNavigation` and
+`Localization`, and never on `Persistence` — a feature reaches storage through
+the protocols alone.
 Two constraints are load-bearing rather than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
@@ -245,6 +248,7 @@ swift test --package-path Packages/RemoteContent
 swift test --package-path Packages/RemoteFetch
 swift test --package-path Packages/DesignSystem
 swift test --package-path Packages/AppNavigation
+swift test --package-path Packages/Localization
 swift test --package-path Packages/DebugHarness
 ```
 
@@ -325,8 +329,11 @@ a refactor.
 - Deletion is soft (`deletedAt`); hard deletion happens only through an explicit
   purge routine.
 
-**Strings.** User-facing text goes through `String(localized:)` and lands in
-`Resources/Localizable.xcstrings`.
+**Strings.** User-facing text goes through a per-module `LocalizedStringResource` accessor enum,
+never a literal at the call site — enforced by the `no_literal_ui_strings` lint rule. Each feature
+module and `DesignSystem` owns a catalogue at `Resources/en.lproj/Localizable.strings`; the app
+target's own copy lives in `Attempt/Resources/Localizable.xcstrings`. See the `Localization`
+package's module doc for the key convention and formatting helpers.
 
 **Commits carry requirement IDs.** Lead the subject with the requirement the work
 traces to, then a colon:
