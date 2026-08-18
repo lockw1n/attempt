@@ -24,7 +24,9 @@ struct TokenUsageFixture: View {
                 .foregroundStyle(ColorToken.positive)
         }
         .padding(Spacing.lg.points)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        // The widened frame rule must still pass a token-valued dimension, and `.infinity` beside
+        // it: both live in the argument list the rule now scans in full.
+        .frame(maxWidth: .infinity, minHeight: Spacing.xxl.points, alignment: .leading)
         .background(ColorToken.surface)
     }
 }

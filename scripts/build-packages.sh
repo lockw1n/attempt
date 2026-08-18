@@ -14,9 +14,10 @@
 # list — the old manifest approach failed exactly there, by requiring the settings block to be
 # copied into each new Package.swift by hand.
 #
-# `swift test` is skipped for packages with no `Tests/` directory (DesignSystem today), which is
-# why they still need the explicit `swift build` above it: a package with no tests is otherwise
-# never compiled by anything, and its warnings would be enforced on nobody.
+# `swift test` is skipped for packages with no `Tests/` directory, which is why they still need the
+# explicit `swift build` above it: a package with no tests is otherwise never compiled by anything,
+# and its warnings would be enforced on nobody. DesignSystem was the standing example until T-1.02
+# gave it one; the skip path is still live for the next package that lands without tests.
 
 set -euo pipefail
 

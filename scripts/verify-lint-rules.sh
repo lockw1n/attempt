@@ -36,6 +36,14 @@
 #             cannot reach it and PowerliftingCore.swift alone would be a guard that cannot fail.
 #             BlockCommentImportFixture.swift closes that: a block comment *can* start a line with
 #             `import`, and dropping `match_kinds` makes the rule fire on it. Measured, not assumed.
+#
+# READ THIS BEFORE TRUSTING THE Packages/Features ENTRIES BELOW. They prove that all four G-7.7
+# rules fire on a file shaped like a feature module. They do NOT prove the `Packages/Features/.*`
+# path filter, which is what they were described as proving when T-1.02 added them: deleting that
+# filter from all four rules leaves LiteralValuesFixture.swift producing the identical violations,
+# because a custom rule's `included` is matched unanchored against the absolute path and this
+# repository's root directory is itself named `Attempt`. Every G-7.7 rule is therefore repo-wide.
+# The measurement and its consequences are in .swiftlint.yml; do not restate them here.
 
 set -euo pipefail
 

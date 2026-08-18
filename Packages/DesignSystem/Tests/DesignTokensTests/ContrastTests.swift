@@ -58,12 +58,17 @@ struct ContrastTests {
     /// The separator is documented as *not* a text colour. Pinning it below the floor keeps that
     /// claim honest: if someone lightens it into text territory, this fails and they have to decide
     /// whether they meant to add a text token.
-    @Test("the separator stays a hairline, well under the text floor")
+    ///
+    /// Checked against every surface, for the same reason ``textContrast`` is: a hairline that
+    /// stayed a hairline only on the one surface a designer happened to try is not a hairline.
+    @Test("the separator stays a hairline on every surface, well under the text floor")
     func separatorIsNotText() {
         for scheme in [ColorScheme.dark, .light] {
-            let ratio = ColorToken.separator.components(in: scheme)
-                .contrastRatio(against: ColorToken.surface.components(in: scheme))
-            #expect(ratio < 3)
+            for surface in Self.surfaces {
+                let ratio = ColorToken.separator.components(in: scheme)
+                    .contrastRatio(against: surface.components(in: scheme))
+                #expect(ratio < 3, "the separator on \(surface) in \(scheme) is \(ratio):1")
+            }
         }
     }
 }

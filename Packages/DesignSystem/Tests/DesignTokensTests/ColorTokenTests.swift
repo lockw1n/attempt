@@ -95,4 +95,14 @@ struct ColorTokenTests {
         #expect(SRGBColor(hex: 0x000000).red == 0)
         #expect(SRGBColor(hex: 0xFF0000, opacity: 0.5).opacity == 0.5)
     }
+
+    /// Both initialisers default to opaque. Anchored to the literal rather than left to the palette
+    /// to demonstrate: every palette entry goes through ``SRGBColor/init(hex:opacity:)``, so the
+    /// memberwise initialiser's own default was reachable from no test and could be changed to
+    /// anything without a failure.
+    @Test("a colour written without an opacity is opaque, whichever initialiser wrote it")
+    func opacityDefaultsToOpaque() {
+        #expect(SRGBColor(red: 0.5, green: 0.5, blue: 0.5).opacity == 1)
+        #expect(SRGBColor(hex: 0x808080).opacity == 1)
+    }
 }

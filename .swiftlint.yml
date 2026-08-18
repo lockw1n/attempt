@@ -125,17 +125,21 @@ missing_docs:
 # Two groups with different jobs:
 #
 #   G-7.7   — no hard-coded colours, font sizes, text styles or spacing in UI that consumes the
-#             design system. Three paths: the app target, Packages/Features/... (written before
-#             Phase 1 can break them, and since T-1.02 there is a fixture on that path — a green
-#             run used to prove only the Attempt/... filter, since every fixture lived there), and
-#             Packages/DesignSystem/Sources/DesignSystem, the component layer.
+#             design system. Three paths named: the app target, Packages/Features/... (written
+#             before Phase 1 can break them), and Packages/DesignSystem/Sources/DesignSystem, the
+#             component layer. Only the first of those three is doing any work today — see the
+#             paragraph on unanchored matching below before believing otherwise.
 #
-#             THE TOKEN TARGET IS THE ONE EXEMPTION, not the whole package, and it is spelled as an
-#             `excluded` rather than left out of `included` — see the next paragraph for why that
-#             distinction is the whole ballgame. T-1.02 split DesignSystem into DesignTokens (the
-#             scales — where a colour, a point size and a spacing value are legitimately written)
-#             and DesignSystem (components built from them). Only the first may hold a raw value,
-#             and T-1.03's components are under these rules like any feature.
+#             TWO EXEMPTIONS, BOTH INSIDE THE DESIGN SYSTEM and neither of them the whole package.
+#             Both are spelled as `excluded` rather than left out of `included` — see the next
+#             paragraph for why that distinction is the whole ballgame. T-1.02 split DesignSystem
+#             into DesignTokens (the scales — where a colour, a point size and a spacing value are
+#             legitimately written) and DesignSystem (components built from them). Only the first
+#             may hold a raw value, and T-1.03's components are under these rules like any feature.
+#             DesignTokensTests is the second: the token suite's whole job is to assert what a
+#             token resolves to, so it has to be able to write `Font.system(.body, ...)` and name
+#             the construct the rule bans. A rule its own reference test cannot pass is the
+#             unsatisfiable-gate failure TokenUsageFixture.swift exists to catch, one file over.
 #
 #             `included` ON A CUSTOM RULE IS MATCHED AGAINST THE ABSOLUTE PATH, UNANCHORED — and
 #             this repository's root directory is itself named `Attempt`. So `Attempt/.*\.swift`
@@ -151,6 +155,15 @@ missing_docs:
 #             correct on purpose if the matching is ever tightened. Tightening it is not free: the
 #             obvious anchor is wrong on CI, where the checkout is `.../work/Attempt/Attempt`.
 #
+#             SO THE Packages/Features FIXTURE DOES NOT PROVE THE Packages/Features FILTER, and it
+#             was described as doing so when T-1.02 landed. Measured by deleting that line from all
+#             four rules: LiteralValuesFixture.swift still produces the identical seven violations,
+#             because the absolute path also contains `Attempt/`. What the fixture does prove is
+#             worth keeping — that all four rules fire on a file laid out like a feature module —
+#             and it becomes the proof of the filter itself the day the matching is tightened or
+#             the repository is checked out under a directory not named Attempt. It is not evidence
+#             that the second `included` line is load-bearing today. It is not.
+#
 #             `no_raw_font_styles` and the second half of `no_color_literals` are about the
 #             bypasses that are not literals at all: `.font(.title)` and `.foregroundStyle(.red)`
 #             carry no number and no `Color(red:)`, so the original three regexes passed them both.
@@ -158,6 +171,28 @@ missing_docs:
 #             without anyone noticing. Apple's own style and colour names are enumerated, which is
 #             what lets a token named anything else through — TokenUsageFixture.swift is the proof
 #             that the rules can be satisfied, not only failed.
+#
+#             FOUR MORE BYPASSES WERE MEASURED AND CLOSED after T-1.02's first pass, each of them a
+#             construct a screen will actually reach for and each replaceable by a token that
+#             already exists. A fixture on the Features path produced ZERO violations for all four.
+#               `.font(.system(.title, design: .rounded))`  — no_raw_font_sizes matches only
+#                     `.system(size:`, so naming a *style* inside `.system(` left the scale
+#                     untouched. Now a third alternative of no_raw_font_styles.
+#               `Color(.sRGB, red: 1, ...)`                 — the rule wanted `red:` immediately
+#                     after the paren. A colour space is now allowed to sit in front of it.
+#               `.foregroundStyle(.primary)` / `.secondary` — system colours that were not in the
+#                     enumerated list, standing in for textPrimary/textSecondary. Now listed.
+#               `.frame(maxWidth: 320, minHeight: 44)`      — the rule covered `width:`/`height:`
+#                     alone, and `minHeight: 44` is the standard tap-target literal. All six
+#                     min/max/ideal variants are covered now, in any argument position.
+#             `shadow` earned its place in the verb list at the same time: `.shadow(`'s first label
+#             is always `color:`, so the alternative could never match and `.shadow(color: .black)`
+#             walked through. An optional `color:` prefix fixes it.
+#
+#             STILL OPEN, deliberately: `.cornerRadius(12)` and `RoundedRectangle(cornerRadius:)`.
+#             There is no radius token to point a violator at, and a rule nothing can satisfy is
+#             the failure two paragraphs up. It belongs with T-1.03's components, which is where
+#             the radius scale gets decided.
 #
 #   NFR-0.2 — `no_imports_in_core` (T-0.14) bans *every* import under
 #             Packages/PowerliftingCore/Sources/, not a list of named modules. It exists because
@@ -210,13 +245,14 @@ missing_docs:
 custom_rules:
   no_color_literals:
     name: "Hard-coded colour"
-    regex: '(#colorLiteral\(|\b(UIColor|NSColor|Color)\(\s*(red|white|hue):|\bColor\.(accentColor|indigo|orange|yellow|purple|brown|green|black|white|mint|teal|cyan|blue|pink|gray|grey|red)\b|\.(foregroundStyle|foregroundColor|background|accentColor|shadow|stroke|border|tint|fill)\(\s*\.(accentColor|indigo|orange|yellow|purple|brown|green|black|white|mint|teal|cyan|blue|pink|gray|grey|red)\b)'
+    regex: '(#colorLiteral\(|\b(UIColor|NSColor|Color)\(\s*(\.\w+\s*,\s*)?(red|white|hue):|\bColor\.(accentColor|indigo|primary|secondary|orange|yellow|purple|brown|green|black|white|mint|teal|cyan|blue|pink|gray|grey|red)\b|\.(foregroundStyle|foregroundColor|background|accentColor|shadow|stroke|border|tint|fill)\(\s*(color:\s*)?\.(accentColor|indigo|primary|secondary|orange|yellow|purple|brown|green|black|white|mint|teal|cyan|blue|pink|gray|grey|red)\b)'
     included:
       - 'Attempt/.*\.swift'
       - 'Packages/Features/.*\.swift'
       - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
     excluded:
       - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
+      - 'Packages/DesignSystem/Tests/DesignTokensTests/.*\.swift'
     message: "G-7.7/G-7.3: use a DesignSystem colour token, not a literal or a system colour."
     severity: error
 
@@ -229,30 +265,33 @@ custom_rules:
       - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
     excluded:
       - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
+      - 'Packages/DesignSystem/Tests/DesignTokensTests/.*\.swift'
     message: "G-7.7: use a DesignSystem typography token, not a raw point size."
     severity: error
 
   no_raw_font_styles:
     name: "Raw Dynamic Type style"
-    regex: '(\.font\(\s*\.(largeTitle|subheadline|headline|caption2|callout|footnote|caption|title3|title2|title|body)\b|\bFont\.(largeTitle|subheadline|headline|caption2|callout|footnote|caption|title3|title2|title|body)\b)'
+    regex: '(\.font\(\s*\.(largeTitle|subheadline|headline|caption2|callout|footnote|caption|title3|title2|title|body)\b|\bFont\.(largeTitle|subheadline|headline|caption2|callout|footnote|caption|title3|title2|title|body)\b|\.system\(\s*\.(largeTitle|subheadline|headline|caption2|callout|footnote|caption|title3|title2|title|body)\b)'
     included:
       - 'Attempt/.*\.swift'
       - 'Packages/Features/.*\.swift'
       - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
     excluded:
       - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
+      - 'Packages/DesignSystem/Tests/DesignTokensTests/.*\.swift'
     message: "G-7.6: use a Typography role, not a bare text style — the role carries the weight and the digit treatment too."
     severity: error
 
   no_magic_spacing:
     name: "Magic spacing value"
-    regex: '(\.padding\(\s*-?\d+(\.\d+)?\s*\)|\.padding\(\s*\.\w+\s*,\s*-?\d+(\.\d+)?\s*\)|\bspacing:\s*-?\d+(\.\d+)?|\.frame\(\s*(width|height):\s*-?\d+(\.\d+)?)'
+    regex: '(\.padding\(\s*-?\d+(\.\d+)?\s*\)|\.padding\(\s*\.\w+\s*,\s*-?\d+(\.\d+)?\s*\)|\bspacing:\s*-?\d+(\.\d+)?|\.frame\([^)]*\b(width|height|minWidth|maxWidth|idealWidth|minHeight|maxHeight|idealHeight):\s*-?\d+(\.\d+)?)'
     included:
       - 'Attempt/.*\.swift'
       - 'Packages/Features/.*\.swift'
       - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
     excluded:
       - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
+      - 'Packages/DesignSystem/Tests/DesignTokensTests/.*\.swift'
     message: "G-7.7: use a DesignSystem spacing token, not a numeric literal."
     severity: error
 
