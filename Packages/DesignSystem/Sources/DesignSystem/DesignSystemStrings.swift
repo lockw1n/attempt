@@ -11,29 +11,36 @@ import Foundation
 ///
 /// Each entry names a key in `Resources/en.lproj/Localizable.strings` and binds it to this module's
 /// own bundle. The key convention itself is documented once, in `Localization`.
-enum DesignSystemStrings {
+///
+/// `nonisolated`, unlike most of this module: ``StateKind`` maps a state to its copy and is itself
+/// nonisolated, so the constants have to be reachable off the main actor. They are immutable and
+/// `Sendable`, so there is nothing for the isolation to protect.
+nonisolated enum DesignSystemStrings {
     /// The fallback heading over a failure the caller did not name.
-    static let errorHeadline = resource("designsystem.error-state.headline")
+    static let errorHeadline = resource("designsystem.error.headline")
 
-    /// The retry out of a failed or offline state.
-    static let retry = resource("designsystem.error-state.retry")
+    /// The retry out of a failed or offline state — the one string two kinds share.
+    static let retry = resource("designsystem.state.retry")
 
     /// What VoiceOver announces while a read is in flight. A spinner has no text of its own, so
     /// without this the state is silent (`G-4.2`).
-    static let loadingLabel = resource("designsystem.loading-state.accessibility-label")
+    static let loadingLabel = resource("designsystem.loading.accessibility-label")
 
     /// The heading over the no-connection state.
-    static let offlineHeadline = resource("designsystem.offline-state.headline")
+    static let offlineHeadline = resource("designsystem.offline.headline")
 
     /// The offline explanation, which has to say that logged work is unaffected (`G-2.1`).
-    static let offlineMessage = resource("designsystem.offline-state.message")
+    static let offlineMessage = resource("designsystem.offline.message")
 
     /// The fallback heading over a derived value that cannot be computed yet (`FR-1.13.3`).
     static let insufficientDataHeadline = resource("designsystem.insufficient-data.headline")
 
     /// Every string this module can show, for the test that proves each one resolves.
     static var all: [LocalizedStringResource] {
-        [errorHeadline, retry, loadingLabel, offlineHeadline, offlineMessage, insufficientDataHeadline]
+        [
+            errorHeadline, retry, loadingLabel, offlineHeadline, offlineMessage,
+            insufficientDataHeadline,
+        ]
     }
 
     /// Binds a key to this module's catalogue.

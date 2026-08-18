@@ -1,6 +1,11 @@
 import DesignTokens
 import SwiftUI
 
+// Each of the five configures ``StateScaffold`` and renders nothing else, and each exposes the
+// scaffold it built. That is what makes the choices testable without a rendering harness: a test
+// asks which kind a view chose and which copy it resolved, and a snapshot is left to answer what
+// the result looks like.
+
 /// Nothing here yet (`FR-1.13.1`).
 ///
 /// The headline is the caller's, because what is missing is the screen's knowledge — "No exercises
@@ -32,8 +37,8 @@ public struct EmptyStateView: View {
         self.action = action
     }
 
-    /// The scaffold, as the empty kind.
-    public var body: some View {
+    /// The scaffold this view configures.
+    var scaffold: StateScaffold {
         StateScaffold(
             kind: .empty,
             symbolName: symbolName,
@@ -42,6 +47,9 @@ public struct EmptyStateView: View {
             action: action
         )
     }
+
+    /// The scaffold, as the empty kind.
+    public var body: some View { scaffold }
 }
 
 /// A read is in flight (`FR-1.13.1`).
@@ -60,10 +68,13 @@ public struct LoadingStateView: View {
         self.message = message
     }
 
-    /// The scaffold, as the loading kind.
-    public var body: some View {
+    /// The scaffold this view configures.
+    var scaffold: StateScaffold {
         StateScaffold(kind: .loading, message: message)
     }
+
+    /// The scaffold, as the loading kind.
+    public var body: some View { scaffold }
 }
 
 /// Something failed (`FR-1.13.1`).
@@ -89,15 +100,20 @@ public struct ErrorStateView: View {
         self.retry = retry
     }
 
-    /// The scaffold, as the error kind.
-    public var body: some View {
+    /// The scaffold this view configures. The fallback heading is the kind's.
+    var scaffold: StateScaffold {
         StateScaffold(
             kind: .error,
-            headline: headline ?? Text(DesignSystemStrings.errorHeadline),
+            headline: headline,
             message: message,
-            action: retry.map { handler in StateAction(Text(DesignSystemStrings.retry), handler: handler) }
+            action: retry.map { handler in
+                StateAction(Text(DesignSystemStrings.retry), handler: handler)
+            }
         )
     }
+
+    /// The scaffold, as the error kind.
+    public var body: some View { scaffold }
 }
 
 /// Nothing local to show, and no connection to fetch it with (`FR-1.13.1`).
@@ -107,7 +123,8 @@ public struct ErrorStateView: View {
 /// requirement. This is for the rare surface whose content is remote and not yet cached.
 ///
 /// It carries no caller copy at all: being offline means the same thing on every screen, and a
-/// screen that wanted to say it differently would be saying something else.
+/// screen that wanted to say it differently would be saying something else. Both strings are the
+/// kind's, which is why this view passes none.
 public struct OfflineStateView: View {
     private let retry: (() -> Void)?
 
@@ -118,15 +135,18 @@ public struct OfflineStateView: View {
         self.retry = retry
     }
 
-    /// The scaffold, as the offline kind.
-    public var body: some View {
+    /// The scaffold this view configures. Both the heading and the message are the kind's.
+    var scaffold: StateScaffold {
         StateScaffold(
             kind: .offline,
-            headline: Text(DesignSystemStrings.offlineHeadline),
-            message: Text(DesignSystemStrings.offlineMessage),
-            action: retry.map { handler in StateAction(Text(DesignSystemStrings.retry), handler: handler) }
+            action: retry.map { handler in
+                StateAction(Text(DesignSystemStrings.retry), handler: handler)
+            }
         )
     }
+
+    /// The scaffold, as the offline kind.
+    public var body: some View { scaffold }
 }
 
 /// A derived value or chart has data and not enough of it (`FR-1.13.3`).
@@ -153,12 +173,11 @@ public struct InsufficientDataView: View {
         self.message = message
     }
 
-    /// The scaffold, as the insufficient-data kind.
-    public var body: some View {
-        StateScaffold(
-            kind: .insufficientData,
-            headline: headline ?? Text(DesignSystemStrings.insufficientDataHeadline),
-            message: message
-        )
+    /// The scaffold this view configures. The fallback heading is the kind's.
+    var scaffold: StateScaffold {
+        StateScaffold(kind: .insufficientData, headline: headline, message: message)
     }
+
+    /// The scaffold, as the insufficient-data kind.
+    public var body: some View { scaffold }
 }

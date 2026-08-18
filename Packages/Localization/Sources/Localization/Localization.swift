@@ -30,6 +30,13 @@
 /// a view is not a re-key. Keys are never reused for different copy: a changed meaning is a new
 /// key, because a translation memory keys off the identifier and not the English.
 ///
+/// **A module with no screens names the surface instead.** `DesignSystem` owns the copy its five
+/// state placeholders share, and those are shown on every screen and belong to none, so their
+/// middle segment is the state — `designsystem.offline.headline` — and, where two states share one
+/// string, the surface: `designsystem.state.retry`. The rule the segment is obeying is the same one
+/// it obeys everywhere, which is that it must not name the type: `offline`, never
+/// `OfflineStateView`.
+///
 /// ## Copy, and what is not copy
 ///
 /// A literal at a copy call site is copy and belongs in the catalogue. A literal bound to a named

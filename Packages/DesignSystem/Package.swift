@@ -35,9 +35,10 @@ let componentSettings: [SwiftSetting] = [
 // feature that only needs a palette entry — a store, a formatter, a preview fixture — can import
 // the scales without the component surface coming with them.
 // G-3.4: the component target carries a catalogue, the token target does not — a spacing scale has
-// no copy in it. It is empty today because every component takes its text from the caller; it exists
-// so that the first component that does own a string has somewhere to put it, which is what keeps
-// `no_literal_ui_strings` a rule that can be satisfied rather than only failed.
+// no copy in it. What is in it is only the copy that is the same on every screen it appears on —
+// the state placeholders' "Try again", the offline explanation, the spinner's VoiceOver label.
+// Everything a screen could have worded itself still arrives as a `Text` the caller built; the line
+// between the two is drawn in `DesignSystemStrings`.
 let package = Package(
     name: "DesignSystem",
     defaultLocalization: "en",
