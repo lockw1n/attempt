@@ -38,7 +38,8 @@ Packages/
 ├── SeedImport/              Merges the seed catalogue into the exercise repository
 ├── RemoteContent/           formulas.json/flags.json's schema, validator and generator, plus SCHEMA.md
 ├── RemoteFetch/             Fetches, caches and falls back for the three published payloads
-├── DesignSystem/            Tokens, components, theme (empty until Phase 1)
+├── DesignSystem/            Two targets: DesignTokens (spacing, type, colour scales) and
+│                            DesignSystem (components, built from the tokens — still empty)
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
 Attempt/
 ├── App/                     App entry point and DI wiring
