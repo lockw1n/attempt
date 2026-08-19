@@ -133,6 +133,35 @@ public final class ExerciseDetailState {
         }
     }
 
+    /// Re-reads the exercise and its relationships, keeping what is on screen until they land.
+    ///
+    /// **This is what the screen's `.task` calls**, not ``load()``, and for the reason
+    /// `ExerciseListState.refresh()` gives: an edit made above this screen (`FR-1.1.4`) must be
+    /// visible on the way back down, and ``load()`` refuses to run again once it has succeeded.
+    ///
+    /// **An unsaved note survives it.** The draft follows the record only when the two already
+    /// agreed — see ``publishRead(confirming:)`` — so a refresh cannot silently overwrite text the
+    /// user has typed and not yet saved.
+    ///
+    /// ``Phase/missing`` stays terminal: it is not a stale reading, and re-reading resolves to the
+    /// same absence.
+    public func refresh() async {
+        switch phase {
+        case .idle, .failed:
+            await load()
+            return
+        case .loading, .missing:
+            return
+        case .loaded:
+            break
+        }
+        do {
+            try await publishRead()
+        } catch {
+            phase = .failed(String(describing: error))
+        }
+    }
+
     /// Commits the edited notes (`FR-1.1.6`).
     ///
     /// **The text is taken here, when the command is issued — not when the write reaches the
@@ -211,8 +240,13 @@ public final class ExerciseDetailState {
     ///   gives way to the record only while it still holds exactly that text: keystrokes made
     ///   *during* the write are a fresh edit and survive it, where overwriting them would drop them
     ///   silently and clear the ``hasUnsavedNotes`` that was the only sign they existed. `nil` on a
-    ///   plain read, which has no edit to protect.
+    ///   plain read, where the same question is asked of the record instead — a first read has no
+    ///   draft to protect, and a ``refresh()`` has one exactly when ``hasUnsavedNotes`` says so.
     private func publishRead(confirming submitted: String? = nil) async throws {
+        // Both are asked before the read: `hasUnsavedNotes` compares the draft against the record
+        // this screen is currently showing, and that record is about to be replaced.
+        let draftAtStart = notesDraft
+        let hadUnsavedNotes = hasUnsavedNotes
         guard let exercise = try await repository.exercise(id: exerciseID, includingDeleted: false)
         else {
             phase = .missing
@@ -220,7 +254,12 @@ public final class ExerciseDetailState {
         }
         let catalogue = try await repository.exercises(includingDeleted: false)
         phase = .loaded(Self.detail(for: exercise, in: catalogue))
-        if submitted == nil || notesDraft == submitted {
+        // A keystroke that landed while the read was in flight is a fresh edit and survives it,
+        // whichever kind of read this was. Failing that, the draft gives way to the record only if
+        // the two already agreed when the read began.
+        let typedDuringRead = notesDraft != draftAtStart
+        let keepsDraft = typedDuringRead || (submitted.map { draftAtStart != $0 } ?? hadUnsavedNotes)
+        if !keepsDraft {
             notesDraft = exercise.notes
         }
     }

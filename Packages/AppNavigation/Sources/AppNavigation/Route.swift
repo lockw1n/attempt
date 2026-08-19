@@ -78,6 +78,20 @@ public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
     /// any store has been read, and a route holding a stale copy of a row would be a second source
     /// of truth for it (`G-1.4`).
     case exerciseDetail(exerciseID: UUID)
+
+    /// The form that authors a new custom exercise (`FR-1.1.3`).
+    ///
+    /// **A case of its own rather than ``exerciseEdit(exerciseID:)`` with no identifier.** An
+    /// optional payload would make one case mean two screens — one that reads a record and one that
+    /// cannot — and the inventory keys off the case, so the screen with no route case is the screen
+    /// nothing lists.
+    case exerciseCreate
+
+    /// The form that edits an existing exercise, built-in ones included (`FR-1.1.4`).
+    ///
+    /// Carries the identifier and not the record, for the reason ``exerciseDetail(exerciseID:)``
+    /// gives.
+    case exerciseEdit(exerciseID: UUID)
 }
 
 /// Destinations pushed from history (`FR-1.5`).

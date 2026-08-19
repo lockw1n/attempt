@@ -138,6 +138,74 @@ enum ExerciseLibraryStrings {
     /// What a route naming an exercise that has gone means for the user.
     static let detailMissingMessage = resource("exerciselibrary.detail.missing.message")
 
+    // MARK: - Create / edit form (FR-1.1.3, FR-1.1.4)
+
+    /// The command that opens the create form, on the list's toolbar and in its empty state.
+    static let createAction = resource("exerciselibrary.list.create")
+
+    /// The command that opens the edit form, on the detail screen's toolbar.
+    static let editAction = resource("exerciselibrary.detail.edit")
+
+    /// The create form's own navigation title.
+    static let formCreateTitle = resource("exerciselibrary.form.create.title")
+
+    /// The edit form's own navigation title.
+    static let formEditTitle = resource("exerciselibrary.form.edit.title")
+
+    /// The heading over the exercise's own fields.
+    static let formSection = resource("exerciselibrary.form.section.details")
+
+    /// The name field's label.
+    static let formName = resource("exerciselibrary.form.field.name")
+
+    /// What the empty name field invites.
+    static let formNamePrompt = resource("exerciselibrary.form.name.prompt")
+
+    /// Why the save command is unavailable — the one field that blocks it.
+    static let formNameRequired = resource("exerciselibrary.form.name.required")
+
+    /// The movement chips' label.
+    static let formMovement = resource("exerciselibrary.form.field.movement")
+
+    /// The equipment chips' label.
+    static let formEquipment = resource("exerciselibrary.form.field.equipment")
+
+    /// The bar chips' label.
+    static let formBar = resource("exerciselibrary.form.field.bar")
+
+    /// The laterality chips' label.
+    static let formLaterality = resource("exerciselibrary.form.field.laterality")
+
+    /// The heading over the parent picker (`FR-1.1.7`).
+    static let formParentSection = resource("exerciselibrary.form.section.parent")
+
+    /// The parent picker's unset position — a root exercise, not a missing answer.
+    static let formParentNone = resource("exerciselibrary.form.parent.none")
+
+    /// Widens the parent picker past the movement the form has selected.
+    static let formParentEveryMovement = resource("exerciselibrary.form.parent.every-movement")
+
+    /// Shown when the picker has nothing to offer, and what would give it something.
+    static let formParentEmpty = resource("exerciselibrary.form.parent.empty")
+
+    /// Commits the form.
+    static let formSave = resource("exerciselibrary.form.save")
+
+    /// The heading when the exercise being edited could not be read.
+    static let formErrorHeadline = resource("exerciselibrary.form.error.headline")
+
+    /// What the user can understand about a failed read — never the diagnostic.
+    static let formErrorMessage = resource("exerciselibrary.form.error.message")
+
+    /// The heading when the identifier being edited resolves to nothing.
+    static let formMissingHeadline = resource("exerciselibrary.form.missing.headline")
+
+    /// What an edit route naming an exercise that has gone means for the user.
+    static let formMissingMessage = resource("exerciselibrary.form.missing.message")
+
+    /// What the user can understand about a failed save — never the diagnostic.
+    static let formWriteError = resource("exerciselibrary.form.write-error")
+
     /// A movement's display name, used as a group heading and as a filter label.
     ///
     /// - Parameter movement: The movement to label.
@@ -229,6 +297,11 @@ enum ExerciseLibraryStrings {
             variationsSection, variationOf,
             historySection, historyNone, recordsSection, recordsNone, e1rmSection, e1rmNone,
             detailErrorHeadline, detailErrorMessage, detailMissingHeadline, detailMissingMessage,
+            createAction, editAction, formCreateTitle, formEditTitle, formSection,
+            formName, formNamePrompt, formNameRequired, formMovement, formEquipment, formBar,
+            formLaterality, formParentSection, formParentNone, formParentEveryMovement,
+            formParentEmpty, formSave, formErrorHeadline, formErrorMessage, formMissingHeadline,
+            formMissingMessage, formWriteError,
         ]
             + Movement.allCases.map(label(for:))
             + Equipment.allCases.map(label(for:))

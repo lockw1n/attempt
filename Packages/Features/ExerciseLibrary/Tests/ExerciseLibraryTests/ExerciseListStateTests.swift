@@ -225,6 +225,50 @@ struct ExerciseListStateTests {
         #expect(!state.isCatalogueEmpty)
         #expect(state.groups.isEmpty)
     }
+
+    // MARK: - Refreshing (FR-1.1.3, FR-1.1.4)
+
+    @Test("A refresh shows an exercise created since the list was read")
+    func refreshPicksUpANewExercise() async throws {
+        let repository = ScriptedExerciseRepository(exercises: Fixtures.catalogue)
+        let state = ExerciseListState(repository: repository)
+        await state.load()
+        #expect(state.names.count == 5)
+
+        // What T-1.12's create screen does, one screen above this one.
+        try await repository.save(Fixtures.exercise(name: "Belt Squat", movement: .squat))
+        await state.refresh()
+        #expect(state.names.contains("Belt Squat"))
+        #expect(state.names.count == 6)
+    }
+
+    @Test("A refresh on a screen that has read nothing yet is the first read")
+    func refreshFromIdleLoads() async {
+        let repository = ScriptedExerciseRepository(exercises: Fixtures.catalogue)
+        let state = ExerciseListState(repository: repository)
+        await state.refresh()
+        #expect(state.names.count == 5)
+        #expect(await repository.reads == 1)
+    }
+
+    @Test("A refresh that fails leaves the screen in the state that offers a retry")
+    func failedRefreshIsRecoverable() async {
+        let repository = ScriptedExerciseRepository(exercises: Fixtures.catalogue)
+        let state = ExerciseListState(repository: repository)
+        await state.load()
+        await repository.failReads(.recordNotFound(id: UUID()))
+        await state.refresh()
+
+        guard case .failed(let diagnostic) = state.phase else {
+            Issue.record("expected a failed phase, got \(state.phase)")
+            return
+        }
+        #expect(diagnostic.contains("recordNotFound"))
+
+        await repository.recover()
+        await state.refresh()
+        #expect(state.names.count == 5)
+    }
 }
 
 /// Every exercise the list shows, in order — the one read the assertions above are written against.
@@ -316,6 +360,13 @@ actor ScriptedExerciseRepository: ExerciseRepository {
     /// Just the notes of those records, for the assertions that only care about the text.
     var savedNotes: [String] { savedRecords.map(\.notes) }
 
+    /// Every record ``save(_:)`` was *asked* to store, landed or not.
+    ///
+    /// Distinct from ``savedRecords``, which holds the writes that succeeded: a retry after a failed
+    /// write is invisible there, and whether the retry named the same row as the attempt before it
+    /// is exactly what the create form has to get right.
+    private(set) var attemptedRecords: [Exercise] = []
+
     init(
         exercises: [Exercise],
         readError: RepositoryError? = nil,
@@ -354,6 +405,7 @@ actor ScriptedExerciseRepository: ExerciseRepository {
     /// Upserts on `id`, the way the real one does — so a screen that re-reads after a write sees
     /// what it wrote rather than what it started with.
     func save(_ exercise: Exercise) async throws {
+        attemptedRecords.append(exercise)
         if let writeError { throw writeError }
         savedRecords.append(exercise)
         if let index = rows.firstIndex(where: { $0.id == exercise.id }) {

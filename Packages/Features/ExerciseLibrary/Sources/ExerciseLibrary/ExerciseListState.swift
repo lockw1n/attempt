@@ -110,6 +110,39 @@ public final class ExerciseListState {
         }
     }
 
+    /// Re-reads the catalogue, keeping what is on screen until the new rows land.
+    ///
+    /// **This is what the screen's `.task` calls**, not ``load()``. A list returned to after a
+    /// create or an edit above it (`FR-1.1.3`, `FR-1.1.4`) would otherwise show the rows it read the
+    /// first time: ``load()`` refuses to run again once it has succeeded, which is exactly right for
+    /// a re-established view identity and exactly wrong for a screen the user has just changed the
+    /// data behind.
+    ///
+    /// **No ``Phase/loading`` in between.** A spinner over content that is already correct is a
+    /// flash on every back-swipe; the rows are replaced when the read lands or the screen becomes
+    /// its error state, and 116 local rows do not take long enough for a third state to be visible
+    /// (`G-2.2`, `NFR-1.1`).
+    ///
+    /// A read that fails here **does** cost the list its rows, deliberately: the screen can no
+    /// longer vouch for what it is showing, and ``Phase/failed(_:)`` is the state with the retry in
+    /// it.
+    public func refresh() async {
+        switch phase {
+        case .idle, .failed:
+            await load()
+            return
+        case .loading:
+            return
+        case .loaded:
+            break
+        }
+        do {
+            phase = .loaded(Self.browsable(try await repository.exercises(includingDeleted: false)))
+        } catch {
+            phase = .failed(String(describing: error))
+        }
+    }
+
     /// The exercises the list may show, from everything the repository returned.
     ///
     /// **Archived rows are dropped here rather than by a control**, because `FR-1.1.5` makes

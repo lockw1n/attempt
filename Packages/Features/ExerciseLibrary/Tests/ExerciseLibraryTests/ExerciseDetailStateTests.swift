@@ -375,11 +375,13 @@ struct ExerciseDetailStateTests {
         await state.saveNotes()
         #expect(state.phase == .missing)
     }
+
 }
 
-/// The exercise under test, where the assertions above read one.
+/// The exercise under test, where the assertions in this suite and in `ExerciseDetailRefreshTests`
+/// read one.
 extension ExerciseDetailState {
-    fileprivate var detail: ExerciseDetail? {
+    var detail: ExerciseDetail? {
         guard case .loaded(let detail) = phase else { return nil }
         return detail
     }

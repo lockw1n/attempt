@@ -43,7 +43,20 @@ public struct ExerciseDetailView: View {
         }
         .background(ColorToken.background)
         .navigationTitle(Text(verbatim: title))
-        .task { await state.load() }
+        .toolbar {
+            if case .loaded(let detail) = state.phase {
+                ToolbarItem(placement: .primaryAction) {
+                    NavigationLink(
+                        value: Route.exerciseLibrary(.exerciseEdit(exerciseID: detail.exercise.id))
+                    ) {
+                        Text(ExerciseLibraryStrings.editAction)
+                    }
+                }
+            }
+        }
+        // `refresh()`, not `load()`: an edit made above this screen has to be here on the way back
+        // down (`FR-1.1.4`). See the method's own note.
+        .task { await state.refresh() }
     }
 
     /// The name shown in the navigation bar, or nothing while there is no exercise.

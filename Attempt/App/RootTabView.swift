@@ -26,6 +26,10 @@ struct RootTabView: View {
                 }
             }
         }
+        // The navigation position, for the feature screens whose entry point is a closure rather
+        // than a `NavigationLink` — a state component's action, say. A screen that has a `Route`
+        // does not need to know which tab it lives under (see `NavigationState.navigate(to:)`).
+        .environment(navigation)
         .tint(ColorToken.brandAccent)
         // G-7.1's dark default, from the token rather than from a literal `.dark` — the one place
         // that says so is DesignTokens. FR-1.10.2's user preference (T-1.60) overrides this; it does
@@ -55,6 +59,10 @@ struct RootTabView: View {
             exerciseListRoot
         case .exerciseLibrary(.exerciseDetail(let exerciseID)):
             exerciseDetailRoot(exerciseID)
+        case .exerciseLibrary(.exerciseCreate):
+            exerciseFormRoot(.create)
+        case .exerciseLibrary(.exerciseEdit(let exerciseID)):
+            exerciseFormRoot(.edit(exerciseID: exerciseID))
         default:
             PlaceholderScreen(route: route)
         }
@@ -83,6 +91,19 @@ struct RootTabView: View {
         switch dependencies.state {
         case .open(let repositories):
             ExerciseDetailView(exerciseID: exerciseID, repository: repositories.exercises)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// The create/edit form, or the reason it cannot be shown.
+    ///
+    /// - Parameter mode: Which of `FR-1.1.3` and `FR-1.1.4` the route asked for.
+    @ViewBuilder
+    private func exerciseFormRoot(_ mode: ExerciseFormMode) -> some View {
+        switch dependencies.state {
+        case .open(let repositories):
+            ExerciseFormView(mode: mode, repository: repositories.exercises)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

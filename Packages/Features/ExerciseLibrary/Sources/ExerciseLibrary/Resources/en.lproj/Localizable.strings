@@ -121,3 +121,55 @@
 "exerciselibrary.bar-type.swiss" = "Swiss";
 "exerciselibrary.bar-type.no-bar" = "No bar";
 "exerciselibrary.bar-type.other" = "Other";
+
+/* ---------------------------------------------------------------------------------------------
+   Create / edit exercise (FR-1.1.3, FR-1.1.4). One screen and two modes: the copy that differs
+   between them is the title, and everything else is the same form over the same record. */
+
+/* The way into the form, from the list's toolbar and from its empty state. "New exercise" rather
+   than "Add": nothing is being added to a collection the user assembled — the catalogue is seeded
+   and this authors a row of their own. */
+"exerciselibrary.list.create" = "New exercise";
+"exerciselibrary.detail.edit" = "Edit";
+
+"exerciselibrary.form.create.title" = "New exercise";
+"exerciselibrary.form.edit.title" = "Edit exercise";
+
+"exerciselibrary.form.section.details" = "Details";
+"exerciselibrary.form.field.name" = "Name";
+"exerciselibrary.form.name.prompt" = "Barbell Back Squat";
+/* Shown under the name field once it is empty and the save is therefore unavailable. It says what
+   is required, not that something is wrong: an empty form is where every create starts. */
+"exerciselibrary.form.name.required" = "A name is required.";
+
+"exerciselibrary.form.field.movement" = "Movement";
+"exerciselibrary.form.field.equipment" = "Equipment";
+"exerciselibrary.form.field.bar" = "Bar";
+"exerciselibrary.form.field.laterality" = "Sides";
+
+/* FR-1.1.7's relationship, from the variation's side. The heading is the sentence: "<this exercise>
+   is a variation of <that one>". */
+"exerciselibrary.form.section.parent" = "Variation of";
+/* The unset position. "Nothing" rather than "None", because the answer is a fact about the exercise
+   — it varies nothing — and not an empty selection. */
+"exerciselibrary.form.parent.none" = "Nothing — this is its own exercise";
+/* Widens the picker past the movement selected above. It is off by default: a variation almost
+   always trains the same lift, and the whole catalogue is a picker nobody reads. */
+"exerciselibrary.form.parent.every-movement" = "All movements";
+"exerciselibrary.form.parent.empty" = "No other exercise trains this movement yet. Turn on All movements to vary one from elsewhere.";
+
+"exerciselibrary.form.save" = "Save";
+
+/* The edited exercise could not be read. A sentence the user can act on — the error's own
+   description is a diagnostic and is never shown (G-3.4). */
+"exerciselibrary.form.error.headline" = "Exercise unavailable";
+"exerciselibrary.form.error.message" = "This exercise could not be read.";
+
+/* The identifier resolved to nothing, which a restored navigation stack can do after the exercise
+   has gone. There is no retry: reading again resolves to nothing again. */
+"exerciselibrary.form.missing.headline" = "Exercise not found";
+"exerciselibrary.form.missing.message" = "This exercise no longer exists.";
+
+/* The save failed. The form and everything typed into it are still on screen, and the retry is
+   another tap. */
+"exerciselibrary.form.write-error" = "This exercise could not be saved.";

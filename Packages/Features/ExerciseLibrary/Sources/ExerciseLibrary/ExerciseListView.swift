@@ -17,6 +17,14 @@ import SwiftUI
 public struct ExerciseListView: View {
     @State private var state: ExerciseListState
 
+    /// The shell's navigation position, for the one command here that is not a `NavigationLink`.
+    ///
+    /// **Optional, and read rather than required**: a `StateAction` is a closure, so the empty
+    /// state's way into the create form has to push a `Route` itself. A preview or a snapshot has no
+    /// shell above it, and a screen that trapped on that would be a screen the harness cannot
+    /// render.
+    @Environment(NavigationState.self) private var navigation: NavigationState?
+
     /// Builds the screen over the repository its state reads through.
     ///
     /// - Parameter repository: Where the catalogue comes from. `Persistence`'s implementation in the
@@ -43,7 +51,20 @@ public struct ExerciseListView: View {
         .background(ColorToken.background)
         .navigationTitle(Text(ExerciseLibraryStrings.title))
         .searchable(text: $state.searchText, prompt: Text(ExerciseLibraryStrings.searchPrompt))
-        .task { await state.load() }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                NavigationLink(value: Route.exerciseLibrary(.exerciseCreate)) {
+                    Label {
+                        Text(ExerciseLibraryStrings.createAction)
+                    } icon: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+        }
+        // `refresh()`, not `load()`: an exercise created or edited above this screen has to be here
+        // on the way back down (`FR-1.1.3`, `FR-1.1.4`). See the method's own note.
+        .task { await state.refresh() }
     }
 
     /// The screen's four states (`FR-1.13.1`), each one of T-1.09's shared components.
@@ -76,7 +97,10 @@ public struct ExerciseListView: View {
             EmptyStateView(
                 symbolName: "figure.strengthtraining.traditional",
                 headline: Text(ExerciseLibraryStrings.emptyHeadline),
-                message: Text(ExerciseLibraryStrings.emptyMessage)
+                message: Text(ExerciseLibraryStrings.emptyMessage),
+                action: StateAction(Text(ExerciseLibraryStrings.createAction)) {
+                    navigation?.navigate(to: .exerciseLibrary(.exerciseCreate))
+                }
             )
         } else if state.groups.isEmpty {
             EmptyStateView(
