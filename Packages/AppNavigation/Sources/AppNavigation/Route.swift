@@ -64,6 +64,14 @@ public enum TrainingRoute: Hashable, Sendable, Codable {
 
 /// Destinations pushed from the exercise library (`FR-1.1`).
 public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
+    /// The catalogue, grouped by movement, with search and filters (`FR-1.1.1`, `FR-1.1.2`).
+    ///
+    /// **Pushed onto Train's stack rather than being Train's root**, which is the answer to the
+    /// question ``NavigationState/startWorkout()`` leaves open: the root is the session surface, so
+    /// Home's primary action lands on a workout and not on a catalogue. The library is a place the
+    /// user goes from there.
+    case exerciseList
+
     /// One exercise's detail (`FR-1.1.6`). T-1.11 builds it.
     ///
     /// The route carries the identifier and not the exercise: a restored stack is decoded before

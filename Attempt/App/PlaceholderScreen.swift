@@ -84,7 +84,11 @@ struct PlaceholderScreen: View {
     private static func sampleRoute(for tab: AppTab) -> Route {
         switch tab {
         case .home: .dashboard(.recentPersonalRecords)
-        case .train: .exerciseLibrary(.exerciseDetail(exerciseID: sampleID))
+        // Train's is the real screen, not a sample: the exercise library is built (T-1.10) and its
+        // root — the session surface — is not, so this placeholder is currently the only way to
+        // reach it. T-1.20 replaces this whole screen with that surface and puts the library behind
+        // an entry point of its own.
+        case .train: .exerciseLibrary(.exerciseList)
         case .history: .history(.session(sessionID: sampleID))
         case .settings: .settings(.about)
         }

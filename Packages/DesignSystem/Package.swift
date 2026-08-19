@@ -46,6 +46,7 @@ let package = Package(
     products: [
         .library(name: "DesignTokens", targets: ["DesignTokens"]),
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
+        .library(name: "SnapshotTesting", targets: ["SnapshotTesting"]),
     ],
     dependencies: [],
     targets: [
@@ -57,6 +58,28 @@ let package = Package(
             name: "DesignSystem",
             dependencies: ["DesignTokens"],
             resources: [.process("Resources")],
+            swiftSettings: componentSettings
+        ),
+        // TR-1.12's harness (T-1.08), a library target here rather than a file inside
+        // DesignSystemSnapshotTests, because T-1.10 was the first screen outside this package that
+        // needed it and a test target is reachable from nothing.
+        //
+        // WHY IT IS IN THIS PACKAGE AND NOT ITS OWN. A rendering is backed with the background token
+        // and padded with a spacing one, so the harness needs DesignTokens. As a separate package
+        // that dependency points BACK at this one, and building this package as the root then links
+        // DesignTokens twice — 162 duplicate symbols, measured. Beside the tokens it is a plain
+        // sibling target for this package's own tests and a plain product for everyone else's.
+        //
+        // WHY A LIBRARY MAY `import Testing`: measured — a library target that imports it, records
+        // issues and takes `#_sourceLocation` compiles and links when a test bundle on the simulator
+        // consumes it. That is what lets the assertion live here rather than only the rendering, so
+        // no caller picks its own tolerance.
+        //
+        // Every file in it is `#if os(iOS)`, so on macOS it compiles to nothing and stays harmless
+        // in `build-packages.sh`.
+        .target(
+            name: "SnapshotTesting",
+            dependencies: ["DesignTokens"],
             swiftSettings: componentSettings
         ),
         .testTarget(
@@ -77,7 +100,7 @@ let package = Package(
         // them back into the source tree, which a bundled resource could not be.
         .testTarget(
             name: "DesignSystemSnapshotTests",
-            dependencies: ["DesignSystem"],
+            dependencies: ["DesignSystem", "SnapshotTesting"],
             exclude: ["__Snapshots__"],
             swiftSettings: componentSettings
         ),

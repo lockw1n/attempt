@@ -1,2 +1,59 @@
-/* ExerciseLibrary (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the
-   Localization module doc. No copy in this module yet. */
+/* Exercise library (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization
+   module doc, and ExerciseLibraryStrings for why the two vocabularies below name a vocabulary
+   where a screen would go. Nothing here is translated: only `en` ships in Phase 1. */
+
+"exerciselibrary.list.title" = "Exercises";
+"exerciselibrary.list.search.prompt" = "Search exercises";
+
+"exerciselibrary.list.filter.movement" = "Movement";
+"exerciselibrary.list.filter.equipment" = "Equipment";
+"exerciselibrary.list.filter.origin" = "Origin";
+
+/* The unset position of a filter row. "All" rather than "Any": the row narrows the list, and the
+   unset position is the one that narrows it by nothing. */
+"exerciselibrary.list.filter.all" = "All";
+
+"exerciselibrary.list.filter.recently-used" = "Recently used";
+/* Shown beside the disabled recency filter. It says what would enable it, not what is missing from
+   the app — FR-1.1.2's recency is a read over logged sets, and there are none yet. */
+"exerciselibrary.list.filter.recently-used.hint" = "Available once you have logged a workout.";
+
+"exerciselibrary.list.origin.built-in" = "Built-in";
+"exerciselibrary.list.origin.custom" = "Custom";
+
+"exerciselibrary.list.row.custom" = "Custom";
+
+/* The catalogue itself is empty. There is no action yet: creating an exercise is FR-1.1.3's screen
+   and it does not exist, so the message says what the app will do rather than offering a dead
+   button. */
+"exerciselibrary.list.empty.headline" = "No exercises";
+"exerciselibrary.list.empty.message" = "The built-in catalogue has not been loaded yet.";
+
+"exerciselibrary.list.no-matches.headline" = "No matches";
+"exerciselibrary.list.no-matches.message" = "No exercise matches this search and these filters.";
+"exerciselibrary.list.no-matches.action" = "Clear search and filters";
+
+/* The read failed. A sentence the user can act on — the error's own description is a diagnostic and
+   is never shown (G-3.4). The retry is DesignSystem's own copy. */
+"exerciselibrary.list.error.headline" = "Exercises unavailable";
+"exerciselibrary.list.error.message" = "The exercise catalogue could not be read.";
+
+/* Movement names. Group headings and filter labels both, and they are copy rather than the domain's
+   raw values: PowerliftingCore is Foundation-free and carries no display name (NFR-0.2). */
+"exerciselibrary.movement.squat" = "Squat";
+"exerciselibrary.movement.bench" = "Bench";
+"exerciselibrary.movement.deadlift" = "Deadlift";
+"exerciselibrary.movement.overhead-press" = "Overhead press";
+"exerciselibrary.movement.row" = "Row";
+"exerciselibrary.movement.other" = "Other";
+
+/* Equipment names. */
+"exerciselibrary.equipment.barbell" = "Barbell";
+"exerciselibrary.equipment.dumbbell" = "Dumbbell";
+"exerciselibrary.equipment.kettlebell" = "Kettlebell";
+"exerciselibrary.equipment.machine" = "Machine";
+"exerciselibrary.equipment.cable" = "Cable";
+"exerciselibrary.equipment.smith-machine" = "Smith machine";
+"exerciselibrary.equipment.bodyweight" = "Bodyweight";
+"exerciselibrary.equipment.band" = "Band";
+"exerciselibrary.equipment.other" = "Other";

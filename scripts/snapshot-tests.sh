@@ -1,48 +1,57 @@
 #!/usr/bin/env bash
 #
-# TR-1.12: render every DesignSystem component and compare it against its committed reference.
+# TR-1.12: render every snapshot suite and compare it against its committed references.
 #
 #   scripts/snapshot-tests.sh              # compare against the committed references
 #   scripts/snapshot-tests.sh --record     # regenerate every reference, then verify the new set
 #
-# WHY THIS IS NOT A STEP IN THE `test` JOB. The references are iOS renderings, so the suite needs a
+# ONE SCRIPT, SEVERAL SUITES. The harness is one library (DesignSystem's SnapshotTesting target) and
+# every package that renders anything has its own test target and its own __Snapshots__ beside it —
+# the component set here, a screen there. They are listed in SUITES below, and a package added to
+# that list is a package this gate covers; a package NOT added is one whose references nothing
+# compares, which is the failure this file's assertions are shaped around. Each suite is a separate
+# `xcodebuild` invocation because each is a separate SwiftPM package with its own scheme.
+#
+# WHY THIS IS NOT A STEP IN THE `test` JOB. The references are iOS renderings, so the suites need a
 # simulator, and `build-packages.sh --test` runs `swift test` on macOS where the same view resolves
-# macOS font metrics. The snapshot target is therefore `#if os(iOS)` throughout: on macOS it
+# macOS font metrics. Every snapshot target is therefore `#if os(iOS)` throughout: on macOS it
 # compiles to nothing and reports no tests. That is a silent pass, which is why this script asserts
-# WHAT THE RUN COMPARED rather than trusting the exit status — a `-only-testing:` typo, a renamed
+# WHAT EACH RUN COMPARED rather than trusting the exit status — a `-only-testing:` typo, a renamed
 # target or a stray `#if` would otherwise leave a green job enforcing nothing.
 #
-# Two assertions, because one number cannot do it. Every reference the suite matches is announced by
-# the harness, and the count of those has to equal the number of committed references: that is what
-# notices a suite dropping out of the run while its images stay in the tree. And a minimum test
-# count, for the tests that back no reference at all — the harness probes, which are the half of
-# this suite that proves the comparison can fail.
+# Two assertions per suite, because one number cannot do it. Every reference the harness matches is
+# announced, and the count of those has to equal the number of references committed for that suite:
+# that is what notices a suite dropping out of the run while its images stay in the tree. And a
+# minimum test count, for the tests that back no reference at all — the harness probes, which are
+# the half of this gate that proves the comparison can fail.
 #
 # WHY THE DEVICE BARELY MATTERS. Every reference is rendered at a fixed width and scale (see
 # SnapshotHarness.swift), so the destination contributes only its OS version, which is what resolves
 # the fonts. Override it with SNAPSHOT_DESTINATION when the pinned device is missing; a different
 # iOS *version* is the one substitution that will fail the comparison.
 #
-# REGENERATING. `--record` deletes the reference directory and runs the suite twice: the first run
-# records what is missing and fails on purpose (a reference nobody has looked at must never make a
-# run green), the second verifies the set it just wrote. Deleting first is also what prunes a
+# REGENERATING. `--record` deletes every reference directory and runs each suite twice: the first
+# run records what is missing and fails on purpose (a reference nobody has looked at must never make
+# a run green), the second verifies the set it just wrote. Deleting first is also what prunes a
 # reference whose test no longer exists.
 
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-PACKAGE="Packages/DesignSystem"
-SCHEME="DesignSystem-Package"
-TEST_TARGET="DesignSystemSnapshotTests"
-REFERENCES="$PACKAGE/Tests/$TEST_TARGET/__Snapshots__"
-DESTINATION="${SNAPSHOT_DESTINATION:-platform=iOS Simulator,OS=latest,name=iPhone 17 Pro}"
+# package | scheme | test target | minimum tests
+#
+# The minimum is per suite and sits ABOVE the number of reference-backed tests on purpose. Reference
+# parity below already covers those exactly, so the only thing left for a count to notice is a
+# suite's non-reference tests going missing — and a floor at the reference count could not, because
+# the reference tests alone would clear it. DesignSystem: 27 tests, 15 reference-backed, 12 probes.
+# ExerciseLibrary: 5 tests, all five reference-backed, so its floor is the count itself.
+SUITES=(
+    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|20"
+    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|5"
+)
 
-# 27 tests in 5 suites as of T-1.08: 15 back a reference, 12 probe the harness. The floor sits
-# ABOVE the 15 on purpose. Reference parity below already covers every reference-backed test
-# exactly, so the only thing left for a count to notice is the probe suites going missing — and a
-# floor under 15 could not notice that, because the reference tests alone would clear it.
-MINIMUM_TESTS=20
+DESTINATION="${SNAPSHOT_DESTINATION:-platform=iOS Simulator,OS=latest,name=iPhone 17 Pro}"
 
 RECORD=0
 while [[ $# -gt 0 ]]; do
@@ -58,13 +67,16 @@ done
 log=$(mktemp -t snapshot-tests)
 trap 'rm -f "$log"' EXIT
 
+references_dir() { echo "$1/Tests/$2/__Snapshots__"; }
+
 run_suite() {
+    local package="$1" scheme="$2" target="$3"
     (
-        cd "$PACKAGE"
+        cd "$package"
         xcodebuild test \
-            -scheme "$SCHEME" \
+            -scheme "$scheme" \
             -destination "$DESTINATION" \
-            -only-testing:"$TEST_TARGET"
+            -only-testing:"$target"
     ) > "$log" 2>&1
 }
 
@@ -81,7 +93,7 @@ compared_references() {
 }
 
 committed_references() {
-    find "$REFERENCES" -name '*.png' | wc -l | tr -d ' '
+    find "$1" -name '*.png' | wc -l | tr -d ' '
 }
 
 # The interesting lines are swift-testing's own issue lines, and they are nowhere near the end of a
@@ -105,49 +117,63 @@ report_failure() {
 }
 
 if (( RECORD )); then
-    echo "==> deleting $REFERENCES"
-    rm -rf "$REFERENCES"
-    echo "==> recording (this run is expected to fail: every reference is missing)"
-    if run_suite; then
-        echo "snapshot-tests.sh: the recording run PASSED, which it cannot do with no references." >&2
-        echo "Either the suite ran nothing, or a missing reference no longer fails a run." >&2
+    for suite in "${SUITES[@]}"; do
+        IFS='|' read -r package scheme target _ <<< "$suite"
+        directory=$(references_dir "$package" "$target")
+        echo "==> deleting $directory"
+        rm -rf "$directory"
+        echo "==> recording $target (this run is expected to fail: every reference is missing)"
+        if run_suite "$package" "$scheme" "$target"; then
+            echo "snapshot-tests.sh: the recording run for $target PASSED, which it cannot do with" >&2
+            echo "no references. Either the suite ran nothing, or a missing reference no longer" >&2
+            echo "fails a run." >&2
+            report_failure
+            exit 70
+        fi
+        echo "==> recorded $(committed_references "$directory") references for $target; verifying below"
+    done
+fi
+
+total=0
+for suite in "${SUITES[@]}"; do
+    IFS='|' read -r package scheme target minimum <<< "$suite"
+    directory=$(references_dir "$package" "$target")
+
+    if ! run_suite "$package" "$scheme" "$target"; then
+        echo "snapshot-tests.sh: $target does not match. Rendered images and diffs are in" >&2
+        echo "  $package/.build/snapshot-failures/" >&2
+        echo "If the change is intended: scripts/snapshot-tests.sh --record, then review the diff." >&2
+        report_failure
+        exit 1
+    fi
+
+    count=$(executed_tests)
+    if [[ -z "$count" ]]; then
+        echo "snapshot-tests.sh: $target reported no test count at all — it executed nothing." >&2
         report_failure
         exit 70
     fi
-    echo "==> recorded $(committed_references) references; verifying them"
-fi
+    if (( count < minimum )); then
+        echo "snapshot-tests.sh: only $count tests ran in $target, expected at least $minimum." >&2
+        echo "A snapshot target that compiles to nothing passes; that is what this check is for." >&2
+        report_failure
+        exit 70
+    fi
 
-if ! run_suite; then
-    echo "snapshot-tests.sh: snapshots do not match. Rendered images and diffs are in" >&2
-    echo "  $PACKAGE/.build/snapshot-failures/" >&2
-    echo "If the change is intended: scripts/snapshot-tests.sh --record, then review the diff." >&2
-    report_failure
-    exit 1
-fi
+    references=$(committed_references "$directory")
+    compared=$(compared_references)
+    if [[ "$compared" != "$references" ]]; then
+        echo "snapshot-tests.sh: $target compared $compared references, but its directory holds $references." >&2
+        echo "  $directory" >&2
+        echo "A suite that stops being run leaves its references behind, and a reference whose test was" >&2
+        echo "deleted stays in the tree; both are green under a test count and neither is under this." >&2
+        echo "If a reference is genuinely obsolete: scripts/snapshot-tests.sh --record." >&2
+        report_failure
+        exit 70
+    fi
 
-count=$(executed_tests)
-if [[ -z "$count" ]]; then
-    echo "snapshot-tests.sh: the run reported no test count at all — it executed nothing." >&2
-    report_failure
-    exit 70
-fi
-if (( count < MINIMUM_TESTS )); then
-    echo "snapshot-tests.sh: only $count tests ran, expected at least $MINIMUM_TESTS." >&2
-    echo "A snapshot target that compiles to nothing passes; that is what this check is for." >&2
-    report_failure
-    exit 70
-fi
+    echo "$target: $count tests passed, comparing all $references references."
+    total=$(( total + references ))
+done
 
-references=$(committed_references)
-compared=$(compared_references)
-if [[ "$compared" != "$references" ]]; then
-    echo "snapshot-tests.sh: the run compared $compared references, but the directory holds $references." >&2
-    echo "  $REFERENCES" >&2
-    echo "A suite that stops being run leaves its references behind, and a reference whose test was" >&2
-    echo "deleted stays in the tree; both are green under a test count and neither is under this." >&2
-    echo "If a reference is genuinely obsolete: scripts/snapshot-tests.sh --record." >&2
-    report_failure
-    exit 70
-fi
-
-echo "$count snapshot tests passed, comparing all $references references."
+echo "${#SUITES[@]} snapshot suites passed, comparing $total references."

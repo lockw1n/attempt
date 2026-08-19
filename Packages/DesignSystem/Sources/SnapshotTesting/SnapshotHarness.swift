@@ -1,15 +1,15 @@
 #if os(iOS)
 
     import CoreGraphics
+    import DesignTokens
     import Foundation
     import ImageIO
     import SwiftUI
     import Testing
     import UniformTypeIdentifiers
 
-    @testable import DesignSystem
-
-    // TR-1.12's harness, in-house rather than a dependency.
+    // TR-1.12's harness, in-house rather than a dependency, and a library target rather than a file
+    // inside DesignSystemSnapshotTests — Package.swift says why it moved and what it may depend on.
     //
     // WHY IN-HOUSE. `ImageRenderer` renders a SwiftUI view to a `CGImage` with no window, no scene and
     // no host app, which is the whole of what a component snapshot needs — measured before this file
@@ -26,8 +26,8 @@
     // WHAT A SNAPSHOT HERE CANNOT SEE — two limits, both measured rather than assumed.
     //
     // A UIKit-backed view does not rasterise. `ImageRenderer` draws its unsupported-view placeholder
-    // instead, which is what the loading state's `ProgressView` gets: see the comment on that test.
-    // Everything else in this module is pure SwiftUI and renders as it ships.
+    // instead, which is what a `ProgressView` gets — the loading state's snapshot is a snapshot of
+    // that placeholder. Pure SwiftUI renders as it ships.
     //
     // And it is a bitmap: it observes what renders, never what VoiceOver
     // reads. Hosting a view to walk its accessibility tree needs a `UIWindowScene`, and a SwiftPM test
@@ -35,12 +35,20 @@
     // hierarchy at all). Modifier effects such as `.accessibilityHidden` therefore stay owed to an
     // audit with a real app behind it (`G-4.2`, T-1.82).
 
+    // THE FOUR TYPES BELOW SPELL OUT `Sendable`, which they did not have to while they lived inside
+    // the test target: a public type is not implicitly `Sendable` outside its own module, and a
+    // parameterised `@Test(arguments:)` needs its arguments to be.
+
     /// Which appearance a reference is rendered in (`G-7.1`).
-    nonisolated enum SnapshotAppearance: String, CaseIterable {
+    public nonisolated enum SnapshotAppearance: String, CaseIterable, Sendable {
+        /// The light palette.
         case light
+
+        /// The dark palette, which is the app's default (`G-7.1`).
         case dark
 
-        var colorScheme: ColorScheme {
+        /// The scheme this appearance renders under.
+        public var colorScheme: ColorScheme {
             switch self {
             case .light: .light
             case .dark: .dark
@@ -53,11 +61,15 @@
     /// Two, not the whole scale: the default, and `NFR-1.10`'s own ceiling. Everything between them is
     /// the same layout at a different measure, and a reference per step would be a reference per step
     /// to regenerate.
-    nonisolated enum SnapshotTypeSize: String, CaseIterable {
+    public nonisolated enum SnapshotTypeSize: String, CaseIterable, Sendable {
+        /// The size a device ships at.
         case `default`
+
+        /// `NFR-1.10`'s ceiling — the largest size this app claims to lay out for.
         case accessibility3
 
-        var dynamicTypeSize: DynamicTypeSize {
+        /// The size this case renders at.
+        public var dynamicTypeSize: DynamicTypeSize {
             switch self {
             case .default: .large
             case .accessibility3: .accessibility3
@@ -70,10 +82,15 @@
     /// Normalising is what makes a pixel comparison mean anything: `ImageRenderer` is free to hand back
     /// whatever `CGImage` layout it likes, and two images that differ only in byte order are not a
     /// design regression.
-    nonisolated struct Bitmap {
-        let width: Int
-        let height: Int
-        let pixels: [UInt8]
+    public nonisolated struct Bitmap: Sendable {
+        /// Its width in pixels — the rendered width, so the point width times the scale.
+        public let width: Int
+
+        /// Its height in pixels.
+        public let height: Int
+
+        /// Row-major RGBA, four bytes per pixel and no row padding.
+        public let pixels: [UInt8]
     }
 
     /// Rendered by its dimensions, never by its pixels.
@@ -82,18 +99,20 @@
     /// thousand elements: one failing probe otherwise writes megabytes onto a single log line, past
     /// every line-based filter downstream of it.
     extension Bitmap: CustomTestStringConvertible {
-        var testDescription: String { "\(width)×\(height) bitmap" }
+        /// Its dimensions, in place of its several hundred thousand bytes.
+        public var testDescription: String { "\(width)×\(height) bitmap" }
     }
 
     /// Why a snapshot did not match.
-    nonisolated enum SnapshotMismatch: Error, CustomStringConvertible {
+    public nonisolated enum SnapshotMismatch: Error, CustomStringConvertible, Sendable {
         /// The rendering changed size — a layout regression, and no pixel comparison is possible.
         case size(reference: (Int, Int), rendered: (Int, Int))
 
         /// The rendering changed appearance, in `differing` of `total` pixels.
         case pixels(differing: Int, total: Int, maxChannelDelta: Int)
 
-        var description: String {
+        /// The mismatch in words, for the issue the harness records.
+        public var description: String {
             switch self {
             case .size(let reference, let rendered):
                 "size changed: reference \(reference.0)×\(reference.1), rendered \(rendered.0)×\(rendered.1)"
@@ -104,16 +123,16 @@
     }
 
     /// Rendering and comparison, with the reference files it reads and writes.
-    nonisolated enum Snapshot {
+    public nonisolated enum Snapshot {
         /// The width every reference is rendered at, in points.
         ///
         /// Fixed rather than taken from a device, so the destination simulator decides nothing: the
         /// only thing a device contributes is its OS version, which is what resolves the fonts. A
         /// component that claims the full width gets a defined measure to claim.
-        static let width: CGFloat = 320
+        public static let width: CGFloat = 320
 
         /// The scale every reference is rendered at. 2, not 3: the same pixels on any runner.
-        static let scale: CGFloat = 2
+        public static let scale: CGFloat = 2
 
         /// Channel differences at or below this are anti-aliasing noise, not a change.
         ///
@@ -123,21 +142,40 @@
         /// the background it is drawn over are 12 apart in the dark palette. A tolerance picked to
         /// absorb rendering differences would absorb that too, and the gate would be green through the
         /// exact regression it was built for.
-        static let channelTolerance = 1
+        public static let channelTolerance = 1
 
-        /// Where the committed references live — beside this file, resolved from `#filePath` so the
-        /// simulator process writes back into the source tree rather than into its own container.
-        static let referenceDirectory = URL(filePath: #filePath)
-            .deletingLastPathComponent()
-            .appending(path: "__Snapshots__")
+        /// Where one test file's committed references live: `__Snapshots__` beside it.
+        ///
+        /// **Resolved from the *caller's* `#filePath`, not from this file's**, which is what makes one
+        /// harness serve several packages. Each suite's references sit beside the suite that renders
+        /// them, so a package carries its own and `--record` in one cannot rewrite another's. It is
+        /// also still a source-tree path rather than a bundle path, so the simulator process writes
+        /// back into the repository instead of into its own container.
+        ///
+        /// - Parameter testFile: The calling test file's path.
+        /// - Returns: That file's reference directory.
+        static func referenceDirectory(forTestFile testFile: String) -> URL {
+            URL(filePath: testFile)
+                .deletingLastPathComponent()
+                .appending(path: "__Snapshots__")
+        }
 
-        /// Where a failing run leaves what it rendered. Inside `.build/`, which `.gitignore` already
-        /// covers — a failure must not turn up as an untracked file to be committed by accident.
-        static let failureDirectory = URL(filePath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appending(path: ".build/snapshot-failures")
+        /// Where a failing run leaves what it rendered — the calling package's `.build/`, which
+        /// `.gitignore` already covers, so a failure never turns up as an untracked file to be
+        /// committed by accident.
+        ///
+        /// The three components stripped are `Tests/<TestTarget>/<File>.swift`, which is where a
+        /// SwiftPM test file always sits relative to its package root.
+        ///
+        /// - Parameter testFile: The calling test file's path.
+        /// - Returns: That package's failure directory.
+        static func failureDirectory(forTestFile testFile: String) -> URL {
+            URL(filePath: testFile)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appending(path: ".build/snapshot-failures")
+        }
 
         /// Renders `view` in one configuration.
         ///
@@ -145,7 +183,7 @@
         /// component draws no background of its own, and comparing transparent pixels would compare
         /// nothing.
         @MainActor
-        static func render(
+        public static func render(
             _ view: some View,
             appearance: SnapshotAppearance,
             typeSize: SnapshotTypeSize
@@ -194,7 +232,7 @@
         }
 
         /// Compares two bitmaps, or `nil` when they match.
-        static func compare(_ reference: Bitmap, _ rendered: Bitmap) -> SnapshotMismatch? {
+        public static func compare(_ reference: Bitmap, _ rendered: Bitmap) -> SnapshotMismatch? {
             guard reference.width == rendered.width, reference.height == rendered.height else {
                 return .size(
                     reference: (reference.width, reference.height),
@@ -217,7 +255,7 @@
         }
 
         /// PNG bytes for a bitmap.
-        static func pngData(_ bitmap: Bitmap) throws -> Data {
+        public static func pngData(_ bitmap: Bitmap) throws -> Data {
             guard
                 let space = CGColorSpace(name: CGColorSpace.sRGB),
                 let provider = CGDataProvider(data: Data(bitmap.pixels) as CFData),
@@ -254,7 +292,7 @@
         }
 
         /// Reads a PNG back as a normalised bitmap.
-        static func bitmap(fromPNG data: Data) throws -> Bitmap {
+        public static func bitmap(fromPNG data: Data) throws -> Bitmap {
             guard
                 let source = CGImageSourceCreateWithData(data as CFData, nil),
                 let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
@@ -267,7 +305,7 @@
         /// A bitmap marking every differing pixel red and dimming the rest, for a failing run to leave
         /// behind. Comparing two images by eye is the part of a snapshot failure that is otherwise
         /// slow.
-        static func differenceImage(_ reference: Bitmap, _ rendered: Bitmap) -> Bitmap? {
+        public static func differenceImage(_ reference: Bitmap, _ rendered: Bitmap) -> Bitmap? {
             guard reference.width == rendered.width, reference.height == rendered.height else { return nil }
             var pixels = rendered.pixels
             for pixel in stride(from: 0, to: pixels.count, by: 4) {
@@ -300,13 +338,21 @@
     /// on a reference that has never been reviewed would make the gate self-approving. Regenerating is
     /// `scripts/snapshot-tests.sh --record`, which deletes the directory and runs the suite twice for
     /// exactly this reason.
+    /// - Parameters:
+    ///   - name: The reference's base name; the appearance and type size are appended to it.
+    ///   - testFile: Left to default. It resolves the calling suite's own `__Snapshots__` directory,
+    ///     and passing anything else points one package's run at another package's references.
+    ///   - sourceLocation: Left to default, so a mismatch is reported at the call site.
+    ///   - view: What to render.
     @MainActor
-    func assertSnapshots(
+    public func assertSnapshots(
         named name: String,
+        testFile: String = #filePath,
         sourceLocation: SourceLocation = #_sourceLocation,
         @ViewBuilder of view: () -> some View
     ) throws {
         let content = view()
+        let caller = CallSite(testFile: testFile, sourceLocation: sourceLocation)
         for appearance in SnapshotAppearance.allCases {
             for typeSize in SnapshotTypeSize.allCases {
                 try assertSnapshot(
@@ -314,10 +360,18 @@
                     named: "\(name).\(appearance.rawValue).\(typeSize.rawValue)",
                     appearance: appearance,
                     typeSize: typeSize,
-                    sourceLocation: sourceLocation
+                    caller: caller
                 )
             }
         }
+    }
+
+    /// Where the caller is: which file's references to compare against, and where to report a
+    /// mismatch. One value rather than two parameters, because they are one fact and always travel
+    /// together — a call carrying one file's path and another's location is not a call anyone means.
+    private struct CallSite {
+        let testFile: String
+        let sourceLocation: SourceLocation
     }
 
     @MainActor
@@ -326,21 +380,23 @@
         named name: String,
         appearance: SnapshotAppearance,
         typeSize: SnapshotTypeSize,
-        sourceLocation: SourceLocation
+        caller: CallSite
     ) throws {
         let rendered = try Snapshot.render(view, appearance: appearance, typeSize: typeSize)
-        let reference = Snapshot.referenceDirectory.appending(path: "\(name).png")
+        let referenceDirectory = Snapshot.referenceDirectory(forTestFile: caller.testFile)
+        let failureDirectory = Snapshot.failureDirectory(forTestFile: caller.testFile)
+        let reference = referenceDirectory.appending(path: "\(name).png")
 
         guard let referenceData = try? Data(contentsOf: reference) else {
             try FileManager.default.createDirectory(
-                at: Snapshot.referenceDirectory,
+                at: referenceDirectory,
                 withIntermediateDirectories: true
             )
             try Snapshot.pngData(rendered).write(to: reference)
             print("SNAPSHOT RECORDED \(name)")
             Issue.record(
                 "no reference for \(name) — recorded one at \(reference.path). Review it, then re-run.",
-                sourceLocation: sourceLocation
+                sourceLocation: caller.sourceLocation
             )
             return
         }
@@ -354,10 +410,10 @@
             return
         }
 
-        try? FileManager.default.createDirectory(at: Snapshot.failureDirectory, withIntermediateDirectories: true)
-        try? Snapshot.pngData(rendered).write(to: Snapshot.failureDirectory.appending(path: "\(name).rendered.png"))
+        try? FileManager.default.createDirectory(at: failureDirectory, withIntermediateDirectories: true)
+        try? Snapshot.pngData(rendered).write(to: failureDirectory.appending(path: "\(name).rendered.png"))
         if let difference = Snapshot.differenceImage(referenceBitmap, rendered) {
-            try? Snapshot.pngData(difference).write(to: Snapshot.failureDirectory.appending(path: "\(name).diff.png"))
+            try? Snapshot.pngData(difference).write(to: failureDirectory.appending(path: "\(name).diff.png"))
         }
         let detail = "SNAPSHOT MISMATCH \(name): \(mismatch)"
         // Printed as well as recorded: xcodebuild's console output shows a recorded issue as the bare
@@ -365,8 +421,8 @@
         // configurations moved and by how much — never reaches a CI log without this.
         print(detail)
         Issue.record(
-            Comment(rawValue: detail + ". Rendered image and diff: \(Snapshot.failureDirectory.path)"),
-            sourceLocation: sourceLocation
+            Comment(rawValue: detail + ". Rendered image and diff: \(failureDirectory.path)"),
+            sourceLocation: caller.sourceLocation
         )
     }
 

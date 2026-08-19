@@ -81,6 +81,28 @@ let package = Package(
             ],
             resources: [.process("Resources")],
             swiftSettings: settings
-        )
+        ),
+        .testTarget(
+            name: "ExerciseLibraryTests",
+            dependencies: ["ExerciseLibrary"],
+            swiftSettings: settings
+        ),
+        // TR-1.12's references for this module's screens. A separate target from the one above for
+        // the reason DesignSystem's has one: every file in it is `#if os(iOS)`, because a reference
+        // is an iOS rendering and `swift test` runs on macOS. `scripts/snapshot-tests.sh` runs it on
+        // a simulator, and the committed images sit in the target's own directory rather than being
+        // declared as resources — the simulator writes them back into the source tree.
+        //
+        // The harness itself is DesignSystem's `SnapshotTesting` product (T-1.08, moved there by
+        // T-1.10 when this became the second package to need it).
+        .testTarget(
+            name: "ExerciseLibrarySnapshotTests",
+            dependencies: [
+                "ExerciseLibrary",
+                .product(name: "SnapshotTesting", package: "DesignSystem"),
+            ],
+            exclude: ["__Snapshots__"],
+            swiftSettings: settings
+        ),
     ]
 )

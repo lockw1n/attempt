@@ -1,0 +1,319 @@
+import Foundation
+import PowerliftingCore
+import RepositoryInterface
+import Testing
+
+@testable import ExerciseLibrary
+
+/// `FR-1.1.1`/`FR-1.1.2` as claims about *results*: what the list shows, for a search and a set of
+/// filters. Every one of them is answered without rendering a view, which is the property `TR-1.2`'s
+/// pattern exists to buy.
+@MainActor
+@Suite("Exercise list state")
+struct ExerciseListStateTests {
+    // MARK: - Reading
+
+    @Test("A load publishes the catalogue")
+    func loadPublishesCatalogue() async {
+        let state = ExerciseListState(repository: ScriptedExerciseRepository(exercises: Fixtures.catalogue))
+        await state.load()
+        // Grouped order, not alphabetical: `names` reads the groups, and the groups follow
+        // Movement's case order with each one sorted by name inside it.
+        #expect(state.names == ["Back Squat", "Front Squat", "Bench Press", "Sumo Deadlift", "Barbell Row"])
+    }
+
+    @Test("Archived exercises never reach the list (FR-1.1.5)")
+    func archivedExercisesAreExcluded() async {
+        let archived = Fixtures.exercise(name: "Retired Machine Press", movement: .bench, isArchived: true)
+        let state = ExerciseListState(
+            repository: ScriptedExerciseRepository(exercises: Fixtures.catalogue + [archived])
+        )
+        await state.load()
+        #expect(!state.names.contains("Retired Machine Press"))
+        #expect(state.names.count == 5)
+    }
+
+    @Test("Soft-deleted rows are asked for by the repository call, not filtered afterwards")
+    func deletedRowsAreNotRequested() async {
+        let repository = ScriptedExerciseRepository(exercises: Fixtures.catalogue)
+        let state = ExerciseListState(repository: repository)
+        await state.load()
+        #expect(await repository.readsIncludingDeleted == [false])
+    }
+
+    @Test("A failed read is recoverable, and the retry reloads")
+    func failedReadRetries() async {
+        let repository = ScriptedExerciseRepository(
+            exercises: Fixtures.catalogue,
+            readError: .recordNotFound(id: UUID())
+        )
+        let state = ExerciseListState(repository: repository)
+        await state.load()
+        guard case .failed(let diagnostic) = state.phase else {
+            Issue.record("expected a failed phase, got \(state.phase)")
+            return
+        }
+        #expect(!diagnostic.isEmpty)
+        #expect(state.groups.isEmpty)
+
+        await repository.recover()
+        await state.load()
+        #expect(state.names.count == 5)
+    }
+
+    @Test("A catalogue already loaded is not read again")
+    func loadedCatalogueIsNotReRead() async {
+        let repository = ScriptedExerciseRepository(exercises: Fixtures.catalogue)
+        let state = ExerciseListState(repository: repository)
+        await state.load()
+        await state.load()
+        #expect(await repository.reads == 1)
+    }
+
+    // MARK: - Grouping
+
+    @Test("Groups follow Movement's own order, and a movement with nothing in it is dropped")
+    func groupsAreOrderedAndSparse() async {
+        let state = await Fixtures.loaded()
+        #expect(state.groups.map(\.movement) == [.squat, .bench, .deadlift, .row])
+        #expect(state.groups.map { $0.exercises.count } == [2, 1, 1, 1])
+    }
+
+    @Test("Within a group, exercises are ordered by name")
+    func groupsAreSortedByName() async {
+        let state = await Fixtures.loaded()
+        let squats = state.groups.first { $0.movement == .squat }
+        #expect(squats?.exercises.map(\.name) == ["Back Squat", "Front Squat"])
+    }
+
+    // MARK: - Search (FR-1.1.1)
+
+    @Test("Search matches part of a name, ignoring case")
+    func searchIgnoresCase() async {
+        let state = await Fixtures.loaded()
+        state.searchText = "squat"
+        #expect(state.names == ["Back Squat", "Front Squat"])
+    }
+
+    @Test("Search ignores diacritics")
+    func searchIgnoresDiacritics() async {
+        let state = ExerciseListState(
+            repository: ScriptedExerciseRepository(
+                exercises: [Fixtures.exercise(name: "Sumó Deadlift", movement: .deadlift)]
+            )
+        )
+        await state.load()
+        state.searchText = "sumo"
+        #expect(state.names == ["Sumó Deadlift"])
+    }
+
+    @Test("Whitespace is not a search")
+    func whitespaceIsNotASearch() async {
+        let state = await Fixtures.loaded()
+        state.searchText = "   "
+        #expect(state.names.count == 5)
+        #expect(!state.hasNarrowedResults)
+    }
+
+    @Test("A search that matches nothing empties the groups without emptying the catalogue")
+    func unmatchedSearchIsNotAnEmptyCatalogue() async {
+        let state = await Fixtures.loaded()
+        state.searchText = "kettlebell juggling"
+        #expect(state.groups.isEmpty)
+        #expect(!state.isCatalogueEmpty)
+        #expect(state.hasNarrowedResults)
+    }
+
+    // MARK: - Filters (FR-1.1.2)
+
+    @Test("The movement filter narrows to one movement")
+    func movementFilterNarrows() async {
+        let state = await Fixtures.loaded()
+        state.movementFilter = .deadlift
+        #expect(state.names == ["Sumo Deadlift"])
+        #expect(state.groups.map(\.movement) == [.deadlift])
+    }
+
+    @Test("The equipment filter narrows to one implement")
+    func equipmentFilterNarrows() async {
+        let state = await Fixtures.loaded()
+        state.equipmentFilter = .dumbbell
+        #expect(state.names == ["Bench Press"])
+    }
+
+    @Test("The origin filter separates the user's exercises from the seeded ones")
+    func originFilterSeparatesCustomFromBuiltIn() async {
+        let state = await Fixtures.loaded()
+        state.originFilter = .custom
+        #expect(state.names == ["Front Squat"])
+        state.originFilter = .builtIn
+        #expect(state.names == ["Back Squat", "Bench Press", "Sumo Deadlift", "Barbell Row"])
+    }
+
+    @Test("Filters and search compose")
+    func filtersCompose() async {
+        let state = await Fixtures.loaded()
+        state.movementFilter = .squat
+        state.originFilter = .builtIn
+        #expect(state.names == ["Back Squat"])
+        state.searchText = "front"
+        #expect(state.names.isEmpty)
+    }
+
+    @Test("Clearing puts every control back and the whole catalogue with it")
+    func clearingRestoresTheCatalogue() async {
+        let state = await Fixtures.loaded()
+        state.searchText = "squat"
+        state.movementFilter = .squat
+        state.equipmentFilter = .barbell
+        state.originFilter = .builtIn
+        #expect(state.hasNarrowedResults)
+
+        state.clearFilters()
+        #expect(state.searchText.isEmpty)
+        #expect(state.movementFilter == nil)
+        #expect(state.equipmentFilter == nil)
+        #expect(state.originFilter == nil)
+        #expect(!state.hasNarrowedResults)
+        #expect(state.names.count == 5)
+    }
+
+    @Test("Recency is not offered until logging exists (FR-1.1.2)")
+    func recencyFilterIsUnavailable() async {
+        let state = await Fixtures.loaded()
+        #expect(state.isRecencyFilterAvailable == false)
+    }
+
+    // MARK: - The two empties (FR-1.13.1)
+
+    @Test("An empty catalogue is a loaded state, not a missing one")
+    func emptyCatalogueIsALoadedState() async {
+        let state = ExerciseListState(repository: ScriptedExerciseRepository(exercises: []))
+        await state.load()
+        #expect(state.isCatalogueEmpty)
+        #expect(state.groups.isEmpty)
+        #expect(!state.hasNarrowedResults)
+    }
+
+    @Test("A catalogue whose every row is archived is empty")
+    func fullyArchivedCatalogueIsEmpty() async {
+        let state = ExerciseListState(
+            repository: ScriptedExerciseRepository(
+                exercises: [Fixtures.exercise(name: "Retired", movement: .other, isArchived: true)]
+            )
+        )
+        await state.load()
+        #expect(state.isCatalogueEmpty)
+    }
+
+    @Test("Nothing is claimed to be empty before a read has finished")
+    func nothingIsEmptyBeforeLoading() {
+        let state = ExerciseListState(repository: ScriptedExerciseRepository(exercises: []))
+        #expect(state.phase == .idle)
+        #expect(!state.isCatalogueEmpty)
+        #expect(state.groups.isEmpty)
+    }
+}
+
+/// Every exercise the list shows, in order — the one read the assertions above are written against.
+extension ExerciseListState {
+    fileprivate var names: [String] { groups.flatMap { $0.exercises.map(\.name) } }
+}
+
+/// The catalogue these tests browse: five live exercises across four movements, one of them the
+/// user's own, one of them on dumbbells.
+enum Fixtures {
+    static let catalogue: [Exercise] = [
+        exercise(name: "Back Squat", movement: .squat),
+        exercise(name: "Front Squat", movement: .squat, isCustom: true),
+        exercise(name: "Bench Press", movement: .bench, equipment: .dumbbell),
+        exercise(name: "Sumo Deadlift", movement: .deadlift),
+        exercise(name: "Barbell Row", movement: .row),
+    ]
+
+    /// A state over ``catalogue``, already read.
+    static func loaded() async -> ExerciseListState {
+        let state = ExerciseListState(repository: ScriptedExerciseRepository(exercises: catalogue))
+        await state.load()
+        return state
+    }
+
+    /// One exercise. Every field the screen does not read is a fixed value, so a test that starts
+    /// depending on one is visibly doing so.
+    static func exercise(
+        name: String,
+        movement: Movement,
+        equipment: Equipment = .barbell,
+        isCustom: Bool = false,
+        isArchived: Bool = false
+    ) -> Exercise {
+        Exercise(
+            id: UUID(),
+            createdAt: Date(timeIntervalSince1970: 0),
+            updatedAt: Date(timeIntervalSince1970: 0),
+            deletedAt: nil,
+            name: name,
+            movement: movement,
+            parentExerciseID: nil,
+            equipment: equipment,
+            laterality: .bilateral,
+            barType: .standard,
+            implementCount: 1,
+            isCustom: isCustom,
+            isArchived: isArchived,
+            notes: ""
+        )
+    }
+}
+
+/// An ``ExerciseRepository`` that returns what a test hands it, counts its reads and can be made to
+/// fail — the same shape as `Settings`' `ScriptedSettingsRepository`, and for the same reason: the
+/// in-memory fake cannot be made to throw, and a failed read is one of this screen's four states.
+///
+/// It returns the rows **unsorted and unfiltered**, so the ordering and the archive exclusion the
+/// tests assert are the state's own and not the fake's.
+actor ScriptedExerciseRepository: ExerciseRepository {
+    private let rows: [Exercise]
+    private var readError: RepositoryError?
+
+    /// How many reads the state made — the anchor under "a loaded catalogue is not read again".
+    private(set) var reads = 0
+
+    /// The `includingDeleted:` argument of each read, in order. A screen that asked for deleted rows
+    /// would be a screen showing what `G-1.3` soft-deleted.
+    private(set) var readsIncludingDeleted: [Bool] = []
+
+    init(exercises: [Exercise], readError: RepositoryError? = nil) {
+        self.rows = exercises
+        self.readError = readError
+    }
+
+    /// Stops failing, so the next read behaves.
+    func recover() { readError = nil }
+
+    func exercises(includingDeleted: Bool) async throws -> [Exercise] {
+        reads += 1
+        readsIncludingDeleted.append(includingDeleted)
+        if let readError { throw readError }
+        return rows
+    }
+
+    func exercise(id: UUID, includingDeleted: Bool) async throws -> Exercise? {
+        rows.first { $0.id == id }
+    }
+
+    func save(_ exercise: Exercise) async throws {}
+
+    func trainingMax(forExerciseID exerciseID: UUID, on date: Date) async throws -> TrainingMaxEntry? {
+        nil
+    }
+
+    func trainingMaxHistory(
+        forExerciseID exerciseID: UUID,
+        includingDeleted: Bool
+    ) async throws -> [TrainingMaxEntry] {
+        []
+    }
+
+    func saveTrainingMax(_ entry: TrainingMaxEntry) async throws {}
+}

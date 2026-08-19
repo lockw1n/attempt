@@ -1,5 +1,6 @@
 import Persistence
 import RepositoryInterface
+import SeedImport
 
 /// The live objects the app is built over, opened once at launch (`TR-0.1`, `G-2.2`).
 ///
@@ -21,6 +22,9 @@ struct AppDependencies {
     struct Repositories {
         /// The single settings row.
         let settings: any SettingsRepository
+
+        /// The exercise catalogue (`FR-1.1`).
+        let exercises: any ExerciseRepository
     }
 
     /// The opened store's repositories, or why the store could not be opened.
@@ -47,10 +51,33 @@ struct AppDependencies {
     init(location: StoreLocation = .applicationDefault) {
         do {
             let stack = try PersistenceStack(location: location)
-            state = .open(Repositories(settings: stack.settings))
+            state = .open(Repositories(settings: stack.settings, exercises: stack.exercises))
         } catch {
             state = .failed(String(describing: error))
         }
+    }
+
+    /// Puts the bundled catalogue into the store (`TR-0.5.1`, `NFR-1.7`).
+    ///
+    /// **Run on every launch, not on the first one.** The import is a merge: a second run over the
+    /// same catalogue writes nothing, and a run over a newer one writes only the rows that moved —
+    /// see `SeedImporter`. A "have we seeded yet?" flag would be a second source of truth for a
+    /// question the store can already answer, and the one that goes wrong after a restore.
+    ///
+    /// It reads the app bundle and never the network, which is what makes first launch in airplane
+    /// mode a working app rather than an empty one (`NFR-1.7`).
+    ///
+    /// **A failure is swallowed here, and that is the same open item the failed store is.** The
+    /// error it can raise is `invalidPayload` — a packaging fault, not a runtime condition — and
+    /// there is nothing above this to act on it: no requirement or task says what launch does with
+    /// a diagnostic. What the user sees is the exercise list's empty state, which says the built-in
+    /// catalogue has not been loaded. Whichever task takes on the launch-failure surface takes this
+    /// with it.
+    func importSeedCatalogue() async {
+        guard case .open(let repositories) = state else { return }
+        // `_ =` rather than a bare `try?`: the summary is `@discardableResult`, but wrapping it in
+        // `try?` makes an optional this call did not ask for, and an unused one is an error here.
+        _ = try? await SeedImporter(exercises: repositories.exercises).importBundledCatalogue()
     }
 
     /// An empty store that is never written to disk — what a preview wants, and the reason

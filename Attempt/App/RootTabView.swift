@@ -1,5 +1,6 @@
 import AppNavigation
 import DesignSystem
+import ExerciseLibrary
 import Settings
 import SwiftUI
 
@@ -37,8 +38,36 @@ struct RootTabView: View {
         NavigationStack(path: navigation.binding(for: tab)) {
             root(for: tab)
                 .navigationDestination(for: Route.self) { route in
-                    PlaceholderScreen(route: route)
+                    destination(for: route)
                 }
+        }
+    }
+
+    /// What a pushed route shows. Built routes get their screen; the rest still get the placeholder,
+    /// which is deleted case by case as the owning tasks land.
+    @ViewBuilder
+    private func destination(for route: Route) -> some View {
+        switch route {
+        case .exerciseLibrary(.exerciseList):
+            // No title here: a pushed screen names itself, and this one does (`FR-1.1.1`). The tab
+            // roots are the case where the app target owns the name — see ``AppTab/title``.
+            exerciseListRoot
+        default:
+            PlaceholderScreen(route: route)
+        }
+    }
+
+    /// The exercise library's list, or the reason it cannot be shown.
+    ///
+    /// The same shape as ``settingsRoot``: a screen that reads a store cannot be built when the
+    /// store did not open, and the diagnostic is the app's rather than the screen's.
+    @ViewBuilder
+    private var exerciseListRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories):
+            ExerciseListView(repository: repositories.exercises)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
         }
     }
 

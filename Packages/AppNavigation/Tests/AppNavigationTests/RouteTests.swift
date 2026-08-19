@@ -15,6 +15,7 @@ struct RouteTests {
     static let all: [Route] = [
         .dashboard(.recentPersonalRecords),
         .training(.activeSession),
+        .exerciseLibrary(.exerciseList),
         .exerciseLibrary(.exerciseDetail(exerciseID: exerciseID)),
         .history(.session(sessionID: sessionID)),
         .settings(.about),
@@ -47,6 +48,10 @@ struct RouteTests {
         #expect(
             try Self.encodedKeyPath(.training(.activeSession))
                 == ["training", "_0", "activeSession"]
+        )
+        #expect(
+            try Self.encodedKeyPath(.exerciseLibrary(.exerciseList))
+                == ["exerciseLibrary", "_0", "exerciseList"]
         )
         #expect(
             try Self.encodedKeyPath(.exerciseLibrary(.exerciseDetail(exerciseID: Self.exerciseID)))

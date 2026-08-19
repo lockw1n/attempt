@@ -39,14 +39,20 @@ let package = Package(
         .package(path: "../PowerliftingCore")
     ],
     targets: [
-        // TR-0.5.1. `.copy` rather than `.process`, which flattens the directory away: the payload
-        // has to stay at `Resources/exercises.json` inside the bundle, because that is where
-        // `BundledCatalogue` looks for it. Measured — `.process` puts it at the bundle root and
-        // every call throws `PayloadMissing`.
+        // TR-0.5.1. `.process` rather than `.copy`, and the difference is not cosmetic: `.copy`
+        // preserves the directory, so the payload lands at `Resources/exercises.json` INSIDE the
+        // resource bundle — and a bundle carrying a top-level `Resources` directory is what codesign
+        // reads as a malformed macOS-style bundle. Measured when T-1.10 first embedded this package
+        // in the app: `SeedContent_SeedContent.bundle: bundle format unrecognized, invalid, or
+        // unsuitable`, and the app cannot be built at all. No test caught it, and none could —
+        // `swift test` signs nothing.
+        //
+        // `.process` flattens the payload to the bundle root, which is where `BundledCatalogue`
+        // looks for it. The two have to move together.
         .target(
             name: "SeedContent",
             dependencies: ["PowerliftingCore"],
-            resources: [.copy("Resources")],
+            resources: [.process("Resources")],
             swiftSettings: strictSettings
         ),
         // G-6.3. The fixtures are files rather than strings built in Swift, because the failure
