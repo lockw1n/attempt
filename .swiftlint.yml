@@ -23,7 +23,14 @@ excluded:
   - Packages/RemoteContent/.build
   - Packages/RemoteFetch/.build
   - Packages/DesignSystem/.build
+  - Packages/AppNavigation/.build
   - Packages/DebugHarness/.build
+  - Packages/Features/ExerciseLibrary/.build
+  - Packages/Features/Logging/.build
+  - Packages/Features/History/.build
+  - Packages/Features/Dashboard/.build
+  - Packages/Features/Settings/.build
+  - Packages/Localization/.build
 
 disabled_rules:
   - todo
@@ -124,11 +131,153 @@ missing_docs:
 #
 # Two groups with different jobs:
 #
-#   G-7.7   — no hard-coded colours, font sizes or spacing in UI that consumes the design system.
-#             Feature modules do not exist yet; these are written against the path they will
-#             occupy (Packages/Features/...) plus the app target, so they are in place *before*
-#             Phase 1 can break them. DesignSystem itself is excluded — it is where the raw
-#             values are legitimately defined.
+#   G-7.7   — no hard-coded colours, font sizes, text styles or spacing in UI that consumes the
+#             design system. Three paths named: the app target, Packages/Features/... (written
+#             before Phase 1 can break them), and Packages/DesignSystem/Sources/DesignSystem, the
+#             component layer. Only the first of those three is doing any work today — see the
+#             paragraph on unanchored matching below before believing otherwise.
+#
+#             TWO EXEMPTIONS, BOTH INSIDE THE DESIGN SYSTEM and neither of them the whole package.
+#             Both are spelled as `excluded` rather than left out of `included` — see the next
+#             paragraph for why that distinction is the whole ballgame. T-1.02 split DesignSystem
+#             into DesignTokens (the scales — where a colour, a point size and a spacing value are
+#             legitimately written) and DesignSystem (components built from them). Only the first
+#             may hold a raw value, and T-1.03's components are under these rules like any feature.
+#             DesignTokensTests is the second: the token suite's whole job is to assert what a
+#             token resolves to, so it has to be able to write `Font.system(.body, ...)` and name
+#             the construct the rule bans. A rule its own reference test cannot pass is the
+#             unsatisfiable-gate failure TokenUsageFixture.swift exists to catch, one file over.
+#
+#             `included` ON A CUSTOM RULE IS MATCHED AGAINST THE ABSOLUTE PATH, UNANCHORED — and
+#             this repository's root directory is itself named `Attempt`. So `Attempt/.*\.swift`
+#             matches every Swift file in the tree, and these rules have been repo-wide since
+#             T-0.05 rather than scoped to the two paths they name. Measured 2026-08-18 (T-1.02):
+#             the same fixture produces 7 violations under a path containing `Attempt/` and 0 under
+#             one that does not; the first Phase 1 file to trip it was a *doc comment* in the token
+#             target quoting `.padding(12)` as the thing the rule bans. Two consequences worth
+#             knowing before editing anything here. `excluded` is the only filter that reliably
+#             narrows one of these rules, which is why the token exemption is written that way.
+#             And a path added to `included` documents intent without changing behaviour — the
+#             DesignSystem component path below is exactly that, correct today by accident and
+#             correct on purpose if the matching is ever tightened. Tightening it is not free: the
+#             obvious anchor is wrong on CI, where the checkout is `.../work/Attempt/Attempt`.
+#
+#             SO THE Packages/Features FIXTURE DOES NOT PROVE THE Packages/Features FILTER, and it
+#             was described as doing so when T-1.02 landed. Measured by deleting that line from all
+#             four rules: LiteralValuesFixture.swift still produces the identical seven violations,
+#             because the absolute path also contains `Attempt/`. What the fixture does prove is
+#             worth keeping — that all four rules fire on a file laid out like a feature module —
+#             and it becomes the proof of the filter itself the day the matching is tightened or
+#             the repository is checked out under a directory not named Attempt. It is not evidence
+#             that the second `included` line is load-bearing today. It is not.
+#
+#             `no_raw_font_styles` and the second half of `no_color_literals` are about the
+#             bypasses that are not literals at all: `.font(.title)` and `.foregroundStyle(.red)`
+#             carry no number and no `Color(red:)`, so the original three regexes passed them both.
+#             They are exactly how a screen leaves the type scale and the reserved palette (G-7.3)
+#             without anyone noticing. Apple's own style and colour names are enumerated, which is
+#             what lets a token named anything else through — TokenUsageFixture.swift is the proof
+#             that the rules can be satisfied, not only failed.
+#
+#             FOUR MORE BYPASSES WERE MEASURED AND CLOSED after T-1.02's first pass, each of them a
+#             construct a screen will actually reach for and each replaceable by a token that
+#             already exists. A fixture on the Features path produced ZERO violations for all four.
+#               `.font(.system(.title, design: .rounded))`  — no_raw_font_sizes matches only
+#                     `.system(size:`, so naming a *style* inside `.system(` left the scale
+#                     untouched. Now a third alternative of no_raw_font_styles.
+#               `Color(.sRGB, red: 1, ...)`                 — the rule wanted `red:` immediately
+#                     after the paren. A colour space is now allowed to sit in front of it.
+#               `.foregroundStyle(.primary)` / `.secondary` — system colours that were not in the
+#                     enumerated list, standing in for textPrimary/textSecondary. Now listed.
+#               `.frame(maxWidth: 320, minHeight: 44)`      — the rule covered `width:`/`height:`
+#                     alone, and `minHeight: 44` is the standard tap-target literal. All six
+#                     min/max/ideal variants are covered now, in any argument position.
+#             `shadow` earned its place in the verb list at the same time: `.shadow(`'s first label
+#             is always `color:`, so the alternative could never match and `.shadow(color: .black)`
+#             walked through. An optional `color:` prefix fixes it.
+#
+#             `no_magic_corner_radius` CLOSED THE FIFTH GAP (T-1.03), which T-1.02 left open on
+#             purpose: there was no radius token to point a violator at, and a rule nothing can
+#             satisfy is the failure two paragraphs up. `CornerRadius` now exists, so the rule can
+#             be satisfied as well as failed, and both directions have a fixture.
+#
+#             SEVEN SHAPES ARE COVERED, and the count moved from five during T-1.03's review: the
+#             deprecated `.cornerRadius(12)` modifier; `RoundedRectangle(cornerRadius: 14)`;
+#             `.rect(cornerRadius: 16)`, the shorthand that names no type at all;
+#             `UnevenRoundedRectangle(topLeadingRadius:)` and its three siblings, which carry a
+#             radius under a different label; `RoundedRectangle(cornerSize:)`, which carries it
+#             inside a `CGSize`; `RectangleCornerRadii(topLeading:)`, whose labels drop the
+#             `Radius` suffix entirely; and `.roundedRectangle(radius:)`, the ButtonBorderShape
+#             case, which spells it without the word `corner` at all.
+#
+#             THE LAST TWO WERE THE REVIEW FINDING, AND THE LESSON IS THE PROBE'S SHAPE. The first
+#             probe enumerated shapes and confirmed the rule caught them, which measures a regex
+#             against its own author's list. `UnevenRoundedRectangle` has TWO initializers and only
+#             the memberwise one was on that list, so `cornerRadii:` — the form you reach for when
+#             you set all four corners — walked through the rule written for that very type. Probe
+#             a regex with the API's OTHER spellings, not the ones it was built from.
+#
+#             `radius:` is matched only behind `.roundedRectangle(`, on purpose. A bare `radius:`
+#             alternative would swallow `.shadow(radius: 4)` and `.blur(radius: 3)`, neither of
+#             which is a corner, and both would then fail telling the author to reach for a
+#             CornerRadius token.
+#
+#             `no_magic_opacity` (T-1.03 review) is that same argument one scale over. `Opacity`
+#             landed with the components that needed it and nothing gated it, so `.opacity(0.4)`
+#             on a feature screen was the last interaction-state literal left unenforced — the
+#             one dimension in this group with a token and no rule.
+#
+#             THE SCALE IS TWO STEPS AND G-7.1 IS WHY: the requirement gives a 12–16pt band, not a
+#             scale, and a third step inside a five-point band is a difference nobody can see.
+#
+#   G-3.4   — `no_literal_ui_strings`. Copy in a module comes from that module's catalogue, never
+#             from a literal at the call site. It is the only rule here whose `included` list is
+#             LOAD-BEARING RATHER THAN DECORATIVE, and the reason is the paragraph above: the G-7.7
+#             rules name `Attempt/.*`, which matches the whole repository, while this one names two
+#             package paths and no app-target path — so it really does scan only what it says. That
+#             asymmetry is deliberate and it is the rule's whole shape. A literal in the APP TARGET
+#             is correct: `LocalizedStringKey` resolves against `Bundle.main`, which is the app's
+#             own catalogue. The same literal in a package resolves against `Bundle.module`, which
+#             has no such key and renders the key name at the user. Two fixtures hold the two sides
+#             (LiteralCopyFixture on a feature path, ComponentCopyFixture on the component path),
+#             and AppCopyFixture is the guard that the app target stays out — if anyone ever adds an
+#             `Attempt/.*` entry here, every literal in the repository becomes a violation at once.
+#
+#             THE RULE IS AN ENUMERATED LIST OF SWIFTUI ENTRY POINTS, so it is probed the way
+#             no_magic_corner_radius had to be: with the API's other spellings, not the ones the
+#             regex was written from. Each alternative was measured firing on its own fixture line;
+#             `TextEditor` was in the first draft and was removed after measuring, because it takes
+#             no title and so could never fire — a dead alternative reads as coverage.
+#
+#             `verbatim:` BANS A LITERAL, NOT THE INITIALIZER. `Text(verbatim: value)` renders a
+#             stored identifier or an already-formatted number and is legal; `Text(verbatim: "1RM")`
+#             is copy that can never be translated, which is what the ban is for. Hoisting a
+#             literal to a named constant therefore passes, and that is DELIBERATE rather than a
+#             hole: it is how a preview names sample data. Which literals are data is a decision a
+#             regex cannot make, so it is stated in Localization's module doc instead.
+#
+#             AN ALTERNATIVE IS ADMITTED IF IT CAN FIRE. `TextEditor` was measured and removed for
+#             taking no title; ProgressView, DatePicker, ShareLink, ColorPicker and TableColumn were
+#             added after a probe caught them escaping, which is the probe that matters — enumerate
+#             the API, not the regex. `accessibilityInputLabels` needs its own alternative because
+#             its literal sits inside an array.
+#
+#             `accessibilityIdentifier` is deliberately absent while `accessibilityLabel`,
+#             `accessibilityHint` and `accessibilityValue` are present: the first is a UI-test
+#             selector and the other three are read aloud to a user. `Image(systemName:)` and
+#             `Image("asset")` are absent for the same reason — a symbol name is an identifier.
+#
+#             THE LAST ALTERNATIVE IS NOT ABOUT LITERALS AT ALL, and it is the one that catches the
+#             failure this whole layer exists to prevent: `String(localized: "k")` and
+#             `LocalizedStringResource("k")` default to `Bundle.main`, so in a package they look up
+#             a key the app's catalogue does not have and render the key name at the user. It fires
+#             only when the call CLOSES after the literal, so the same call carrying `bundle:` — the
+#             correct form, which the module's string enum uses — passes.
+#
+#             `match_kinds` does the same job it does for the import bans: this rule gets explained
+#             in prose that quotes `Text("Units")` as the thing it forbids, and without the filter it
+#             would fire on the file explaining it. CatalogCopyFixture.swift carries exactly that
+#             doc comment and is the guard.
 #
 #   NFR-0.2 — `no_imports_in_core` (T-0.14) bans *every* import under
 #             Packages/PowerliftingCore/Sources/, not a list of named modules. It exists because
@@ -181,11 +330,15 @@ missing_docs:
 custom_rules:
   no_color_literals:
     name: "Hard-coded colour"
-    regex: '(#colorLiteral\(|\bUIColor\(\s*(red|white|hue):|\bNSColor\(\s*(red|white|hue):|\bColor\(\s*(red|white|hue):)'
+    regex: '(#colorLiteral\(|\b(UIColor|NSColor|Color)\(\s*(\.\w+\s*,\s*)?(red|white|hue):|\bColor\.(accentColor|indigo|primary|secondary|orange|yellow|purple|brown|green|black|white|mint|teal|cyan|blue|pink|gray|grey|red)\b|\.(foregroundStyle|foregroundColor|background|accentColor|shadow|stroke|border|tint|fill)\(\s*(color:\s*)?\.(accentColor|indigo|primary|secondary|orange|yellow|purple|brown|green|black|white|mint|teal|cyan|blue|pink|gray|grey|red)\b)'
     included:
       - 'Attempt/.*\.swift'
       - 'Packages/Features/.*\.swift'
-    message: "G-7.7: use a DesignSystem colour token, not a literal colour."
+      - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
+    excluded:
+      - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
+      - 'Packages/DesignSystem/Tests/DesignTokensTests/.*\.swift'
+    message: "G-7.7/G-7.3: use a DesignSystem colour token, not a literal or a system colour."
     severity: error
 
   no_raw_font_sizes:
@@ -194,16 +347,79 @@ custom_rules:
     included:
       - 'Attempt/.*\.swift'
       - 'Packages/Features/.*\.swift'
+      - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
+    excluded:
+      - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
+      - 'Packages/DesignSystem/Tests/DesignTokensTests/.*\.swift'
     message: "G-7.7: use a DesignSystem typography token, not a raw point size."
+    severity: error
+
+  no_raw_font_styles:
+    name: "Raw Dynamic Type style"
+    regex: '(\.font\(\s*\.(largeTitle|subheadline|headline|caption2|callout|footnote|caption|title3|title2|title|body)\b|\bFont\.(largeTitle|subheadline|headline|caption2|callout|footnote|caption|title3|title2|title|body)\b|\.system\(\s*\.(largeTitle|subheadline|headline|caption2|callout|footnote|caption|title3|title2|title|body)\b)'
+    included:
+      - 'Attempt/.*\.swift'
+      - 'Packages/Features/.*\.swift'
+      - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
+    excluded:
+      - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
+      - 'Packages/DesignSystem/Tests/DesignTokensTests/.*\.swift'
+    message: "G-7.6: use a Typography role, not a bare text style — the role carries the weight and the digit treatment too."
     severity: error
 
   no_magic_spacing:
     name: "Magic spacing value"
-    regex: '(\.padding\(\s*-?\d+(\.\d+)?\s*\)|\.padding\(\s*\.\w+\s*,\s*-?\d+(\.\d+)?\s*\)|\bspacing:\s*-?\d+(\.\d+)?|\.frame\(\s*(width|height):\s*-?\d+(\.\d+)?)'
+    regex: '(\.padding\(\s*-?\d+(\.\d+)?\s*\)|\.padding\(\s*\.\w+\s*,\s*-?\d+(\.\d+)?\s*\)|\bspacing:\s*-?\d+(\.\d+)?|\.frame\([^)]*\b(width|height|minWidth|maxWidth|idealWidth|minHeight|maxHeight|idealHeight):\s*-?\d+(\.\d+)?)'
     included:
       - 'Attempt/.*\.swift'
       - 'Packages/Features/.*\.swift'
+      - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
+    excluded:
+      - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
+      - 'Packages/DesignSystem/Tests/DesignTokensTests/.*\.swift'
     message: "G-7.7: use a DesignSystem spacing token, not a numeric literal."
+    severity: error
+
+  no_magic_corner_radius:
+    name: "Hard-coded corner radius"
+    regex: '(\.cornerRadius\(\s*-?\d|\bcornerRadius:\s*-?\d|\b(topLeading|bottomLeading|topTrailing|bottomTrailing)(Radius)?:\s*-?\d|\bcornerSize:\s*CGSize\(\s*width:\s*-?\d|\.roundedRectangle\(\s*radius:\s*-?\d)'
+    included:
+      - 'Attempt/.*\.swift'
+      - 'Packages/Features/.*\.swift'
+      - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
+    excluded:
+      - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
+      - 'Packages/DesignSystem/Tests/DesignTokensTests/.*\.swift'
+    message: "G-7.1/G-7.7: use a CornerRadius token, not a literal radius."
+    severity: error
+
+  no_magic_opacity:
+    name: "Hard-coded opacity"
+    regex: '(\.opacity\(\s*-?\d|\bopacity:\s*-?\d)'
+    included:
+      - 'Attempt/.*\.swift'
+      - 'Packages/Features/.*\.swift'
+      - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
+    excluded:
+      - 'Packages/DesignSystem/Sources/DesignTokens/.*\.swift'
+      - 'Packages/DesignSystem/Tests/DesignTokensTests/.*\.swift'
+    message: "G-7.7: use an Opacity token, not a numeric literal."
+    severity: error
+
+  no_literal_ui_strings:
+    name: "User-visible string literal"
+    regex: '(\b(Text|Button|Label|Toggle|TextField|SecureField|Link|Menu|Picker|Stepper|Section|DisclosureGroup|NavigationLink|ContentUnavailableView|LabeledContent|GroupBox|Tab|ProgressView|DatePicker|ShareLink|ColorPicker|TableColumn)\(\s*"|\.(navigationTitle|navigationSubtitle|navigationBarTitle|alert|confirmationDialog|help|badge|accessibilityLabel|accessibilityHint|accessibilityValue)\(\s*"|\.accessibilityInputLabels\(\s*\[\s*"|\bverbatim:\s*"|\b(String\(localized:|LocalizedStringResource\()\s*"[^"]*"\s*\)|\b(title|titleKey|label|labelKey|message|prompt|placeholder|description|header|footer|subtitle|caption|hint):\s*")'
+    match_kinds:
+      - identifier
+      - typeidentifier
+      - keyword
+      - argument
+      - parameter
+      - string
+    included:
+      - 'Packages/Features/.*\.swift'
+      - 'Packages/DesignSystem/Sources/DesignSystem/.*\.swift'
+    message: "G-3.4: copy comes from the module's catalogue — add a key and reach it through the module's string enum, not a literal."
     severity: error
 
   no_swiftdata_outside_persistence:

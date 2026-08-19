@@ -2,8 +2,12 @@
 #
 # Doc-comment to code ratio for the local Swift packages (G-6.3).
 #
-# Counts `///` lines against code lines across every Packages/*/Sources tree and fails when the
+# Counts `///` lines against code lines across every package's Sources tree and fails when the
 # aggregate ratio exceeds the maximum. Keeps the doc-comment trim from growing back.
+#
+# Two globs, one per level: the feature modules (TR-1.3) sit at Packages/Features/<Name>/, a level
+# deeper than every other package, so `Packages/*/Sources` alone would leave the whole of Phase 1's
+# feature code outside the gate.
 #
 #   scripts/check-doc-ratio.sh                    # the gate: aggregate max 1.5
 #   scripts/check-doc-ratio.sh --max 1.2          # tighter, for a local experiment
@@ -79,9 +83,12 @@ def count(path):
     return doc, code
 
 
-files = sorted(pathlib.Path(".").glob("Packages/*/Sources/**/*.swift"))
+root = pathlib.Path(".")
+files = sorted(
+    set(root.glob("Packages/*/Sources/**/*.swift")) | set(root.glob("Packages/*/*/Sources/**/*.swift"))
+)
 if not files:
-    print("check-doc-ratio.sh: no sources found under Packages/*/Sources", file=sys.stderr)
+    print("check-doc-ratio.sh: no sources found under Packages/**/Sources", file=sys.stderr)
     sys.exit(1)
 
 total_doc = total_code = 0
@@ -101,7 +108,7 @@ if per_file:
 ratio = total_doc / total_code if total_code else 0.0
 verdict = "PASS" if ratio <= maximum else "FAIL"
 print(
-    f"Packages/*/Sources  doc={total_doc}  code={total_code}  "
+    f"Packages/**/Sources  doc={total_doc}  code={total_code}  "
     f"ratio={ratio:.2f}  (max {maximum:.2f})  {verdict}"
 )
 

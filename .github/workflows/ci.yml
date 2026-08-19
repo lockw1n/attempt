@@ -97,7 +97,9 @@ jobs:
         run: ./scripts/coverage.sh --self-test
 
       # G-6.4: every package built and tested with warnings-as-errors, discovered by glob rather
-      # than listed — a new package under Packages/ is covered the moment it exists. This also
+      # than listed. The script globs two levels (Packages/*/ and Packages/*/*/, the second for
+      # the feature modules), so a package at either depth is covered the moment it exists — one
+      # nested deeper than that is not, and would need a third glob. This also
       # subsumes the old explicit "Build DesignSystem" step: a package with no test target is
       # otherwise never compiled, so its warnings would be enforced on nobody.
       # PowerliftingCore's suite runs here as well as under coverage.sh above; the overlap is
@@ -138,6 +140,47 @@ jobs:
       # Moving it is T-0.07's call, not a drive-by.
       - name: Audit @unchecked Sendable
         run: ./scripts/audit-unchecked-sendable.sh
+
+  # TR-1.12 (T-1.08): the DesignSystem components rendered and compared against committed
+  # references, in light and dark at the default and `accessibility3` Dynamic Type sizes.
+  #
+  # ITS OWN JOB, NOT A STEP IN `test`, for two reasons that are both structural rather than a
+  # preference. The references are iOS renderings, so this needs a simulator, and `test` runs the
+  # packages through SwiftPM on macOS precisely so a domain suite never waits for one. And NFR-0.1
+  # holds the core suite under 5 seconds: a simulator boot inside that job would make the number
+  # meaningless without making anything faster.
+  #
+  # The script — not a bare `xcodebuild` — because the snapshot target is `#if os(iOS)` throughout
+  # and therefore reports *no tests at all* on any other platform, or under a `-only-testing:` typo.
+  # That is a silent pass. scripts/snapshot-tests.sh asserts that every committed reference was
+  # actually compared, which catches that case and the narrower one a test count cannot see: a
+  # single suite dropping out of the run while its images stay in the tree.
+  #
+  # NOT YET A REQUIRED CHECK: GitHub only offers a job for branch protection once it has reported
+  # at least once, so this one has to be added to the rule by hand after its first run. Until then
+  # a red run here does not block a merge. Renaming this job silently drops it from the rule again.
+  snapshots:
+    name: Component snapshots
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Render and compare component snapshots
+        run: ./scripts/snapshot-tests.sh
+
+      # A snapshot failure is an image. The script leaves the rendering and a diff in the runner's
+      # own .build, so without this step the log carries the pixel counts and the two pictures that
+      # would explain them exist nowhere anybody can reach.
+      - name: Upload rendered snapshots and diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-failures
+          path: Packages/DesignSystem/.build/snapshot-failures/
+          if-no-files-found: ignore
 
   # TR-0.1.1 / NFR-0.2 / DOD-0.2: the mechanical proof that no *Apple-platform* framework leaked
   # into the domain layer. An `import SwiftUI` or `import SwiftData` in PowerliftingCore compiles
@@ -247,6 +290,12 @@ jobs:
       - name: Verify lint rules fire
         run: ./scripts/verify-lint-rules.sh
 
+      # G-3.4's app-target half. Every feature module proves the same thing in its own test target;
+      # Attempt.xcodeproj has none, and `no_literal_ui_strings` exempts the app target on purpose,
+      # so a mistyped key there is caught by nothing else and ships as the key name.
+      - name: Check app-target strings
+        run: ./scripts/check-app-strings.sh
+
       # TR-0.6.2's formatter half. `swift format` ships with the toolchain, so there is nothing to
       # install. Config is `.swift-format`: 4-space indent and a 120-column limit, matching
       # `.editorconfig` and SwiftLint's `line_length` rather than the tool's own defaults.
@@ -254,7 +303,7 @@ jobs:
         run: swift format lint --strict --recursive Attempt Packages
 
       # Holds the doc-comment trim in place: `///` lines against code lines across every
-      # Packages/*/Sources tree, aggregated. Deliberately not per-file — that would measure how
+      # Packages/**/Sources tree, aggregated. Deliberately not per-file — that would measure how
       # declarative a file is rather than how wordy it is, and an eight-case enum cannot document
       # what its cases mean inside a 1:1 budget. Proven to fire against a 300-line regression.
       - name: Check doc-comment ratio

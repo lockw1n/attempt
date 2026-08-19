@@ -1,27 +1,36 @@
+import AppNavigation
 import SwiftUI
 
 /// Composition root (`TR-0.1`).
 ///
 /// This target owns the entry point and dependency wiring, nothing else. Domain logic lives in
-/// `PowerliftingCore`, storage in `Persistence`, presentation tokens in `DesignSystem` — all
-/// under `Packages/`.
+/// `PowerliftingCore`, storage in `Persistence`, presentation tokens in `DesignSystem`, the
+/// navigation model in `AppNavigation` — all under `Packages/`.
 ///
-/// The packages are not linked here yet: wiring them in is `T-0.03`'s job, once XcodeGen owns
-/// the project file and the `.pbxproj` stops being hand-edited.
-///
-/// `OUT-0.1` puts every screen beyond a throwaway debug harness out of scope for Phase 0, so the
-/// scene below is deliberately a placeholder — and it stays one. `DOD-0.3`'s harness is a
-/// command-line target under `Packages/DebugHarness`, not a screen: a debug screen would be the
-/// one screen Phase 0 ships, and it would be the thing Phase 1 built on. This target cannot link
-/// that package; its manifest is where the exclusion is arranged.
+/// The wiring it does is the store (``AppDependencies``) and `TR-1.1`'s restoration loop: read the
+/// stored position before the first frame, and write it back whenever it changes. Both halves of the
+/// loop belong here rather than in `RootTabView`, because a view that persisted its own navigation
+/// would persist it once per place it was used.
 @main
 struct AttemptApp: App {
+    @State private var navigation: NavigationState
+    private let store: any NavigationStateStore
+    private let dependencies = AppDependencies()
+
+    init() {
+        let store = UserDefaultsNavigationStateStore()
+        self.store = store
+        _navigation = State(initialValue: NavigationState(snapshot: store.load() ?? .initial))
+    }
+
     var body: some Scene {
         WindowGroup {
-            // Intentionally blank. `OUT-0.1` ships no UI in Phase 0, so an empty scene is the
-            // honest representation of that — a placeholder screen would be a screen, and its
-            // strings would need localizing (`G-3.4`) for something built to be deleted.
-            EmptyView()
+            RootTabView(navigation: navigation, dependencies: dependencies)
+                // On the snapshot rather than on the tab or a path: one observation covers a tab
+                // switch, a push and a back-swipe, and it cannot be the wrong one of the four.
+                .onChange(of: navigation.snapshot) { _, snapshot in
+                    store.save(snapshot)
+                }
         }
     }
 }

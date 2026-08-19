@@ -38,7 +38,21 @@ Packages/
 ├── SeedImport/              Merges the seed catalogue into the exercise repository
 ├── RemoteContent/           formulas.json/flags.json's schema, validator and generator, plus SCHEMA.md
 ├── RemoteFetch/             Fetches, caches and falls back for the three published payloads
-├── DesignSystem/            Tokens, components, theme (empty until Phase 1)
+├── DesignSystem/            Two targets: DesignTokens (spacing, type, colour scales) and
+│                            DesignSystem (cards, metric tiles, buttons, delta indicator, the five
+│                            shared empty/loading/error/offline/insufficient-data states — built
+│                            from the tokens; also owns the copy those five states share)
+├── AppNavigation/           The typed navigation model: tabs, one namespaced Route enum, and a
+│                            serializable snapshot for restoration. No views, no user-visible strings.
+├── Localization/            The key convention every module's catalogue follows, plus
+│                            locale-explicit FormatStyles for numbers, weights, dates and percentages.
+├── Features/                Feature modules, one level deeper — the level is load-bearing:
+│                            .swiftlint.yml scopes the no-raw-values rules to this path.
+│   ├── ExerciseLibrary/     The exercise catalogue
+│   ├── Logging/             The active session and everything logged into it
+│   ├── History/             Past training: sessions, per-exercise history, calendar, search
+│   ├── Dashboard/           e1RM tiles, the recent-PR feed, the start-workout action
+│   └── Settings/            Preferences, data portability, sync
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -59,6 +73,10 @@ must not be shaped like a storage record. `RemoteFetch` sits above both
 `RemoteContent` and `SeedContent`, for the same reason `SeedImport` sits above
 `SeedContent` and `RepositoryInterface` — it is the one place that names both,
 because the bundled leg of `exercises.json`'s fallback lives in `SeedContent`.
+The five packages under `Packages/Features/` sit at the top: each depends on
+`PowerliftingCore`, `RepositoryInterface`, `DesignSystem`, `AppNavigation` and
+`Localization`, and never on `Persistence` — a feature reaches storage through
+the protocols alone.
 Two constraints are load-bearing rather than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
@@ -189,10 +207,11 @@ swift run --package-path Packages/DebugHarness attempt-harness
 It publishes an executable product only, so the app target cannot link it — that is the whole of
 how it stays out of release builds, checked by `scripts/check-harness-excluded.sh`.
 
-`PowerliftingCore`, `Persistence` and `DesignSystem` are linked into the app
-target as local package references, so `xcodebuild` builds them alongside the app.
-`RepositoryInterface` arrives transitively through `Persistence`; the composition
-root takes a direct product dependency when app code first imports it.
+`PowerliftingCore`, `Persistence`, `DesignSystem`, `AppNavigation` and the five feature modules
+under `Packages/Features/` are linked into the app target as local package references, so
+`xcodebuild` builds them alongside the app. `RepositoryInterface` arrives transitively
+through `Persistence`; the composition root takes a direct product dependency when app
+code first imports it.
 
 A package declaring no `platforms:` clause is compiled against the SDK's own
 deployment floor, which is old enough to refuse `async` and `Identifiable`. That
@@ -214,8 +233,10 @@ path to work on one in isolation (`./scripts/build-packages.sh Packages/Powerlif
 Note that a bare `swift build` does **not** fail on warnings — that gate lives in
 the script, not in the manifests.
 
-Every package except `DesignSystem` has a Swift Testing target (`@Test` / `#expect`, not
-XCTest). The app target has no tests; it is a composition root with an empty scene.
+Every package outside `Packages/Features/` has a Swift Testing target (`@Test` / `#expect`, not
+XCTest); the feature modules get theirs as their first screens land. The app target has no
+tests; it is a composition root, and the Xcode project has no test target for it (Q-1.3) — anything
+that needs a unit test lives under `Packages/` instead.
 
 ```bash
 swift test --package-path Packages/PowerliftingCore
@@ -226,6 +247,9 @@ swift test --package-path Packages/SeedContent
 swift test --package-path Packages/SeedImport
 swift test --package-path Packages/RemoteContent
 swift test --package-path Packages/RemoteFetch
+swift test --package-path Packages/DesignSystem
+swift test --package-path Packages/AppNavigation
+swift test --package-path Packages/Localization
 swift test --package-path Packages/DebugHarness
 ```
 
@@ -256,6 +280,27 @@ reading on every run, and `--self-test` proves it can fail:
 It covers `PowerliftingCore` only, and names it rather than globbing — a package
 with a real store behind its tests is expected to be slower. The script's header
 says what a failure here actually means.
+
+The `DesignSystem` components are held to committed reference images, rendered
+in light and dark at the default and `accessibility3` Dynamic Type sizes. That
+suite renders on the iOS simulator rather than through SwiftPM, so it runs on its
+own rather than under `build-packages.sh`:
+
+```bash
+./scripts/snapshot-tests.sh
+```
+
+After an intended design change, regenerating the whole set is one command — it
+deletes the references, records them again and verifies what it wrote:
+
+```bash
+./scripts/snapshot-tests.sh --record
+```
+
+The references are committed, beside the tests in
+`Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__`. A failing
+run leaves what it rendered, and a diff image, in
+`Packages/DesignSystem/.build/snapshot-failures/`.
 
 Three CI assertions that also run locally — the app target's Swift build
 settings, the `@unchecked Sendable` justifications, and the runtime gate's own
@@ -306,8 +351,11 @@ a refactor.
 - Deletion is soft (`deletedAt`); hard deletion happens only through an explicit
   purge routine.
 
-**Strings.** User-facing text goes through `String(localized:)` and lands in
-`Resources/Localizable.xcstrings`.
+**Strings.** User-facing text goes through a per-module `LocalizedStringResource` accessor enum,
+never a literal at the call site — enforced by the `no_literal_ui_strings` lint rule. Each feature
+module and `DesignSystem` owns a catalogue at `Resources/en.lproj/Localizable.strings`; the app
+target's own copy lives in `Attempt/Resources/Localizable.xcstrings`. See the `Localization`
+package's module doc for the key convention and formatting helpers.
 
 **Commits carry requirement IDs.** Lead the subject with the requirement the work
 traces to, then a colon:
@@ -414,9 +462,11 @@ dependency analysis".
 | **Package tests** | `PowerliftingCore` with coverage, then every package built and tested with warnings as errors (discovered by glob), the runtime gate and its proof, the warnings-gate proof, the `@unchecked Sendable` audit |
 | **Linux core build** | builds and tests `PowerliftingCore` and `RepositoryInterface` on `ubuntu-latest` in a Swift container |
 | **SwiftLint** | lint, lint-rule verification, format check, doc-ratio and doc-units gates |
+| **Component snapshots** | renders every `DesignSystem` component and state and compares it against a committed reference, light/dark × default/`accessibility3` |
 
-All four are **required checks on `main`**, so a red run blocks the merge. The
-whole workflow takes about a minute.
+The first four are **required checks on `main`**, so a red run blocks the
+merge; the whole workflow takes about a minute. **Component snapshots** is
+newer and not yet in the branch protection rule — see the note below.
 
 The `linux` job covers `PowerliftingCore` and `RepositoryInterface` —
 `Persistence` and `DesignSystem` are Apple-only by design. It is not just a second

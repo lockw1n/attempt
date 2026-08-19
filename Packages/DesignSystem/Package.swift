@@ -5,31 +5,81 @@ import PackageDescription
 // G-6.4 (T-0.06). Same three settings as PowerliftingCore — see the commented block in
 // Packages/PowerliftingCore/Package.swift for what each one buys.
 //
-// `.defaultIsolation(nil)` here is the conservative choice for an empty package, not a considered
-// verdict on a UI module: it matches SwiftPM's own default and the other two packages, so nothing
-// is silently decided before there is code. When the tokens and components land in Phase 1
-// (TR-1.4), flipping this package — and only this package — to
-// `.defaultIsolation(MainActor.self)` is a legitimate call; SwiftUI views are MainActor-isolated
-// anyway, and default isolation is a per-target setting for exactly this reason.
-let strictSettings: [SwiftSetting] = [
+// `.defaultIsolation(nil)` stays for the token layer: tokens are pure values with no view code in
+// them, and MainActor-isolating them would force every test that reads a palette entry into an actor
+// hop for nothing.
+let tokenSettings: [SwiftSetting] = [
     .swiftLanguageMode(.v6),
     .defaultIsolation(nil),
 ]
 
-// TR-0.1: design tokens, components and theme.
-// Deliberately empty in Phase 0 — G-7 is a constraint on this package, not a Phase 0 deliverable.
-// The tokens arrive in Phase 1 (TR-1.4). See docs/phase-0/coverage.md → "Known gaps" §1.
+// The component layer takes the opposite default, which is what default isolation being a per-target
+// setting is for. Every type here is a `View` or a `ButtonStyle`, both of which SwiftUI already
+// requires on the main actor, so `nil` would mean writing `@MainActor` on each one and getting a
+// diagnostic on whichever one was forgotten.
+//
+// The exception is the data-shaped enums a component's token choices are exposed through —
+// `CardElevation`, `DeltaDirection`, `PrimaryActionWidth`. Those are marked `nonisolated` at the
+// declaration: a MainActor-isolated `static var allCases` cannot satisfy `CaseIterable`, whose
+// requirement is not, and a test asserting on a colour mapping should not have to hop to the main
+// actor to read one.
+let componentSettings: [SwiftSetting] = [
+    .swiftLanguageMode(.v6),
+    .defaultIsolation(MainActor.self),
+]
+
+// TR-1.4: design tokens, components and theme.
+//
+// TWO TARGETS ON PURPOSE. `DesignTokens` holds the spacing, type and colour scales and no views;
+// `DesignSystem` holds the components built from them (T-1.03) and re-exports the tokens, so a
+// feature that only needs a palette entry — a store, a formatter, a preview fixture — can import
+// the scales without the component surface coming with them.
+// G-3.4: the component target carries a catalogue, the token target does not — a spacing scale has
+// no copy in it. What is in it is only the copy that is the same on every screen it appears on —
+// the state placeholders' "Try again", the offline explanation, the spinner's VoiceOver label.
+// Everything a screen could have worded itself still arrives as a `Text` the caller built; the line
+// between the two is drawn in `DesignSystemStrings`.
 let package = Package(
     name: "DesignSystem",
+    defaultLocalization: "en",
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
-        .library(name: "DesignSystem", targets: ["DesignSystem"])
+        .library(name: "DesignTokens", targets: ["DesignTokens"]),
+        .library(name: "DesignSystem", targets: ["DesignSystem"]),
     ],
     dependencies: [],
     targets: [
         .target(
+            name: "DesignTokens",
+            swiftSettings: tokenSettings
+        ),
+        .target(
             name: "DesignSystem",
-            swiftSettings: strictSettings
-        )
+            dependencies: ["DesignTokens"],
+            resources: [.process("Resources")],
+            swiftSettings: componentSettings
+        ),
+        .testTarget(
+            name: "DesignTokensTests",
+            dependencies: ["DesignTokens"],
+            swiftSettings: tokenSettings
+        ),
+        .testTarget(
+            name: "DesignSystemTests",
+            dependencies: ["DesignSystem"],
+            swiftSettings: componentSettings
+        ),
+        // TR-1.12's snapshots. A separate target from DesignSystemTests because it runs somewhere
+        // else: every file in it is `#if os(iOS)`, since the references are iOS renderings and
+        // `swift test` runs on macOS. `scripts/snapshot-tests.sh` is the only thing that executes
+        // it, on a simulator, in its own CI job — which is also why the committed references sit in
+        // this target's own directory rather than being declared as resources: the simulator writes
+        // them back into the source tree, which a bundled resource could not be.
+        .testTarget(
+            name: "DesignSystemSnapshotTests",
+            dependencies: ["DesignSystem"],
+            exclude: ["__Snapshots__"],
+            swiftSettings: componentSettings
+        ),
     ]
 )

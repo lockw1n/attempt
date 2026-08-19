@@ -17,7 +17,11 @@
 # Two directions are checked:
 #
 #   POSITIVE  each fixture under scripts/lint-fixtures/ must trigger its rule.
-#   NEGATIVE  files that merely *mention* a banned construct in prose must NOT trigger it.
+#   NEGATIVE  a file that does NOT violate a rule must not trigger it — prose that merely mentions
+#             a banned construct, and (since T-1.02) a screen written against the design tokens.
+#             The second kind guards the failure a positive fixture cannot see: a regex tightened
+#             until nothing legal passes reads as a working gate right up to the point where every
+#             screen is in violation and the tokens are unusable.
 #             PowerliftingCore.swift documents the rules it is subject to and names SwiftData and
 #             Foundation while doing so, so those bans rely on `match_kinds` to skip `comment`
 #             syntax. Without it they would fire on the very file explaining them.
@@ -32,6 +36,20 @@
 #             cannot reach it and PowerliftingCore.swift alone would be a guard that cannot fail.
 #             BlockCommentImportFixture.swift closes that: a block comment *can* start a line with
 #             `import`, and dropping `match_kinds` makes the rule fire on it. Measured, not assumed.
+#
+# READ THIS BEFORE TRUSTING THE Packages/Features ENTRIES BELOW. They prove that all four G-7.7
+# rules fire on a file shaped like a feature module. They do NOT prove the `Packages/Features/.*`
+# path filter, which is what they were described as proving when T-1.02 added them: deleting that
+# filter from all four rules leaves LiteralValuesFixture.swift producing the identical violations,
+# because a custom rule's `included` is matched unanchored against the absolute path and this
+# repository's root directory is itself named `Attempt`. Every G-7.7 rule is therefore repo-wide.
+# The measurement and its consequences are in .swiftlint.yml; do not restate them here.
+#
+# no_literal_ui_strings (T-1.14) is the exception to that paragraph, and its entries below DO prove
+# their paths: it names no `Attempt/` path at all, so nothing matches the whole tree by accident.
+# Its two positive fixtures sit on the two paths it scans, and AppCopyFixture.swift — a file full of
+# literals that are correct because the app target resolves against Bundle.main — is the guard that
+# it does not reach a third.
 
 set -euo pipefail
 
@@ -47,6 +65,14 @@ POSITIVE=(
     "scripts/lint-fixtures/Attempt/ColourLiteralFixture.swift:no_color_literals"
     "scripts/lint-fixtures/Attempt/FontSizeFixture.swift:no_raw_font_sizes"
     "scripts/lint-fixtures/Attempt/SpacingFixture.swift:no_magic_spacing"
+    "scripts/lint-fixtures/Packages/Features/LiteralValuesFixture.swift:no_color_literals"
+    "scripts/lint-fixtures/Packages/Features/LiteralValuesFixture.swift:no_raw_font_sizes"
+    "scripts/lint-fixtures/Packages/Features/LiteralValuesFixture.swift:no_raw_font_styles"
+    "scripts/lint-fixtures/Packages/Features/LiteralValuesFixture.swift:no_magic_spacing"
+    "scripts/lint-fixtures/Packages/Features/LiteralValuesFixture.swift:no_magic_corner_radius"
+    "scripts/lint-fixtures/Packages/Features/LiteralValuesFixture.swift:no_magic_opacity"
+    "scripts/lint-fixtures/Packages/Features/LiteralCopyFixture.swift:no_literal_ui_strings"
+    "scripts/lint-fixtures/Packages/DesignSystem/Sources/DesignSystem/ComponentCopyFixture.swift:no_literal_ui_strings"
     "scripts/lint-fixtures/SwiftDataOutsidePersistenceFixture.swift:no_swiftdata_outside_persistence"
     "scripts/lint-fixtures/Packages/PowerliftingCore/FoundationFixture.swift:no_foundation_in_core"
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/PlatformImportFixture.swift:no_imports_in_core"
@@ -59,8 +85,22 @@ POSITIVE=(
     "scripts/lint-fixtures/Packages/Persistence/Sources/BareSaveFixture.swift:no_bare_save_in_persistence"
 )
 
-# file : rule identifier that must NOT appear (the file mentions the import in a comment)
+# file : rule identifier that must NOT appear. Two kinds of guard live here, and they fail for
+# different reasons — a rule firing on prose is a false positive, a rule firing on a token is a rule
+# nothing can satisfy.
 NEGATIVE=(
+    "scripts/lint-fixtures/Packages/Features/TokenUsageFixture.swift:no_color_literals"
+    "scripts/lint-fixtures/Packages/Features/TokenUsageFixture.swift:no_raw_font_sizes"
+    "scripts/lint-fixtures/Packages/Features/TokenUsageFixture.swift:no_raw_font_styles"
+    "scripts/lint-fixtures/Packages/Features/TokenUsageFixture.swift:no_magic_spacing"
+    "scripts/lint-fixtures/Packages/Features/TokenUsageFixture.swift:no_magic_corner_radius"
+    "scripts/lint-fixtures/Packages/Features/TokenUsageFixture.swift:no_magic_opacity"
+    "scripts/lint-fixtures/Packages/Features/CatalogCopyFixture.swift:no_literal_ui_strings"
+    "scripts/lint-fixtures/Attempt/AppCopyFixture.swift:no_literal_ui_strings"
+
+    "Packages/DesignSystem/Sources/DesignSystem/Card.swift:no_magic_corner_radius"
+    "Packages/DesignSystem/Sources/DesignSystem/PrimaryActionButtonStyle.swift:no_magic_opacity"
+
     "Packages/PowerliftingCore/Sources/PowerliftingCore/PowerliftingCore.swift:no_foundation_in_core"
     "Packages/PowerliftingCore/Sources/PowerliftingCore/PowerliftingCore.swift:no_imports_in_core"
     "Packages/PowerliftingCore/Sources/PowerliftingCore/PowerliftingCore.swift:no_swiftdata_outside_persistence"
@@ -95,7 +135,7 @@ for pair in "${POSITIVE[@]}"; do
 done
 
 echo
-echo "negative — prose mentioning a banned import must not trigger it"
+echo "negative — a token reference, and prose mentioning a banned import, must not trigger a rule"
 for pair in "${NEGATIVE[@]}"; do
     file="${pair%:*}"
     rule="${pair##*:}"
@@ -108,10 +148,10 @@ for pair in "${NEGATIVE[@]}"; do
     output="$(swiftlint lint --no-cache "$file" 2>/dev/null || true)"
 
     if grep -q "($rule)" <<<"$output"; then
-        printf '  FAIL  %-34s fired on a comment in %s\n' "$rule" "$file"
+        printf '  FAIL  %-34s fired on %s, which does not violate it\n' "$rule" "$file"
         failures=$((failures + 1))
     else
-        printf '  ok    %-34s correctly ignores comments in %s\n' "$rule" "$(basename "$file")"
+        printf '  ok    %-34s stays quiet on %s\n' "$rule" "$(basename "$file")"
     fi
 done
 
@@ -124,4 +164,4 @@ fi
 # Count distinct rules, not entries: since 2026-08-04 a fixture may be listed against more than one
 # rule (AttributedImportFixture triggers two), so ${#POSITIVE[@]} is a check count, not a rule count.
 rule_count="$(printf '%s\n' "${POSITIVE[@]}" | sed 's/.*://' | sort -u | wc -l | tr -d ' ')"
-echo "all $rule_count rules fire across ${#POSITIVE[@]} checks, and ${#NEGATIVE[@]} comment false-positive guards hold."
+echo "all $rule_count rules fire across ${#POSITIVE[@]} checks, and ${#NEGATIVE[@]} false-positive guards hold."

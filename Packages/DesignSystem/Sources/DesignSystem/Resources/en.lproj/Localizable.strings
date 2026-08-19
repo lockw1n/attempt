@@ -1,0 +1,22 @@
+/* DesignSystem (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization
+   module doc, which is also where the one thing this catalogue does differently is written down:
+   a component module has no screens, so the middle segment names the state instead.
+
+   ONLY COPY THAT IS THE SAME EVERYWHERE LIVES HERE. A headline naming what a particular list is
+   missing is the screen's and arrives as a Text the caller built — see DesignSystemStrings. */
+
+"designsystem.error.headline" = "Something went wrong";
+
+/* Shared by the error and offline states, which is why it is keyed to neither. */
+"designsystem.state.retry" = "Try again";
+
+/* A spinner carries no text, so this is the whole of what VoiceOver has to announce (G-4.2). */
+"designsystem.loading.accessibility-label" = "Loading";
+
+/* G-2.1: every action still works offline, so this state is about a surface with nothing local to
+   show — never about a blocked action. The second sentence is the part that must survive editing:
+   without it the state reads as "your training log is gone". */
+"designsystem.offline.headline" = "You're offline";
+"designsystem.offline.message" = "This needs a connection. Everything you have logged is on this device and still works.";
+
+"designsystem.insufficient-data.headline" = "Not enough data yet";

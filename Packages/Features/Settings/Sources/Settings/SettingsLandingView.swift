@@ -1,0 +1,134 @@
+import DesignSystem
+import PowerliftingCore
+import RepositoryInterface
+import SwiftUI
+
+/// The Settings tab's landing screen (`FR-1.10.1`, `TR-1.2`).
+///
+/// The view half of the pattern: it holds ``SettingsLandingState`` in `@State`, reads its phase and
+/// calls its methods, and contains no logic of its own worth testing. The full preferences surface
+/// (`FR-1.10.1`, `FR-1.10.2`) replaces what is shown here.
+///
+/// **Its copy comes from this module's catalogue** (`G-3.4`), through ``SettingsStrings`` — a
+/// string declared in a feature package resolves against that package's bundle rather than the
+/// app's, so the module owns its own. The screen's *title* is still the tab's, supplied by the app
+/// target: a tab and the screen it opens must not be able to disagree about their name.
+public struct SettingsLandingView: View {
+    @State private var state: SettingsLandingState
+
+    /// Builds the screen over the repository its state reads and writes through.
+    public init(repository: any SettingsRepository) {
+        _state = State(initialValue: SettingsLandingState(repository: repository))
+    }
+
+    /// The screen's three phases: in flight, loaded, failed.
+    public var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.lg.points) {
+                switch state.phase {
+                case .idle, .loading:
+                    ProgressView()
+                        .tint(ColorToken.brandAccent)
+                case .loaded(let settings):
+                    preferences(settings)
+                case .failed(let diagnostic):
+                    failure(diagnostic)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Spacing.lg.points)
+        }
+        .background(ColorToken.background)
+        .task { await state.load() }
+    }
+
+    /// The loaded row: the one preference this task wires end to end, and the rest as read-outs.
+    ///
+    /// A failed write is reported *above* the controls rather than in place of them: the row is
+    /// still loaded and still editable, so replacing the screen with the error would take away the
+    /// retry, which is the next tap.
+    private func preferences(_ settings: UserSettings) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.lg.points) {
+            if let writeFailure = state.writeFailure {
+                diagnosticCard(title: SettingsStrings.writeErrorTitle, detail: writeFailure)
+            }
+
+            GroupedSection(Text(SettingsStrings.unitsTitle)) {
+                Picker(selection: unitSelection) {
+                    ForEach(MassUnit.allCases, id: \.self) { unit in
+                        Text(SettingsStrings.unitSymbol(for: unit)).tag(unit)
+                    }
+                } label: {
+                    Text(SettingsStrings.unitsPicker)
+                }
+                .pickerStyle(.segmented)
+            }
+
+            GroupedSection(Text(SettingsStrings.scaffoldTitle)) {
+                row(SettingsStrings.scaffoldEstimator, settings.e1RMFormula.rawValue)
+                row(SettingsStrings.scaffoldAppearance, settings.theme.rawValue)
+            }
+        }
+    }
+
+    /// A read-out pair. The value is a stored identifier rendered as itself — diagnostic output,
+    /// not copy, which is why it stays `verbatim` while the label does not.
+    private func row(_ label: LocalizedStringResource, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(Typography.body.font)
+                .foregroundStyle(ColorToken.textSecondary)
+            Spacer()
+            Text(verbatim: value)
+                .font(Typography.numericValue.font)
+                .foregroundStyle(ColorToken.textPrimary)
+        }
+    }
+
+    /// The failed phase, and the retry out of it.
+    ///
+    /// The button is the reason ``SettingsLandingState/Phase/failed(_:)`` is recoverable: `.task`
+    /// runs once per view identity, and a screen whose only read failed would otherwise stay
+    /// broken for as long as the tab is alive.
+    private func failure(_ diagnostic: String) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.md.points) {
+            diagnosticCard(title: SettingsStrings.loadErrorTitle, detail: diagnostic)
+            Button {
+                Task { await state.load() }
+            } label: {
+                Text(SettingsStrings.loadErrorRetry)
+            }
+        }
+    }
+
+    /// A failure, shown as what it is rather than as a sentence written for the user.
+    private func diagnosticCard(title: LocalizedStringResource, detail: String) -> some View {
+        Card {
+            VStack(alignment: .leading, spacing: Spacing.sm.points) {
+                Text(title)
+                    .font(Typography.cardTitle.font)
+                    .foregroundStyle(ColorToken.textPrimary)
+                Text(verbatim: detail)
+                    .font(Typography.caption.font)
+                    .foregroundStyle(ColorToken.textTertiary)
+            }
+        }
+    }
+
+    /// The picker's binding: reads the loaded row, writes through the state's one mutation.
+    ///
+    /// A `Binding` rather than an `onChange`, because a segmented control's selection *is* the
+    /// stored value — and the write is asynchronous, so the set has to start a task rather than
+    /// assign.
+    private var unitSelection: Binding<MassUnit> {
+        Binding(
+            get: {
+                guard case .loaded(let settings) = state.phase else { return .kilograms }
+                return settings.displayUnit
+            },
+            set: { unit in
+                Task { await state.setDisplayUnit(unit) }
+            }
+        )
+    }
+}
