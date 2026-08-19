@@ -41,11 +41,14 @@ cd "$(dirname "$0")/.."
 
 # package | scheme | test target | minimum tests
 #
-# The minimum is per suite and sits ABOVE the number of reference-backed tests on purpose. Reference
-# parity below already covers those exactly, so the only thing left for a count to notice is a
-# suite's non-reference tests going missing — and a floor at the reference count could not, because
-# the reference tests alone would clear it. DesignSystem: 27 tests, 15 reference-backed, 12 probes.
-# ExerciseLibrary: 5 tests, all five reference-backed, so its floor is the count itself.
+# The minimum is per suite, and it exists for a suite's NON-reference tests: reference parity below
+# already covers the reference-backed ones exactly, so a floor set at the reference count would
+# notice nothing the parity check does not. Set it above that count where such tests exist, and at
+# the suite's own count where they do not — the latter is a floor that adds nothing, which is the
+# honest setting rather than a number chosen to look like the former.
+#   DesignSystem:    27 tests, 15 reference-backed, 12 harness probes  -> 20, above the 15.
+#   ExerciseLibrary:  5 tests, all five reference-backed, no probes    ->  5, its own count.
+# A screen suite added later is the ExerciseLibrary case unless it brings probes of its own.
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|20"
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|5"

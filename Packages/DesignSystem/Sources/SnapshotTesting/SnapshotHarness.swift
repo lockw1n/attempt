@@ -305,7 +305,7 @@
         /// A bitmap marking every differing pixel red and dimming the rest, for a failing run to leave
         /// behind. Comparing two images by eye is the part of a snapshot failure that is otherwise
         /// slow.
-        public static func differenceImage(_ reference: Bitmap, _ rendered: Bitmap) -> Bitmap? {
+        static func differenceImage(_ reference: Bitmap, _ rendered: Bitmap) -> Bitmap? {
             guard reference.width == rendered.width, reference.height == rendered.height else { return nil }
             var pixels = rendered.pixels
             for pixel in stride(from: 0, to: pixels.count, by: 4) {

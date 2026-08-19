@@ -53,7 +53,7 @@ struct ExerciseListStateTests {
             Issue.record("expected a failed phase, got \(state.phase)")
             return
         }
-        #expect(!diagnostic.isEmpty)
+        #expect(diagnostic.contains("recordNotFound"))
         #expect(state.groups.isEmpty)
 
         await repository.recover()
@@ -86,6 +86,20 @@ struct ExerciseListStateTests {
         #expect(squats?.exercises.map(\.name) == ["Back Squat", "Front Squat"])
     }
 
+    @Test("Two exercises sharing a name are ordered by identifier, so a rendering never moves")
+    func sharedNamesAreBrokenByIdentifier() async {
+        // FR-1.1.4 renames without restriction and G-2.5 forbids a unique constraint on the name,
+        // so two rows reading "Belt Squat" is a state the store permits. Handed to the repository
+        // in the wrong order, so the assertion is about `browsable` and not about the fake.
+        let first = Fixtures.exercise(id: Fixtures.identifier("A"), name: "Belt Squat", movement: .squat)
+        let second = Fixtures.exercise(id: Fixtures.identifier("B"), name: "Belt Squat", movement: .squat)
+        let state = ExerciseListState(
+            repository: ScriptedExerciseRepository(exercises: [second, first])
+        )
+        await state.load()
+        #expect(state.groups.first?.exercises.map(\.id) == [first.id, second.id])
+    }
+
     // MARK: - Search (FR-1.1.1)
 
     @Test("Search matches part of a name, ignoring case")
@@ -112,7 +126,6 @@ struct ExerciseListStateTests {
         let state = await Fixtures.loaded()
         state.searchText = "   "
         #expect(state.names.count == 5)
-        #expect(!state.hasNarrowedResults)
     }
 
     @Test("A search that matches nothing empties the groups without emptying the catalogue")
@@ -121,7 +134,6 @@ struct ExerciseListStateTests {
         state.searchText = "kettlebell juggling"
         #expect(state.groups.isEmpty)
         #expect(!state.isCatalogueEmpty)
-        #expect(state.hasNarrowedResults)
     }
 
     // MARK: - Filters (FR-1.1.2)
@@ -167,14 +179,15 @@ struct ExerciseListStateTests {
         state.movementFilter = .squat
         state.equipmentFilter = .barbell
         state.originFilter = .builtIn
-        #expect(state.hasNarrowedResults)
+        // Anchored to the result rather than to a "something is set" flag: what clearing has to put
+        // back is the catalogue, so what it is cleared FROM has to be a narrowing that happened.
+        #expect(state.names == ["Back Squat"])
 
         state.clearFilters()
         #expect(state.searchText.isEmpty)
         #expect(state.movementFilter == nil)
         #expect(state.equipmentFilter == nil)
         #expect(state.originFilter == nil)
-        #expect(!state.hasNarrowedResults)
         #expect(state.names.count == 5)
     }
 
@@ -192,7 +205,6 @@ struct ExerciseListStateTests {
         await state.load()
         #expect(state.isCatalogueEmpty)
         #expect(state.groups.isEmpty)
-        #expect(!state.hasNarrowedResults)
     }
 
     @Test("A catalogue whose every row is archived is empty")
@@ -223,12 +235,15 @@ extension ExerciseListState {
 /// The catalogue these tests browse: five live exercises across four movements, one of them the
 /// user's own, one of them on dumbbells.
 enum Fixtures {
+    /// **Deliberately in no order any assertion expects** — not alphabetical within a movement and
+    /// not in `Movement`'s case order across them. A fixture that arrives sorted cannot fail a test
+    /// about sorting: measured, removing `browsable`'s `sorted` entirely left this suite green.
     static let catalogue: [Exercise] = [
-        exercise(name: "Back Squat", movement: .squat),
-        exercise(name: "Front Squat", movement: .squat, isCustom: true),
-        exercise(name: "Bench Press", movement: .bench, equipment: .dumbbell),
         exercise(name: "Sumo Deadlift", movement: .deadlift),
+        exercise(name: "Front Squat", movement: .squat, isCustom: true),
         exercise(name: "Barbell Row", movement: .row),
+        exercise(name: "Back Squat", movement: .squat),
+        exercise(name: "Bench Press", movement: .bench, equipment: .dumbbell),
     ]
 
     /// A state over ``catalogue``, already read.
@@ -238,9 +253,16 @@ enum Fixtures {
         return state
     }
 
+    /// An identifier ending in `suffix`, for the one assertion whose answer is the byte order of
+    /// two of them.
+    static func identifier(_ suffix: String) -> UUID {
+        UUID(uuidString: "0F5A1E24-9B7D-4C31-8E62-00000000000\(suffix)") ?? UUID()
+    }
+
     /// One exercise. Every field the screen does not read is a fixed value, so a test that starts
     /// depending on one is visibly doing so.
     static func exercise(
+        id: UUID = UUID(),
         name: String,
         movement: Movement,
         equipment: Equipment = .barbell,
@@ -248,7 +270,7 @@ enum Fixtures {
         isArchived: Bool = false
     ) -> Exercise {
         Exercise(
-            id: UUID(),
+            id: id,
             createdAt: Date(timeIntervalSince1970: 0),
             updatedAt: Date(timeIntervalSince1970: 0),
             deletedAt: nil,

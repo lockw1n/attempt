@@ -171,19 +171,14 @@ public final class ExerciseListState {
         exercise.isCustom ? .custom : .builtIn
     }
 
-    /// Whether anything is narrowing the list — what tells an empty result from an empty catalogue.
-    ///
-    /// The two are different screens (`FR-1.13.1`): one says the catalogue is empty and offers
-    /// nothing to undo, the other says this search matched nothing and offers the way back.
-    public var hasNarrowedResults: Bool {
-        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || movementFilter != nil
-            || equipmentFilter != nil
-            || originFilter != nil
-    }
-
     /// Whether the read succeeded and there is nothing at all to browse — a catalogue that failed to
     /// seed, or one every row of which is archived.
+    ///
+    /// **This and an empty ``groups`` are what tell the two empty screens apart** (`FR-1.13.1`):
+    /// true here is a catalogue with nothing in it and nothing to undo, where empty groups under a
+    /// non-empty catalogue is a search that matched nothing and offers the way back. Nothing narrows
+    /// a loaded catalogue to no groups without a control being set, so the second needs no flag of
+    /// its own.
     public var isCatalogueEmpty: Bool {
         guard case .loaded(let exercises) = phase else { return false }
         return exercises.isEmpty

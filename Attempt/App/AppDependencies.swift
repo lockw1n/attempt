@@ -67,12 +67,23 @@ struct AppDependencies {
     /// It reads the app bundle and never the network, which is what makes first launch in airplane
     /// mode a working app rather than an empty one (`NFR-1.7`).
     ///
-    /// **A failure is swallowed here, and that is the same open item the failed store is.** The
-    /// error it can raise is `invalidPayload` — a packaging fault, not a runtime condition — and
-    /// there is nothing above this to act on it: no requirement or task says what launch does with
-    /// a diagnostic. What the user sees is the exercise list's empty state, which says the built-in
-    /// catalogue has not been loaded. Whichever task takes on the launch-failure surface takes this
-    /// with it.
+    /// **A failure is swallowed here, and that is the same open item the failed store is** — no
+    /// requirement or task says what launch does with a diagnostic, so there is nothing above this
+    /// to act on one. Whichever task takes on the launch-failure surface takes this with it, and
+    /// the two shapes it has to take are not the same:
+    ///
+    /// - `invalidPayload`, raised before a single row is written, leaves the store as it was. On a
+    ///   first launch that is an empty catalogue, and what the user sees is the exercise list's
+    ///   empty state saying the built-in catalogue has not been loaded.
+    /// - **Anything the repository raises, which `SeedImporter` documents and which arrives once
+    ///   writing has begun, leaves a PARTIALLY seeded store.** The import is row-by-row, so a save
+    ///   that fails on the fortieth entry leaves thirty-nine — and the list renders those as an
+    ///   ordinary loaded catalogue, not as an empty state, with nothing saying it is short. The
+    ///   next launch finishes the job, because the import is a merge; within the session it is
+    ///   invisible.
+    ///
+    /// The discarded ``SeedImportSummary`` is the same gap from the other side: its four counts are
+    /// the only evidence of what the import did.
     func importSeedCatalogue() async {
         guard case .open(let repositories) = state else { return }
         // `_ =` rather than a bare `try?`: the summary is `@discardableResult`, but wrapping it in
