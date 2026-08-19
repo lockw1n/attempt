@@ -80,7 +80,10 @@ public struct ExerciseDetailView: View {
         }
     }
 
-    /// The six sections, in the order `FR-1.1.6` names them plus `FR-1.1.7`'s relationships.
+    /// The six sections: the record's own fields, then the one thing here the user can change,
+    /// then `FR-1.1.7`'s relationships, and `FR-1.1.6`'s three derived values last — where they
+    /// stay once they hold real data, since a screen opened to check a cue should not be scrolled
+    /// past three charts to reach the notes.
     @ViewBuilder private func loaded(_ detail: ExerciseDetail) -> some View {
         ExerciseFactsSection(exercise: detail.exercise)
         ExerciseNotesSection(state: state)

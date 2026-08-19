@@ -308,9 +308,13 @@ actor ScriptedExerciseRepository: ExerciseRepository {
     /// would be a screen showing what `G-1.3` soft-deleted.
     private(set) var readsIncludingDeleted: [Bool] = []
 
-    /// The notes of every exercise handed to ``save(_:)``, in order — the anchor under the detail
-    /// screen's write assertions, and what notices a save that never happened.
-    private(set) var savedNotes: [String] = []
+    /// Every record handed to ``save(_:)``, in order — the anchor under the detail screen's write
+    /// assertions, and what notices a save that never happened. The whole record rather than its
+    /// notes, so a write that quietly altered another field is visible here.
+    private(set) var savedRecords: [Exercise] = []
+
+    /// Just the notes of those records, for the assertions that only care about the text.
+    var savedNotes: [String] { savedRecords.map(\.notes) }
 
     init(
         exercises: [Exercise],
@@ -327,6 +331,11 @@ actor ScriptedExerciseRepository: ExerciseRepository {
 
     /// Stops failing writes, so the next save lands.
     func recoverWrites() { writeError = nil }
+
+    /// Starts failing reads, so a test can break the re-read a write does without breaking the
+    /// write itself — the only way to reach the "stored, but the screen could not read it back"
+    /// case from outside.
+    func failReads(_ error: RepositoryError) { readError = error }
 
     func exercises(includingDeleted: Bool) async throws -> [Exercise] {
         reads += 1
@@ -346,7 +355,7 @@ actor ScriptedExerciseRepository: ExerciseRepository {
     /// what it wrote rather than what it started with.
     func save(_ exercise: Exercise) async throws {
         if let writeError { throw writeError }
-        savedNotes.append(exercise.notes)
+        savedRecords.append(exercise)
         if let index = rows.firstIndex(where: { $0.id == exercise.id }) {
             rows[index] = exercise
         } else {

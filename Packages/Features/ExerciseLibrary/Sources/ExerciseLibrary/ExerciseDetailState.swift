@@ -77,9 +77,18 @@ public final class ExerciseDetailState {
 
     /// What is in the notes field (`FR-1.1.6`).
     ///
-    /// The draft, not the stored value: it is set from the record on every successful read and
-    /// write, and diverges from it while the user types. ``hasUnsavedNotes`` is that divergence.
-    public var notesDraft: String = ""
+    /// The draft, not the stored value: it is set from the record on a read, and diverges from it
+    /// while the user types. ``hasUnsavedNotes`` is that divergence.
+    ///
+    /// **Editing retires ``writeFailure``.** The banner describes one attempt to store one piece of
+    /// text, so the next keystroke — including the one that puts the stored value back — is what
+    /// ends it. Without that it outlives the edit it belongs to, leaving a retry on screen with
+    /// nothing left to write and no way for the user to be rid of it but to leave the screen.
+    public var notesDraft: String = "" {
+        didSet {
+            if notesDraft != oldValue { writeFailure = nil }
+        }
+    }
 
     /// Which exercise this screen is about.
     public let exerciseID: UUID
@@ -126,19 +135,26 @@ public final class ExerciseDetailState {
 
     /// Commits the edited notes (`FR-1.1.6`).
     ///
+    /// **The text is taken here, when the command is issued — not when the write reaches the
+    /// store.** A save commits what was on screen at the moment it was asked for; anything typed
+    /// after that is the next edit and stays on screen as one. Reading the field at write time
+    /// instead makes what gets stored depend on where a keystroke fell inside the write, which is
+    /// not something a user can see or control.
+    ///
     /// **Writes are serialized, for `SettingsLandingState.setDisplayUnit(_:)`'s reason**: the guard
-    /// below reads ``phase``, which only moves once the write it describes has landed, so two
-    /// overlapping saves would both decide against the same stale record and the second would
-    /// compare the user's newest text against the value the first is in the middle of replacing.
+    /// in ``writeNotes(_:)`` decides against ``phase``, which only moves once the write it describes
+    /// has landed, so two overlapping saves would both decide against the same stale record and the
+    /// second would store again what the first had already stored.
     ///
     /// A save whose text already matches the stored notes writes nothing: every save restamps
     /// `updatedAt`, which is `G-2.4`'s conflict key, so a local no-op would outrank a real remote
     /// edit.
     public func saveNotes() async {
+        let submitted = notesDraft
         let previous = pendingWrite
         let write = Task { [weak self] in
             await previous?.value
-            await self?.writeNotes()
+            await self?.writeNotes(submitted)
         }
         pendingWrite = write
         await write.value
@@ -158,16 +174,31 @@ public final class ExerciseDetailState {
     }
 
     /// One link of ``saveNotes()``'s chain: decide against the record as it stands now, then write.
-    private func writeNotes() async {
-        guard case .loaded(let detail) = phase, notesDraft != detail.exercise.notes else { return }
+    ///
+    /// **The write and the re-read are reported apart, because they fail differently.** A failed
+    /// write is ``writeFailure``: nothing reached the store, and the screen keeps both the exercise
+    /// and the text. A read that fails *after* the write landed is a failed **read** — the notes are
+    /// stored, and what is gone is the screen's picture of them — so it becomes ``Phase/failed(_:)``
+    /// and retries through ``load()``. Reporting that one as a failed write would tell the user an
+    /// edit was lost when it was not, and its retry would then store the same text a second time,
+    /// restamping `G-2.4`'s key for a write that changed nothing.
+    ///
+    /// - Parameter submitted: The text ``saveNotes()`` was asked to store.
+    private func writeNotes(_ submitted: String) async {
+        guard case .loaded(let detail) = phase, submitted != detail.exercise.notes else { return }
         do {
-            try await repository.save(Self.withNotes(notesDraft, on: detail.exercise))
-            // Re-read rather than publish what was handed in: the save path stamps `updatedAt`
-            // itself, and the variation list is a second row's business either way.
-            try await publishRead()
-            writeFailure = nil
+            try await repository.save(Self.withNotes(submitted, on: detail.exercise))
         } catch {
             writeFailure = String(describing: error)
+            return
+        }
+        writeFailure = nil
+        do {
+            // Re-read rather than publish what was handed in: the save path stamps `updatedAt`
+            // itself, and the variation list is a second row's business either way.
+            try await publishRead(confirming: submitted)
+        } catch {
+            phase = .failed(String(describing: error))
         }
     }
 
@@ -175,7 +206,13 @@ public final class ExerciseDetailState {
     ///
     /// The notes draft follows the record rather than the other way round, so a save that the store
     /// altered — trimming, a concurrent edit — leaves the field showing what is actually stored.
-    private func publishRead() async throws {
+    ///
+    /// - Parameter submitted: The text a write just stored, when this read follows one. The draft
+    ///   gives way to the record only while it still holds exactly that text: keystrokes made
+    ///   *during* the write are a fresh edit and survive it, where overwriting them would drop them
+    ///   silently and clear the ``hasUnsavedNotes`` that was the only sign they existed. `nil` on a
+    ///   plain read, which has no edit to protect.
+    private func publishRead(confirming submitted: String? = nil) async throws {
         guard let exercise = try await repository.exercise(id: exerciseID, includingDeleted: false)
         else {
             phase = .missing
@@ -183,7 +220,9 @@ public final class ExerciseDetailState {
         }
         let catalogue = try await repository.exercises(includingDeleted: false)
         phase = .loaded(Self.detail(for: exercise, in: catalogue))
-        notesDraft = exercise.notes
+        if submitted == nil || notesDraft == submitted {
+            notesDraft = exercise.notes
+        }
     }
 
     /// Pairs an exercise with its parent and its variations, from the whole catalogue.
