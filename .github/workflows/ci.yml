@@ -141,6 +141,34 @@ jobs:
       - name: Audit @unchecked Sendable
         run: ./scripts/audit-unchecked-sendable.sh
 
+  # TR-1.12 (T-1.08): the DesignSystem components rendered and compared against committed
+  # references, in light and dark at the default and `accessibility3` Dynamic Type sizes.
+  #
+  # ITS OWN JOB, NOT A STEP IN `test`, for two reasons that are both structural rather than a
+  # preference. The references are iOS renderings, so this needs a simulator, and `test` runs the
+  # packages through SwiftPM on macOS precisely so a domain suite never waits for one. And NFR-0.1
+  # holds the core suite under 5 seconds: a simulator boot inside that job would make the number
+  # meaningless without making anything faster.
+  #
+  # The script — not a bare `xcodebuild` — because the snapshot target is `#if os(iOS)` throughout
+  # and therefore reports *no tests at all* on any other platform, or under a `-only-testing:` typo.
+  # That is a silent pass. scripts/snapshot-tests.sh asserts a minimum test count for that case.
+  #
+  # NOT YET A REQUIRED CHECK: GitHub only offers a job for branch protection once it has reported
+  # at least once, so this one has to be added to the rule by hand after its first run. Until then
+  # a red run here does not block a merge. Renaming this job silently drops it from the rule again.
+  snapshots:
+    name: Component snapshots
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Render and compare component snapshots
+        run: ./scripts/snapshot-tests.sh
+
   # TR-0.1.1 / NFR-0.2 / DOD-0.2: the mechanical proof that no *Apple-platform* framework leaked
   # into the domain layer. An `import SwiftUI` or `import SwiftData` in PowerliftingCore compiles
   # perfectly well on Darwin, so every other job in this file stays green while the constraint is

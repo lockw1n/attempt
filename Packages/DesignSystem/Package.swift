@@ -69,5 +69,17 @@ let package = Package(
             dependencies: ["DesignSystem"],
             swiftSettings: componentSettings
         ),
+        // TR-1.12's snapshots. A separate target from DesignSystemTests because it runs somewhere
+        // else: every file in it is `#if os(iOS)`, since the references are iOS renderings and
+        // `swift test` runs on macOS. `scripts/snapshot-tests.sh` is the only thing that executes
+        // it, on a simulator, in its own CI job — which is also why the committed references sit in
+        // this target's own directory rather than being declared as resources: the simulator writes
+        // them back into the source tree, which a bundled resource could not be.
+        .testTarget(
+            name: "DesignSystemSnapshotTests",
+            dependencies: ["DesignSystem"],
+            exclude: ["__Snapshots__"],
+            swiftSettings: componentSettings
+        ),
     ]
 )
