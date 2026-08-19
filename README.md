@@ -462,9 +462,11 @@ dependency analysis".
 | **Package tests** | `PowerliftingCore` with coverage, then every package built and tested with warnings as errors (discovered by glob), the runtime gate and its proof, the warnings-gate proof, the `@unchecked Sendable` audit |
 | **Linux core build** | builds and tests `PowerliftingCore` and `RepositoryInterface` on `ubuntu-latest` in a Swift container |
 | **SwiftLint** | lint, lint-rule verification, format check, doc-ratio and doc-units gates |
+| **Component snapshots** | renders every `DesignSystem` component and state and compares it against a committed reference, light/dark × default/`accessibility3` |
 
-All four are **required checks on `main`**, so a red run blocks the merge. The
-whole workflow takes about a minute.
+The first four are **required checks on `main`**, so a red run blocks the
+merge; the whole workflow takes about a minute. **Component snapshots** is
+newer and not yet in the branch protection rule — see the note below.
 
 The `linux` job covers `PowerliftingCore` and `RepositoryInterface` —
 `Persistence` and `DesignSystem` are Apple-only by design. It is not just a second
