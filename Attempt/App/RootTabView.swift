@@ -1,6 +1,7 @@
 import AppNavigation
 import DesignSystem
 import ExerciseLibrary
+import Foundation
 import Settings
 import SwiftUI
 
@@ -52,6 +53,8 @@ struct RootTabView: View {
             // No title here: a pushed screen names itself, and this one does (`FR-1.1.1`). The tab
             // roots are the case where the app target owns the name — see ``AppTab/title``.
             exerciseListRoot
+        case .exerciseLibrary(.exerciseDetail(let exerciseID)):
+            exerciseDetailRoot(exerciseID)
         default:
             PlaceholderScreen(route: route)
         }
@@ -66,6 +69,20 @@ struct RootTabView: View {
         switch dependencies.state {
         case .open(let repositories):
             ExerciseListView(repository: repositories.exercises)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// One exercise's detail, or the reason it cannot be shown.
+    ///
+    /// The screen is handed the identifier the route carried, not a record: resolving it is the
+    /// screen's own first read (`G-1.4`).
+    @ViewBuilder
+    private func exerciseDetailRoot(_ exerciseID: UUID) -> some View {
+        switch dependencies.state {
+        case .open(let repositories):
+            ExerciseDetailView(exerciseID: exerciseID, repository: repositories.exercises)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

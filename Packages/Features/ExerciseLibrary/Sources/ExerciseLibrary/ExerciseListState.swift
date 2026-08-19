@@ -117,16 +117,9 @@ public final class ExerciseListState {
     /// must not be reachable as one. T-1.13 adds the archiving; the exclusion is written now so that
     /// task changes a screen's behaviour and not this rule.
     ///
-    /// The order is the reader's: `localizedStandardCompare` puts "Ø-bar Bench" where a person
-    /// looks for it, where the repositories' `id`-tiebroken byte order is for reproducibility.
+    /// The order is ``ExerciseOrder``'s, which every browsable surface in this module shares.
     private static func browsable(_ exercises: [Exercise]) -> [Exercise] {
-        exercises
-            .filter { !$0.isArchived }
-            .sorted {
-                let byName = $0.name.localizedStandardCompare($1.name)
-                if byName != .orderedSame { return byName == .orderedAscending }
-                return $0.id.uuidString < $1.id.uuidString
-            }
+        exercises.filter { !$0.isArchived }.sorted(by: ExerciseOrder.precedes)
     }
 
     /// The catalogue after the search text and every filter, grouped by movement (`FR-1.1.1`).

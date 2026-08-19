@@ -118,7 +118,10 @@
             name: String,
             movement: Movement,
             equipment: Equipment = .barbell,
-            isCustom: Bool = false
+            isCustom: Bool = false,
+            isArchived: Bool = false,
+            laterality: Laterality = .bilateral,
+            barType: BarType = .standard
         ) -> Exercise {
             Exercise(
                 id: UUID(uuidString: "0F5A1E24-9B7D-4C31-8E62-00000000000\(id)") ?? UUID(),
@@ -129,11 +132,11 @@
                 movement: movement,
                 parentExerciseID: nil,
                 equipment: equipment,
-                laterality: .bilateral,
-                barType: .standard,
+                laterality: laterality,
+                barType: barType,
                 implementCount: 1,
                 isCustom: isCustom,
-                isArchived: false,
+                isArchived: isArchived,
                 notes: ""
             )
         }

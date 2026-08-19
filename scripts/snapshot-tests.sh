@@ -47,11 +47,12 @@ cd "$(dirname "$0")/.."
 # the suite's own count where they do not — the latter is a floor that adds nothing, which is the
 # honest setting rather than a number chosen to look like the former.
 #   DesignSystem:    27 tests, 15 reference-backed, 12 harness probes  -> 20, above the 15.
-#   ExerciseLibrary:  5 tests, all five reference-backed, no probes    ->  5, its own count.
-# A screen suite added later is the ExerciseLibrary case unless it brings probes of its own.
+#   ExerciseLibrary: 10 tests, all ten reference-backed, no probes      -> 10, its own count.
+# A screen suite added later is the ExerciseLibrary case unless it brings probes of its own, and a
+# screen added to an existing package raises that package's floor rather than adding a row.
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|20"
-    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|5"
+    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|10"
 )
 
 DESTINATION="${SNAPSHOT_DESTINATION:-platform=iOS Simulator,OS=latest,name=iPhone 17 Pro}"

@@ -18,9 +18,6 @@
    the app — FR-1.1.2's recency is a read over logged sets, and there are none yet. */
 "exerciselibrary.list.filter.recently-used.hint" = "Available once you have logged a workout.";
 
-"exerciselibrary.list.origin.built-in" = "Built-in";
-"exerciselibrary.list.origin.custom" = "Custom";
-
 "exerciselibrary.list.row.custom" = "Custom";
 
 /* The catalogue itself is empty. There is no action yet: creating an exercise is FR-1.1.3's screen
@@ -57,3 +54,70 @@
 "exerciselibrary.equipment.bodyweight" = "Bodyweight";
 "exerciselibrary.equipment.band" = "Band";
 "exerciselibrary.equipment.other" = "Other";
+
+/* ---------------------------------------------------------------------------------------------
+   Exercise detail (FR-1.1.6, FR-1.1.7). */
+
+"exerciselibrary.detail.section.details" = "Details";
+"exerciselibrary.detail.field.movement" = "Movement";
+"exerciselibrary.detail.field.equipment" = "Equipment";
+"exerciselibrary.detail.field.bar" = "Bar";
+"exerciselibrary.detail.field.laterality" = "Sides";
+"exerciselibrary.detail.field.origin" = "Origin";
+
+/* Shown beside the name when the exercise has been archived (FR-1.1.5). The detail screen is
+   reachable from logged history, so an archived exercise still opens — the badge is what says why
+   it is not in the list. */
+"exerciselibrary.detail.badge.archived" = "Archived";
+
+"exerciselibrary.detail.section.notes" = "Notes";
+"exerciselibrary.detail.notes.prompt" = "Cues, setup, anything worth remembering";
+"exerciselibrary.detail.notes.save" = "Save notes";
+"exerciselibrary.detail.notes.discard" = "Discard changes";
+/* The write failed. The draft is still on screen and the retry is another tap — the error's own
+   description is a diagnostic and is never shown (G-3.4). */
+"exerciselibrary.detail.notes.error" = "These notes could not be saved.";
+
+"exerciselibrary.detail.section.variations" = "Variations";
+/* Precedes the parent exercise's name when this one varies another (FR-1.1.7). */
+"exerciselibrary.detail.variations.parent" = "Variation of";
+
+/* The three derived sections. Each carries an InsufficientDataView (FR-1.13.3) rather than a zero
+   or a chart-shaped blank, and each message names what would be enough — T-1.36, T-1.41 and T-1.43
+   supply the real content. */
+"exerciselibrary.detail.section.history" = "History";
+"exerciselibrary.detail.history.none" = "Log a set against this exercise and its history appears here.";
+"exerciselibrary.detail.section.records" = "Personal records";
+"exerciselibrary.detail.records.none" = "Log a set against this exercise and its personal records appear here.";
+"exerciselibrary.detail.section.e1rm" = "Estimated 1RM";
+"exerciselibrary.detail.e1rm.none" = "Log a completed working set and an estimate appears here.";
+
+/* The read failed and running it again could work. */
+"exerciselibrary.detail.error.headline" = "Exercise unavailable";
+"exerciselibrary.detail.error.message" = "This exercise could not be read.";
+/* The identifier resolved to nothing — a restored navigation stack can name an exercise that has
+   since gone. No retry: reading again resolves to nothing again. */
+"exerciselibrary.detail.missing.headline" = "Exercise not found";
+"exerciselibrary.detail.missing.message" = "This exercise is no longer in your library.";
+
+/* Origin names. A module vocabulary rather than the list screen's copy: both screens show them and
+   neither owns them. */
+"exerciselibrary.origin.built-in" = "Built-in";
+"exerciselibrary.origin.custom" = "Custom";
+
+/* How many sides a rep works. The domain's own doc comments carry the distinction; these are the
+   words for it. */
+"exerciselibrary.laterality.bilateral" = "Both sides";
+"exerciselibrary.laterality.unilateral" = "One side at a time";
+"exerciselibrary.laterality.alternating" = "Alternating";
+
+/* Bar names. `no-bar` is a real answer rather than a missing one: a dumbbell or a machine loads no
+   bar, which is not the same as an unrecognised one. */
+"exerciselibrary.bar-type.standard" = "Standard";
+"exerciselibrary.bar-type.ez-curl" = "EZ curl";
+"exerciselibrary.bar-type.trap" = "Trap";
+"exerciselibrary.bar-type.safety-squat" = "Safety squat";
+"exerciselibrary.bar-type.cambered" = "Cambered";
+"exerciselibrary.bar-type.swiss" = "Swiss";
+"exerciselibrary.bar-type.no-bar" = "No bar";
+"exerciselibrary.bar-type.other" = "Other";

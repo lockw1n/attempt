@@ -266,8 +266,10 @@ enum Fixtures {
         name: String,
         movement: Movement,
         equipment: Equipment = .barbell,
+        parentExerciseID: UUID? = nil,
         isCustom: Bool = false,
-        isArchived: Bool = false
+        isArchived: Bool = false,
+        notes: String = ""
     ) -> Exercise {
         Exercise(
             id: id,
@@ -276,14 +278,14 @@ enum Fixtures {
             deletedAt: nil,
             name: name,
             movement: movement,
-            parentExerciseID: nil,
+            parentExerciseID: parentExerciseID,
             equipment: equipment,
             laterality: .bilateral,
             barType: .standard,
             implementCount: 1,
             isCustom: isCustom,
             isArchived: isArchived,
-            notes: ""
+            notes: notes
         )
     }
 }
@@ -295,8 +297,9 @@ enum Fixtures {
 /// It returns the rows **unsorted and unfiltered**, so the ordering and the archive exclusion the
 /// tests assert are the state's own and not the fake's.
 actor ScriptedExerciseRepository: ExerciseRepository {
-    private let rows: [Exercise]
+    private var rows: [Exercise]
     private var readError: RepositoryError?
+    private var writeError: RepositoryError?
 
     /// How many reads the state made — the anchor under "a loaded catalogue is not read again".
     private(set) var reads = 0
@@ -305,13 +308,25 @@ actor ScriptedExerciseRepository: ExerciseRepository {
     /// would be a screen showing what `G-1.3` soft-deleted.
     private(set) var readsIncludingDeleted: [Bool] = []
 
-    init(exercises: [Exercise], readError: RepositoryError? = nil) {
+    /// The notes of every exercise handed to ``save(_:)``, in order — the anchor under the detail
+    /// screen's write assertions, and what notices a save that never happened.
+    private(set) var savedNotes: [String] = []
+
+    init(
+        exercises: [Exercise],
+        readError: RepositoryError? = nil,
+        writeError: RepositoryError? = nil
+    ) {
         self.rows = exercises
         self.readError = readError
+        self.writeError = writeError
     }
 
     /// Stops failing, so the next read behaves.
     func recover() { readError = nil }
+
+    /// Stops failing writes, so the next save lands.
+    func recoverWrites() { writeError = nil }
 
     func exercises(includingDeleted: Bool) async throws -> [Exercise] {
         reads += 1
@@ -321,10 +336,23 @@ actor ScriptedExerciseRepository: ExerciseRepository {
     }
 
     func exercise(id: UUID, includingDeleted: Bool) async throws -> Exercise? {
-        rows.first { $0.id == id }
+        reads += 1
+        readsIncludingDeleted.append(includingDeleted)
+        if let readError { throw readError }
+        return rows.first { $0.id == id && (includingDeleted || $0.deletedAt == nil) }
     }
 
-    func save(_ exercise: Exercise) async throws {}
+    /// Upserts on `id`, the way the real one does — so a screen that re-reads after a write sees
+    /// what it wrote rather than what it started with.
+    func save(_ exercise: Exercise) async throws {
+        if let writeError { throw writeError }
+        savedNotes.append(exercise.notes)
+        if let index = rows.firstIndex(where: { $0.id == exercise.id }) {
+            rows[index] = exercise
+        } else {
+            rows.append(exercise)
+        }
+    }
 
     func trainingMax(forExerciseID exerciseID: UUID, on date: Date) async throws -> TrainingMaxEntry? {
         nil
