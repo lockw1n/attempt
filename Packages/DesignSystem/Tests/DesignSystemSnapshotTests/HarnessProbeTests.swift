@@ -24,6 +24,26 @@
             #expect(Snapshot.compare(first, second) == nil)
         }
 
+        /// The control on the appearance axis, and the one the other two do not imply. `G-7.1` is half
+        /// this suite's coverage, and it rests entirely on `.environment(\.colorScheme,)` still taking
+        /// effect — a mechanism with a silent-failure twin, since `.preferredColorScheme` reaches
+        /// `ImageRenderer` not at all. If it ever stopped biting, `--record` would write every light
+        /// reference and its dark pair identical and all of this would stay green.
+        @Test func appearancesRenderDifferently() throws {
+            let card = Card { Text(verbatim: "Card content") }
+            let light = try Snapshot.render(card, appearance: .light, typeSize: .default)
+            let dark = try Snapshot.render(card, appearance: .dark, typeSize: .default)
+            let mismatch = try #require(Snapshot.compare(light, dark))
+            guard case .pixels(let differing, let total, _) = mismatch else {
+                Issue.record("expected a pixel difference, got \(mismatch)")
+                return
+            }
+            // Not "some pixels": the card's surface and the background behind it both inverted, so a
+            // handful of differing pixels would mean the appearance had stopped reaching most of the
+            // rendering rather than that it had been applied.
+            #expect(differing > total / 2)
+        }
+
         /// A `ProgressView` is animated, and an animation frame chosen at render time would make the
         /// loading reference flap. It does not — asserted rather than assumed, because the failure
         /// would be an intermittent red CI job rather than an obvious one.
@@ -108,13 +128,10 @@
         /// A replica of ``Card``'s body with its two token choices opened up, so a mutation can be
         /// rendered without editing the component.
         ///
-        /// **Both are tokens, because the G-7.7 lint rules DO reach this target.** They are written as
-        /// if scoped to `Sources/DesignSystem`, `Packages/Features/` and the app — but the first of
-        /// those patterns is `Attempt/.*\.swift`, unanchored, and the repository's own root directory
-        /// is named `Attempt`, so it matches every Swift file in the checkout. Measured: dropping that
-        /// one pattern takes the violation count on this file from 2 to 0. Which means a mutation here
-        /// has to be a *wrong token* rather than a literal — a better probe anyway, since taking the
-        /// control radius where the card radius belongs is the mistake someone would actually make.
+        /// **Both knobs are tokens rather than literals, because the `G-7.7` rules reach this file
+        /// too** — `.swiftlint.yml` says why they reach further than they appear to. So a mutation
+        /// here has to be a *wrong token*, which is the better probe anyway: taking the control radius
+        /// where the card radius belongs is the mistake someone would actually make.
         private struct MutatedCard: View {
             let cornerRadius: CornerRadius
             let surface: ColorToken
@@ -172,7 +189,10 @@
         @Test func theMaskIsStableForOneDirection() throws {
             let first = try inkMask(for: .increase, typeSize: .default)
             let second = try inkMask(for: .increase, typeSize: .default)
-            #expect(first == second)
+            // Counted rather than compared: `#expect(first == second)` prints both masks, and a mask
+            // is one `Bool` per pixel.
+            #expect(first.count == second.count)
+            #expect(zip(first, second).count { $0.0 != $0.1 } == 0)
         }
 
         /// Every direction actually draws something. A mask that was empty for all three would satisfy
@@ -234,7 +254,11 @@
         @Test func offlineWithoutRetryRendersNoButton() throws {
             let withRetry = try Snapshot.render(OfflineStateView(retry: {}), appearance: .dark, typeSize: .default)
             let withoutRetry = try Snapshot.render(OfflineStateView(), appearance: .dark, typeSize: .default)
-            #expect(withRetry.height > withoutRetry.height)
+            #expect(withRetry.width == withoutRetry.width)
+            // The same measure its sibling above uses, and for the same reason: any growth at all
+            // would also be satisfied by a stray point of padding.
+            let grew = withRetry.height - withoutRetry.height
+            #expect(Double(grew) >= TouchTarget.standard.points * Snapshot.scale)
         }
     }
 

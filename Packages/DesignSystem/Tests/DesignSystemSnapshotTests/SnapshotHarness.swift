@@ -20,8 +20,8 @@
     // WHY THIS TARGET RUNS ON THE SIMULATOR AND NOWHERE ELSE. Everything here is `#if os(iOS)`: the
     // references are iOS renderings, and `build-packages.sh --test` runs `swift test` on macOS, where
     // the same view resolves macOS font metrics and would fail against every reference. On macOS this
-    // target compiles to nothing and reports no tests — which is a silent pass, so the CI job asserts a
-    // minimum test count rather than trusting the exit status (scripts/snapshot-tests.sh).
+    // target compiles to nothing and reports no tests — which is a silent pass, so the CI job asserts
+    // what the run actually compared rather than trusting the exit status (scripts/snapshot-tests.sh).
     //
     // WHAT A SNAPSHOT HERE CANNOT SEE — two limits, both measured rather than assumed.
     //
@@ -74,6 +74,15 @@
         let width: Int
         let height: Int
         let pixels: [UInt8]
+    }
+
+    /// Rendered by its dimensions, never by its pixels.
+    ///
+    /// `#expect` prints the values it was given, and a bitmap's is a `[UInt8]` of a few hundred
+    /// thousand elements: one failing probe otherwise writes megabytes onto a single log line, past
+    /// every line-based filter downstream of it.
+    extension Bitmap: CustomTestStringConvertible {
+        var testDescription: String { "\(width)×\(height) bitmap" }
     }
 
     /// Why a snapshot did not match.
@@ -337,7 +346,13 @@
         }
 
         let referenceBitmap = try Snapshot.bitmap(fromPNG: referenceData)
-        guard let mismatch = Snapshot.compare(referenceBitmap, rendered) else { return }
+        guard let mismatch = Snapshot.compare(referenceBitmap, rendered) else {
+            // Counted by scripts/snapshot-tests.sh, which fails a run that compared fewer references
+            // than the directory holds — a test count cannot tell a full run from one whose component
+            // suite dropped out.
+            print("SNAPSHOT COMPARED \(name)")
+            return
+        }
 
         try? FileManager.default.createDirectory(at: Snapshot.failureDirectory, withIntermediateDirectories: true)
         try? Snapshot.pngData(rendered).write(to: Snapshot.failureDirectory.appending(path: "\(name).rendered.png"))

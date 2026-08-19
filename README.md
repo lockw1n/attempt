@@ -281,6 +281,27 @@ It covers `PowerliftingCore` only, and names it rather than globbing — a packa
 with a real store behind its tests is expected to be slower. The script's header
 says what a failure here actually means.
 
+The `DesignSystem` components are held to committed reference images, rendered
+in light and dark at the default and `accessibility3` Dynamic Type sizes. That
+suite renders on the iOS simulator rather than through SwiftPM, so it runs on its
+own rather than under `build-packages.sh`:
+
+```bash
+./scripts/snapshot-tests.sh
+```
+
+After an intended design change, regenerating the whole set is one command — it
+deletes the references, records them again and verifies what it wrote:
+
+```bash
+./scripts/snapshot-tests.sh --record
+```
+
+The references are committed, beside the tests in
+`Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__`. A failing
+run leaves what it rendered, and a diff image, in
+`Packages/DesignSystem/.build/snapshot-failures/`.
+
 Three CI assertions that also run locally — the app target's Swift build
 settings, the `@unchecked Sendable` justifications, and the runtime gate's own
 proof:

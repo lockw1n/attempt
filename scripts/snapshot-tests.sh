@@ -9,8 +9,14 @@
 # simulator, and `build-packages.sh --test` runs `swift test` on macOS where the same view resolves
 # macOS font metrics. The snapshot target is therefore `#if os(iOS)` throughout: on macOS it
 # compiles to nothing and reports no tests. That is a silent pass, which is why this script asserts
-# a MINIMUM TEST COUNT rather than trusting the exit status — a `-only-testing:` typo, a renamed
+# WHAT THE RUN COMPARED rather than trusting the exit status — a `-only-testing:` typo, a renamed
 # target or a stray `#if` would otherwise leave a green job enforcing nothing.
+#
+# Two assertions, because one number cannot do it. Every reference the suite matches is announced by
+# the harness, and the count of those has to equal the number of committed references: that is what
+# notices a suite dropping out of the run while its images stay in the tree. And a minimum test
+# count, for the tests that back no reference at all — the harness probes, which are the half of
+# this suite that proves the comparison can fail.
 #
 # WHY THE DEVICE BARELY MATTERS. Every reference is rendered at a fixed width and scale (see
 # SnapshotHarness.swift), so the destination contributes only its OS version, which is what resolves
@@ -32,9 +38,10 @@ TEST_TARGET="DesignSystemSnapshotTests"
 REFERENCES="$PACKAGE/Tests/$TEST_TARGET/__Snapshots__"
 DESTINATION="${SNAPSHOT_DESTINATION:-platform=iOS Simulator,OS=latest,name=iPhone 17 Pro}"
 
-# The suite is 5 suites of tests as of T-1.08. The floor is deliberately below that and deliberately
-# not zero: it exists to catch a run that executed *nothing*, not to be updated whenever a test is
-# added.
+# 27 tests in 5 suites as of T-1.08: 15 back a reference, 12 probe the harness. The floor sits
+# ABOVE the 15 on purpose. Reference parity below already covers every reference-backed test
+# exactly, so the only thing left for a count to notice is the probe suites going missing — and a
+# floor under 15 could not notice that, because the reference tests alone would clear it.
 MINIMUM_TESTS=20
 
 RECORD=0
@@ -67,12 +74,32 @@ executed_tests() {
     sed -nE 's/.*Test run with ([0-9]+) tests? in .*/\1/p' "$log" | tail -1
 }
 
+# One line per reference the harness matched, printed by assertSnapshot. Deduplicated because
+# xcodebuild echoes the test process's stdout in more than one place.
+compared_references() {
+    sed -nE 's/.*SNAPSHOT COMPARED ([^[:space:]]+).*/\1/p' "$log" | sort -u | wc -l | tr -d ' '
+}
+
+committed_references() {
+    find "$REFERENCES" -name '*.png' | wc -l | tr -d ' '
+}
+
 # The interesting lines are swift-testing's own issue lines, and they are nowhere near the end of a
 # 700-line xcodebuild log — a bare `tail` reports only that something failed, which is the one thing
 # the exit status already said.
+#
+# `|| true` IS LOAD-BEARING. Under `set -euo pipefail` a grep that matches nothing returns 1 and
+# takes the whole script down with it — before the caller reaches its own `exit 70`. The callers
+# that most need this are exactly the ones with nothing to match: a run whose tests all passed and
+# whose *gate* is what failed. Measured: without it those paths exit 1, silently collapsing the
+# distinction between "snapshots differ" and "this gate is not enforcing anything".
+#
+# `cut` bounds a line rather than a count. `head -40` counts lines, and one swift-testing line can
+# carry an entire operand.
 report_failure() {
     echo "--- failures ---" >&2
-    grep -E "SNAPSHOT MISMATCH|Expectation failed|error:|✘ Suite|✘ Test run" "$log" | head -40 >&2
+    grep -E "SNAPSHOT MISMATCH|Expectation failed|error:|✘ Suite|✘ Test run" "$log" \
+        | cut -c1-400 | head -40 >&2 || true
     echo "--- xcodebuild output (last 15 lines) ---" >&2
     tail -15 "$log" >&2
 }
@@ -87,7 +114,7 @@ if (( RECORD )); then
         report_failure
         exit 70
     fi
-    echo "==> recorded $(find "$REFERENCES" -name '*.png' | wc -l | tr -d ' ') references; verifying them"
+    echo "==> recorded $(committed_references) references; verifying them"
 fi
 
 if ! run_suite; then
@@ -111,4 +138,16 @@ if (( count < MINIMUM_TESTS )); then
     exit 70
 fi
 
-echo "$count snapshot tests passed against $(find "$REFERENCES" -name '*.png' | wc -l | tr -d ' ') references."
+references=$(committed_references)
+compared=$(compared_references)
+if [[ "$compared" != "$references" ]]; then
+    echo "snapshot-tests.sh: the run compared $compared references, but the directory holds $references." >&2
+    echo "  $REFERENCES" >&2
+    echo "A suite that stops being run leaves its references behind, and a reference whose test was" >&2
+    echo "deleted stays in the tree; both are green under a test count and neither is under this." >&2
+    echo "If a reference is genuinely obsolete: scripts/snapshot-tests.sh --record." >&2
+    report_failure
+    exit 70
+fi
+
+echo "$count snapshot tests passed, comparing all $references references."

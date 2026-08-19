@@ -152,7 +152,9 @@ jobs:
   #
   # The script — not a bare `xcodebuild` — because the snapshot target is `#if os(iOS)` throughout
   # and therefore reports *no tests at all* on any other platform, or under a `-only-testing:` typo.
-  # That is a silent pass. scripts/snapshot-tests.sh asserts a minimum test count for that case.
+  # That is a silent pass. scripts/snapshot-tests.sh asserts that every committed reference was
+  # actually compared, which catches that case and the narrower one a test count cannot see: a
+  # single suite dropping out of the run while its images stay in the tree.
   #
   # NOT YET A REQUIRED CHECK: GitHub only offers a job for branch protection once it has reported
   # at least once, so this one has to be added to the rule by hand after its first run. Until then
@@ -168,6 +170,17 @@ jobs:
 
       - name: Render and compare component snapshots
         run: ./scripts/snapshot-tests.sh
+
+      # A snapshot failure is an image. The script leaves the rendering and a diff in the runner's
+      # own .build, so without this step the log carries the pixel counts and the two pictures that
+      # would explain them exist nowhere anybody can reach.
+      - name: Upload rendered snapshots and diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-failures
+          path: Packages/DesignSystem/.build/snapshot-failures/
+          if-no-files-found: ignore
 
   # TR-0.1.1 / NFR-0.2 / DOD-0.2: the mechanical proof that no *Apple-platform* framework leaked
   # into the domain layer. An `import SwiftUI` or `import SwiftData` in PowerliftingCore compiles
