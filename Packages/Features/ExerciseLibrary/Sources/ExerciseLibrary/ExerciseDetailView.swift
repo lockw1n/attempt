@@ -175,8 +175,29 @@ struct ExerciseFactRow: View {
     /// What the field is called.
     let label: LocalizedStringResource
 
-    /// What this exercise's value for it is.
-    let value: LocalizedStringResource
+    /// What this exercise's value for it is, built by the caller.
+    let value: Text
+
+    /// A field whose value is one of a vocabulary's names — copy, and localized (`G-3.4`).
+    ///
+    /// - Parameters:
+    ///   - label: What the field is called.
+    ///   - value: This exercise's value for it.
+    init(label: LocalizedStringResource, value: LocalizedStringResource) {
+        self.label = label
+        self.value = Text(value)
+    }
+
+    /// A field whose value the caller has already built — the case a row of catalogue *data*, such
+    /// as an exercise's name, needs, since that arrives `verbatim` rather than as copy.
+    ///
+    /// - Parameters:
+    ///   - label: What the field is called.
+    ///   - value: This exercise's value for it.
+    init(label: LocalizedStringResource, value: Text) {
+        self.label = label
+        self.value = value
+    }
 
     /// Side by side where both fit, stacked where they do not.
     ///
@@ -209,7 +230,7 @@ struct ExerciseFactRow: View {
 
     /// The field's value.
     private var reading: some View {
-        Text(value)
+        value
             .font(Typography.body.font)
             .foregroundStyle(ColorToken.textPrimary)
     }

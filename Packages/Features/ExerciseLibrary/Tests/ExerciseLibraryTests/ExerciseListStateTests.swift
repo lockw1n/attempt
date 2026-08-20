@@ -251,6 +251,30 @@ struct ExerciseListStateTests {
         #expect(await repository.reads == 1)
     }
 
+    @Test("A refresh applies the same exclusions and the same order the first read did")
+    func refreshStaysBrowsable() async throws {
+        let repository = ScriptedExerciseRepository(exercises: Fixtures.catalogue)
+        let state = ExerciseListState(repository: repository)
+        await state.load()
+        let firstRead = state.names
+        let backSquat = try #require(firstRead.firstIndex(of: "Back Squat"))
+
+        // `refresh()` is a second path to the same rows, so `FR-1.1.5`'s archive exclusion and
+        // `FR-1.1.1`'s order have to be pinned on it and not only on `load()`: a refresh that
+        // returned the repository's own rows unfiltered would pass every other test in this suite.
+        try await repository.save(
+            Fixtures.exercise(name: "Retired Squat", movement: .squat, isArchived: true))
+        try await repository.save(Fixtures.exercise(name: "Belt Squat", movement: .squat))
+        await state.refresh()
+
+        // Directly after Back Squat, which is where its name puts it inside the squat group — not
+        // at the end, which is where the read returned it.
+        var expected = firstRead
+        expected.insert("Belt Squat", at: backSquat + 1)
+        #expect(state.names == expected)
+        #expect(!state.names.contains("Retired Squat"))
+    }
+
     @Test("A refresh that fails leaves the screen in the state that offers a retry")
     func failedRefreshIsRecoverable() async {
         let repository = ScriptedExerciseRepository(exercises: Fixtures.catalogue)

@@ -298,6 +298,44 @@ struct ExerciseFormStateTests {
         #expect(await repository.savedRecords.map(\.isCustom) == [false])
     }
 
+    @Test("A successful save retires the banner the attempt before it left behind")
+    func successRetiresTheWriteFailure() async {
+        let repository = ScriptedExerciseRepository(
+            exercises: DetailFixtures.catalogue,
+            writeError: .recordNotFound(id: UUID())
+        )
+        let state = ExerciseFormState(mode: .create, repository: repository)
+        await state.load()
+        state.name = "Belt Squat"
+        await state.save()
+        #expect(state.writeFailure != nil)
+
+        // The retry is another tap and not another edit, so nothing else clears it.
+        await repository.recoverWrites()
+        await state.save()
+        #expect(state.writeFailure == nil)
+    }
+
+    @Test("A second save upserts the row the first one wrote rather than re-minting it")
+    func aSecondSaveKeepsTheRowItAlreadyWrote() async {
+        let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
+        let state = ExerciseFormState(mode: .create, repository: repository)
+        await state.load()
+        state.name = "Belt Squat"
+        await state.save()
+        state.name = "Belt Squat, high"
+        await state.save()
+
+        // The screen dismisses on the first success, so this is a race rather than a flow — but a
+        // second write that minted a fresh `createdAt` would age the row backwards, and `createdAt`
+        // is not a column a later write can put right.
+        let written = await repository.savedRecords
+        #expect(written.count == 2)
+        #expect(Set(written.map(\.id)).count == 1)
+        #expect(written.map(\.createdAt) == [written[0].createdAt, written[0].createdAt])
+        #expect(written.map(\.name) == ["Belt Squat", "Belt Squat, high"])
+    }
+
     @Test("Renaming a built-in exercise does not break the sets logged against it (FR-1.1.4)")
     func renameKeepsLoggedHistory() async throws {
         // `RepositoryFakes` again, and for the same reason: this asserts that the *store* resolves a

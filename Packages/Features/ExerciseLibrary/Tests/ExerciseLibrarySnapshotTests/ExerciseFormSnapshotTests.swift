@@ -24,6 +24,11 @@
     // What the form *decides* is `ExerciseFormStateTests`' and `ExerciseFormParentTests`'; the parent
     // picker below is the part of it a reference can see, and selection is the one thing on this
     // screen a user reads back.
+    //
+    // The third reference is the form a BUILT-IN exercise gets, whose five catalogue-owned fields
+    // are facts rather than controls (`FR-1.1.4`). It photographs where the chip rows do not, and it
+    // is the layout most at risk at accessibility3: a paragraph of copy above five `ViewThatFits`
+    // rows that stack when the two halves stop sharing a line.
 
     @MainActor
     @Suite("Exercise form snapshots")
@@ -34,6 +39,20 @@
                     ExerciseParentList(
                         candidates: [DetailFixtures.backSquat, DetailFixtures.pauseSquat],
                         selection: .constant(DetailFixtures.backSquat.id)
+                    )
+                }
+            }
+        }
+
+        @Test func builtInFieldsAreFacts() throws {
+            try assertSnapshots(named: "ExerciseForm-catalogue-owned") {
+                VStack(alignment: .leading) {
+                    CatalogueOwnedFacts(
+                        movement: .squat,
+                        equipment: .barbell,
+                        barType: .standard,
+                        laterality: .bilateral,
+                        parentName: "Back Squat"
                     )
                 }
             }

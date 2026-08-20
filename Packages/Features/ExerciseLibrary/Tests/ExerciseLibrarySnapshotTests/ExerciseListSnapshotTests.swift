@@ -64,7 +64,11 @@
                 EmptyStateView(
                     symbolName: "figure.strengthtraining.traditional",
                     headline: Text(ExerciseLibraryStrings.emptyHeadline),
-                    message: Text(ExerciseLibraryStrings.emptyMessage)
+                    message: Text(ExerciseLibraryStrings.emptyMessage),
+                    // The way into the create form, which this state gained once that screen
+                    // existed (`FR-1.1.3`). A reference built without it pictures a screen the app
+                    // no longer has, and passes while doing so.
+                    action: StateAction(Text(ExerciseLibraryStrings.createAction)) {}
                 )
             }
         }

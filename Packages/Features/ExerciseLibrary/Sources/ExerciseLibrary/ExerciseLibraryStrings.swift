@@ -176,7 +176,11 @@ enum ExerciseLibraryStrings {
     /// The laterality chips' label.
     static let formLaterality = resource("exerciselibrary.form.field.laterality")
 
-    /// The heading over the parent picker (`FR-1.1.7`).
+    /// Whose the fields below the name are, on a built-in exercise whose fields are not the user's.
+    static let formCatalogueOwned = resource("exerciselibrary.form.catalogue-owned")
+
+    /// The heading over the parent picker (`FR-1.1.7`), and the label of the read-only row that
+    /// replaces it where the catalogue owns the parent.
     static let formParentSection = resource("exerciselibrary.form.section.parent")
 
     /// The parent picker's unset position — a root exercise, not a missing answer.
@@ -299,7 +303,8 @@ enum ExerciseLibraryStrings {
             detailErrorHeadline, detailErrorMessage, detailMissingHeadline, detailMissingMessage,
             createAction, editAction, formCreateTitle, formEditTitle, formSection,
             formName, formNamePrompt, formNameRequired, formMovement, formEquipment, formBar,
-            formLaterality, formParentSection, formParentNone, formParentEveryMovement,
+            formLaterality, formCatalogueOwned, formParentSection, formParentNone,
+            formParentEveryMovement,
             formParentEmpty, formSave, formErrorHeadline, formErrorMessage, formMissingHeadline,
             formMissingMessage, formWriteError,
         ]

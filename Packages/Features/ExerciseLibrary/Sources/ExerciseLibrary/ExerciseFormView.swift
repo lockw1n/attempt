@@ -91,9 +91,21 @@ public struct ExerciseFormView: View {
     }
 
     /// The fields, the parent picker, and the command that commits them.
+    ///
+    /// **The parent picker is absent on a built-in exercise**, whose parent the catalogue owns —
+    /// ``ExerciseFormState/catalogueOwnsFields`` has the rule, and the fields section renders that
+    /// exercise's parent as a fact alongside the other four it cannot change.
+    ///
+    /// Both sections go inert while a save is in flight: the record is taken when the button is
+    /// tapped, and a form that accepted keystrokes afterwards would be taking edits it is about to
+    /// dismiss without storing.
     @ViewBuilder private var ready: some View {
         ExerciseFieldsSection(state: state)
-        ExerciseParentSection(state: state)
+            .disabled(state.isSaving)
+        if !state.catalogueOwnsFields {
+            ExerciseParentSection(state: state)
+                .disabled(state.isSaving)
+        }
         saveCommand
     }
 
@@ -127,59 +139,140 @@ struct ExerciseFieldsSection: View {
     /// The form these fields are bound to.
     @Bindable var state: ExerciseFormState
 
-    /// The name field with its requirement beneath it, then one chip row per vocabulary.
+    /// The name field, then either the vocabularies or — on a built-in — the facts they would edit.
     var body: some View {
         GroupedSection(Text(ExerciseLibraryStrings.formSection)) {
-            VStack(alignment: .leading, spacing: Spacing.xs.points) {
-                Text(ExerciseLibraryStrings.formName)
-                    .font(Typography.metricLabel.font)
-                    .foregroundStyle(ColorToken.textSecondary)
-                TextField(
-                    text: $state.name,
-                    prompt: Text(ExerciseLibraryStrings.formNamePrompt)
-                ) {
-                    Text(ExerciseLibraryStrings.formName)
-                }
-                .labelsHidden()
-                .font(Typography.body.font)
-                .foregroundStyle(ColorToken.textPrimary)
-                .textFieldStyle(.plain)
-                .padding(Spacing.md.points)
-                .background(
-                    ColorToken.surfaceRaised,
-                    in: .rect(cornerRadius: CornerRadius.control.points)
-                )
-                if !state.isNameValid {
-                    Text(ExerciseLibraryStrings.formNameRequired)
-                        .font(Typography.caption.font)
-                        .foregroundStyle(ColorToken.textSecondary)
-                }
+            nameField
+            if state.catalogueOwnsFields {
+                catalogueOwnedFacts
+            } else {
+                vocabularies
             }
-            OptionChipRow(
-                title: ExerciseLibraryStrings.formMovement,
-                options: Movement.allCases,
-                selection: $state.movement,
-                label: ExerciseLibraryStrings.label(for:)
-            )
-            OptionChipRow(
-                title: ExerciseLibraryStrings.formEquipment,
-                options: Equipment.allCases,
-                selection: $state.equipment,
-                label: ExerciseLibraryStrings.label(for:)
-            )
-            OptionChipRow(
-                title: ExerciseLibraryStrings.formBar,
-                options: BarType.allCases,
-                selection: $state.barType,
-                label: ExerciseLibraryStrings.label(for:)
-            )
-            OptionChipRow(
-                title: ExerciseLibraryStrings.formLaterality,
-                options: Laterality.allCases,
-                selection: $state.laterality,
-                label: ExerciseLibraryStrings.label(for:)
-            )
         }
+    }
+
+    /// The one field every exercise has in common, and the sentence saying it is required.
+    @ViewBuilder private var nameField: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs.points) {
+            Text(ExerciseLibraryStrings.formName)
+                .font(Typography.metricLabel.font)
+                .foregroundStyle(ColorToken.textSecondary)
+            TextField(
+                text: $state.name,
+                prompt: Text(ExerciseLibraryStrings.formNamePrompt)
+            ) {
+                Text(ExerciseLibraryStrings.formName)
+            }
+            .labelsHidden()
+            .font(Typography.body.font)
+            .foregroundStyle(ColorToken.textPrimary)
+            .textFieldStyle(.plain)
+            .padding(Spacing.md.points)
+            .background(
+                ColorToken.surfaceRaised,
+                in: .rect(cornerRadius: CornerRadius.control.points)
+            )
+            if !state.isNameValid {
+                Text(ExerciseLibraryStrings.formNameRequired)
+                    .font(Typography.caption.font)
+                    .foregroundStyle(ColorToken.textSecondary)
+            }
+        }
+    }
+
+    /// What a built-in exercise's other five fields are, and whose they are.
+    @ViewBuilder private var catalogueOwnedFacts: some View {
+        CatalogueOwnedFacts(
+            movement: state.movement,
+            equipment: state.equipment,
+            barType: state.barType,
+            laterality: state.laterality,
+            parentName: state.selectedParent?.name
+        )
+    }
+
+    /// One chip row per vocabulary, for the exercises whose fields are the user's.
+    @ViewBuilder private var vocabularies: some View {
+        OptionChipRow(
+            title: ExerciseLibraryStrings.formMovement,
+            options: Movement.allCases,
+            selection: $state.movement,
+            label: ExerciseLibraryStrings.label(for:)
+        )
+        OptionChipRow(
+            title: ExerciseLibraryStrings.formEquipment,
+            options: Equipment.allCases,
+            selection: $state.equipment,
+            label: ExerciseLibraryStrings.label(for:)
+        )
+        OptionChipRow(
+            title: ExerciseLibraryStrings.formBar,
+            options: BarType.allCases,
+            selection: $state.barType,
+            label: ExerciseLibraryStrings.label(for:)
+        )
+        OptionChipRow(
+            title: ExerciseLibraryStrings.formLaterality,
+            options: Laterality.allCases,
+            selection: $state.laterality,
+            label: ExerciseLibraryStrings.label(for:)
+        )
+    }
+}
+
+/// The five fields a built-in exercise's form shows rather than edits, and whose they are.
+///
+/// **Shown rather than omitted.** The values are on the detail screen either way, so hiding them
+/// here would leave the user comparing two screens to work out why one of them is shorter; the
+/// sentence above them is the thing a silently reverted edit would never have said.
+/// ``ExerciseFormState/catalogueOwnsFields`` is the rule, and its only home.
+///
+/// Takes values rather than the state, for the reason `ExerciseGroupList` gives — this is what the
+/// reference renders.
+struct CatalogueOwnedFacts: View {
+    /// Which lift the catalogue says this is a form of.
+    let movement: Movement
+
+    /// What the catalogue says it is performed with.
+    let equipment: Equipment
+
+    /// The bar category the catalogue gives it.
+    let barType: BarType
+
+    /// How many sides the catalogue says a rep works.
+    let laterality: Laterality
+
+    /// The name of the exercise the catalogue says this one varies, or `nil` for a root exercise.
+    let parentName: String?
+
+    /// The sentence, then one fact per field.
+    var body: some View {
+        Text(ExerciseLibraryStrings.formCatalogueOwned)
+            .font(Typography.caption.font)
+            .foregroundStyle(ColorToken.textSecondary)
+        ExerciseFactRow(
+            label: ExerciseLibraryStrings.formMovement,
+            value: ExerciseLibraryStrings.label(for: movement)
+        )
+        ExerciseFactRow(
+            label: ExerciseLibraryStrings.formEquipment,
+            value: ExerciseLibraryStrings.label(for: equipment)
+        )
+        ExerciseFactRow(
+            label: ExerciseLibraryStrings.formBar,
+            value: ExerciseLibraryStrings.label(for: barType)
+        )
+        ExerciseFactRow(
+            label: ExerciseLibraryStrings.formLaterality,
+            value: ExerciseLibraryStrings.label(for: laterality)
+        )
+        // The parent as a fact, which is why the picker section is absent for these exercises. A
+        // name is data and arrives `verbatim`; "Nothing" is copy and does not.
+        ExerciseFactRow(
+            label: ExerciseLibraryStrings.formParentSection,
+            value: parentName.map { Text(verbatim: $0) }
+                ?? Text(ExerciseLibraryStrings.formParentNone)
+        )
     }
 }
 

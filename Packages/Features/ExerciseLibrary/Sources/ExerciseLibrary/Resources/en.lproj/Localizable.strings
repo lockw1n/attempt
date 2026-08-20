@@ -147,6 +147,13 @@
 "exerciselibrary.form.field.bar" = "Bar";
 "exerciselibrary.form.field.laterality" = "Sides";
 
+/* Shown on a built-in exercise, above the five fields the form displays rather than edits — the
+   reason is `ExerciseFormState.catalogueOwnsFields`. It names the five rather than saying "some
+   fields", because a user looking for the control they expected needs to know this is the sentence
+   about it, and it says what the name and the notes are, since those two are still theirs
+   (FR-1.1.4). */
+"exerciselibrary.form.catalogue-owned" = "Movement, equipment, bar, sides and what this varies come from the built-in catalogue, which restores them whenever the app updates it. The name and the notes are yours to change.";
+
 /* FR-1.1.7's relationship, from the variation's side. The heading is the sentence: "<this exercise>
    is a variation of <that one>". */
 "exerciselibrary.form.section.parent" = "Variation of";

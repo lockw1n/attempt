@@ -29,6 +29,9 @@ public enum ExerciseFormMode: Sendable, Equatable {
 /// same test: ``RepositoryInterface/Exercise/notes`` has its own editor on the detail screen, and
 /// ``RepositoryInterface/Exercise/implementCount`` is displayed nowhere and keeps the schema's 1.
 ///
+/// **On a built-in exercise all of those but the name are read-only** — see ``catalogueOwnsFields``,
+/// which is the one place the rule is stated.
+///
 /// **An edit rebuilds the record from the one that was read, not from the fields alone.** Everything
 /// the form does not expose — the notes, the archive flag, `createdAt`, `isCustom` — is carried
 /// across, so saving a rename cannot silently drop a cue the user typed on the detail screen.
@@ -206,6 +209,28 @@ public final class ExerciseFormState {
         parentExerciseID.flatMap { id in catalogue.first { $0.id == id } }
     }
 
+    /// Whether the seed catalogue owns every field below the name (`TR-0.5.1`, `FR-1.1.4`).
+    ///
+    /// **True for a built-in exercise, and it is why this form will not edit those fields.** The
+    /// seed import runs at every launch and is a merge, not a first-run step: on any row whose
+    /// ``RepositoryInterface/Exercise/isCustom`` is `false` it re-supplies six columns from the
+    /// bundled catalogue — the movement, the parent, the equipment, the laterality, the bar and the
+    /// implement count. Five of those are fields this form would otherwise edit, so offering them
+    /// would be offering an edit that is accepted, stored, shown, and then undone by the next cold
+    /// start with nothing said. The screen shows them as facts instead, and says whose they are.
+    ///
+    /// **The name is deliberately not one of them.** The merge keeps it precisely so that
+    /// `FR-1.1.4`'s rename of a built-in survives an import, which is what makes a built-in
+    /// renameable here and otherwise read-only.
+    ///
+    /// A custom exercise is skipped by that merge altogether, so on one of those every field is the
+    /// user's and every field is editable. Creating always authors a custom row, so this is `false`
+    /// there too.
+    public var catalogueOwnsFields: Bool {
+        guard let editedRecord else { return false }
+        return !editedRecord.isCustom
+    }
+
     /// `exerciseID` and everything that descends from it — the set a parent may not be drawn from.
     ///
     /// Walks the catalogue rather than recursing through it, so a cycle already stored (an import,
@@ -281,17 +306,21 @@ public final class ExerciseFormState {
     /// optional.
     private func record() -> Exercise? {
         if let edited = editedRecord {
+            // The five seed-owned fields are taken from the record rather than from the form
+            // whenever the catalogue owns them, so the rule holds here and not only in the view:
+            // a field the screen never offered cannot reach the store by another path.
+            let owned = !edited.isCustom
             return Exercise(
                 id: edited.id,
                 createdAt: edited.createdAt,
                 updatedAt: edited.updatedAt,
                 deletedAt: edited.deletedAt,
                 name: trimmedName,
-                movement: movement,
-                parentExerciseID: parentExerciseID,
-                equipment: equipment,
-                laterality: laterality,
-                barType: barType,
+                movement: owned ? edited.movement : movement,
+                parentExerciseID: owned ? edited.parentExerciseID : parentExerciseID,
+                equipment: owned ? edited.equipment : equipment,
+                laterality: owned ? edited.laterality : laterality,
+                barType: owned ? edited.barType : barType,
                 implementCount: edited.implementCount,
                 isCustom: edited.isCustom,
                 isArchived: edited.isArchived,
