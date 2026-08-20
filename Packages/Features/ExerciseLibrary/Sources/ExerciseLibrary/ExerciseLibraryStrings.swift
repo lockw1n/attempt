@@ -43,11 +43,27 @@ enum ExerciseLibraryStrings {
     /// The badge on a row the user authored (`FR-1.1.3`).
     static let customBadge = resource("exerciselibrary.list.row.custom")
 
+    /// The control that widens the list to archived exercises (`FR-1.1.5`).
+    ///
+    /// A `list.filter.*` key because it sits in the filter bar, and not a filter — see
+    /// ``ExerciseListState/showsArchived``.
+    static let showArchivedFilter = resource("exerciselibrary.list.filter.archived")
+
+    /// The badge on an archived row, once one is shown. The list's own, not the detail screen's:
+    /// the key convention is by screen, and the two are free to diverge.
+    static let archivedBadge = resource("exerciselibrary.list.row.archived")
+
     /// The heading when the catalogue itself has nothing in it.
     static let emptyHeadline = resource("exerciselibrary.list.empty.headline")
 
     /// What to do about an empty catalogue.
     static let emptyMessage = resource("exerciselibrary.list.empty.message")
+
+    /// The heading when every exercise there is has been archived.
+    static let archivedOnlyHeadline = resource("exerciselibrary.list.archived-only.headline")
+
+    /// What to do about a catalogue that is entirely archived.
+    static let archivedOnlyMessage = resource("exerciselibrary.list.archived-only.message")
 
     /// The heading when the search and filters matched nothing.
     static let noMatchesHeadline = resource("exerciselibrary.list.no-matches.headline")
@@ -101,6 +117,24 @@ enum ExerciseLibraryStrings {
 
     /// What the user can understand about a failed write — never the diagnostic.
     static let notesError = resource("exerciselibrary.detail.notes.error")
+
+    /// The heading over the archive control (`FR-1.1.5`).
+    static let archiveSection = resource("exerciselibrary.detail.section.archive")
+
+    /// What archiving does, shown above the control on a live exercise.
+    static let archiveExplanation = resource("exerciselibrary.detail.archive.explanation")
+
+    /// Archives the exercise.
+    static let archiveAction = resource("exerciselibrary.detail.archive.action")
+
+    /// Why this exercise is not in the list, shown above the control on an archived one.
+    static let unarchiveExplanation = resource("exerciselibrary.detail.unarchive.explanation")
+
+    /// Brings the exercise back.
+    static let unarchiveAction = resource("exerciselibrary.detail.unarchive.action")
+
+    /// What the user can understand about an archive write that failed — never the diagnostic.
+    static let archiveError = resource("exerciselibrary.detail.archive.error")
 
     /// The heading over the variation relationships (`FR-1.1.7`).
     static let variationsSection = resource("exerciselibrary.detail.section.variations")
@@ -292,12 +326,16 @@ enum ExerciseLibraryStrings {
         [
             title, searchPrompt, movementFilter, equipmentFilter, originFilter, filterAll,
             recentlyUsedFilter, recentlyUsedUnavailable, customBadge,
+            showArchivedFilter, archivedBadge,
             emptyHeadline, emptyMessage,
+            archivedOnlyHeadline, archivedOnlyMessage,
             noMatchesHeadline, noMatchesMessage, noMatchesAction,
             errorHeadline, errorMessage,
             detailSection, detailMovement, detailEquipment, detailBar, detailLaterality,
             detailOrigin, detailArchivedBadge,
             notesSection, notesPrompt, notesSave, notesDiscard, notesError,
+            archiveSection, archiveExplanation, archiveAction,
+            unarchiveExplanation, unarchiveAction, archiveError,
             variationsSection, variationOf,
             historySection, historyNone, recordsSection, recordsNone, e1rmSection, e1rmNone,
             detailErrorHeadline, detailErrorMessage, detailMissingHeadline, detailMissingMessage,

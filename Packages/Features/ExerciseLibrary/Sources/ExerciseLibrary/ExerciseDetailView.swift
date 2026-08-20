@@ -11,7 +11,7 @@ import SwiftUI
 /// for the same reason — `TR-1.12`'s harness renders through `ImageRenderer`, which draws a
 /// placeholder for anything UIKit-backed, so a `List` here would snapshot as a grey box.
 ///
-/// **Three of its six sections have no data yet and say so** rather than being absent: history,
+/// **Three of its seven sections have no data yet and say so** rather than being absent: history,
 /// personal records and the current estimate each carry an ``DesignSystem/InsufficientDataView``
 /// whose message names what would produce some (`FR-1.13.3`). The sections exist now so that
 /// `T-1.36`, `T-1.41` and `T-1.43` change what is inside one rather than adding one.
@@ -93,10 +93,14 @@ public struct ExerciseDetailView: View {
         }
     }
 
-    /// The six sections: the record's own fields, then the one thing here the user can change,
-    /// then `FR-1.1.7`'s relationships, and `FR-1.1.6`'s three derived values last — where they
-    /// stay once they hold real data, since a screen opened to check a cue should not be scrolled
-    /// past three charts to reach the notes.
+    /// The seven sections: the record's own fields, then the one thing here the user can change,
+    /// then `FR-1.1.7`'s relationships, and `FR-1.1.6`'s three derived values — where they stay once
+    /// they hold real data, since a screen opened to check a cue should not be scrolled past three
+    /// charts to reach the notes.
+    ///
+    /// **`FR-1.1.5`'s archive control is last, below all of them.** It is the one command here that
+    /// changes what the rest of the app shows, and the foot of a screen is where a command like that
+    /// is reached deliberately rather than in passing.
     @ViewBuilder private func loaded(_ detail: ExerciseDetail) -> some View {
         ExerciseFactsSection(exercise: detail.exercise)
         ExerciseNotesSection(state: state)
@@ -115,6 +119,12 @@ public struct ExerciseDetailView: View {
             title: ExerciseLibraryStrings.e1rmSection,
             nothingYet: ExerciseLibraryStrings.e1rmNone
         )
+        ExerciseArchiveSection(
+            isArchived: detail.exercise.isArchived,
+            hasFailed: state.archiveFailure != nil
+        ) {
+            Task { await state.setArchived(!detail.exercise.isArchived) }
+        }
     }
 }
 
@@ -356,6 +366,64 @@ struct ExerciseVariationsSection: View {
             ExerciseRow(exercise: exercise)
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// `FR-1.1.5`'s archive control, in whichever of its two directions applies.
+///
+/// Taking the flag and a closure rather than the state, for the reason ``ExerciseFactsSection``
+/// does: this is what the snapshot renders, and both directions have to be picturable without a
+/// store behind them.
+///
+/// **No confirmation, deliberately.** Archiving hides an exercise and keeps everything logged with
+/// it, and the reverse is the same button one tap later — a dialogue guarding a reversible action
+/// that the sentence above already explains is a dialogue the user learns to dismiss.
+struct ExerciseArchiveSection: View {
+    /// Whether the exercise is archived now — which decides both the copy and what the button asks
+    /// for.
+    let isArchived: Bool
+
+    /// Whether the last attempt failed. The exercise is unchanged when it did, so the button still
+    /// asks for the same direction and the retry is the same command.
+    let hasFailed: Bool
+
+    /// Archives the exercise, or brings it back.
+    let toggle: () -> Void
+
+    /// What archiving does, the command, and a failed write beneath them.
+    var body: some View {
+        GroupedSection(Text(ExerciseLibraryStrings.archiveSection)) {
+            Text(
+                isArchived
+                    ? ExerciseLibraryStrings.unarchiveExplanation
+                    : ExerciseLibraryStrings.archiveExplanation
+            )
+            .font(Typography.caption.font)
+            .foregroundStyle(ColorToken.textSecondary)
+            Button(action: toggle) {
+                Text(
+                    isArchived
+                        ? ExerciseLibraryStrings.unarchiveAction
+                        : ExerciseLibraryStrings.archiveAction
+                )
+                .font(Typography.actionLabel.font)
+                .foregroundStyle(ColorToken.textPrimary)
+                .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points)
+                .background(
+                    ColorToken.surfaceRaised,
+                    in: .rect(cornerRadius: CornerRadius.control.points)
+                )
+            }
+            .buttonStyle(.plain)
+            if hasFailed {
+                // The shared component rather than a local label, and the exercise stays on screen
+                // beside it: nothing was stored, so the retry is another tap at the same command.
+                ErrorStateView(
+                    message: Text(ExerciseLibraryStrings.archiveError),
+                    retry: toggle
+                )
+            }
+        }
     }
 }
 

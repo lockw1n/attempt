@@ -52,6 +52,21 @@
             }
         }
 
+        @Test func archiveControl() throws {
+            try assertSnapshots(named: "ExerciseDetail-archive") {
+                ExerciseArchiveSection(isArchived: false, hasFailed: false) {}
+            }
+        }
+
+        @Test func unarchiveControl() throws {
+            // The archived direction *and* the failed write in one reference: they are the two
+            // things this section renders that the live one does not, and a screen showing both is
+            // the state a retry is offered from.
+            try assertSnapshots(named: "ExerciseDetail-unarchive") {
+                ExerciseArchiveSection(isArchived: true, hasFailed: true) {}
+            }
+        }
+
         @Test func exerciseNotFound() throws {
             try assertSnapshots(named: "ExerciseDetail-missing") {
                 ErrorStateView(

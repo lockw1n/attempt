@@ -20,11 +20,26 @@
 
 "exerciselibrary.list.row.custom" = "Custom";
 
+/* Widens the list to archived exercises (FR-1.1.5). It sits in the filter bar and is not a filter:
+   the four above narrow what is shown and this one widens it, which is why the wording is an
+   instruction rather than the name of a facet. It is also the only way back to an archived
+   exercise, whose un-archive control is on its detail screen. */
+"exerciselibrary.list.filter.archived" = "Show archived";
+/* Shown on a row once archived ones are being shown, so a list holding both says which is which. */
+"exerciselibrary.list.row.archived" = "Archived";
+
 /* The catalogue itself is empty. There is no action yet: creating an exercise is FR-1.1.3's screen
    and it does not exist, so the message says what the app will do rather than offering a dead
    button. */
 "exerciselibrary.list.empty.headline" = "No exercises";
 "exerciselibrary.list.empty.message" = "The built-in catalogue has not been loaded yet.";
+
+/* Every exercise in the catalogue has been archived and the control above is off. Distinct from
+   both the empty catalogue (nothing to show) and a search that matched nothing (the filters are the
+   cause): here the rows exist, they are hidden, and the message names the control that brings them
+   back rather than offering a create form or a clear-filters that would change nothing. */
+"exerciselibrary.list.archived-only.headline" = "Everything is archived";
+"exerciselibrary.list.archived-only.message" = "Every exercise has been archived. Show archived to bring one back.";
 
 "exerciselibrary.list.no-matches.headline" = "No matches";
 "exerciselibrary.list.no-matches.message" = "No exercise matches this search and these filters.";
@@ -77,6 +92,19 @@
 /* The write failed. The draft is still on screen and the retry is another tap — the error's own
    description is a diagnostic and is never shown (G-3.4). */
 "exerciselibrary.detail.notes.error" = "These notes could not be saved.";
+
+/* FR-1.1.5's control, at the foot of the detail screen. Two sentences that are the same fact from
+   either side: archiving hides an exercise and keeps everything logged with it, and un-archiving is
+   how it comes back. The explanation names history explicitly because "archive" reads as "delete
+   quietly" to most people, and the whole point of the requirement is that it is not. */
+"exerciselibrary.detail.section.archive" = "Archive";
+"exerciselibrary.detail.archive.explanation" = "Archiving hides this exercise from the list and from every picker. Everything you have logged with it is kept, and you can bring it back at any time.";
+"exerciselibrary.detail.archive.action" = "Archive exercise";
+"exerciselibrary.detail.unarchive.explanation" = "This exercise is archived, so it does not appear in the list or in any picker. Everything logged with it is still here.";
+"exerciselibrary.detail.unarchive.action" = "Unarchive exercise";
+/* The write failed. One sentence for both directions: what the user needs to know is that nothing
+   changed, and the button beside it still says which way it was going. */
+"exerciselibrary.detail.archive.error" = "This change could not be saved.";
 
 "exerciselibrary.detail.section.variations" = "Variations";
 /* Precedes the parent exercise's name when this one varies another (FR-1.1.7). */

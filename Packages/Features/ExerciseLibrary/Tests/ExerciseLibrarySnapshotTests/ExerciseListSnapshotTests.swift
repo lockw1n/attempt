@@ -73,6 +73,23 @@
             }
         }
 
+        @Test func archivedRows() throws {
+            try assertSnapshots(named: "ExerciseList-archived") {
+                ExerciseGroupList(groups: Fixtures.archivedGroups)
+            }
+        }
+
+        @Test func everythingArchived() throws {
+            try assertSnapshots(named: "ExerciseList-archived-only") {
+                EmptyStateView(
+                    symbolName: "archivebox",
+                    headline: Text(ExerciseLibraryStrings.archivedOnlyHeadline),
+                    message: Text(ExerciseLibraryStrings.archivedOnlyMessage),
+                    action: StateAction(Text(ExerciseLibraryStrings.showArchivedFilter)) {}
+                )
+            }
+        }
+
         @Test func nothingMatched() throws {
             try assertSnapshots(named: "ExerciseList-no-matches") {
                 EmptyStateView(
@@ -112,6 +129,18 @@
                     exercise(id: 3, name: "Bench Press", movement: .bench, equipment: .dumbbell)
                 ]
             ),
+        ]
+
+        /// The list once "show archived" is on (`FR-1.1.5`): a live row and an archived one under
+        /// the same heading, which is the only picture that shows the badge doing its job.
+        static let archivedGroups: [ExerciseGroup] = [
+            ExerciseGroup(
+                movement: .squat,
+                exercises: [
+                    exercise(id: 1, name: "Back Squat", movement: .squat),
+                    exercise(id: 4, name: "Smith Machine Squat", movement: .squat, isArchived: true),
+                ]
+            )
         ]
 
         /// One exercise, with fixed dates and a fixed identifier so a rendering never moves — and

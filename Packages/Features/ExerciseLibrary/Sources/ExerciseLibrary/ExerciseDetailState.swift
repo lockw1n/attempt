@@ -34,9 +34,10 @@ public struct ExerciseDetail: Sendable, Equatable {
 /// `FR-1.1.7`).
 ///
 /// `SettingsLandingState`'s pattern, and this is the second screen to take the half of it the list
-/// did not need: **a write**. ``phase`` and ``writeFailure`` are separate properties because they
-/// are separate facts — a notes save that fails leaves the exercise on screen and the draft in the
-/// field, so the next attempt is another tap rather than a relaunch.
+/// did not need: **a write**, and by `FR-1.1.5` two of them. ``phase``, ``writeFailure`` and
+/// ``archiveFailure`` are separate properties because they are separate facts — a save that fails
+/// leaves the exercise on screen and the draft in the field, so the next attempt is another tap
+/// rather than a relaunch, and one write failing says nothing about the other.
 ///
 /// **The route carries an identifier, so resolving it is this screen's first job and can fail two
 /// ways.** ``Phase/failed(_:)`` is a read that went wrong and retries; ``Phase/missing`` is an
@@ -74,6 +75,14 @@ public final class ExerciseDetailState {
     /// A **diagnostic**, not copy (`G-3.4`), and deliberately not a ``Phase`` — see the type's own
     /// documentation for why a failed write must not cost the screen its read.
     public private(set) var writeFailure: String?
+
+    /// The last archive write that failed, as the error's description, or `nil` once one succeeds.
+    ///
+    /// A **diagnostic**, not copy (`G-3.4`), and separate from ``writeFailure`` rather than sharing
+    /// it: that one is retired by the next keystroke in the notes field, which is right for the
+    /// write it describes and would silently drop this one. The two writes fail independently and
+    /// are reported independently.
+    public private(set) var archiveFailure: String?
 
     /// What is in the notes field (`FR-1.1.6`).
     ///
@@ -189,6 +198,32 @@ public final class ExerciseDetailState {
         await write.value
     }
 
+    /// Archives or un-archives the exercise (`FR-1.1.5`).
+    ///
+    /// **The state is the argument, not a toggle**, which is what makes the command idempotent: two
+    /// taps before the first write lands both ask for the same thing, and the second is refused by
+    /// the guard in ``writeArchived(_:)`` instead of putting the exercise back.
+    ///
+    /// **Un-archiving is offered even though `FR-1.1.5` asks only for archiving.** An archive with
+    /// no reverse is a one-way door on a screen the user reached to look at an exercise, and the
+    /// column it writes is a plain boolean the seed importer keeps rather than re-supplies — so
+    /// nothing about the store makes it one-way.
+    ///
+    /// Serialized behind the notes chain, for ``saveNotes()``'s reason: both writes rebuild the
+    /// whole record from the one the screen is showing, so an archive that overlapped a notes save
+    /// would store the record as it was before that save and undo it.
+    ///
+    /// - Parameter archived: What ``RepositoryInterface/Exercise/isArchived`` should become.
+    public func setArchived(_ archived: Bool) async {
+        let previous = pendingWrite
+        let write = Task { [weak self] in
+            await previous?.value
+            await self?.writeArchived(archived)
+        }
+        pendingWrite = write
+        await write.value
+    }
+
     /// Puts the stored notes back into the field, discarding the edit.
     public func discardNoteEdits() {
         guard case .loaded(let detail) = phase else { return }
@@ -226,6 +261,36 @@ public final class ExerciseDetailState {
             // Re-read rather than publish what was handed in: the save path stamps `updatedAt`
             // itself, and the variation list is a second row's business either way.
             try await publishRead(confirming: submitted)
+        } catch {
+            phase = .failed(String(describing: error))
+        }
+    }
+
+    /// One link of ``setArchived(_:)``'s chain: decide against the record as it stands, then write.
+    ///
+    /// A write that would change nothing is skipped, for the reason ``writeNotes(_:)`` gives: every
+    /// save restamps `updatedAt`, which is `G-2.4`'s conflict key, so a local no-op would outrank a
+    /// real remote edit.
+    ///
+    /// **The stored notes are carried, not the draft.** Archiving is not a way to commit an edit the
+    /// user has not saved — and the re-read that follows keeps that draft on screen.
+    ///
+    /// The write and the re-read are reported apart, on ``writeNotes(_:)``'s split: a failed write
+    /// is ``archiveFailure`` and costs the screen nothing, where a read that fails after the write
+    /// landed is a failed read and becomes ``Phase/failed(_:)``.
+    ///
+    /// - Parameter archived: What ``RepositoryInterface/Exercise/isArchived`` should become.
+    private func writeArchived(_ archived: Bool) async {
+        guard case .loaded(let detail) = phase, detail.exercise.isArchived != archived else { return }
+        do {
+            try await repository.save(Self.archived(archived, on: detail.exercise))
+        } catch {
+            archiveFailure = String(describing: error)
+            return
+        }
+        archiveFailure = nil
+        do {
+            try await publishRead()
         } catch {
             phase = .failed(String(describing: error))
         }
@@ -275,6 +340,29 @@ public final class ExerciseDetailState {
                 catalogue
                 .filter { $0.parentExerciseID == exercise.id && !$0.isArchived }
                 .sorted(by: ExerciseOrder.precedes)
+        )
+    }
+
+    /// `exercise` with `isArchived` set, and every other field untouched.
+    ///
+    /// Rebuilt rather than mutated, and the timestamps carried across, for the reason
+    /// ``withNotes(_:on:)`` gives.
+    private static func archived(_ archived: Bool, on exercise: Exercise) -> Exercise {
+        Exercise(
+            id: exercise.id,
+            createdAt: exercise.createdAt,
+            updatedAt: exercise.updatedAt,
+            deletedAt: exercise.deletedAt,
+            name: exercise.name,
+            movement: exercise.movement,
+            parentExerciseID: exercise.parentExerciseID,
+            equipment: exercise.equipment,
+            laterality: exercise.laterality,
+            barType: exercise.barType,
+            implementCount: exercise.implementCount,
+            isCustom: exercise.isCustom,
+            isArchived: archived,
+            notes: exercise.notes
         )
     }
 

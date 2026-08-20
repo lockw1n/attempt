@@ -87,11 +87,12 @@ public struct ExerciseListView: View {
         }
     }
 
-    /// A read that succeeded: the catalogue, or one of the two ways it can have nothing to show.
+    /// A read that succeeded: the catalogue, or one of the three ways it can have nothing to show.
     ///
-    /// The two empties are separate states because they are separate facts and want separate
-    /// answers: an empty catalogue has nothing to undo, where a search that matched nothing has the
-    /// filters that caused it and one tap out.
+    /// The three empties are separate states because they are separate facts and want separate
+    /// answers: an empty catalogue has nothing to undo, an entirely archived one has the control
+    /// that unhides it (`FR-1.1.5`), and a search that matched nothing has the filters that caused
+    /// it and one tap out.
     @ViewBuilder private var loaded: some View {
         if state.isCatalogueEmpty {
             EmptyStateView(
@@ -100,6 +101,17 @@ public struct ExerciseListView: View {
                 message: Text(ExerciseLibraryStrings.emptyMessage),
                 action: StateAction(Text(ExerciseLibraryStrings.createAction)) {
                     navigation?.navigate(to: .exerciseLibrary(.exerciseCreate))
+                }
+            )
+        } else if state.isEverythingArchived {
+            EmptyStateView(
+                symbolName: "archivebox",
+                headline: Text(ExerciseLibraryStrings.archivedOnlyHeadline),
+                message: Text(ExerciseLibraryStrings.archivedOnlyMessage),
+                // The same command the chip above carries, because it is the same control: a state
+                // that named it without offering it would be a sentence pointing at a chip.
+                action: StateAction(Text(ExerciseLibraryStrings.showArchivedFilter)) {
+                    state.showsArchived = true
                 }
             )
         } else if state.groups.isEmpty {
@@ -150,7 +162,7 @@ struct ExerciseRow: View {
     /// The exercise this row names.
     let exercise: Exercise
 
-    /// Name, then what it is performed with, and a badge when the user wrote it.
+    /// Name, then what it is performed with, and a badge when the user wrote it or archived it.
     ///
     /// The whole row is one VoiceOver element (`G-4.2`): name, equipment and badge are one thing to
     /// say about one exercise, and three stops per row over 116 rows is the failure mode. The
@@ -169,6 +181,13 @@ struct ExerciseRow: View {
                         Text(ExerciseLibraryStrings.customBadge)
                             .font(Typography.caption.font)
                             .foregroundStyle(ColorToken.brandAccent)
+                    }
+                    // Only ever visible when the list is showing archived rows, and then it is the
+                    // only thing telling them from the rest (`FR-1.1.5`).
+                    if exercise.isArchived {
+                        Text(ExerciseLibraryStrings.archivedBadge)
+                            .font(Typography.caption.font)
+                            .foregroundStyle(ColorToken.textTertiary)
                     }
                 }
             }
@@ -218,6 +237,22 @@ struct ExerciseFilterBar: View {
                 label: ExerciseLibraryStrings.label(for:),
                 trailing: { recencyChip }
             )
+            archivedChip
+        }
+    }
+
+    /// `FR-1.1.5`'s "show archived", on a line of its own and without a heading.
+    ///
+    /// **No heading, unlike the three rows above**, because it is not a facet with positions: it is
+    /// one control that is either on or off, and its own label already says what it does. Giving it
+    /// a heading would put it among `FR-1.1.2`'s filters, which is exactly what
+    /// ``ExerciseListState/showsArchived`` is not.
+    @ViewBuilder private var archivedChip: some View {
+        FilterChip(
+            label: Text(ExerciseLibraryStrings.showArchivedFilter),
+            isSelected: state.showsArchived
+        ) {
+            state.showsArchived.toggle()
         }
     }
 

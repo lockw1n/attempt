@@ -22,7 +22,7 @@ struct ExerciseListStateTests {
         #expect(state.names == ["Back Squat", "Front Squat", "Bench Press", "Sumo Deadlift", "Barbell Row"])
     }
 
-    @Test("Archived exercises never reach the list (FR-1.1.5)")
+    @Test("Archived exercises are out of the list unless they are asked for (FR-1.1.5)")
     func archivedExercisesAreExcluded() async {
         let archived = Fixtures.exercise(name: "Retired Machine Press", movement: .bench, isArchived: true)
         let state = ExerciseListState(
@@ -197,7 +197,7 @@ struct ExerciseListStateTests {
         #expect(state.isRecencyFilterAvailable == false)
     }
 
-    // MARK: - The two empties (FR-1.13.1)
+    // MARK: - The three empties (FR-1.13.1)
 
     @Test("An empty catalogue is a loaded state, not a missing one")
     func emptyCatalogueIsALoadedState() async {
@@ -207,15 +207,21 @@ struct ExerciseListStateTests {
         #expect(state.groups.isEmpty)
     }
 
-    @Test("A catalogue whose every row is archived is empty")
-    func fullyArchivedCatalogueIsEmpty() async {
+    /// T-1.10 asserted `isCatalogueEmpty` here, when archived rows were dropped on the way out of
+    /// the read and nothing could tell a hidden catalogue from an absent one. `FR-1.1.5`'s control
+    /// separates them: the rows are there, and the answer is the state that names the control rather
+    /// than the one that offers a create form. `ExerciseArchiveTests` has the rest of the split.
+    @Test("A catalogue whose every row is archived is hidden, not empty")
+    func fullyArchivedCatalogueIsHidden() async {
         let state = ExerciseListState(
             repository: ScriptedExerciseRepository(
                 exercises: [Fixtures.exercise(name: "Retired", movement: .other, isArchived: true)]
             )
         )
         await state.load()
-        #expect(state.isCatalogueEmpty)
+        #expect(!state.isCatalogueEmpty)
+        #expect(state.isEverythingArchived)
+        #expect(state.groups.isEmpty)
     }
 
     @Test("Nothing is claimed to be empty before a read has finished")
@@ -223,6 +229,7 @@ struct ExerciseListStateTests {
         let state = ExerciseListState(repository: ScriptedExerciseRepository(exercises: []))
         #expect(state.phase == .idle)
         #expect(!state.isCatalogueEmpty)
+        #expect(!state.isEverythingArchived)
         #expect(state.groups.isEmpty)
     }
 
@@ -296,8 +303,11 @@ struct ExerciseListStateTests {
 }
 
 /// Every exercise the list shows, in order — the one read the assertions above are written against.
+///
+/// Not `fileprivate`: `ExerciseArchiveTests` asks the same question of the same screen, and a second
+/// spelling of it in that file is a second thing to keep true.
 extension ExerciseListState {
-    fileprivate var names: [String] { groups.flatMap { $0.exercises.map(\.name) } }
+    var names: [String] { groups.flatMap { $0.exercises.map(\.name) } }
 }
 
 /// The catalogue these tests browse: five live exercises across four movements, one of them the

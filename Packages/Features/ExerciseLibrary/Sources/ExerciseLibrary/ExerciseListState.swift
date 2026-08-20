@@ -51,7 +51,11 @@ public final class ExerciseListState {
         /// A read is in flight.
         case loading
 
-        /// The catalogue, already stripped of archived rows.
+        /// Every live exercise in the catalogue, archived ones included.
+        ///
+        /// **Archived rows are carried, not dropped.** Which of them the screen shows is
+        /// ``ExerciseListState/showsArchived``'s answer, and a phase that had already discarded
+        /// them would make that control a second read (`FR-1.1.5`).
         case loaded([Exercise])
 
         /// The read failed, carrying the error's description.
@@ -75,6 +79,17 @@ public final class ExerciseListState {
 
     /// Show only built-in or only custom exercises, or both (`FR-1.1.2`).
     public var originFilter: ExerciseOrigin?
+
+    /// Whether archived exercises are shown alongside the rest (`FR-1.1.5`).
+    ///
+    /// **Not one of `FR-1.1.2`'s filters, and deliberately not ``clearFilters()``'s business.**
+    /// Those four narrow a catalogue the user can already see; this one widens it to rows archiving
+    /// took out of every picker. Clearing the filters is the way back from a search that matched
+    /// nothing, and turning this off with them would hide rows the user had just asked to see.
+    ///
+    /// It exists because archiving with no way back is a trap: this is the only surface an archived
+    /// exercise is reachable from, and un-archiving is on the detail screen behind it.
+    public var showsArchived = false
 
     /// Whether `FR-1.1.2`'s recency filter can be offered yet.
     ///
@@ -104,7 +119,7 @@ public final class ExerciseListState {
         }
         phase = .loading
         do {
-            phase = .loaded(Self.browsable(try await repository.exercises(includingDeleted: false)))
+            phase = .loaded(Self.ordered(try await repository.exercises(includingDeleted: false)))
         } catch {
             phase = .failed(String(describing: error))
         }
@@ -137,22 +152,28 @@ public final class ExerciseListState {
             break
         }
         do {
-            phase = .loaded(Self.browsable(try await repository.exercises(includingDeleted: false)))
+            phase = .loaded(Self.ordered(try await repository.exercises(includingDeleted: false)))
         } catch {
             phase = .failed(String(describing: error))
         }
     }
 
-    /// The exercises the list may show, from everything the repository returned.
+    /// Everything the repository returned, in the order every browsable surface in this module
+    /// shares (``ExerciseOrder``).
     ///
-    /// **Archived rows are dropped here rather than by a control**, because `FR-1.1.5` makes
-    /// archiving the way an exercise leaves the pickers — it is not one of `FR-1.1.2`'s filters and
-    /// must not be reachable as one. T-1.13 adds the archiving; the exclusion is written now so that
-    /// task changes a screen's behaviour and not this rule.
+    private static func ordered(_ exercises: [Exercise]) -> [Exercise] {
+        exercises.sorted(by: ExerciseOrder.precedes)
+    }
+
+    /// The exercises the list may show, before the search text and the filters.
     ///
-    /// The order is ``ExerciseOrder``'s, which every browsable surface in this module shares.
-    private static func browsable(_ exercises: [Exercise]) -> [Exercise] {
-        exercises.filter { !$0.isArchived }.sorted(by: ExerciseOrder.precedes)
+    /// **Archived rows leave here rather than through a filter binding**, because `FR-1.1.5` makes
+    /// archiving the way an exercise leaves the pickers rather than one more way to narrow a list —
+    /// ``showsArchived`` widens what is browsable, where every `FR-1.1.2` control narrows it, and
+    /// the two must not be clearable by the same command.
+    private var browsable: [Exercise] {
+        guard case .loaded(let exercises) = phase else { return [] }
+        return showsArchived ? exercises : exercises.filter { !$0.isArchived }
     }
 
     /// The catalogue after the search text and every filter, grouped by movement (`FR-1.1.1`).
@@ -171,8 +192,7 @@ public final class ExerciseListState {
 
     /// Every loaded exercise that survives the search text and the filters.
     private var filtered: [Exercise] {
-        guard case .loaded(let exercises) = phase else { return [] }
-        return exercises.filter { exercise in
+        browsable.filter { exercise in
             matchesSearch(exercise)
                 && (movementFilter == nil || exercise.movement == movementFilter)
                 && (equipmentFilter == nil || exercise.equipment == equipmentFilter)
@@ -197,20 +217,32 @@ public final class ExerciseListState {
         exercise.isCustom ? .custom : .builtIn
     }
 
-    /// Whether the read succeeded and there is nothing at all to browse — a catalogue that failed to
-    /// seed, or one every row of which is archived.
+    /// Whether the read succeeded and the store holds no exercise at all — a catalogue that failed
+    /// to seed.
     ///
-    /// **This and an empty ``groups`` are what tell the two empty screens apart** (`FR-1.13.1`):
-    /// true here is a catalogue with nothing in it and nothing to undo, where empty groups under a
-    /// non-empty catalogue is a search that matched nothing and offers the way back. Nothing narrows
-    /// a loaded catalogue to no groups without a control being set, so the second needs no flag of
-    /// its own.
+    /// **Measured over every row, archived ones included**, which is what keeps it a claim about the
+    /// store rather than about the controls: a catalogue whose every row is archived is not empty,
+    /// it is hidden, and the two want different answers on screen.
     public var isCatalogueEmpty: Bool {
         guard case .loaded(let exercises) = phase else { return false }
         return exercises.isEmpty
     }
 
+    /// Whether every exercise there is has been archived and ``showsArchived`` is off.
+    ///
+    /// **The third empty state** (`FR-1.13.1`), and it is a separate fact from the two the list
+    /// already had: an empty catalogue has nothing to show and nothing to undo, a search that
+    /// matched nothing has the filters that caused it, and this has neither — the rows exist, they
+    /// are archived, and the one control that brings them back is ``showsArchived``. Sending it to
+    /// either of the others would offer a create form or a "clear filters" that changes nothing.
+    public var isEverythingArchived: Bool {
+        guard case .loaded(let exercises) = phase else { return false }
+        return !showsArchived && !exercises.isEmpty && exercises.allSatisfy(\.isArchived)
+    }
+
     /// Drops the search text and every filter — the action on the "nothing matched" state.
+    ///
+    /// ``showsArchived`` is untouched; see its own note for why it is not one of these.
     public func clearFilters() {
         searchText = ""
         movementFilter = nil
