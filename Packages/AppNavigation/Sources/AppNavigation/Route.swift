@@ -105,7 +105,9 @@ public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
     /// **It carries no session identifier**, for ``TrainingRoute/activeSession``'s reason: which
     /// workout is being logged is one fact about the app rather than a parameter of a push. A
     /// restored stack that opens here with no workout in progress therefore lands on a chooser whose
-    /// selection has nowhere to go, which the screen composing it is what answers.
+    /// selection has nowhere to go: the row is refused silently, and the screen it pops back to is
+    /// already the one saying there is no workout to add to. Nothing is reported here because
+    /// nothing was lost, and a diagnostic would land on a screen the user is leaving.
     case exercisePicker
 }
 

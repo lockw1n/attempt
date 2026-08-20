@@ -57,9 +57,6 @@ struct SessionProgressHeader: View {
     /// The workout's progress.
     let progress: SessionProgress
 
-    /// Which locale the counts are rendered for (`G-3.4`).
-    @Environment(\.locale) private var locale
-
     /// The count, then the bar.
     ///
     /// One VoiceOver element, because it is one fact said twice (`G-4.2`).
@@ -112,8 +109,8 @@ struct SessionExerciseList: View {
     /// and the rest are open, which is `FR-1.2.13`'s rule.
     @Binding var expansion: [UUID: Bool]
 
-    /// Moves the exercise at the first position to the second (`FR-1.2.2`).
-    let move: (Int, Int) -> Void
+    /// Moves the named exercise by that many places (`FR-1.2.2`).
+    let move: (UUID, Int) -> Void
 
     /// One card per entry.
     var body: some View {
@@ -152,8 +149,8 @@ struct SessionExerciseCard: View {
     /// Opens or closes it.
     let toggle: () -> Void
 
-    /// Moves the exercise at the first position to the second (`FR-1.2.2`).
-    let move: (Int, Int) -> Void
+    /// Moves the named exercise by that many places (`FR-1.2.2`).
+    let move: (UUID, Int) -> Void
 
     /// Which locale the set count is rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
@@ -200,7 +197,17 @@ struct SessionExerciseCard: View {
             }
             .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(isExpanded ? [.isSelected] : [])
+            // A **value**, not a trait. SwiftUI has no "expanded" trait, and `.isSelected` — which
+            // already means a chosen filter chip everywhere else in this app — announces "Selected"
+            // for a card that is merely open, which is a different fact. The chevron beside it is
+            // hidden, so this is the only thing carrying the fold to VoiceOver (`G-4.2`).
+            .accessibilityValue(
+                Text(
+                    isExpanded
+                        ? LoggingStrings.sessionExerciseExpanded
+                        : LoggingStrings.sessionExerciseCollapsed
+                )
+            )
             moveControls
         }
     }
@@ -224,14 +231,14 @@ struct SessionExerciseCard: View {
                 label: LoggingStrings.sessionExerciseMoveUp,
                 isEnabled: position > 0
             ) {
-                move(position, position - 1)
+                move(item.id, -1)
             }
             moveButton(
                 symbolName: "arrow.down",
                 label: LoggingStrings.sessionExerciseMoveDown,
                 isEnabled: position < count - 1
             ) {
-                move(position, position + 1)
+                move(item.id, 1)
             }
         }
     }

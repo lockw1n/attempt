@@ -92,6 +92,10 @@
    The card is rendered broken rather than dropped: an exercise silently missing from a workout is
    worse than one the user can see is wrong. */
 "logging.session.exercise.missing" = "Exercise unavailable";
+/* VoiceOver's value for the control that folds a card. The chevron that shows it is decorative and
+   hidden, so without these the fold is invisible to VoiceOver (G-4.2). */
+"logging.session.exercise.expanded" = "Expanded";
+"logging.session.exercise.collapsed" = "Collapsed";
 /* Accessibility labels: both controls draw a glyph and have no visible title (G-4.2). */
 "logging.session.exercise.move-up" = "Move up";
 "logging.session.exercise.move-down" = "Move down";
@@ -103,5 +107,5 @@
 /* A failed write — adding or reordering. The cards stay beside it, so the retry is another tap. */
 "logging.session.exercises.write-error.message" = "That could not be saved. Nothing has been lost — try again.";
 
-/* FR-1.2.13's session progress, positional so a translation can reorder the two numbers. */
-"logging.session.progress %lld %lld" = "%1$lld of %2$lld exercises complete";
+/* FR-1.2.13's session progress is in Localizable.stringsdict beside this file, not here: the noun
+   agrees with the total, so "1 of 1 exercise complete" needs a plural rule rather than a format. */

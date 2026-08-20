@@ -219,6 +219,8 @@ actor ScriptedWorkoutRepository: WorkoutRepository {
         row = nil
     }
 
+    /// Refused, always — which is what makes this the fake a failed *exercise* read is written
+    /// against. The store does call this one; see `SessionExercisesTests`.
     func entries(forSessionID sessionID: UUID, includingDeleted: Bool) async throws -> [ExerciseEntry] {
         throw unsupported
     }

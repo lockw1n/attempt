@@ -61,6 +61,23 @@ struct SessionExercisesTests {
         #expect(cold.exercises.last?.exercise?.name == "Deadlift")
     }
 
+    @Test("An order a soft-deleted entry vacated is not handed out again")
+    func addNumbersPastADeletedEntry() async throws {
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: workout.squat.id)
+        await workout.store.addExercise(id: workout.bench.id)
+        let squat = try #require(workout.store.exercises.first)
+        // The list is now two rows at orders 0 and 1. Removing the first leaves one row at order 1,
+        // so a position counted from the *count* would collide with it.
+        try await workout.repositories.workouts.deleteExerciseEntry(id: squat.entry.id)
+        await workout.store.loadExercises()
+
+        await workout.store.addExercise(id: workout.deadlift.id)
+
+        #expect(workout.store.exercises.map(\.entry.order) == [1, 2])
+        #expect(workout.store.exercises.map(\.exercise?.name) == ["Bench Press", "Deadlift"])
+    }
+
     @Test("Nothing is added while no workout is in progress")
     func addRefusedWithoutAWorkout() async throws {
         let repositories = InMemoryRepositoryStack()
@@ -74,6 +91,54 @@ struct SessionExercisesTests {
         #expect(store.exercisesWriteFailure == nil)
     }
 
+    @Test("An exercise the catalogue does not have is reported as a failed write")
+    func addReportsAFailedWrite() async throws {
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: workout.squat.id)
+
+        // The repositories refuse a dangling reference, which is the failure this command actually
+        // has: the chooser only offers rows it read, so a missing one is a row that went away.
+        await workout.store.addExercise(id: UUID())
+
+        let failure = try #require(workout.store.exercisesWriteFailure)
+        #expect(failure.contains("danglingReference"))
+        // A failed write costs the list nothing — that is the whole reason it is a second
+        // diagnostic rather than the read's.
+        #expect(workout.store.exercises.map(\.exercise?.name) == ["Back Squat"])
+        #expect(workout.store.exercisesReadFailure == nil)
+        #expect(workout.store.hasLoadedExercises)
+    }
+
+    @Test("A write that lands retires the failure the last one left")
+    func aGoodWriteRetiresTheFailure() async throws {
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: UUID())
+        #expect(workout.store.exercisesWriteFailure != nil)
+
+        await workout.store.addExercise(id: workout.squat.id)
+
+        #expect(workout.store.exercisesWriteFailure == nil)
+    }
+
+    @Test("A failed read is reported as a read, and costs the list its cards")
+    func loadReportsAFailedRead() async throws {
+        let session = WorkoutSession.fixture()
+        // The scripted repository refuses every entry call, which the faithful fake will not do.
+        let store = ActiveSessionStore(
+            repository: ScriptedWorkoutRepository(row: session),
+            catalogue: InMemoryRepositoryStack().exercises)
+        await store.adopt(sessionID: session.id)
+
+        await store.loadExercises()
+
+        #expect(store.exercisesReadFailure != nil)
+        #expect(store.exercisesWriteFailure == nil)
+        #expect(store.exercises.isEmpty)
+        // Read, not still reading: the state that has the retry in it is the one with nothing.
+        #expect(store.hasLoadedExercises)
+        #expect(store.session == session)
+    }
+
     // MARK: - Reordering (FR-1.2.2, G-2.4)
 
     @Test("Moving an exercise renumbers the workout and survives a fresh read")
@@ -83,7 +148,8 @@ struct SessionExercisesTests {
         await workout.store.addExercise(id: workout.bench.id)
         await workout.store.addExercise(id: workout.deadlift.id)
 
-        await workout.store.moveExercise(from: 2, to: 0)
+        let deadliftCard = try #require(workout.store.exercises.last)
+        await workout.store.moveExercise(id: deadliftCard.id, by: -2)
 
         #expect(workout.store.exercises.map(\.exercise?.name) == ["Deadlift", "Back Squat", "Bench Press"])
         #expect(workout.store.exercises.map(\.entry.order) == [0, 1, 2])
@@ -105,7 +171,8 @@ struct SessionExercisesTests {
         await workout.store.addExercise(id: workout.deadlift.id)
         let before = try await workout.entryTimestamps()
 
-        await workout.store.moveExercise(from: 0, to: 1)
+        let squatCard = try #require(workout.store.exercises.first)
+        await workout.store.moveExercise(id: squatCard.id, by: 1)
 
         let after = try await workout.entryTimestamps()
         // Swapping the first two leaves the third where it was — and `updatedAt` is G-2.4's conflict
@@ -116,19 +183,42 @@ struct SessionExercisesTests {
         #expect(after[workout.bench.id] != before[workout.bench.id])
     }
 
-    @Test("A move to where it already is, or off either end, does nothing")
+    @Test("A move of nowhere, off either end, or of an exercise not in the workout, does nothing")
     func moveRefusesNonMoves() async throws {
         let workout = try await Workout.started()
         await workout.store.addExercise(id: workout.squat.id)
         await workout.store.addExercise(id: workout.bench.id)
+        let cards = workout.store.exercises
         let before = try await workout.entryTimestamps()
 
-        await workout.store.moveExercise(from: 0, to: 0)
-        await workout.store.moveExercise(from: 0, to: -1)
-        await workout.store.moveExercise(from: 1, to: 2)
+        await workout.store.moveExercise(id: cards[0].id, by: 0)
+        await workout.store.moveExercise(id: cards[0].id, by: -1)
+        await workout.store.moveExercise(id: cards[1].id, by: 1)
+        // Not this workout's — the id names an entry, and one from anywhere else is not a position.
+        await workout.store.moveExercise(id: UUID(), by: 1)
 
         #expect(try await workout.entryTimestamps() == before)
         #expect(workout.store.exercises.map(\.entry.order) == [0, 1])
+    }
+
+    @Test("Two taps on the same control are two moves, not one")
+    func overlappingMovesBothLand() async throws {
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: workout.squat.id)
+        await workout.store.addExercise(id: workout.bench.id)
+        await workout.store.addExercise(id: workout.deadlift.id)
+        let squatCard = try #require(workout.store.exercises.first)
+
+        // What two taps on **move down** actually are: neither waits for the other, which is what
+        // the store's write chain is for. Computed against the list each saw when it was tapped,
+        // the second would carry the position the first had just vacated and undo it.
+        async let first: Void = workout.store.moveExercise(id: squatCard.id, by: 1)
+        async let second: Void = workout.store.moveExercise(id: squatCard.id, by: 1)
+        _ = await (first, second)
+
+        #expect(
+            workout.store.exercises.map(\.exercise?.name) == ["Bench Press", "Deadlift", "Back Squat"])
+        #expect(workout.store.exercises.map(\.entry.order) == [0, 1, 2])
     }
 
     // MARK: - The list's lifetime

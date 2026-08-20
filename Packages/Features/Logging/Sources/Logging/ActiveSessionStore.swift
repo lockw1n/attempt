@@ -78,6 +78,15 @@ public final class ActiveSessionStore {
     private let repository: any WorkoutRepository
     private let catalogue: any ExerciseRepository
 
+    /// The chain ``addExercise(id:)`` and ``moveExercise(id:by:)`` run in.
+    ///
+    /// **Two taps are two writes, not one.** Each command re-reads the list when it runs, and both
+    /// suspend on the repository — so without this, a second tap arriving mid-write computes
+    /// against the list the first one is about to replace, and one of the two is silently lost.
+    /// Queued instead, the second sees what the first stored. Same idiom, same reason, as the
+    /// exercise detail screen's notes chain.
+    private var pendingWrite: Task<Void, Never>?
+
     /// Builds the store over the two repositories the workout is assembled from.
     ///
     /// - Parameters:
@@ -314,6 +323,21 @@ public final class ActiveSessionStore {
     /// - Parameter exerciseID: The catalogue row to add. A dangling one is refused by the
     ///   repository and reported as a failed write.
     public func addExercise(id exerciseID: UUID) async {
+        let previous = pendingWrite
+        let write = Task { [weak self] in
+            await previous?.value
+            await self?.writeAddedExercise(id: exerciseID)
+        }
+        pendingWrite = write
+        await write.value
+    }
+
+    /// One link in ``pendingWrite``'s chain. See ``addExercise(id:)``.
+    ///
+    /// **Nothing is reported when no workout is held**, and that is the composing screen's business
+    /// rather than a diagnostic: the chooser is pushed above the workout, so a selection made with
+    /// no workout in progress returns to a screen already saying so. See `Route.exercisePicker`.
+    private func writeAddedExercise(id exerciseID: UUID) async {
         guard let current = session else { return }
         do {
             // Read for the highest position rather than measuring the held list: the chooser can be
@@ -340,7 +364,13 @@ public final class ActiveSessionStore {
         await loadExercises()
     }
 
-    /// Moves the exercise at `source` to `destination`, renumbering the workout (`FR-1.2.2`).
+    /// Moves one exercise `offset` places through the workout, renumbering it (`FR-1.2.2`).
+    ///
+    /// **Named and relative, not two indices.** The control that calls this is a pair of buttons on
+    /// a card, and a card knows which exercise it is rather than where the list will have put it by
+    /// the time the tap is served. Two taps on *move down* are then two places down, because the
+    /// second resolves the exercise afresh; with indices, the second tap would have carried the
+    /// position the first one just vacated and undone it.
     ///
     /// **Only the rows whose position actually changed are written.** Saving all of them would
     /// restamp `updatedAt` on rows that did not move — and `updatedAt` is `G-2.4`'s conflict key, so
@@ -353,15 +383,25 @@ public final class ActiveSessionStore {
     /// Rolling back by hand would be a second unprotected sequence of writes with the same problem.
     ///
     /// - Parameters:
-    ///   - source: The position the exercise is at now.
-    ///   - destination: The position it should be at. Out-of-range or unchanged positions do
-    ///     nothing, which is what makes a "move up" on the first card a no-op rather than a guard on
-    ///     every caller.
-    public func moveExercise(from source: Int, to destination: Int) async {
-        guard source != destination,
-            exercises.indices.contains(source),
-            exercises.indices.contains(destination)
-        else { return }
+    ///   - id: The exercise to move, by its entry.
+    ///   - offset: How many places to move it — negative is earlier. An exercise this list does not
+    ///     hold, a zero offset and a destination off either end all do nothing, which is what makes
+    ///     "move up" on the first card a no-op rather than a guard on every caller.
+    public func moveExercise(id: UUID, by offset: Int) async {
+        let previous = pendingWrite
+        let write = Task { [weak self] in
+            await previous?.value
+            await self?.writeMovedExercise(id: id, by: offset)
+        }
+        pendingWrite = write
+        await write.value
+    }
+
+    /// One link in ``pendingWrite``'s chain. See ``moveExercise(id:by:)``.
+    private func writeMovedExercise(id: UUID, by offset: Int) async {
+        guard offset != 0, let source = exercises.firstIndex(where: { $0.id == id }) else { return }
+        let destination = source + offset
+        guard exercises.indices.contains(destination) else { return }
         var reordered = exercises
         reordered.insert(reordered.remove(at: source), at: destination)
         do {

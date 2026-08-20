@@ -134,6 +134,12 @@ enum LoggingStrings {
     /// How many sets have been logged against one exercise.
     static let sessionExerciseSets = resource("logging.session.exercise.sets")
 
+    /// A card that is open, as VoiceOver's value for the control that folds it (`G-4.2`).
+    static let sessionExerciseExpanded = resource("logging.session.exercise.expanded")
+
+    /// A card that is folded. See ``sessionExerciseExpanded``.
+    static let sessionExerciseCollapsed = resource("logging.session.exercise.collapsed")
+
     /// In place of a name, where the entry points at a catalogue row that is not there.
     static let sessionExerciseMissing = resource("logging.session.exercise.missing")
 
@@ -160,6 +166,12 @@ enum LoggingStrings {
     /// translation rather than by this call — a language that says "of six, three are done" moves
     /// them, and positional arguments in the catalogue are what let it.
     ///
+    /// **Its entry lives in `Localizable.stringsdict`, not in `Localizable.strings`**, because the
+    /// noun agrees with the *total*: a workout with one exercise in it reads "1 of 1 exercise", and
+    /// a language with more than two plural categories needs the catalogue to pick between them
+    /// rather than this call. It is the first such string in the app; the convention is in
+    /// `Localization`.
+    ///
     /// - Parameters:
     ///   - completed: How many exercises are finished.
     ///   - total: How many there are.
@@ -182,9 +194,10 @@ enum LoggingStrings {
             sessionErrorHeadline, sessionErrorMessage, sessionEndedHeadline, sessionEndedMessage,
             sessionWriteErrorMessage, sessionExercisesSection, sessionAddExerciseAction,
             sessionExerciseCompleted, sessionExerciseSets, sessionExerciseMissing,
+            sessionExerciseExpanded, sessionExerciseCollapsed,
             sessionExerciseMoveUp, sessionExerciseMoveDown, sessionExercisesErrorHeadline,
             sessionExercisesErrorMessage, sessionExercisesWriteErrorMessage,
-            sessionProgress(completed: 0, total: 0),
+            sessionProgress(completed: 0, total: 0), sessionProgress(completed: 1, total: 1),
         ]
     }
 

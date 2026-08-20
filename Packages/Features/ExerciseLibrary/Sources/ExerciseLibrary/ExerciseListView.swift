@@ -214,7 +214,7 @@ struct ExerciseGroupList: View {
             Button {
                 select(exercise)
             } label: {
-                ExerciseRow(exercise: exercise, accessory: .none)
+                ExerciseRow(exercise: exercise, accessory: .noDisclosure)
             }
             .buttonStyle(.plain)
         } else {
@@ -236,7 +236,11 @@ struct ExerciseRow: View {
         case disclosure
 
         /// Nothing — the row commits, and a chevron would promise a screen it does not open.
-        case none
+        ///
+        /// Not spelled `none`, for the reason `BarType` spells its own empty case `noBar`: a case
+        /// by that name is shadowed by `Optional` wherever the property becomes optional, and the
+        /// compiler picks the wrong one silently.
+        case noDisclosure
     }
 
     /// The exercise this row names.

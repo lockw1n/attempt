@@ -126,7 +126,16 @@ public struct ActiveSessionView: View {
             ErrorStateView(
                 headline: Text(LoggingStrings.sessionErrorHeadline),
                 message: Text(LoggingStrings.sessionErrorMessage),
-                retry: { Task { await store.resume() } }
+                retry: {
+                    Task {
+                        // Both, and for the `.task` above's reason: `resume()` drops the exercise
+                        // list along with the workout it belonged to, so a retry that re-read only
+                        // the workout would leave the cards on a loading state nothing clears —
+                        // this screen's `.task` has already run and does not run again.
+                        await store.resume()
+                        await store.loadExercises()
+                    }
+                }
             )
         case .ended:
             ErrorStateView(
@@ -188,8 +197,8 @@ public struct ActiveSessionView: View {
                 )
                 writeFailure(writeFailed)
             case .listed(let items, let writeFailed):
-                SessionExerciseList(exercises: items, expansion: $expansion) { source, destination in
-                    Task { await store.moveExercise(from: source, to: destination) }
+                SessionExerciseList(exercises: items, expansion: $expansion) { id, offset in
+                    Task { await store.moveExercise(id: id, by: offset) }
                 }
                 writeFailure(writeFailed)
                 addExerciseLink

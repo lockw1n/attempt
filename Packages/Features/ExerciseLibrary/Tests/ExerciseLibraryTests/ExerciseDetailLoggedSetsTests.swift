@@ -72,6 +72,24 @@ struct ExerciseDetailLoggedSetsTests {
         #expect(state.detail?.hasLoggedSets == false)
     }
 
+    @Test("A workout store that cannot answer costs the screen the sentence, not the exercise")
+    func aFailedSetReadDoesNotFailTheScreen() async throws {
+        let repositories = InMemoryRepositoryStack()
+        let exercise = try await seedExercise(into: repositories)
+        let state = ExerciseDetailState(
+            exerciseID: exercise.id,
+            repository: repositories.exercises,
+            workouts: RefusingWorkoutRepository()
+        )
+
+        await state.load()
+
+        // The exercise's own fields came from the catalogue and are unaffected: a fault in a store
+        // this screen reads one count from must not hide the movement, equipment and notes.
+        #expect(state.detail?.exercise.name == "Back Squat")
+        #expect(state.detail?.hasLoggedSets == false)
+    }
+
     /// Puts one exercise in the catalogue.
     private func seedExercise(
         into repositories: InMemoryRepositoryStack,
@@ -153,4 +171,42 @@ struct ExerciseDetailLoggedSetsTests {
             )
         )
     }
+}
+
+/// A `WorkoutRepository` that refuses everything.
+///
+/// The detail screen makes exactly one call into this store, and this fake exists to fail it — the
+/// faithful fake in `RepositoryFakes` will not.
+private actor RefusingWorkoutRepository: WorkoutRepository {
+    private var refusal: RepositoryError { .recordNotFound(id: UUID()) }
+
+    func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        throw refusal
+    }
+
+    func sessions(in range: ClosedRange<Date>, includingDeleted: Bool) async throws -> [WorkoutSession] {
+        throw refusal
+    }
+
+    func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? { throw refusal }
+
+    func save(_ session: WorkoutSession) async throws { throw refusal }
+
+    func deleteSession(id: UUID) async throws { throw refusal }
+
+    func entries(forSessionID sessionID: UUID, includingDeleted: Bool) async throws -> [ExerciseEntry] {
+        throw refusal
+    }
+
+    func save(_ entry: ExerciseEntry) async throws { throw refusal }
+
+    func deleteExerciseEntry(id: UUID) async throws { throw refusal }
+
+    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        throw refusal
+    }
+
+    func save(_ set: SetEntry) async throws { throw refusal }
+
+    func deleteSet(id: UUID) async throws { throw refusal }
 }

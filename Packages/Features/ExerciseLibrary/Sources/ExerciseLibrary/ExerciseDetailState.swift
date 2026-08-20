@@ -338,8 +338,8 @@ public final class ExerciseDetailState {
             return
         }
         let catalogue = try await repository.exercises(includingDeleted: false)
-        let logged = try await workouts.sets(forExerciseID: exerciseID, includingDeleted: false)
-        phase = .loaded(Self.detail(for: exercise, in: catalogue, hasLoggedSets: !logged.isEmpty))
+        phase = .loaded(
+            Self.detail(for: exercise, in: catalogue, hasLoggedSets: await hasLoggedSets()))
         // A keystroke that landed while the read was in flight is a fresh edit and survives it,
         // whichever kind of read this was. Failing that, the draft gives way to the record only if
         // the two already agreed when the read began.
@@ -348,6 +348,19 @@ public final class ExerciseDetailState {
         if !keepsDraft {
             notesDraft = exercise.notes
         }
+    }
+
+    /// Whether any set has ever been logged against this exercise, or `false` where the workout
+    /// store could not answer.
+    ///
+    /// **Its own failure, and swallowed on purpose.** This read decides which of two sentences three
+    /// derived sections carry, and nothing else on the screen depends on it — so taking the whole
+    /// screen to its error state for it would let a workout-store fault hide the movement, equipment
+    /// and notes the catalogue answered for perfectly well. The quiet wrong answer is the sentence
+    /// the screen showed before this read existed, which is the smaller of the two mistakes.
+    private func hasLoggedSets() async -> Bool {
+        let logged = try? await workouts.sets(forExerciseID: exerciseID, includingDeleted: false)
+        return !(logged?.isEmpty ?? true)
     }
 
     /// Pairs an exercise with its parent and its variations, from the whole catalogue.
