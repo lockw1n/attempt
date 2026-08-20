@@ -110,6 +110,15 @@ struct SessionExerciseList: View {
     /// and the rest are open, which is `FR-1.2.13`'s rule.
     @Binding var expansion: [UUID: Bool]
 
+    /// Which cards' **warmup groups** the user has folded by hand, keyed on the same entry
+    /// (`FR-1.2.14`).
+    ///
+    /// **A second dictionary rather than a second flag in the first**, because the two folds are
+    /// independent by requirement: `FR-1.2.14` gives the warmups a collapse of their own, separate
+    /// from `FR-1.2.13`'s whole-card one, and a card that is open can have its warmups rolled up or
+    /// not. Absent an entry, the group follows the exercise — see ``defaultWarmupExpansion(for:)``.
+    @Binding var warmupExpansion: [UUID: Bool]
+
     /// Moves the named exercise by that many places (`FR-1.2.2`).
     let move: (UUID, Int) -> Void
 
@@ -118,6 +127,9 @@ struct SessionExerciseList: View {
 
     /// Opens the set editor over one exercise (`FR-1.2.3`, `FR-1.2.6`).
     let logSet: (SetEditorTarget) -> Void
+
+    /// Marks one set as a warmup or as working (`FR-1.2.4`) — the set, then which it becomes.
+    let mark: (SetEntry, Bool) -> Void
 
     /// One card per entry.
     var body: some View {
@@ -129,12 +141,36 @@ struct SessionExerciseList: View {
                     count: exercises.count,
                     isExpanded: expansion[item.id] ?? !item.isComplete,
                     toggle: { expansion[item.id] = !(expansion[item.id] ?? !item.isComplete) },
+                    areWarmupsExpanded: warmupExpansion[item.id] ?? Self.defaultWarmupExpansion(for: item),
+                    toggleWarmups: {
+                        warmupExpansion[item.id] =
+                            !(warmupExpansion[item.id] ?? Self.defaultWarmupExpansion(for: item))
+                    },
                     move: move,
                     unit: unit,
-                    logSet: logSet
+                    logSet: logSet,
+                    mark: mark
                 )
             }
         }
+    }
+
+    /// Whether an exercise's warmups are shown, before the user has said either way.
+    ///
+    /// **Open until the work starts, folded once it has**, which is `FR-1.2.13`'s card rule applied
+    /// one level down rather than a second convention: a finished exercise folds, and warmups are
+    /// finished the moment the first working set is logged. Mid-ramp the numbers being checked are
+    /// the warmups themselves; after it, they are three rows of noise above the work.
+    ///
+    /// **It folds under the user's thumb exactly once, and upwards**, which is why this is safe here
+    /// and was not for the card: the group sits *above* the working sets, so folding it pulls the
+    /// row just logged towards the thumb instead of taking it off screen. The card needed an
+    /// explicit pin against the same rule for the opposite reason.
+    ///
+    /// - Parameter item: The exercise.
+    /// - Returns: Whether its warmup group starts open.
+    static func defaultWarmupExpansion(for item: SessionExercise) -> Bool {
+        !item.hasWorkingSets
     }
 }
 
@@ -158,6 +194,12 @@ struct SessionExerciseCard: View {
     /// Opens or closes it.
     let toggle: () -> Void
 
+    /// Whether this card's warmup group is open (`FR-1.2.14`).
+    let areWarmupsExpanded: Bool
+
+    /// Opens or closes it, independently of the card's own fold.
+    let toggleWarmups: () -> Void
+
     /// Moves the named exercise by that many places (`FR-1.2.2`).
     let move: (UUID, Int) -> Void
 
@@ -166,6 +208,9 @@ struct SessionExerciseCard: View {
 
     /// Opens the set editor over this exercise (`FR-1.2.3`, `FR-1.2.6`).
     let logSet: (SetEditorTarget) -> Void
+
+    /// Marks one of this card's sets as a warmup or as working (`FR-1.2.4`).
+    let mark: (SetEntry, Bool) -> Void
 
     /// Which locale the numbers on this card are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
@@ -293,13 +338,42 @@ struct SessionExerciseCard: View {
                     .font(Typography.body.font)
                     .foregroundStyle(ColorToken.textSecondary)
             } else {
-                ForEach(Array(item.sets.enumerated()), id: \.element.id) { index, set in
-                    SetRow(set: set, position: index + 1, unit: unit)
-                }
+                warmupGroup
+                ForEach(workingSets) { SetRow(numbered: $0, unit: unit, mark: mark) }
             }
             setCommands
         }
     }
+
+    /// `FR-1.2.14`'s warmups: a heading that folds them, and the rows beneath it while it is open.
+    ///
+    /// **Drawn as a leading group rather than in place**, and that is the requirement rather than a
+    /// rearrangement for looks: a group is only collapsible if it is contiguous, and marking a set
+    /// as a warmup after the fact — which `FR-1.2.4` allows and this card offers — otherwise leaves
+    /// one warmup stranded between two working sets with nothing able to fold it. Grouping costs the
+    /// numbering nothing, because a number counts the sets of its own kind before it and
+    /// partitioning does not change that for either kind. See ``SetNumbering``.
+    ///
+    /// **The heading is drawn only when there are warmups.** A fold control over nothing is a
+    /// control that promises rows the card does not have.
+    @ViewBuilder private var warmupGroup: some View {
+        if !warmups.isEmpty {
+            WarmupSectionHeader(
+                count: warmups.count, isExpanded: areWarmupsExpanded, toggle: toggleWarmups)
+            if areWarmupsExpanded {
+                ForEach(warmups) { SetRow(numbered: $0, unit: unit, mark: mark) }
+            }
+        }
+    }
+
+    /// This card's sets, each carrying its number within its own sequence (`FR-1.2.14`).
+    private var numberedSets: [NumberedSet] { SetNumbering.numbered(item.sets) }
+
+    /// The warmups among them, in the order they were logged.
+    private var warmups: [NumberedSet] { numberedSets.filter(\.isWarmup) }
+
+    /// The work proper, likewise.
+    private var workingSets: [NumberedSet] { numberedSets.filter { !$0.isWarmup } }
 
     /// `FR-1.2.6`'s duplicate, then `FR-1.2.3`'s blank form.
     ///
@@ -317,7 +391,11 @@ struct SessionExerciseCard: View {
                         SetEditorTarget(
                             entryID: item.id,
                             repeating: SetEntryValues(
-                                weight: last.weight, reps: last.reps, rpe: last.rpe)
+                                weight: last.weight,
+                                reps: last.reps,
+                                rpe: last.rpe,
+                                isWarmup: last.isWarmup
+                            )
                         )
                     )
                 } label: {
@@ -350,70 +428,5 @@ struct SessionExerciseCard: View {
             return Text(LoggingStrings.sessionExerciseMissing)
         }
         return Text(verbatim: exercise.name)
-    }
-}
-
-/// One logged set inside an exercise card (`FR-1.2.3`).
-///
-/// **The number, the load, the repetitions and the rating, in that order and on one line.** A set is
-/// read at a glance between efforts, so it is a line rather than a card: what a user is checking is
-/// what they did last time, not one set in isolation.
-///
-/// **The multiplication sign is drawn and hidden from VoiceOver** (`G-4.2`). It is punctuation
-/// between two numbers rather than a word, and read aloud it is noise; the two numerals either side
-/// carry labels of their own instead, so the row is announced as "Set 1, 102.5 kg, Reps 5".
-struct SetRow: View {
-    /// The set.
-    let set: SetEntry
-
-    /// Its one-based position in the exercise.
-    ///
-    /// **Passed in rather than read from `SetEntry.order`**, which is zero-based and carries gaps
-    /// where a set has been soft-deleted. `FR-1.2.14`'s two independent sequences — warmups apart
-    /// from working sets — are T-1.23's, and land here.
-    let position: Int
-
-    /// The unit the load is shown in (`G-3.1`).
-    let unit: MassUnit
-
-    /// Which locale the numbers are rendered for (`G-3.4`).
-    @Environment(\.locale) private var locale
-
-    /// The line.
-    var body: some View {
-        HStack(spacing: Spacing.sm.points) {
-            Text(position, format: AppFormat.count(locale: locale))
-                .font(Typography.numericValue.font)
-                .foregroundStyle(ColorToken.textTertiary)
-                .accessibilityLabel(Text(LoggingStrings.setPosition(position)))
-            Text(set.weight, format: AppFormat.weight(in: unit, locale: locale))
-                .font(Typography.numericValue.font)
-                .foregroundStyle(ColorToken.textPrimary)
-            Image(systemName: "multiply")
-                .font(Typography.caption.font)
-                .foregroundStyle(ColorToken.textTertiary)
-                .accessibilityHidden(true)
-            Text(set.reps, format: AppFormat.count(locale: locale))
-                .font(Typography.numericValue.font)
-                .foregroundStyle(ColorToken.textPrimary)
-                .accessibilityLabel(Text(LoggingStrings.setReps(set.reps)))
-            Spacer(minLength: Spacing.sm.points)
-            rating
-        }
-        .frame(minHeight: TouchTarget.standard.points)
-        .accessibilityElement(children: .combine)
-    }
-
-    /// The rating, where the set carries one.
-    @ViewBuilder private var rating: some View {
-        if let rpe = set.rpe {
-            Text(
-                LoggingStrings.setRPE(
-                    rpe.formatted(.number.precision(.fractionLength(0...1)).locale(locale))
-                )
-            )
-            .font(Typography.caption.font)
-            .foregroundStyle(ColorToken.textSecondary)
-        }
     }
 }

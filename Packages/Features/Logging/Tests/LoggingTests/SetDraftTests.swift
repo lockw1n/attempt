@@ -175,7 +175,7 @@ struct SetDraftTests {
         // so a row from a newer version survives being read. Repeating one arrives invalid through
         // no keystroke of the user's, and has to explain itself rather than open on a dead button.
         let repeated = SetDraft(
-            repeating: SetEntryValues(weight: Weight(grams: 100_000), reps: 5, rpe: 47),
+            repeating: SetEntryValues(weight: Weight(grams: 100_000), reps: 5, rpe: 47, isWarmup: false),
             unit: .kilograms,
             locale: .posix
         )
@@ -240,10 +240,10 @@ struct SetDraftTests {
 
     // MARK: - The duplicate (FR-1.2.6)
 
-    @Test("Repeating a set carries its load, reps and rating — and deliberately not its note")
-    func repeatCarriesThreeFields() {
+    @Test("Repeating a set carries its load, reps, rating and kind — and deliberately not its note")
+    func repeatCarriesFourFields() {
         let repeated = SetDraft(
-            repeating: SetEntryValues(weight: Weight(grams: 102_500), reps: 5, rpe: 8),
+            repeating: SetEntryValues(weight: Weight(grams: 102_500), reps: 5, rpe: 8, isWarmup: false),
             unit: .kilograms,
             locale: .posix
         )
@@ -259,7 +259,7 @@ struct SetDraftTests {
     @Test("Repeating an unrated set leaves the rating empty rather than inventing one")
     func repeatWithoutRating() {
         let repeated = SetDraft(
-            repeating: SetEntryValues(weight: Weight(grams: 60_000), reps: 8, rpe: nil),
+            repeating: SetEntryValues(weight: Weight(grams: 60_000), reps: 8, rpe: nil, isWarmup: false),
             unit: .kilograms,
             locale: .posix
         )
@@ -272,7 +272,7 @@ struct SetDraftTests {
     @Test("A repeated set is shown in the unit the user reads in, not the one it was logged in")
     func repeatRendersInTheDisplayUnit() {
         let repeated = SetDraft(
-            repeating: SetEntryValues(weight: Weight(grams: 100_000), reps: 5, rpe: nil),
+            repeating: SetEntryValues(weight: Weight(grams: 100_000), reps: 5, rpe: nil, isWarmup: false),
             unit: .pounds,
             locale: .posix
         )
@@ -280,6 +280,66 @@ struct SetDraftTests {
         #expect(repeated.weightText == "220.462")
         // Round-tripping through pounds costs less than a gram, which is the type's own claim.
         #expect(repeated.weight == Weight(grams: 100_000))
+    }
+
+    // MARK: - Warmup or working (FR-1.2.4)
+
+    @Test("A draft is a working set until something says otherwise")
+    func draftsAreWorkingByDefault() {
+        // G-1.8 forbids the record from defaulting the flag, so the choice is made here — and it is
+        // this direction because the other one puts the day's work where FR-1.6 cannot see it.
+        #expect(SetDraft(unit: .kilograms, locale: .posix).isWarmup == false)
+    }
+
+    @Test("Repeating a warmup gives a warmup, and repeating a working set gives a working set")
+    func repeatCarriesTheKind() {
+        // A ramp is three or four warmups in a row, each a repeat of the last with the load moved:
+        // a duplicate that came back working would cost NFR-1.3's three taps a fourth every rung.
+        let warmup = SetDraft(
+            repeating: SetEntryValues(weight: Weight(grams: 60_000), reps: 5, rpe: nil, isWarmup: true),
+            unit: .kilograms,
+            locale: .posix
+        )
+        let working = SetDraft(
+            repeating: SetEntryValues(weight: Weight(grams: 100_000), reps: 5, rpe: nil, isWarmup: false),
+            unit: .kilograms,
+            locale: .posix
+        )
+
+        #expect(warmup.isWarmup == true)
+        #expect(working.isWarmup == false)
+    }
+
+    @Test("The warmup switch does not make a blank form a filled-in one")
+    func theKindIsNotInput() {
+        // isBlank is what decides whether the form opens complaining. A boolean always holds a
+        // value, so counting it would make every draft non-blank and every blank form would open
+        // saying what is wrong with it.
+        var draft = SetDraft(unit: .kilograms, locale: .posix)
+        #expect(draft.isBlank == true)
+
+        draft.isWarmup = true
+
+        #expect(draft.isBlank == true)
+        // And it is still not loggable — the flag is not a weight or a rep count.
+        #expect(draft.isLoggable == false)
+    }
+
+    @Test("A warmup draft resolves exactly as a working one does")
+    func theKindDoesNotAffectResolution() {
+        var draft = SetDraft(unit: .kilograms, locale: .posix)
+        draft.weightText = "60"
+        draft.repsText = "5"
+        let working = draft
+        draft.isWarmup = true
+
+        #expect(working.isLoggable == true)
+        #expect(draft.isLoggable == true)
+        #expect(draft.weight == working.weight)
+        #expect(draft.reps == working.reps)
+        // Anchored to a literal, not only to each other: two `nil`s would satisfy the pair above.
+        #expect(draft.weight == Weight(grams: 60_000))
+        #expect(draft.reps == 5)
     }
 }
 

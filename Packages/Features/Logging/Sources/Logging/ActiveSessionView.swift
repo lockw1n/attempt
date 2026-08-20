@@ -10,8 +10,8 @@ import SwiftUI
 /// **The workout, what is in it, and what is in one exercise.** Here are the workout's own facts —
 /// the day it belongs to, when it started, the two ways it ends — `FR-1.2.13`'s vertical list of
 /// exercise cards with `FR-1.2.2`'s add and reorder, and the sets logged inside a card
-/// (`FR-1.2.3`, `FR-1.2.6`). Warmup marking, completion and editing land in that same card rather
-/// than in a new shape beside it.
+/// (`FR-1.2.3`, `FR-1.2.4`, `FR-1.2.6`, `FR-1.2.14`). Completion and editing land in that same
+/// card rather than in a new shape beside it.
 ///
 /// **It carries no identifier, and that is why ``ActiveSessionStore`` exists.** `TrainingRoute` has
 /// no payload for this screen: the workout in progress is one fact about the app, not a parameter of
@@ -43,6 +43,12 @@ public struct ActiveSessionView: View {
     /// (finished exercises collapsed, the rest open) rather than the folds of an earlier sitting.
     /// An entry here is an override of that rule and lasts as long as the screen does.
     @State private var expansion: [UUID: Bool] = [:]
+
+    /// Which cards' warmup groups the user has folded by hand (`FR-1.2.14`).
+    ///
+    /// Stored nowhere, for ``expansion``'s reason, and a second dictionary rather than a second flag
+    /// in that one because the two folds are independent — see ``SessionExerciseList``.
+    @State private var warmupExpansion: [UUID: Bool] = [:]
 
     /// Which exercise the set editor is open over, or `nil` (`FR-1.2.3`, `FR-1.2.6`).
     ///
@@ -100,7 +106,7 @@ public struct ActiveSessionView: View {
                 cancel: { editing = nil }
             )
             // The medium detent is what puts every logging control in the lower two-thirds
-            // (`NFR-1.4`); the large one is there because at `accessibility3` the four fields no
+            // (`NFR-1.4`); the large one is there because at `accessibility3` the five fields no
             // longer fit the medium one.
             .presentationDetents([.medium, .large])
         }
@@ -226,11 +232,18 @@ public struct ActiveSessionView: View {
                 SessionExerciseList(
                     exercises: items,
                     expansion: $expansion,
+                    warmupExpansion: $warmupExpansion,
                     move: { id, offset in
                         Task { await store.moveExercise(id: id, by: offset) }
                     },
                     unit: store.displayUnit,
-                    logSet: { editing = $0 }
+                    logSet: { editing = $0 },
+                    mark: { set, isWarmup in
+                        Task {
+                            await store.markSet(
+                                id: set.id, inEntryID: set.entryID, isWarmup: isWarmup)
+                        }
+                    }
                 )
                 writeFailure(writeFailed)
                 addExerciseLink
@@ -306,11 +319,17 @@ public struct ActiveSessionView: View {
     /// row appears as the store publishes it, with no spinner and nothing between the tap and the
     /// card. The write is local (`G-2.3`), so there is no window in which the card is visibly behind.
     ///
-    /// **The card is pinned open.** Every set logged here is `isCompleted`, so the first one makes
-    /// the exercise complete by `FR-1.2.13`'s rule — and the rule collapses completed cards, which
-    /// would fold the card the user is logging into at the moment they log into it. An explicit
-    /// entry in the fold overrides that for this card only: one the user has not touched still
-    /// follows the rule, which is what a workout reopened tomorrow should do.
+    /// **The card is pinned open.** Every set logged here is `isCompleted`, so the first working one
+    /// makes the exercise complete by `FR-1.2.13`'s rule — and the rule collapses completed cards,
+    /// which would fold the card the user is logging into at the moment they log into it. An
+    /// explicit entry in the fold overrides that for this card only: one the user has not touched
+    /// still follows the rule, which is what a workout reopened tomorrow should do.
+    ///
+    /// **The warmup group is deliberately *not* pinned**, though the first working set folds it by
+    /// ``SessionExerciseList/defaultWarmupExpansion(for:)``'s rule. That fold happens above the row
+    /// just logged and shortens the card, so it pulls the new set towards the thumb rather than off
+    /// screen — the opposite of what the card's own fold would have done, which is why one needs the
+    /// override and the other does not.
     ///
     /// A draft that does not resolve is ignored rather than trusted — the confirming command is
     /// disabled in that state, so this is the second reading of a guard the editor already applies.
@@ -320,14 +339,16 @@ public struct ActiveSessionView: View {
     ///   - entryID: The exercise to log against.
     private func log(_ draft: SetDraft, into entryID: UUID) {
         guard let weight = draft.weight, let reps = draft.reps, draft.isLoggable else { return }
-        let rpe = draft.storedRPE
-        let notes = draft.notes
+        let values = SetEntryValues(
+            weight: weight,
+            reps: reps,
+            rpe: draft.storedRPE,
+            isWarmup: draft.isWarmup,
+            notes: draft.notes
+        )
         editing = nil
         expansion[entryID] = true
-        Task {
-            await store.addSet(
-                toEntryID: entryID, weight: weight, reps: reps, rpe: rpe, notes: notes)
-        }
+        Task { await store.addSet(toEntryID: entryID, values: values) }
     }
 
     /// Finishes the workout and leaves the screen, unless the write failed.

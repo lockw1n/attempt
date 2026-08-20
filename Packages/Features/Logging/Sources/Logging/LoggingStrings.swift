@@ -135,10 +135,16 @@ enum LoggingStrings {
     /// How many sets have been logged against one exercise.
     static let sessionExerciseSets = resource("logging.session.exercise.sets")
 
-    /// A card that is open, as VoiceOver's value for the control that folds it (`G-4.2`).
+    /// Something on this screen that is open, as VoiceOver's value for the control that folds it
+    /// (`G-4.2`).
+    ///
+    /// **One pair for both folds, unlike the module's usual rule.** That rule keeps two *screens*
+    /// from sharing a string; the exercise card and the warmup group inside it are one screen and
+    /// one word, and writing "Expanded" twice would be two entries a translator has to keep
+    /// identical for no reason either could diverge for.
     static let sessionExerciseExpanded = resource("logging.session.exercise.expanded")
 
-    /// A card that is folded. See ``sessionExerciseExpanded``.
+    /// Something on this screen that is folded. See ``sessionExerciseExpanded``.
     static let sessionExerciseCollapsed = resource("logging.session.exercise.collapsed")
 
     /// In place of a name, where the entry points at a catalogue row that is not there.
@@ -243,6 +249,52 @@ enum LoggingStrings {
         resource("logging.session.set.reps \(reps)")
     }
 
+    /// The badge a warmup row leads with — `FR-1.2.14`'s `W1`, `W2`.
+    ///
+    /// **A string rather than a `W` in front of a numeral** (`G-3.4`): the prefix is a word in the
+    /// user's language, not punctuation, and a language that does not spell it with a Latin `W` has
+    /// nowhere else to say so.
+    ///
+    /// - Parameter number: The warmup's one-based place among the warmups.
+    /// - Returns: The badge.
+    static func setWarmupNumber(_ number: Int) -> LocalizedStringResource {
+        resource("logging.session.set.warmup.number \(number)")
+    }
+
+    /// The same warmup's place, as VoiceOver's label for that badge (`G-4.2`).
+    ///
+    /// Never the badge itself: `W1` read aloud is a letter and a digit rather than a warmup.
+    ///
+    /// - Parameter number: The warmup's one-based place among the warmups.
+    /// - Returns: The sentence.
+    static func setWarmupPosition(_ number: Int) -> LocalizedStringResource {
+        resource("logging.session.set.warmup.position \(number)")
+    }
+
+    /// What tapping a set's badge does (`FR-1.2.4`), as VoiceOver's hint on it.
+    ///
+    /// **The action, not the state**: a hint on a warmup says it can be made a working set, which is
+    /// the opposite instruction to the one on the row beside it.
+    ///
+    /// - Parameter isWarmup: Whether the set is currently a warmup.
+    /// - Returns: What a tap would do to it.
+    static func setMarkAction(isWarmup: Bool) -> LocalizedStringResource {
+        isWarmup
+            ? resource("logging.session.set.mark-working")
+            : resource("logging.session.set.mark-warmup")
+    }
+
+    /// The heading over `FR-1.2.14`'s collapsible warmup group.
+    ///
+    /// A label beside a numeral, for ``sessionExerciseSets``' reason.
+    static let setWarmupSection = resource("logging.session.set.warmup.section")
+
+    /// The set editor's fifth row — whether the set being logged is a warmup (`FR-1.2.4`).
+    static let setWarmupLabel = resource("logging.session.set.warmup.label")
+
+    /// What that choice costs, in the one sentence the label has no room for.
+    static let setWarmupHint = resource("logging.session.set.warmup.hint")
+
     /// A logged set's rating, label and value together.
     ///
     /// The value arrives already rendered, so the number is the locale's rather than this call's.
@@ -305,7 +357,10 @@ enum LoggingStrings {
             setRepsLabel, setRPELabel, setRPEHint, setNotesLabel, setNotesHint, setConfirmAction,
             setCancelAction, setWeightIncrease, setWeightDecrease, setRepsIncrease, setRepsDecrease,
             setInvalidMessage, setPosition(1), setReps(5), setRPE(""),
+            setWarmupNumber(1), setWarmupPosition(1), setWarmupSection, setWarmupLabel,
+            setWarmupHint,
         ] + MassUnit.allCases.map(setUnitSymbol(for:))
+            + [true, false].map(setMarkAction(isWarmup:))
     }
 
     /// Binds a key to this module's catalogue.

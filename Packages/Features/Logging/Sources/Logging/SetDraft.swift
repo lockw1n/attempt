@@ -60,6 +60,18 @@ struct SetDraft: Equatable, Sendable {
     /// The per-set note (`FR-1.2.3`). Optional, and never refuses a set.
     var notes: String = ""
 
+    /// Whether the set being drafted is a warmup rather than working (`FR-1.2.4`).
+    ///
+    /// **Working by default, and that default is decided here rather than inherited.** `G-1.8`
+    /// forbids `SetEntry` from defaulting either flag, so somebody has to choose; a form that opened
+    /// on *warmup* would put the day's work into the sequence that `FR-1.6`'s calculator ignores,
+    /// which is the expensive direction of the two to get wrong.
+    ///
+    /// **Not part of ``isBlank``.** The other four fields can be empty and this one cannot — a
+    /// boolean always holds a value — so counting it would make every draft non-blank and the form
+    /// would open complaining about fields nobody has touched yet.
+    var isWarmup: Bool = false
+
     /// The scale RPE is entered on. Outside it, the field is a typo rather than a rating.
     static let rpeRange: ClosedRange<Double> = 1...10
 
@@ -73,11 +85,16 @@ struct SetDraft: Equatable, Sendable {
         self.locale = locale
     }
 
-    /// A draft carrying `set`'s load, reps and RPE — `FR-1.2.6`'s duplicate.
+    /// A draft carrying `set`'s load, reps, RPE and kind — `FR-1.2.6`'s duplicate.
     ///
     /// **The note is deliberately not carried.** Weight, reps and RPE describe how the set was
     /// performed and repeat by default; a note says something about one set — "left knee", "belt on
     /// the last two" — and repeating it would put words in the user's mouth on every subsequent set.
+    ///
+    /// **The warmup flag *is* carried**, and it is the one field where repeating matters most: a
+    /// ramp is three or four warmups in a row, each one a repeat of the last with the load moved, so
+    /// a duplicate that came back as a working set would put every rung of the ramp into the work
+    /// and cost `NFR-1.3`'s three taps a fourth to undo it each time.
     ///
     /// - Parameters:
     ///   - set: The set to repeat.
@@ -90,6 +107,7 @@ struct SetDraft: Equatable, Sendable {
         if let rpe = set.rpe {
             rpeText = Self.render(rpe, locale: locale)
         }
+        isWarmup = set.isWarmup
     }
 }
 
@@ -266,17 +284,44 @@ extension SetDraft {
     }
 }
 
-/// The three fields `FR-1.2.6`'s duplicate carries over from the set it repeats.
+/// What one logged set records, apart from where it sits — the five fields the editor collects and
+/// the store writes (`FR-1.2.3`, `FR-1.2.4`).
 ///
-/// A value rather than `SetEntry` itself, so a draft can be built in a test — and in a preview —
-/// without a stored row behind it.
-struct SetEntryValues: Equatable, Sendable {
+/// **A value rather than `SetEntry` itself**, so a draft can be built in a test — and in a preview —
+/// without a stored row behind it, and so the store's command takes one argument rather than five.
+///
+/// **`FR-1.2.6`'s duplicate carries four of the five and deliberately drops ``notes``** — which is
+/// the duplicate's decision rather than this type's, and is argued at the initialiser that makes
+/// one.
+public struct SetEntryValues: Equatable, Sendable {
     /// The load on one implement.
-    let weight: Weight
+    public let weight: Weight
 
-    /// The repetitions performed.
-    let reps: Int
+    /// The repetitions performed. Zero is `FR-1.2.5`'s failed set.
+    public let reps: Int
 
     /// The rating, where the set carried one.
-    let rpe: Double?
+    public let rpe: Double?
+
+    /// Whether it was a warmup rather than working (`FR-1.2.4`).
+    public let isWarmup: Bool
+
+    /// The per-set note, or empty (`FR-1.2.3`).
+    public let notes: String
+
+    /// Builds the value.
+    ///
+    /// - Parameters:
+    ///   - weight: The load on one implement.
+    ///   - reps: The repetitions performed.
+    ///   - rpe: The rating, where there is one.
+    ///   - isWarmup: Whether it is a warmup.
+    ///   - notes: The per-set note, or empty.
+    public init(weight: Weight, reps: Int, rpe: Double?, isWarmup: Bool, notes: String = "") {
+        self.weight = weight
+        self.reps = reps
+        self.rpe = rpe
+        self.isWarmup = isWarmup
+        self.notes = notes
+    }
 }

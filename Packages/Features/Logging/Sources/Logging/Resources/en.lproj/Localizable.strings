@@ -149,3 +149,24 @@
 "logging.session.set.reps %lld" = "Reps %lld";
 /* A logged set's rating. The number arrives already rendered, so it is the locale's. */
 "logging.session.set.rpe %@" = "RPE %@";
+
+/* FR-1.2.4 and FR-1.2.14: warmups, marked and numbered apart from the work. */
+/* The badge a warmup row leads with. "W1" rather than "1" is the requirement's own spelling, and it
+   is a string rather than a "W" glued to a numeral so a language that prefixes differently — or
+   does not use a Latin W — can say it its own way. */
+"logging.session.set.warmup.number %lld" = "W%lld";
+/* VoiceOver's label for that badge. Never "W1": read aloud, that is three letters and a digit. */
+"logging.session.set.warmup.position %lld" = "Warmup %lld";
+/* The badge is also the control that changes a set's kind (FR-1.2.4), so it carries a hint saying
+   what a tap does. Two strings rather than one with a state in it: a hint names the action about to
+   happen, and "Mark as warmup" on a set that already is one is the opposite instruction. */
+"logging.session.set.mark-warmup" = "Mark as warmup";
+"logging.session.set.mark-working" = "Mark as working";
+/* FR-1.2.14's collapsible group. A label beside a numeral, so it stays a count in every language
+   rather than needing a plural rule. */
+"logging.session.set.warmup.section" = "Warmups";
+/* The set editor's fifth row: which kind the set being logged is. The sentence says what the choice
+   costs rather than what the switch does — that warmups are excluded from the work is the fact a
+   user needs before flipping it, and it is the same fact FR-1.6's calculator acts on. */
+"logging.session.set.warmup.label" = "Warmup set";
+"logging.session.set.warmup.hint" = "Numbered separately, and left out of your working sets.";

@@ -3,7 +3,7 @@ import PowerliftingCore
 import RepositoryInterface
 
 /// What the workout's commands write, and the chain they write in (`FR-1.2.2`, `FR-1.2.3`,
-/// `FR-1.2.6`, `NFR-1.8`).
+/// `FR-1.2.4`, `FR-1.2.6`, `NFR-1.8`).
 ///
 /// A second file rather than a longer one: ``ActiveSessionStore`` proper is the workout's lifecycle
 /// and what it holds, and this is every mutation a card can issue. They share ``pendingWrite``,
@@ -129,40 +129,87 @@ extension ActiveSessionStore {
     /// 1 would be invisible to `FR-1.6`. Marking one **failed** is T-1.24's, and it is a later edit
     /// of this column rather than a different default for it.
     ///
-    /// **`isWarmup` is `false`** for the same reason and with the same successor: this editor logs a
-    /// working set, and `FR-1.2.4`'s warmup marking is its own task. Neither flag is defaulted at
-    /// the record's initialiser — `G-1.8` forbids it — so both are decided here, in the open.
+    /// **`isWarmup` is the caller's** (`FR-1.2.4`), and it is still decided in the open rather than
+    /// defaulted: `G-1.8` forbids the record's initialiser from choosing either flag, so the value
+    /// arrives from the editor's own switch, which starts on *working*. Changing it afterwards is
+    /// ``markSet(id:inEntryID:isWarmup:)`` — a later edit of this column, not a second way of
+    /// writing it.
     ///
     /// **`completedAt` is now.** The column exists to say the set was tracked live rather than
     /// entered after the fact, and nothing else in the app can establish that.
     ///
     /// - Parameters:
     ///   - entryID: The exercise to log against.
-    ///   - weight: The load on one implement.
-    ///   - reps: The repetitions performed. Zero is `FR-1.2.5`'s failed set.
-    ///   - rpe: The rating, where the user gave one.
-    ///   - notes: The per-set note, or empty.
-    public func addSet(
-        toEntryID entryID: UUID, weight: Weight, reps: Int, rpe: Double?, notes: String
-    ) async {
+    ///   - values: What the set records — load, repetitions, rating, kind and note.
+    public func addSet(toEntryID entryID: UUID, values: SetEntryValues) async {
         let previous = pendingWrite
         let write = Task { [weak self] in
             await previous?.value
-            await self?.writeAddedSet(
-                toEntryID: entryID, weight: weight, reps: reps, rpe: rpe, notes: notes)
+            await self?.writeAddedSet(toEntryID: entryID, values: values)
         }
         pendingWrite = write
         await write.value
     }
 
-    /// One link in ``pendingWrite``'s chain. See ``addSet(toEntryID:weight:reps:rpe:notes:)``.
+    /// Marks a logged set as a warmup or as working (`FR-1.2.4`, `FR-1.2.14`).
+    ///
+    /// **A correction, and the only one Phase 1 offers before `FR-1.2.7`'s editing lands.** A set
+    /// gets its kind from the editor as it is logged; this is the case where that was wrong, or
+    /// where the user decided afterwards that the third rung of the ramp was really the first
+    /// working set. Both numbering sequences move as a consequence, which is `SetNumbering`'s and
+    /// needs no write of its own — the number is derived, never stored (`G-1.4`).
+    ///
+    /// **A set already of that kind is not written**, and that is `G-2.4` rather than tidiness:
+    /// assigning a `@Model` property marks the row changed whatever the value was, so the save would
+    /// restamp `updatedAt` — the conflict key — and a no-op local write would outrank a real remote
+    /// edit. The badge is a toggle, so this call arrives with the value already flipped and the
+    /// guard fires only on a set the read found in a state the caller did not expect.
+    ///
+    /// **The row is re-read rather than taken from ``exercises``**, for the reason every command
+    /// here re-reads: this runs at the back of ``pendingWrite``'s chain, so the held list is the one
+    /// from before whatever is queued ahead of it.
+    ///
+    /// - Parameters:
+    ///   - setID: The set to mark.
+    ///   - entryID: The exercise it belongs to — what the repository reads sets by.
+    ///   - isWarmup: Which kind it becomes.
+    public func markSet(id setID: UUID, inEntryID entryID: UUID, isWarmup: Bool) async {
+        let previous = pendingWrite
+        let write = Task { [weak self] in
+            await previous?.value
+            await self?.writeMarkedSet(id: setID, inEntryID: entryID, isWarmup: isWarmup)
+        }
+        pendingWrite = write
+        await write.value
+    }
+
+    /// One link in ``pendingWrite``'s chain. See ``markSet(id:inEntryID:isWarmup:)``.
+    ///
+    /// **A set the read does not find is silently nothing**, like a set logged with no workout in
+    /// progress: the row was deleted underneath the card, the list is re-read below either way, and
+    /// a diagnostic would report a failure against a set that is no longer on screen.
+    fileprivate func writeMarkedSet(id setID: UUID, inEntryID entryID: UUID, isWarmup: Bool) async {
+        guard session != nil else { return }
+        do {
+            let stored = try await repository.sets(forEntryID: entryID, includingDeleted: false)
+            guard let target = stored.first(where: { $0.id == setID }), target.isWarmup != isWarmup
+            else {
+                return
+            }
+            try await repository.save(Self.marked(target, isWarmup: isWarmup))
+            exercisesWriteFailure = nil
+        } catch {
+            exercisesWriteFailure = String(describing: error)
+        }
+        await loadExercises()
+    }
+
+    /// One link in ``pendingWrite``'s chain. See ``addSet(toEntryID:values:)``.
     ///
     /// It shares the chain with the exercise commands rather than having one of its own: a set is
     /// written against an entry, and an entry can be moved or added by the same thumb between two
     /// taps of **Log set**.
-    fileprivate func writeAddedSet(
-        toEntryID entryID: UUID, weight: Weight, reps: Int, rpe: Double?, notes: String
-    ) async {
+    fileprivate func writeAddedSet(toEntryID entryID: UUID, values: SetEntryValues) async {
         guard session != nil else { return }
         do {
             let stored = try await repository.sets(forEntryID: entryID, includingDeleted: false)
@@ -175,16 +222,16 @@ extension ActiveSessionStore {
                     deletedAt: nil,
                     entryID: entryID,
                     order: (stored.map(\.order).max() ?? -1) + 1,
-                    weight: weight,
-                    reps: reps,
-                    rpe: rpe,
+                    weight: values.weight,
+                    reps: values.reps,
+                    rpe: values.rpe,
                     rir: nil,
-                    isWarmup: false,
+                    isWarmup: values.isWarmup,
                     isCompleted: true,
                     targetWeight: nil,
                     targetReps: nil,
                     modifiers: [],
-                    notes: notes,
+                    notes: values.notes,
                     completedAt: now
                 )
             )
@@ -193,6 +240,32 @@ extension ActiveSessionStore {
             exercisesWriteFailure = String(describing: error)
         }
         await loadExercises()
+    }
+
+    /// `set` as the other kind, and every other field untouched.
+    ///
+    /// Rebuilt rather than mutated for ``renumbered(_:to:)``'s reason: the record is a value with
+    /// `let` properties, and the write path stamps `updatedAt` itself.
+    fileprivate static func marked(_ set: SetEntry, isWarmup: Bool) -> SetEntry {
+        SetEntry(
+            id: set.id,
+            createdAt: set.createdAt,
+            updatedAt: set.updatedAt,
+            deletedAt: set.deletedAt,
+            entryID: set.entryID,
+            order: set.order,
+            weight: set.weight,
+            reps: set.reps,
+            rpe: set.rpe,
+            rir: set.rir,
+            isWarmup: isWarmup,
+            isCompleted: set.isCompleted,
+            targetWeight: set.targetWeight,
+            targetReps: set.targetReps,
+            modifiers: set.modifiers,
+            notes: set.notes,
+            completedAt: set.completedAt
+        )
     }
 
     /// `entry` at a new position, and every other field untouched.

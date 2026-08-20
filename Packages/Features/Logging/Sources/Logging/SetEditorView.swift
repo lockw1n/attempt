@@ -21,12 +21,15 @@ struct SetEditorTarget: Identifiable, Equatable {
 
 /// `FR-1.2.3`'s add-set form, and `FR-1.2.6`'s duplicate once it has been opened.
 ///
+/// `FR-1.2.4`'s warmup marking is the fifth row, decided as the set is logged rather than corrected
+/// afterwards — the card's own badge is what corrects one.
+///
 /// **Presented rather than drawn inside the card, and that is `NFR-1.4` deciding it.** Every logging
 /// control has to sit in the lower two-thirds of the screen, reachable by one thumb; a draft row
 /// inside the card would sit wherever the user had scrolled that card to, which is as often the top
 /// as the bottom. A sheet at the medium detent is the lower half of the screen by construction, and
 /// it is the same place for every exercise in the workout. The larger detent is offered as well
-/// rather than instead, because at `accessibility3` the four fields no longer fit the medium one and
+/// rather than instead, because at `accessibility3` the five fields no longer fit the medium one and
 /// a control that cannot be scrolled to is worse than one that is briefly higher up.
 ///
 /// **Three taps, counted rather than assumed** (`NFR-1.3`): **Repeat set** opens this already filled
@@ -65,7 +68,7 @@ struct SetEditorSheet: View {
         self.cancel = cancel
     }
 
-    /// The four fields, scrolling, with the two commands pinned beneath them.
+    /// The five fields, scrolling, with the two commands pinned beneath them.
     ///
     /// **The commands are outside the scroll view, and that is measured rather than assumed.** With
     /// them inside it, **Log set** sat below the fold at the medium detent — `NFR-1.3`'s third tap
@@ -89,7 +92,7 @@ struct SetEditorSheet: View {
     }
 }
 
-/// The set editor's four fields (`FR-1.2.3`).
+/// The set editor's five fields (`FR-1.2.3`, `FR-1.2.4`).
 ///
 /// **A type of its own so a reference can be taken of it**, which is `TR-1.12` rather than
 /// decomposition for its own sake: `ImageRenderer` lays a `ScrollView`'s content out and draws none
@@ -97,8 +100,8 @@ struct SetEditorSheet: View {
 /// form missing. Rendered directly, the fields are a picture again — and `NFR-1.10`'s claim that
 /// they still fit at `accessibility3` is something the gate can actually check.
 ///
-/// The two fields that decide whether the set logs lead, and the two optional ones follow: at the
-/// medium detent the load and the repetitions are what is on screen without scrolling.
+/// The two fields that decide whether the set logs lead, then the kind, then the two optional
+/// ones: at the medium detent the load and the repetitions are what is on screen without scrolling.
 struct SetEditorFields: View {
     /// What the user has entered so far.
     @Binding var draft: SetDraft
@@ -106,7 +109,7 @@ struct SetEditorFields: View {
     /// Set by anything the user does here, so the commands below know the form has been touched.
     @Binding var hasInput: Bool
 
-    /// Title, then the four rows.
+    /// Title, then the five rows.
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.lg.points) {
             Text(LoggingStrings.setEditorTitle)
@@ -114,6 +117,7 @@ struct SetEditorFields: View {
                 .foregroundStyle(ColorToken.textPrimary)
             weightField
             repsField
+            warmupField
             rpeField
             notesField
         }
@@ -150,6 +154,64 @@ struct SetEditorFields: View {
                     draft = draft.adjustingReps(by: 1)
                 }
             }
+        }
+    }
+
+    /// Whether the set is a warmup (`FR-1.2.4`).
+    ///
+    /// **Third rather than last, and that is `NFR-1.4` rather than an ordering preference.** It sits
+    /// with the two fields that describe what was lifted, above the two optional ones: a warmup is
+    /// decided before the set is logged, where a rating and a note are afterthoughts, and at the
+    /// medium detent everything above the fold is what gets touched without scrolling. A ramp is
+    /// three or four warmups in a row, so a switch below the fold would be scrolled to on every one
+    /// of them.
+    ///
+    /// **A `Toggle`, because the value is a boolean and that is the only control VoiceOver announces
+    /// as one** — but drawn as a button rather than as a switch, and that is measured rather than
+    /// stylistic. A switch is UIKit-backed, and inside a sheet held at the `.medium` detent it never
+    /// received the tap: the sheet's own drag recogniser claimed it, so the control rendered
+    /// perfectly and did nothing until the sheet was dragged to `.large`. Every other control in
+    /// this form is a SwiftUI `Button` and none of them has the problem. `.toggleStyle(.button)`
+    /// keeps the toggle semantics and drops the UIKit view, which fixes the tap and, incidentally,
+    /// is the one thing that lets `TR-1.12`'s harness picture the control at all — a `UISwitch`
+    /// rasterises as the renderer's placeholder.
+    ///
+    /// **Not a `FieldRow`, and that is measured too.** Every other row here is a label above a
+    /// control, which for a boolean means the label twice over and two rows' worth of height; built
+    /// that way the control sat *below the medium detent's fold*, so `NFR-1.4`'s reachable control
+    /// needed a scroll to reach.
+    ///
+    /// **A symbol as well as the fill** (`G-4.5`): on and off must not differ by colour alone.
+    private var warmupField: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs.points) {
+            Toggle(
+                isOn: Binding(
+                    get: { draft.isWarmup },
+                    set: {
+                        hasInput = true
+                        draft.isWarmup = $0
+                    }
+                )
+            ) {
+                HStack(spacing: Spacing.sm.points) {
+                    Image(systemName: draft.isWarmup ? "checkmark.circle.fill" : "circle")
+                        .accessibilityHidden(true)
+                    Text(LoggingStrings.setWarmupLabel)
+                        .font(Typography.actionLabel.font)
+                    Spacer(minLength: Spacing.sm.points)
+                }
+                .frame(maxWidth: .infinity, minHeight: TouchTarget.logging.points)
+                .contentShape(.rect)
+            }
+            .toggleStyle(.button)
+            .buttonStyle(.plain)
+            .foregroundStyle(draft.isWarmup ? ColorToken.brandAccent : ColorToken.textPrimary)
+            .background(
+                ColorToken.surfaceRaised, in: .rect(cornerRadius: CornerRadius.control.points)
+            )
+            Text(LoggingStrings.setWarmupHint)
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textTertiary)
         }
     }
 

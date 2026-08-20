@@ -54,6 +54,16 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
         let working = sets.filter { !$0.isWarmup }
         return !working.isEmpty && working.allSatisfy(\.isCompleted)
     }
+
+    /// Whether any of the work proper has been logged yet — what `FR-1.2.14`'s warmup group folds
+    /// itself on.
+    ///
+    /// **The same partition ``isComplete`` makes, asked one step earlier.** That property answers
+    /// *is the work finished*; this one answers *has it started*, and the two are different states
+    /// of a card that has warmups in it and nothing else.
+    public var hasWorkingSets: Bool {
+        sets.contains { !$0.isWarmup }
+    }
 }
 
 /// How far through the workout the user is (`FR-1.2.13`).

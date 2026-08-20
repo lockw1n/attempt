@@ -158,9 +158,11 @@
                     SessionExerciseList(
                         exercises: Fixtures.exercises,
                         expansion: .constant([:]),
+                        warmupExpansion: .constant([:]),
                         move: { _, _ in },
                         unit: .kilograms,
-                        logSet: { _ in }
+                        logSet: { _ in },
+                        mark: { _, _ in }
                     )
                 }
             }
@@ -187,6 +189,17 @@
             }
         }
 
+        @Test func setEditorWarmup() throws {
+            // FR-1.2.4's fifth row in its ON position. Its own reference rather than a variant of
+            // the one above, because it is the one state a reference here can actually check: the
+            // control is a button rather than a switch, so unlike every `TextField` around it it
+            // rasterises — and G-4.5's claim that on and off differ by a symbol and not only by
+            // colour is exactly what a picture settles.
+            try assertSnapshots(named: "Session-set-editor-warmup") {
+                fixedEnvironment { editor(over: Fixtures.warmupDraft) }
+            }
+        }
+
         @Test func setEditorRefusing() throws {
             // A draft that does not resolve: the RPE is outside 1...10, which is the one range this
             // form checks and the record deliberately does not. The message renders beside the
@@ -202,14 +215,39 @@
             // One card's worth of logged sets, with and without a rating. The multiplication sign
             // between the two numerals is drawn and hidden from VoiceOver; what a reference can
             // check is that the line still reads as one set at NFR-1.10's ceiling rather than
-            // wrapping into three.
+            // wrapping into three — which is the budget FR-1.2.4's badge spends into, the number
+            // having become a 44pt control.
             try assertSnapshots(named: "Session-set-rows") {
+                fixedEnvironment { rows(Fixtures.loggedSets) }
+            }
+        }
+
+        @Test func warmupsAndWorkingSets() throws {
+            // FR-1.2.14, and the reference the requirement is actually about: two warmups numbered
+            // W1, W2 beside three working sets numbered 1, 2, 3, with the warmups one step down the
+            // type scale and one step back in the colour ramp. The two sequences and the
+            // de-emphasis are both things only a picture checks — the numbers themselves are
+            // `SetNumberingTests`'.
+            try assertSnapshots(named: "Session-set-rows-warmup") {
+                fixedEnvironment { rows(Fixtures.rampedSets) }
+            }
+        }
+
+        @Test func warmupGroupOpen() throws {
+            try assertSnapshots(named: "Session-warmup-header-open") {
                 fixedEnvironment {
-                    VStack(alignment: .leading) {
-                        ForEach(Array(Fixtures.loggedSets.enumerated()), id: \.element.id) { pair in
-                            SetRow(set: pair.element, position: pair.offset + 1, unit: .kilograms)
-                        }
-                    }
+                    WarmupSectionHeader(count: 2, isExpanded: true, toggle: {})
+                }
+            }
+        }
+
+        @Test func warmupGroupFolded() throws {
+            // Its own reference rather than a variant: folded is the state the group is in for most
+            // of a workout, and the count beside the heading is the only thing then saying how many
+            // rows are rolled up.
+            try assertSnapshots(named: "Session-warmup-header-folded") {
+                fixedEnvironment {
+                    WarmupSectionHeader(count: 2, isExpanded: false, toggle: {})
                 }
             }
         }
@@ -257,6 +295,18 @@
             }
         }
 
+        /// A column of set rows, numbered the way the card numbers them.
+        ///
+        /// - Parameter sets: The sets, in the order they were logged.
+        /// - Returns: The rows.
+        private func rows(_ sets: [SetEntry]) -> some View {
+            VStack(alignment: .leading) {
+                ForEach(SetNumbering.numbered(sets)) { numbered in
+                    SetRow(numbered: numbered, unit: .kilograms, mark: { _, _ in })
+                }
+            }
+        }
+
         /// A subject whose rendering depends on a locale or a time zone, pinned to both.
         ///
         /// The locale is the environment's, which is what `AppFormat` reads through the view; the
@@ -295,193 +345,6 @@
             return subject()
                 .environment(\.locale, Fixtures.locale)
                 .environment(\.timeZone, .gmt)
-        }
-    }
-
-    /// The workout these references render, and the two things it takes to render one.
-    enum Fixtures {
-        /// The locale every reference here renders and parses numbers in.
-        static let locale = Locale(identifier: "en_US_POSIX")
-
-        /// A draft as `FR-1.2.6`'s duplicate opens it, carrying the last set's three fields.
-        static var repeatedDraft: SetDraft {
-            SetDraft(
-                repeating: SetEntryValues(weight: Weight(grams: 102_500), reps: 5, rpe: 8),
-                unit: .kilograms,
-                locale: locale
-            )
-        }
-
-        /// A draft the form refuses: the load and the reps resolve, the rating does not.
-        static var refusingDraft: SetDraft {
-            var draft = SetDraft(unit: .kilograms, locale: locale)
-            draft.weightText = "102.5"
-            draft.repsText = "5"
-            draft.rpeText = "18"
-            return draft
-        }
-
-        /// Two logged sets, one rated and one not.
-        static let loggedSets: [SetEntry] = [
-            loggedSet(index: 0, weight: Weight(grams: 102_500), reps: 5, rpe: 8),
-            loggedSet(index: 1, weight: Weight(grams: 102_500), reps: 3, rpe: nil),
-        ]
-
-        /// One logged set, with every identifier and timestamp fixed.
-        private static func loggedSet(
-            index: Int, weight: Weight, reps: Int, rpe: Double?
-        ) -> SetEntry {
-            SetEntry(
-                id: identifier("E\(index)"),
-                createdAt: startedAt,
-                updatedAt: startedAt,
-                deletedAt: nil,
-                entryID: identifier("B1"),
-                order: index,
-                weight: weight,
-                reps: reps,
-                rpe: rpe,
-                rir: nil,
-                isWarmup: false,
-                isCompleted: true,
-                targetWeight: nil,
-                targetReps: nil,
-                modifiers: [],
-                notes: "",
-                completedAt: startedAt
-            )
-        }
-
-        /// A gregorian calendar in UTC, so the fixed day below is the same instant everywhere.
-        private static let calendar: Calendar = {
-            var calendar = Calendar(identifier: .gregorian)
-            calendar.timeZone = TimeZone(identifier: "UTC") ?? .gmt
-            return calendar
-        }()
-
-        /// The training day, at its start — where `ActiveSessionStore.start(on:)` puts it.
-        static let day =
-            calendar.date(from: DateComponents(year: 2026, month: 3, day: 14)) ?? .distantPast
-
-        /// Mid-evening, so the rendered time is unambiguous rather than sitting near a boundary.
-        static let startedAt =
-            calendar.date(from: DateComponents(year: 2026, month: 3, day: 14, hour: 18, minute: 42))
-            ?? .distantPast
-
-        /// One workout in progress, with every field fixed so a rendering never moves.
-        static let session = WorkoutSession(
-            id: UUID(uuidString: "0F5A1E24-9B7D-4C31-8E62-0000000000A1") ?? UUID(),
-            createdAt: startedAt,
-            updatedAt: startedAt,
-            deletedAt: nil,
-            date: day,
-            startedAt: startedAt,
-            endedAt: nil,
-            notes: "",
-            bodyweight: nil,
-            programRunID: nil,
-            scheduledWorkoutID: nil
-        )
-
-        /// Three exercises in one workout, at the three shapes a card has: unstarted, part-done and
-        /// finished. Every identifier and timestamp is fixed so a rendering never moves.
-        static let exercises: [SessionExercise] = [
-            sessionExercise(
-                index: 1,
-                name: "Back Squat",
-                sets: [(isWarmup: false, isCompleted: true), (isWarmup: false, isCompleted: true)]
-            ),
-            sessionExercise(
-                index: 2,
-                name: "Bench Press",
-                sets: [(isWarmup: true, isCompleted: true), (isWarmup: false, isCompleted: false)]
-            ),
-            sessionExercise(index: 3, name: "Romanian Deadlift", sets: []),
-        ]
-
-        /// One card's worth of workout.
-        private static func sessionExercise(
-            index: Int,
-            name: String,
-            sets: [(isWarmup: Bool, isCompleted: Bool)]
-        ) -> SessionExercise {
-            let entryID = identifier("B\(index)")
-            let exerciseID = identifier("C\(index)")
-            return SessionExercise(
-                entry: ExerciseEntry(
-                    id: entryID,
-                    createdAt: startedAt,
-                    updatedAt: startedAt,
-                    deletedAt: nil,
-                    sessionID: session.id,
-                    exerciseID: exerciseID,
-                    order: index - 1,
-                    notes: ""
-                ),
-                exercise: Exercise(
-                    id: exerciseID,
-                    createdAt: startedAt,
-                    updatedAt: startedAt,
-                    deletedAt: nil,
-                    name: name,
-                    movement: .squat,
-                    parentExerciseID: nil,
-                    equipment: .barbell,
-                    laterality: .bilateral,
-                    barType: .standard,
-                    implementCount: 1,
-                    isCustom: false,
-                    isArchived: false,
-                    notes: ""
-                ),
-                sets: sets.enumerated().map { position, flags in
-                    SetEntry(
-                        id: identifier("D\(index)\(position)"),
-                        createdAt: startedAt,
-                        updatedAt: startedAt,
-                        deletedAt: nil,
-                        entryID: entryID,
-                        order: position,
-                        weight: Weight(grams: 100_000),
-                        reps: 5,
-                        rpe: nil,
-                        rir: nil,
-                        isWarmup: flags.isWarmup,
-                        isCompleted: flags.isCompleted,
-                        targetWeight: nil,
-                        targetReps: nil,
-                        modifiers: [],
-                        notes: "",
-                        completedAt: nil
-                    )
-                }
-            )
-        }
-
-        /// A fixed identifier, so nothing in these renderings depends on a fresh `UUID`.
-        private static func identifier(_ suffix: String) -> UUID {
-            let padded = String(suffix.prefix(4)).padding(toLength: 4, withPad: "0", startingAt: 0)
-            return UUID(uuidString: "0F5A1E24-9B7D-4C31-8E62-00000000\(padded)") ?? UUID()
-        }
-
-        /// A preference in a named position, over storage no other test can see.
-        ///
-        /// **A fresh suite each time, removed as soon as it has been read.** A fixed name would
-        /// outlive the run and be inherited by the next one — harmless to a rendering that does not
-        /// draw the control, and exactly the kind of leftover that makes a later test lie.
-        ///
-        /// - Parameter isEnabled: Which position to build. It does not reach the rendering — see the
-        ///   note on the suite — but a preference built at random would still be the wrong subject.
-        /// - Returns: The preference.
-        static func preference(isEnabled: Bool) -> ScreenWakePreference {
-            let name = "snapshots.\(UUID().uuidString)"
-            guard let defaults = UserDefaults(suiteName: name) else {
-                return ScreenWakePreference(defaults: .standard)
-            }
-            defaults.set(isEnabled, forKey: "logging.screen-wake.enabled")
-            let preference = ScreenWakePreference(defaults: defaults)
-            defaults.removePersistentDomain(forName: name)
-            return preference
         }
     }
 

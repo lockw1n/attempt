@@ -6,8 +6,8 @@ import Testing
 
 @testable import Logging
 
-/// Logging a set against an exercise in the workout (`FR-1.2.3`, `FR-1.2.5`, `FR-1.2.6`,
-/// `NFR-1.8`, `G-1.8`, `G-3.1`).
+/// Logging a set against an exercise in the workout, and marking one (`FR-1.2.3`, `FR-1.2.4`,
+/// `FR-1.2.5`, `FR-1.2.6`, `NFR-1.8`, `G-1.8`, `G-3.1`).
 @Suite("Session sets")
 struct SessionSetsTests {
     // MARK: - The write (FR-1.2.3, NFR-1.8, G-1.8)
@@ -19,7 +19,9 @@ struct SessionSetsTests {
         let entry = try #require(workout.store.exercises.first)
 
         await workout.store.addSet(
-            toEntryID: entry.id, weight: Weight(grams: 102_500), reps: 5, rpe: 8, notes: "belt")
+            toEntryID: entry.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 102_500), reps: 5, rpe: 8, isWarmup: false, notes: "belt"))
 
         let held = try #require(workout.store.exercises.first?.sets.first)
         #expect(workout.store.exercises.first?.sets.count == 1)
@@ -41,7 +43,9 @@ struct SessionSetsTests {
         let entry = try #require(workout.store.exercises.first)
 
         await workout.store.addSet(
-            toEntryID: entry.id, weight: Weight(grams: 100_000), reps: 5, rpe: nil, notes: "")
+            toEntryID: entry.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 100_000), reps: 5, rpe: nil, isWarmup: false, notes: ""))
 
         let held = try #require(workout.store.exercises.first?.sets.first)
         #expect(held.isCompleted == true)
@@ -61,7 +65,9 @@ struct SessionSetsTests {
 
         for reps in [5, 4, 3] {
             await workout.store.addSet(
-                toEntryID: entry.id, weight: Weight(grams: 100_000), reps: reps, rpe: nil, notes: "")
+                toEntryID: entry.id,
+                values: SetEntryValues(
+                    weight: Weight(grams: 100_000), reps: reps, rpe: nil, isWarmup: false))
         }
 
         let sets = try #require(workout.store.exercises.first?.sets)
@@ -76,14 +82,18 @@ struct SessionSetsTests {
         let entry = try #require(workout.store.exercises.first)
         for reps in [5, 4, 3] {
             await workout.store.addSet(
-                toEntryID: entry.id, weight: Weight(grams: 100_000), reps: reps, rpe: nil, notes: "")
+                toEntryID: entry.id,
+                values: SetEntryValues(
+                    weight: Weight(grams: 100_000), reps: reps, rpe: nil, isWarmup: false))
         }
         let middle = try #require(workout.store.exercises.first?.sets.dropFirst().first)
 
         try await workout.repositories.workouts.deleteSet(id: middle.id)
         await workout.store.loadExercises()
         await workout.store.addSet(
-            toEntryID: entry.id, weight: Weight(grams: 100_000), reps: 2, rpe: nil, notes: "")
+            toEntryID: entry.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 100_000), reps: 2, rpe: nil, isWarmup: false, notes: ""))
 
         // Two live rows remain when the fourth is written, so counting them would put it at 2 —
         // which the third set still holds. The gap has to be in the middle for that collision to
@@ -101,7 +111,9 @@ struct SessionSetsTests {
         let bench = try #require(workout.store.exercises.last)
 
         await workout.store.addSet(
-            toEntryID: bench.id, weight: Weight(grams: 60_000), reps: 8, rpe: nil, notes: "")
+            toEntryID: bench.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 60_000), reps: 8, rpe: nil, isWarmup: false, notes: ""))
 
         #expect(workout.store.exercises.first?.sets.isEmpty == true)
         #expect(workout.store.exercises.last?.sets.count == 1)
@@ -115,7 +127,9 @@ struct SessionSetsTests {
         let entry = try #require(workout.store.exercises.first)
 
         await workout.store.addSet(
-            toEntryID: entry.id, weight: Weight(grams: 140_000), reps: 0, rpe: nil, notes: "")
+            toEntryID: entry.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 140_000), reps: 0, rpe: nil, isWarmup: false, notes: ""))
 
         #expect(workout.store.exercises.first?.sets.first?.reps == 0)
     }
@@ -129,9 +143,13 @@ struct SessionSetsTests {
         // Both commands read the stored order when they run. Unchained, the second computes against
         // the list the first is about to replace and the two collide at position zero.
         async let first: Void = workout.store.addSet(
-            toEntryID: entry.id, weight: Weight(grams: 100_000), reps: 5, rpe: nil, notes: "")
+            toEntryID: entry.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 100_000), reps: 5, rpe: nil, isWarmup: false, notes: ""))
         async let second: Void = workout.store.addSet(
-            toEntryID: entry.id, weight: Weight(grams: 100_000), reps: 3, rpe: nil, notes: "")
+            toEntryID: entry.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 100_000), reps: 3, rpe: nil, isWarmup: false, notes: ""))
         _ = await (first, second)
 
         let sets = try #require(workout.store.exercises.first?.sets)
@@ -146,7 +164,9 @@ struct SessionSetsTests {
         let entryID = UUID()
 
         await store.addSet(
-            toEntryID: entryID, weight: Weight(grams: 100_000), reps: 5, rpe: nil, notes: "")
+            toEntryID: entryID,
+            values: SetEntryValues(
+                weight: Weight(grams: 100_000), reps: 5, rpe: nil, isWarmup: false, notes: ""))
 
         let stored = try await repositories.workouts.sets(
             forEntryID: entryID, includingDeleted: false)
@@ -163,7 +183,9 @@ struct SessionSetsTests {
         // A dangling entry is what the repository refuses — the same refusal a set against a
         // deleted exercise would meet.
         await workout.store.addSet(
-            toEntryID: UUID(), weight: Weight(grams: 100_000), reps: 5, rpe: nil, notes: "")
+            toEntryID: UUID(),
+            values: SetEntryValues(
+                weight: Weight(grams: 100_000), reps: 5, rpe: nil, isWarmup: false, notes: ""))
 
         #expect(workout.store.exercisesWriteFailure != nil)
         #expect(workout.store.exercises.count == 1)
@@ -177,7 +199,9 @@ struct SessionSetsTests {
         await workout.store.addExercise(id: workout.squat.id)
         let entry = try #require(workout.store.exercises.first)
         await workout.store.addSet(
-            toEntryID: entry.id, weight: Weight(grams: 102_500), reps: 5, rpe: 8, notes: "belt")
+            toEntryID: entry.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 102_500), reps: 5, rpe: 8, isWarmup: false, notes: "belt"))
 
         let reopened = ActiveSessionStore(
             repository: workout.repositories.workouts,
