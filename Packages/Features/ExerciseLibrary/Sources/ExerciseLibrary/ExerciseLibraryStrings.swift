@@ -34,11 +34,22 @@ enum ExerciseLibraryStrings {
     /// The unset position of every filter row — "no narrowing", not "everything selected".
     static let filterAll = resource("exerciselibrary.list.filter.all")
 
-    /// The recency filter, shown disabled until logging lands.
+    /// The recency filter (`FR-1.1.2`).
     static let recentlyUsedFilter = resource("exerciselibrary.list.filter.recently-used")
 
-    /// Why the recency filter cannot be used yet. A sentence for the user, not a task reference.
+    /// Why the recency filter cannot be used. A sentence for the user, not a task reference.
     static let recentlyUsedUnavailable = resource("exerciselibrary.list.filter.recently-used.hint")
+
+    /// What the recency filter narrows to, once it can be used.
+    ///
+    /// **The window is the argument rather than the sentence**, so the number has one home — the
+    /// state's own constant — and a translation cannot disagree with what the filter does.
+    ///
+    /// - Parameter days: How far back "recently used" reaches.
+    /// - Returns: The sentence.
+    static func recentlyUsedAvailable(days: Int) -> LocalizedStringResource {
+        resource("exerciselibrary.list.filter.recently-used.available \(days)")
+    }
 
     /// The badge on a row the user authored (`FR-1.1.3`).
     static let customBadge = resource("exerciselibrary.list.row.custom")
@@ -337,7 +348,8 @@ enum ExerciseLibraryStrings {
     static var all: [LocalizedStringResource] {
         [
             title, searchPrompt, movementFilter, equipmentFilter, originFilter, filterAll,
-            recentlyUsedFilter, recentlyUsedUnavailable, customBadge,
+            recentlyUsedFilter, recentlyUsedUnavailable,
+            recentlyUsedAvailable(days: 30), customBadge,
             showArchivedFilter, archivedBadge, pickerTitle, archivedOnlyPickerMessage,
             emptyHeadline, emptyMessage,
             archivedOnlyHeadline, archivedOnlyMessage,

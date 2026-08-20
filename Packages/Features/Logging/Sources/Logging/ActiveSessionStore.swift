@@ -1,4 +1,5 @@
 import Foundation
+import PowerliftingCore
 import RepositoryInterface
 
 /// The workout in progress — the first of the two stateful stores `TR-1.2` allows, and the reason
@@ -15,9 +16,11 @@ import RepositoryInterface
 /// object's (`FR-1.2.1`, `FR-1.2.11`, `FR-1.2.12`), and so are its exercises (`FR-1.2.2`) — the
 /// chooser that adds one is a screen of its own, so a list held on the session screen would be
 /// rebuilt after the write it is meant to show. The sets inside one exercise are not: they are
-/// logged on the card that displays them, with nothing above it. Anything a *screen* alone needs —
-/// a date the user is choosing but has not started on, a confirmation that is open, which cards are
-/// collapsed — belongs on that screen's state instead.
+/// logged on the card that displays them — but through this object all the same, because the card
+/// is drawn from ``exercises`` and a set written anywhere else would not appear in it. Anything a
+/// *screen* alone needs — a date the user is choosing but has not started on, a confirmation that is
+/// open, which cards are collapsed, what is half-typed into the set editor — belongs on that
+/// screen's state instead.
 ///
 /// **Every mutation is written through before it is held** (`NFR-1.8`). Nothing here batches, and
 /// nothing waits for a "save" the user never presses: the app is force-quit mid-set as a matter of
@@ -73,29 +76,79 @@ public final class ActiveSessionStore {
     /// The last *write* against the exercises that failed, as the error's description, or `nil`.
     ///
     /// See ``exercisesReadFailure``. A **diagnostic**, not copy (`G-3.4`).
-    public private(set) var exercisesWriteFailure: String?
-
-    private let repository: any WorkoutRepository
-    private let catalogue: any ExerciseRepository
-
-    /// The chain ``addExercise(id:)`` and ``moveExercise(id:by:)`` run in.
     ///
-    /// **Two taps are two writes, not one.** Each command re-reads the list when it runs, and both
-    /// suspend on the repository — so without this, a second tap arriving mid-write computes
-    /// against the list the first one is about to replace, and one of the two is silently lost.
-    /// Queued instead, the second sees what the first stored. Same idiom, same reason, as the
-    /// exercise detail screen's notes chain.
-    private var pendingWrite: Task<Void, Never>?
+    /// Settable across the module rather than only within this file, because every command that can
+    /// set it lives in `ActiveSessionCommands.swift`. Nothing outside `Logging` can write it.
+    public internal(set) var exercisesWriteFailure: String?
 
-    /// Builds the store over the two repositories the workout is assembled from.
+    /// The unit a load is entered and shown in (`G-3.1`, `G-3.2`, `FR-1.10.2`).
+    ///
+    /// **On this store rather than read by the editor, for the reason the exercises are here.** The
+    /// set editor is presented over the workout and the cards under it render the same loads, so a
+    /// unit read per surface is one settings row read three times and three chances to disagree
+    /// about what a number on screen means.
+    ///
+    /// **Kilograms until the row has been read, and after a read that failed.** It is the schema's
+    /// own default, so it is what a first launch would have found anyway; the alternative is a
+    /// weight field with no unit on it, which is worse than one showing the majority default. A
+    /// failure here is deliberately not a diagnostic — the workout is still loggable, and the
+    /// screen has nothing useful to say about it that "kg" does not already say.
+    public private(set) var displayUnit: MassUnit = .kilograms
+
+    /// Sessions, their entries and their sets.
+    ///
+    /// Internal rather than private because the write commands live in `ActiveSessionCommands.swift`
+    /// — `private` is file-scoped, and this type is two files.
+    let repository: any WorkoutRepository
+
+    /// The exercises those entries name. See ``repository``.
+    let catalogue: any ExerciseRepository
+
+    private let settings: any SettingsRepository
+
+    /// The chain every command in `ActiveSessionCommands.swift` runs in.
+    ///
+    /// **Two taps are two writes, not one.** Each command re-reads what it is about to extend when
+    /// it runs, and every one of them suspends on the repository — so without this, a second tap
+    /// arriving mid-write computes against the list the first one is about to replace, and one of
+    /// the two is silently lost. Queued instead, the second sees what the first stored. Same idiom,
+    /// same reason, as the exercise detail screen's notes chain.
+    ///
+    /// **One chain for the exercises and the sets together**, not one each: a set is written against
+    /// an entry, and that entry can be moved or added by the same thumb between two taps of
+    /// **Log set**.
+    var pendingWrite: Task<Void, Never>?
+
+    /// Builds the store over the three repositories the workout is assembled from.
     ///
     /// - Parameters:
     ///   - repository: Sessions, their entries and their sets.
     ///   - catalogue: The exercises those entries name. A second protocol rather than a join,
     ///     because the schema declares no relationships (`G-2.5`) — see ``SessionExercise``.
-    public init(repository: any WorkoutRepository, catalogue: any ExerciseRepository) {
+    ///   - settings: The single settings row, for the unit a load is entered in. A third protocol
+    ///     rather than a unit passed in, so that nothing above this has to know a preference decides
+    ///     what a typed number means.
+    public init(
+        repository: any WorkoutRepository,
+        catalogue: any ExerciseRepository,
+        settings: any SettingsRepository
+    ) {
         self.repository = repository
         self.catalogue = catalogue
+        self.settings = settings
+    }
+
+    /// Reads the unit a load is entered and shown in (`G-3.1`, `G-3.2`).
+    ///
+    /// **Read again whenever the screen appears, not once at launch.** The preference is changed in
+    /// a different tab, and a store that cached it would show a workout in kilograms to a user who
+    /// had just switched to pounds — with the ± controls still stepping by half a kilo.
+    ///
+    /// A failure leaves the unit as it was, for ``displayUnit``'s reason.
+    public func loadDisplayUnit() async {
+        if let unit = try? await settings.settings().displayUnit {
+            displayUnit = unit
+        }
     }
 
     /// Holds the session with that id, if a live one exists.
@@ -308,113 +361,6 @@ public final class ActiveSessionStore {
         hasLoadedExercises = true
     }
 
-    /// Appends `exerciseID` to the workout (`FR-1.2.2`, `FR-1.2.13`).
-    ///
-    /// **Appended, never inserted.** `FR-1.2.13` says so outright, and the reason is the scroll
-    /// position: an exercise that landed next to whichever card the user was looking at would move
-    /// the list under their thumb mid-workout. The new entry's order is one past the highest in the
-    /// workout rather than the count, so a list that has already been reordered — or that has a gap
-    /// a soft-deleted entry left — still gets a position no other row holds.
-    ///
-    /// **Written through before it is held** (`NFR-1.8`), like every other mutation here, and the
-    /// list is then re-read rather than appended to in memory: the entry's stored `updatedAt` is the
-    /// save path's, and the sets and catalogue row it is shown with are reads of their own.
-    ///
-    /// - Parameter exerciseID: The catalogue row to add. A dangling one is refused by the
-    ///   repository and reported as a failed write.
-    public func addExercise(id exerciseID: UUID) async {
-        let previous = pendingWrite
-        let write = Task { [weak self] in
-            await previous?.value
-            await self?.writeAddedExercise(id: exerciseID)
-        }
-        pendingWrite = write
-        await write.value
-    }
-
-    /// One link in ``pendingWrite``'s chain. See ``addExercise(id:)``.
-    ///
-    /// **Nothing is reported when no workout is held**, and that is the composing screen's business
-    /// rather than a diagnostic: the chooser is pushed above the workout, so a selection made with
-    /// no workout in progress returns to a screen already saying so. See `Route.exercisePicker`.
-    private func writeAddedExercise(id exerciseID: UUID) async {
-        guard let current = session else { return }
-        do {
-            // Read for the highest position rather than measuring the held list: the chooser can be
-            // reached by a restored navigation stack that never drew the workout, in which case
-            // nothing has been loaded and every exercise would be added at position zero.
-            let stored = try await repository.entries(forSessionID: current.id, includingDeleted: false)
-            let now = Date.now
-            try await repository.save(
-                ExerciseEntry(
-                    id: UUID(),
-                    createdAt: now,
-                    updatedAt: now,
-                    deletedAt: nil,
-                    sessionID: current.id,
-                    exerciseID: exerciseID,
-                    order: (stored.map(\.order).max() ?? -1) + 1,
-                    notes: ""
-                )
-            )
-            exercisesWriteFailure = nil
-        } catch {
-            exercisesWriteFailure = String(describing: error)
-        }
-        await loadExercises()
-    }
-
-    /// Moves one exercise `offset` places through the workout, renumbering it (`FR-1.2.2`).
-    ///
-    /// **Named and relative, not two indices.** The control that calls this is a pair of buttons on
-    /// a card, and a card knows which exercise it is rather than where the list will have put it by
-    /// the time the tap is served. Two taps on *move down* are then two places down, because the
-    /// second resolves the exercise afresh; with indices, the second tap would have carried the
-    /// position the first one just vacated and undone it.
-    ///
-    /// **Only the rows whose position actually changed are written.** Saving all of them would
-    /// restamp `updatedAt` on rows that did not move — and `updatedAt` is `G-2.4`'s conflict key, so
-    /// a no-op local write outranks a real remote edit. Moving the first of six to the end is five
-    /// writes, not six.
-    ///
-    /// **A partial write is left visible rather than rolled back.** There is no transaction across
-    /// repository calls, so a failure halfway leaves some rows renumbered; the list is re-read
-    /// afterwards either way, so what the user sees is what is stored, with the failure beside it.
-    /// Rolling back by hand would be a second unprotected sequence of writes with the same problem.
-    ///
-    /// - Parameters:
-    ///   - id: The exercise to move, by its entry.
-    ///   - offset: How many places to move it — negative is earlier. An exercise this list does not
-    ///     hold, a zero offset and a destination off either end all do nothing, which is what makes
-    ///     "move up" on the first card a no-op rather than a guard on every caller.
-    public func moveExercise(id: UUID, by offset: Int) async {
-        let previous = pendingWrite
-        let write = Task { [weak self] in
-            await previous?.value
-            await self?.writeMovedExercise(id: id, by: offset)
-        }
-        pendingWrite = write
-        await write.value
-    }
-
-    /// One link in ``pendingWrite``'s chain. See ``moveExercise(id:by:)``.
-    private func writeMovedExercise(id: UUID, by offset: Int) async {
-        guard offset != 0, let source = exercises.firstIndex(where: { $0.id == id }) else { return }
-        let destination = source + offset
-        guard exercises.indices.contains(destination) else { return }
-        var reordered = exercises
-        reordered.insert(reordered.remove(at: source), at: destination)
-        do {
-            for (position, item) in reordered.enumerated() where item.entry.order != position {
-                try await repository.save(Self.renumbered(item.entry, to: position))
-            }
-            exercisesWriteFailure = nil
-        } catch {
-            exercisesWriteFailure = String(describing: error)
-        }
-        await loadExercises()
-    }
-
     /// Whether a workout is in progress — what the screen-wake policy and every entry point read.
     public var isActive: Bool { session != nil }
 
@@ -430,23 +376,6 @@ public final class ActiveSessionStore {
         hasLoadedExercises = false
         exercisesReadFailure = nil
         exercisesWriteFailure = nil
-    }
-
-    /// `entry` at a new position, and every other field untouched.
-    ///
-    /// Rebuilt rather than mutated for ``ended(_:at:)``'s reason: the record is a value with `let`
-    /// properties, and the write path stamps `updatedAt` itself.
-    private static func renumbered(_ entry: ExerciseEntry, to order: Int) -> ExerciseEntry {
-        ExerciseEntry(
-            id: entry.id,
-            createdAt: entry.createdAt,
-            updatedAt: entry.updatedAt,
-            deletedAt: entry.deletedAt,
-            sessionID: entry.sessionID,
-            exerciseID: entry.exerciseID,
-            order: order,
-            notes: entry.notes
-        )
     }
 
     /// `session` with `endedAt` set, and every other field untouched.

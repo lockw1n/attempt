@@ -1,5 +1,6 @@
 import DesignSystem
 import Localization
+import PowerliftingCore
 import RepositoryInterface
 import SwiftUI
 
@@ -112,6 +113,12 @@ struct SessionExerciseList: View {
     /// Moves the named exercise by that many places (`FR-1.2.2`).
     let move: (UUID, Int) -> Void
 
+    /// The unit every load on these cards is shown in (`G-3.1`).
+    let unit: MassUnit
+
+    /// Opens the set editor over one exercise (`FR-1.2.3`, `FR-1.2.6`).
+    let logSet: (SetEditorTarget) -> Void
+
     /// One card per entry.
     var body: some View {
         LazyVStack(alignment: .leading, spacing: Spacing.md.points) {
@@ -122,7 +129,9 @@ struct SessionExerciseList: View {
                     count: exercises.count,
                     isExpanded: expansion[item.id] ?? !item.isComplete,
                     toggle: { expansion[item.id] = !(expansion[item.id] ?? !item.isComplete) },
-                    move: move
+                    move: move,
+                    unit: unit,
+                    logSet: logSet
                 )
             }
         }
@@ -152,7 +161,13 @@ struct SessionExerciseCard: View {
     /// Moves the named exercise by that many places (`FR-1.2.2`).
     let move: (UUID, Int) -> Void
 
-    /// Which locale the set count is rendered for (`G-3.4`).
+    /// The unit this card's loads are shown in (`G-3.1`).
+    let unit: MassUnit
+
+    /// Opens the set editor over this exercise (`FR-1.2.3`, `FR-1.2.6`).
+    let logSet: (SetEditorTarget) -> Void
+
+    /// Which locale the numbers on this card are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
     /// The header, and the body where the card is open.
@@ -266,17 +281,63 @@ struct SessionExerciseCard: View {
         .accessibilityLabel(Text(label))
     }
 
-    /// What the card holds while it is open.
+    /// What the card holds while it is open: the sets logged against it, and the two ways to add one.
     ///
-    /// **A set count rather than the sets**, which is the honest half of this card until T-1.22
-    /// builds the other. It is data and not one of `FR-1.13.1`'s states: zero sets is a count the
-    /// same way three is, and a state placeholder per card would be five of them down a workout.
+    /// **An empty card says so in a sentence rather than in one of `FR-1.13.1`'s states.** Zero sets
+    /// is a count the same way three is, and a state placeholder per card would be five of them down
+    /// a workout.
     private var contents: some View {
         VStack(alignment: .leading, spacing: Spacing.sm.points) {
-            SessionFactRow(
-                label: LoggingStrings.sessionExerciseSets,
-                value: Text(item.sets.count, format: AppFormat.count(locale: locale))
-            )
+            if item.sets.isEmpty {
+                Text(LoggingStrings.setListEmpty)
+                    .font(Typography.body.font)
+                    .foregroundStyle(ColorToken.textSecondary)
+            } else {
+                ForEach(Array(item.sets.enumerated()), id: \.element.id) { index, set in
+                    SetRow(set: set, position: index + 1, unit: unit)
+                }
+            }
+            setCommands
+        }
+    }
+
+    /// `FR-1.2.6`'s duplicate, then `FR-1.2.3`'s blank form.
+    ///
+    /// **Stacked rather than side by side**, which is `NFR-1.10` rather than taste: two commands
+    /// sharing a row at `accessibility3` are two commands with three characters each.
+    ///
+    /// **Repeat is the filled one and comes first.** It is the dominant logging action — the whole
+    /// of `NFR-1.3`'s three taps is spent here — and it appears only once there is a set to repeat,
+    /// a control that promised to copy nothing being worse than one that is not there yet.
+    private var setCommands: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm.points) {
+            if let last = item.sets.last {
+                Button {
+                    logSet(
+                        SetEditorTarget(
+                            entryID: item.id,
+                            repeating: SetEntryValues(
+                                weight: last.weight, reps: last.reps, rpe: last.rpe)
+                        )
+                    )
+                } label: {
+                    Text(LoggingStrings.setRepeatAction)
+                }
+                .buttonStyle(.primaryAction(.fill))
+            }
+            Button {
+                logSet(SetEditorTarget(entryID: item.id, repeating: nil))
+            } label: {
+                Text(LoggingStrings.setAddAction)
+                    .font(Typography.actionLabel.font)
+                    .foregroundStyle(ColorToken.textPrimary)
+                    .frame(maxWidth: .infinity, minHeight: TouchTarget.logging.points)
+                    .background(
+                        ColorToken.surface,
+                        in: .rect(cornerRadius: CornerRadius.control.points)
+                    )
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -289,5 +350,70 @@ struct SessionExerciseCard: View {
             return Text(LoggingStrings.sessionExerciseMissing)
         }
         return Text(verbatim: exercise.name)
+    }
+}
+
+/// One logged set inside an exercise card (`FR-1.2.3`).
+///
+/// **The number, the load, the repetitions and the rating, in that order and on one line.** A set is
+/// read at a glance between efforts, so it is a line rather than a card: what a user is checking is
+/// what they did last time, not one set in isolation.
+///
+/// **The multiplication sign is drawn and hidden from VoiceOver** (`G-4.2`). It is punctuation
+/// between two numbers rather than a word, and read aloud it is noise; the two numerals either side
+/// carry labels of their own instead, so the row is announced as "Set 1, 102.5 kg, Reps 5".
+struct SetRow: View {
+    /// The set.
+    let set: SetEntry
+
+    /// Its one-based position in the exercise.
+    ///
+    /// **Passed in rather than read from `SetEntry.order`**, which is zero-based and carries gaps
+    /// where a set has been soft-deleted. `FR-1.2.14`'s two independent sequences — warmups apart
+    /// from working sets — are T-1.23's, and land here.
+    let position: Int
+
+    /// The unit the load is shown in (`G-3.1`).
+    let unit: MassUnit
+
+    /// Which locale the numbers are rendered for (`G-3.4`).
+    @Environment(\.locale) private var locale
+
+    /// The line.
+    var body: some View {
+        HStack(spacing: Spacing.sm.points) {
+            Text(position, format: AppFormat.count(locale: locale))
+                .font(Typography.numericValue.font)
+                .foregroundStyle(ColorToken.textTertiary)
+                .accessibilityLabel(Text(LoggingStrings.setPosition(position)))
+            Text(set.weight, format: AppFormat.weight(in: unit, locale: locale))
+                .font(Typography.numericValue.font)
+                .foregroundStyle(ColorToken.textPrimary)
+            Image(systemName: "multiply")
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textTertiary)
+                .accessibilityHidden(true)
+            Text(set.reps, format: AppFormat.count(locale: locale))
+                .font(Typography.numericValue.font)
+                .foregroundStyle(ColorToken.textPrimary)
+                .accessibilityLabel(Text(LoggingStrings.setReps(set.reps)))
+            Spacer(minLength: Spacing.sm.points)
+            rating
+        }
+        .frame(minHeight: TouchTarget.standard.points)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The rating, where the set carries one.
+    @ViewBuilder private var rating: some View {
+        if let rpe = set.rpe {
+            Text(
+                LoggingStrings.setRPE(
+                    rpe.formatted(.number.precision(.fractionLength(0...1)).locale(locale))
+                )
+            )
+            .font(Typography.caption.font)
+            .foregroundStyle(ColorToken.textSecondary)
+        }
     }
 }

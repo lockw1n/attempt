@@ -1,4 +1,5 @@
 import Foundation
+import PowerliftingCore
 
 /// This module's copy (`G-3.4`), and the only place a logging string literal is written.
 ///
@@ -150,6 +151,108 @@ enum LoggingStrings {
     /// The control that moves an exercise later (`FR-1.2.2`).
     static let sessionExerciseMoveDown = resource("logging.session.exercise.move-down")
 
+    // MARK: - Sets inside one exercise (FR-1.2.3, FR-1.2.5, FR-1.2.6)
+
+    /// A card that is open and has nothing logged against it yet.
+    ///
+    /// Data rather than one of `FR-1.13.1`'s states: zero sets is a count the same way three is, and
+    /// a state placeholder per card would be five of them down a workout.
+    static let setListEmpty = resource("logging.session.set.empty")
+
+    /// The command that opens the editor on a blank set (`FR-1.2.3`).
+    static let setAddAction = resource("logging.session.set.add.action")
+
+    /// The command that opens it on a copy of the last set — `FR-1.2.6`, and the dominant logging
+    /// action.
+    static let setRepeatAction = resource("logging.session.set.repeat.action")
+
+    /// The editor's own title.
+    static let setEditorTitle = resource("logging.session.set.editor.title")
+
+    /// The load field's label.
+    static let setWeightLabel = resource("logging.session.set.weight.label")
+
+    /// The repetitions field's label.
+    static let setRepsLabel = resource("logging.session.set.reps.label")
+
+    /// The RPE field's label.
+    static let setRPELabel = resource("logging.session.set.rpe.label")
+
+    /// What the RPE field accepts, said where the label has no room for it.
+    static let setRPEHint = resource("logging.session.set.rpe.hint")
+
+    /// The per-set note's label (`FR-1.2.3`).
+    static let setNotesLabel = resource("logging.session.set.notes.label")
+
+    /// That the note may be left empty.
+    static let setNotesHint = resource("logging.session.set.notes.hint")
+
+    /// The command that logs the set.
+    static let setConfirmAction = resource("logging.session.set.confirm.action")
+
+    /// The way out of the editor without logging anything.
+    static let setCancelAction = resource("logging.session.set.cancel.action")
+
+    /// Accessibility label for the load's **+** control (`G-4.2`).
+    static let setWeightIncrease = resource("logging.session.set.weight.increase")
+
+    /// Accessibility label for the load's **−** control.
+    static let setWeightDecrease = resource("logging.session.set.weight.decrease")
+
+    /// Accessibility label for the repetitions' **+** control.
+    static let setRepsIncrease = resource("logging.session.set.reps.increase")
+
+    /// Accessibility label for the repetitions' **−** control.
+    static let setRepsDecrease = resource("logging.session.set.reps.decrease")
+
+    /// Why the confirming command is refusing, shown beside it rather than under a field.
+    static let setInvalidMessage = resource("logging.session.set.invalid.message")
+
+    /// The unit a load is entered and shown in (`G-3.1`).
+    ///
+    /// **Written again here rather than shared with `Settings`.** Two modules showing one symbol is
+    /// two strings by this module's own rule — and the two surfaces are free to diverge, a picker of
+    /// units and a suffix on a number field not being the same context.
+    ///
+    /// - Parameter unit: The unit to name.
+    /// - Returns: Its abbreviated symbol.
+    static func setUnitSymbol(for unit: MassUnit) -> LocalizedStringResource {
+        switch unit {
+        case .kilograms: resource("logging.session.set.unit.kilograms")
+        case .pounds: resource("logging.session.set.unit.pounds")
+        }
+    }
+
+    /// A set's place in its exercise, as VoiceOver's label for the bare numeral the row draws
+    /// (`G-4.2`).
+    ///
+    /// - Parameter position: The set's one-based position.
+    /// - Returns: The sentence.
+    static func setPosition(_ position: Int) -> LocalizedStringResource {
+        resource("logging.session.set.position \(position)")
+    }
+
+    /// A set's repetitions, as VoiceOver's label for the numeral after the multiplication sign,
+    /// which is decorative and hidden.
+    ///
+    /// **A label beside a number rather than a plural**, for ``sessionExerciseSets``' reason.
+    ///
+    /// - Parameter reps: How many repetitions.
+    /// - Returns: The phrase.
+    static func setReps(_ reps: Int) -> LocalizedStringResource {
+        resource("logging.session.set.reps \(reps)")
+    }
+
+    /// A logged set's rating, label and value together.
+    ///
+    /// The value arrives already rendered, so the number is the locale's rather than this call's.
+    ///
+    /// - Parameter rating: The rating, formatted.
+    /// - Returns: The phrase.
+    static func setRPE(_ rating: String) -> LocalizedStringResource {
+        resource("logging.session.set.rpe \(rating)")
+    }
+
     /// The heading when the workout's exercises could not be read.
     static let sessionExercisesErrorHeadline = resource("logging.session.exercises.error.headline")
 
@@ -198,7 +301,11 @@ enum LoggingStrings {
             sessionExerciseMoveUp, sessionExerciseMoveDown, sessionExercisesErrorHeadline,
             sessionExercisesErrorMessage, sessionExercisesWriteErrorMessage,
             sessionProgress(completed: 0, total: 0), sessionProgress(completed: 1, total: 1),
-        ]
+            setListEmpty, setAddAction, setRepeatAction, setEditorTitle, setWeightLabel,
+            setRepsLabel, setRPELabel, setRPEHint, setNotesLabel, setNotesHint, setConfirmAction,
+            setCancelAction, setWeightIncrease, setWeightDecrease, setRepsIncrease, setRepsDecrease,
+            setInvalidMessage, setPosition(1), setReps(5), setRPE(""),
+        ] + MassUnit.allCases.map(setUnitSymbol(for:))
     }
 
     /// Binds a key to this module's catalogue.

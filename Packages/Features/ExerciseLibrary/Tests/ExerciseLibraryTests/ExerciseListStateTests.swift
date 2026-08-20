@@ -15,7 +15,7 @@ struct ExerciseListStateTests {
 
     @Test("A load publishes the catalogue")
     func loadPublishesCatalogue() async {
-        let state = ExerciseListState(repository: ScriptedExerciseRepository(exercises: Fixtures.catalogue))
+        let state = ExerciseListState.overCatalogue(ScriptedExerciseRepository(exercises: Fixtures.catalogue))
         await state.load()
         // Grouped order, not alphabetical: `names` reads the groups, and the groups follow
         // Movement's case order with each one sorted by name inside it.
@@ -25,8 +25,8 @@ struct ExerciseListStateTests {
     @Test("Archived exercises are out of the list unless they are asked for (FR-1.1.5)")
     func archivedExercisesAreExcluded() async {
         let archived = Fixtures.exercise(name: "Retired Machine Press", movement: .bench, isArchived: true)
-        let state = ExerciseListState(
-            repository: ScriptedExerciseRepository(exercises: Fixtures.catalogue + [archived])
+        let state = ExerciseListState.overCatalogue(
+            ScriptedExerciseRepository(exercises: Fixtures.catalogue + [archived])
         )
         await state.load()
         #expect(!state.names.contains("Retired Machine Press"))
@@ -36,7 +36,7 @@ struct ExerciseListStateTests {
     @Test("Soft-deleted rows are asked for by the repository call, not filtered afterwards")
     func deletedRowsAreNotRequested() async {
         let repository = ScriptedExerciseRepository(exercises: Fixtures.catalogue)
-        let state = ExerciseListState(repository: repository)
+        let state = ExerciseListState.overCatalogue(repository)
         await state.load()
         #expect(await repository.readsIncludingDeleted == [false])
     }
@@ -47,7 +47,7 @@ struct ExerciseListStateTests {
             exercises: Fixtures.catalogue,
             readError: .recordNotFound(id: UUID())
         )
-        let state = ExerciseListState(repository: repository)
+        let state = ExerciseListState.overCatalogue(repository)
         await state.load()
         guard case .failed(let diagnostic) = state.phase else {
             Issue.record("expected a failed phase, got \(state.phase)")
@@ -64,7 +64,7 @@ struct ExerciseListStateTests {
     @Test("A catalogue already loaded is not read again")
     func loadedCatalogueIsNotReRead() async {
         let repository = ScriptedExerciseRepository(exercises: Fixtures.catalogue)
-        let state = ExerciseListState(repository: repository)
+        let state = ExerciseListState.overCatalogue(repository)
         await state.load()
         await state.load()
         #expect(await repository.reads == 1)
@@ -93,8 +93,8 @@ struct ExerciseListStateTests {
         // in the wrong order, so the assertion is about `browsable` and not about the fake.
         let first = Fixtures.exercise(id: Fixtures.identifier("A"), name: "Belt Squat", movement: .squat)
         let second = Fixtures.exercise(id: Fixtures.identifier("B"), name: "Belt Squat", movement: .squat)
-        let state = ExerciseListState(
-            repository: ScriptedExerciseRepository(exercises: [second, first])
+        let state = ExerciseListState.overCatalogue(
+            ScriptedExerciseRepository(exercises: [second, first])
         )
         await state.load()
         #expect(state.groups.first?.exercises.map(\.id) == [first.id, second.id])
@@ -111,8 +111,8 @@ struct ExerciseListStateTests {
 
     @Test("Search ignores diacritics")
     func searchIgnoresDiacritics() async {
-        let state = ExerciseListState(
-            repository: ScriptedExerciseRepository(
+        let state = ExerciseListState.overCatalogue(
+            ScriptedExerciseRepository(
                 exercises: [Fixtures.exercise(name: "Sumó Deadlift", movement: .deadlift)]
             )
         )
@@ -191,17 +191,19 @@ struct ExerciseListStateTests {
         #expect(state.names.count == 5)
     }
 
-    @Test("Recency is not offered until logging exists (FR-1.1.2)")
+    @Test("Recency is not offered while nothing has been trained (FR-1.1.2)")
     func recencyFilterIsUnavailable() async {
         let state = await Fixtures.loaded()
         #expect(state.isRecencyFilterAvailable == false)
+        // The rest of FR-1.1.2's recency filter is in `ExerciseRecencyTests`, which is where the
+        // workout repository behind it is written into.
     }
 
     // MARK: - The three empties (FR-1.13.1)
 
     @Test("An empty catalogue is a loaded state, not a missing one")
     func emptyCatalogueIsALoadedState() async {
-        let state = ExerciseListState(repository: ScriptedExerciseRepository(exercises: []))
+        let state = ExerciseListState.overCatalogue(ScriptedExerciseRepository(exercises: []))
         await state.load()
         #expect(state.isCatalogueEmpty)
         #expect(state.groups.isEmpty)
@@ -213,8 +215,8 @@ struct ExerciseListStateTests {
     /// than the one that offers a create form. `ExerciseArchiveTests` has the rest of the split.
     @Test("A catalogue whose every row is archived is hidden, not empty")
     func fullyArchivedCatalogueIsHidden() async {
-        let state = ExerciseListState(
-            repository: ScriptedExerciseRepository(
+        let state = ExerciseListState.overCatalogue(
+            ScriptedExerciseRepository(
                 exercises: [Fixtures.exercise(name: "Retired", movement: .other, isArchived: true)]
             )
         )
@@ -226,7 +228,7 @@ struct ExerciseListStateTests {
 
     @Test("Nothing is claimed to be empty before a read has finished")
     func nothingIsEmptyBeforeLoading() {
-        let state = ExerciseListState(repository: ScriptedExerciseRepository(exercises: []))
+        let state = ExerciseListState.overCatalogue(ScriptedExerciseRepository(exercises: []))
         #expect(state.phase == .idle)
         #expect(!state.isCatalogueEmpty)
         #expect(!state.isEverythingArchived)
@@ -238,7 +240,7 @@ struct ExerciseListStateTests {
     @Test("A refresh shows an exercise created since the list was read")
     func refreshPicksUpANewExercise() async throws {
         let repository = ScriptedExerciseRepository(exercises: Fixtures.catalogue)
-        let state = ExerciseListState(repository: repository)
+        let state = ExerciseListState.overCatalogue(repository)
         await state.load()
         #expect(state.names.count == 5)
 
@@ -252,7 +254,7 @@ struct ExerciseListStateTests {
     @Test("A refresh on a screen that has read nothing yet is the first read")
     func refreshFromIdleLoads() async {
         let repository = ScriptedExerciseRepository(exercises: Fixtures.catalogue)
-        let state = ExerciseListState(repository: repository)
+        let state = ExerciseListState.overCatalogue(repository)
         await state.refresh()
         #expect(state.names.count == 5)
         #expect(await repository.reads == 1)
@@ -261,7 +263,7 @@ struct ExerciseListStateTests {
     @Test("A refresh applies the same exclusions and the same order the first read did")
     func refreshStaysBrowsable() async throws {
         let repository = ScriptedExerciseRepository(exercises: Fixtures.catalogue)
-        let state = ExerciseListState(repository: repository)
+        let state = ExerciseListState.overCatalogue(repository)
         await state.load()
         let firstRead = state.names
         let backSquat = try #require(firstRead.firstIndex(of: "Back Squat"))
@@ -285,7 +287,7 @@ struct ExerciseListStateTests {
     @Test("A refresh that fails leaves the screen in the state that offers a retry")
     func failedRefreshIsRecoverable() async {
         let repository = ScriptedExerciseRepository(exercises: Fixtures.catalogue)
-        let state = ExerciseListState(repository: repository)
+        let state = ExerciseListState.overCatalogue(repository)
         await state.load()
         await repository.failReads(.recordNotFound(id: UUID()))
         await state.refresh()
@@ -326,7 +328,7 @@ enum Fixtures {
 
     /// A state over ``catalogue``, already read.
     static func loaded() async -> ExerciseListState {
-        let state = ExerciseListState(repository: ScriptedExerciseRepository(exercises: catalogue))
+        let state = ExerciseListState.overCatalogue(ScriptedExerciseRepository(exercises: catalogue))
         await state.load()
         return state
     }

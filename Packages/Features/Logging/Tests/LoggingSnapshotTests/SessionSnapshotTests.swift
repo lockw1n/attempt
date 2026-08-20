@@ -158,8 +158,76 @@
                     SessionExerciseList(
                         exercises: Fixtures.exercises,
                         expansion: .constant([:]),
-                        move: { _, _ in }
+                        move: { _, _ in },
+                        unit: .kilograms,
+                        logSet: { _ in }
                     )
+                }
+            }
+        }
+
+        // MARK: - Sets inside one exercise (FR-1.2.3, FR-1.2.6)
+
+        @Test func setEditorBlank() throws {
+            // FR-1.2.3's form as **Add set** opens it: four fields, nothing filled in, and the
+            // confirming command disabled. No complaint yet — a form that opened saying what is
+            // wrong with it is a form scolding the user for not having typed.
+            try assertSnapshots(named: "Session-set-editor-blank") {
+                fixedEnvironment {
+                    SetEditorSheet(
+                        draft: SetDraft(unit: .kilograms, locale: Fixtures.locale),
+                        log: { _ in },
+                        cancel: {}
+                    )
+                }
+            }
+        }
+
+        @Test func setEditorRepeating() throws {
+            // FR-1.2.6, and the picture that matters most: the form as **Repeat set** opens it,
+            // filled in from the last set with the confirming command live. What is being checked
+            // is that the ± controls and the fields all still fit at NFR-1.10's ceiling — this is
+            // the screen NFR-1.4 and NFR-1.3 both name.
+            try assertSnapshots(named: "Session-set-editor-repeat") {
+                fixedEnvironment {
+                    SetEditorSheet(
+                        draft: SetDraft(
+                            repeating: SetEntryValues(
+                                weight: Weight(grams: 102_500), reps: 5, rpe: 8),
+                            unit: .kilograms,
+                            locale: Fixtures.locale
+                        ),
+                        log: { _ in },
+                        cancel: {}
+                    )
+                }
+            }
+        }
+
+        @Test func setEditorRefusing() throws {
+            // A draft that does not resolve: the RPE is outside 1...10, which is the one range this
+            // form checks and the record deliberately does not. The message renders beside the
+            // command rather than under the field, so it is in the same place whichever field is
+            // wrong.
+            try assertSnapshots(named: "Session-set-editor-invalid") {
+                fixedEnvironment {
+                    SetEditorSheet(draft: Fixtures.refusingDraft, log: { _ in }, cancel: {})
+                }
+            }
+        }
+
+        @Test func loggedSets() throws {
+            // One card's worth of logged sets, with and without a rating. The multiplication sign
+            // between the two numerals is drawn and hidden from VoiceOver; what a reference can
+            // check is that the line still reads as one set at NFR-1.10's ceiling rather than
+            // wrapping into three.
+            try assertSnapshots(named: "Session-set-rows") {
+                fixedEnvironment {
+                    VStack(alignment: .leading) {
+                        ForEach(Array(Fixtures.loggedSets.enumerated()), id: \.element.id) { pair in
+                            SetRow(set: pair.element, position: pair.offset + 1, unit: .kilograms)
+                        }
+                    }
                 }
             }
         }
@@ -214,13 +282,56 @@
         private func fixedEnvironment(@ViewBuilder _ subject: () -> some View) -> some View {
             _ = pinnedTimeZone
             return subject()
-                .environment(\.locale, Locale(identifier: "en_US_POSIX"))
+                .environment(\.locale, Fixtures.locale)
                 .environment(\.timeZone, .gmt)
         }
     }
 
     /// The workout these references render, and the two things it takes to render one.
     enum Fixtures {
+        /// The locale every reference here renders and parses numbers in.
+        static let locale = Locale(identifier: "en_US_POSIX")
+
+        /// A draft the form refuses: the load and the reps resolve, the rating does not.
+        static var refusingDraft: SetDraft {
+            var draft = SetDraft(unit: .kilograms, locale: locale)
+            draft.weightText = "102.5"
+            draft.repsText = "5"
+            draft.rpeText = "18"
+            return draft
+        }
+
+        /// Two logged sets, one rated and one not.
+        static let loggedSets: [SetEntry] = [
+            loggedSet(index: 0, weight: Weight(grams: 102_500), reps: 5, rpe: 8),
+            loggedSet(index: 1, weight: Weight(grams: 102_500), reps: 3, rpe: nil),
+        ]
+
+        /// One logged set, with every identifier and timestamp fixed.
+        private static func loggedSet(
+            index: Int, weight: Weight, reps: Int, rpe: Double?
+        ) -> SetEntry {
+            SetEntry(
+                id: identifier("E\(index)"),
+                createdAt: startedAt,
+                updatedAt: startedAt,
+                deletedAt: nil,
+                entryID: identifier("B1"),
+                order: index,
+                weight: weight,
+                reps: reps,
+                rpe: rpe,
+                rir: nil,
+                isWarmup: false,
+                isCompleted: true,
+                targetWeight: nil,
+                targetReps: nil,
+                modifiers: [],
+                notes: "",
+                completedAt: startedAt
+            )
+        }
+
         /// A gregorian calendar in UTC, so the fixed day below is the same instant everywhere.
         private static let calendar: Calendar = {
             var calendar = Calendar(identifier: .gregorian)

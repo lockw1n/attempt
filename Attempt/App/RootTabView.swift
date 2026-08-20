@@ -87,7 +87,7 @@ struct RootTabView: View {
     private var exerciseListRoot: some View {
         switch dependencies.state {
         case .open(let repositories, _):
-            ExerciseListView(repository: repositories.exercises)
+            ExerciseListView(repository: repositories.exercises, workouts: repositories.workouts)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }
@@ -135,7 +135,9 @@ struct RootTabView: View {
     private var exercisePickerRoot: some View {
         switch dependencies.state {
         case .open(let repositories, let stores):
-            ExerciseListView(repository: repositories.exercises) { exercise in
+            ExerciseListView(
+                repository: repositories.exercises, workouts: repositories.workouts
+            ) { exercise in
                 await stores.activeSession.addExercise(id: exercise.id)
             }
         case .failed(let diagnostic):

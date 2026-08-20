@@ -51,7 +51,8 @@ struct SessionExercisesTests {
         // exercise at position zero.
         let cold = ActiveSessionStore(
             repository: workout.repositories.workouts,
-            catalogue: workout.repositories.exercises
+            catalogue: workout.repositories.exercises,
+            settings: workout.repositories.settings
         )
         await cold.resume()
 
@@ -83,7 +84,9 @@ struct SessionExercisesTests {
         let repositories = InMemoryRepositoryStack()
         let catalogue = try await Workout.seed(into: repositories)
         let store = ActiveSessionStore(
-            repository: repositories.workouts, catalogue: repositories.exercises)
+            repository: repositories.workouts,
+            catalogue: repositories.exercises,
+            settings: repositories.settings)
 
         await store.addExercise(id: catalogue[0].id)
 
@@ -124,9 +127,7 @@ struct SessionExercisesTests {
     func loadReportsAFailedRead() async throws {
         let session = WorkoutSession.fixture()
         // The scripted repository refuses every entry call, which the faithful fake will not do.
-        let store = ActiveSessionStore(
-            repository: ScriptedWorkoutRepository(row: session),
-            catalogue: InMemoryRepositoryStack().exercises)
+        let store = ActiveSessionStore.overWorkouts(ScriptedWorkoutRepository(row: session))
         await store.adopt(sessionID: session.id)
 
         await store.loadExercises()
@@ -156,7 +157,8 @@ struct SessionExercisesTests {
         // A relaunch reads the order back out of the store rather than out of this list.
         let reopened = ActiveSessionStore(
             repository: workout.repositories.workouts,
-            catalogue: workout.repositories.exercises
+            catalogue: workout.repositories.exercises,
+            settings: workout.repositories.settings
         )
         await reopened.resume()
         await reopened.loadExercises()
@@ -239,7 +241,9 @@ struct SessionExercisesTests {
         let repositories = InMemoryRepositoryStack()
         _ = try await Workout.seed(into: repositories)
         let store = ActiveSessionStore(
-            repository: repositories.workouts, catalogue: repositories.exercises)
+            repository: repositories.workouts,
+            catalogue: repositories.exercises,
+            settings: repositories.settings)
 
         await store.loadExercises()
 
@@ -287,8 +291,9 @@ struct SessionExercisesTests {
     }
 }
 
-/// A workout in progress over a seeded catalogue — what every test above starts from.
-private struct Workout {
+/// A workout in progress over a seeded catalogue — what every test above starts from, and what
+/// `SessionSetsTests` starts from too.
+struct Workout {
     let repositories: InMemoryRepositoryStack
     let store: ActiveSessionStore
     let squat: Exercise
@@ -300,7 +305,9 @@ private struct Workout {
         let repositories = InMemoryRepositoryStack()
         let catalogue = try await seed(into: repositories)
         let store = ActiveSessionStore(
-            repository: repositories.workouts, catalogue: repositories.exercises)
+            repository: repositories.workouts,
+            catalogue: repositories.exercises,
+            settings: repositories.settings)
         await store.start(on: .now)
         await store.loadExercises()
         return Workout(

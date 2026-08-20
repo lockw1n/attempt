@@ -43,11 +43,18 @@ public struct ExerciseListView: View {
     /// - Parameters:
     ///   - repository: Where the catalogue comes from. `Persistence`'s implementation in the app;
     ///     anything conforming in a test or a preview.
+    ///   - workouts: What has been logged, for `FR-1.1.2`'s recency filter. See
+    ///     ``ExerciseListState/init(repository:workouts:)`` for why it is a second repository rather
+    ///     than a dependency on `Logging`.
     ///   - select: What choosing a row does, for the chooser (`FR-1.2.2`). Omitted, the screen
     ///     browses: rows push a detail, which is what `FR-1.1.1` asks for and what a chooser must
     ///     not do.
-    public init(repository: any ExerciseRepository, select: ((Exercise) async -> Void)? = nil) {
-        _state = State(initialValue: ExerciseListState(repository: repository))
+    public init(
+        repository: any ExerciseRepository,
+        workouts: any WorkoutRepository,
+        select: ((Exercise) async -> Void)? = nil
+    ) {
+        _state = State(initialValue: ExerciseListState(repository: repository, workouts: workouts))
         self.select = select
     }
 
@@ -396,17 +403,30 @@ struct ExerciseFilterBar: View {
         }
     }
 
-    /// `FR-1.1.2`'s recency filter, shown and disabled until logging exists to be recent.
+    /// `FR-1.1.2`'s recency filter — live once something has been trained inside the window.
     ///
-    /// The explanation sits beside it rather than in a tooltip, because a disabled control with no
-    /// stated reason reads as a bug.
+    /// **Still shown while it is unavailable, and the reason sits beside it**, because a disabled
+    /// control with no stated cause reads as a bug. The two hints are opposite facts: one says what
+    /// would turn the chip on, the other says what it narrows to.
+    ///
+    /// Tapping the chip while it is in force clears it, which is the same rule the other three rows
+    /// use — the chip has no "All" beside it to go back to.
     @ViewBuilder private var recencyChip: some View {
         FilterChip(
             label: Text(ExerciseLibraryStrings.recentlyUsedFilter),
-            isSelected: false,
+            isSelected: state.showsRecentOnly,
             isEnabled: state.isRecencyFilterAvailable
-        ) {}
-        .accessibilityHint(Text(ExerciseLibraryStrings.recentlyUsedUnavailable))
+        ) {
+            state.showsRecentOnly.toggle()
+        }
+        .accessibilityHint(
+            Text(
+                state.isRecencyFilterAvailable
+                    ? ExerciseLibraryStrings.recentlyUsedAvailable(
+                        days: ExerciseListState.recencyWindowInDays)
+                    : ExerciseLibraryStrings.recentlyUsedUnavailable
+            )
+        )
     }
 }
 

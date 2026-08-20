@@ -83,7 +83,8 @@ struct AppDependencies {
                 Stores(
                     activeSession: ActiveSessionStore(
                         repository: stack.workouts,
-                        catalogue: stack.exercises
+                        catalogue: stack.exercises,
+                        settings: stack.settings
                     ),
                     screenWake: ScreenWakePreference()
                 )

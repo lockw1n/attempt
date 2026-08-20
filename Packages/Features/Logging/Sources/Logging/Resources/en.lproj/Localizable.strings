@@ -109,3 +109,43 @@
 
 /* FR-1.2.13's session progress is in Localizable.stringsdict beside this file, not here: the noun
    agrees with the total, so "1 of 1 exercise complete" needs a plural rule rather than a format. */
+
+/* FR-1.2.3, FR-1.2.5, FR-1.2.6: the sets logged inside one exercise card, and the editor that
+   fills one in. The editor is presented rather than pushed — NFR-1.4 wants every logging control
+   in the lower two-thirds, and a card can be anywhere the user scrolled it to. */
+"logging.session.set.empty" = "No sets logged yet.";
+"logging.session.set.add.action" = "Add set";
+/* FR-1.2.6, and the action the whole screen is shaped around: it opens the editor already filled
+   in from the last set, so repeat-adjust-confirm is three taps (NFR-1.3). */
+"logging.session.set.repeat.action" = "Repeat set";
+"logging.session.set.editor.title" = "Log set";
+"logging.session.set.weight.label" = "Weight";
+"logging.session.set.reps.label" = "Reps";
+"logging.session.set.rpe.label" = "RPE";
+/* The range is the form's, not the record's: a stored row is never validated, because a set
+   arriving from a newer version has to survive being read. A keystroke is the one source where an
+   out-of-range value is a typo. */
+"logging.session.set.rpe.hint" = "Optional, 1 to 10";
+"logging.session.set.notes.label" = "Note";
+"logging.session.set.notes.hint" = "Optional";
+"logging.session.set.confirm.action" = "Log set";
+"logging.session.set.cancel.action" = "Cancel";
+/* Accessibility labels: all four controls draw a glyph and have no visible title (G-4.2). */
+"logging.session.set.weight.increase" = "Increase weight";
+"logging.session.set.weight.decrease" = "Decrease weight";
+"logging.session.set.reps.increase" = "Add a rep";
+"logging.session.set.reps.decrease" = "Remove a rep";
+/* Why the confirming command is refusing. Beside the command rather than under a field, so it is
+   in the same place whichever field is wrong. */
+"logging.session.set.invalid.message" = "Enter a weight and reps. RPE, if given, is 1 to 10.";
+/* The unit a load is entered in (G-3.1). Written again here rather than shared with Settings: two
+   surfaces, two strings, and a suffix on a number field is not a picker of units. */
+"logging.session.set.unit.kilograms" = "kg";
+"logging.session.set.unit.pounds" = "lb";
+/* VoiceOver's label for the bare numeral a set row leads with. */
+"logging.session.set.position %lld" = "Set %lld";
+/* VoiceOver's label for the numeral after the multiplication sign, which is decorative and hidden.
+   A label beside a number rather than a plural, for the same reason "Sets" above is one. */
+"logging.session.set.reps %lld" = "Reps %lld";
+/* A logged set's rating. The number arrives already rendered, so it is the locale's. */
+"logging.session.set.rpe %@" = "RPE %@";

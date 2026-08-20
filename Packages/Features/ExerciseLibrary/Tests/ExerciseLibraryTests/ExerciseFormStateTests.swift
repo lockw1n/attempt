@@ -251,7 +251,7 @@ struct ExerciseFormStateTests {
         await form.save()
         #expect(form.didSave)
 
-        let list = ExerciseListState(repository: repository)
+        let list = ExerciseListState.overCatalogue(repository)
         await list.load()
         #expect(list.groups.flatMap { $0.exercises.map(\.name) } == ["Belt Squat"])
     }

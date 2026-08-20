@@ -198,8 +198,8 @@ struct ExerciseArchiveTests {
     @Test("An archived exercise leaves the list, and comes back when it is shown")
     func theListHidesAndRevealsIt() async {
         let archived = Fixtures.exercise(name: "Retired Machine Press", movement: .bench, isArchived: true)
-        let state = ExerciseListState(
-            repository: ScriptedExerciseRepository(exercises: Fixtures.catalogue + [archived])
+        let state = ExerciseListState.overCatalogue(
+            ScriptedExerciseRepository(exercises: Fixtures.catalogue + [archived])
         )
         await state.load()
         #expect(!state.names.contains("Retired Machine Press"))
@@ -212,8 +212,8 @@ struct ExerciseArchiveTests {
     @Test("Showing archived rows is not a filter, so clearing the filters does not hide them")
     func clearingFiltersLeavesTheArchiveControlAlone() async {
         let archived = Fixtures.exercise(name: "Retired Machine Press", movement: .bench, isArchived: true)
-        let state = ExerciseListState(
-            repository: ScriptedExerciseRepository(exercises: Fixtures.catalogue + [archived])
+        let state = ExerciseListState.overCatalogue(
+            ScriptedExerciseRepository(exercises: Fixtures.catalogue + [archived])
         )
         await state.load()
         state.showsArchived = true
@@ -228,7 +228,7 @@ struct ExerciseArchiveTests {
     @Test("A catalogue of nothing but archived rows is its own empty state, not an empty catalogue")
     func everythingArchivedIsItsOwnState() async {
         let rows = Fixtures.catalogue.map { DetailFixtures.archived($0, true) }
-        let state = ExerciseListState(repository: ScriptedExerciseRepository(exercises: rows))
+        let state = ExerciseListState.overCatalogue(ScriptedExerciseRepository(exercises: rows))
         await state.load()
 
         #expect(state.isEverythingArchived)
@@ -244,7 +244,7 @@ struct ExerciseArchiveTests {
 
     @Test("A store with no exercises at all is the empty catalogue, not the archived state")
     func anEmptyStoreIsNotTheArchivedState() async {
-        let state = ExerciseListState(repository: ScriptedExerciseRepository(exercises: []))
+        let state = ExerciseListState.overCatalogue(ScriptedExerciseRepository(exercises: []))
         await state.load()
 
         #expect(state.isCatalogueEmpty)
@@ -254,8 +254,8 @@ struct ExerciseArchiveTests {
     @Test("One live row among archived ones is neither empty state")
     func aLiveRowIsNeitherEmptyState() async {
         let rows = Fixtures.catalogue.dropFirst().map { DetailFixtures.archived($0, true) }
-        let state = ExerciseListState(
-            repository: ScriptedExerciseRepository(exercises: [Fixtures.catalogue[0]] + rows)
+        let state = ExerciseListState.overCatalogue(
+            ScriptedExerciseRepository(exercises: [Fixtures.catalogue[0]] + rows)
         )
         await state.load()
 

@@ -60,6 +60,27 @@
             }
         }
 
+        @Test func recencyChipInForce() throws {
+            // `FR-1.1.2`'s recency filter once something has been trained inside the window. Its
+            // own reference beside the disabled one above, because the two are what the chip looks
+            // like in its two lives and the difference between them is exactly what a picture
+            // checks — a control that is off and one that cannot be used must not look alike.
+            try assertSnapshots(named: "ExerciseList-recency-chip") {
+                VStack(alignment: .leading, spacing: Spacing.sm.points) {
+                    FilterChip(
+                        label: Text(ExerciseLibraryStrings.recentlyUsedFilter),
+                        isSelected: false,
+                        isEnabled: true
+                    ) {}
+                    FilterChip(
+                        label: Text(ExerciseLibraryStrings.recentlyUsedFilter),
+                        isSelected: true,
+                        isEnabled: true
+                    ) {}
+                }
+            }
+        }
+
         @Test func archivedChip() throws {
             // Its own reference rather than a line in `filterChips`: this control sits on a row of
             // its own, outside the horizontal scrollers the three facets use, and that placement is

@@ -7,10 +7,11 @@ import SwiftUI
 
 /// The workout in progress (`FR-1.2.11`, `FR-1.2.12`).
 ///
-/// **The workout and what is in it, but not yet what is in one exercise.** Here are the workout's
-/// own facts — the day it belongs to, when it started, the two ways it ends — and `FR-1.2.13`'s
-/// vertical list of exercise cards, with `FR-1.2.2`'s add and reorder. The sets inside a card are
-/// the next tasks in this track, and the card is where they land rather than a new shape beside it.
+/// **The workout, what is in it, and what is in one exercise.** Here are the workout's own facts —
+/// the day it belongs to, when it started, the two ways it ends — `FR-1.2.13`'s vertical list of
+/// exercise cards with `FR-1.2.2`'s add and reorder, and the sets logged inside a card
+/// (`FR-1.2.3`, `FR-1.2.6`). Warmup marking, completion and editing land in that same card rather
+/// than in a new shape beside it.
 ///
 /// **It carries no identifier, and that is why ``ActiveSessionStore`` exists.** `TrainingRoute` has
 /// no payload for this screen: the workout in progress is one fact about the app, not a parameter of
@@ -43,6 +44,17 @@ public struct ActiveSessionView: View {
     /// An entry here is an override of that rule and lasts as long as the screen does.
     @State private var expansion: [UUID: Bool] = [:]
 
+    /// Which exercise the set editor is open over, or `nil` (`FR-1.2.3`, `FR-1.2.6`).
+    ///
+    /// **The screen's, and it carries no route.** A half-filled set is not a place in the app: a
+    /// restored navigation stack that reopened this sheet would offer to log a set the user was in
+    /// the middle of abandoning when they force-quit, prefilled from a workout that may since have
+    /// been discarded.
+    @State private var editing: SetEditorTarget?
+
+    /// Which locale the set editor parses and renders numbers in (`G-3.4`).
+    @Environment(\.locale) private var locale
+
     /// Builds the screen over the store that holds the workout.
     ///
     /// - Parameter store: The workout in progress. One per app, built where the repositories are.
@@ -73,10 +85,24 @@ public struct ActiveSessionView: View {
         .background(ColorToken.background)
         .navigationTitle(Text(LoggingStrings.sessionTitle))
         .task {
-            // Both, in this order: the exercises belong to whichever workout the resume settled on,
-            // and reading them first would read them for the workout held before it.
+            // The first two in this order: the exercises belong to whichever workout the resume
+            // settled on, and reading them first would read them for the workout held before it.
+            // The unit is independent of both and is re-read on every appearance — the preference
+            // lives in another tab, and this screen is returned to rather than rebuilt.
             await store.resume()
             await store.loadExercises()
+            await store.loadDisplayUnit()
+        }
+        .sheet(item: $editing) { target in
+            SetEditorSheet(
+                draft: draft(for: target),
+                log: { log($0, into: target.entryID) },
+                cancel: { editing = nil }
+            )
+            // The medium detent is what puts every logging control in the lower two-thirds
+            // (`NFR-1.4`); the large one is there because at `accessibility3` the four fields no
+            // longer fit the medium one.
+            .presentationDetents([.medium, .large])
         }
         .confirmationDialog(
             Text(LoggingStrings.sessionDiscardConfirmTitle),
@@ -197,9 +223,15 @@ public struct ActiveSessionView: View {
                 )
                 writeFailure(writeFailed)
             case .listed(let items, let writeFailed):
-                SessionExerciseList(exercises: items, expansion: $expansion) { id, offset in
-                    Task { await store.moveExercise(id: id, by: offset) }
-                }
+                SessionExerciseList(
+                    exercises: items,
+                    expansion: $expansion,
+                    move: { id, offset in
+                        Task { await store.moveExercise(id: id, by: offset) }
+                    },
+                    unit: store.displayUnit,
+                    logSet: { editing = $0 }
+                )
                 writeFailure(writeFailed)
                 addExerciseLink
             case .readFailed:
@@ -254,6 +286,47 @@ public struct ActiveSessionView: View {
     @ViewBuilder private var progressHeader: some View {
         if store.isActive, !store.exercises.isEmpty {
             SessionProgressHeader(progress: store.progress)
+        }
+    }
+
+    /// The draft the editor opens holding — blank, or `FR-1.2.6`'s copy of the last set.
+    ///
+    /// - Parameter target: Which exercise the editor is open over.
+    /// - Returns: The draft.
+    private func draft(for target: SetEditorTarget) -> SetDraft {
+        guard let repeated = target.repeating else {
+            return SetDraft(unit: store.displayUnit, locale: locale)
+        }
+        return SetDraft(repeating: repeated, unit: store.displayUnit, locale: locale)
+    }
+
+    /// Logs the drafted set and closes the editor (`FR-1.2.3`, `NFR-1.8`).
+    ///
+    /// **The sheet closes before the write is awaited**, which is what `NFR-1.2` is asking for: the
+    /// row appears as the store publishes it, with no spinner and nothing between the tap and the
+    /// card. The write is local (`G-2.3`), so there is no window in which the card is visibly behind.
+    ///
+    /// **The card is pinned open.** Every set logged here is `isCompleted`, so the first one makes
+    /// the exercise complete by `FR-1.2.13`'s rule — and the rule collapses completed cards, which
+    /// would fold the card the user is logging into at the moment they log into it. An explicit
+    /// entry in the fold overrides that for this card only: one the user has not touched still
+    /// follows the rule, which is what a workout reopened tomorrow should do.
+    ///
+    /// A draft that does not resolve is ignored rather than trusted — the confirming command is
+    /// disabled in that state, so this is the second reading of a guard the editor already applies.
+    ///
+    /// - Parameters:
+    ///   - draft: What the user entered.
+    ///   - entryID: The exercise to log against.
+    private func log(_ draft: SetDraft, into entryID: UUID) {
+        guard let weight = draft.weight, let reps = draft.reps, draft.isLoggable else { return }
+        let rpe = draft.storedRPE
+        let notes = draft.notes
+        editing = nil
+        expansion[entryID] = true
+        Task {
+            await store.addSet(
+                toEntryID: entryID, weight: weight, reps: reps, rpe: rpe, notes: notes)
         }
     }
 
