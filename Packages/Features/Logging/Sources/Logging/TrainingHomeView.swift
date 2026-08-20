@@ -1,0 +1,291 @@
+import AppNavigation
+import DesignSystem
+import Localization
+import RepositoryInterface
+import SwiftUI
+
+/// Train's root: the workout in progress, or the way into one (`FR-1.2.1`, `FR-1.2.11`,
+/// `FR-1.13.2`).
+///
+/// **This screen is the tab's root rather than a pushed destination**, which is what makes the
+/// dashboard's "Start workout" (`FR-1.9.4`) land on a workout: that action selects this tab and pops
+/// it to its root, so whatever the root is, is what the app's primary action arrives at. The
+/// exercise library is a place the user goes *from* here.
+///
+/// **It reads ``ActiveSessionStore`` rather than owning state of its own**, because the workout in
+/// progress outlives this screen — the pushed session, the exercise picker above that, and this root
+/// underneath all show the same one. What is local here is the day the user is choosing and has not
+/// started on: that belongs to nobody once the screen is gone.
+///
+/// A `ScrollView` and sections rather than a `List`, for the reason the exercise library's screens
+/// give: `TR-1.12`'s harness renders through `ImageRenderer`, which draws a placeholder for anything
+/// UIKit-backed.
+public struct TrainingHomeView: View {
+    private let store: ActiveSessionStore
+    private let screenWake: ScreenWakePreference
+
+    /// The shell's navigation position, for the two commands here that are not `NavigationLink`s.
+    ///
+    /// Optional and read rather than required, for `ExerciseListView`'s reason: a `StateAction` is a
+    /// closure, and a preview or a snapshot has no shell above it.
+    @Environment(NavigationState.self) private var navigation: NavigationState?
+
+    /// Which training day a workout started from here would belong to (`FR-1.2.1`).
+    ///
+    /// Today until the user says otherwise, and reset by nothing: a day chosen and not started on is
+    /// discarded with the screen, which is the right lifetime for a choice the store never saw.
+    @State private var day = Date.now
+
+    /// Builds the screen over the store it reads and the preference it toggles.
+    ///
+    /// - Parameters:
+    ///   - store: The workout in progress. One per app, built where the repositories are.
+    ///   - screenWake: `NFR-1.9`'s preference, whose control is on this screen while it is a stub.
+    public init(store: ActiveSessionStore, screenWake: ScreenWakePreference) {
+        self.store = store
+        self.screenWake = screenWake
+    }
+
+    /// Whichever of the screen's four states is current, then the two things that are true in all of
+    /// them.
+    ///
+    /// `.task` calls ``ActiveSessionStore/resume()`` — which is `FR-1.2.11`'s whole mechanism: the
+    /// app comes back, the root appears, and a workout left unfinished is found and held before
+    /// anything offers to start another one.
+    public var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.xl.points) {
+                content
+                libraryLink
+                ScreenWakeSection(preference: screenWake)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Spacing.lg.points)
+        }
+        .background(ColorToken.background)
+        .task { await store.resume() }
+    }
+
+    /// The screen's four states (`FR-1.13.1`), each one of T-1.09's shared components.
+    ///
+    /// **The failed read takes the whole screen rather than sitting beside the start control**,
+    /// which is the opposite of the rule a failed *write* follows elsewhere. The difference is what
+    /// is left to show: a screen whose notes save failed still has its exercise, where this one does
+    /// not know whether a workout is in progress — and offering to start a second one on top of a
+    /// session it failed to read is the one outcome worth ruling out.
+    ///
+    /// **No offline state**, for the reason every other Phase 1 screen gives: the store is local, so
+    /// there is no fetch to be offline for (`G-2.1`). No insufficient-data state — nothing here is
+    /// derived.
+    @ViewBuilder private var content: some View {
+        if !store.hasCheckedForSession {
+            LoadingStateView()
+        } else if let session = store.session {
+            SessionInProgressSection(session: session)
+        } else if store.failure != nil {
+            ErrorStateView(
+                headline: Text(LoggingStrings.trainErrorHeadline),
+                message: Text(LoggingStrings.trainErrorMessage),
+                retry: { Task { await store.resume() } }
+            )
+        } else {
+            start
+        }
+    }
+
+    /// Nothing in progress: `FR-1.13.2`'s empty state, and the date the next workout would carry.
+    ///
+    /// **The empty state carries the command and the date control sits under it**, in that order
+    /// deliberately. A first-launch user taps the action and gets today, which is the case
+    /// `FR-1.13.2` is about; a user logging Saturday's workout on Sunday sets the day first and then
+    /// taps the same button. Putting the picker first would make every first workout a form.
+    @ViewBuilder private var start: some View {
+        EmptyStateView(
+            symbolName: "figure.strengthtraining.traditional",
+            headline: Text(LoggingStrings.trainEmptyHeadline),
+            message: Text(LoggingStrings.trainEmptyMessage),
+            action: StateAction(Text(LoggingStrings.trainStartAction)) {
+                Task { await startWorkout() }
+            }
+        )
+        WorkoutDateSection(day: $day)
+    }
+
+    /// Starts the workout and opens it.
+    ///
+    /// The push happens only when the store took one: a failed write leaves the screen where it is,
+    /// with the diagnostic behind ``content``'s error state rather than an empty workout on top.
+    private func startWorkout() async {
+        await store.start(on: day)
+        guard store.isActive else { return }
+        navigation?.navigate(to: .training(.activeSession))
+    }
+
+    /// The way into the exercise library (`FR-1.1.1`).
+    ///
+    /// The library's real entry point, and the reason the shell's placeholder link could go: it was
+    /// pointed here so the built screen was reachable at all before this screen existed.
+    private var libraryLink: some View {
+        NavigationLink(value: Route.exerciseLibrary(.exerciseList)) {
+            Card {
+                HStack(spacing: Spacing.sm.points) {
+                    Text(LoggingStrings.trainLibraryAction)
+                        .font(Typography.actionLabel.font)
+                        .foregroundStyle(ColorToken.textPrimary)
+                    Spacer(minLength: Spacing.sm.points)
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(ColorToken.textTertiary)
+                        // The chevron says "pushes"; the label already says where to (`G-4.2`).
+                        .accessibilityHidden(true)
+                }
+                .frame(minHeight: TouchTarget.standard.points)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// The workout in progress, as the root shows it (`FR-1.2.11`).
+///
+/// Taking the record rather than the store, for the reason `ExerciseFactsSection` does in the
+/// library: this is what the snapshot renders, and a reference over the whole screen would be a
+/// reference over a `.task` that reads a store.
+struct SessionInProgressSection: View {
+    /// The workout being logged.
+    let session: WorkoutSession
+
+    /// Which locale the day and the time are rendered for (`G-3.4`).
+    @Environment(\.locale) private var locale
+
+    /// The day, when it was started, and the way back in.
+    var body: some View {
+        GroupedSection(Text(LoggingStrings.trainInProgressSection)) {
+            SessionFactRow(
+                label: LoggingStrings.trainInProgressDay,
+                value: Text(session.date, format: AppFormat.date(locale: locale))
+            )
+            if let startedAt = session.startedAt {
+                SessionFactRow(
+                    label: LoggingStrings.trainInProgressStarted,
+                    value: Text(startedAt, format: AppFormat.dateAndTime(locale: locale))
+                )
+            }
+            NavigationLink(value: Route.training(.activeSession)) {
+                Text(LoggingStrings.trainInProgressResume)
+                    .font(Typography.actionLabel.font)
+                    .foregroundStyle(ColorToken.textPrimary)
+                    .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points)
+                    .background(
+                        ColorToken.surfaceRaised,
+                        in: .rect(cornerRadius: CornerRadius.control.points)
+                    )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+/// Which training day the next workout belongs to — `FR-1.2.1`'s backdating.
+struct WorkoutDateSection: View {
+    /// The day the screen is offering to start on.
+    @Binding var day: Date
+
+    /// The picker and the sentence that says what the date is for.
+    ///
+    /// **Days only, and no future ones.** `FR-1.2.1` is "today, or backdate to any past date": a
+    /// time of day would be a second thing to get right for a value that is a day, and a workout
+    /// dated next week is a workout nobody has done.
+    var body: some View {
+        GroupedSection(Text(LoggingStrings.trainDateSection)) {
+            DatePicker(
+                selection: $day,
+                in: ...Date.now,
+                displayedComponents: .date
+            ) {
+                Text(LoggingStrings.trainDatePicker)
+                    .font(Typography.body.font)
+                    .foregroundStyle(ColorToken.textPrimary)
+            }
+            .tint(ColorToken.brandAccent)
+            Text(LoggingStrings.trainDateHint)
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textSecondary)
+        }
+    }
+}
+
+/// `NFR-1.9`'s toggle, on the session surface rather than in Settings.
+///
+/// **A stub with a named destination**: `FR-1.10`'s preference list is T-1.60's screen and the
+/// column that would carry this one does not exist in schema v1 (see ``ScreenWakePreference``).
+/// Putting it here rather than in the Settings module also keeps `Settings` from depending on this
+/// one to reach the store the behaviour keys off. Whichever of the two tasks lands second deletes
+/// this section.
+struct ScreenWakeSection: View {
+    /// The preference this toggle sets.
+    let preference: ScreenWakePreference
+
+    /// The toggle and the sentence under it.
+    var body: some View {
+        GroupedSection(Text(LoggingStrings.trainScreenWakeSection)) {
+            Toggle(
+                isOn: Binding(
+                    get: { preference.isEnabled },
+                    set: { preference.setEnabled($0) }
+                )
+            ) {
+                Text(LoggingStrings.trainScreenWakeLabel)
+                    .font(Typography.body.font)
+                    .foregroundStyle(ColorToken.textPrimary)
+            }
+            .tint(ColorToken.brandAccent)
+            Text(LoggingStrings.trainScreenWakeHint)
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textSecondary)
+        }
+    }
+}
+
+/// One fact about a workout: its name, then its value.
+///
+/// Side by side where both fit and stacked where they do not, and one VoiceOver element rather than
+/// two (`G-4.2`, `NFR-1.10`) — the same shape the exercise library's fact row has, kept local
+/// because a shared row is a `DesignSystem` component and neither screen has asked for one twice.
+struct SessionFactRow: View {
+    /// What the fact is called.
+    let label: LocalizedStringResource
+
+    /// This workout's value for it, built by the caller — a date renders through `AppFormat`, so it
+    /// arrives already formatted for the locale rather than as copy.
+    let value: Text
+
+    /// The pair.
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.md.points) {
+                name
+                Spacer(minLength: Spacing.sm.points)
+                reading
+            }
+            VStack(alignment: .leading, spacing: Spacing.xxs.points) {
+                name
+                reading
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The fact's name.
+    private var name: some View {
+        Text(label)
+            .font(Typography.caption.font)
+            .foregroundStyle(ColorToken.textSecondary)
+    }
+
+    /// The fact's value.
+    private var reading: some View {
+        value
+            .font(Typography.body.font)
+            .foregroundStyle(ColorToken.textPrimary)
+    }
+}

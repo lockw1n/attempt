@@ -1,3 +1,4 @@
+import Logging
 import Persistence
 import RepositoryInterface
 import SeedImport
@@ -25,6 +26,28 @@ struct AppDependencies {
 
         /// The exercise catalogue (`FR-1.1`).
         let exercises: any ExerciseRepository
+
+        /// Sessions, the exercises in them and their sets (`FR-1.2`).
+        let workouts: any WorkoutRepository
+    }
+
+    /// The app-lifetime stores (`TR-1.2`), built over the repositories beside them.
+    ///
+    /// **Two of these exist by rule and not by taste.** `TR-1.2` allows a store exactly where a
+    /// piece of state outlives every screen that shows it; everything else is a screen's own
+    /// `@Observable`, created with the screen. Both of the ones here are the workout in progress
+    /// seen from two sides — the session itself, and the preference that decides whether the screen
+    /// sleeps while one is on (`NFR-1.9`).
+    ///
+    /// They travel with ``Repositories`` in the same case rather than beside it, because there is no
+    /// state in which one exists and the other does not: a store is built over a repository, and a
+    /// repository comes from a store that opened.
+    struct Stores {
+        /// The workout in progress (`FR-1.2.1`, `FR-1.2.11`, `FR-1.2.12`).
+        let activeSession: ActiveSessionStore
+
+        /// Whether the screen is held awake during one (`NFR-1.9`).
+        let screenWake: ScreenWakePreference
     }
 
     /// The opened store's repositories, or why the store could not be opened.
@@ -36,7 +59,7 @@ struct AppDependencies {
     /// The failed case carries the error's description — a diagnostic, not copy (`G-3.4`).
     enum State {
         /// The store opened.
-        case open(Repositories)
+        case open(Repositories, Stores)
 
         /// It did not, and this is why.
         case failed(String)
@@ -51,7 +74,17 @@ struct AppDependencies {
     init(location: StoreLocation = .applicationDefault) {
         do {
             let stack = try PersistenceStack(location: location)
-            state = .open(Repositories(settings: stack.settings, exercises: stack.exercises))
+            state = .open(
+                Repositories(
+                    settings: stack.settings,
+                    exercises: stack.exercises,
+                    workouts: stack.workouts
+                ),
+                Stores(
+                    activeSession: ActiveSessionStore(repository: stack.workouts),
+                    screenWake: ScreenWakePreference()
+                )
+            )
         } catch {
             state = .failed(String(describing: error))
         }
@@ -85,7 +118,7 @@ struct AppDependencies {
     /// The discarded ``SeedImportSummary`` is the same gap from the other side: its four counts are
     /// the only evidence of what the import did.
     func importSeedCatalogue() async {
-        guard case .open(let repositories) = state else { return }
+        guard case .open(let repositories, _) = state else { return }
         // `_ =` rather than a bare `try?`: the summary is `@discardableResult`, but wrapping it in
         // `try?` makes an optional this call did not ask for, and an unused one is an error here.
         _ = try? await SeedImporter(exercises: repositories.exercises).importBundledCatalogue()

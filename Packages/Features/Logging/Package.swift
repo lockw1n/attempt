@@ -55,5 +55,18 @@ let package = Package(
             dependencies: ["Logging", "RepositoryFakes"],
             swiftSettings: settings
         ),
+        // TR-1.12's references for this module's screens. A separate target from the one above for
+        // the reason ExerciseLibrary's manifest gives — every file in it is `#if os(iOS)`, and
+        // `scripts/snapshot-tests.sh` runs it on a simulator. Add the suite to that script's
+        // `SUITES` list or its references are compared by nothing.
+        .testTarget(
+            name: "LoggingSnapshotTests",
+            dependencies: [
+                "Logging",
+                .product(name: "SnapshotTesting", package: "DesignSystem"),
+            ],
+            exclude: ["__Snapshots__"],
+            swiftSettings: settings
+        ),
     ]
 )

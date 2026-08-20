@@ -162,7 +162,7 @@ struct ActiveSessionStoreTests {
     }
 }
 
-/// A `WorkoutRepository` that answers the two calls the store makes and refuses the rest.
+/// A `WorkoutRepository` that answers the four calls the store makes and refuses the rest.
 ///
 /// The happy paths above run against `RepositoryFakes`, whose conformance suite says it behaves like
 /// the real store. This one exists for the failures a faithful fake will not produce.
@@ -170,11 +170,18 @@ actor ScriptedWorkoutRepository: WorkoutRepository {
     private var row: WorkoutSession?
     private var readError: RepositoryError?
     private let writeError: RepositoryError?
+    private let deleteError: RepositoryError?
 
-    init(row: WorkoutSession? = nil, readError: RepositoryError? = nil, writeError: RepositoryError? = nil) {
+    init(
+        row: WorkoutSession? = nil,
+        readError: RepositoryError? = nil,
+        writeError: RepositoryError? = nil,
+        deleteError: RepositoryError? = nil
+    ) {
         self.row = row
         self.readError = readError
         self.writeError = writeError
+        self.deleteError = deleteError
     }
 
     func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
@@ -196,11 +203,18 @@ actor ScriptedWorkoutRepository: WorkoutRepository {
         if let writeError { throw writeError }
     }
 
+    /// The one row, when it is dated inside `range` — the read `resume()` makes.
     func sessions(in range: ClosedRange<Date>, includingDeleted: Bool) async throws -> [WorkoutSession] {
-        throw unsupported
+        if let readError { throw readError }
+        return [row].compactMap { $0 }.filter { range.contains($0.date) }
     }
 
-    func deleteSession(id: UUID) async throws { throw unsupported }
+    /// Soft-deletes the row by forgetting it, or fails when the test asked for a failed discard.
+    func deleteSession(id: UUID) async throws {
+        if let deleteError { throw deleteError }
+        guard row?.id == id else { throw RepositoryError.recordNotFound(id: id) }
+        row = nil
+    }
 
     func entries(forSessionID sessionID: UUID, includingDeleted: Bool) async throws -> [ExerciseEntry] {
         throw unsupported
@@ -243,6 +257,23 @@ extension WorkoutSession {
             bodyweight: nil,
             programRunID: nil,
             scheduledWorkoutID: nil
+        )
+    }
+
+    /// The same session on another training day — the field the resume order keys off.
+    func on(_ day: Date) -> WorkoutSession {
+        WorkoutSession(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            date: day,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            notes: notes,
+            bodyweight: bodyweight,
+            programRunID: programRunID,
+            scheduledWorkoutID: scheduledWorkoutID
         )
     }
 

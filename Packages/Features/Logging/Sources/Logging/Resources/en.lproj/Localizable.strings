@@ -1,2 +1,64 @@
-/* Logging (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the
-   Localization module doc. No copy in this module yet. */
+/* Logging (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization module doc.
+   The two screens are the Train root, where a workout is started or resumed, and the workout
+   itself. Nothing here is translated: only `en` ships in Phase 1. */
+
+/* Nothing is in progress. FR-1.13.2's first-launch guidance: the headline says what there is none
+   of and the message names both ways to make one, since backdating is the half a new user would not
+   guess. */
+"logging.train.empty.headline" = "No workout in progress";
+"logging.train.empty.message" = "Start today's workout, or pick an earlier date to log one you have already done.";
+"logging.train.start.action" = "Start workout";
+
+"logging.train.date.section" = "Workout date";
+"logging.train.date.picker" = "Training day";
+/* Says what the date is for rather than how to use the control: FR-1.2.1's backdating is about
+   which day the workout counts as, not when it was typed in. */
+"logging.train.date.hint" = "Today, unless you are logging a workout from an earlier day.";
+
+"logging.train.in-progress.section" = "In progress";
+"logging.train.in-progress.day" = "Training day";
+"logging.train.in-progress.started" = "Started";
+/* FR-1.2.11: the way back into a workout the app came back to. "Resume" rather than "Open", because
+   the workout was interrupted — by a relaunch, a force-quit or a walk to the rack. */
+"logging.train.in-progress.resume" = "Resume workout";
+
+"logging.train.library.action" = "Browse exercises";
+
+/* NFR-1.9. The control is here rather than in Settings while it is a stub — see
+   ScreenWakePreference for why the settings row cannot hold it yet. */
+"logging.train.screen-wake.section" = "During a workout";
+"logging.train.screen-wake.label" = "Keep screen awake";
+"logging.train.screen-wake.hint" = "The screen stays on while a workout is in progress, and sleeps normally the rest of the time.";
+
+/* The read failed. A sentence for the user; the diagnostic is never shown. */
+"logging.train.error.headline" = "Workouts unavailable";
+"logging.train.error.message" = "Your workouts could not be read just now.";
+
+"logging.session.title" = "Workout";
+"logging.session.summary.section" = "This workout";
+"logging.session.day" = "Training day";
+"logging.session.started" = "Started";
+
+/* The workout exists and has nothing in it. No action: adding an exercise is T-1.21's command and
+   offering a dead button would be worse than saying what will fill the space. */
+"logging.session.empty.headline" = "No exercises yet";
+"logging.session.empty.message" = "Exercises you add to this workout appear here.";
+
+"logging.session.finish.action" = "Finish workout";
+"logging.session.discard.action" = "Discard workout";
+
+/* FR-1.2.12's explicit confirmation. The message names what is lost, and the confirming button says
+   what it does rather than "OK" — the two places a destructive dialogue is usually vague. */
+"logging.session.discard.confirm.title" = "Discard this workout?";
+"logging.session.discard.confirm.message" = "Everything logged in it is removed from your history.";
+"logging.session.discard.confirm.action" = "Discard";
+"logging.session.discard.confirm.cancel" = "Keep workout";
+
+/* The screen is open on a workout that is no longer in progress — a restored navigation stack after
+   the workout was finished or discarded. Not an error the user caused, and there is nothing to
+   retry. */
+"logging.session.ended.headline" = "No workout in progress";
+"logging.session.ended.message" = "This workout has been finished or discarded.";
+
+/* A write that did not land. The workout stays on screen beside it, so the retry is another tap. */
+"logging.session.write-error.message" = "That could not be saved. Nothing has been lost — try again.";

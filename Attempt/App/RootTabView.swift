@@ -2,6 +2,7 @@ import AppNavigation
 import DesignSystem
 import ExerciseLibrary
 import Foundation
+import Logging
 import Settings
 import SwiftUI
 
@@ -35,6 +36,11 @@ struct RootTabView: View {
         // that says so is DesignTokens. FR-1.10.2's user preference (T-1.60) overrides this; it does
         // not replace it.
         .preferredColorScheme(Appearance.defaultColorScheme)
+        // NFR-1.9. Applied over the whole shell rather than on the session screen, because the
+        // workout does not stop being in progress when the user walks to the exercise library or
+        // the plate calculator — the screen has to stay awake there too. What decides it is
+        // Logging's; what does it is UIKit's, and this target is the only one that may say so.
+        .keepScreenAwake(keepsScreenAwake)
     }
 
     /// One tab's stack. Every tab shares the same destination table, which is what one `Route` enum
@@ -63,6 +69,8 @@ struct RootTabView: View {
             exerciseFormRoot(.create)
         case .exerciseLibrary(.exerciseEdit(let exerciseID)):
             exerciseFormRoot(.edit(exerciseID: exerciseID))
+        case .training(.activeSession):
+            activeSessionRoot
         default:
             PlaceholderScreen(route: route)
         }
@@ -75,7 +83,7 @@ struct RootTabView: View {
     @ViewBuilder
     private var exerciseListRoot: some View {
         switch dependencies.state {
-        case .open(let repositories):
+        case .open(let repositories, _):
             ExerciseListView(repository: repositories.exercises)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
@@ -89,7 +97,7 @@ struct RootTabView: View {
     @ViewBuilder
     private func exerciseDetailRoot(_ exerciseID: UUID) -> some View {
         switch dependencies.state {
-        case .open(let repositories):
+        case .open(let repositories, _):
             ExerciseDetailView(exerciseID: exerciseID, repository: repositories.exercises)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
@@ -102,33 +110,68 @@ struct RootTabView: View {
     @ViewBuilder
     private func exerciseFormRoot(_ mode: ExerciseFormMode) -> some View {
         switch dependencies.state {
-        case .open(let repositories):
+        case .open(let repositories, _):
             ExerciseFormView(mode: mode, repository: repositories.exercises)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }
     }
 
-    /// A tab's root. Settings is the first real screen; the other three are still scaffolding.
+    /// A tab's root. Two are real screens now; Home and History are still scaffolding.
     ///
     /// The title is applied here rather than inside the feature package, for the reason
     /// ``AppTab/title`` gives: the catalogue is this target's (`G-3.4`).
     @ViewBuilder
     private func root(for tab: AppTab) -> some View {
         switch tab {
+        case .train:
+            trainRoot
+                .navigationTitle(tab.title)
         case .settings:
             settingsRoot
                 .navigationTitle(tab.title)
-        case .home, .train, .history:
+        case .home, .history:
             PlaceholderScreen(tab: tab, navigation: navigation)
         }
+    }
+
+    /// Train's root — the session surface (`FR-1.2.1`) — or the reason it cannot be shown.
+    @ViewBuilder
+    private var trainRoot: some View {
+        switch dependencies.state {
+        case .open(_, let stores):
+            TrainingHomeView(store: stores.activeSession, screenWake: stores.screenWake)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// The workout in progress, or the reason it cannot be shown.
+    ///
+    /// The route carries no identifier: which workout this is, is the store's (see
+    /// ``Logging/ActiveSessionView``).
+    @ViewBuilder
+    private var activeSessionRoot: some View {
+        switch dependencies.state {
+        case .open(_, let stores):
+            ActiveSessionView(store: stores.activeSession)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// Whether the idle timer is held off right now (`NFR-1.9`) — a workout in progress, and the
+    /// preference left on. A store that did not open keeps no workout, so it never holds it off.
+    private var keepsScreenAwake: Bool {
+        guard case .open(_, let stores) = dependencies.state else { return false }
+        return stores.screenWake.keepsScreenAwake(duringSession: stores.activeSession.isActive)
     }
 
     /// The Settings tab's landing screen, or the reason it cannot be shown.
     @ViewBuilder
     private var settingsRoot: some View {
         switch dependencies.state {
-        case .open(let repositories):
+        case .open(let repositories, _):
             SettingsLandingView(repository: repositories.settings)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
