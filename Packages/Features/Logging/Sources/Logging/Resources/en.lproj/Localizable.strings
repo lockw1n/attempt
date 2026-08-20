@@ -45,8 +45,8 @@
 "logging.session.day" = "Training day";
 "logging.session.started" = "Started";
 
-/* The workout exists and has nothing in it. No action: adding an exercise is T-1.21's command and
-   offering a dead button would be worse than saying what will fill the space. */
+/* The workout exists and has nothing in it. The action is FR-1.2.2's chooser, which is also the
+   only command this state can offer — the sets inside an exercise need an exercise first. */
 "logging.session.empty.headline" = "No exercises yet";
 "logging.session.empty.message" = "Exercises you add to this workout appear here.";
 
@@ -80,3 +80,28 @@
 
 /* A write that did not land. The workout stays on screen beside it, so the retry is another tap. */
 "logging.session.write-error.message" = "That could not be saved. Nothing has been lost — try again.";
+
+/* FR-1.2.2 and FR-1.2.13: the workout's exercises, as a vertical list of cards. */
+"logging.session.exercises.section" = "Exercises";
+"logging.session.add-exercise.action" = "Add exercise";
+/* Said in words as well as by the folded card, colour and shape never being the only cue (G-4.5). */
+"logging.session.exercise.completed" = "Completed";
+/* A label beside a number, so it stays a count in every language rather than needing a plural. */
+"logging.session.exercise.sets" = "Sets";
+/* An entry naming a catalogue row that is not there — a restore or a sync that arrived incomplete.
+   The card is rendered broken rather than dropped: an exercise silently missing from a workout is
+   worse than one the user can see is wrong. */
+"logging.session.exercise.missing" = "Exercise unavailable";
+/* Accessibility labels: both controls draw a glyph and have no visible title (G-4.2). */
+"logging.session.exercise.move-up" = "Move up";
+"logging.session.exercise.move-down" = "Move down";
+
+/* The exercises could not be read. Separate from the session's own read failure because they are
+   separate reads: the workout can be on screen while its contents are not. */
+"logging.session.exercises.error.headline" = "Exercises unavailable";
+"logging.session.exercises.error.message" = "The exercises in this workout could not be read just now.";
+/* A failed write — adding or reordering. The cards stay beside it, so the retry is another tap. */
+"logging.session.exercises.write-error.message" = "That could not be saved. Nothing has been lost — try again.";
+
+/* FR-1.2.13's session progress, positional so a translation can reorder the two numbers. */
+"logging.session.progress %lld %lld" = "%1$lld of %2$lld exercises complete";

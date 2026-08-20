@@ -3,6 +3,7 @@ import DesignSystem
 import ExerciseLibrary
 import Foundation
 import Logging
+import RepositoryInterface
 import Settings
 import SwiftUI
 
@@ -69,6 +70,8 @@ struct RootTabView: View {
             exerciseFormRoot(.create)
         case .exerciseLibrary(.exerciseEdit(let exerciseID)):
             exerciseFormRoot(.edit(exerciseID: exerciseID))
+        case .exerciseLibrary(.exercisePicker):
+            exercisePickerRoot
         case .training(.activeSession):
             activeSessionRoot
         default:
@@ -98,7 +101,11 @@ struct RootTabView: View {
     private func exerciseDetailRoot(_ exerciseID: UUID) -> some View {
         switch dependencies.state {
         case .open(let repositories, _):
-            ExerciseDetailView(exerciseID: exerciseID, repository: repositories.exercises)
+            ExerciseDetailView(
+                exerciseID: exerciseID,
+                repository: repositories.exercises,
+                workouts: repositories.workouts
+            )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }
@@ -112,6 +119,25 @@ struct RootTabView: View {
         switch dependencies.state {
         case .open(let repositories, _):
             ExerciseFormView(mode: mode, repository: repositories.exercises)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// The catalogue as `FR-1.2.2`'s chooser, or the reason it cannot be shown.
+    ///
+    /// **This is the join between the two feature modules that share the Train tab**, and it is here
+    /// because nowhere else may make it: `Logging` and `ExerciseLibrary` do not depend on each other
+    /// (`TR-1.3`), so the screen that chooses an exercise and the store that receives one are
+    /// composed by the target that already owns both. The library screen takes a closure and knows
+    /// nothing about workouts; the store takes an identifier and knows nothing about catalogues.
+    @ViewBuilder
+    private var exercisePickerRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, let stores):
+            ExerciseListView(repository: repositories.exercises) { exercise in
+                await stores.activeSession.addExercise(id: exercise.id)
+            }
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

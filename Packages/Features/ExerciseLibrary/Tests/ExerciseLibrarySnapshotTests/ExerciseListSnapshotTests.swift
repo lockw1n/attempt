@@ -92,6 +92,28 @@
             }
         }
 
+        @Test func chooserRows() throws {
+            // FR-1.2.2's chooser is this same list with the rows turned into commands. The picture
+            // worth keeping is the difference: no chevron, because the tap writes an exercise into
+            // the workout and pops rather than opening anything.
+            try assertSnapshots(named: "ExerciseList-picker") {
+                ExerciseGroupList(groups: Fixtures.groups, select: { _ in })
+            }
+        }
+
+        @Test func everythingArchivedInTheChooser() throws {
+            // No action, unlike the browsing screen's version below: the chooser has no "Show
+            // archived" control to offer, FR-1.1.5 being what takes an archived exercise out of the
+            // pickers in the first place.
+            try assertSnapshots(named: "ExerciseList-picker-archived-only") {
+                EmptyStateView(
+                    symbolName: "archivebox",
+                    headline: Text(ExerciseLibraryStrings.archivedOnlyHeadline),
+                    message: Text(ExerciseLibraryStrings.archivedOnlyPickerMessage)
+                )
+            }
+        }
+
         @Test func archivedRows() throws {
             try assertSnapshots(named: "ExerciseList-archived") {
                 ExerciseGroupList(groups: Fixtures.archivedGroups)

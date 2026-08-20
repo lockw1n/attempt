@@ -208,3 +208,18 @@
 /* The save failed. The form and everything typed into it are still on screen, and the retry is
    another tap. */
 "exerciselibrary.form.write-error" = "This exercise could not be saved.";
+
+/* FR-1.2.2's chooser: the same catalogue screen, picking an exercise for the workout in progress
+   rather than browsing. The title names the command the user arrived by, not the screen's contents
+   — "Exercises" would say nothing about what a tap is about to do. */
+"exerciselibrary.picker.title" = "Add exercise";
+/* The chooser has no "Show archived" control, FR-1.1.5 being what takes an archived exercise out of
+   the pickers in the first place — so this message names the way back rather than offering it. */
+"exerciselibrary.picker.archived-only.message" = "Every exercise has been archived. Unarchive one in the exercise library to add it to a workout.";
+
+/* FR-1.13.3, the other half. The "none" copy above tells the user to log a set; it is true only
+   while no set can exist, and once one can, a user who has logged sets would be told to log a set
+   they have already logged. These two say what is actually true in that case. Both are scaffolding
+   with a named replacement — the real history and record displays. */
+"exerciselibrary.detail.history.pending" = "Sets have been logged against this exercise. Showing them here is not built yet.";
+"exerciselibrary.detail.records.pending" = "Sets have been logged against this exercise. Showing personal records here is not built yet.";

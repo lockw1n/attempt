@@ -119,6 +119,55 @@ enum LoggingStrings {
     /// What the user can understand about a write that failed.
     static let sessionWriteErrorMessage = resource("logging.session.write-error.message")
 
+    // MARK: - The workout's exercises (FR-1.2.2, FR-1.2.13)
+
+    /// The heading over the workout's exercises.
+    static let sessionExercisesSection = resource("logging.session.exercises.section")
+
+    /// The command that opens the chooser (`FR-1.2.2`).
+    static let sessionAddExerciseAction = resource("logging.session.add-exercise.action")
+
+    /// An exercise that has been finished — `FR-1.2.13`'s collapsed card, said in words as well as
+    /// by the fold (`G-4.5`).
+    static let sessionExerciseCompleted = resource("logging.session.exercise.completed")
+
+    /// How many sets have been logged against one exercise.
+    static let sessionExerciseSets = resource("logging.session.exercise.sets")
+
+    /// In place of a name, where the entry points at a catalogue row that is not there.
+    static let sessionExerciseMissing = resource("logging.session.exercise.missing")
+
+    /// The control that moves an exercise earlier (`FR-1.2.2`). A label, not a title: the button
+    /// draws a glyph.
+    static let sessionExerciseMoveUp = resource("logging.session.exercise.move-up")
+
+    /// The control that moves an exercise later (`FR-1.2.2`).
+    static let sessionExerciseMoveDown = resource("logging.session.exercise.move-down")
+
+    /// The heading when the workout's exercises could not be read.
+    static let sessionExercisesErrorHeadline = resource("logging.session.exercises.error.headline")
+
+    /// What the user can understand about that failure — never the diagnostic.
+    static let sessionExercisesErrorMessage = resource("logging.session.exercises.error.message")
+
+    /// A failed *write* against the exercises, beside the cards it did not cost.
+    static let sessionExercisesWriteErrorMessage = resource(
+        "logging.session.exercises.write-error.message")
+
+    /// How far through the workout the user is (`FR-1.2.13`).
+    ///
+    /// **The only string here with a value in it**, so the two numbers are ordered by the
+    /// translation rather than by this call — a language that says "of six, three are done" moves
+    /// them, and positional arguments in the catalogue are what let it.
+    ///
+    /// - Parameters:
+    ///   - completed: How many exercises are finished.
+    ///   - total: How many there are.
+    /// - Returns: The sentence.
+    static func sessionProgress(completed: Int, total: Int) -> LocalizedStringResource {
+        resource("logging.session.progress \(completed) \(total)")
+    }
+
     /// Every string this module can show, for the test that proves each one resolves.
     static var all: [LocalizedStringResource] {
         [
@@ -131,7 +180,11 @@ enum LoggingStrings {
             sessionFinishAction, sessionDiscardAction, sessionDiscardConfirmTitle,
             sessionDiscardConfirmMessage, sessionDiscardConfirmAction, sessionDiscardConfirmCancel,
             sessionErrorHeadline, sessionErrorMessage, sessionEndedHeadline, sessionEndedMessage,
-            sessionWriteErrorMessage,
+            sessionWriteErrorMessage, sessionExercisesSection, sessionAddExerciseAction,
+            sessionExerciseCompleted, sessionExerciseSets, sessionExerciseMissing,
+            sessionExerciseMoveUp, sessionExerciseMoveDown, sessionExercisesErrorHeadline,
+            sessionExercisesErrorMessage, sessionExercisesWriteErrorMessage,
+            sessionProgress(completed: 0, total: 0),
         ]
     }
 

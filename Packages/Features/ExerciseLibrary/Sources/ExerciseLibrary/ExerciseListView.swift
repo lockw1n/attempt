@@ -17,6 +17,16 @@ import SwiftUI
 public struct ExerciseListView: View {
     @State private var state: ExerciseListState
 
+    /// What selecting a row does, or `nil` on the browsing screen (`FR-1.2.2`).
+    ///
+    /// **A closure supplied by whoever composes the screen, not a mode this module resolves.** The
+    /// caller that wants a chooser is the workout in progress, which lives in another feature module
+    /// — so the two are joined in the app target rather than by a dependency between them
+    /// (`TR-1.3`). It is `async` because what it does is a write: the row waits for it to land
+    /// before this screen pops, so the surface underneath is already showing the exercise when it
+    /// reappears.
+    private let select: ((Exercise) async -> Void)?
+
     /// The shell's navigation position, for the one command here that is not a `NavigationLink`.
     ///
     /// **Optional, and read rather than required**: a `StateAction` is a closure, so the empty
@@ -25,13 +35,27 @@ public struct ExerciseListView: View {
     /// render.
     @Environment(NavigationState.self) private var navigation: NavigationState?
 
+    /// The way back once a row has been chosen. Unused while ``select`` is `nil`.
+    @Environment(\.dismiss) private var dismiss
+
     /// Builds the screen over the repository its state reads through.
     ///
-    /// - Parameter repository: Where the catalogue comes from. `Persistence`'s implementation in the
-    ///   app; anything conforming in a test or a preview.
-    public init(repository: any ExerciseRepository) {
+    /// - Parameters:
+    ///   - repository: Where the catalogue comes from. `Persistence`'s implementation in the app;
+    ///     anything conforming in a test or a preview.
+    ///   - select: What choosing a row does, for the chooser (`FR-1.2.2`). Omitted, the screen
+    ///     browses: rows push a detail, which is what `FR-1.1.1` asks for and what a chooser must
+    ///     not do.
+    public init(repository: any ExerciseRepository, select: ((Exercise) async -> Void)? = nil) {
         _state = State(initialValue: ExerciseListState(repository: repository))
+        self.select = select
     }
+
+    /// Whether this screen is choosing an exercise rather than browsing the catalogue.
+    ///
+    /// Derived from ``select`` rather than passed beside it, so the two cannot disagree — a chooser
+    /// with nothing to call and a browser with a selection handler are both unrepresentable.
+    private var isPicking: Bool { select != nil }
 
     /// The search field, the filters, and whichever of the screen's four states is current.
     ///
@@ -42,14 +66,14 @@ public struct ExerciseListView: View {
         @Bindable var state = state
         return ScrollView {
             VStack(alignment: .leading, spacing: Spacing.lg.points) {
-                ExerciseFilterBar(state: state)
+                ExerciseFilterBar(state: state, offersArchived: !isPicking)
                 content
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Spacing.lg.points)
         }
         .background(ColorToken.background)
-        .navigationTitle(Text(ExerciseLibraryStrings.title))
+        .navigationTitle(Text(isPicking ? ExerciseLibraryStrings.pickerTitle : ExerciseLibraryStrings.title))
         .searchable(text: $state.searchText, prompt: Text(ExerciseLibraryStrings.searchPrompt))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -107,12 +131,21 @@ public struct ExerciseListView: View {
             EmptyStateView(
                 symbolName: "archivebox",
                 headline: Text(ExerciseLibraryStrings.archivedOnlyHeadline),
-                message: Text(ExerciseLibraryStrings.archivedOnlyMessage),
+                message: Text(
+                    isPicking
+                        ? ExerciseLibraryStrings.archivedOnlyPickerMessage
+                        : ExerciseLibraryStrings.archivedOnlyMessage
+                ),
                 // The same command the chip above carries, because it is the same control: a state
-                // that named it without offering it would be a sentence pointing at a chip.
-                action: StateAction(Text(ExerciseLibraryStrings.showArchivedFilter)) {
-                    state.showsArchived = true
-                }
+                // that named it without offering it would be a sentence pointing at a chip. The
+                // chooser has neither the chip nor the command — `FR-1.1.5` takes an archived
+                // exercise out of the pickers, so the way back is un-archiving it in the library,
+                // which is where the message sends the user instead.
+                action: isPicking
+                    ? nil
+                    : StateAction(Text(ExerciseLibraryStrings.showArchivedFilter)) {
+                        state.showsArchived = true
+                    }
             )
         } else if state.groups.isEmpty {
             EmptyStateView(
@@ -124,7 +157,23 @@ public struct ExerciseListView: View {
                 }
             )
         } else {
-            ExerciseGroupList(groups: state.groups)
+            ExerciseGroupList(groups: state.groups, select: rowAction)
+        }
+    }
+
+    /// What one row does when tapped, or `nil` where the row is a push.
+    ///
+    /// **The pop is here rather than in the caller's closure**, because it is this screen's own
+    /// exit and the caller has no handle on it. It happens after the write, not beside it: the
+    /// surface underneath re-reads nothing on the way back, so an exercise that had not landed yet
+    /// would appear to have been dropped.
+    private var rowAction: ((Exercise) -> Void)? {
+        guard let select else { return nil }
+        return { exercise in
+            Task {
+                await select(exercise)
+                dismiss()
+            }
         }
     }
 }
@@ -138,29 +187,63 @@ struct ExerciseGroupList: View {
     /// The movements to show, already filtered and ordered.
     let groups: [ExerciseGroup]
 
+    /// What choosing a row does, or `nil` where a row pushes the exercise's detail instead.
+    ///
+    /// **The two are different controls and not one control with a different destination.** A
+    /// chooser's row commits — it writes an exercise into the workout and leaves — so it is a
+    /// `Button` and carries no chevron; a browser's row is a `NavigationLink` and does. Rendering
+    /// the chooser as a link would promise a screen the tap does not open.
+    var select: ((Exercise) -> Void)?
+
     /// A lazy stack: 116 rows is the seeded catalogue and a custom one only grows it (`NFR-1.1`).
     var body: some View {
         LazyVStack(alignment: .leading, spacing: Spacing.xl.points) {
             ForEach(groups) { group in
                 GroupedSection(Text(ExerciseLibraryStrings.label(for: group.movement))) {
                     ForEach(group.exercises) { exercise in
-                        NavigationLink(
-                            value: Route.exerciseLibrary(.exerciseDetail(exerciseID: exercise.id))
-                        ) {
-                            ExerciseRow(exercise: exercise)
-                        }
-                        .buttonStyle(.plain)
+                        row(exercise)
                     }
                 }
             }
+        }
+    }
+
+    /// One exercise, as whichever control this list is made of.
+    @ViewBuilder private func row(_ exercise: Exercise) -> some View {
+        if let select {
+            Button {
+                select(exercise)
+            } label: {
+                ExerciseRow(exercise: exercise, accessory: .none)
+            }
+            .buttonStyle(.plain)
+        } else {
+            NavigationLink(
+                value: Route.exerciseLibrary(.exerciseDetail(exerciseID: exercise.id))
+            ) {
+                ExerciseRow(exercise: exercise)
+            }
+            .buttonStyle(.plain)
         }
     }
 }
 
 /// One exercise, as a row (`FR-1.1.1`).
 struct ExerciseRow: View {
+    /// What a row draws at its trailing edge.
+    enum Accessory {
+        /// A chevron — the row pushes.
+        case disclosure
+
+        /// Nothing — the row commits, and a chevron would promise a screen it does not open.
+        case none
+    }
+
     /// The exercise this row names.
     let exercise: Exercise
+
+    /// Which trailing mark this row carries. Disclosure unless the caller says otherwise.
+    var accessory: Accessory = .disclosure
 
     /// Name, then what it is performed with, and a badge when the user wrote it or archived it.
     ///
@@ -192,10 +275,12 @@ struct ExerciseRow: View {
                 }
             }
             Spacer(minLength: Spacing.sm.points)
-            Image(systemName: "chevron.right")
-                .font(Typography.caption.font)
-                .foregroundStyle(ColorToken.textTertiary)
-                .accessibilityHidden(true)
+            if accessory == .disclosure {
+                Image(systemName: "chevron.right")
+                    .font(Typography.caption.font)
+                    .foregroundStyle(ColorToken.textTertiary)
+                    .accessibilityHidden(true)
+            }
         }
         .frame(minHeight: TouchTarget.standard.points, alignment: .leading)
         .contentShape(.rect)
@@ -214,6 +299,14 @@ struct ExerciseRow: View {
 struct ExerciseFilterBar: View {
     /// The state whose filters these chips set.
     @Bindable var state: ExerciseListState
+
+    /// Whether `FR-1.1.5`'s "show archived" is offered at all.
+    ///
+    /// `false` in the chooser, and that is the requirement rather than a simplification: archiving
+    /// is what takes an exercise **out of the pickers**, so a picker that offered to put it back
+    /// would be the one surface `FR-1.1.5` names. The browsing list keeps the control, which is
+    /// where an archived exercise stays reachable from.
+    var offersArchived = true
 
     /// One row per facet, each scrolling horizontally so a long vocabulary does not wrap into a wall.
     var body: some View {
@@ -237,7 +330,9 @@ struct ExerciseFilterBar: View {
                 label: ExerciseLibraryStrings.label(for:),
                 trailing: { recencyChip }
             )
-            archivedChip
+            if offersArchived {
+                archivedChip
+            }
         }
     }
 

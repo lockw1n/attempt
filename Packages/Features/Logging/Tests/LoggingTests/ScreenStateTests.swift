@@ -14,6 +14,50 @@ import Testing
 @MainActor
 @Suite("Screen states")
 struct ScreenStateTests {
+    // MARK: - The workout's exercises (FR-1.2.2, FR-1.2.13)
+
+    @Test("Nothing is shown until the exercises have been read, whatever else is true")
+    func exercisesLoadBeforeTheReadAnswers() {
+        #expect(
+            SessionExercisesState.current(
+                hasLoaded: false, exercises: [], readFailure: "boom", writeFailure: "boom")
+                == .loading)
+    }
+
+    @Test("A failed read costs the list its cards, and carries no write to report")
+    func exercisesReportAFailedRead() {
+        // The screen can no longer vouch for what is in the workout, so it shows the state with the
+        // retry in it — and it outranks a write failure, which describes a list that is not there.
+        #expect(
+            SessionExercisesState.current(
+                hasLoaded: true, exercises: [], readFailure: "boom", writeFailure: "boom")
+                == .readFailed)
+    }
+
+    @Test("A failed write keeps every card, which is the opposite of a failed read")
+    func exercisesKeepTheCardsThroughAFailedWrite() {
+        let card = SessionExercise.stateFixture()
+
+        #expect(
+            SessionExercisesState.current(
+                hasLoaded: true, exercises: [card], readFailure: nil, writeFailure: "boom")
+                == .listed([card], writeFailed: true))
+    }
+
+    @Test("A workout with nothing in it is empty, and still reports a failed write")
+    func exercisesAreEmpty() {
+        #expect(
+            SessionExercisesState.current(
+                hasLoaded: true, exercises: [], readFailure: nil, writeFailure: nil)
+                == .empty(writeFailed: false))
+        // The add that failed is why the workout is still empty — reporting nothing would look like
+        // the exercise had been chosen and then vanished.
+        #expect(
+            SessionExercisesState.current(
+                hasLoaded: true, exercises: [], readFailure: nil, writeFailure: "boom")
+                == .empty(writeFailed: true))
+    }
+
     // MARK: - Train root
 
     @Test("Nothing is shown until something has looked, whatever else is true")
@@ -102,5 +146,26 @@ struct ScreenStateTests {
                 == .readFailed)
         #expect(
             ActiveSessionState.current(hasChecked: true, session: nil, failure: nil) == .ended)
+    }
+}
+
+extension SessionExercise {
+    /// One card, with nothing about it varying — these tests are about which state is chosen.
+    fileprivate static func stateFixture() -> SessionExercise {
+        let stamp = Date(timeIntervalSince1970: 1_700_000_000)
+        return SessionExercise(
+            entry: ExerciseEntry(
+                id: UUID(uuidString: "44444444-4444-4444-8444-444444444444") ?? UUID(),
+                createdAt: stamp,
+                updatedAt: stamp,
+                deletedAt: nil,
+                sessionID: UUID(),
+                exerciseID: UUID(),
+                order: 0,
+                notes: ""
+            ),
+            exercise: nil,
+            sets: []
+        )
     }
 }

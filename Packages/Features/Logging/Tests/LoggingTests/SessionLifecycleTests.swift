@@ -17,7 +17,7 @@ struct SessionLifecycleTests {
     @Test("Starting writes the workout through before it is held")
     func startWritesThrough() async throws {
         let repository = InMemoryRepositoryStack().workouts
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
 
         await store.start(on: .now)
 
@@ -36,7 +36,7 @@ struct SessionLifecycleTests {
     @Test("A backdated workout is dated to the start of that day, and started now")
     func startNormalisesTheDay() async throws {
         let repository = InMemoryRepositoryStack().workouts
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         let calendar = Calendar.current
         let day = try #require(calendar.date(byAdding: .day, value: -3, to: .now))
 
@@ -55,7 +55,7 @@ struct SessionLifecycleTests {
     @Test("A second workout is refused while one is in progress")
     func startRefusesASecondWorkout() async throws {
         let repository = InMemoryRepositoryStack().workouts
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         await store.start(on: .now)
         let first = try #require(store.session)
 
@@ -72,12 +72,12 @@ struct SessionLifecycleTests {
     @Test("A workout started before the app died is resumed by a store that never saw it")
     func unfinishedWorkoutSurvivesARelaunch() async throws {
         let repository = InMemoryRepositoryStack().workouts
-        let before = ActiveSessionStore(repository: repository)
+        let before = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         await before.start(on: .now)
         let started = try #require(before.session)
 
         // A second store over the same rows is what a relaunch is: nothing carries over but storage.
-        let after = ActiveSessionStore(repository: repository)
+        let after = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         #expect(!after.hasCheckedForSession)
         await after.resume()
 
@@ -89,11 +89,11 @@ struct SessionLifecycleTests {
     @Test("A finished workout is not resumed")
     func finishedWorkoutIsNotResumed() async throws {
         let repository = InMemoryRepositoryStack().workouts
-        let before = ActiveSessionStore(repository: repository)
+        let before = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         await before.start(on: .now)
         await before.finish()
 
-        let after = ActiveSessionStore(repository: repository)
+        let after = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         await after.resume()
 
         #expect(after.session == nil)
@@ -105,11 +105,11 @@ struct SessionLifecycleTests {
     @Test("A discarded workout is not resumed")
     func discardedWorkoutIsNotResumed() async throws {
         let repository = InMemoryRepositoryStack().workouts
-        let before = ActiveSessionStore(repository: repository)
+        let before = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         await before.start(on: .now)
         await before.discard()
 
-        let after = ActiveSessionStore(repository: repository)
+        let after = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         await after.resume()
 
         #expect(after.session == nil)
@@ -126,7 +126,7 @@ struct SessionLifecycleTests {
             .on(try #require(calendar.date(byAdding: .day, value: -2, to: .now)))
         try await repository.save(older)
         try await repository.save(newer)
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
 
         await store.resume()
 
@@ -137,7 +137,7 @@ struct SessionLifecycleTests {
     func resumeKeepsAHeldWorkout() async throws {
         let session = WorkoutSession.fixture()
         let repository = ScriptedWorkoutRepository(row: session)
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         await store.adopt(sessionID: session.id)
         try #require(store.session == session)
 
@@ -155,7 +155,7 @@ struct SessionLifecycleTests {
     @Test("Finishing stamps the end and releases the workout, keeping the row")
     func finishStampsTheEnd() async throws {
         let repository = InMemoryRepositoryStack().workouts
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         await store.start(on: .now)
         let started = try #require(store.session)
 
@@ -172,7 +172,7 @@ struct SessionLifecycleTests {
     @Test("Finishing nothing writes nothing")
     func finishWithNoWorkoutDoesNothing() async throws {
         let repository = InMemoryRepositoryStack().workouts
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
 
         await store.finish()
 
@@ -188,7 +188,7 @@ struct SessionLifecycleTests {
     @Test("Discarding soft-deletes the workout rather than removing it")
     func discardIsSoft() async throws {
         let repository = InMemoryRepositoryStack().workouts
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         await store.start(on: .now)
         let started = try #require(store.session)
 
@@ -205,7 +205,7 @@ struct SessionLifecycleTests {
     @Test("Discarding nothing writes nothing")
     func discardWithNoWorkoutDoesNothing() async throws {
         let repository = InMemoryRepositoryStack().workouts
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
 
         await store.discard()
 
@@ -219,7 +219,7 @@ struct SessionLifecycleTests {
     func failedStartIsReported() async {
         let failure = RepositoryError.danglingReference(recordID: UUID(), referencing: UUID())
         let repository = ScriptedWorkoutRepository(writeError: failure)
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
 
         await store.start(on: .now)
 
@@ -234,7 +234,7 @@ struct SessionLifecycleTests {
     func failedResumeIsReported() async {
         let failure = RepositoryError.recordNotFound(id: UUID())
         let repository = ScriptedWorkoutRepository(readError: failure)
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
 
         await store.resume()
 
@@ -247,7 +247,7 @@ struct SessionLifecycleTests {
     func resumeRecovers() async throws {
         let session = WorkoutSession.fixture()
         let repository = ScriptedWorkoutRepository(row: session, readError: .recordNotFound(id: UUID()))
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         await store.resume()
         #expect(store.failure != nil)
 
@@ -263,7 +263,7 @@ struct SessionLifecycleTests {
         let failure = RepositoryError.danglingReference(recordID: UUID(), referencing: UUID())
         let session = WorkoutSession.fixture()
         let repository = ScriptedWorkoutRepository(row: session, writeError: failure)
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         await store.adopt(sessionID: session.id)
         try #require(store.session == session)
 
@@ -279,7 +279,7 @@ struct SessionLifecycleTests {
         let failure = RepositoryError.recordNotFound(id: UUID())
         let session = WorkoutSession.fixture()
         let repository = ScriptedWorkoutRepository(row: session, deleteError: failure)
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore(repository: repository, catalogue: InMemoryRepositoryStack().exercises)
         await store.adopt(sessionID: session.id)
         try #require(store.session == session)
 

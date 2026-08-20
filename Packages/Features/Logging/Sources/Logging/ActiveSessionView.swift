@@ -1,14 +1,16 @@
+import AppNavigation
 import DesignSystem
+import Foundation
 import Localization
 import RepositoryInterface
 import SwiftUI
 
 /// The workout in progress (`FR-1.2.11`, `FR-1.2.12`).
 ///
-/// **The lifecycle screen, not yet the logging one.** What is here is the workout itself — the day
-/// it belongs to, when it started, and the two ways it ends. Its exercises and their sets are
-/// T-1.21's onwards, and the empty state below is the space they land in rather than a placeholder
-/// for them.
+/// **The workout and what is in it, but not yet what is in one exercise.** Here are the workout's
+/// own facts — the day it belongs to, when it started, the two ways it ends — and `FR-1.2.13`'s
+/// vertical list of exercise cards, with `FR-1.2.2`'s add and reorder. The sets inside a card are
+/// the next tasks in this track, and the card is where they land rather than a new shape beside it.
 ///
 /// **It carries no identifier, and that is why ``ActiveSessionStore`` exists.** `TrainingRoute` has
 /// no payload for this screen: the workout in progress is one fact about the app, not a parameter of
@@ -21,11 +23,25 @@ public struct ActiveSessionView: View {
     /// The way back to the root once the workout has ended, one way or the other.
     @Environment(\.dismiss) private var dismiss
 
+    /// The shell's navigation position, for the one command here that is not a `NavigationLink`.
+    ///
+    /// Optional and read rather than required, for `TrainingHomeView`'s reason: a `StateAction` is a
+    /// closure, and a preview or a snapshot has no shell above it.
+    @Environment(NavigationState.self) private var navigation: NavigationState?
+
     /// Whether `FR-1.2.12`'s confirmation is on screen.
     ///
     /// The screen's and not the store's: a dialogue the user has open is not a fact about the
     /// workout, and it must not survive the screen being left.
     @State private var isConfirmingDiscard = false
+
+    /// Which cards the user has folded or unfolded by hand, keyed on the entry (`FR-1.2.13`).
+    ///
+    /// **Stored nowhere, deliberately.** `NFR-1.8` is about logged data surviving a force-quit, and
+    /// which card is open is not logged data — a workout reopened tomorrow should follow the rule
+    /// (finished exercises collapsed, the rest open) rather than the folds of an earlier sitting.
+    /// An entry here is an override of that rule and lasts as long as the screen does.
+    @State private var expansion: [UUID: Bool] = [:]
 
     /// Builds the screen over the store that holds the workout.
     ///
@@ -42,15 +58,26 @@ public struct ActiveSessionView: View {
     /// and nothing is read.
     public var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.xl.points) {
-                content
+            LazyVStack(alignment: .leading, pinnedViews: [.sectionHeaders]) {
+                Section {
+                    VStack(alignment: .leading, spacing: Spacing.xl.points) {
+                        content
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(Spacing.lg.points)
+                } header: {
+                    progressHeader
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(Spacing.lg.points)
         }
         .background(ColorToken.background)
         .navigationTitle(Text(LoggingStrings.sessionTitle))
-        .task { await store.resume() }
+        .task {
+            // Both, in this order: the exercises belong to whichever workout the resume settled on,
+            // and reading them first would read them for the workout held before it.
+            await store.resume()
+            await store.loadExercises()
+        }
         .confirmationDialog(
             Text(LoggingStrings.sessionDiscardConfirmTitle),
             isPresented: $isConfirmingDiscard,
@@ -118,16 +145,107 @@ public struct ActiveSessionView: View {
     /// - Returns: The workout, in full.
     @ViewBuilder private func loaded(_ session: WorkoutSession, writeFailed: Bool) -> some View {
         SessionSummarySection(session: session)
-        EmptyStateView(
-            symbolName: "list.bullet.rectangle",
-            headline: Text(LoggingStrings.sessionEmptyHeadline),
-            message: Text(LoggingStrings.sessionEmptyMessage)
-        )
+        exercises
         SessionCommandsSection(
             hasFailed: writeFailed,
             finish: { Task { await finish() } },
             discard: { isConfirmingDiscard = true }
         )
+    }
+
+    /// The workout's exercises, or whichever of that list's own four states is current
+    /// (`FR-1.2.2`, `FR-1.2.13`).
+    ///
+    /// **Four more states on a screen that already had four**, and they are the exercises' rather
+    /// than the workout's: the workout can be on screen while its contents are not, which is exactly
+    /// what a failed second read produces. The two sets never overlap — this whole section renders
+    /// only inside the workout's own loaded state.
+    @ViewBuilder private var exercises: some View {
+        VStack(alignment: .leading, spacing: Spacing.md.points) {
+            // A heading over the cards rather than a `GroupedSection`, which is the one place this
+            // screen does not reuse that component: a grouped section puts its content ON a card,
+            // and `FR-1.2.13`'s exercises ARE cards — nested, the two surfaces are the same colour
+            // and the list reads as one undivided block. Measured in the simulator.
+            Text(LoggingStrings.sessionExercisesSection)
+                .font(Typography.sectionHeading.font)
+                .foregroundStyle(ColorToken.textPrimary)
+            switch SessionExercisesState.current(
+                hasLoaded: store.hasLoadedExercises,
+                exercises: store.exercises,
+                readFailure: store.exercisesReadFailure,
+                writeFailure: store.exercisesWriteFailure
+            ) {
+            case .loading:
+                LoadingStateView()
+            case .empty(let writeFailed):
+                EmptyStateView(
+                    symbolName: "list.bullet.rectangle",
+                    headline: Text(LoggingStrings.sessionEmptyHeadline),
+                    message: Text(LoggingStrings.sessionEmptyMessage),
+                    action: StateAction(Text(LoggingStrings.sessionAddExerciseAction)) {
+                        navigation?.navigate(to: .exerciseLibrary(.exercisePicker))
+                    }
+                )
+                writeFailure(writeFailed)
+            case .listed(let items, let writeFailed):
+                SessionExerciseList(exercises: items, expansion: $expansion) { source, destination in
+                    Task { await store.moveExercise(from: source, to: destination) }
+                }
+                writeFailure(writeFailed)
+                addExerciseLink
+            case .readFailed:
+                ErrorStateView(
+                    headline: Text(LoggingStrings.sessionExercisesErrorHeadline),
+                    message: Text(LoggingStrings.sessionExercisesErrorMessage),
+                    retry: { Task { await store.loadExercises() } }
+                )
+            }
+        }
+    }
+
+    /// A failed add or reorder, where there was one.
+    ///
+    /// Not a phase: the cards are unchanged, so it renders beneath them and the retry is the command
+    /// the user reached for.
+    @ViewBuilder private func writeFailure(_ hasFailed: Bool) -> some View {
+        if hasFailed {
+            ErrorStateView(message: Text(LoggingStrings.sessionExercisesWriteErrorMessage))
+        }
+    }
+
+    /// The way into `FR-1.2.2`'s chooser, under the cards.
+    ///
+    /// **Under them rather than in the toolbar**, because `FR-1.2.13` appends: the command sits at
+    /// the end of the list for the same reason the exercise lands there.
+    private var addExerciseLink: some View {
+        NavigationLink(value: Route.exerciseLibrary(.exercisePicker)) {
+            Text(LoggingStrings.sessionAddExerciseAction)
+                .font(Typography.actionLabel.font)
+                .foregroundStyle(ColorToken.textPrimary)
+                .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points)
+                .background(
+                    ColorToken.surfaceRaised,
+                    in: .rect(cornerRadius: CornerRadius.control.points)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// `FR-1.2.13`'s session progress, pinned above the scrolling cards.
+    ///
+    /// **A pinned section header, which is the requirement's actual claim.** "Visible without
+    /// scrolling horizontally" bans a pager; a header that scrolled away would satisfy the letter of
+    /// that and lose the fact at the exercise count where it matters — six or eight cards, which is
+    /// a normal session and more than one screen. Pinned inside the scroll view rather than inset
+    /// above it, because a `safeAreaInset` at the top displaces the navigation bar's own title:
+    /// measured in the simulator, where the screen lost its name to it.
+    ///
+    /// It is drawn only while a workout is being logged and has something in it: over an empty
+    /// workout it would say "0 of 0".
+    @ViewBuilder private var progressHeader: some View {
+        if store.isActive, !store.exercises.isEmpty {
+            SessionProgressHeader(progress: store.progress)
+        }
     }
 
     /// Finishes the workout and leaves the screen, unless the write failed.

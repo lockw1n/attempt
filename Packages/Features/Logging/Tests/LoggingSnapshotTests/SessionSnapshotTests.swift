@@ -2,6 +2,7 @@
 
     import DesignSystem
     import Foundation
+    import PowerliftingCore
     import RepositoryInterface
     import SnapshotTesting
     import SwiftUI
@@ -132,13 +133,53 @@
         }
 
         @Test func noExercisesYet() throws {
-            // No action, deliberately: adding an exercise is T-1.21's command, and a dead button is
-            // worse than a sentence saying what will fill the space.
+            // The action is FR-1.2.2's chooser, and it is part of the picture: a workout with
+            // nothing in it whose only way forward was a sentence is the dead end FR-1.13.2 is
+            // about.
             try assertSnapshots(named: "Session-empty") {
                 EmptyStateView(
                     symbolName: "list.bullet.rectangle",
                     headline: Text(LoggingStrings.sessionEmptyHeadline),
-                    message: Text(LoggingStrings.sessionEmptyMessage)
+                    message: Text(LoggingStrings.sessionEmptyMessage),
+                    action: StateAction(Text(LoggingStrings.sessionAddExerciseAction)) {}
+                )
+            }
+        }
+
+        // MARK: - The workout's exercises (FR-1.2.2, FR-1.2.13)
+
+        @Test func exerciseCards() throws {
+            // FR-1.2.13's vertical card list, at the three shapes a card has: open with nothing in
+            // it, open with sets, and a finished exercise folded up. The ends of the list are part
+            // of it too — the first card's "move up" and the last card's "move down" are drawn
+            // disabled rather than hidden.
+            try assertSnapshots(named: "Session-cards") {
+                fixedEnvironment {
+                    SessionExerciseList(
+                        exercises: Fixtures.exercises,
+                        expansion: .constant([:]),
+                        move: { _, _ in }
+                    )
+                }
+            }
+        }
+
+        @Test func sessionProgress() throws {
+            // Drawn rather than a `ProgressView`, so the bar's fill is something the gate can see —
+            // see the header's own note.
+            try assertSnapshots(named: "Session-progress") {
+                fixedEnvironment {
+                    SessionProgressHeader(progress: SessionProgress(Fixtures.exercises))
+                }
+            }
+        }
+
+        @Test func exercisesReadFailed() throws {
+            try assertSnapshots(named: "Session-exercises-error") {
+                ErrorStateView(
+                    headline: Text(LoggingStrings.sessionExercisesErrorHeadline),
+                    message: Text(LoggingStrings.sessionExercisesErrorMessage),
+                    retry: {}
                 )
             }
         }
@@ -210,6 +251,87 @@
             programRunID: nil,
             scheduledWorkoutID: nil
         )
+
+        /// Three exercises in one workout, at the three shapes a card has: unstarted, part-done and
+        /// finished. Every identifier and timestamp is fixed so a rendering never moves.
+        static let exercises: [SessionExercise] = [
+            sessionExercise(
+                index: 1,
+                name: "Back Squat",
+                sets: [(isWarmup: false, isCompleted: true), (isWarmup: false, isCompleted: true)]
+            ),
+            sessionExercise(
+                index: 2,
+                name: "Bench Press",
+                sets: [(isWarmup: true, isCompleted: true), (isWarmup: false, isCompleted: false)]
+            ),
+            sessionExercise(index: 3, name: "Romanian Deadlift", sets: []),
+        ]
+
+        /// One card's worth of workout.
+        private static func sessionExercise(
+            index: Int,
+            name: String,
+            sets: [(isWarmup: Bool, isCompleted: Bool)]
+        ) -> SessionExercise {
+            let entryID = identifier("B\(index)")
+            let exerciseID = identifier("C\(index)")
+            return SessionExercise(
+                entry: ExerciseEntry(
+                    id: entryID,
+                    createdAt: startedAt,
+                    updatedAt: startedAt,
+                    deletedAt: nil,
+                    sessionID: session.id,
+                    exerciseID: exerciseID,
+                    order: index - 1,
+                    notes: ""
+                ),
+                exercise: Exercise(
+                    id: exerciseID,
+                    createdAt: startedAt,
+                    updatedAt: startedAt,
+                    deletedAt: nil,
+                    name: name,
+                    movement: .squat,
+                    parentExerciseID: nil,
+                    equipment: .barbell,
+                    laterality: .bilateral,
+                    barType: .standard,
+                    implementCount: 1,
+                    isCustom: false,
+                    isArchived: false,
+                    notes: ""
+                ),
+                sets: sets.enumerated().map { position, flags in
+                    SetEntry(
+                        id: identifier("D\(index)\(position)"),
+                        createdAt: startedAt,
+                        updatedAt: startedAt,
+                        deletedAt: nil,
+                        entryID: entryID,
+                        order: position,
+                        weight: Weight(grams: 100_000),
+                        reps: 5,
+                        rpe: nil,
+                        rir: nil,
+                        isWarmup: flags.isWarmup,
+                        isCompleted: flags.isCompleted,
+                        targetWeight: nil,
+                        targetReps: nil,
+                        modifiers: [],
+                        notes: "",
+                        completedAt: nil
+                    )
+                }
+            )
+        }
+
+        /// A fixed identifier, so nothing in these renderings depends on a fresh `UUID`.
+        private static func identifier(_ suffix: String) -> UUID {
+            let padded = String(suffix.prefix(4)).padding(toLength: 4, withPad: "0", startingAt: 0)
+            return UUID(uuidString: "0F5A1E24-9B7D-4C31-8E62-00000000\(padded)") ?? UUID()
+        }
 
         /// A preference in a named position, over storage no other test can see.
         ///

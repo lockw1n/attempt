@@ -49,6 +49,12 @@ enum ExerciseLibraryStrings {
     /// ``ExerciseListState/showsArchived``.
     static let showArchivedFilter = resource("exerciselibrary.list.filter.archived")
 
+    /// The chooser's title, when the list is picking an exercise for a workout (`FR-1.2.2`).
+    static let pickerTitle = resource("exerciselibrary.picker.title")
+
+    /// Why an entirely archived catalogue has nothing for the chooser, and where to go about it.
+    static let archivedOnlyPickerMessage = resource("exerciselibrary.picker.archived-only.message")
+
     /// The badge on an archived row, once one is shown. The list's own, not the detail screen's:
     /// the key convention is by screen, and the two are free to diverge.
     static let archivedBadge = resource("exerciselibrary.list.row.archived")
@@ -150,6 +156,12 @@ enum ExerciseLibraryStrings {
 
     /// The heading over this exercise's personal records.
     static let recordsSection = resource("exerciselibrary.detail.section.records")
+
+    /// The history section when sets **have** been logged and the display for them is not built.
+    static let historyPending = resource("exerciselibrary.detail.history.pending")
+
+    /// The personal-records section, same case.
+    static let recordsPending = resource("exerciselibrary.detail.records.pending")
 
     /// Why there are no records yet, and what would produce some.
     static let recordsNone = resource("exerciselibrary.detail.records.none")
@@ -326,7 +338,7 @@ enum ExerciseLibraryStrings {
         [
             title, searchPrompt, movementFilter, equipmentFilter, originFilter, filterAll,
             recentlyUsedFilter, recentlyUsedUnavailable, customBadge,
-            showArchivedFilter, archivedBadge,
+            showArchivedFilter, archivedBadge, pickerTitle, archivedOnlyPickerMessage,
             emptyHeadline, emptyMessage,
             archivedOnlyHeadline, archivedOnlyMessage,
             noMatchesHeadline, noMatchesMessage, noMatchesAction,
@@ -337,7 +349,8 @@ enum ExerciseLibraryStrings {
             archiveSection, archiveExplanation, archiveAction,
             unarchiveExplanation, unarchiveAction, archiveError,
             variationsSection, variationOf,
-            historySection, historyNone, recordsSection, recordsNone, e1rmSection, e1rmNone,
+            historySection, historyNone, historyPending, recordsSection, recordsNone, recordsPending,
+            e1rmSection, e1rmNone,
             detailErrorHeadline, detailErrorMessage, detailMissingHeadline, detailMissingMessage,
             createAction, editAction, formCreateTitle, formEditTitle, formSection,
             formName, formNamePrompt, formNameRequired, formMovement, formEquipment, formBar,
