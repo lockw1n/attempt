@@ -14,9 +14,10 @@
     //
     // WHAT IS RENDERED AND WHAT IS NOT. The pieces, not `ExerciseListView` itself: the screen owns a
     // `.task` that reads a store and a `.searchable` field the enclosing `NavigationStack` places,
-    // and `ImageRenderer` has neither. Between them these five references cover every pixel the
-    // screen has of its own — the grouped catalogue, the filter chips in all three of their states,
-    // and the three placeholders it can show instead.
+    // and `ImageRenderer` has neither. Between them these eight references cover every pixel the
+    // screen has of its own — the grouped catalogue with and without archived rows, the filter chips
+    // in all three of their states, the show-archived control in both of its, and the four
+    // placeholders it can show instead.
     //
     // A ROW'S TEXT IS DIMMER HERE THAN IT IS IN THE APP, and that is the rendering rather than the
     // screen: a `NavigationLink` with no `NavigationStack` above it draws as though it led nowhere.
@@ -54,6 +55,24 @@
                         label: Text(ExerciseLibraryStrings.recentlyUsedFilter),
                         isSelected: false,
                         isEnabled: false
+                    ) {}
+                }
+            }
+        }
+
+        @Test func archivedChip() throws {
+            // Its own reference rather than a line in `filterChips`: this control sits on a row of
+            // its own, outside the horizontal scrollers the three facets use, and that placement is
+            // the part a picture can check (`FR-1.1.5`, `TR-1.12`).
+            try assertSnapshots(named: "ExerciseList-archived-chip") {
+                VStack(alignment: .leading, spacing: Spacing.sm.points) {
+                    FilterChip(
+                        label: Text(ExerciseLibraryStrings.showArchivedFilter),
+                        isSelected: false
+                    ) {}
+                    FilterChip(
+                        label: Text(ExerciseLibraryStrings.showArchivedFilter),
+                        isSelected: true
                     ) {}
                 }
             }

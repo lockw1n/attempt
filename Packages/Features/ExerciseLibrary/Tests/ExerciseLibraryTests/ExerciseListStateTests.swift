@@ -401,6 +401,15 @@ actor ScriptedExerciseRepository: ExerciseRepository {
     /// is exactly what the create form has to get right.
     private(set) var attemptedRecords: [Exercise] = []
 
+    /// Writes that have reached the store and are waiting to be let through. See ``holdWrites()``.
+    private var heldWrites: [CheckedContinuation<Void, Never>] = []
+
+    private var holdsWrites = false
+
+    /// How many writes are waiting in the hold — what a test spins on to know that a command it
+    /// issued has actually reached the store, rather than hoping it has.
+    var writesWaiting: Int { heldWrites.count }
+
     init(
         exercises: [Exercise],
         readError: RepositoryError? = nil,
@@ -422,6 +431,22 @@ actor ScriptedExerciseRepository: ExerciseRepository {
     /// case from outside.
     func failReads(_ error: RepositoryError) { readError = error }
 
+    /// Holds every write *at the store* until ``releaseWrites()``.
+    ///
+    /// **This is what makes "a second command issued while the first is in flight" a fact rather
+    /// than a race.** Two commands started as sibling child tasks run in whichever order the
+    /// scheduler picks, so a test written that way asserts the interleaving it wanted only half the
+    /// time — measured, and it is why this exists.
+    func holdWrites() { holdsWrites = true }
+
+    /// Lets every held write through and stops holding.
+    func releaseWrites() {
+        holdsWrites = false
+        let waiting = heldWrites
+        heldWrites = []
+        for continuation in waiting { continuation.resume() }
+    }
+
     func exercises(includingDeleted: Bool) async throws -> [Exercise] {
         reads += 1
         readsIncludingDeleted.append(includingDeleted)
@@ -439,6 +464,9 @@ actor ScriptedExerciseRepository: ExerciseRepository {
     /// Upserts on `id`, the way the real one does — so a screen that re-reads after a write sees
     /// what it wrote rather than what it started with.
     func save(_ exercise: Exercise) async throws {
+        if holdsWrites {
+            await withCheckedContinuation { heldWrites.append($0) }
+        }
         attemptedRecords.append(exercise)
         if let writeError { throw writeError }
         savedRecords.append(exercise)

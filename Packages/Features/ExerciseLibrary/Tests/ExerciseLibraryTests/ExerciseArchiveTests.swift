@@ -18,32 +18,35 @@ struct ExerciseArchiveTests {
 
     @Test("Archiving stores the row with only isArchived changed")
     func archivingWritesOneColumn() async {
-        let repository = ScriptedExerciseRepository(exercises: [DetailFixtures.backSquat])
+        let repository = ScriptedExerciseRepository(exercises: [DetailFixtures.liveDistinct])
         let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+            exerciseID: DetailFixtures.liveDistinct.id, repository: repository)
         await state.load()
 
         await state.setArchived(true)
 
         let written = await repository.savedRecords
         #expect(written.count == 1)
-        // Every other field against the record as it was read, so a write that quietly dropped one
-        // fails here rather than showing up as a lost note or a moved exercise three tasks later.
-        #expect(written.first == DetailFixtures.archived(DetailFixtures.backSquat, true))
+        // Against the hand-written fixture, and over a row no field of which sits at a default: a
+        // write that supplied its own value for one fails here rather than showing up as an
+        // orphaned variation or a custom exercise turned built-in three tasks later.
+        #expect(written.first == DetailFixtures.everyFieldDistinct)
         #expect(state.detail?.exercise.isArchived == true)
     }
 
     @Test("Un-archiving is the same write back (FR-1.1.5's reverse)")
     func unarchivingRestoresTheRow() async {
-        let archived = DetailFixtures.archived(DetailFixtures.backSquat, true)
-        let repository = ScriptedExerciseRepository(exercises: [archived])
-        let state = ExerciseDetailState(exerciseID: archived.id, repository: repository)
+        let repository = ScriptedExerciseRepository(exercises: [DetailFixtures.everyFieldDistinct])
+        let state = ExerciseDetailState(
+            exerciseID: DetailFixtures.everyFieldDistinct.id, repository: repository)
         await state.load()
         #expect(state.detail?.exercise.isArchived == true)
 
         await state.setArchived(false)
 
-        #expect(await repository.savedRecords.map(\.isArchived) == [false])
+        // The same whole-record claim in the other direction, so neither write can be the one that
+        // quietly supplies a default.
+        #expect(await repository.savedRecords == [DetailFixtures.liveDistinct])
         #expect(state.detail?.exercise.isArchived == false)
     }
 
@@ -57,7 +60,9 @@ struct ExerciseArchiveTests {
         await state.setArchived(true)
 
         // `isCustom` decides whether the launch merge re-supplies the seed-owned columns; flipping
-        // it here would take a built-in out of that merge for good.
+        // it here would take a built-in out of that merge for good. The other direction — a custom
+        // exercise that must stay custom — is one of the columns the two whole-record cases above
+        // pin, `everyFieldDistinct` being the user's own.
         #expect(await repository.savedRecords.map(\.isCustom) == [false])
     }
 
@@ -88,6 +93,46 @@ struct ExerciseArchiveTests {
         #expect(await repository.savedRecords.map(\.notes) == [DetailFixtures.backSquat.notes])
         #expect(state.notesDraft == "Typed and not saved.")
         #expect(state.hasUnsavedNotes)
+    }
+
+    /// **Not `ExerciseDetailStateTests.overlappingSavesAreSerialized`'s shape**, which starts two
+    /// commands as sibling `async let`s. That works when both are the same command, because either
+    /// order proves the same thing; here the two differ, and the scheduler picking the archive first
+    /// makes the test assert nothing at all. Written that way it failed 4 runs in 12 — so the save
+    /// is held *at the store* instead, and the archive is issued against a write that is provably
+    /// still in flight.
+    @Test("An archive that overlaps a notes save cannot undo it")
+    func anArchiveOverlappingASaveDoesNotUndoIt() async {
+        let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
+        let state = ExerciseDetailState(
+            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        await state.load()
+        state.notesDraft = "Knees out, chest up."
+
+        await repository.holdWrites()
+        let saving = Task { await state.saveNotes() }
+        while await repository.writesWaiting == 0 { await Task.yield() }
+
+        // The flag is raised in the same synchronous step that calls the command, so a loop that
+        // sees it knows the archive has read the write it must queue behind.
+        let issued = IssuedFlag()
+        let archiving = Task { @MainActor in
+            issued.raise()
+            await state.setArchived(true)
+        }
+        while !issued.isRaised { await Task.yield() }
+        await repository.releaseWrites()
+        _ = await (saving.value, archiving.value)
+
+        // Unchained, the archive rebuilds the record from the one the screen was showing while the
+        // save had not yet landed — storing the *old* notes over the new ones, which is a user's
+        // edit lost to a command that had nothing to do with it.
+        #expect(
+            await repository.savedRecords.map(\.notes)
+                == Array(repeating: "Knees out, chest up.", count: 2)
+        )
+        #expect(state.detail?.exercise.notes == "Knees out, chest up.")
+        #expect(state.detail?.exercise.isArchived == true)
     }
 
     // MARK: - Failure
@@ -244,7 +289,24 @@ struct ExerciseArchiveTests {
     }
 }
 
+/// A one-way flag a test task raises without suspending, so the task that spins on it learns the
+/// step has been *entered* rather than merely scheduled.
+@MainActor
+final class IssuedFlag {
+    private(set) var isRaised = false
+
+    func raise() { isRaised = true }
+}
+
 extension DetailFixtures {
+    /// ``DetailFixtures/everyFieldDistinct`` before it was archived — every field away from the
+    /// value a rebuilt record would default to, and `isArchived` false.
+    ///
+    /// **The pair is what lets the two write assertions fail.** Over a row whose parent, sides, bar,
+    /// implement count and origin all sit at a default, a write that supplied its own value for one
+    /// would store the right answer by accident and no assertion could tell.
+    static let liveDistinct = archived(everyFieldDistinct, false)
+
     /// `exercise` with `isArchived` set and nothing else touched — the record the write is expected
     /// to produce, and the fixture the archived cases start from.
     static func archived(_ exercise: Exercise, _ isArchived: Bool) -> Exercise {

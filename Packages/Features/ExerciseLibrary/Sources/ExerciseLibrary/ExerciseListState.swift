@@ -160,7 +160,6 @@ public final class ExerciseListState {
 
     /// Everything the repository returned, in the order every browsable surface in this module
     /// shares (``ExerciseOrder``).
-    ///
     private static func ordered(_ exercises: [Exercise]) -> [Exercise] {
         exercises.sorted(by: ExerciseOrder.precedes)
     }
