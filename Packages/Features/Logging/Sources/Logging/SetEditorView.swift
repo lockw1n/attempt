@@ -39,7 +39,11 @@ struct SetEditorSheet: View {
     /// What the user has entered so far.
     @State private var draft: SetDraft
 
-    /// Whether anything has been typed or stepped, so a form opened blank does not open complaining.
+    /// Whether anything has been entered, so a form opened blank does not open complaining.
+    ///
+    /// **Seeded from ``SetDraft/isBlank`` and not from whether the draft resolves.** A duplicate of
+    /// a set whose stored rating is out of range arrives here invalid through no keystroke of the
+    /// user's; seeded the other way it opened on a disabled command with nothing saying why.
     @State private var hasInput: Bool
 
     /// Logs the set. The caller is what knows which exercise it belongs to.
@@ -56,7 +60,7 @@ struct SetEditorSheet: View {
     ///   - cancel: Closes the form.
     init(draft: SetDraft, log: @escaping (SetDraft) -> Void, cancel: @escaping () -> Void) {
         _draft = State(initialValue: draft)
-        _hasInput = State(initialValue: draft.isLoggable)
+        _hasInput = State(initialValue: !draft.isBlank)
         self.log = log
         self.cancel = cancel
     }
@@ -68,35 +72,52 @@ struct SetEditorSheet: View {
     /// cost a scroll first, which is the one thing the three-tap count cannot afford. Pinned, the
     /// command is in the same place at either detent and at every Dynamic Type size, which is also
     /// what `NFR-1.4` asks for: the control the thumb reaches for does not move.
-    ///
-    /// The two fields that decide whether the set logs lead, and the two optional ones follow: at
-    /// the medium detent the load and the repetitions are what is on screen without scrolling.
     var body: some View {
         VStack(spacing: Spacing.sm.points) {
             ScrollView {
-                VStack(alignment: .leading, spacing: Spacing.lg.points) {
-                    Text(LoggingStrings.setEditorTitle)
-                        .font(Typography.sectionHeading.font)
-                        .foregroundStyle(ColorToken.textPrimary)
-                    weightField
-                    repsField
-                    rpeField
-                    notesField
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(Spacing.lg.points)
+                SetEditorFields(draft: $draft, hasInput: $hasInput)
+                    .padding(Spacing.lg.points)
             }
-            VStack(alignment: .leading, spacing: Spacing.md.points) {
-                // A rule above the pinned commands, because the fields scroll behind them: without
-                // it the last field on screen reads as clipped rather than as scrolled.
-                Divider().overlay(ColorToken.separator)
-                commands
-                    .padding(.horizontal, Spacing.lg.points)
-            }
-            .padding(.bottom, Spacing.lg.points)
-            .background(ColorToken.background)
+            SetEditorCommands(
+                isLoggable: draft.isLoggable,
+                showsRefusal: !draft.isLoggable && hasInput,
+                log: { log(draft) },
+                cancel: cancel
+            )
         }
         .background(ColorToken.background)
+    }
+}
+
+/// The set editor's four fields (`FR-1.2.3`).
+///
+/// **A type of its own so a reference can be taken of it**, which is `TR-1.12` rather than
+/// decomposition for its own sake: `ImageRenderer` lays a `ScrollView`'s content out and draws none
+/// of it, so a snapshot of the sheet is a picture of the divider and the two commands with the whole
+/// form missing. Rendered directly, the fields are a picture again — and `NFR-1.10`'s claim that
+/// they still fit at `accessibility3` is something the gate can actually check.
+///
+/// The two fields that decide whether the set logs lead, and the two optional ones follow: at the
+/// medium detent the load and the repetitions are what is on screen without scrolling.
+struct SetEditorFields: View {
+    /// What the user has entered so far.
+    @Binding var draft: SetDraft
+
+    /// Set by anything the user does here, so the commands below know the form has been touched.
+    @Binding var hasInput: Bool
+
+    /// Title, then the four rows.
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.lg.points) {
+            Text(LoggingStrings.setEditorTitle)
+                .font(Typography.sectionHeading.font)
+                .foregroundStyle(ColorToken.textPrimary)
+            weightField
+            repsField
+            rpeField
+            notesField
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// The load, its unit, and the ± pair that steps it by `G-3.3`'s display increment.
@@ -156,33 +177,6 @@ struct SetEditorSheet: View {
         }
     }
 
-    /// **Log set**, then the way out.
-    ///
-    /// The confirming command is disabled rather than absent while the draft does not resolve: a
-    /// button that vanished would move **Cancel** under the thumb that was reaching for it.
-    private var commands: some View {
-        VStack(alignment: .leading, spacing: Spacing.md.points) {
-            if !draft.isLoggable, hasInput {
-                FieldRefusal(message: Text(LoggingStrings.setInvalidMessage))
-            }
-            Button {
-                log(draft)
-            } label: {
-                Text(LoggingStrings.setConfirmAction)
-            }
-            .buttonStyle(.primaryAction(.fill))
-            .disabled(!draft.isLoggable)
-
-            Button(action: cancel) {
-                Text(LoggingStrings.setCancelAction)
-                    .font(Typography.actionLabel.font)
-                    .foregroundStyle(ColorToken.textSecondary)
-                    .frame(maxWidth: .infinity, minHeight: TouchTarget.logging.points)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
     /// One numeric field, at the logging touch target rather than the standard one (`G-4.3`).
     private func numberField(text: Binding<String>, label: LocalizedStringResource) -> some View {
         TextField(text: text) { Text(label) }
@@ -222,6 +216,58 @@ struct SetEditorSheet: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(label))
+    }
+}
+
+/// **Log set**, the way out, and the refusal that explains a disabled command.
+///
+/// **Pinned outside the scroll view**, which is what keeps `NFR-1.3`'s third tap from costing a
+/// scroll first, and its own type for ``SetEditorFields``' reason.
+///
+/// The confirming command is disabled rather than absent while the draft does not resolve: a button
+/// that vanished would move **Cancel** under the thumb that was reaching for it.
+struct SetEditorCommands: View {
+    /// Whether the draft resolves — whether **Log set** goes.
+    let isLoggable: Bool
+
+    /// Whether to say why it does not. Separate from ``isLoggable`` because a form nobody has
+    /// filled in yet is not one to complain about.
+    let showsRefusal: Bool
+
+    /// Logs the set.
+    let log: () -> Void
+
+    /// Leaves without logging anything.
+    let cancel: () -> Void
+
+    /// The rule, the refusal where there is one, then the two commands.
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.md.points) {
+            // A rule above the pinned commands, because the fields scroll behind them: without it
+            // the last field on screen reads as clipped rather than as scrolled.
+            Divider().overlay(ColorToken.separator)
+            VStack(alignment: .leading, spacing: Spacing.md.points) {
+                if showsRefusal {
+                    FieldRefusal(message: Text(LoggingStrings.setInvalidMessage))
+                }
+                Button(action: log) {
+                    Text(LoggingStrings.setConfirmAction)
+                }
+                .buttonStyle(.primaryAction(.fill))
+                .disabled(!isLoggable)
+
+                Button(action: cancel) {
+                    Text(LoggingStrings.setCancelAction)
+                        .font(Typography.actionLabel.font)
+                        .foregroundStyle(ColorToken.textSecondary)
+                        .frame(maxWidth: .infinity, minHeight: TouchTarget.logging.points)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, Spacing.lg.points)
+        }
+        .padding(.bottom, Spacing.lg.points)
+        .background(ColorToken.background)
     }
 }
 

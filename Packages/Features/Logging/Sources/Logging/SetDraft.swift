@@ -96,29 +96,45 @@ struct SetDraft: Equatable, Sendable {
 // MARK: - What the draft resolves to
 
 extension SetDraft {
-    /// The load, or `nil` when the field is empty or holds something that is not a number.
+    /// The load, or `nil` when the field is empty, holds something that is not a number, or is
+    /// negative.
     ///
     /// Rounded to the nearest gram, which is the only rounding this crossing performs: `G-3.3`'s
     /// display step governs the ± controls, not what a typed number is allowed to be. A user who
     /// types 102.3 kg gets 102.3 kg.
+    ///
+    /// **Refused below zero, which `Weight` itself deliberately does not do.** That type is signed
+    /// because it doubles as a delta — an increment, a deload — and says outright that a load being
+    /// non-negative is the caller's invariant. This crossing is that caller, and it is the only one
+    /// standing between a pasted minus sign and a negative load in `FR-1.6`'s calculator. The ±
+    /// controls already floor at zero; the field is what was left.
     var weight: Weight? {
-        guard let entered = Self.decimal(weightText, locale: locale) else { return nil }
+        guard let entered = Self.decimal(weightText, locale: locale), entered >= 0 else {
+            return nil
+        }
         switch unit {
         case .kilograms: return Weight(kilograms: entered, rounding: .nearest)
         case .pounds: return Weight(pounds: entered, rounding: .nearest)
         }
     }
 
-    /// The repetitions, or `nil` when the field is empty, unparseable or negative.
+    /// The repetitions, or `nil` when the field is empty, unparseable, fractional or negative.
     ///
     /// **Zero is a value here, not an absence** — `FR-1.2.5`'s failed set records zero reps, so a
     /// guard that demanded one would refuse exactly the set the requirement names.
+    ///
+    /// **The ceiling is `Int(exactly:)` rather than a comparison, and the difference is a crash.**
+    /// `Double(Int.max)` is not `Int.max`: it rounds up to 2⁶³, so a guard reading
+    /// `entered <= Double(Int.max)` admits the one value whose conversion then traps. Nineteen
+    /// digits is a reachable thing to type into a number pad, and this property is recomputed on
+    /// every keystroke.
     var reps: Int? {
         guard let entered = Self.decimal(repsText, locale: locale) else { return nil }
-        guard entered >= 0, entered <= Double(Int.max), entered == entered.rounded(.down) else {
+        guard entered >= 0, entered == entered.rounded(.down), let count = Int(exactly: entered)
+        else {
             return nil
         }
-        return Int(entered)
+        return count
     }
 
     /// The RPE, whether it was skipped, or whether what is there is not one.
@@ -135,6 +151,20 @@ extension SetDraft {
     /// Whether this draft can be logged — every required field parses, and no optional one is wrong.
     var isLoggable: Bool {
         weight != nil && reps != nil && rpe != .invalid
+    }
+
+    /// Whether nothing has been entered — all four fields empty.
+    ///
+    /// **Not the negation of ``isLoggable``, and reading it as one hides a refusal.** A form nobody
+    /// has filled in and a form filled in wrongly are opposite situations: the first has nothing to
+    /// complain about, the second has to say why the confirming command will not go. A draft opened
+    /// as `FR-1.2.6`'s duplicate is never blank — so a repeat of a set whose stored rating is
+    /// outside `1...10`, which a stored row is deliberately allowed to be, explains itself instead
+    /// of opening on a dead button.
+    var isBlank: Bool {
+        [weightText, repsText, rpeText, notes].allSatisfy {
+            $0.trimmingCharacters(in: .whitespaces).isEmpty
+        }
     }
 
     /// The RPE to store, once ``isLoggable`` is known to hold.

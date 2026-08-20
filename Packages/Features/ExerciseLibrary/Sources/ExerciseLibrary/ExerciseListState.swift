@@ -207,6 +207,10 @@ public final class ExerciseListState {
     /// be a screen taken down by its least important query — so the diagnostic is that the chip goes
     /// back to being unavailable, and a filter left in force is turned off with it rather than
     /// silently narrowing to a set nobody can vouch for.
+    ///
+    /// **A window that comes back empty ends the same way, and for a sharper reason.** There the
+    /// filter narrows to nothing at all, behind a chip that is now disabled — so the list is empty
+    /// and the control that would undo it cannot be tapped.
     private func loadRecentlyUsed() async {
         let now = Date.now
         guard
@@ -225,8 +229,10 @@ public final class ExerciseListState {
             recentExerciseIDs = used
         } catch {
             recentExerciseIDs = nil
-            showsRecentOnly = false
         }
+        // One clause for both endings, because they are one fact: a filter cannot stay in force
+        // while the chip that would clear it is disabled.
+        if !isRecencyFilterAvailable { showsRecentOnly = false }
     }
 
     /// Everything the repository returned, in the order every browsable surface in this module

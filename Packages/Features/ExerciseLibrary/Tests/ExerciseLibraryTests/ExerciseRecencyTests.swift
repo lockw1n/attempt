@@ -37,12 +37,16 @@ struct ExerciseRecencyTests {
         #expect(state.isRecencyFilterAvailable == false)
     }
 
-    @Test("The window's far edge is inside it, and a day past it is not")
+    @Test("Twenty-nine days back is recent and thirty-one is not — the window is thirty days")
     func windowEdges() async throws {
+        // The fixtures are literals rather than `recencyWindowInDays ± 1`, which would be
+        // self-referential: expressed in terms of the constant they move with it, and the window
+        // could be set to a week without a single test noticing. The number is also copy — the
+        // chip's hint takes it as an argument — so what it is has to be pinned from both sides.
         let inside = try await Gym.seeded()
-        try await inside.train(inside.squat, daysAgo: ExerciseListState.recencyWindowInDays - 1)
+        try await inside.train(inside.squat, daysAgo: 29)
         let outside = try await Gym.seeded()
-        try await outside.train(outside.squat, daysAgo: ExerciseListState.recencyWindowInDays + 1)
+        try await outside.train(outside.squat, daysAgo: 31)
 
         let recent = inside.listState()
         await recent.load()
@@ -78,6 +82,28 @@ struct ExerciseRecencyTests {
 
         state.clearFilters()
 
+        #expect(state.showsRecentOnly == false)
+        #expect(state.names.count == 3)
+    }
+
+    @Test("A window that comes back empty turns the filter off rather than emptying the list")
+    func emptyWindowRetiresTheFilter() async throws {
+        let gym = try await Gym.seeded()
+        try await gym.train(gym.squat, daysAgo: 1)
+        let state = gym.listState()
+        await state.load()
+        state.showsRecentOnly = true
+        #expect(state.names == ["Back Squat"])
+
+        // The one recent workout goes away — discarded, or simply aged past the window while the
+        // screen was open.
+        try await gym.forgetEverythingLogged()
+        await state.refresh()
+
+        #expect(state.recentExerciseIDs == [])
+        #expect(state.isRecencyFilterAvailable == false)
+        // The chip is disabled now, so a filter left in force would narrow the list to no rows at
+        // all behind a control nothing on screen can tap.
         #expect(state.showsRecentOnly == false)
         #expect(state.names.count == 3)
     }
@@ -177,6 +203,15 @@ private struct Gym {
                 notes: ""
             )
         )
+    }
+
+    /// Deletes every session logged here, the way discarding a workout does (`FR-1.2.12`).
+    func forgetEverythingLogged() async throws {
+        let logged = try await repositories.workouts.sessions(
+            in: Date.distantPast...Date.distantFuture, includingDeleted: false)
+        for session in logged {
+            try await repositories.workouts.deleteSession(id: session.id)
+        }
     }
 
     /// A list state over this gym's two repositories.

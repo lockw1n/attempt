@@ -173,34 +173,17 @@
             // confirming command disabled. No complaint yet — a form that opened saying what is
             // wrong with it is a form scolding the user for not having typed.
             try assertSnapshots(named: "Session-set-editor-blank") {
-                fixedEnvironment {
-                    SetEditorSheet(
-                        draft: SetDraft(unit: .kilograms, locale: Fixtures.locale),
-                        log: { _ in },
-                        cancel: {}
-                    )
-                }
+                fixedEnvironment { editor(over: SetDraft(unit: .kilograms, locale: Fixtures.locale)) }
             }
         }
 
         @Test func setEditorRepeating() throws {
-            // FR-1.2.6, and the picture that matters most: the form as **Repeat set** opens it,
-            // filled in from the last set with the confirming command live. What is being checked
-            // is that the ± controls and the fields all still fit at NFR-1.10's ceiling — this is
-            // the screen NFR-1.4 and NFR-1.3 both name.
+            // FR-1.2.6: the form as **Repeat set** opens it, with the confirming command live
+            // rather than dimmed. What is being checked is that the labels, the hints and the four
+            // ± controls all still fit at NFR-1.10's ceiling — this is the screen NFR-1.4 and
+            // NFR-1.3 both name.
             try assertSnapshots(named: "Session-set-editor-repeat") {
-                fixedEnvironment {
-                    SetEditorSheet(
-                        draft: SetDraft(
-                            repeating: SetEntryValues(
-                                weight: Weight(grams: 102_500), reps: 5, rpe: 8),
-                            unit: .kilograms,
-                            locale: Fixtures.locale
-                        ),
-                        log: { _ in },
-                        cancel: {}
-                    )
-                }
+                fixedEnvironment { editor(over: Fixtures.repeatedDraft) }
             }
         }
 
@@ -208,11 +191,10 @@
             // A draft that does not resolve: the RPE is outside 1...10, which is the one range this
             // form checks and the record deliberately does not. The message renders beside the
             // command rather than under the field, so it is in the same place whichever field is
-            // wrong.
+            // wrong. Its own reference rather than a variant of the blank one — and that is worth
+            // saying, because the two were byte-identical before the form became renderable.
             try assertSnapshots(named: "Session-set-editor-invalid") {
-                fixedEnvironment {
-                    SetEditorSheet(draft: Fixtures.refusingDraft, log: { _ in }, cancel: {})
-                }
+                fixedEnvironment { editor(over: Fixtures.refusingDraft) }
             }
         }
 
@@ -279,6 +261,35 @@
         ///
         /// The locale is the environment's, which is what `AppFormat` reads through the view; the
         /// time zone is the process's, pinned once above.
+        /// The set editor's two halves, stacked the way the sheet stacks them.
+        ///
+        /// **The `ScrollView` between them is left out, and that is the gate rather than the
+        /// screen.** `ImageRenderer` lays a scroll view's content out and draws none of it, so a
+        /// reference taken over `SetEditorSheet` itself is a picture of the divider and the two
+        /// commands with the whole form missing — which is what the first three of these were, two
+        /// of them byte-identical to each other in all four configurations. Rendering the fields
+        /// directly is what makes NFR-1.10's claim checkable.
+        ///
+        /// What these still cannot show is a field's *contents*: a `TextField` is UIKit-backed, so
+        /// it rasterises as the renderer's placeholder the same way `DatePicker` and `Toggle` do
+        /// above. What is compared is the labels, the hints, the ± controls, the refusal and which
+        /// state the confirming command is in.
+        ///
+        /// - Parameter draft: What the form is holding.
+        /// - Returns: The editor, laid out for a reference.
+        private func editor(over draft: SetDraft) -> some View {
+            VStack(spacing: Spacing.sm.points) {
+                SetEditorFields(draft: .constant(draft), hasInput: .constant(true))
+                    .padding(Spacing.lg.points)
+                SetEditorCommands(
+                    isLoggable: draft.isLoggable,
+                    showsRefusal: !draft.isLoggable && !draft.isBlank,
+                    log: {},
+                    cancel: {}
+                )
+            }
+        }
+
         private func fixedEnvironment(@ViewBuilder _ subject: () -> some View) -> some View {
             _ = pinnedTimeZone
             return subject()
@@ -291,6 +302,15 @@
     enum Fixtures {
         /// The locale every reference here renders and parses numbers in.
         static let locale = Locale(identifier: "en_US_POSIX")
+
+        /// A draft as `FR-1.2.6`'s duplicate opens it, carrying the last set's three fields.
+        static var repeatedDraft: SetDraft {
+            SetDraft(
+                repeating: SetEntryValues(weight: Weight(grams: 102_500), reps: 5, rpe: 8),
+                unit: .kilograms,
+                locale: locale
+            )
+        }
 
         /// A draft the form refuses: the load and the reps resolve, the rating does not.
         static var refusingDraft: SetDraft {

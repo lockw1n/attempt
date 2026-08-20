@@ -14,10 +14,10 @@
 "exerciselibrary.list.filter.all" = "All";
 
 "exerciselibrary.list.filter.recently-used" = "Recently used";
-/* Shown beside the disabled recency filter. It says what would enable it, not what is missing from
-   the app — FR-1.1.2's recency is a read over logged sets, and there are none yet. */
-/* The chip is shown disabled rather than hidden, so the reason has to be beside it: a disabled
-   control with no stated cause reads as a bug. */
+/* Shown beside the recency filter while it is disabled, which is until something has been trained
+   inside the window. It says what would enable it, not what is missing from the app. The chip is
+   shown disabled rather than hidden, so the reason has to be beside it: a disabled control with no
+   stated cause reads as a bug. */
 "exerciselibrary.list.filter.recently-used.hint" = "Available once you have logged a workout.";
 /* What the filter narrows to. The window is an argument rather than a number written into the
    sentence, so the copy and the filter cannot disagree about how far back "recent" reaches. */

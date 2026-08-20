@@ -67,6 +67,18 @@ struct SetDraftTests {
         #expect(blank.isLoggable == false)
     }
 
+    @Test("A negative load is refused — Weight allows one, a load is not a delta")
+    func negativeWeightIsRefused() {
+        var pasted = SetDraft(unit: .kilograms, locale: .posix)
+        pasted.weightText = "-100"
+        pasted.repsText = "5"
+
+        // `Weight` is signed on purpose and says so: it doubles as an increment or a deload, and
+        // non-negativity is the caller's invariant. This crossing is the caller.
+        #expect(pasted.weight == nil)
+        #expect(pasted.isLoggable == false)
+    }
+
     // MARK: - The repetitions (FR-1.2.5)
 
     @Test("Zero reps is a value, not an absence — it is what a failed set records")
@@ -91,6 +103,23 @@ struct SetDraftTests {
         #expect(fractional.reps == nil)
         #expect(negative.reps == nil)
         #expect(blank.reps == nil)
+    }
+
+    @Test("A repetition count too large for an Int is refused rather than trapping the process")
+    func repsCeiling() {
+        var atTheBoundary = SetDraft(unit: .kilograms, locale: .posix)
+        // Int.max as a Double rounds up to 2^63, so a guard reading `<= Double(Int.max)` lets this
+        // through and `Int(_:)` then traps. Nineteen digits is a reachable thing to type.
+        atTheBoundary.repsText = "9223372036854775807"
+        var beyond = SetDraft(unit: .kilograms, locale: .posix)
+        beyond.repsText = "99999999999999999999"
+        var ordinary = SetDraft(unit: .kilograms, locale: .posix)
+        ordinary.repsText = "100"
+
+        #expect(atTheBoundary.reps == nil)
+        #expect(beyond.reps == nil)
+        // Anchored to a literal, so the refusals above are not satisfied by everything refusing.
+        #expect(ordinary.reps == 100)
     }
 
     // MARK: - The rating (FR-1.2.3)
@@ -131,6 +160,33 @@ struct SetDraftTests {
 
         #expect(low.rpe == .value(1))
         #expect(draft.rpe == .value(10))
+    }
+
+    // MARK: - Blank, which is not the same as wrong (FR-1.2.3)
+
+    @Test("A form nobody has filled in is not a form filled in wrongly")
+    func blankIsNotInvalid() {
+        let blank = SetDraft(unit: .kilograms, locale: .posix)
+        var spaces = blank
+        spaces.weightText = "   "
+        var typed = blank
+        typed.rpeText = "18"
+        // A stored row is allowed to carry a rating this form would not accept — that is deliberate,
+        // so a row from a newer version survives being read. Repeating one arrives invalid through
+        // no keystroke of the user's, and has to explain itself rather than open on a dead button.
+        let repeated = SetDraft(
+            repeating: SetEntryValues(weight: Weight(grams: 100_000), reps: 5, rpe: 47),
+            unit: .kilograms,
+            locale: .posix
+        )
+
+        #expect(blank.isBlank == true)
+        #expect(spaces.isBlank == true)
+        #expect(typed.isBlank == false)
+        #expect(repeated.isBlank == false)
+        #expect(repeated.isLoggable == false)
+        // Both are unloggable; only one of them has nothing to say about it.
+        #expect(blank.isLoggable == false)
     }
 
     // MARK: - The ± controls (NFR-1.3)

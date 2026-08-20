@@ -69,6 +69,30 @@ struct SessionSetsTests {
         #expect(sets.map(\.order) == [0, 1, 2])
     }
 
+    @Test("A gap a deleted set left is not filled — the order is read, not counted")
+    func orderIsReadRatherThanCounted() async throws {
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: workout.squat.id)
+        let entry = try #require(workout.store.exercises.first)
+        for reps in [5, 4, 3] {
+            await workout.store.addSet(
+                toEntryID: entry.id, weight: Weight(grams: 100_000), reps: reps, rpe: nil, notes: "")
+        }
+        let middle = try #require(workout.store.exercises.first?.sets.dropFirst().first)
+
+        try await workout.repositories.workouts.deleteSet(id: middle.id)
+        await workout.store.loadExercises()
+        await workout.store.addSet(
+            toEntryID: entry.id, weight: Weight(grams: 100_000), reps: 2, rpe: nil, notes: "")
+
+        // Two live rows remain when the fourth is written, so counting them would put it at 2 —
+        // which the third set still holds. The gap has to be in the middle for that collision to
+        // happen, which is why this case exists and the appended one above does not cover it.
+        let sets = try #require(workout.store.exercises.first?.sets)
+        #expect(sets.map(\.order) == [0, 2, 3])
+        #expect(Set(sets.map(\.order)).count == sets.count)
+    }
+
     @Test("A set lands on the exercise it was logged against, not on the workout's first")
     func setsLandOnTheirOwnEntry() async throws {
         let workout = try await Workout.started()
