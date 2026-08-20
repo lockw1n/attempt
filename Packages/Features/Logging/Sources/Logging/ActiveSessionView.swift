@@ -70,7 +70,7 @@ public struct ActiveSessionView: View {
         }
     }
 
-    /// The screen's three states (`FR-1.13.1`), each one of T-1.09's shared components.
+    /// The screen's four states (`FR-1.13.1`), each one of T-1.09's shared components.
     ///
     /// **"No workout in progress" is an error state without a retry**, on the exercise detail
     /// screen's precedent for an identifier that resolves to nothing: reading again resolves to the
@@ -78,13 +78,30 @@ public struct ActiveSessionView: View {
     /// state either — the empty one below belongs to a workout that exists and has nothing in it,
     /// and rendering "no exercises yet" for a workout that is gone would offer to log into nothing.
     ///
+    /// **A read that failed is a different state and says a different thing**, with a retry. The two
+    /// are the same absence to this screen and opposite facts to the user: one says the workout is
+    /// gone, the other says we could not tell. This screen can be the first thing the app draws, so
+    /// a transient read failure would otherwise report a workout still in progress as finished or
+    /// discarded — and offer no way to ask again.
+    ///
     /// No offline and no insufficient-data state, for `TrainingHomeView`'s reasons.
     @ViewBuilder private var content: some View {
-        if !store.hasCheckedForSession {
+        switch ActiveSessionState.current(
+            hasChecked: store.hasCheckedForSession,
+            session: store.session,
+            failure: store.failure
+        ) {
+        case .loading:
             LoadingStateView()
-        } else if let session = store.session {
-            loaded(session)
-        } else {
+        case .inProgress(let session, let writeFailed):
+            loaded(session, writeFailed: writeFailed)
+        case .readFailed:
+            ErrorStateView(
+                headline: Text(LoggingStrings.sessionErrorHeadline),
+                message: Text(LoggingStrings.sessionErrorMessage),
+                retry: { Task { await store.resume() } }
+            )
+        case .ended:
             ErrorStateView(
                 headline: Text(LoggingStrings.sessionEndedHeadline),
                 message: Text(LoggingStrings.sessionEndedMessage)
@@ -93,7 +110,13 @@ public struct ActiveSessionView: View {
     }
 
     /// A workout that is in progress: what it is, what is in it, and the two ways out.
-    @ViewBuilder private func loaded(_ session: WorkoutSession) -> some View {
+    ///
+    /// - Parameters:
+    ///   - session: The workout being logged.
+    ///   - writeFailed: Whether the last command against it failed. A workout is held, so the
+    ///     failure can only have come from a write — it renders beside the commands.
+    /// - Returns: The workout, in full.
+    @ViewBuilder private func loaded(_ session: WorkoutSession, writeFailed: Bool) -> some View {
         SessionSummarySection(session: session)
         EmptyStateView(
             symbolName: "list.bullet.rectangle",
@@ -101,7 +124,7 @@ public struct ActiveSessionView: View {
             message: Text(LoggingStrings.sessionEmptyMessage)
         )
         SessionCommandsSection(
-            hasFailed: store.failure != nil,
+            hasFailed: writeFailed,
             finish: { Task { await finish() } },
             discard: { isConfirmingDiscard = true }
         )
@@ -122,6 +145,45 @@ public struct ActiveSessionView: View {
         await store.discard()
         guard !store.isActive else { return }
         dismiss()
+    }
+}
+
+/// Which of the pushed screen's four states is current (`FR-1.13.1`).
+///
+/// A value rather than a chain of `if`s, for ``TrainingHomeState``'s reason.
+enum ActiveSessionState: Equatable {
+    /// Nothing has looked for a workout yet.
+    case loading
+
+    /// The workout, and whether the last command against it failed.
+    case inProgress(WorkoutSession, writeFailed: Bool)
+
+    /// The read failed, so whether the workout is still in progress is not known.
+    case readFailed
+
+    /// There is no workout: it was finished or discarded.
+    case ended
+
+    /// The state to render.
+    ///
+    /// **A held workout outranks a failure**, and while one is held the failure can only be a
+    /// write's — the screen keeps the workout and renders the failure beside the commands.
+    ///
+    /// **With no workout held, a failure is a read's, and it is not the same fact as "ended".** The
+    /// store answers both with a `nil` session; reporting the first as the second tells a user
+    /// whose workout is still in progress that it has been finished or discarded, and leaves them
+    /// nothing to retry.
+    ///
+    /// - Parameters:
+    ///   - hasChecked: ``ActiveSessionStore/hasCheckedForSession``.
+    ///   - session: ``ActiveSessionStore/session``.
+    ///   - failure: ``ActiveSessionStore/failure``.
+    /// - Returns: The current state.
+    static func current(hasChecked: Bool, session: WorkoutSession?, failure: String?) -> Self {
+        if !hasChecked { return .loading }
+        if let session { return .inProgress(session, writeFailed: failure != nil) }
+        if failure != nil { return .readFailed }
+        return .ended
     }
 }
 

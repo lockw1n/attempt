@@ -10,8 +10,11 @@ import Testing
 struct ScreenWakePreferenceTests {
     @Test("It is on until the user says otherwise")
     func defaultsToOn() throws {
-        let defaults = try #require(UserDefaults(suiteName: UUID().uuidString))
-        defer { defaults.removePersistentDomain(forName: defaults.description) }
+        // The suite name, not `defaults.description`: the domain is keyed on the former, so cleaning
+        // up with the latter removes nothing and leaves a plist behind on every run.
+        let name = UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
 
         #expect(ScreenWakePreference(defaults: defaults).isEnabled)
     }

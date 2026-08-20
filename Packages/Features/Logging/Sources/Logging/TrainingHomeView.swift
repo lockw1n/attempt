@@ -30,6 +30,14 @@ public struct TrainingHomeView: View {
     /// closure, and a preview or a snapshot has no shell above it.
     @Environment(NavigationState.self) private var navigation: NavigationState?
 
+    /// Whether the failure the store is carrying, if any, came from this screen's start command.
+    ///
+    /// **The store has one ``ActiveSessionStore/failure`` and this screen issues two kinds of
+    /// operation**, so which one is being reported is the screen's own knowledge: it is the thing
+    /// that asked. Cleared by every fresh read, so a write failure can never be re-attributed to a
+    /// read that happened later.
+    @State private var startWasAttempted = false
+
     /// Which training day a workout started from here would belong to (`FR-1.2.1`).
     ///
     /// Today until the user says otherwise, and reset by nothing: a day chosen and not started on is
@@ -63,7 +71,12 @@ public struct TrainingHomeView: View {
             .padding(Spacing.lg.points)
         }
         .background(ColorToken.background)
-        .task { await store.resume() }
+        .task {
+            // Before the read, not after: a fresh read retires whatever the last start said, so the
+            // failure it may leave behind is attributed to the read that produced it.
+            startWasAttempted = false
+            await store.resume()
+        }
     }
 
     /// The screen's four states (`FR-1.13.1`), each one of T-1.09's shared components.
@@ -78,18 +91,24 @@ public struct TrainingHomeView: View {
     /// there is no fetch to be offline for (`G-2.1`). No insufficient-data state — nothing here is
     /// derived.
     @ViewBuilder private var content: some View {
-        if !store.hasCheckedForSession {
+        switch TrainingHomeState.current(
+            hasChecked: store.hasCheckedForSession,
+            session: store.session,
+            failure: store.failure,
+            startWasAttempted: startWasAttempted
+        ) {
+        case .loading:
             LoadingStateView()
-        } else if let session = store.session {
+        case .inProgress(let session):
             SessionInProgressSection(session: session)
-        } else if store.failure != nil {
+        case .readFailed:
             ErrorStateView(
                 headline: Text(LoggingStrings.trainErrorHeadline),
                 message: Text(LoggingStrings.trainErrorMessage),
                 retry: { Task { await store.resume() } }
             )
-        } else {
-            start
+        case .start(let showingStartFailure):
+            start(showingStartFailure: showingStartFailure)
         }
     }
 
@@ -99,7 +118,16 @@ public struct TrainingHomeView: View {
     /// deliberately. A first-launch user taps the action and gets today, which is the case
     /// `FR-1.13.2` is about; a user logging Saturday's workout on Sunday sets the day first and then
     /// taps the same button. Putting the picker first would make every first workout a form.
-    @ViewBuilder private var start: some View {
+    ///
+    /// **A start that could not be written renders between the two**, on the exercise library's rule
+    /// for a failed write: it is not a phase, it costs the screen nothing, and it sits beside the
+    /// command that issued it so the retry is another tap at the same button. Taking the whole
+    /// screen for it — and saying the workouts could not be *read* — would lose both the date the
+    /// user picked and the command they were reaching for.
+    ///
+    /// - Parameter showingStartFailure: Whether the last start failed and has not been retired.
+    /// - Returns: The empty state, the failure where there is one, and the date control.
+    @ViewBuilder private func start(showingStartFailure: Bool) -> some View {
         EmptyStateView(
             symbolName: "figure.strengthtraining.traditional",
             headline: Text(LoggingStrings.trainEmptyHeadline),
@@ -108,16 +136,21 @@ public struct TrainingHomeView: View {
                 Task { await startWorkout() }
             }
         )
+        if showingStartFailure {
+            ErrorStateView(message: Text(LoggingStrings.trainStartErrorMessage))
+        }
         WorkoutDateSection(day: $day)
     }
 
     /// Starts the workout and opens it.
     ///
     /// The push happens only when the store took one: a failed write leaves the screen where it is,
-    /// with the diagnostic behind ``content``'s error state rather than an empty workout on top.
+    /// with the failure beside the start command rather than an empty workout on top.
     private func startWorkout() async {
+        startWasAttempted = true
         await store.start(on: day)
         guard store.isActive else { return }
+        startWasAttempted = false
         navigation?.navigate(to: .training(.activeSession))
     }
 
@@ -142,6 +175,55 @@ public struct TrainingHomeView: View {
             }
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Which of the root's four states is current (`FR-1.13.1`).
+///
+/// **A value rather than a chain of `if`s, so the decision can be tested.** `TR-1.12`'s harness
+/// renders through `ImageRenderer`, which cannot run the `.task` that fills the store — so a
+/// reference over this screen is a reference over an empty one, and *which* state a user is shown
+/// would otherwise be covered by nothing. It is the part worth covering: two of the four differ only
+/// in which failure they are describing.
+enum TrainingHomeState: Equatable {
+    /// Nothing has looked for a workout yet.
+    case loading
+
+    /// A workout is in progress.
+    case inProgress(WorkoutSession)
+
+    /// The read failed, so whether a workout is in progress is not known.
+    case readFailed
+
+    /// Nothing is in progress, with `showingStartFailure` when the last start could not be written.
+    case start(showingStartFailure: Bool)
+
+    /// The state to render.
+    ///
+    /// **A held workout outranks a failure**, because a failed *write* costs this screen nothing:
+    /// the workout is still there and still rendered.
+    ///
+    /// **A failure outranks the empty state only when it belongs to a read.** The store carries one
+    /// diagnostic for both kinds of operation, so a start that could not be written would otherwise
+    /// claim the workouts are unreadable — and offer a retry that re-reads instead of re-starting,
+    /// which on success would quietly retire the failure and forget the workout the user asked for.
+    ///
+    /// - Parameters:
+    ///   - hasChecked: ``ActiveSessionStore/hasCheckedForSession``.
+    ///   - session: ``ActiveSessionStore/session``.
+    ///   - failure: ``ActiveSessionStore/failure``.
+    ///   - startWasAttempted: Whether a failure, if there is one, came from this screen's start.
+    /// - Returns: The current state.
+    static func current(
+        hasChecked: Bool,
+        session: WorkoutSession?,
+        failure: String?,
+        startWasAttempted: Bool
+    ) -> Self {
+        if !hasChecked { return .loading }
+        if let session { return .inProgress(session) }
+        if failure != nil, !startWasAttempted { return .readFailed }
+        return .start(showingStartFailure: failure != nil)
     }
 }
 

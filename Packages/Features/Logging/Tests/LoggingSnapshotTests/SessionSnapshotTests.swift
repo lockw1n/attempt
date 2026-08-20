@@ -98,6 +98,15 @@
             }
         }
 
+        @Test func startFailed() throws {
+            // A failed *write*, and a different picture from the one above on purpose: no headline
+            // and no retry button, because it renders between the start command and the date
+            // control rather than in place of them, and the retry is that command itself.
+            try assertSnapshots(named: "Train-start-error") {
+                ErrorStateView(message: Text(LoggingStrings.trainStartErrorMessage))
+            }
+        }
+
         // MARK: - The workout in progress (FR-1.2.11, FR-1.2.12)
 
         @Test func workoutSummary() throws {
@@ -130,6 +139,19 @@
                     symbolName: "list.bullet.rectangle",
                     headline: Text(LoggingStrings.sessionEmptyHeadline),
                     message: Text(LoggingStrings.sessionEmptyMessage)
+                )
+            }
+        }
+
+        @Test func sessionReadFailed() throws {
+            // The state below says the workout is gone; this one says we could not tell. They are
+            // the same absence to the screen and opposite facts to the user, so both are pictured —
+            // and this is the one that carries a retry.
+            try assertSnapshots(named: "Session-error") {
+                ErrorStateView(
+                    headline: Text(LoggingStrings.sessionErrorHeadline),
+                    message: Text(LoggingStrings.sessionErrorMessage),
+                    retry: {}
                 )
             }
         }
@@ -191,13 +213,22 @@
 
         /// A preference in a named position, over storage no other test can see.
         ///
+        /// **A fresh suite each time, removed as soon as it has been read.** A fixed name would
+        /// outlive the run and be inherited by the next one — harmless to a rendering that does not
+        /// draw the control, and exactly the kind of leftover that makes a later test lie.
+        ///
         /// - Parameter isEnabled: Which position to build. It does not reach the rendering — see the
         ///   note on the suite — but a preference built at random would still be the wrong subject.
         /// - Returns: The preference.
         static func preference(isEnabled: Bool) -> ScreenWakePreference {
-            let defaults = UserDefaults(suiteName: "snapshots.\(isEnabled)") ?? .standard
+            let name = "snapshots.\(UUID().uuidString)"
+            guard let defaults = UserDefaults(suiteName: name) else {
+                return ScreenWakePreference(defaults: .standard)
+            }
             defaults.set(isEnabled, forKey: "logging.screen-wake.enabled")
-            return ScreenWakePreference(defaults: defaults)
+            let preference = ScreenWakePreference(defaults: defaults)
+            defaults.removePersistentDomain(forName: name)
+            return preference
         }
     }
 

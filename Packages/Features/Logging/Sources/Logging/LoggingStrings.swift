@@ -60,6 +60,9 @@ enum LoggingStrings {
     /// What the user can understand about that failure — never the diagnostic.
     static let trainErrorMessage = resource("logging.train.error.message")
 
+    /// A start that could not be written — a failed *write*, beside the command that issued it.
+    static let trainStartErrorMessage = resource("logging.train.start-error.message")
+
     // MARK: - The workout in progress (FR-1.2.11, FR-1.2.12)
 
     /// The screen's navigation title.
@@ -101,6 +104,12 @@ enum LoggingStrings {
     /// The way out of the confirmation.
     static let sessionDiscardConfirmCancel = resource("logging.session.discard.confirm.cancel")
 
+    /// The heading when the workout could not be read.
+    static let sessionErrorHeadline = resource("logging.session.error.headline")
+
+    /// What the user can understand about that failure — never the diagnostic.
+    static let sessionErrorMessage = resource("logging.session.error.message")
+
     /// The heading when the screen is open on a workout that is no longer in progress.
     static let sessionEndedHeadline = resource("logging.session.ended.headline")
 
@@ -117,10 +126,11 @@ enum LoggingStrings {
             trainDatePicker, trainDateHint, trainInProgressSection, trainInProgressDay,
             trainInProgressStarted, trainInProgressResume, trainLibraryAction,
             trainScreenWakeSection, trainScreenWakeLabel, trainScreenWakeHint, trainErrorHeadline,
-            trainErrorMessage, sessionTitle, sessionSummarySection, sessionDay, sessionStarted,
-            sessionEmptyHeadline, sessionEmptyMessage, sessionFinishAction, sessionDiscardAction,
-            sessionDiscardConfirmTitle, sessionDiscardConfirmMessage, sessionDiscardConfirmAction,
-            sessionDiscardConfirmCancel, sessionEndedHeadline, sessionEndedMessage,
+            trainErrorMessage, trainStartErrorMessage, sessionTitle, sessionSummarySection,
+            sessionDay, sessionStarted, sessionEmptyHeadline, sessionEmptyMessage,
+            sessionFinishAction, sessionDiscardAction, sessionDiscardConfirmTitle,
+            sessionDiscardConfirmMessage, sessionDiscardConfirmAction, sessionDiscardConfirmCancel,
+            sessionErrorHeadline, sessionErrorMessage, sessionEndedHeadline, sessionEndedMessage,
             sessionWriteErrorMessage,
         ]
     }

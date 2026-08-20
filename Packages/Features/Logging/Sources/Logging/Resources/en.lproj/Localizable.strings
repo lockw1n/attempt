@@ -30,9 +30,15 @@
 "logging.train.screen-wake.label" = "Keep screen awake";
 "logging.train.screen-wake.hint" = "The screen stays on while a workout is in progress, and sleeps normally the rest of the time.";
 
-/* The read failed. A sentence for the user; the diagnostic is never shown. */
+/* The read failed — the screen does not know whether a workout is in progress, so this one takes
+   the whole screen. A sentence for the user; the diagnostic is never shown. */
 "logging.train.error.headline" = "Workouts unavailable";
 "logging.train.error.message" = "Your workouts could not be read just now.";
+
+/* The start failed, which is a *write* and not a phase: it renders beside the command that issued
+   it, with the date control still on screen, so the retry is another tap at the same button rather
+   than a workout the user has to ask for again. Never the read's copy — nothing was unreadable. */
+"logging.train.start-error.message" = "That workout could not be started. Try again.";
 
 "logging.session.title" = "Workout";
 "logging.session.summary.section" = "This workout";
@@ -52,7 +58,19 @@
 "logging.session.discard.confirm.title" = "Discard this workout?";
 "logging.session.discard.confirm.message" = "Everything logged in it is removed from your history.";
 "logging.session.discard.confirm.action" = "Discard";
+/* PRESENTATION-DEPENDENT, AND KEPT ON PURPOSE. iOS 26 renders this dialogue as a popover, and a
+   popover suppresses the `.cancel` button — only Discard is drawn, and dismissing is a tap outside.
+   The button stays: the suppression is that presentation's and not universal, and the `.cancel`
+   role is what binds keyboard dismissal and gives VoiceOver an explicit way out that tap-outside
+   does not (G-4.2, NFR-1.10). A string nothing currently draws still resolves, so no test can tell
+   you this — which is why it is written down here. */
 "logging.session.discard.confirm.cancel" = "Keep workout";
+
+/* The read failed, on the screen the workout itself is on. Split from the copy below because the
+   two are different facts: one says the workout is gone, and this one says we could not tell. It
+   carries a retry; the one below cannot. */
+"logging.session.error.headline" = "Workout unavailable";
+"logging.session.error.message" = "This workout could not be read just now.";
 
 /* The screen is open on a workout that is no longer in progress — a restored navigation stack after
    the workout was finished or discarded. Not an error the user caused, and there is nothing to
