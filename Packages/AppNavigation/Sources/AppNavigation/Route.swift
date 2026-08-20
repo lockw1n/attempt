@@ -64,12 +64,34 @@ public enum TrainingRoute: Hashable, Sendable, Codable {
 
 /// Destinations pushed from the exercise library (`FR-1.1`).
 public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
+    /// The catalogue, grouped by movement, with search and filters (`FR-1.1.1`, `FR-1.1.2`).
+    ///
+    /// **Pushed onto Train's stack rather than being Train's root**, which is the answer to the
+    /// question ``NavigationState/startWorkout()`` leaves open: the root is the session surface, so
+    /// Home's primary action lands on a workout and not on a catalogue. The library is a place the
+    /// user goes from there.
+    case exerciseList
+
     /// One exercise's detail (`FR-1.1.6`). T-1.11 builds it.
     ///
     /// The route carries the identifier and not the exercise: a restored stack is decoded before
     /// any store has been read, and a route holding a stale copy of a row would be a second source
     /// of truth for it (`G-1.4`).
     case exerciseDetail(exerciseID: UUID)
+
+    /// The form that authors a new custom exercise (`FR-1.1.3`).
+    ///
+    /// **A case of its own rather than ``exerciseEdit(exerciseID:)`` with no identifier.** An
+    /// optional payload would make one case mean two screens — one that reads a record and one that
+    /// cannot — and the inventory keys off the case, so the screen with no route case is the screen
+    /// nothing lists.
+    case exerciseCreate
+
+    /// The form that edits an existing exercise, built-in ones included (`FR-1.1.4`).
+    ///
+    /// Carries the identifier and not the record, for the reason ``exerciseDetail(exerciseID:)``
+    /// gives.
+    case exerciseEdit(exerciseID: UUID)
 }
 
 /// Destinations pushed from history (`FR-1.5`).

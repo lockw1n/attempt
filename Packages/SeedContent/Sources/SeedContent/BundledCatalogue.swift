@@ -20,10 +20,9 @@ public enum BundledCatalogue {
     /// Validate before importing: a malformed bundled file is a first-launch failure, and `NFR-1.7`
     /// puts first launch in airplane mode with nothing to fall back to.
     public static func data() throws -> Data {
-        guard
-            let url = Bundle.module.url(
-                forResource: "exercises", withExtension: "json", subdirectory: "Resources")
-        else {
+        // At the bundle's root, not under `Resources/`: the manifest processes the directory rather
+        // than copying it, because a copied one is a bundle codesign refuses. See Package.swift.
+        guard let url = Bundle.module.url(forResource: "exercises", withExtension: "json") else {
             throw PayloadMissing()
         }
         return try Data(contentsOf: url)

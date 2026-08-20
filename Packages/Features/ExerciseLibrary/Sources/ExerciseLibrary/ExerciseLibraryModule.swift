@@ -1,20 +1,9 @@
-import AppNavigation
-import DesignSystem
-import PowerliftingCore
-import RepositoryInterface
-
 /// The exercise library (`FR-1.1`).
 ///
-/// THE EXEMPLAR for the other four feature modules' headers, which point here.
-///
-/// A namespace and nothing else — the screens are each a later task's. The four aliases are the
-/// module's whole dependency surface (`TR-1.3`), spelled out so the manifest's edges are compiled
-/// against rather than only declared: each resolves a symbol from a different one of the four
-/// dependencies, so dropping an import stops the module compiling. They are scaffolding — each is
-/// replaced by real use as the screens land, and the last one to go takes this type with it.
-public enum ExerciseLibraryModule {
-    typealias Storage = ExerciseRepository
-    typealias Domain = Weight
-    typealias Destination = ExerciseLibraryRoute
-    typealias Tokens = ColorToken
-}
+/// THE EXEMPLAR the other four feature modules' headers point at, which is why this type outlives
+/// the scaffolding it was created to hold: `TR-1.3`'s four package edges were pinned here by four
+/// aliases until a screen used them for real. `ExerciseListState` now names ``ExerciseRepository``,
+/// `ExerciseListView` names ``Route`` and the token scales, and both name the domain's
+/// vocabularies — so the aliases went and the imports with them. A module still carrying its four
+/// is a module with no screens yet, not a module doing it differently.
+public enum ExerciseLibraryModule {}

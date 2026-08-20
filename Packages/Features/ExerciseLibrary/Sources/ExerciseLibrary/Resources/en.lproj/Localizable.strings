@@ -1,2 +1,210 @@
-/* ExerciseLibrary (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the
-   Localization module doc. No copy in this module yet. */
+/* Exercise library (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization
+   module doc, and ExerciseLibraryStrings for why the two vocabularies below name a vocabulary
+   where a screen would go. Nothing here is translated: only `en` ships in Phase 1. */
+
+"exerciselibrary.list.title" = "Exercises";
+"exerciselibrary.list.search.prompt" = "Search exercises";
+
+"exerciselibrary.list.filter.movement" = "Movement";
+"exerciselibrary.list.filter.equipment" = "Equipment";
+"exerciselibrary.list.filter.origin" = "Origin";
+
+/* The unset position of a filter row. "All" rather than "Any": the row narrows the list, and the
+   unset position is the one that narrows it by nothing. */
+"exerciselibrary.list.filter.all" = "All";
+
+"exerciselibrary.list.filter.recently-used" = "Recently used";
+/* Shown beside the disabled recency filter. It says what would enable it, not what is missing from
+   the app — FR-1.1.2's recency is a read over logged sets, and there are none yet. */
+"exerciselibrary.list.filter.recently-used.hint" = "Available once you have logged a workout.";
+
+"exerciselibrary.list.row.custom" = "Custom";
+
+/* Widens the list to archived exercises (FR-1.1.5). It sits in the filter bar and is not a filter:
+   the four above narrow what is shown and this one widens it, which is why the wording is an
+   instruction rather than the name of a facet. It is also the only way back to an archived
+   exercise, whose un-archive control is on its detail screen. */
+"exerciselibrary.list.filter.archived" = "Show archived";
+/* Shown on a row once archived ones are being shown, so a list holding both says which is which. */
+"exerciselibrary.list.row.archived" = "Archived";
+
+/* The catalogue itself is empty. There is no action yet: creating an exercise is FR-1.1.3's screen
+   and it does not exist, so the message says what the app will do rather than offering a dead
+   button. */
+"exerciselibrary.list.empty.headline" = "No exercises";
+"exerciselibrary.list.empty.message" = "The built-in catalogue has not been loaded yet.";
+
+/* Every exercise in the catalogue has been archived and the control above is off. Distinct from
+   both the empty catalogue (nothing to show) and a search that matched nothing (the filters are the
+   cause): here the rows exist, they are hidden, and the message names the control that brings them
+   back rather than offering a create form or a clear-filters that would change nothing. */
+"exerciselibrary.list.archived-only.headline" = "Everything is archived";
+"exerciselibrary.list.archived-only.message" = "Every exercise has been archived. Show archived to bring one back.";
+
+"exerciselibrary.list.no-matches.headline" = "No matches";
+"exerciselibrary.list.no-matches.message" = "No exercise matches this search and these filters.";
+"exerciselibrary.list.no-matches.action" = "Clear search and filters";
+
+/* The read failed. A sentence the user can act on — the error's own description is a diagnostic and
+   is never shown (G-3.4). The retry is DesignSystem's own copy. */
+"exerciselibrary.list.error.headline" = "Exercises unavailable";
+"exerciselibrary.list.error.message" = "The exercise catalogue could not be read.";
+
+/* Movement names. Group headings and filter labels both, and they are copy rather than the domain's
+   raw values: PowerliftingCore is Foundation-free and carries no display name (NFR-0.2). */
+"exerciselibrary.movement.squat" = "Squat";
+"exerciselibrary.movement.bench" = "Bench";
+"exerciselibrary.movement.deadlift" = "Deadlift";
+"exerciselibrary.movement.overhead-press" = "Overhead press";
+"exerciselibrary.movement.row" = "Row";
+"exerciselibrary.movement.other" = "Other";
+
+/* Equipment names. */
+"exerciselibrary.equipment.barbell" = "Barbell";
+"exerciselibrary.equipment.dumbbell" = "Dumbbell";
+"exerciselibrary.equipment.kettlebell" = "Kettlebell";
+"exerciselibrary.equipment.machine" = "Machine";
+"exerciselibrary.equipment.cable" = "Cable";
+"exerciselibrary.equipment.smith-machine" = "Smith machine";
+"exerciselibrary.equipment.bodyweight" = "Bodyweight";
+"exerciselibrary.equipment.band" = "Band";
+"exerciselibrary.equipment.other" = "Other";
+
+/* ---------------------------------------------------------------------------------------------
+   Exercise detail (FR-1.1.6, FR-1.1.7). */
+
+"exerciselibrary.detail.section.details" = "Details";
+"exerciselibrary.detail.field.movement" = "Movement";
+"exerciselibrary.detail.field.equipment" = "Equipment";
+"exerciselibrary.detail.field.bar" = "Bar";
+"exerciselibrary.detail.field.laterality" = "Sides";
+"exerciselibrary.detail.field.origin" = "Origin";
+
+/* Shown beside the name when the exercise has been archived (FR-1.1.5). The detail screen is
+   reachable from logged history, so an archived exercise still opens — the badge is what says why
+   it is not in the list. */
+"exerciselibrary.detail.badge.archived" = "Archived";
+
+"exerciselibrary.detail.section.notes" = "Notes";
+"exerciselibrary.detail.notes.prompt" = "Cues, setup, anything worth remembering";
+"exerciselibrary.detail.notes.save" = "Save notes";
+"exerciselibrary.detail.notes.discard" = "Discard changes";
+/* The write failed. The draft is still on screen and the retry is another tap — the error's own
+   description is a diagnostic and is never shown (G-3.4). */
+"exerciselibrary.detail.notes.error" = "These notes could not be saved.";
+
+/* FR-1.1.5's control, at the foot of the detail screen. Two sentences that are the same fact from
+   either side: archiving hides an exercise and keeps everything logged with it, and un-archiving is
+   how it comes back. The explanation names history explicitly because "archive" reads as "delete
+   quietly" to most people, and the whole point of the requirement is that it is not. */
+"exerciselibrary.detail.section.archive" = "Archive";
+"exerciselibrary.detail.archive.explanation" = "Archiving hides this exercise from the list and from every picker. Everything you have logged with it is kept, and you can bring it back at any time.";
+"exerciselibrary.detail.archive.action" = "Archive exercise";
+"exerciselibrary.detail.unarchive.explanation" = "This exercise is archived, so it does not appear in the list or in any picker. Everything logged with it is still here.";
+"exerciselibrary.detail.unarchive.action" = "Unarchive exercise";
+/* The write failed. One sentence for both directions: what the user needs to know is that nothing
+   changed, and the button beside it still says which way it was going. */
+"exerciselibrary.detail.archive.error" = "This change could not be saved.";
+
+"exerciselibrary.detail.section.variations" = "Variations";
+/* Precedes the parent exercise's name when this one varies another (FR-1.1.7). */
+"exerciselibrary.detail.variations.parent" = "Variation of";
+
+/* The three derived sections. Each carries an InsufficientDataView (FR-1.13.3) rather than a zero
+   or a chart-shaped blank, and each message names what would be enough — T-1.36, T-1.41 and T-1.43
+   supply the real content. */
+"exerciselibrary.detail.section.history" = "History";
+"exerciselibrary.detail.history.none" = "Log a set against this exercise and its history appears here.";
+"exerciselibrary.detail.section.records" = "Personal records";
+"exerciselibrary.detail.records.none" = "Log a set against this exercise and its personal records appear here.";
+"exerciselibrary.detail.section.e1rm" = "Estimated 1RM";
+"exerciselibrary.detail.e1rm.none" = "Log a completed working set and an estimate appears here.";
+
+/* The read failed and running it again could work. */
+"exerciselibrary.detail.error.headline" = "Exercise unavailable";
+"exerciselibrary.detail.error.message" = "This exercise could not be read.";
+/* The identifier resolved to nothing — a restored navigation stack can name an exercise that has
+   since gone. No retry: reading again resolves to nothing again. */
+"exerciselibrary.detail.missing.headline" = "Exercise not found";
+"exerciselibrary.detail.missing.message" = "This exercise is no longer in your library.";
+
+/* Origin names. A module vocabulary rather than the list screen's copy: both screens show them and
+   neither owns them. */
+"exerciselibrary.origin.built-in" = "Built-in";
+"exerciselibrary.origin.custom" = "Custom";
+
+/* How many sides a rep works. The domain's own doc comments carry the distinction; these are the
+   words for it. */
+"exerciselibrary.laterality.bilateral" = "Both sides";
+"exerciselibrary.laterality.unilateral" = "One side at a time";
+"exerciselibrary.laterality.alternating" = "Alternating";
+
+/* Bar names. `no-bar` is a real answer rather than a missing one: a dumbbell or a machine loads no
+   bar, which is not the same as an unrecognised one. */
+"exerciselibrary.bar-type.standard" = "Standard";
+"exerciselibrary.bar-type.ez-curl" = "EZ curl";
+"exerciselibrary.bar-type.trap" = "Trap";
+"exerciselibrary.bar-type.safety-squat" = "Safety squat";
+"exerciselibrary.bar-type.cambered" = "Cambered";
+"exerciselibrary.bar-type.swiss" = "Swiss";
+"exerciselibrary.bar-type.no-bar" = "No bar";
+"exerciselibrary.bar-type.other" = "Other";
+
+/* ---------------------------------------------------------------------------------------------
+   Create / edit exercise (FR-1.1.3, FR-1.1.4). One screen and two modes: the copy that differs
+   between them is the title, and everything else is the same form over the same record. */
+
+/* The way into the form, from the list's toolbar and from its empty state. "New exercise" rather
+   than "Add": nothing is being added to a collection the user assembled — the catalogue is seeded
+   and this authors a row of their own. */
+"exerciselibrary.list.create" = "New exercise";
+"exerciselibrary.detail.edit" = "Edit";
+
+"exerciselibrary.form.create.title" = "New exercise";
+"exerciselibrary.form.edit.title" = "Edit exercise";
+
+"exerciselibrary.form.section.details" = "Details";
+"exerciselibrary.form.field.name" = "Name";
+"exerciselibrary.form.name.prompt" = "Barbell Back Squat";
+/* Shown under the name field once it is empty and the save is therefore unavailable. It says what
+   is required, not that something is wrong: an empty form is where every create starts. */
+"exerciselibrary.form.name.required" = "A name is required.";
+
+"exerciselibrary.form.field.movement" = "Movement";
+"exerciselibrary.form.field.equipment" = "Equipment";
+"exerciselibrary.form.field.bar" = "Bar";
+"exerciselibrary.form.field.laterality" = "Sides";
+
+/* Shown on a built-in exercise, above the five fields the form displays rather than edits — the
+   reason is `ExerciseFormState.catalogueOwnsFields`. It names the five rather than saying "some
+   fields", because a user looking for the control they expected needs to know this is the sentence
+   about it, and it says what the name and the notes are, since those two are still theirs
+   (FR-1.1.4). */
+"exerciselibrary.form.catalogue-owned" = "Movement, equipment, bar, sides and what this varies come from the built-in catalogue, which restores them whenever the app updates it. The name and the notes are yours to change.";
+
+/* FR-1.1.7's relationship, from the variation's side. The heading is the sentence: "<this exercise>
+   is a variation of <that one>". */
+"exerciselibrary.form.section.parent" = "Variation of";
+/* The unset position. "Nothing" rather than "None", because the answer is a fact about the exercise
+   — it varies nothing — and not an empty selection. */
+"exerciselibrary.form.parent.none" = "Nothing — this is its own exercise";
+/* Widens the picker past the movement selected above. It is off by default: a variation almost
+   always trains the same lift, and the whole catalogue is a picker nobody reads. */
+"exerciselibrary.form.parent.every-movement" = "All movements";
+"exerciselibrary.form.parent.empty" = "No other exercise trains this movement yet. Turn on All movements to vary one from elsewhere.";
+
+"exerciselibrary.form.save" = "Save";
+
+/* The edited exercise could not be read. A sentence the user can act on — the error's own
+   description is a diagnostic and is never shown (G-3.4). */
+"exerciselibrary.form.error.headline" = "Exercise unavailable";
+"exerciselibrary.form.error.message" = "This exercise could not be read.";
+
+/* The identifier resolved to nothing, which a restored navigation stack can do after the exercise
+   has gone. There is no retry: reading again resolves to nothing again. */
+"exerciselibrary.form.missing.headline" = "Exercise not found";
+"exerciselibrary.form.missing.message" = "This exercise no longer exists.";
+
+/* The save failed. The form and everything typed into it are still on screen, and the retry is
+   another tap. */
+"exerciselibrary.form.write-error" = "This exercise could not be saved.";

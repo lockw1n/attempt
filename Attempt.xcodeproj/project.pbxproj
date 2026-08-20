@@ -16,6 +16,7 @@
 		D3432946301E887D00DC20FF /* History in Frameworks */ = {isa = PBXBuildFile; productRef = D3432936301E887D00DC20FF /* History */; };
 		D3432947301E887D00DC20FF /* Dashboard in Frameworks */ = {isa = PBXBuildFile; productRef = D3432937301E887D00DC20FF /* Dashboard */; };
 		D3432948301E887D00DC20FF /* Settings in Frameworks */ = {isa = PBXBuildFile; productRef = D3432938301E887D00DC20FF /* Settings */; };
+		D3432949301E887D00DC20FF /* SeedImport in Frameworks */ = {isa = PBXBuildFile; productRef = D3432939301E887D00DC20FF /* SeedImport */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +45,7 @@
 				D3432946301E887D00DC20FF /* History in Frameworks */,
 				D3432947301E887D00DC20FF /* Dashboard in Frameworks */,
 				D3432948301E887D00DC20FF /* Settings in Frameworks */,
+				D3432949301E887D00DC20FF /* SeedImport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -95,6 +97,7 @@
 				D3432936301E887D00DC20FF /* History */,
 				D3432937301E887D00DC20FF /* Dashboard */,
 				D3432938301E887D00DC20FF /* Settings */,
+				D3432939301E887D00DC20FF /* SeedImport */,
 			);
 			productName = Attempt;
 			productReference = D343290A301E887D00DC20FF /* Attempt.app */;
@@ -134,6 +137,7 @@
 				D3432926301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/History" */,
 				D3432927301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Dashboard" */,
 				D3432928301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Settings" */,
+				D3432929301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/SeedImport" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D343290B301E887D00DC20FF /* Products */;
@@ -411,6 +415,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/Features/Settings;
 		};
+		D3432929301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/SeedImport" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/SeedImport;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -449,6 +457,10 @@
 		D3432938301E887D00DC20FF /* Settings */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Settings;
+		};
+		D3432939301E887D00DC20FF /* SeedImport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SeedImport;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

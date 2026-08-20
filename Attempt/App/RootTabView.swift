@@ -1,5 +1,7 @@
 import AppNavigation
 import DesignSystem
+import ExerciseLibrary
+import Foundation
 import Settings
 import SwiftUI
 
@@ -24,6 +26,10 @@ struct RootTabView: View {
                 }
             }
         }
+        // The navigation position, for the feature screens whose entry point is a closure rather
+        // than a `NavigationLink` — a state component's action, say. A screen that has a `Route`
+        // does not need to know which tab it lives under (see `NavigationState.navigate(to:)`).
+        .environment(navigation)
         .tint(ColorToken.brandAccent)
         // G-7.1's dark default, from the token rather than from a literal `.dark` — the one place
         // that says so is DesignTokens. FR-1.10.2's user preference (T-1.60) overrides this; it does
@@ -37,8 +43,69 @@ struct RootTabView: View {
         NavigationStack(path: navigation.binding(for: tab)) {
             root(for: tab)
                 .navigationDestination(for: Route.self) { route in
-                    PlaceholderScreen(route: route)
+                    destination(for: route)
                 }
+        }
+    }
+
+    /// What a pushed route shows. Built routes get their screen; the rest still get the placeholder,
+    /// which is deleted case by case as the owning tasks land.
+    @ViewBuilder
+    private func destination(for route: Route) -> some View {
+        switch route {
+        case .exerciseLibrary(.exerciseList):
+            // No title here: a pushed screen names itself, and this one does (`FR-1.1.1`). The tab
+            // roots are the case where the app target owns the name — see ``AppTab/title``.
+            exerciseListRoot
+        case .exerciseLibrary(.exerciseDetail(let exerciseID)):
+            exerciseDetailRoot(exerciseID)
+        case .exerciseLibrary(.exerciseCreate):
+            exerciseFormRoot(.create)
+        case .exerciseLibrary(.exerciseEdit(let exerciseID)):
+            exerciseFormRoot(.edit(exerciseID: exerciseID))
+        default:
+            PlaceholderScreen(route: route)
+        }
+    }
+
+    /// The exercise library's list, or the reason it cannot be shown.
+    ///
+    /// The same shape as ``settingsRoot``: a screen that reads a store cannot be built when the
+    /// store did not open, and the diagnostic is the app's rather than the screen's.
+    @ViewBuilder
+    private var exerciseListRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories):
+            ExerciseListView(repository: repositories.exercises)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// One exercise's detail, or the reason it cannot be shown.
+    ///
+    /// The screen is handed the identifier the route carried, not a record: resolving it is the
+    /// screen's own first read (`G-1.4`).
+    @ViewBuilder
+    private func exerciseDetailRoot(_ exerciseID: UUID) -> some View {
+        switch dependencies.state {
+        case .open(let repositories):
+            ExerciseDetailView(exerciseID: exerciseID, repository: repositories.exercises)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// The create/edit form, or the reason it cannot be shown.
+    ///
+    /// - Parameter mode: Which of `FR-1.1.3` and `FR-1.1.4` the route asked for.
+    @ViewBuilder
+    private func exerciseFormRoot(_ mode: ExerciseFormMode) -> some View {
+        switch dependencies.state {
+        case .open(let repositories):
+            ExerciseFormView(mode: mode, repository: repositories.exercises)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
         }
     }
 

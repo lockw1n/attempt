@@ -281,10 +281,12 @@ It covers `PowerliftingCore` only, and names it rather than globbing — a packa
 with a real store behind its tests is expected to be slower. The script's header
 says what a failure here actually means.
 
-The `DesignSystem` components are held to committed reference images, rendered
-in light and dark at the default and `accessibility3` Dynamic Type sizes. That
-suite renders on the iOS simulator rather than through SwiftPM, so it runs on its
-own rather than under `build-packages.sh`:
+The `DesignSystem` components, and each feature module's screens, are held to
+committed reference images, rendered in light and dark at the default and
+`accessibility3` Dynamic Type sizes, using the shared `SnapshotTesting` harness
+(a `DesignSystem` product). These suites render on the iOS simulator rather than
+through SwiftPM, so they run on their own rather than under
+`build-packages.sh`, one command covering every suite:
 
 ```bash
 ./scripts/snapshot-tests.sh
@@ -297,10 +299,11 @@ deletes the references, records them again and verifies what it wrote:
 ./scripts/snapshot-tests.sh --record
 ```
 
-The references are committed, beside the tests in
-`Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__`. A failing
-run leaves what it rendered, and a diff image, in
-`Packages/DesignSystem/.build/snapshot-failures/`.
+The references are committed beside each suite's tests — for example
+`Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__` and
+`Packages/Features/ExerciseLibrary/Tests/ExerciseLibrarySnapshotTests/__Snapshots__`.
+A failing run leaves what it rendered, and a diff image, in that package's own
+`.build/snapshot-failures/`.
 
 Three CI assertions that also run locally — the app target's Swift build
 settings, the `@unchecked Sendable` justifications, and the runtime gate's own
@@ -462,7 +465,7 @@ dependency analysis".
 | **Package tests** | `PowerliftingCore` with coverage, then every package built and tested with warnings as errors (discovered by glob), the runtime gate and its proof, the warnings-gate proof, the `@unchecked Sendable` audit |
 | **Linux core build** | builds and tests `PowerliftingCore` and `RepositoryInterface` on `ubuntu-latest` in a Swift container |
 | **SwiftLint** | lint, lint-rule verification, format check, doc-ratio and doc-units gates |
-| **Component snapshots** | renders every `DesignSystem` component and state and compares it against a committed reference, light/dark × default/`accessibility3` |
+| **Component snapshots** | renders every snapshot suite (`DesignSystem`'s components and states, plus each feature module's screens) and compares it against a committed reference, light/dark × default/`accessibility3` |
 
 The first four are **required checks on `main`**, so a red run blocks the
 merge; the whole workflow takes about a minute. **Component snapshots** is
