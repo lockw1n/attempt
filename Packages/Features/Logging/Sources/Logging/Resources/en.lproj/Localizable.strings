@@ -153,8 +153,9 @@
 /* FR-1.2.4 and FR-1.2.14: warmups, marked and numbered apart from the work. */
 /* The badge a warmup row leads with. "W1" rather than "1" is the requirement's own spelling, and it
    is a string rather than a "W" glued to a numeral so a language that prefixes differently — or
-   does not use a Latin W — can say it its own way. */
-"logging.session.set.warmup.number %lld" = "W%lld";
+   does not use a Latin W — can say it its own way. The number arrives already rendered, so it is
+   the locale's — and the same style the working badge beside it is drawn with. */
+"logging.session.set.warmup.number %@" = "W%@";
 /* VoiceOver's label for that badge. Never "W1": read aloud, that is three letters and a digit. */
 "logging.session.set.warmup.position %lld" = "Warmup %lld";
 /* The badge is also the control that changes a set's kind (FR-1.2.4), so it carries a hint saying

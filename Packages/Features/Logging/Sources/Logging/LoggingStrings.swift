@@ -255,9 +255,14 @@ enum LoggingStrings {
     /// user's language, not punctuation, and a language that does not spell it with a Latin `W` has
     /// nowhere else to say so.
     ///
-    /// - Parameter number: The warmup's one-based place among the warmups.
+    /// **The number arrives already rendered**, for ``setRPE(_:)``'s reason and one this call makes
+    /// sharper: the working badge beside this one is drawn with `AppFormat` against the view's
+    /// locale, so a numeral formatted here instead would be the one number on the row not going
+    /// through the same style.
+    ///
+    /// - Parameter number: The warmup's one-based place among the warmups, already rendered.
     /// - Returns: The badge.
-    static func setWarmupNumber(_ number: Int) -> LocalizedStringResource {
+    static func setWarmupNumber(_ number: String) -> LocalizedStringResource {
         resource("logging.session.set.warmup.number \(number)")
     }
 
@@ -357,7 +362,7 @@ enum LoggingStrings {
             setRepsLabel, setRPELabel, setRPEHint, setNotesLabel, setNotesHint, setConfirmAction,
             setCancelAction, setWeightIncrease, setWeightDecrease, setRepsIncrease, setRepsDecrease,
             setInvalidMessage, setPosition(1), setReps(5), setRPE(""),
-            setWarmupNumber(1), setWarmupPosition(1), setWarmupSection, setWarmupLabel,
+            setWarmupNumber("1"), setWarmupPosition(1), setWarmupSection, setWarmupLabel,
             setWarmupHint,
         ] + MassUnit.allCases.map(setUnitSymbol(for:))
             + [true, false].map(setMarkAction(isWarmup:))

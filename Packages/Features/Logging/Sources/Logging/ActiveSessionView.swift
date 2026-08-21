@@ -238,12 +238,7 @@ public struct ActiveSessionView: View {
                     },
                     unit: store.displayUnit,
                     logSet: { editing = $0 },
-                    mark: { set, isWarmup in
-                        Task {
-                            await store.markSet(
-                                id: set.id, inEntryID: set.entryID, isWarmup: isWarmup)
-                        }
-                    }
+                    mark: { markSet($0, asWarmup: $1) }
                 )
                 writeFailure(writeFailed)
                 addExerciseLink
@@ -325,11 +320,13 @@ public struct ActiveSessionView: View {
     /// explicit entry in the fold overrides that for this card only: one the user has not touched
     /// still follows the rule, which is what a workout reopened tomorrow should do.
     ///
-    /// **The warmup group is deliberately *not* pinned**, though the first working set folds it by
-    /// ``SessionExerciseList/defaultWarmupExpansion(for:)``'s rule. That fold happens above the row
-    /// just logged and shortens the card, so it pulls the new set towards the thumb rather than off
-    /// screen — the opposite of what the card's own fold would have done, which is why one needs the
-    /// override and the other does not.
+    /// **A warmup pins the warmup group open too, and only a warmup does.** Logging a *working*
+    /// set may fold that group by ``SessionExerciseList/defaultWarmupExpansion(for:)``'s rule, and
+    /// that fold is harmless: it happens above the new row and shortens the card, pulling the set
+    /// towards the thumb rather than off screen. Logging a *warmup* into a card that already has
+    /// work in it is the opposite case — the same rule would fold the row being written, so the set
+    /// would be logged and then immediately hidden. See ``markSet(_:asWarmup:)``, which is the same
+    /// hazard reached by the other control.
     ///
     /// A draft that does not resolve is ignored rather than trusted — the confirming command is
     /// disabled in that state, so this is the second reading of a guard the editor already applies.
@@ -348,7 +345,28 @@ public struct ActiveSessionView: View {
         )
         editing = nil
         expansion[entryID] = true
+        if draft.isWarmup { warmupExpansion[entryID] = true }
         Task { await store.addSet(toEntryID: entryID, values: values) }
+    }
+
+    /// Marks a logged set as a warmup or as working (`FR-1.2.4`).
+    ///
+    /// **A set becoming a warmup pins its card's warmup group open**, for the reason
+    /// ``log(_:into:)`` pins the card: the group is folded by default once the work has started, so
+    /// a row moved into it would vanish under a heading at the far end of the card, taking the
+    /// control that undoes the marking with it. The reverse direction needs nothing — a set leaving
+    /// the group is already on screen, and the group it leaves can only have been open for the
+    /// badge to have been tappable at all.
+    ///
+    /// The pin is an entry in ``warmupExpansion`` and so lasts as long as the screen: a group the
+    /// user has been shown once stays shown, rather than folding again behind the next working set.
+    ///
+    /// - Parameters:
+    ///   - set: The set to mark.
+    ///   - isWarmup: Which kind it becomes.
+    private func markSet(_ set: SetEntry, asWarmup isWarmup: Bool) {
+        if isWarmup { warmupExpansion[set.entryID] = true }
+        Task { await store.markSet(id: set.id, inEntryID: set.entryID, isWarmup: isWarmup) }
     }
 
     /// Finishes the workout and leaves the screen, unless the write failed.

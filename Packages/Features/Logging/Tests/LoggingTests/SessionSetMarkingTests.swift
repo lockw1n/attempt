@@ -139,12 +139,28 @@ struct SessionSetMarkingTests {
 
     @Test("A set marked with no workout in progress is not written")
     func noWorkoutNoMarking() async throws {
-        let repositories = InMemoryRepositoryStack()
-        let store = ActiveSessionStore.overWorkouts(repositories.workouts)
+        // The set has to be a real stored row, and the store has to have let go of the workout it
+        // belongs to. A store that never held one reads nothing back either way, so the guard it is
+        // meant to check would be unfalsifiable — measured: removing `guard session != nil` from
+        // `writeMarkedSet` left the whole suite green against the earlier version of this test.
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: workout.squat.id)
+        let entry = try #require(workout.store.exercises.first)
+        await workout.store.addSet(
+            toEntryID: entry.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 60_000), reps: 5, rpe: nil, isWarmup: false, notes: ""))
+        let logged = try #require(workout.store.exercises.first?.sets.first)
+        await workout.store.finish()
+        #expect(workout.store.session == nil)
 
-        await store.markSet(id: UUID(), inEntryID: UUID(), isWarmup: true)
+        await workout.store.markSet(id: logged.id, inEntryID: entry.id, isWarmup: true)
 
-        #expect(store.exercisesWriteFailure == nil)
+        // The row is still there — finishing keeps it — and it is still working.
+        let stored = try await workout.repositories.workouts.sets(
+            forEntryID: entry.id, includingDeleted: false)
+        #expect(stored.map(\.isWarmup) == [false])
+        #expect(workout.store.exercisesWriteFailure == nil)
     }
 
     @Test("A marking and a log in flight together are both applied")

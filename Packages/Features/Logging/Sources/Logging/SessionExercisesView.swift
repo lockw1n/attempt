@@ -162,10 +162,11 @@ struct SessionExerciseList: View {
     /// finished the moment the first working set is logged. Mid-ramp the numbers being checked are
     /// the warmups themselves; after it, they are three rows of noise above the work.
     ///
-    /// **It folds under the user's thumb exactly once, and upwards**, which is why this is safe here
-    /// and was not for the card: the group sits *above* the working sets, so folding it pulls the
-    /// row just logged towards the thumb instead of taking it off screen. The card needed an
-    /// explicit pin against the same rule for the opposite reason.
+    /// **It folds upwards, which makes it safe for the set that triggers it and unsafe for a set
+    /// written into it.** The group sits *above* the working sets, so the first working set folding
+    /// it pulls that row towards the thumb rather than taking it off screen. A set written into the
+    /// group while it is folded — logged as a warmup, or marked as one afterwards — is the other
+    /// case, and the screen overrides this default for both: see `ActiveSessionView`.
     ///
     /// - Parameter item: The exercise.
     /// - Returns: Whether its warmup group starts open.

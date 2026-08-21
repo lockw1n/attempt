@@ -185,9 +185,14 @@ struct SetRow: View {
     }
 
     /// The badge's text — `W1` for a warmup, a bare numeral for a working set.
+    ///
+    /// **Both numerals go through the same format style** (`G-3.4`). The warmup's is rendered here
+    /// and handed to the catalogue as a string rather than interpolated as an integer, so the two
+    /// numbers on one row cannot be drawn by two different mechanisms.
     private var numberText: Text {
-        numbered.isWarmup
-            ? Text(LoggingStrings.setWarmupNumber(numbered.number))
+        let rendered = numbered.number.formatted(AppFormat.count(locale: locale))
+        return numbered.isWarmup
+            ? Text(LoggingStrings.setWarmupNumber(rendered))
             : Text(numbered.number, format: AppFormat.count(locale: locale))
     }
 
