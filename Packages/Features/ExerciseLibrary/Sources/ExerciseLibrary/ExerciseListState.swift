@@ -91,20 +91,55 @@ public final class ExerciseListState {
     /// exercise is reachable from, and un-archiving is on the detail screen behind it.
     public var showsArchived = false
 
-    /// Whether `FR-1.1.2`'s recency filter can be offered yet.
+    /// Show only exercises used recently, or every one (`FR-1.1.2`).
     ///
-    /// **`false`, and the screen shows the control disabled rather than hiding it.** Recency is a
-    /// read over logged sets, and nothing has logged one until Track C lands — a control that
-    /// silently returned everything would be a filter that lies, and a missing control would be a
-    /// requirement nobody can see is unfinished. The filter itself is T-1.21's to wire, when a
-    /// session exists to be recent.
-    public let isRecencyFilterAvailable = false
+    /// One of the four narrowing controls, so ``clearFilters()`` turns it off — unlike
+    /// ``showsArchived``, which widens.
+    public var showsRecentOnly = false
+
+    /// The exercises trained inside the recency window, or `nil` when the read has not answered.
+    ///
+    /// **A set of identifiers rather than a date per exercise.** The question the filter asks is a
+    /// yes or no, and a per-exercise date would be a second ordering authority over a list whose
+    /// order `FR-1.1.1` already fixes.
+    public private(set) var recentExerciseIDs: Set<UUID>?
+
+    /// How far back "recently used" reaches, in days.
+    ///
+    /// **A rolling window rather than the last *n* sessions**, and the two are not the same
+    /// promise. A last-*n* rule always returns something, so a lifter six months out of the gym is
+    /// shown their last session's exercises as "recent" — a filter that lies, in the one case where
+    /// the honest answer is that nothing is. A window answers "nothing" there, and for anyone
+    /// training normally it answers with the block they are in the middle of.
+    ///
+    /// **Thirty days rather than seven**, because a powerlifting programme rotates: a squat variant
+    /// trained every third week is used recently, and a week-long window would call it forgotten.
+    public static let recencyWindowInDays = 30
+
+    /// Whether `FR-1.1.2`'s recency filter can be offered.
+    ///
+    /// **The read having answered is not enough — it has to have found something.** A chip that can
+    /// be tapped only to empty the list is a control that appears broken; the hint beside it says
+    /// what turns it on instead. It stays disabled rather than hidden for that same reason, which is
+    /// the reading T-1.10 shipped and this task keeps.
+    public var isRecencyFilterAvailable: Bool {
+        recentExerciseIDs?.isEmpty == false
+    }
 
     private let repository: any ExerciseRepository
+    private let workouts: any WorkoutRepository
 
-    /// Builds the state over the repository it reads through.
-    public init(repository: any ExerciseRepository) {
+    /// Builds the state over the two repositories it reads through.
+    ///
+    /// - Parameters:
+    ///   - repository: The catalogue (`FR-1.1.1`).
+    ///   - workouts: What has been logged, for `FR-1.1.2`'s recency filter and nothing else. A
+    ///     second protocol rather than a dependency on `Logging`, which this module must not have
+    ///     (`TR-1.3`) — both modules already depend on `RepositoryInterface`, and the app target
+    ///     composes them.
+    public init(repository: any ExerciseRepository, workouts: any WorkoutRepository) {
         self.repository = repository
+        self.workouts = workouts
     }
 
     /// Reads the catalogue, on first appearance and on every retry.
@@ -123,6 +158,7 @@ public final class ExerciseListState {
         } catch {
             phase = .failed(String(describing: error))
         }
+        await loadRecentlyUsed()
     }
 
     /// Re-reads the catalogue, keeping what is on screen until the new rows land.
@@ -156,6 +192,47 @@ public final class ExerciseListState {
         } catch {
             phase = .failed(String(describing: error))
         }
+        await loadRecentlyUsed()
+    }
+
+    /// Reads which exercises have been trained inside the recency window (`FR-1.1.2`).
+    ///
+    /// **Two levels of read, because the schema declares no relationships** (`G-2.5`): the sessions
+    /// in the window, then each one's entries. It is a bounded read by construction — a month of
+    /// training is a few dozen rows — and it runs beside the catalogue read rather than on a tap, so
+    /// the chip's own state is settled before the user can reach for it.
+    ///
+    /// **A failure disables the filter rather than failing the screen.** The catalogue is what this
+    /// list is; recency narrows it. Losing the rows to a read that only ever governed one chip would
+    /// be a screen taken down by its least important query — so the diagnostic is that the chip goes
+    /// back to being unavailable, and a filter left in force is turned off with it rather than
+    /// silently narrowing to a set nobody can vouch for.
+    ///
+    /// **A window that comes back empty ends the same way, and for a sharper reason.** There the
+    /// filter narrows to nothing at all, behind a chip that is now disabled — so the list is empty
+    /// and the control that would undo it cannot be tapped.
+    private func loadRecentlyUsed() async {
+        let now = Date.now
+        guard
+            let start = Calendar.current.date(
+                byAdding: .day, value: -Self.recencyWindowInDays, to: now)
+        else {
+            return
+        }
+        do {
+            var used: Set<UUID> = []
+            for session in try await workouts.sessions(in: start...now, includingDeleted: false) {
+                let entries = try await workouts.entries(
+                    forSessionID: session.id, includingDeleted: false)
+                used.formUnion(entries.map(\.exerciseID))
+            }
+            recentExerciseIDs = used
+        } catch {
+            recentExerciseIDs = nil
+        }
+        // One clause for both endings, because they are one fact: a filter cannot stay in force
+        // while the chip that would clear it is disabled.
+        if !isRecencyFilterAvailable { showsRecentOnly = false }
     }
 
     /// Everything the repository returned, in the order every browsable surface in this module
@@ -196,7 +273,17 @@ public final class ExerciseListState {
                 && (movementFilter == nil || exercise.movement == movementFilter)
                 && (equipmentFilter == nil || exercise.equipment == equipmentFilter)
                 && (originFilter == nil || origin(of: exercise) == originFilter)
+                && matchesRecency(exercise)
         }
+    }
+
+    /// Whether `exercise` survives `FR-1.1.2`'s recency filter.
+    ///
+    /// Everything survives while the filter is off, and while the read that would answer it has not
+    /// — a narrowing nobody asked for is worse than one that is briefly not offered.
+    private func matchesRecency(_ exercise: Exercise) -> Bool {
+        guard showsRecentOnly, let recent = recentExerciseIDs else { return true }
+        return recent.contains(exercise.id)
     }
 
     /// Whether `exercise`'s name matches what the user typed.
@@ -247,5 +334,6 @@ public final class ExerciseListState {
         movementFilter = nil
         equipmentFilter = nil
         originFilter = nil
+        showsRecentOnly = false
     }
 }

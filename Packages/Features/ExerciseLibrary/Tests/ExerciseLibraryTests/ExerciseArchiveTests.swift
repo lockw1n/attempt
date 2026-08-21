@@ -1,5 +1,6 @@
 import Foundation
 import PowerliftingCore
+import RepositoryFakes
 import RepositoryInterface
 import Testing
 
@@ -19,8 +20,7 @@ struct ExerciseArchiveTests {
     @Test("Archiving stores the row with only isArchived changed")
     func archivingWritesOneColumn() async {
         let repository = ScriptedExerciseRepository(exercises: [DetailFixtures.liveDistinct])
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.liveDistinct.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.liveDistinct.id, repository: repository)
         await state.load()
 
         await state.setArchived(true)
@@ -37,8 +37,7 @@ struct ExerciseArchiveTests {
     @Test("Un-archiving is the same write back (FR-1.1.5's reverse)")
     func unarchivingRestoresTheRow() async {
         let repository = ScriptedExerciseRepository(exercises: [DetailFixtures.everyFieldDistinct])
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.everyFieldDistinct.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.everyFieldDistinct.id, repository: repository)
         await state.load()
         #expect(state.detail?.exercise.isArchived == true)
 
@@ -53,8 +52,7 @@ struct ExerciseArchiveTests {
     @Test("A built-in exercise archives, and stays built-in")
     func aBuiltInCanBeArchived() async {
         let repository = ScriptedExerciseRepository(exercises: [DetailFixtures.backSquat])
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
 
         await state.setArchived(true)
@@ -70,7 +68,7 @@ struct ExerciseArchiveTests {
     func aNoOpArchiveDoesNotWrite() async {
         let archived = DetailFixtures.archived(DetailFixtures.backSquat, true)
         let repository = ScriptedExerciseRepository(exercises: [archived])
-        let state = ExerciseDetailState(exerciseID: archived.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: archived.id, repository: repository)
         await state.load()
 
         await state.setArchived(true)
@@ -83,8 +81,7 @@ struct ExerciseArchiveTests {
     @Test("An unsaved note is neither committed by archiving nor lost to it")
     func archivingLeavesTheDraftAlone() async {
         let repository = ScriptedExerciseRepository(exercises: [DetailFixtures.backSquat])
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         state.notesDraft = "Typed and not saved."
 
@@ -104,8 +101,7 @@ struct ExerciseArchiveTests {
     @Test("An archive that overlaps a notes save cannot undo it")
     func anArchiveOverlappingASaveDoesNotUndoIt() async {
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         state.notesDraft = "Knees out, chest up."
 
@@ -143,8 +139,7 @@ struct ExerciseArchiveTests {
             exercises: [DetailFixtures.backSquat],
             writeError: .recordNotFound(id: UUID())
         )
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
 
         await state.setArchived(true)
@@ -163,8 +158,7 @@ struct ExerciseArchiveTests {
     @Test("A write that lands but cannot be read back is a failed read, not a failed write")
     func aFailedReadAfterAWriteIsAReadFailure() async {
         let repository = ScriptedExerciseRepository(exercises: [DetailFixtures.backSquat])
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         await repository.failReads(.recordNotFound(id: UUID()))
 
@@ -187,8 +181,7 @@ struct ExerciseArchiveTests {
             exercises: [DetailFixtures.backSquat],
             writeError: .recordNotFound(id: UUID())
         )
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
 
         await state.setArchived(true)
@@ -205,8 +198,8 @@ struct ExerciseArchiveTests {
     @Test("An archived exercise leaves the list, and comes back when it is shown")
     func theListHidesAndRevealsIt() async {
         let archived = Fixtures.exercise(name: "Retired Machine Press", movement: .bench, isArchived: true)
-        let state = ExerciseListState(
-            repository: ScriptedExerciseRepository(exercises: Fixtures.catalogue + [archived])
+        let state = ExerciseListState.overCatalogue(
+            ScriptedExerciseRepository(exercises: Fixtures.catalogue + [archived])
         )
         await state.load()
         #expect(!state.names.contains("Retired Machine Press"))
@@ -219,8 +212,8 @@ struct ExerciseArchiveTests {
     @Test("Showing archived rows is not a filter, so clearing the filters does not hide them")
     func clearingFiltersLeavesTheArchiveControlAlone() async {
         let archived = Fixtures.exercise(name: "Retired Machine Press", movement: .bench, isArchived: true)
-        let state = ExerciseListState(
-            repository: ScriptedExerciseRepository(exercises: Fixtures.catalogue + [archived])
+        let state = ExerciseListState.overCatalogue(
+            ScriptedExerciseRepository(exercises: Fixtures.catalogue + [archived])
         )
         await state.load()
         state.showsArchived = true
@@ -235,7 +228,7 @@ struct ExerciseArchiveTests {
     @Test("A catalogue of nothing but archived rows is its own empty state, not an empty catalogue")
     func everythingArchivedIsItsOwnState() async {
         let rows = Fixtures.catalogue.map { DetailFixtures.archived($0, true) }
-        let state = ExerciseListState(repository: ScriptedExerciseRepository(exercises: rows))
+        let state = ExerciseListState.overCatalogue(ScriptedExerciseRepository(exercises: rows))
         await state.load()
 
         #expect(state.isEverythingArchived)
@@ -251,7 +244,7 @@ struct ExerciseArchiveTests {
 
     @Test("A store with no exercises at all is the empty catalogue, not the archived state")
     func anEmptyStoreIsNotTheArchivedState() async {
-        let state = ExerciseListState(repository: ScriptedExerciseRepository(exercises: []))
+        let state = ExerciseListState.overCatalogue(ScriptedExerciseRepository(exercises: []))
         await state.load()
 
         #expect(state.isCatalogueEmpty)
@@ -261,8 +254,8 @@ struct ExerciseArchiveTests {
     @Test("One live row among archived ones is neither empty state")
     func aLiveRowIsNeitherEmptyState() async {
         let rows = Fixtures.catalogue.dropFirst().map { DetailFixtures.archived($0, true) }
-        let state = ExerciseListState(
-            repository: ScriptedExerciseRepository(exercises: [Fixtures.catalogue[0]] + rows)
+        let state = ExerciseListState.overCatalogue(
+            ScriptedExerciseRepository(exercises: [Fixtures.catalogue[0]] + rows)
         )
         await state.load()
 

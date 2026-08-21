@@ -24,8 +24,20 @@ public struct ExerciseDetailView: View {
     ///   - exerciseID: Which exercise to show.
     ///   - repository: Where it comes from. `Persistence`'s implementation in the app; anything
     ///     conforming in a test or a preview.
-    public init(exerciseID: UUID, repository: any ExerciseRepository) {
-        _state = State(initialValue: ExerciseDetailState(exerciseID: exerciseID, repository: repository))
+    ///   - workouts: Where the sets logged against it come from. Read for a count, which is what the
+    ///     three derived sections' copy turns on — see ``ExerciseDetail/hasLoggedSets``.
+    public init(
+        exerciseID: UUID,
+        repository: any ExerciseRepository,
+        workouts: any WorkoutRepository
+    ) {
+        _state = State(
+            initialValue: ExerciseDetailState(
+                exerciseID: exerciseID,
+                repository: repository,
+                workouts: workouts
+            )
+        )
     }
 
     /// The exercise's sections, or whichever of the screen's three other states is current.
@@ -107,13 +119,27 @@ public struct ExerciseDetailView: View {
         if detail.hasRelationships {
             ExerciseVariationsSection(parent: detail.parent, variations: detail.variations)
         }
+        // The copy of the first two turns on whether a set has ever been logged, not on whether
+        // this screen can display one: "log a set and its history appears here" is true only while
+        // no set can exist, and telling a user who has logged sets to log a set is telling them the
+        // wrong thing about their own data. The non-empty branch says what is actually true — the
+        // sets are there, the display for them is not built — and T-1.36 and T-1.41 replace it.
+        //
+        // THE ESTIMATE IS NOT ONE OF THE TWO, and that is deliberate. A 12-rep set, assisted work
+        // and a set that targets ten and fails at eight each produce no estimate BY DESIGN, so a
+        // user can have logged sets and still correctly have no e1RM — a count cannot tell those
+        // apart from an exercise nothing has been logged against. T-1.43 owns that copy.
         DerivedValueSection(
             title: ExerciseLibraryStrings.historySection,
-            nothingYet: ExerciseLibraryStrings.historyNone
+            nothingYet: detail.hasLoggedSets
+                ? ExerciseLibraryStrings.historyPending
+                : ExerciseLibraryStrings.historyNone
         )
         DerivedValueSection(
             title: ExerciseLibraryStrings.recordsSection,
-            nothingYet: ExerciseLibraryStrings.recordsNone
+            nothingYet: detail.hasLoggedSets
+                ? ExerciseLibraryStrings.recordsPending
+                : ExerciseLibraryStrings.recordsNone
         )
         DerivedValueSection(
             title: ExerciseLibraryStrings.e1rmSection,

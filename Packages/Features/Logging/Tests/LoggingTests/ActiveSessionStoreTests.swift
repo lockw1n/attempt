@@ -14,7 +14,7 @@ struct ActiveSessionStoreTests {
         let repository = InMemoryRepositoryStack().workouts
         let session = WorkoutSession.fixture()
         try await repository.save(session)
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore.overWorkouts(repository)
 
         await store.adopt(sessionID: session.id)
 
@@ -24,7 +24,7 @@ struct ActiveSessionStoreTests {
 
     @Test("Adopting an unknown session holds nothing, and is not a failure")
     func adoptUnknownSessionIsNotAFailure() async {
-        let store = ActiveSessionStore(repository: InMemoryRepositoryStack().workouts)
+        let store = ActiveSessionStore.overWorkouts(InMemoryRepositoryStack().workouts)
 
         await store.adopt(sessionID: UUID())
 
@@ -38,7 +38,7 @@ struct ActiveSessionStoreTests {
         let session = WorkoutSession.fixture()
         try await repository.save(session)
         try await repository.deleteSession(id: session.id)
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore.overWorkouts(repository)
 
         await store.adopt(sessionID: session.id)
 
@@ -51,7 +51,7 @@ struct ActiveSessionStoreTests {
         let repository = InMemoryRepositoryStack().workouts
         let session = WorkoutSession.fixture()
         try await repository.save(session)
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore.overWorkouts(repository)
         await store.adopt(sessionID: session.id)
         let adopted = try #require(store.session)
 
@@ -68,7 +68,7 @@ struct ActiveSessionStoreTests {
     func unchangedUpdateIsNotWritten() async throws {
         let repository = InMemoryRepositoryStack().workouts
         try await repository.save(WorkoutSession.fixture())
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore.overWorkouts(repository)
         await store.adopt(sessionID: WorkoutSession.fixture().id)
         let adopted = try #require(store.session)
 
@@ -85,7 +85,7 @@ struct ActiveSessionStoreTests {
         let repository = InMemoryRepositoryStack().workouts
         let session = WorkoutSession.fixture()
         try await repository.save(session)
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore.overWorkouts(repository)
         await store.adopt(sessionID: session.id)
         let foreign = WorkoutSession.fixture(id: UUID()).withNotes("elsewhere")
 
@@ -102,7 +102,7 @@ struct ActiveSessionStoreTests {
         let failure = RepositoryError.recordNotFound(id: UUID())
         let session = WorkoutSession.fixture()
         let repository = ScriptedWorkoutRepository(row: session)
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore.overWorkouts(repository)
         await store.adopt(sessionID: session.id)
         // Something has to be held for the drop to be the thing under test.
         try #require(store.session == session)
@@ -119,7 +119,7 @@ struct ActiveSessionStoreTests {
         let session = WorkoutSession.fixture()
         let repository = ScriptedWorkoutRepository(
             row: session, readError: .recordNotFound(id: UUID()))
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore.overWorkouts(repository)
         await store.adopt(sessionID: session.id)
         #expect(store.failure != nil)
 
@@ -134,7 +134,7 @@ struct ActiveSessionStoreTests {
     func vanishedRowAfterWriteIsReported() async throws {
         let session = WorkoutSession.fixture()
         let repository = ScriptedWorkoutRepository(row: session)
-        let store = ActiveSessionStore(repository: repository)
+        let store = ActiveSessionStore.overWorkouts(repository)
         await store.adopt(sessionID: session.id)
         try #require(store.session == session)
 
@@ -152,7 +152,8 @@ struct ActiveSessionStoreTests {
     func failedWriteIsReported() async throws {
         let failure = RepositoryError.danglingReference(recordID: UUID(), referencing: UUID())
         let session = WorkoutSession.fixture()
-        let store = ActiveSessionStore(repository: ScriptedWorkoutRepository(row: session, writeError: failure))
+        let store = ActiveSessionStore.overWorkouts(
+            ScriptedWorkoutRepository(row: session, writeError: failure))
         await store.adopt(sessionID: session.id)
 
         await store.update(session.withNotes("touched"))
@@ -162,7 +163,7 @@ struct ActiveSessionStoreTests {
     }
 }
 
-/// A `WorkoutRepository` that answers the two calls the store makes and refuses the rest.
+/// A `WorkoutRepository` that answers the four calls the store makes and refuses the rest.
 ///
 /// The happy paths above run against `RepositoryFakes`, whose conformance suite says it behaves like
 /// the real store. This one exists for the failures a faithful fake will not produce.
@@ -170,11 +171,18 @@ actor ScriptedWorkoutRepository: WorkoutRepository {
     private var row: WorkoutSession?
     private var readError: RepositoryError?
     private let writeError: RepositoryError?
+    private let deleteError: RepositoryError?
 
-    init(row: WorkoutSession? = nil, readError: RepositoryError? = nil, writeError: RepositoryError? = nil) {
+    init(
+        row: WorkoutSession? = nil,
+        readError: RepositoryError? = nil,
+        writeError: RepositoryError? = nil,
+        deleteError: RepositoryError? = nil
+    ) {
         self.row = row
         self.readError = readError
         self.writeError = writeError
+        self.deleteError = deleteError
     }
 
     func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
@@ -196,12 +204,21 @@ actor ScriptedWorkoutRepository: WorkoutRepository {
         if let writeError { throw writeError }
     }
 
+    /// The one row, when it is dated inside `range` — the read `resume()` makes.
     func sessions(in range: ClosedRange<Date>, includingDeleted: Bool) async throws -> [WorkoutSession] {
-        throw unsupported
+        if let readError { throw readError }
+        return [row].compactMap { $0 }.filter { range.contains($0.date) }
     }
 
-    func deleteSession(id: UUID) async throws { throw unsupported }
+    /// Soft-deletes the row by forgetting it, or fails when the test asked for a failed discard.
+    func deleteSession(id: UUID) async throws {
+        if let deleteError { throw deleteError }
+        guard row?.id == id else { throw RepositoryError.recordNotFound(id: id) }
+        row = nil
+    }
 
+    /// Refused, always — which is what makes this the fake a failed *exercise* read is written
+    /// against. The store does call this one; see `SessionExercisesTests`.
     func entries(forSessionID sessionID: UUID, includingDeleted: Bool) async throws -> [ExerciseEntry] {
         throw unsupported
     }
@@ -243,6 +260,23 @@ extension WorkoutSession {
             bodyweight: nil,
             programRunID: nil,
             scheduledWorkoutID: nil
+        )
+    }
+
+    /// The same session on another training day — the field the resume order keys off.
+    func on(_ day: Date) -> WorkoutSession {
+        WorkoutSession(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            date: day,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            notes: notes,
+            bodyweight: bodyweight,
+            programRunID: programRunID,
+            scheduledWorkoutID: scheduledWorkoutID
         )
     }
 

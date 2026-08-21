@@ -34,11 +34,22 @@ enum ExerciseLibraryStrings {
     /// The unset position of every filter row — "no narrowing", not "everything selected".
     static let filterAll = resource("exerciselibrary.list.filter.all")
 
-    /// The recency filter, shown disabled until logging lands.
+    /// The recency filter (`FR-1.1.2`).
     static let recentlyUsedFilter = resource("exerciselibrary.list.filter.recently-used")
 
-    /// Why the recency filter cannot be used yet. A sentence for the user, not a task reference.
+    /// Why the recency filter cannot be used. A sentence for the user, not a task reference.
     static let recentlyUsedUnavailable = resource("exerciselibrary.list.filter.recently-used.hint")
+
+    /// What the recency filter narrows to, once it can be used.
+    ///
+    /// **The window is the argument rather than the sentence**, so the number has one home — the
+    /// state's own constant — and a translation cannot disagree with what the filter does.
+    ///
+    /// - Parameter days: How far back "recently used" reaches.
+    /// - Returns: The sentence.
+    static func recentlyUsedAvailable(days: Int) -> LocalizedStringResource {
+        resource("exerciselibrary.list.filter.recently-used.available \(days)")
+    }
 
     /// The badge on a row the user authored (`FR-1.1.3`).
     static let customBadge = resource("exerciselibrary.list.row.custom")
@@ -48,6 +59,12 @@ enum ExerciseLibraryStrings {
     /// A `list.filter.*` key because it sits in the filter bar, and not a filter — see
     /// ``ExerciseListState/showsArchived``.
     static let showArchivedFilter = resource("exerciselibrary.list.filter.archived")
+
+    /// The chooser's title, when the list is picking an exercise for a workout (`FR-1.2.2`).
+    static let pickerTitle = resource("exerciselibrary.picker.title")
+
+    /// Why an entirely archived catalogue has nothing for the chooser, and where to go about it.
+    static let archivedOnlyPickerMessage = resource("exerciselibrary.picker.archived-only.message")
 
     /// The badge on an archived row, once one is shown. The list's own, not the detail screen's:
     /// the key convention is by screen, and the two are free to diverge.
@@ -150,6 +167,12 @@ enum ExerciseLibraryStrings {
 
     /// The heading over this exercise's personal records.
     static let recordsSection = resource("exerciselibrary.detail.section.records")
+
+    /// The history section when sets **have** been logged and the display for them is not built.
+    static let historyPending = resource("exerciselibrary.detail.history.pending")
+
+    /// The personal-records section, same case.
+    static let recordsPending = resource("exerciselibrary.detail.records.pending")
 
     /// Why there are no records yet, and what would produce some.
     static let recordsNone = resource("exerciselibrary.detail.records.none")
@@ -325,8 +348,9 @@ enum ExerciseLibraryStrings {
     static var all: [LocalizedStringResource] {
         [
             title, searchPrompt, movementFilter, equipmentFilter, originFilter, filterAll,
-            recentlyUsedFilter, recentlyUsedUnavailable, customBadge,
-            showArchivedFilter, archivedBadge,
+            recentlyUsedFilter, recentlyUsedUnavailable,
+            recentlyUsedAvailable(days: 30), customBadge,
+            showArchivedFilter, archivedBadge, pickerTitle, archivedOnlyPickerMessage,
             emptyHeadline, emptyMessage,
             archivedOnlyHeadline, archivedOnlyMessage,
             noMatchesHeadline, noMatchesMessage, noMatchesAction,
@@ -337,7 +361,8 @@ enum ExerciseLibraryStrings {
             archiveSection, archiveExplanation, archiveAction,
             unarchiveExplanation, unarchiveAction, archiveError,
             variationsSection, variationOf,
-            historySection, historyNone, recordsSection, recordsNone, e1rmSection, e1rmNone,
+            historySection, historyNone, historyPending, recordsSection, recordsNone, recordsPending,
+            e1rmSection, e1rmNone,
             detailErrorHeadline, detailErrorMessage, detailMissingHeadline, detailMissingMessage,
             createAction, editAction, formCreateTitle, formEditTitle, formSection,
             formName, formNamePrompt, formNameRequired, formMovement, formEquipment, formBar,

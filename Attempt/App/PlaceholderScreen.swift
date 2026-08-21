@@ -52,10 +52,12 @@ struct PlaceholderScreen: View {
                             .buttonStyle(.primaryAction(.fill))
                     }
 
-                    NavigationLink(value: Self.sampleRoute(for: tab)) {
-                        Text(verbatim: "Push a route")
-                            .font(Typography.actionLabel.font)
-                            .foregroundStyle(ColorToken.brandAccent)
+                    if let sample = Self.sampleRoute(for: tab) {
+                        NavigationLink(value: sample) {
+                            Text(verbatim: "Push a route")
+                                .font(Typography.actionLabel.font)
+                                .foregroundStyle(ColorToken.brandAccent)
+                        }
                     }
                 }
             }
@@ -81,14 +83,15 @@ struct PlaceholderScreen: View {
 
     /// One pushable route per tab, so every stack can be driven to depth 1 by hand — which is how
     /// the restore is checked in the simulator, and the only reason this mapping exists.
-    private static func sampleRoute(for tab: AppTab) -> Route {
+    ///
+    /// **`nil` for a tab whose root is a real screen**, and Train is the first of those: this
+    /// placeholder is not what that tab shows any more, so a sample route for it would be a link
+    /// nothing can reach. Its entry into the exercise library was an interim one, standing in until
+    /// the session surface existed to offer a real one.
+    private static func sampleRoute(for tab: AppTab) -> Route? {
         switch tab {
         case .home: .dashboard(.recentPersonalRecords)
-        // Train's is the real screen, not a sample: the exercise library is built (T-1.10) and its
-        // root — the session surface — is not, so this placeholder is currently the only way to
-        // reach it. T-1.20 replaces this whole screen with that surface and puts the library behind
-        // an entry point of its own.
-        case .train: .exerciseLibrary(.exerciseList)
+        case .train: nil
         case .history: .history(.session(sessionID: sampleID))
         case .settings: .settings(.about)
         }

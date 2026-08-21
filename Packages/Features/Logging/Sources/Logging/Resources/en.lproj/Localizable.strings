@@ -1,2 +1,173 @@
-/* Logging (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the
-   Localization module doc. No copy in this module yet. */
+/* Logging (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization module doc.
+   The two screens are the Train root, where a workout is started or resumed, and the workout
+   itself. Nothing here is translated: only `en` ships in Phase 1. */
+
+/* Nothing is in progress. FR-1.13.2's first-launch guidance: the headline says what there is none
+   of and the message names both ways to make one, since backdating is the half a new user would not
+   guess. */
+"logging.train.empty.headline" = "No workout in progress";
+"logging.train.empty.message" = "Start today's workout, or pick an earlier date to log one you have already done.";
+"logging.train.start.action" = "Start workout";
+
+"logging.train.date.section" = "Workout date";
+"logging.train.date.picker" = "Training day";
+/* Says what the date is for rather than how to use the control: FR-1.2.1's backdating is about
+   which day the workout counts as, not when it was typed in. */
+"logging.train.date.hint" = "Today, unless you are logging a workout from an earlier day.";
+
+"logging.train.in-progress.section" = "In progress";
+"logging.train.in-progress.day" = "Training day";
+"logging.train.in-progress.started" = "Started";
+/* FR-1.2.11: the way back into a workout the app came back to. "Resume" rather than "Open", because
+   the workout was interrupted — by a relaunch, a force-quit or a walk to the rack. */
+"logging.train.in-progress.resume" = "Resume workout";
+
+"logging.train.library.action" = "Browse exercises";
+
+/* NFR-1.9. The control is here rather than in Settings while it is a stub — see
+   ScreenWakePreference for why the settings row cannot hold it yet. */
+"logging.train.screen-wake.section" = "During a workout";
+"logging.train.screen-wake.label" = "Keep screen awake";
+"logging.train.screen-wake.hint" = "The screen stays on while a workout is in progress, and sleeps normally the rest of the time.";
+
+/* The read failed — the screen does not know whether a workout is in progress, so this one takes
+   the whole screen. A sentence for the user; the diagnostic is never shown. */
+"logging.train.error.headline" = "Workouts unavailable";
+"logging.train.error.message" = "Your workouts could not be read just now.";
+
+/* The start failed, which is a *write* and not a phase: it renders beside the command that issued
+   it, with the date control still on screen, so the retry is another tap at the same button rather
+   than a workout the user has to ask for again. Never the read's copy — nothing was unreadable. */
+"logging.train.start-error.message" = "That workout could not be started. Try again.";
+
+"logging.session.title" = "Workout";
+"logging.session.summary.section" = "This workout";
+"logging.session.day" = "Training day";
+"logging.session.started" = "Started";
+
+/* The workout exists and has nothing in it. The action is FR-1.2.2's chooser, which is also the
+   only command this state can offer — the sets inside an exercise need an exercise first. */
+"logging.session.empty.headline" = "No exercises yet";
+"logging.session.empty.message" = "Exercises you add to this workout appear here.";
+
+"logging.session.finish.action" = "Finish workout";
+"logging.session.discard.action" = "Discard workout";
+
+/* FR-1.2.12's explicit confirmation. The message names what is lost, and the confirming button says
+   what it does rather than "OK" — the two places a destructive dialogue is usually vague. */
+"logging.session.discard.confirm.title" = "Discard this workout?";
+"logging.session.discard.confirm.message" = "Everything logged in it is removed from your history.";
+"logging.session.discard.confirm.action" = "Discard";
+/* PRESENTATION-DEPENDENT, AND KEPT ON PURPOSE. iOS 26 renders this dialogue as a popover, and a
+   popover suppresses the `.cancel` button — only Discard is drawn, and dismissing is a tap outside.
+   The button stays: the suppression is that presentation's and not universal, and the `.cancel`
+   role is what binds keyboard dismissal and gives VoiceOver an explicit way out that tap-outside
+   does not (G-4.2, NFR-1.10). A string nothing currently draws still resolves, so no test can tell
+   you this — which is why it is written down here. */
+"logging.session.discard.confirm.cancel" = "Keep workout";
+
+/* The read failed, on the screen the workout itself is on. Split from the copy below because the
+   two are different facts: one says the workout is gone, and this one says we could not tell. It
+   carries a retry; the one below cannot. */
+"logging.session.error.headline" = "Workout unavailable";
+"logging.session.error.message" = "This workout could not be read just now.";
+
+/* The screen is open on a workout that is no longer in progress — a restored navigation stack after
+   the workout was finished or discarded. Not an error the user caused, and there is nothing to
+   retry. */
+"logging.session.ended.headline" = "No workout in progress";
+"logging.session.ended.message" = "This workout has been finished or discarded.";
+
+/* A write that did not land. The workout stays on screen beside it, so the retry is another tap. */
+"logging.session.write-error.message" = "That could not be saved. Nothing has been lost — try again.";
+
+/* FR-1.2.2 and FR-1.2.13: the workout's exercises, as a vertical list of cards. */
+"logging.session.exercises.section" = "Exercises";
+"logging.session.add-exercise.action" = "Add exercise";
+/* Said in words as well as by the folded card, colour and shape never being the only cue (G-4.5). */
+"logging.session.exercise.completed" = "Completed";
+/* A label beside a number, so it stays a count in every language rather than needing a plural. */
+"logging.session.exercise.sets" = "Sets";
+/* An entry naming a catalogue row that is not there — a restore or a sync that arrived incomplete.
+   The card is rendered broken rather than dropped: an exercise silently missing from a workout is
+   worse than one the user can see is wrong. */
+"logging.session.exercise.missing" = "Exercise unavailable";
+/* VoiceOver's value for the control that folds a card. The chevron that shows it is decorative and
+   hidden, so without these the fold is invisible to VoiceOver (G-4.2). */
+"logging.session.exercise.expanded" = "Expanded";
+"logging.session.exercise.collapsed" = "Collapsed";
+/* Accessibility labels: both controls draw a glyph and have no visible title (G-4.2). */
+"logging.session.exercise.move-up" = "Move up";
+"logging.session.exercise.move-down" = "Move down";
+
+/* The exercises could not be read. Separate from the session's own read failure because they are
+   separate reads: the workout can be on screen while its contents are not. */
+"logging.session.exercises.error.headline" = "Exercises unavailable";
+"logging.session.exercises.error.message" = "The exercises in this workout could not be read just now.";
+/* A failed write — adding or reordering. The cards stay beside it, so the retry is another tap. */
+"logging.session.exercises.write-error.message" = "That could not be saved. Nothing has been lost — try again.";
+
+/* FR-1.2.13's session progress is in Localizable.stringsdict beside this file, not here: the noun
+   agrees with the total, so "1 of 1 exercise complete" needs a plural rule rather than a format. */
+
+/* FR-1.2.3, FR-1.2.5, FR-1.2.6: the sets logged inside one exercise card, and the editor that
+   fills one in. The editor is presented rather than pushed — NFR-1.4 wants every logging control
+   in the lower two-thirds, and a card can be anywhere the user scrolled it to. */
+"logging.session.set.empty" = "No sets logged yet.";
+"logging.session.set.add.action" = "Add set";
+/* FR-1.2.6, and the action the whole screen is shaped around: it opens the editor already filled
+   in from the last set, so repeat-adjust-confirm is three taps (NFR-1.3). */
+"logging.session.set.repeat.action" = "Repeat set";
+"logging.session.set.editor.title" = "Log set";
+"logging.session.set.weight.label" = "Weight";
+"logging.session.set.reps.label" = "Reps";
+"logging.session.set.rpe.label" = "RPE";
+/* The range is the form's, not the record's: a stored row is never validated, because a set
+   arriving from a newer version has to survive being read. A keystroke is the one source where an
+   out-of-range value is a typo. */
+"logging.session.set.rpe.hint" = "Optional, 1 to 10";
+"logging.session.set.notes.label" = "Note";
+"logging.session.set.notes.hint" = "Optional";
+"logging.session.set.confirm.action" = "Log set";
+"logging.session.set.cancel.action" = "Cancel";
+/* Accessibility labels: all four controls draw a glyph and have no visible title (G-4.2). */
+"logging.session.set.weight.increase" = "Increase weight";
+"logging.session.set.weight.decrease" = "Decrease weight";
+"logging.session.set.reps.increase" = "Add a rep";
+"logging.session.set.reps.decrease" = "Remove a rep";
+/* Why the confirming command is refusing. Beside the command rather than under a field, so it is
+   in the same place whichever field is wrong. */
+"logging.session.set.invalid.message" = "Enter a weight and reps. RPE, if given, is 1 to 10.";
+/* The unit a load is entered in (G-3.1). Written again here rather than shared with Settings: two
+   surfaces, two strings, and a suffix on a number field is not a picker of units. */
+"logging.session.set.unit.kilograms" = "kg";
+"logging.session.set.unit.pounds" = "lb";
+/* VoiceOver's label for the bare numeral a set row leads with. */
+"logging.session.set.position %lld" = "Set %lld";
+/* VoiceOver's label for the numeral after the multiplication sign, which is decorative and hidden.
+   A label beside a number rather than a plural, for the same reason "Sets" above is one. */
+"logging.session.set.reps %lld" = "Reps %lld";
+/* A logged set's rating. The number arrives already rendered, so it is the locale's. */
+"logging.session.set.rpe %@" = "RPE %@";
+
+/* FR-1.2.4 and FR-1.2.14: warmups, marked and numbered apart from the work. */
+/* The badge a warmup row leads with. "W1" rather than "1" is the requirement's own spelling, and it
+   is a string rather than a "W" glued to a numeral so a language that prefixes differently — or
+   does not use a Latin W — can say it its own way. The number arrives already rendered, so it is
+   the locale's — and the same style the working badge beside it is drawn with. */
+"logging.session.set.warmup.number %@" = "W%@";
+/* VoiceOver's label for that badge. Never "W1": read aloud, that is three letters and a digit. */
+"logging.session.set.warmup.position %lld" = "Warmup %lld";
+/* The badge is also the control that changes a set's kind (FR-1.2.4), so it carries a hint saying
+   what a tap does. Two strings rather than one with a state in it: a hint names the action about to
+   happen, and "Mark as warmup" on a set that already is one is the opposite instruction. */
+"logging.session.set.mark-warmup" = "Mark as warmup";
+"logging.session.set.mark-working" = "Mark as working";
+/* FR-1.2.14's collapsible group. A label beside a numeral, so it stays a count in every language
+   rather than needing a plural rule. */
+"logging.session.set.warmup.section" = "Warmups";
+/* The set editor's fifth row: which kind the set being logged is. The sentence says what the choice
+   costs rather than what the switch does — that warmups are excluded from the work is the fact a
+   user needs before flipping it, and it is the same fact FR-1.6's calculator acts on. */
+"logging.session.set.warmup.label" = "Warmup set";
+"logging.session.set.warmup.hint" = "Numbered separately, and left out of your working sets.";
