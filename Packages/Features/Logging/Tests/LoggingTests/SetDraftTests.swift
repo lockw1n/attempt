@@ -371,5 +371,8 @@ struct SetDraftTests {
 
 extension Locale {
     /// The locale these tests read and write numbers in, so nothing here depends on the machine's.
-    fileprivate static let posix = Locale(identifier: "en_US_POSIX")
+    ///
+    /// Shared across the test target rather than file-scoped: the editing suite parses against the
+    /// same locale, and two definitions of one locale are two things to keep in step.
+    static let posix = Locale(identifier: "en_US_POSIX")
 }

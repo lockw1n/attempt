@@ -72,6 +72,9 @@ struct SessionSetEditingTests {
         #expect(after.targetWeight == nil)
         #expect(after.targetReps == nil)
         #expect(after.rir == before.rir)
+        // Empty on both sides by construction — `addSet` writes no modifiers, `FR-1.2.8` having
+        // built nothing to write them with. The comparison that can actually fail is in the
+        // past-session suite, whose fixture writes a set carrying two.
         #expect(after.modifiers == before.modifiers)
         #expect(after.deletedAt == nil)
     }
@@ -246,8 +249,9 @@ struct PastSessionSetEditingTests {
     @Test("A set three sessions ago is edited, and no other session moves")
     func editingAPastSetLeavesEverySessionAlone() async throws {
         let history = try await TrainingHistory.threeSessions()
-        let target = try #require(history.sets(inSession: 0).first)
-        let untouched = try await history.everySet(exceptInSession: 0)
+        // Index 2, which is the one three weeks back — the session the done-when names.
+        let target = try #require(history.sets(inSession: 2).first)
+        let untouched = try await history.everySet(exceptInSession: 2)
 
         let wrote = try await history.writer.edit(
             id: target.id,
@@ -265,7 +269,10 @@ struct PastSessionSetEditingTests {
         // FR-1.6.4's scope, in the negative: an edit reaches one row. Compared whole, so a moved
         // `updatedAt` on a neighbouring session — which would outrank a real remote edit by G-2.4 —
         // fails this too.
-        #expect(try await history.everySet(exceptInSession: 0) == untouched)
+        #expect(try await history.everySet(exceptInSession: 2) == untouched)
+        // Modifiers are carried across, and the fixture writes two so this can fail. `FR-1.2.8`
+        // collects none yet, and an edit must not drop what a row already holds.
+        #expect(edited.modifiers == [SetModifier(.belt), SetModifier(rawValue: "chains")])
     }
 
     @Test("The set beside it in the same session does not move either")
@@ -326,9 +333,12 @@ struct PastSessionSetEditingTests {
 extension Workout {
     /// Adds an exercise if there is none, logs `values` against it and returns the stored row.
     ///
+    /// Shared with the editor-write suite rather than file-scoped: both start from a workout with
+    /// one set already logged in it.
+    ///
     /// - Parameter values: What the set records.
     /// - Returns: The set as it was written.
-    fileprivate func logSet(_ values: SetEntryValues) async throws -> SetEntry {
+    func logSet(_ values: SetEntryValues) async throws -> SetEntry {
         if store.exercises.isEmpty {
             await store.addExercise(id: squat.id)
         }
@@ -438,7 +448,9 @@ private struct TrainingHistory {
                     isCompleted: true,
                     targetWeight: nil,
                     targetReps: nil,
-                    modifiers: [],
+                    // Two of them, one built-in and one outside the vocabulary, so an edit that
+                    // dropped or rewrote the column fails rather than comparing empty to empty.
+                    modifiers: [SetModifier(.belt), SetModifier(rawValue: "chains")],
                     notes: "",
                     completedAt: day
                 ))
@@ -448,7 +460,7 @@ private struct TrainingHistory {
 
     /// The sets logged in one of the three workouts, as they were written.
     ///
-    /// - Parameter index: `0` is the oldest — three sessions ago.
+    /// - Parameter index: `0` is the most recent, matching ``entries``; `2` is three sessions ago.
     /// - Returns: Its sets.
     func sets(inSession index: Int) -> [SetEntry] {
         sets[index]

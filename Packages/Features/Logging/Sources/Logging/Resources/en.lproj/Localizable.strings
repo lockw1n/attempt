@@ -204,5 +204,11 @@
 "logging.session.set.delete.confirm.message" = "It leaves your history and stops counting towards your records.";
 "logging.session.set.delete.confirm.action" = "Delete set";
 /* The way out names what it keeps, like the discard dialogue's does: a bare "Cancel" beside a
-   destructive command reads as cancelling the set rather than the deletion. */
+   destructive command reads as cancelling the set rather than the deletion.
+   PRESENTATION-DEPENDENT, AND KEPT ON PURPOSE, for the same reason Keep workout is. iOS 26 renders
+   this dialogue as a popover, and a popover suppresses the `.cancel` button — only Delete set is
+   drawn, and dismissing is a tap outside. The button stays: the suppression is that presentation's
+   and not universal, and the `.cancel` role is what binds keyboard dismissal and gives VoiceOver an
+   explicit way out that tap-outside does not (G-4.2, NFR-1.10). A string nothing currently draws
+   still resolves, so no test can tell you this — which is why it is written down here. */
 "logging.session.set.delete.confirm.cancel" = "Keep set";

@@ -38,6 +38,21 @@ struct SetEditorTarget: Identifiable, Equatable {
     }
 }
 
+/// What confirming the set editor writes — a set that does not exist yet, or a rewrite of one that
+/// does (`FR-1.2.3`, `FR-1.2.7`).
+///
+/// **The decision is a value rather than a branch buried in the screen**, and that is what makes it
+/// answerable without one: which of these two a confirmed form resolves to is the single place
+/// adding and editing part company, and a regression there appends a duplicate set where the user
+/// asked for a correction.
+enum SetEditorWrite: Equatable {
+    /// A set logged for the first time, against the exercise it belongs to.
+    case add(entryID: UUID, values: SetEntryValues)
+
+    /// A set that already exists, rewritten where it sits.
+    case rewrite(setID: UUID, entryID: UUID, values: SetEntryValues)
+}
+
 /// `FR-1.2.3`'s add-set form, `FR-1.2.6`'s duplicate once it has been opened, and `FR-1.2.7`'s
 /// editor over a set that already exists.
 ///

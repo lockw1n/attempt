@@ -10,10 +10,14 @@ import RepositoryInterface
 /// id, which is all this holds; the session store delegates to it rather than owning the writes, so
 /// the two surfaces cannot come to disagree about what an edit does.
 ///
-/// **It is also the one place `FR-1.6.4`'s recalculation is triggered from.** A set's load, reps,
-/// kind or existence changing is what moves a personal record or an e1RM, and both calls that can do
-/// it are here — a recompute hooked onto these two is hooked onto every edit and every deletion in
-/// the app.
+/// **`FR-1.6.4`'s recalculation triggers on both calls here — and on three more that are not.** A
+/// set's load, reps, kind, outcome or existence changing is what moves a personal record or an
+/// e1RM. This type owns the two the requirement names in words, the edit and the deletion;
+/// `ActiveSessionStore` keeps the other three, and each writes one of those same columns:
+/// ``ActiveSessionStore/addSet(toEntryID:values:)``, since a set logged for the first time can
+/// itself be the record, and both `markSet` commands — `isCompleted`, which the record calculator
+/// excludes on, and `isWarmup`, which takes a set out of the analysed sequence altogether. A
+/// recompute hooked onto these two alone covers neither a new set nor either marking.
 ///
 /// **Neither call reports a set it cannot find**, and that is the marking commands' rule rather than
 /// a new one: the row was deleted underneath the screen, and a diagnostic would report a failure
@@ -33,9 +37,12 @@ public struct LoggedSetWriter: Sendable {
     /// Rewrites a logged set's five editable fields (`FR-1.2.7`).
     ///
     /// **The five the editor collects, and nothing else.** `order`, `isCompleted`, `completedAt`,
-    /// the two target columns, `rir` and all three timestamps are carried across untouched — the
-    /// outcome has its own control (`FR-1.2.5`), the position is the card's, and `completedAt`
-    /// records that the set was tracked live, which editing it afterwards does not undo. That is
+    /// `modifiers`, the two target columns, `rir` and all three timestamps are carried across
+    /// untouched — the outcome has its own control (`FR-1.2.5`), the position is the card's, and
+    /// `completedAt` records that the set was tracked live, which editing it afterwards does not
+    /// undo. `modifiers` is carried rather than collected because `FR-1.2.8` has built nothing to
+    /// collect it with; when it has, the field joins ``SetEntryValues`` and this call changes only
+    /// by reading it from there. That is
     /// also what makes the retroactive correction `FR-1.2.5` needs a single edit: a set already
     /// marked failed keeps its outcome while its ``RepositoryInterface/SetEntry/reps`` come down to
     /// what was actually achieved.

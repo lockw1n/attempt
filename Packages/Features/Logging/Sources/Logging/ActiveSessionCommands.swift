@@ -259,6 +259,23 @@ extension ActiveSessionStore {
         await loadExercises()
     }
 
+    /// Performs what the set editor decided (`FR-1.2.3`, `FR-1.2.7`).
+    ///
+    /// **One entry point for the two, so the screen issues no command of its own.** Which write a
+    /// confirmed form resolves to is decided before this is called, by the screen's own
+    /// `write(_:over:)`; what is left here is a dispatch the compiler keeps exhaustive, so a third
+    /// kind of write cannot be added without answering for it in both places.
+    ///
+    /// - Parameter write: The set to log, or the rewrite to apply.
+    func write(_ write: SetEditorWrite) async {
+        switch write {
+        case .add(let entryID, let values):
+            await addSet(toEntryID: entryID, values: values)
+        case .rewrite(let setID, let entryID, let values):
+            await editSet(id: setID, inEntryID: entryID, to: values)
+        }
+    }
+
     /// Rewrites a logged set (`FR-1.2.7`).
     ///
     /// **The write itself is ``LoggedSetWriter``'s**, and every argument about what an edit carries
