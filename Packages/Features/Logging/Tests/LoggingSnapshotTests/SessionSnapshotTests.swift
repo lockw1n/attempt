@@ -162,7 +162,8 @@
                         move: { _, _ in },
                         unit: .kilograms,
                         logSet: { _ in },
-                        mark: { _, _ in }
+                        mark: { _, _ in },
+                        markCompleted: { _, _ in }
                     )
                 }
             }
@@ -230,6 +231,16 @@
             // `SetNumberingTests`'.
             try assertSnapshots(named: "Session-set-rows-warmup") {
                 fixedEnvironment { rows(Fixtures.rampedSets) }
+            }
+        }
+
+        @Test func failedSets() throws {
+            // FR-1.2.5, and the reference G-4.5 is actually about: the failed rows are red, and the
+            // glyph at the end of each row says the same thing in a shape that survives a
+            // monochrome rendering. It also pictures the rule where the two de-emphases meet — a
+            // failed warmup is red rather than quiet.
+            try assertSnapshots(named: "Session-set-rows-failed") {
+                fixedEnvironment { rows(Fixtures.failedSets) }
             }
         }
 
@@ -302,7 +313,12 @@
         private func rows(_ sets: [SetEntry]) -> some View {
             VStack(alignment: .leading) {
                 ForEach(SetNumbering.numbered(sets)) { numbered in
-                    SetRow(numbered: numbered, unit: .kilograms, mark: { _, _ in })
+                    SetRow(
+                        numbered: numbered,
+                        unit: .kilograms,
+                        mark: { _, _ in },
+                        markCompleted: { _, _ in }
+                    )
                 }
             }
         }

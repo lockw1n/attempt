@@ -59,9 +59,39 @@
             loggedSet(index: 6, weight: Weight(grams: 102_500), reps: 5, rpe: nil),
         ]
 
+        /// `FR-1.2.5`'s outcome, pictured: a working set that fell short between two that did not,
+        /// and a warmup that did too.
+        ///
+        /// The failed warmup is here because the two de-emphases meet on it — a warmup is drawn
+        /// quieter and a failed set is drawn red, and which of them wins is a rule a picture is the
+        /// only check on.
+        static let failedSets: [SetEntry] = [
+            loggedSet(
+                index: 7,
+                weight: Weight(grams: 60_000),
+                reps: 5,
+                rpe: nil,
+                isWarmup: true,
+                isCompleted: false
+            ),
+            loggedSet(index: 8, weight: Weight(grams: 102_500), reps: 5, rpe: 8),
+            loggedSet(
+                index: 9,
+                weight: Weight(grams: 102_500),
+                reps: 2,
+                rpe: 10,
+                isCompleted: false
+            ),
+        ]
+
         /// One logged set, with every identifier and timestamp fixed.
         private static func loggedSet(
-            index: Int, weight: Weight, reps: Int, rpe: Double?, isWarmup: Bool = false
+            index: Int,
+            weight: Weight,
+            reps: Int,
+            rpe: Double?,
+            isWarmup: Bool = false,
+            isCompleted: Bool = true
         ) -> SetEntry {
             SetEntry(
                 id: identifier("E\(index)"),
@@ -75,7 +105,7 @@
                 rpe: rpe,
                 rir: nil,
                 isWarmup: isWarmup,
-                isCompleted: true,
+                isCompleted: isCompleted,
                 targetWeight: nil,
                 targetReps: nil,
                 modifiers: [],
@@ -119,6 +149,10 @@
         /// with a **folded** warmup group above the work, mid-ramp with that group still **open**,
         /// and unstarted with nothing in it. Every identifier and timestamp is fixed so a rendering
         /// never moves.
+        ///
+        /// The part-done card's working set is **failed** (`FR-1.2.5`), which is what leaves it
+        /// part-done: an exercise is finished when every working set on it is completed, so an
+        /// unfinished card in a fixture is a card carrying an uncompleted set by construction.
         ///
         /// The two warmup shapes are both here on purpose: `FR-1.2.14`'s group folds itself once
         /// the work starts, so which of the two a card shows is a fact about the card rather than a

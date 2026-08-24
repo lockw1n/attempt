@@ -171,3 +171,15 @@
    user needs before flipping it, and it is the same fact FR-1.6's calculator acts on. */
 "logging.session.set.warmup.label" = "Warmup set";
 "logging.session.set.warmup.hint" = "Numbered separately, and left out of your working sets.";
+
+/* FR-1.2.5: whether a set was completed or failed. */
+/* VoiceOver's label for the outcome control at the end of a set row, and the word its glyph stands
+   for. "Failed" is the set's own outcome and not a verdict on the lifter: it means not all the
+   planned reps were achieved, self-reported, nothing having prescribed them (OUT-1.1). */
+"logging.session.set.outcome.completed" = "Completed";
+"logging.session.set.outcome.failed" = "Failed";
+/* What tapping that control does, as its hint. Two strings rather than one with a state in it, for
+   the reason the warmup pair above is two: a hint names the action about to happen, and the row
+   below a failed one carries the opposite instruction. */
+"logging.session.set.mark-failed" = "Mark as failed";
+"logging.session.set.mark-completed" = "Mark as completed";

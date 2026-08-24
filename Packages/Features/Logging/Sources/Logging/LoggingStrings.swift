@@ -289,6 +289,32 @@ enum LoggingStrings {
             : resource("logging.session.set.mark-warmup")
     }
 
+    /// Whether a set was completed or failed (`FR-1.2.5`), as VoiceOver's label for the glyph that
+    /// says it.
+    ///
+    /// **The word the glyph stands for**, which is what keeps the outcome off the tint alone
+    /// (`G-4.5`): the row draws a check or a cross, and this is the same fact in a sentence.
+    ///
+    /// - Parameter isCompleted: Whether the set was completed.
+    /// - Returns: The outcome, as a word.
+    static func setOutcome(isCompleted: Bool) -> LocalizedStringResource {
+        isCompleted
+            ? resource("logging.session.set.outcome.completed")
+            : resource("logging.session.set.outcome.failed")
+    }
+
+    /// What tapping that glyph does (`FR-1.2.5`), as VoiceOver's hint on it.
+    ///
+    /// The action rather than the state, for ``setMarkAction(isWarmup:)``'s reason.
+    ///
+    /// - Parameter isCompleted: Whether the set is currently completed.
+    /// - Returns: What a tap would do to it.
+    static func setOutcomeAction(isCompleted: Bool) -> LocalizedStringResource {
+        isCompleted
+            ? resource("logging.session.set.mark-failed")
+            : resource("logging.session.set.mark-completed")
+    }
+
     /// The heading over `FR-1.2.14`'s collapsible warmup group.
     ///
     /// A label beside a numeral, for ``sessionExerciseSets``' reason.
@@ -366,6 +392,8 @@ enum LoggingStrings {
             setWarmupHint,
         ] + MassUnit.allCases.map(setUnitSymbol(for:))
             + [true, false].map(setMarkAction(isWarmup:))
+            + [true, false].map(setOutcome(isCompleted:))
+            + [true, false].map(setOutcomeAction(isCompleted:))
     }
 
     /// Binds a key to this module's catalogue.

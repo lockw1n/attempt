@@ -238,7 +238,8 @@ public struct ActiveSessionView: View {
                     },
                     unit: store.displayUnit,
                     logSet: { editing = $0 },
-                    mark: { markSet($0, asWarmup: $1) }
+                    mark: { markSet($0, asWarmup: $1) },
+                    markCompleted: { markSet($0, asCompleted: $1) }
                 )
                 writeFailure(writeFailed)
                 addExerciseLink
@@ -369,6 +370,26 @@ public struct ActiveSessionView: View {
         Task { await store.markSet(id: set.id, inEntryID: set.entryID, isWarmup: isWarmup) }
     }
 
+    /// Marks a logged set as completed or failed (`FR-1.2.5`).
+    ///
+    /// **A set becoming completed pins its card open**, and it is ``log(_:into:)``'s hazard reached
+    /// by the other control: an exercise is finished when every working set on it is completed, so
+    /// marking the last outstanding one flips `FR-1.2.13`'s rule and folds the card under the thumb
+    /// that just tapped it. A card the user opened by hand already carries an entry of its own; the
+    /// one this is for is the card that was open because the exercise was *unfinished*, which is
+    /// exactly the card this command finishes.
+    ///
+    /// **The other direction needs no pin.** Marking a set failed can only make its exercise less
+    /// finished, and a card that grew more open under a tap is not a card anything was lost from.
+    ///
+    /// - Parameters:
+    ///   - set: The set to mark.
+    ///   - isCompleted: Which it becomes.
+    private func markSet(_ set: SetEntry, asCompleted isCompleted: Bool) {
+        if isCompleted { expansion[set.entryID] = true }
+        Task { await store.markSet(id: set.id, inEntryID: set.entryID, isCompleted: isCompleted) }
+    }
+
     /// Finishes the workout and leaves the screen, unless the write failed.
     ///
     /// The screen stays open on a failure, with the workout still on it: nothing was stored, so the
@@ -423,75 +444,5 @@ enum ActiveSessionState: Equatable {
         if let session { return .inProgress(session, writeFailed: failure != nil) }
         if failure != nil { return .readFailed }
         return .ended
-    }
-}
-
-/// The workout's own facts.
-///
-/// Taking the record rather than the store, for `SessionInProgressSection`'s reason.
-struct SessionSummarySection: View {
-    /// The workout being logged.
-    let session: WorkoutSession
-
-    /// Which locale the day and the time are rendered for (`G-3.4`).
-    @Environment(\.locale) private var locale
-
-    /// The training day, and when the workout was started.
-    var body: some View {
-        GroupedSection(Text(LoggingStrings.sessionSummarySection)) {
-            SessionFactRow(
-                label: LoggingStrings.sessionDay,
-                value: Text(session.date, format: AppFormat.date(locale: locale))
-            )
-            if let startedAt = session.startedAt {
-                SessionFactRow(
-                    label: LoggingStrings.sessionStarted,
-                    value: Text(startedAt, format: AppFormat.dateAndTime(locale: locale))
-                )
-            }
-        }
-    }
-}
-
-/// The two ways a workout ends (`FR-1.2.11`, `FR-1.2.12`).
-///
-/// Taking closures rather than the store, so both commands are picturable without one behind them.
-///
-/// **Finish is the primary action and discard is not styled as one.** They are not two options: one
-/// keeps the workout and one throws it away, and a pair of matching buttons is how the second gets
-/// tapped by accident. `FR-1.2.12`'s confirmation is the other half of that, and it is the caller's.
-struct SessionCommandsSection: View {
-    /// Whether the last write failed. The workout is unchanged when it did, so both commands still
-    /// ask for the same thing and the retry is the same tap.
-    let hasFailed: Bool
-
-    /// Ends the workout and keeps it.
-    let finish: () -> Void
-
-    /// Asks whether to throw it away.
-    let discard: () -> Void
-
-    /// Both commands, and a failed write beneath them.
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.md.points) {
-            Button(action: finish) {
-                Text(LoggingStrings.sessionFinishAction)
-            }
-            .buttonStyle(.primaryAction(.fill))
-
-            Button(action: discard) {
-                Text(LoggingStrings.sessionDiscardAction)
-                    .font(Typography.actionLabel.font)
-                    .foregroundStyle(ColorToken.negative)
-                    .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points)
-            }
-            .buttonStyle(.plain)
-
-            if hasFailed {
-                // The shared error component rather than a local label, and the workout stays on
-                // screen beside it — a failed write costs this screen nothing.
-                ErrorStateView(message: Text(LoggingStrings.sessionWriteErrorMessage))
-            }
-        }
     }
 }

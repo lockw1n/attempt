@@ -60,7 +60,7 @@ struct WarmupSectionHeader: View {
     }
 }
 
-/// One logged set inside an exercise card (`FR-1.2.3`, `FR-1.2.4`, `FR-1.2.14`).
+/// One logged set inside an exercise card (`FR-1.2.3`, `FR-1.2.4`, `FR-1.2.5`, `FR-1.2.14`).
 ///
 /// **The number, the load, the repetitions and the rating, in that order and on one line.** A set is
 /// read at a glance between efforts, so it is a line rather than a card: what a user is checking is
@@ -89,6 +89,9 @@ struct SetRow: View {
     /// Marks this set as a warmup or as working (`FR-1.2.4`) — the set, then which it becomes.
     let mark: (SetEntry, Bool) -> Void
 
+    /// Marks this set as completed or failed (`FR-1.2.5`) — the set, then which it becomes.
+    let markCompleted: (SetEntry, Bool) -> Void
+
     /// Which locale the numbers are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
@@ -96,16 +99,18 @@ struct SetRow: View {
     /// (`NFR-1.10`).
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    /// The line: the badge, then the set itself.
+    /// The line: the badge, the set itself, then its outcome.
     ///
-    /// **Two VoiceOver elements rather than one**, and that is the badge being a control. Combining
-    /// the whole row would bury a button inside a static element and take `FR-1.2.4`'s marking away
-    /// from every VoiceOver user; the badge announces the set's number immediately before the values
-    /// that belong to it, so what is read in sequence is still "Set 1" then "102.5 kg, Reps 5".
+    /// **Three VoiceOver elements rather than one**, and that is the two badges being controls.
+    /// Combining the whole row would bury a button inside a static element and take `FR-1.2.4`'s
+    /// marking and `FR-1.2.5`'s away from every VoiceOver user; each control announces beside the
+    /// values it belongs to, so what is read in sequence is "Set 1", "102.5 kg, Reps 5",
+    /// "Completed".
     var body: some View {
         layout {
             badge
             values
+            outcome
         }
         .frame(minHeight: TouchTarget.standard.points)
     }
@@ -184,6 +189,40 @@ struct SetRow: View {
         .accessibilityHint(Text(LoggingStrings.setMarkAction(isWarmup: numbered.isWarmup)))
     }
 
+    /// `FR-1.2.5`'s outcome, and the control that changes it.
+    ///
+    /// **A glyph rather than a word, and it is on every row rather than only the failed ones.** A
+    /// control that appeared once a set had failed would be a control with no way to reach the
+    /// first failure; a word would cost the load the width `NFR-1.10` has already spent on the
+    /// badge. What the glyph buys instead is `G-4.5`: `checkmark` and `xmark` differ in shape, so
+    /// the outcome survives a monochrome rendering, which is `DeltaIndicator`'s rule applied to a
+    /// two-state fact rather than a three-state one.
+    ///
+    /// **A completed set is drawn quietly and a failed one is not.** Every set logged here is
+    /// completed, so a green tick per row would be a colour the reader has to look past on the way
+    /// to the one row that is different — `G-7.3` reserves the semantic palette for what it
+    /// distinguishes, and the distinguishing case is the failure.
+    ///
+    /// At the standard touch target rather than the logging one, for the badge's reason: marking a
+    /// set failed is a correction between efforts, not one of `NFR-1.3`'s counted taps.
+    private var outcome: some View {
+        Button {
+            markCompleted(numbered.record, !numbered.isCompleted)
+        } label: {
+            Image(systemName: numbered.isCompleted ? "checkmark" : "xmark")
+                .font(Typography.caption.font)
+                .foregroundStyle(numbered.isCompleted ? ColorToken.textTertiary : ColorToken.negative)
+                .frame(
+                    minWidth: TouchTarget.standard.points, minHeight: TouchTarget.standard.points
+                )
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(LoggingStrings.setOutcome(isCompleted: numbered.isCompleted)))
+        .accessibilityHint(
+            Text(LoggingStrings.setOutcomeAction(isCompleted: numbered.isCompleted)))
+    }
+
     /// The badge's text — `W1` for a warmup, a bare numeral for a working set.
     ///
     /// **Both numerals go through the same format style** (`G-3.4`). The warmup's is rendered here
@@ -213,10 +252,17 @@ struct SetRow: View {
         numbered.isWarmup ? Typography.caption.font : Typography.numericValue.font
     }
 
-    /// Their place in the colour ramp — `G-4.5`'s rule holds, because the numbering says the same
-    /// thing in words and colour is never the only cue.
+    /// Their place in the colour ramp.
+    ///
+    /// **A failed set is red wherever it sits in that ramp** (`G-7.3`, and the requirement's own
+    /// words are "failure and missed lifts"), so the outcome outranks the warmup de-emphasis rather
+    /// than compounding with it — a failed warmup is a missed lift too.
+    ///
+    /// `G-4.5`'s rule holds through both cases, and by two different cues: the numbering says
+    /// *warmup* in words, and the glyph at the end of the row says *failed* in a shape.
     private var valueColour: ColorToken {
-        numbered.isWarmup ? ColorToken.textSecondary : ColorToken.textPrimary
+        guard numbered.isCompleted else { return ColorToken.negative }
+        return numbered.isWarmup ? ColorToken.textSecondary : ColorToken.textPrimary
     }
 
     /// The rating, where the set carries one.

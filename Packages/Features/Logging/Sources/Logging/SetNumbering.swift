@@ -22,6 +22,11 @@ struct NumberedSet: Identifiable, Equatable, Sendable {
 
     /// Whether this is a warmup — which sequence the number belongs to, and how the row is drawn.
     var isWarmup: Bool { record.isWarmup }
+
+    /// Whether the set was completed rather than failed (`FR-1.2.5`). It does **not** touch the
+    /// numbering: a failed set was still performed, and skipping it would renumber the sets after
+    /// it every time the user corrected one.
+    var isCompleted: Bool { record.isCompleted }
 }
 
 /// `FR-1.2.14`'s two independent sequences.

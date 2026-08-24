@@ -131,6 +131,9 @@ struct SessionExerciseList: View {
     /// Marks one set as a warmup or as working (`FR-1.2.4`) — the set, then which it becomes.
     let mark: (SetEntry, Bool) -> Void
 
+    /// Marks one set as completed or failed (`FR-1.2.5`) — the set, then which it becomes.
+    let markCompleted: (SetEntry, Bool) -> Void
+
     /// One card per entry.
     var body: some View {
         LazyVStack(alignment: .leading, spacing: Spacing.md.points) {
@@ -149,7 +152,8 @@ struct SessionExerciseList: View {
                     move: move,
                     unit: unit,
                     logSet: logSet,
-                    mark: mark
+                    mark: mark,
+                    markCompleted: markCompleted
                 )
             }
         }
@@ -212,6 +216,9 @@ struct SessionExerciseCard: View {
 
     /// Marks one of this card's sets as a warmup or as working (`FR-1.2.4`).
     let mark: (SetEntry, Bool) -> Void
+
+    /// Marks one of this card's sets as completed or failed (`FR-1.2.5`).
+    let markCompleted: (SetEntry, Bool) -> Void
 
     /// Which locale the numbers on this card are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
@@ -340,7 +347,7 @@ struct SessionExerciseCard: View {
                     .foregroundStyle(ColorToken.textSecondary)
             } else {
                 warmupGroup
-                ForEach(workingSets) { SetRow(numbered: $0, unit: unit, mark: mark) }
+                ForEach(workingSets) { row(for: $0) }
             }
             setCommands
         }
@@ -362,9 +369,17 @@ struct SessionExerciseCard: View {
             WarmupSectionHeader(
                 count: warmups.count, isExpanded: areWarmupsExpanded, toggle: toggleWarmups)
             if areWarmupsExpanded {
-                ForEach(warmups) { SetRow(numbered: $0, unit: unit, mark: mark) }
+                ForEach(warmups) { row(for: $0) }
             }
         }
+    }
+
+    /// One set's row, wherever on the card it is drawn.
+    ///
+    /// - Parameter numbered: The set and its number.
+    /// - Returns: The row.
+    private func row(for numbered: NumberedSet) -> some View {
+        SetRow(numbered: numbered, unit: unit, mark: mark, markCompleted: markCompleted)
     }
 
     /// This card's sets, each carrying its number within its own sequence (`FR-1.2.14`).

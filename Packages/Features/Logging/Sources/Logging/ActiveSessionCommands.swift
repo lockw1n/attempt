@@ -3,7 +3,7 @@ import PowerliftingCore
 import RepositoryInterface
 
 /// What the workout's commands write, and the chain they write in (`FR-1.2.2`, `FR-1.2.3`,
-/// `FR-1.2.4`, `FR-1.2.6`, `NFR-1.8`).
+/// `FR-1.2.4`, `FR-1.2.5`, `FR-1.2.6`, `NFR-1.8`).
 ///
 /// A second file rather than a longer one: ``ActiveSessionStore`` proper is the workout's lifecycle
 /// and what it holds, and this is every mutation a card can issue. They share ``pendingWrite``,
@@ -126,8 +126,9 @@ extension ActiveSessionStore {
     /// whether the set was *performed*, and a set logged from this editor was — the user is typing
     /// it in because they just did it. Writing `false` would say the opposite, and it would say it
     /// to the personal-record calculator, which excludes incomplete sets: every set logged in Phase
-    /// 1 would be invisible to `FR-1.6`. Marking one **failed** is T-1.24's, and it is a later edit
-    /// of this column rather than a different default for it.
+    /// 1 would be invisible to `FR-1.6`. Marking one **failed** is
+    /// ``markSet(id:inEntryID:isCompleted:)``, and it is a later edit of this column rather than a
+    /// different default for it.
     ///
     /// **`isWarmup` is the caller's** (`FR-1.2.4`), and it is still decided in the open rather than
     /// defaulted: `G-1.8` forbids the record's initialiser from choosing either flag, so the value
@@ -204,6 +205,59 @@ extension ActiveSessionStore {
         await loadExercises()
     }
 
+    /// Marks a logged set as completed or failed (`FR-1.2.5`).
+    ///
+    /// **What "failed" means here is self-reported and nothing resolves it.** Phase 1 prescribes
+    /// nothing (`OUT-1.1`), so there is no target to fall short of: the flag says the lifter did not
+    /// get all the reps they were going for, and ``RepositoryInterface/SetEntry/reps`` is what they
+    /// did get. That column is the one `FR-1.6.1`'s N-rep max detection reads — never `targetReps`,
+    /// which stays `nil` on every row this app writes until a prescription layer exists to fill it.
+    ///
+    /// **`completedAt` is left exactly as it was**, and that is the column's own contract rather
+    /// than an omission: it records that the set was tracked live rather than entered afterwards,
+    /// which a failed set was just as much as a successful one. Clearing it would make the two
+    /// facts one, and the one it would destroy cannot be recovered.
+    ///
+    /// A set already in that state is not written, and the row is re-read rather than taken from
+    /// ``exercises``, both for ``markSet(id:inEntryID:isWarmup:)``'s reasons.
+    ///
+    /// - Parameters:
+    ///   - setID: The set to mark.
+    ///   - entryID: The exercise it belongs to — what the repository reads sets by.
+    ///   - isCompleted: Whether it was completed. `false` is `FR-1.2.5`'s failed set.
+    public func markSet(id setID: UUID, inEntryID entryID: UUID, isCompleted: Bool) async {
+        let previous = pendingWrite
+        let write = Task { [weak self] in
+            await previous?.value
+            await self?.writeCompletedSet(id: setID, inEntryID: entryID, isCompleted: isCompleted)
+        }
+        pendingWrite = write
+        await write.value
+    }
+
+    /// One link in ``pendingWrite``'s chain. See ``markSet(id:inEntryID:isCompleted:)``.
+    ///
+    /// A set the read does not find is silently nothing, for ``writeMarkedSet(id:inEntryID:isWarmup:)``'s
+    /// reason.
+    fileprivate func writeCompletedSet(
+        id setID: UUID, inEntryID entryID: UUID, isCompleted: Bool
+    ) async {
+        guard session != nil else { return }
+        do {
+            let stored = try await repository.sets(forEntryID: entryID, includingDeleted: false)
+            guard let target = stored.first(where: { $0.id == setID }),
+                target.isCompleted != isCompleted
+            else {
+                return
+            }
+            try await repository.save(Self.completed(target, isCompleted: isCompleted))
+            exercisesWriteFailure = nil
+        } catch {
+            exercisesWriteFailure = String(describing: error)
+        }
+        await loadExercises()
+    }
+
     /// One link in ``pendingWrite``'s chain. See ``addSet(toEntryID:values:)``.
     ///
     /// It shares the chain with the exercise commands rather than having one of its own: a set is
@@ -260,6 +314,32 @@ extension ActiveSessionStore {
             rir: set.rir,
             isWarmup: isWarmup,
             isCompleted: set.isCompleted,
+            targetWeight: set.targetWeight,
+            targetReps: set.targetReps,
+            modifiers: set.modifiers,
+            notes: set.notes,
+            completedAt: set.completedAt
+        )
+    }
+
+    /// `set` with the other outcome, and every other field untouched — `reps` and `completedAt`
+    /// among them. See ``markSet(id:inEntryID:isCompleted:)`` for why both stay.
+    ///
+    /// Rebuilt rather than mutated for ``marked(_:isWarmup:)``'s reason.
+    fileprivate static func completed(_ set: SetEntry, isCompleted: Bool) -> SetEntry {
+        SetEntry(
+            id: set.id,
+            createdAt: set.createdAt,
+            updatedAt: set.updatedAt,
+            deletedAt: set.deletedAt,
+            entryID: set.entryID,
+            order: set.order,
+            weight: set.weight,
+            reps: set.reps,
+            rpe: set.rpe,
+            rir: set.rir,
+            isWarmup: set.isWarmup,
+            isCompleted: isCompleted,
             targetWeight: set.targetWeight,
             targetReps: set.targetReps,
             modifiers: set.modifiers,
