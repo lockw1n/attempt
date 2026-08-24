@@ -187,18 +187,21 @@ extension ActiveSessionStore {
     /// One link in ``pendingWrite``'s chain. See ``markSet(id:inEntryID:isWarmup:)``.
     ///
     /// **A set the read does not find is silently nothing**, like a set logged with no workout in
-    /// progress: the row was deleted underneath the card, the list is re-read below either way, and
-    /// a diagnostic would report a failure against a set that is no longer on screen.
+    /// progress: the row was deleted underneath the card and a diagnostic would report a failure
+    /// against a set that is no longer on screen.
+    ///
+    /// **The list is re-read whether or not anything was written**, and the two cases that write
+    /// nothing are the ones that need it most: a row the read could not find is a row still drawn
+    /// on the card, and the re-read is what sweeps it off. Only the *write* is conditional — an
+    /// unchanged row is not saved, and a no-op does not retire a diagnostic it says nothing about.
     fileprivate func writeMarkedSet(id setID: UUID, inEntryID entryID: UUID, isWarmup: Bool) async {
         guard session != nil else { return }
         do {
             let stored = try await repository.sets(forEntryID: entryID, includingDeleted: false)
-            guard let target = stored.first(where: { $0.id == setID }), target.isWarmup != isWarmup
-            else {
-                return
+            if let target = stored.first(where: { $0.id == setID }), target.isWarmup != isWarmup {
+                try await repository.save(Self.marked(target, isWarmup: isWarmup))
+                exercisesWriteFailure = nil
             }
-            try await repository.save(Self.marked(target, isWarmup: isWarmup))
-            exercisesWriteFailure = nil
         } catch {
             exercisesWriteFailure = String(describing: error)
         }
@@ -237,21 +240,19 @@ extension ActiveSessionStore {
 
     /// One link in ``pendingWrite``'s chain. See ``markSet(id:inEntryID:isCompleted:)``.
     ///
-    /// A set the read does not find is silently nothing, for ``writeMarkedSet(id:inEntryID:isWarmup:)``'s
-    /// reason.
+    /// A set the read does not find is silently nothing, and the list is re-read whether or not
+    /// anything was written, both for ``writeMarkedSet(id:inEntryID:isWarmup:)``'s reasons.
     fileprivate func writeCompletedSet(
         id setID: UUID, inEntryID entryID: UUID, isCompleted: Bool
     ) async {
         guard session != nil else { return }
         do {
             let stored = try await repository.sets(forEntryID: entryID, includingDeleted: false)
-            guard let target = stored.first(where: { $0.id == setID }),
-                target.isCompleted != isCompleted
-            else {
-                return
+            let target = stored.first { $0.id == setID }
+            if let target, target.isCompleted != isCompleted {
+                try await repository.save(Self.completed(target, isCompleted: isCompleted))
+                exercisesWriteFailure = nil
             }
-            try await repository.save(Self.completed(target, isCompleted: isCompleted))
-            exercisesWriteFailure = nil
         } catch {
             exercisesWriteFailure = String(describing: error)
         }

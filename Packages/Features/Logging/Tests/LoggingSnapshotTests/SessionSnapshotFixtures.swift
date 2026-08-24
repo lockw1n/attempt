@@ -84,6 +84,28 @@
             ),
         ]
 
+        /// The same working set at three loads, for the width probe. Not a reference set — what they
+        /// back is a *number* rather than an appearance.
+        ///
+        /// `102.5 kg` is the subject: the load T-1.23 measured breaking across three lines once the
+        /// badge took 44 points out of the row.
+        static let widestLoad: [SetEntry] = [
+            loggedSet(index: 10, weight: Weight(grams: 102_500), reps: 5, rpe: 10)
+        ]
+
+        /// The negative control for ``widestLoad`` — the same row with a load too short to wrap, so
+        /// a matching height means the subject did not wrap either.
+        static let narrowestLoad: [SetEntry] = [
+            loggedSet(index: 11, weight: Weight(grams: 60_000), reps: 5, rpe: 10)
+        ]
+
+        /// The positive control, and the half that makes the other two mean something: a load no
+        /// lifter will ever enter, wide enough that it *must* take a second line. Without it, a
+        /// measurement where everything wrapped equally would read as one where nothing did.
+        static let wrappingLoad: [SetEntry] = [
+            loggedSet(index: 12, weight: Weight(grams: 123_456_700), reps: 5, rpe: 10)
+        ]
+
         /// One logged set, with every identifier and timestamp fixed.
         private static func loggedSet(
             index: Int,

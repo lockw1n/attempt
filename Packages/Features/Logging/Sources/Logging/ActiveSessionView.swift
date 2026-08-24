@@ -355,17 +355,26 @@ public struct ActiveSessionView: View {
     /// **A set becoming a warmup pins its card's warmup group open**, for the reason
     /// ``log(_:into:)`` pins the card: the group is folded by default once the work has started, so
     /// a row moved into it would vanish under a heading at the far end of the card, taking the
-    /// control that undoes the marking with it. The reverse direction needs nothing — a set leaving
-    /// the group is already on screen, and the group it leaves can only have been open for the
-    /// badge to have been tappable at all.
+    /// control that undoes the marking with it. The reverse direction needs nothing *there* — a set
+    /// leaving the group is already on screen, and the group it leaves can only have been open for
+    /// the badge to have been tappable at all.
     ///
-    /// The pin is an entry in ``warmupExpansion`` and so lasts as long as the screen: a group the
-    /// user has been shown once stays shown, rather than folding again behind the next working set.
+    /// **The card itself is pinned in both directions**, which the group is not, and that is
+    /// `FR-1.2.13`'s rule reading a column this control writes: an exercise is finished when its
+    /// working sets are all completed and there is at least one, so changing a set's *kind* moves
+    /// that answer as surely as ``markSet(_:asCompleted:)`` does. Made working, a completed set can
+    /// be the one that finishes the exercise; made a warmup, an uncompleted one can leave behind a
+    /// list that is finished without it. Either way the card folds under the thumb that tapped it
+    /// and takes the badge that would undo the marking with it.
+    ///
+    /// Both pins are dictionary entries and so last as long as the screen: a card or a group the
+    /// user has been shown once stays shown, rather than folding again behind the next set.
     ///
     /// - Parameters:
     ///   - set: The set to mark.
     ///   - isWarmup: Which kind it becomes.
     private func markSet(_ set: SetEntry, asWarmup isWarmup: Bool) {
+        expansion[set.entryID] = true
         if isWarmup { warmupExpansion[set.entryID] = true }
         Task { await store.markSet(id: set.id, inEntryID: set.entryID, isWarmup: isWarmup) }
     }

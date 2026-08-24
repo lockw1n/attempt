@@ -194,9 +194,15 @@ struct SetRow: View {
     /// **A glyph rather than a word, and it is on every row rather than only the failed ones.** A
     /// control that appeared once a set had failed would be a control with no way to reach the
     /// first failure; a word would cost the load the width `NFR-1.10` has already spent on the
-    /// badge. What the glyph buys instead is `G-4.5`: `checkmark` and `xmark` differ in shape, so
-    /// the outcome survives a monochrome rendering, which is `DeltaIndicator`'s rule applied to a
+    /// badge. What the glyph buys instead is `G-4.5`: a check and a cross differ in shape, so the
+    /// outcome survives a monochrome rendering, which is `DeltaIndicator`'s rule applied to a
     /// two-state fact rather than a three-state one.
+    ///
+    /// **Both are enclosed, and that is what keeps the cross off the multiplication sign.** A bare
+    /// `xmark` is the same shape as the drawn `×` between the load and the reps, two glyphs apart
+    /// on the same line, and told apart only by tint — which is the cue `G-4.5` says cannot be the
+    /// only one. Enclosing the pair makes the outcome a mark of its own rather than a second
+    /// operator, and it reads as a pair with the check.
     ///
     /// **A completed set is drawn quietly and a failed one is not.** Every set logged here is
     /// completed, so a green tick per row would be a colour the reader has to look past on the way
@@ -209,7 +215,7 @@ struct SetRow: View {
         Button {
             markCompleted(numbered.record, !numbered.isCompleted)
         } label: {
-            Image(systemName: numbered.isCompleted ? "checkmark" : "xmark")
+            Image(systemName: numbered.isCompleted ? "checkmark.circle" : "xmark.circle")
                 .font(Typography.caption.font)
                 .foregroundStyle(numbered.isCompleted ? ColorToken.textTertiary : ColorToken.negative)
                 .frame(

@@ -179,11 +179,19 @@ struct SessionSetOutcomeTests {
         #expect(workout.store.exercisesWriteFailure == nil)
     }
 
-    @Test("An outcome and a kind marked together are both applied")
-    func outcomeSharesTheWriteChain() async throws {
+    @Test("An outcome marked behind a kind waits for it, rather than reverting it")
+    func outcomeWaitsOnTheWriteChain() async throws {
         // Both commands re-read the entry's sets when they run and both rebuild the whole record
         // from what they find. Unchained, the second to finish writes a record built before the
         // first landed, and one of the two flags is silently reverted.
+        //
+        // The ORDER here is the point, and it is why this is not two `async let`s. The kind command
+        // is issued first and left running: `markSet` publishes its write into `pendingWrite`
+        // before it suspends, so the outcome command below can only be issued against a chain that
+        // is already claimed. It therefore has something to wait for — and an outcome command that
+        // published itself into the chain without awaiting what was in it would pass a test where
+        // the two were merely launched together, the kind command's own await having enforced the
+        // ordering on its behalf. Measured: that mutation survives the symmetric form.
         let workout = try await Workout.started()
         await workout.store.addExercise(id: workout.squat.id)
         let entry = try #require(workout.store.exercises.first)
@@ -193,15 +201,39 @@ struct SessionSetOutcomeTests {
                 weight: Weight(grams: 60_000), reps: 5, rpe: nil, isWarmup: false, notes: ""))
         let logged = try #require(workout.store.exercises.first?.sets.first)
 
-        async let outcome: Void = workout.store.markSet(
-            id: logged.id, inEntryID: entry.id, isCompleted: false)
-        async let kind: Void = workout.store.markSet(
-            id: logged.id, inEntryID: entry.id, isWarmup: true)
-        _ = await (outcome, kind)
+        let kind = Task {
+            await workout.store.markSet(id: logged.id, inEntryID: entry.id, isWarmup: true)
+        }
+        await Task.yield()
+        await workout.store.markSet(id: logged.id, inEntryID: entry.id, isCompleted: false)
+        await kind.value
 
         let stored = try await workout.repositories.workouts.sets(
             forEntryID: entry.id, includingDeleted: false)
         #expect(stored.map(\.isCompleted) == [false])
         #expect(stored.map(\.isWarmup) == [true])
+    }
+
+    @Test("A set deleted underneath the card is swept off it by the marking that misses")
+    func markingRereadsEvenWhenItWritesNothing() async throws {
+        // The write is conditional and the re-read is not. A row the read cannot find is a row the
+        // card is still drawing, so returning early without re-reading would leave the phantom on
+        // screen — and the only thing that would notice is the user tapping it a second time.
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: workout.squat.id)
+        let entry = try #require(workout.store.exercises.first)
+        await workout.store.addSet(
+            toEntryID: entry.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 60_000), reps: 5, rpe: nil, isWarmup: false, notes: ""))
+        let logged = try #require(workout.store.exercises.first?.sets.first)
+        try await workout.repositories.workouts.deleteSet(id: logged.id)
+        // Still on the card: the delete went round the store, which is what the tap then misses.
+        #expect(workout.store.exercises.first?.sets.count == 1)
+
+        await workout.store.markSet(id: logged.id, inEntryID: entry.id, isCompleted: false)
+
+        #expect(workout.store.exercises.first?.sets.isEmpty == true)
+        #expect(workout.store.exercisesWriteFailure == nil)
     }
 }

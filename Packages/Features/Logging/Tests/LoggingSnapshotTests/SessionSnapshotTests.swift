@@ -244,6 +244,31 @@
             }
         }
 
+        @Test func setRowKeepsItsLineAtTheWidestHorizontalSize() throws {
+            // NFR-1.10 names `accessibility3` and the references above picture it — but the row only
+            // STACKS at accessibility sizes, so the tightest LINE it ever draws is `.xxxLarge`, one
+            // step below that switch, and no reference renders there. T-1.23 measured a single 44pt
+            // badge breaking `102.5 kg` into three lines; FR-1.2.5's outcome control is a second
+            // one, so the horizontal budget lost another 44 points and the size nothing pictures is
+            // the size most likely to have spent it.
+            //
+            // Rendered rather than referenced, because what is checked is a number and not an
+            // appearance: a row whose load wraps is taller than the same row whose load does not.
+            // Both controls are needed — the narrow load says the subject's height came from
+            // fitting, and the absurd one says this measurement can tell a wrap apart at all.
+            func height(of sets: [SetEntry]) throws -> Int {
+                try Snapshot.render(
+                    fixedEnvironment { rows(sets) }.dynamicTypeSize(.xxxLarge),
+                    appearance: .light,
+                    typeSize: .default
+                ).height
+            }
+            let wide = try height(of: Fixtures.widestLoad)
+
+            #expect(wide == (try height(of: Fixtures.narrowestLoad)))
+            #expect(wide < (try height(of: Fixtures.wrappingLoad)))
+        }
+
         @Test func warmupGroupOpen() throws {
             try assertSnapshots(named: "Session-warmup-header-open") {
                 fixedEnvironment {

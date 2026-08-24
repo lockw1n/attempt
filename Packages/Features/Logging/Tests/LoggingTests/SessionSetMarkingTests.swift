@@ -190,4 +190,61 @@ struct SessionSetMarkingTests {
         #expect(sets.first?.isWarmup == true)
         #expect(sets.last?.isWarmup == false)
     }
+
+    @Test("Changing a set's kind can finish its exercise — which is what the screen pins against")
+    func markingMovesCompleteness() async throws {
+        // FR-1.2.13 folds a card whose working sets are all completed, and this control writes the
+        // column that partitions them. BOTH directions can flip that answer to `true`, so a card
+        // left on its default fold closes under the tap that changed the kind and takes the badge
+        // that would undo the marking with it. The screen pins the card open for exactly this.
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: workout.squat.id)
+        let entry = try #require(workout.store.exercises.first)
+        await workout.store.addSet(
+            toEntryID: entry.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 60_000), reps: 5, rpe: nil, isWarmup: true, notes: ""))
+        // A ramp with no work on it yet is unfinished: `isComplete` needs a working set to be about.
+        #expect(workout.store.exercises.first?.isComplete == false)
+        let warmup = try #require(workout.store.exercises.first?.sets.first)
+
+        await workout.store.markSet(id: warmup.id, inEntryID: entry.id, isWarmup: false)
+
+        #expect(workout.store.exercises.first?.isComplete == true)
+
+        // The other direction, which is the one that looks safe: an uncompleted working set is what
+        // holds an exercise open, so moving that one into the ramp finishes what is left behind it.
+        await workout.store.addSet(
+            toEntryID: entry.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 102_500), reps: 2, rpe: nil, isWarmup: false, notes: ""))
+        let failed = try #require(workout.store.exercises.first?.sets.last)
+        await workout.store.markSet(id: failed.id, inEntryID: entry.id, isCompleted: false)
+        #expect(workout.store.exercises.first?.isComplete == false)
+
+        await workout.store.markSet(id: failed.id, inEntryID: entry.id, isWarmup: true)
+
+        #expect(workout.store.exercises.first?.isComplete == true)
+    }
+
+    @Test("A set deleted underneath the card is swept off it by the marking that misses")
+    func markingRereadsEvenWhenItWritesNothing() async throws {
+        // The write is conditional and the re-read is not, for the reason the same test in
+        // `SessionSetOutcomeTests` gives: a row the read cannot find is a row still on the card.
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: workout.squat.id)
+        let entry = try #require(workout.store.exercises.first)
+        await workout.store.addSet(
+            toEntryID: entry.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 60_000), reps: 5, rpe: nil, isWarmup: false, notes: ""))
+        let logged = try #require(workout.store.exercises.first?.sets.first)
+        try await workout.repositories.workouts.deleteSet(id: logged.id)
+        #expect(workout.store.exercises.first?.sets.count == 1)
+
+        await workout.store.markSet(id: logged.id, inEntryID: entry.id, isWarmup: true)
+
+        #expect(workout.store.exercises.first?.sets.isEmpty == true)
+        #expect(workout.store.exercisesWriteFailure == nil)
+    }
 }
