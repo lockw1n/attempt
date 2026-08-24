@@ -134,6 +134,9 @@ struct SessionExerciseList: View {
     /// Marks one set as completed or failed (`FR-1.2.5`) — the set, then which it becomes.
     let markCompleted: (SetEntry, Bool) -> Void
 
+    /// Opens `FR-1.2.7`'s editor over one set.
+    let edit: (SetEntry) -> Void
+
     /// One card per entry.
     var body: some View {
         LazyVStack(alignment: .leading, spacing: Spacing.md.points) {
@@ -153,7 +156,8 @@ struct SessionExerciseList: View {
                     unit: unit,
                     logSet: logSet,
                     mark: mark,
-                    markCompleted: markCompleted
+                    markCompleted: markCompleted,
+                    edit: edit
                 )
             }
         }
@@ -219,6 +223,9 @@ struct SessionExerciseCard: View {
 
     /// Marks one of this card's sets as completed or failed (`FR-1.2.5`).
     let markCompleted: (SetEntry, Bool) -> Void
+
+    /// Opens `FR-1.2.7`'s editor over one of them.
+    let edit: (SetEntry) -> Void
 
     /// Which locale the numbers on this card are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
@@ -379,7 +386,13 @@ struct SessionExerciseCard: View {
     /// - Parameter numbered: The set and its number.
     /// - Returns: The row.
     private func row(for numbered: NumberedSet) -> some View {
-        SetRow(numbered: numbered, unit: unit, mark: mark, markCompleted: markCompleted)
+        SetRow(
+            numbered: numbered,
+            unit: unit,
+            mark: mark,
+            markCompleted: markCompleted,
+            edit: edit
+        )
     }
 
     /// This card's sets, each carrying its number within its own sequence (`FR-1.2.14`).
@@ -406,7 +419,7 @@ struct SessionExerciseCard: View {
                     logSet(
                         SetEditorTarget(
                             entryID: item.id,
-                            repeating: SetEntryValues(
+                            values: SetEntryValues(
                                 weight: last.weight,
                                 reps: last.reps,
                                 rpe: last.rpe,
@@ -420,7 +433,7 @@ struct SessionExerciseCard: View {
                 .buttonStyle(.primaryAction(.fill))
             }
             Button {
-                logSet(SetEditorTarget(entryID: item.id, repeating: nil))
+                logSet(SetEditorTarget(entryID: item.id))
             } label: {
                 Text(LoggingStrings.setAddAction)
                     .font(Typography.actionLabel.font)

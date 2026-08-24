@@ -183,3 +183,26 @@
    below a failed one carries the opposite instruction. */
 "logging.session.set.mark-failed" = "Mark as failed";
 "logging.session.set.mark-completed" = "Mark as completed";
+
+/* FR-1.2.7: editing a set that is already logged, and deleting one. */
+/* The editor's title when it is open over an existing set rather than collecting a new one. The
+   form is the same five fields either way — what changes is this, the confirming command, and a
+   deletion offered only where there is something to delete. */
+"logging.session.set.editor.edit-title" = "Edit set";
+/* The confirming command in that mode. "Save changes" rather than "Save set": the set is already
+   saved, and what the button writes is the difference. */
+"logging.session.set.save.action" = "Save changes";
+/* VoiceOver's hint on a set row's values, which are the way into the editor. The action, not the
+   state, like the two marking hints above. */
+"logging.session.set.edit.action" = "Edit set";
+/* The editor's destructive command, and the label on the dialogue's own confirming button. */
+"logging.session.set.delete.action" = "Delete set";
+/* The confirmation. Deleting is soft (G-1.3) but nothing in the app can undo one, so what the
+   message names is the consequence the user cannot see: the set leaves the history AND the numbers
+   derived from it. */
+"logging.session.set.delete.confirm.title" = "Delete this set?";
+"logging.session.set.delete.confirm.message" = "It leaves your history and stops counting towards your records.";
+"logging.session.set.delete.confirm.action" = "Delete set";
+/* The way out names what it keeps, like the discard dialogue's does: a bare "Cancel" beside a
+   destructive command reads as cancelling the set rather than the deletion. */
+"logging.session.set.delete.confirm.cancel" = "Keep set";

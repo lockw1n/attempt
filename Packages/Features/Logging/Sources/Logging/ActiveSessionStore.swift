@@ -104,6 +104,13 @@ public final class ActiveSessionStore {
     /// The exercises those entries name. See ``repository``.
     let catalogue: any ExerciseRepository
 
+    /// What performs `FR-1.2.7`'s edit and delete — see ``LoggedSetWriter`` for why they are not
+    /// this object's own writes.
+    ///
+    /// Built per call rather than stored: it holds ``repository`` and nothing else, so a second one
+    /// is not a second writer.
+    var setWriter: LoggedSetWriter { LoggedSetWriter(repository: repository) }
+
     private let settings: any SettingsRepository
 
     /// The chain every command in `ActiveSessionCommands.swift` runs in.

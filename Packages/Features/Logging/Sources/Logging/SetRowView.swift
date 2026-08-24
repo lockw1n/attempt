@@ -92,6 +92,9 @@ struct SetRow: View {
     /// Marks this set as completed or failed (`FR-1.2.5`) — the set, then which it becomes.
     let markCompleted: (SetEntry, Bool) -> Void
 
+    /// Opens `FR-1.2.7`'s editor over this set.
+    let edit: (SetEntry) -> Void
+
     /// Which locale the numbers are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
@@ -101,11 +104,18 @@ struct SetRow: View {
 
     /// The line: the badge, the set itself, then its outcome.
     ///
-    /// **Three VoiceOver elements rather than one**, and that is the two badges being controls.
-    /// Combining the whole row would bury a button inside a static element and take `FR-1.2.4`'s
-    /// marking and `FR-1.2.5`'s away from every VoiceOver user; each control announces beside the
-    /// values it belongs to, so what is read in sequence is "Set 1", "102.5 kg, Reps 5",
+    /// **Three VoiceOver elements rather than one, and all three are controls.** Combining the whole
+    /// row would bury three buttons inside a static element and take `FR-1.2.4`'s marking,
+    /// `FR-1.2.5`'s and `FR-1.2.7`'s editing away from every VoiceOver user; each announces beside
+    /// the values it belongs to, so what is read in sequence is "Set 1", "102.5 kg, Reps 5",
     /// "Completed".
+    ///
+    /// **The three are siblings, and none of them contains another.** `FR-1.2.7` wants a way into
+    /// the editor from the row, and the obvious shape — a tap on the whole row, with the two badges
+    /// still tappable inside it — is a control nested in a control, where which one receives a tap
+    /// depends on ancestry rather than on where the thumb landed. The middle third is its own button
+    /// instead: the values are what a user points at to say *this set*, and the two marking controls
+    /// keep exactly the targets they had.
     var body: some View {
         layout {
             badge
@@ -130,7 +140,12 @@ struct SetRow: View {
             : AnyLayout(HStackLayout(spacing: Spacing.sm.points))
     }
 
-    /// The load, the repetitions and the rating — one VoiceOver element, because they are one set.
+    /// The load, the repetitions and the rating — one VoiceOver element, because they are one set,
+    /// and `FR-1.2.7`'s way into the editor.
+    ///
+    /// **A button rather than a tap gesture.** A gesture is invisible to VoiceOver and to Switch
+    /// Control and announces no hint; a button is reachable by every input (`G-4.2`), which is the
+    /// same argument that made the exercise reorder a pair of buttons rather than a drag.
     ///
     /// **The same layout switch as the row itself**, and for the same measured reason: at
     /// `accessibility3` a rating pushed to the trailing edge takes the width `102.5 kg` needs, and
@@ -141,24 +156,32 @@ struct SetRow: View {
     /// declaration serve both layouts: a spacer that pushes the rating rightwards in a row would
     /// expand *downwards* in a column and put a blank line inside every set.
     private var values: some View {
-        layout {
-            HStack(spacing: Spacing.sm.points) {
-                Text(numbered.record.weight, format: AppFormat.weight(in: unit, locale: locale))
-                    .font(valueFont)
-                    .foregroundStyle(valueColour)
-                Image(systemName: "multiply")
-                    .font(Typography.caption.font)
-                    .foregroundStyle(ColorToken.textTertiary)
-                    .accessibilityHidden(true)
-                Text(numbered.record.reps, format: AppFormat.count(locale: locale))
-                    .font(valueFont)
-                    .foregroundStyle(valueColour)
-                    .accessibilityLabel(Text(LoggingStrings.setReps(numbered.record.reps)))
+        Button {
+            edit(numbered.record)
+        } label: {
+            layout {
+                HStack(spacing: Spacing.sm.points) {
+                    Text(numbered.record.weight, format: AppFormat.weight(in: unit, locale: locale))
+                        .font(valueFont)
+                        .foregroundStyle(valueColour)
+                    Image(systemName: "multiply")
+                        .font(Typography.caption.font)
+                        .foregroundStyle(ColorToken.textTertiary)
+                        .accessibilityHidden(true)
+                    Text(numbered.record.reps, format: AppFormat.count(locale: locale))
+                        .font(valueFont)
+                        .foregroundStyle(valueColour)
+                        .accessibilityLabel(Text(LoggingStrings.setReps(numbered.record.reps)))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                rating
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            rating
+            .frame(minHeight: TouchTarget.standard.points)
+            .contentShape(.rect)
         }
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
+        .accessibilityHint(Text(LoggingStrings.setEditAction))
     }
 
     /// The set's number, and `FR-1.2.4`'s marking control.

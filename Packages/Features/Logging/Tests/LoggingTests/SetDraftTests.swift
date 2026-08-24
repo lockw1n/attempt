@@ -282,6 +282,32 @@ struct SetDraftTests {
         #expect(repeated.weight == Weight(grams: 100_000))
     }
 
+    // MARK: - Editing a logged set (FR-1.2.7)
+
+    @Test("An edit opens carrying the note, and a duplicate still does not")
+    func editingCarriesTheNoteAndRepeatingDoesNot() {
+        // The one field that separates the two initialisers, and it separates them in the direction
+        // that matters: a duplicate that carried the note would put words in the user's mouth on a
+        // set they have not performed, and an edit that dropped it would delete the note the moment
+        // the form was confirmed.
+        let set = SetEntryValues(
+            weight: Weight(grams: 102_500), reps: 5, rpe: 8, isWarmup: true, notes: "left knee")
+
+        let edited = SetDraft(editing: set, unit: .kilograms, locale: .posix)
+        let repeated = SetDraft(repeating: set, unit: .kilograms, locale: .posix)
+
+        #expect(edited.notes == "left knee")
+        #expect(repeated.notes.isEmpty)
+        // Everything else is the duplicate's, so the two agree on the other four fields.
+        #expect(edited.weightText == repeated.weightText)
+        #expect(edited.repsText == repeated.repsText)
+        #expect(edited.rpeText == repeated.rpeText)
+        #expect(edited.isWarmup == repeated.isWarmup)
+        // A form opened over a set is never blank, so it never opens complaining.
+        #expect(edited.isBlank == false)
+        #expect(edited.isLoggable)
+    }
+
     // MARK: - Warmup or working (FR-1.2.4)
 
     @Test("A draft is a working set until something says otherwise")

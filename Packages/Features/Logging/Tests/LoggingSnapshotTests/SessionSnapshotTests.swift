@@ -163,7 +163,8 @@
                         unit: .kilograms,
                         logSet: { _ in },
                         mark: { _, _ in },
-                        markCompleted: { _, _ in }
+                        markCompleted: { _, _ in },
+                        edit: { _ in }
                     )
                 }
             }
@@ -209,6 +210,17 @@
             // saying, because the two were byte-identical before the form became renderable.
             try assertSnapshots(named: "Session-set-editor-invalid") {
                 fixedEnvironment { editor(over: Fixtures.refusingDraft) }
+            }
+        }
+
+        @Test func setEditorEditing() throws {
+            // FR-1.2.7: the same five fields, opened over a set that already exists. Its own
+            // reference because three things differ and all three are drawn — the title, the
+            // confirming command's words, and the deletion, which is offered only here. The
+            // deletion is also the one control G-4.5 is about on this sheet: destructive is carried
+            // by a glyph as well as by the tint.
+            try assertSnapshots(named: "Session-set-editor-edit") {
+                fixedEnvironment { editor(over: Fixtures.editedDraft, isEditing: true) }
             }
         }
 
@@ -342,7 +354,8 @@
                         numbered: numbered,
                         unit: .kilograms,
                         mark: { _, _ in },
-                        markCompleted: { _, _ in }
+                        markCompleted: { _, _ in },
+                        edit: { _ in }
                     )
                 }
             }
@@ -366,17 +379,23 @@
         /// above. What is compared is the labels, the hints, the ± controls, the refusal and which
         /// state the confirming command is in.
         ///
-        /// - Parameter draft: What the form is holding.
+        /// - Parameters:
+        ///   - draft: What the form is holding.
+        ///   - isEditing: Whether it is open over a set that already exists (`FR-1.2.7`).
         /// - Returns: The editor, laid out for a reference.
-        private func editor(over draft: SetDraft) -> some View {
+        private func editor(over draft: SetDraft, isEditing: Bool = false) -> some View {
             VStack(spacing: Spacing.sm.points) {
-                SetEditorFields(draft: .constant(draft), hasInput: .constant(true))
-                    .padding(Spacing.lg.points)
+                SetEditorFields(
+                    draft: .constant(draft), hasInput: .constant(true), isEditing: isEditing
+                )
+                .padding(Spacing.lg.points)
                 SetEditorCommands(
                     isLoggable: draft.isLoggable,
                     showsRefusal: !draft.isLoggable && !draft.isBlank,
+                    isEditing: isEditing,
                     log: {},
-                    cancel: {}
+                    cancel: {},
+                    delete: {}
                 )
             }
         }

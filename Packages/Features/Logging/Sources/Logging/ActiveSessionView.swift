@@ -13,13 +13,17 @@ import SwiftUI
 /// (`FR-1.2.3`, `FR-1.2.4`, `FR-1.2.6`, `FR-1.2.14`). Completion and editing land in that same
 /// card rather than in a new shape beside it.
 ///
+/// **What this screen does to a *set* is in `ActiveSessionSetEditing.swift`**, which is why the
+/// state below is internal rather than file-scoped: `private` is file-scoped and this type is two
+/// files, the same split — and for the same reason — as the store's own commands.
+///
 /// **It carries no identifier, and that is why ``ActiveSessionStore`` exists.** `TrainingRoute` has
 /// no payload for this screen: the workout in progress is one fact about the app, not a parameter of
 /// a push, so a restored navigation stack that opens straight onto this screen shows whichever
 /// workout the store found — or says there is none, which is what a stack restored after the workout
 /// was finished has to say.
 public struct ActiveSessionView: View {
-    private let store: ActiveSessionStore
+    let store: ActiveSessionStore
 
     /// The way back to the root once the workout has ended, one way or the other.
     @Environment(\.dismiss) private var dismiss
@@ -42,13 +46,13 @@ public struct ActiveSessionView: View {
     /// which card is open is not logged data — a workout reopened tomorrow should follow the rule
     /// (finished exercises collapsed, the rest open) rather than the folds of an earlier sitting.
     /// An entry here is an override of that rule and lasts as long as the screen does.
-    @State private var expansion: [UUID: Bool] = [:]
+    @State var expansion: [UUID: Bool] = [:]
 
     /// Which cards' warmup groups the user has folded by hand (`FR-1.2.14`).
     ///
     /// Stored nowhere, for ``expansion``'s reason, and a second dictionary rather than a second flag
     /// in that one because the two folds are independent — see ``SessionExerciseList``.
-    @State private var warmupExpansion: [UUID: Bool] = [:]
+    @State var warmupExpansion: [UUID: Bool] = [:]
 
     /// Which exercise the set editor is open over, or `nil` (`FR-1.2.3`, `FR-1.2.6`).
     ///
@@ -56,10 +60,10 @@ public struct ActiveSessionView: View {
     /// restored navigation stack that reopened this sheet would offer to log a set the user was in
     /// the middle of abandoning when they force-quit, prefilled from a workout that may since have
     /// been discarded.
-    @State private var editing: SetEditorTarget?
+    @State var editing: SetEditorTarget?
 
     /// Which locale the set editor parses and renders numbers in (`G-3.4`).
-    @Environment(\.locale) private var locale
+    @Environment(\.locale) var locale
 
     /// Builds the screen over the store that holds the workout.
     ///
@@ -102,8 +106,10 @@ public struct ActiveSessionView: View {
         .sheet(item: $editing) { target in
             SetEditorSheet(
                 draft: draft(for: target),
-                log: { log($0, into: target.entryID) },
-                cancel: { editing = nil }
+                isEditing: target.editing != nil,
+                log: { write($0, target) },
+                cancel: { editing = nil },
+                delete: { delete(target) }
             )
             // The medium detent is what puts every logging control in the lower two-thirds
             // (`NFR-1.4`); the large one is there because at `accessibility3` the five fields no
@@ -239,7 +245,8 @@ public struct ActiveSessionView: View {
                     unit: store.displayUnit,
                     logSet: { editing = $0 },
                     mark: { markSet($0, asWarmup: $1) },
-                    markCompleted: { markSet($0, asCompleted: $1) }
+                    markCompleted: { markSet($0, asCompleted: $1) },
+                    edit: { editing = Self.target(editing: $0) }
                 )
                 writeFailure(writeFailed)
                 addExerciseLink
@@ -296,107 +303,6 @@ public struct ActiveSessionView: View {
         if store.isActive, !store.exercises.isEmpty {
             SessionProgressHeader(progress: store.progress)
         }
-    }
-
-    /// The draft the editor opens holding — blank, or `FR-1.2.6`'s copy of the last set.
-    ///
-    /// - Parameter target: Which exercise the editor is open over.
-    /// - Returns: The draft.
-    private func draft(for target: SetEditorTarget) -> SetDraft {
-        guard let repeated = target.repeating else {
-            return SetDraft(unit: store.displayUnit, locale: locale)
-        }
-        return SetDraft(repeating: repeated, unit: store.displayUnit, locale: locale)
-    }
-
-    /// Logs the drafted set and closes the editor (`FR-1.2.3`, `NFR-1.8`).
-    ///
-    /// **The sheet closes before the write is awaited**, which is what `NFR-1.2` is asking for: the
-    /// row appears as the store publishes it, with no spinner and nothing between the tap and the
-    /// card. The write is local (`G-2.3`), so there is no window in which the card is visibly behind.
-    ///
-    /// **The card is pinned open.** Every set logged here is `isCompleted`, so the first working one
-    /// makes the exercise complete by `FR-1.2.13`'s rule — and the rule collapses completed cards,
-    /// which would fold the card the user is logging into at the moment they log into it. An
-    /// explicit entry in the fold overrides that for this card only: one the user has not touched
-    /// still follows the rule, which is what a workout reopened tomorrow should do.
-    ///
-    /// **A warmup pins the warmup group open too, and only a warmup does.** Logging a *working*
-    /// set may fold that group by ``SessionExerciseList/defaultWarmupExpansion(for:)``'s rule, and
-    /// that fold is harmless: it happens above the new row and shortens the card, pulling the set
-    /// towards the thumb rather than off screen. Logging a *warmup* into a card that already has
-    /// work in it is the opposite case — the same rule would fold the row being written, so the set
-    /// would be logged and then immediately hidden. See ``markSet(_:asWarmup:)``, which is the same
-    /// hazard reached by the other control.
-    ///
-    /// A draft that does not resolve is ignored rather than trusted — the confirming command is
-    /// disabled in that state, so this is the second reading of a guard the editor already applies.
-    ///
-    /// - Parameters:
-    ///   - draft: What the user entered.
-    ///   - entryID: The exercise to log against.
-    private func log(_ draft: SetDraft, into entryID: UUID) {
-        guard let weight = draft.weight, let reps = draft.reps, draft.isLoggable else { return }
-        let values = SetEntryValues(
-            weight: weight,
-            reps: reps,
-            rpe: draft.storedRPE,
-            isWarmup: draft.isWarmup,
-            notes: draft.notes
-        )
-        editing = nil
-        expansion[entryID] = true
-        if draft.isWarmup { warmupExpansion[entryID] = true }
-        Task { await store.addSet(toEntryID: entryID, values: values) }
-    }
-
-    /// Marks a logged set as a warmup or as working (`FR-1.2.4`).
-    ///
-    /// **A set becoming a warmup pins its card's warmup group open**, for the reason
-    /// ``log(_:into:)`` pins the card: the group is folded by default once the work has started, so
-    /// a row moved into it would vanish under a heading at the far end of the card, taking the
-    /// control that undoes the marking with it. The reverse direction needs nothing *there* — a set
-    /// leaving the group is already on screen, and the group it leaves can only have been open for
-    /// the badge to have been tappable at all.
-    ///
-    /// **The card itself is pinned in both directions**, which the group is not, and that is
-    /// `FR-1.2.13`'s rule reading a column this control writes: an exercise is finished when its
-    /// working sets are all completed and there is at least one, so changing a set's *kind* moves
-    /// that answer as surely as ``markSet(_:asCompleted:)`` does. Made working, a completed set can
-    /// be the one that finishes the exercise; made a warmup, an uncompleted one can leave behind a
-    /// list that is finished without it. Either way the card folds under the thumb that tapped it
-    /// and takes the badge that would undo the marking with it.
-    ///
-    /// Both pins are dictionary entries and so last as long as the screen: a card or a group the
-    /// user has been shown once stays shown, rather than folding again behind the next set.
-    ///
-    /// - Parameters:
-    ///   - set: The set to mark.
-    ///   - isWarmup: Which kind it becomes.
-    private func markSet(_ set: SetEntry, asWarmup isWarmup: Bool) {
-        expansion[set.entryID] = true
-        if isWarmup { warmupExpansion[set.entryID] = true }
-        Task { await store.markSet(id: set.id, inEntryID: set.entryID, isWarmup: isWarmup) }
-    }
-
-    /// Marks a logged set as completed or failed (`FR-1.2.5`).
-    ///
-    /// **A set becoming completed pins its card open**, and it is ``log(_:into:)``'s hazard reached
-    /// by the other control: an exercise is finished when every working set on it is completed, so
-    /// marking the last outstanding one flips `FR-1.2.13`'s rule and folds the card under the thumb
-    /// that just tapped it. A card the user opened by hand already carries an entry of its own; the
-    /// one this is for is the card that was open because the exercise was *unfinished*, which is
-    /// exactly the card this command finishes.
-    ///
-    /// **The other direction needs no pin.** Marking a set failed can only make its exercise less
-    /// finished, and a card that grew more open under a tap is not a card anything was lost from.
-    ///
-    /// - Parameters:
-    ///   - set: The set to mark.
-    ///   - isCompleted: Which it becomes.
-    private func markSet(_ set: SetEntry, asCompleted isCompleted: Bool) {
-        if isCompleted { expansion[set.entryID] = true }
-        Task { await store.markSet(id: set.id, inEntryID: set.entryID, isCompleted: isCompleted) }
     }
 
     /// Finishes the workout and leaves the screen, unless the write failed.

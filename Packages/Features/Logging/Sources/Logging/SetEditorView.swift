@@ -3,26 +3,51 @@ import Localization
 import PowerliftingCore
 import SwiftUI
 
-/// Which exercise the set editor is open over, and what it opened filled in with.
+/// Which exercise the set editor is open over, what it opened filled in with, and whether it is
+/// editing a set that already exists (`FR-1.2.7`).
 ///
-/// **Identified by the entry rather than by the set being drafted**, because that is what makes the
-/// sheet re-present when the user closes it and taps another card: two drafts against one exercise
-/// are the same sheet, two exercises are two.
+/// **Identified by the entry while a set is being added**, because that is what makes the sheet
+/// re-present when the user closes it and taps another card: two drafts against one exercise are the
+/// same sheet, two exercises are two. **An edit is identified by the set instead**, and it has to
+/// be: two sets on one card are two different edits, and keyed on the entry the second would
+/// re-present the first one's form.
 struct SetEditorTarget: Identifiable, Equatable {
-    /// The exercise to log against.
+    /// The exercise the set belongs to, or is being logged against.
     let entryID: UUID
 
-    /// The set to copy in, for `FR-1.2.6`'s duplicate — `nil` for a blank one.
-    let repeating: SetEntryValues?
+    /// What the form opens filled in with — `FR-1.2.6`'s duplicate, or the set being edited.
+    /// `nil` for a blank one.
+    let values: SetEntryValues?
 
-    /// The entry's id: see the type's note.
-    var id: UUID { entryID }
+    /// The set being edited (`FR-1.2.7`), or `nil` while one is being added.
+    let editing: UUID?
+
+    /// The set being edited, or the entry: see the type's note.
+    var id: UUID { editing ?? entryID }
+
+    /// Builds the target.
+    ///
+    /// - Parameters:
+    ///   - entryID: The exercise the set belongs to.
+    ///   - values: What the form opens filled in with, where it opens filled in.
+    ///   - editing: The set being edited, where one is.
+    init(entryID: UUID, values: SetEntryValues? = nil, editing: UUID? = nil) {
+        self.entryID = entryID
+        self.values = values
+        self.editing = editing
+    }
 }
 
-/// `FR-1.2.3`'s add-set form, and `FR-1.2.6`'s duplicate once it has been opened.
+/// `FR-1.2.3`'s add-set form, `FR-1.2.6`'s duplicate once it has been opened, and `FR-1.2.7`'s
+/// editor over a set that already exists.
+///
+/// **One form for both, and the difference is three words and a command.** Adding and editing
+/// collect exactly the same five fields, so a second sheet would be the same layout maintained
+/// twice — what changes is the title, the confirming command's words, and a deletion offered only
+/// where there is something to delete.
 ///
 /// `FR-1.2.4`'s warmup marking is the fifth row, decided as the set is logged rather than corrected
-/// afterwards — the card's own badge is what corrects one.
+/// afterwards — the card's own badge is what corrects one, and editing is the third way.
 ///
 /// **Presented rather than drawn inside the card, and that is `NFR-1.4` deciding it.** Every logging
 /// control has to sit in the lower two-thirds of the screen, reachable by one thumb; a draft row
@@ -49,23 +74,40 @@ struct SetEditorSheet: View {
     /// user's; seeded the other way it opened on a disabled command with nothing saying why.
     @State private var hasInput: Bool
 
-    /// Logs the set. The caller is what knows which exercise it belongs to.
+    /// Whether the form is editing a logged set rather than adding one (`FR-1.2.7`).
+    let isEditing: Bool
+
+    /// Logs the set, or saves the edit. The caller is what knows which set or exercise it is.
     let log: (SetDraft) -> Void
 
-    /// Leaves without logging anything.
+    /// Leaves without writing anything.
     let cancel: () -> Void
+
+    /// Soft-deletes the set being edited (`FR-1.2.7`). Never called while one is being added.
+    let delete: () -> Void
 
     /// Builds the form over a draft.
     ///
     /// - Parameters:
-    ///   - draft: What the form opens holding — blank, or `FR-1.2.6`'s copy of the last set.
-    ///   - log: Logs the set.
+    ///   - draft: What the form opens holding — blank, `FR-1.2.6`'s copy of the last set, or the
+    ///     set being edited.
+    ///   - isEditing: Whether that set already exists.
+    ///   - log: Logs the set, or saves the edit.
     ///   - cancel: Closes the form.
-    init(draft: SetDraft, log: @escaping (SetDraft) -> Void, cancel: @escaping () -> Void) {
+    ///   - delete: Deletes the set being edited. Ignored while one is being added.
+    init(
+        draft: SetDraft,
+        isEditing: Bool = false,
+        log: @escaping (SetDraft) -> Void,
+        cancel: @escaping () -> Void,
+        delete: @escaping () -> Void = {}
+    ) {
         _draft = State(initialValue: draft)
         _hasInput = State(initialValue: !draft.isBlank)
+        self.isEditing = isEditing
         self.log = log
         self.cancel = cancel
+        self.delete = delete
     }
 
     /// The five fields, scrolling, with the two commands pinned beneath them.
@@ -78,14 +120,16 @@ struct SetEditorSheet: View {
     var body: some View {
         VStack(spacing: Spacing.sm.points) {
             ScrollView {
-                SetEditorFields(draft: $draft, hasInput: $hasInput)
+                SetEditorFields(draft: $draft, hasInput: $hasInput, isEditing: isEditing)
                     .padding(Spacing.lg.points)
             }
             SetEditorCommands(
                 isLoggable: draft.isLoggable,
                 showsRefusal: !draft.isLoggable && hasInput,
+                isEditing: isEditing,
                 log: { log(draft) },
-                cancel: cancel
+                cancel: cancel,
+                delete: delete
             )
         }
         .background(ColorToken.background)
@@ -109,10 +153,14 @@ struct SetEditorFields: View {
     /// Set by anything the user does here, so the commands below know the form has been touched.
     @Binding var hasInput: Bool
 
+    /// Whether the form is editing a logged set rather than adding one (`FR-1.2.7`) — what decides
+    /// the title.
+    var isEditing: Bool = false
+
     /// Title, then the five rows.
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.lg.points) {
-            Text(LoggingStrings.setEditorTitle)
+            Text(isEditing ? LoggingStrings.setEditorEditTitle : LoggingStrings.setEditorTitle)
                 .font(Typography.sectionHeading.font)
                 .foregroundStyle(ColorToken.textPrimary)
             weightField
@@ -278,95 +326,6 @@ struct SetEditorFields: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(label))
-    }
-}
-
-/// **Log set**, the way out, and the refusal that explains a disabled command.
-///
-/// **Pinned outside the scroll view**, which is what keeps `NFR-1.3`'s third tap from costing a
-/// scroll first, and its own type for ``SetEditorFields``' reason.
-///
-/// The confirming command is disabled rather than absent while the draft does not resolve: a button
-/// that vanished would move **Cancel** under the thumb that was reaching for it.
-struct SetEditorCommands: View {
-    /// Whether the draft resolves — whether **Log set** goes.
-    let isLoggable: Bool
-
-    /// Whether to say why it does not. Separate from ``isLoggable`` because a form nobody has
-    /// filled in yet is not one to complain about.
-    let showsRefusal: Bool
-
-    /// Logs the set.
-    let log: () -> Void
-
-    /// Leaves without logging anything.
-    let cancel: () -> Void
-
-    /// The rule, the refusal where there is one, then the two commands.
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.md.points) {
-            // A rule above the pinned commands, because the fields scroll behind them: without it
-            // the last field on screen reads as clipped rather than as scrolled.
-            Divider().overlay(ColorToken.separator)
-            VStack(alignment: .leading, spacing: Spacing.md.points) {
-                if showsRefusal {
-                    FieldRefusal(message: Text(LoggingStrings.setInvalidMessage))
-                }
-                Button(action: log) {
-                    Text(LoggingStrings.setConfirmAction)
-                }
-                .buttonStyle(.primaryAction(.fill))
-                .disabled(!isLoggable)
-
-                Button(action: cancel) {
-                    Text(LoggingStrings.setCancelAction)
-                        .font(Typography.actionLabel.font)
-                        .foregroundStyle(ColorToken.textSecondary)
-                        .frame(maxWidth: .infinity, minHeight: TouchTarget.logging.points)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, Spacing.lg.points)
-        }
-        .padding(.bottom, Spacing.lg.points)
-        .background(ColorToken.background)
-    }
-}
-
-/// Why the confirming command is refusing, pinned beside it.
-///
-/// **Not `ErrorStateView`, and that is the one place this screen departs from T-1.09's components.**
-/// A form that has not been filled in is not one of `FR-1.13.1`'s states — nothing failed, nothing
-/// is being retried, and the fields and keystrokes are all still there. Rendered as the state
-/// component it takes the whole pinned footer: a full-width symbol, a headline and a message,
-/// squeezing the fields off a medium sheet and truncating its own copy at `accessibility3`.
-/// Measured in the simulator. What this is instead is the same shape as the field hints above it,
-/// in the negative colour, with a symbol so the colour is never the only cue (`G-4.5`).
-///
-/// **Pinned with the command rather than under the field that is wrong**, and that is measured too:
-/// inside the scroll view it left the disabled button on screen with its explanation scrolled away
-/// — at `accessibility3`, where the fields no longer fit, that is the normal case rather than the
-/// edge one.
-struct FieldRefusal: View {
-    /// What the form wants, in the user's words — never a diagnostic (`G-3.4`).
-    let message: Text
-
-    /// The symbol, then the sentence, as one VoiceOver element.
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Spacing.xs.points) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(Typography.caption.font)
-                .accessibilityHidden(true)
-            message
-                .font(Typography.caption.font)
-                // Wraps rather than truncates: inside a pinned footer a `Text` is given the height
-                // it asks for only if it says so, and at `accessibility3` one line holds four
-                // words.
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .foregroundStyle(ColorToken.negative)
-        .accessibilityElement(children: .combine)
     }
 }
 

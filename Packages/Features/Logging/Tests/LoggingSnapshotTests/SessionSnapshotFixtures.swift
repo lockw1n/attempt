@@ -35,6 +35,14 @@
             )
         }
 
+        /// A draft as `FR-1.2.7`'s editor opens it, carrying the note as well — which is the one
+        /// field a duplicate drops and an edit must not.
+        static var editedDraft: SetDraft {
+            let set = SetEntryValues(
+                weight: Weight(grams: 102_500), reps: 5, rpe: 8, isWarmup: false, notes: "belt on")
+            return SetDraft(editing: set, unit: .kilograms, locale: locale)
+        }
+
         /// A draft the form refuses: the load and the reps resolve, the rating does not.
         static var refusingDraft: SetDraft {
             var draft = SetDraft(unit: .kilograms, locale: locale)

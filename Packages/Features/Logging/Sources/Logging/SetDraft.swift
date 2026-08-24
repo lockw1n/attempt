@@ -109,6 +109,22 @@ struct SetDraft: Equatable, Sendable {
         }
         isWarmup = set.isWarmup
     }
+
+    /// A draft carrying everything `set` records — `FR-1.2.7`'s edit.
+    ///
+    /// **The note comes across, and that is the whole difference from
+    /// ``init(repeating:unit:locale:)``.** A duplicate drops it because repeating a note puts words
+    /// in the user's mouth on a set they have not performed yet; an edit is the *same* set, and a
+    /// form that opened with the note missing would delete it on the next confirm.
+    ///
+    /// - Parameters:
+    ///   - set: The set being edited.
+    ///   - unit: The unit to render its load in.
+    ///   - locale: The locale to render the numbers in.
+    init(editing set: SetEntryValues, unit: MassUnit, locale: Locale) {
+        self.init(repeating: set, unit: unit, locale: locale)
+        notes = set.notes
+    }
 }
 
 // MARK: - What the draft resolves to

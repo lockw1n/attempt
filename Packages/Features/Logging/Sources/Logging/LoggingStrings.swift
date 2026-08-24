@@ -175,6 +175,9 @@ enum LoggingStrings {
     /// The editor's own title.
     static let setEditorTitle = resource("logging.session.set.editor.title")
 
+    /// The same title when the form is open over a set that already exists (`FR-1.2.7`).
+    static let setEditorEditTitle = resource("logging.session.set.editor.edit-title")
+
     /// The load field's label.
     static let setWeightLabel = resource("logging.session.set.weight.label")
 
@@ -196,8 +199,35 @@ enum LoggingStrings {
     /// The command that logs the set.
     static let setConfirmAction = resource("logging.session.set.confirm.action")
 
+    /// The command that confirms an edit (`FR-1.2.7`), where ``setConfirmAction`` logs a new set.
+    ///
+    /// **Two strings rather than one**: the editor's confirming command is the same button and not
+    /// the same sentence — one stores a set that did not exist, the other rewrites one that did, and
+    /// a shared word would have to be vague enough to cover both.
+    static let setSaveAction = resource("logging.session.set.save.action")
+
     /// The way out of the editor without logging anything.
     static let setCancelAction = resource("logging.session.set.cancel.action")
+
+    /// What tapping a set's values does (`FR-1.2.7`), as VoiceOver's hint on that control.
+    ///
+    /// The action rather than the state, for ``setMarkAction(isWarmup:)``'s reason.
+    static let setEditAction = resource("logging.session.set.edit.action")
+
+    /// The editor's deletion (`FR-1.2.7`), and the title of the dialogue confirming it.
+    static let setDeleteAction = resource("logging.session.set.delete.action")
+
+    /// The question that confirmation asks.
+    static let setDeleteConfirmTitle = resource("logging.session.set.delete.confirm.title")
+
+    /// What deleting the set costs, said before it is deleted rather than after.
+    static let setDeleteConfirmMessage = resource("logging.session.set.delete.confirm.message")
+
+    /// The confirmation's destructive command.
+    static let setDeleteConfirmAction = resource("logging.session.set.delete.confirm.action")
+
+    /// The way out of that confirmation, naming what it keeps rather than saying "cancel".
+    static let setDeleteConfirmCancel = resource("logging.session.set.delete.confirm.cancel")
 
     /// Accessibility label for the load's **+** control (`G-4.2`).
     static let setWeightIncrease = resource("logging.session.set.weight.increase")
@@ -388,6 +418,9 @@ enum LoggingStrings {
             setRepsLabel, setRPELabel, setRPEHint, setNotesLabel, setNotesHint, setConfirmAction,
             setCancelAction, setWeightIncrease, setWeightDecrease, setRepsIncrease, setRepsDecrease,
             setInvalidMessage, setPosition(1), setReps(5), setRPE(""),
+            setEditorEditTitle, setSaveAction, setEditAction, setDeleteAction,
+            setDeleteConfirmTitle, setDeleteConfirmMessage, setDeleteConfirmAction,
+            setDeleteConfirmCancel,
             setWarmupNumber("1"), setWarmupPosition(1), setWarmupSection, setWarmupLabel,
             setWarmupHint,
         ] + MassUnit.allCases.map(setUnitSymbol(for:))

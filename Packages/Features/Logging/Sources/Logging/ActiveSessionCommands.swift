@@ -259,6 +259,76 @@ extension ActiveSessionStore {
         await loadExercises()
     }
 
+    /// Rewrites a logged set (`FR-1.2.7`).
+    ///
+    /// **The write itself is ``LoggedSetWriter``'s**, and every argument about what an edit carries
+    /// across, what it refuses and why it is not the store's is there. What this adds is the three
+    /// things a workout on screen needs and a past session does not: the chain, the diagnostic, and
+    /// the re-read that puts the result on the card.
+    ///
+    /// - Parameters:
+    ///   - setID: The set to rewrite.
+    ///   - entryID: The exercise it belongs to — what the repository reads sets by.
+    ///   - values: What it becomes.
+    public func editSet(id setID: UUID, inEntryID entryID: UUID, to values: SetEntryValues) async {
+        let previous = pendingWrite
+        let write = Task { [weak self] in
+            await previous?.value
+            await self?.writeEditedSet(id: setID, inEntryID: entryID, to: values)
+        }
+        pendingWrite = write
+        await write.value
+    }
+
+    /// One link in ``pendingWrite``'s chain. See ``editSet(id:inEntryID:to:)``.
+    ///
+    /// The list is re-read whether or not anything was written, for
+    /// ``writeMarkedSet(id:inEntryID:isWarmup:)``'s reason, and a write that changed nothing does
+    /// not retire a diagnostic it says nothing about.
+    fileprivate func writeEditedSet(
+        id setID: UUID, inEntryID entryID: UUID, to values: SetEntryValues
+    ) async {
+        guard session != nil else { return }
+        do {
+            if try await setWriter.edit(id: setID, inEntryID: entryID, to: values) {
+                exercisesWriteFailure = nil
+            }
+        } catch {
+            exercisesWriteFailure = String(describing: error)
+        }
+        await loadExercises()
+    }
+
+    /// Soft-deletes a logged set (`FR-1.2.7`, `G-1.3`).
+    ///
+    /// The write is ``LoggedSetWriter``'s; see ``editSet(id:inEntryID:to:)`` for what this adds.
+    ///
+    /// - Parameters:
+    ///   - setID: The set to delete.
+    ///   - entryID: The exercise it belongs to.
+    public func deleteSet(id setID: UUID, inEntryID entryID: UUID) async {
+        let previous = pendingWrite
+        let write = Task { [weak self] in
+            await previous?.value
+            await self?.writeDeletedSet(id: setID, inEntryID: entryID)
+        }
+        pendingWrite = write
+        await write.value
+    }
+
+    /// One link in ``pendingWrite``'s chain. See ``deleteSet(id:inEntryID:)``.
+    fileprivate func writeDeletedSet(id setID: UUID, inEntryID entryID: UUID) async {
+        guard session != nil else { return }
+        do {
+            if try await setWriter.delete(id: setID, inEntryID: entryID) {
+                exercisesWriteFailure = nil
+            }
+        } catch {
+            exercisesWriteFailure = String(describing: error)
+        }
+        await loadExercises()
+    }
+
     /// One link in ``pendingWrite``'s chain. See ``addSet(toEntryID:values:)``.
     ///
     /// It shares the chain with the exercise commands rather than having one of its own: a set is
