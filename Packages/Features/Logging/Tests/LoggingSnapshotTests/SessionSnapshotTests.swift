@@ -429,7 +429,8 @@
                     draft: .constant(draft),
                     hasInput: .constant(true),
                     isEditing: isEditing,
-                    vocabulary: Fixtures.vocabulary
+                    vocabulary: Fixtures.vocabulary,
+                    equipment: Fixtures.equipment
                 )
                 .padding(Spacing.lg.points)
                 SetEditorCommands(

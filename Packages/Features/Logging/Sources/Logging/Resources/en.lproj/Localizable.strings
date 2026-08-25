@@ -285,3 +285,107 @@
 "logging.session.set.modifier.touch-and-go" = "Touch and go";
 "logging.session.set.modifier.deficit" = "Deficit";
 "logging.session.set.modifier.board" = "Board";
+
+/* FR-1.4.1 and FR-1.4.4 — the plate calculator, reached from the set editor's weight field. One
+   label for the row and the screen: the row is the screen's summary and the screen is the row
+   expanded, so two spellings would be two names for one thing. */
+"logging.session.plate.row.label" = "Plate loading";
+/* Drawn before the equipment has been read and after a read that failed. It names the tap rather
+   than the wait — the tap resolves both, where "loading" would go on saying so over a read that is
+   never coming back. */
+"logging.session.plate.row.unknown" = "Tap to check your equipment";
+/* A weight that will not go on the bar. The two nearest weights are the screen's job (FR-1.4.4);
+   this row is one line inside a sheet already at NFR-1.10's ceiling. */
+"logging.session.plate.row.not-loadable" = "Not exactly loadable";
+"logging.session.plate.title" = "Plate loading";
+"logging.session.plate.done.action" = "Done";
+"logging.session.plate.target.label" = "Target";
+"logging.session.plate.exact.section" = "Loads exactly";
+"logging.session.plate.below.section" = "Nearest below";
+"logging.session.plate.above.section" = "Nearest above";
+/* FR-1.13.3, and the two halves say different things because the remedies are nothing alike: one is
+   a target lighter than the equipment can go, the other is a gym without heavy enough plates. */
+"logging.session.plate.below.none.headline" = "Nothing loads below";
+"logging.session.plate.below.none.message" = "The bar and its collars already weigh more than this target.";
+"logging.session.plate.above.none.headline" = "Nothing loads above";
+"logging.session.plate.above.none.message" = "This gym's plates do not reach that weight. Add heavier pairs to the equipment profile.";
+/* A loading that carries no plates — an answer, not a blank. */
+"logging.session.plate.bare-bar" = "Bar and collars only";
+"logging.session.plate.per-side.label" = "Per side";
+"logging.session.plate.equipment.section" = "Equipment";
+/* A gym the user set up and left unnamed. Theirs either way — only the name is missing. */
+"logging.session.plate.equipment.unnamed" = "Unnamed gym";
+
+/* FR-1.4.3 from the calculator: the way to the gym the numbers were worked out on. */
+"logging.session.plate.change-equipment.action" = "Change gym";
+/* FR-1.13.1's empty state, and it is an empty state rather than an error: the read succeeded and
+   the user simply has no gym yet — either none has been set up or the one in use was deleted. The
+   message covers both, because the tap out of them is the same one. */
+"logging.session.plate.no-equipment.headline" = "No gym set up";
+"logging.session.plate.no-equipment.message" = "Add a bar, its collars and the plates you have, and every loading is worked out from them.";
+"logging.session.plate.no-equipment.action" = "Set up a gym";
+"logging.session.plate.equipment.bar %@ %@" = "Bar %1$@, collars %2$@ each";
+/* One denomination on one side. The multiplication sign is a character here rather than a drawn
+   glyph, so VoiceOver reads it as a word. */
+"logging.session.plate.count %@ %@" = "%1$@ × %2$@";
+"logging.session.plate.error.headline" = "Equipment could not be read";
+"logging.session.plate.error.message" = "Your bar and plates could not be loaded, so there is nothing to work the loading out from.";
+"logging.session.plate.unusable.headline" = "This equipment cannot be used";
+"logging.session.plate.unusable.message" = "Its plate list does not describe a gym. Edit the equipment profile to put it right.";
+
+/* FR-1.4.2, FR-1.4.3 and FR-1.10.3 — equipment profiles, reached from the plate calculator and from
+   Settings. One subject, two screens: the list of gyms and the form over one of them. */
+"logging.equipment.title" = "Equipment";
+"logging.equipment.empty.headline" = "No gym set up yet";
+"logging.equipment.empty.message" = "Set up the bar, collars and plates you train with, and the app can work out what to load.";
+"logging.equipment.add.action" = "Add a gym";
+/* The gym every loading is worked out against. "In use" rather than "default": there is one, the
+   user chose it, and nothing here falls back to it. */
+"logging.equipment.active.badge" = "In use";
+"logging.equipment.use.action" = "Use this gym";
+/* Deleting the gym in use promotes nothing — which gym a lifter trains at next is not derivable, and
+   a silently promoted one would compute every loading on a different bar without saying so. So the
+   fact is stated instead, on the screen that can act on it. */
+"logging.equipment.none-active" = "No gym is in use. Pick one and every loading is worked out from it.";
+"logging.equipment.edit.action" = "Edit";
+"logging.equipment.error.headline" = "Equipment could not be read";
+"logging.equipment.error.message" = "Your gyms could not be loaded. Nothing has been lost — try again.";
+"logging.equipment.write-error.title" = "That change was not saved";
+
+"logging.equipment.create.title" = "Add a gym";
+"logging.equipment.edit.title" = "Edit gym";
+"logging.equipment.name.label" = "Name";
+"logging.equipment.name.hint" = "Your own word for the place — home, the commercial gym, the meet. Optional.";
+"logging.equipment.bar.label" = "Bar weight";
+/* TR-0.3.7: the stored column is the mass of ONE collar, and a number entered as the pair doubles
+   every loading the app produces. The label says which, rather than a placeholder that can go
+   unread. */
+"logging.equipment.collar.label" = "Weight of one collar";
+"logging.equipment.collar.hint" = "One collar, not the pair — the bar takes two. Enter 0 if you train without them.";
+"logging.equipment.plates.section" = "Plates";
+"logging.equipment.plates.hint" = "How many pairs of each plate you have. A gym with no plates is fine: the bar alone still loads.";
+"logging.equipment.plate.label" = "Plate";
+/* Pairs, because a plate goes on both ends of the bar. */
+"logging.equipment.pairs.label" = "Pairs";
+"logging.equipment.add-plate.action" = "Add a plate";
+"logging.equipment.remove-plate.action" = "Remove plate";
+"logging.equipment.save.action" = "Save gym";
+"logging.equipment.cancel.action" = "Cancel";
+"logging.equipment.delete.action" = "Delete gym";
+"logging.equipment.delete-confirm.title" = "Delete this gym?";
+/* Says what deleting the gym in use costs, because the repository leaves no gym active rather than
+   promoting another — the way back is one tap on this screen. */
+"logging.equipment.delete-confirm.message" = "Its bar and plates go with it. If it is the gym in use, no loadings are worked out until you pick another.";
+"logging.equipment.delete-confirm.action" = "Delete";
+"logging.equipment.delete-confirm.cancel" = "Keep it";
+
+/* FR-1.13.3: one refusal at a time, naming the next field to fix. */
+"logging.equipment.refusal.bar" = "Enter what the bar itself weighs.";
+"logging.equipment.refusal.collar" = "Enter what one collar weighs, or 0 if you use none.";
+"logging.equipment.refusal.plate" = "Every plate needs a weight of at least one gram.";
+"logging.equipment.refusal.pairs" = "Every plate needs a whole number of pairs.";
+"logging.equipment.refusal.repeated" = "Two rows name the same plate. Put the pairs on one row and remove the other.";
+"logging.equipment.refusal.overflow" = "That many plates is more than can be counted. Lower a pair count.";
+
+/* A gym that stocks nothing — an answer, not a blank. */
+"logging.equipment.no-plates" = "No plates";

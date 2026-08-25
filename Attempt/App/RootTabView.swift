@@ -74,6 +74,8 @@ struct RootTabView: View {
             exercisePickerRoot
         case .training(.activeSession):
             activeSessionRoot
+        case .settings(.equipmentProfiles):
+            equipmentProfilesRoot
         default:
             PlaceholderScreen(route: route)
         }
@@ -145,6 +147,23 @@ struct RootTabView: View {
         }
     }
 
+    /// The gyms (`FR-1.10.3`), or the reason they cannot be shown.
+    ///
+    /// **A `Logging` screen answering a Settings route**, which is the exercise picker's join in its
+    /// other direction: `FR-1.10.3` and `FR-1.4.2` are one screen described from two tabs, `TR-1.3`
+    /// keeps `Settings` and `Logging` from depending on each other, so this target — which already
+    /// owns both — is where the two meet. It is handed the same store the calculator loads against,
+    /// so a gym switched here is the gym the next loading uses.
+    @ViewBuilder
+    private var equipmentProfilesRoot: some View {
+        switch dependencies.state {
+        case .open(_, let stores):
+            EquipmentProfilesView(store: stores.equipment)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
     /// A tab's root. Two are real screens now; Home and History are still scaffolding.
     ///
     /// The title is applied here rather than inside the feature package, for the reason
@@ -182,7 +201,11 @@ struct RootTabView: View {
     private var activeSessionRoot: some View {
         switch dependencies.state {
         case .open(_, let stores):
-            ActiveSessionView(store: stores.activeSession, vocabulary: stores.modifiers)
+            ActiveSessionView(
+                store: stores.activeSession,
+                vocabulary: stores.modifiers,
+                equipment: stores.equipment
+            )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

@@ -19,3 +19,9 @@
 "settings.landing.scaffold.title" = "Not built yet";
 "settings.landing.scaffold.estimator" = "Estimator";
 "settings.landing.scaffold.appearance" = "Appearance";
+
+/* FR-1.10.3: the way into the gyms. The screen behind it is the logging module's — one screen for
+   both this row and the plate calculator — so its own copy lives there and this is only the door. */
+"settings.landing.equipment.title" = "Equipment";
+"settings.landing.equipment.row" = "Gyms";
+"settings.landing.equipment.detail" = "Bar, collars and the plates you have";

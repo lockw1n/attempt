@@ -2,6 +2,7 @@
 
     import Foundation
     import PowerliftingCore
+    import RepositoryFakes
     import RepositoryInterface
     import SwiftUI
 
@@ -89,6 +90,16 @@
         /// A spelling neither the nine nor ``vocabulary`` offers — what a set logged by a newer
         /// version carries, and the row that has to say so.
         static let unlisted = SetModifier(rawValue: "chains")
+
+        /// A plate-calculator store that has read nothing, which is the only state `ImageRenderer`
+        /// can put the set editor's row in: the read is a `.task`, and the renderer runs none.
+        ///
+        /// What the editor's reference therefore compares is the row's *unread* line — which is a
+        /// state the screen really has, on a first open before the local read answers.
+        static var equipment: PlateCalculatorStore {
+            let fakes = InMemoryRepositoryStack()
+            return PlateCalculatorStore(repository: fakes.equipment, settings: fakes.settings)
+        }
 
         /// The modifier list these references draw, in a suite nothing else can see.
         ///

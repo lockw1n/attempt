@@ -63,6 +63,7 @@ let package = Package(
             name: "LoggingSnapshotTests",
             dependencies: [
                 "Logging",
+                "RepositoryFakes",
                 .product(name: "SnapshotTesting", package: "DesignSystem"),
             ],
             exclude: ["__Snapshots__"],

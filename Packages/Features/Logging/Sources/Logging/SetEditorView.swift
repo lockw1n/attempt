@@ -95,6 +95,9 @@ struct SetEditorSheet: View {
     /// The modifier terms on offer (`FR-1.2.8`), handed down to the row that picks from them.
     let vocabulary: SetModifierVocabulary
 
+    /// The gym `FR-1.4.1`'s loading is worked out on, handed down to the row that shows it.
+    let equipment: PlateCalculatorStore
+
     /// Logs the set, or saves the edit. The caller is what knows which set or exercise it is.
     let log: (SetDraft) -> Void
 
@@ -111,6 +114,7 @@ struct SetEditorSheet: View {
     ///     set being edited.
     ///   - isEditing: Whether that set already exists.
     ///   - vocabulary: The modifier terms on offer (`FR-1.2.8`).
+    ///   - equipment: The gym `FR-1.4.1`'s loading is worked out on.
     ///   - log: Logs the set, or saves the edit.
     ///   - cancel: Closes the form.
     ///   - delete: Deletes the set being edited. Ignored while one is being added.
@@ -118,6 +122,7 @@ struct SetEditorSheet: View {
         draft: SetDraft,
         isEditing: Bool = false,
         vocabulary: SetModifierVocabulary,
+        equipment: PlateCalculatorStore,
         log: @escaping (SetDraft) -> Void,
         cancel: @escaping () -> Void,
         delete: @escaping () -> Void = {}
@@ -126,6 +131,7 @@ struct SetEditorSheet: View {
         _hasInput = State(initialValue: !draft.isBlank)
         self.isEditing = isEditing
         self.vocabulary = vocabulary
+        self.equipment = equipment
         self.log = log
         self.cancel = cancel
         self.delete = delete
@@ -145,7 +151,8 @@ struct SetEditorSheet: View {
                     draft: $draft,
                     hasInput: $hasInput,
                     isEditing: isEditing,
-                    vocabulary: vocabulary
+                    vocabulary: vocabulary,
+                    equipment: equipment
                 )
                 .padding(Spacing.lg.points)
             }
@@ -186,6 +193,14 @@ struct SetEditorFields: View {
     /// The modifier terms on offer (`FR-1.2.8`).
     let vocabulary: SetModifierVocabulary
 
+    /// The gym `FR-1.4.1`'s loading is worked out on.
+    let equipment: PlateCalculatorStore
+
+    /// Whether `FR-1.4.1`'s calculator is on screen.
+    ///
+    /// The row's own, for ``isPicking``'s reason.
+    @State private var isCalculating = false
+
     /// Whether `FR-1.2.8`'s picker is on screen.
     ///
     /// The row's own, so it cannot outlive the sheet it was raised from — `SetEditorCommands`'
@@ -199,6 +214,7 @@ struct SetEditorFields: View {
                 .font(Typography.sectionHeading.font)
                 .foregroundStyle(ColorToken.textPrimary)
             weightField
+            plateLoadingField
             repsField
             warmupField
             rpeField
@@ -206,12 +222,44 @@ struct SetEditorFields: View {
             notesField
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Read here rather than in the row below it, so one read answers a weight the user steps
+        // through with the ± pair — and so the row does not re-read every time the field empties.
+        .task { await equipment.load() }
         .sheet(isPresented: $isPicking) {
             SetModifierPicker(
                 applied: $draft.modifiers,
                 vocabulary: vocabulary,
                 dismiss: { isPicking = false }
             )
+        }
+    }
+
+    /// `FR-1.4.1`'s per-side loading for the weight this form holds, and the way into the whole
+    /// answer.
+    ///
+    /// **Second, directly under the load it describes**, and drawn only once that load parses — a
+    /// row over a blank field would be a control that starts dead on every new set, and this form is
+    /// at `NFR-1.10`'s ceiling with the rows it already has. It costs `NFR-1.3`'s three taps
+    /// nothing: the two commands are pinned outside the scroll view, so a seventh row moves neither.
+    ///
+    /// **The sheet is attached here rather than beside the picker's.** Two `.sheet(isPresented:)`
+    /// on one view is one presentation with the other silently ignored; each row carries its own.
+    @ViewBuilder private var plateLoadingField: some View {
+        if let target = draft.weight {
+            PlateLoadingRow(
+                target: target,
+                result: equipment.loading(for: target),
+                unit: draft.unit,
+                open: { isCalculating = true }
+            )
+            .sheet(isPresented: $isCalculating) {
+                PlateCalculatorSheet(
+                    target: target,
+                    store: equipment,
+                    unit: draft.unit,
+                    dismiss: { isCalculating = false }
+                )
+            }
         }
     }
 
@@ -444,49 +492,5 @@ struct SetEditorFields: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(label))
-    }
-}
-
-/// A labelled row in the set editor — the label, the control, and the one line of guidance a label
-/// has no room for.
-///
-/// A shape of its own so every field is laid out by one rule rather than one rule each.
-struct FieldRow<Content: View>: View {
-    /// What the field is.
-    let label: Text
-
-    /// What it accepts, where that is not obvious. Optional.
-    let hint: Text?
-
-    /// The control itself.
-    @ViewBuilder let content: Content
-
-    /// Label, control, hint.
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs.points) {
-            label
-                .font(Typography.metricLabel.font)
-                .foregroundStyle(ColorToken.textSecondary)
-            content
-            if let hint {
-                hint
-                    .font(Typography.caption.font)
-                    .foregroundStyle(ColorToken.textTertiary)
-            }
-        }
-    }
-}
-
-extension View {
-    /// The decimal keyboard, where the platform has one.
-    ///
-    /// **A modifier rather than an `#if` at four call sites.** `keyboardType(_:)` does not exist on
-    /// macOS, and this module builds for both — the package's `platforms:` clause names each.
-    func decimalKeyboard() -> some View {
-        #if os(iOS)
-            return keyboardType(.decimalPad)
-        #else
-            return self
-        #endif
     }
 }

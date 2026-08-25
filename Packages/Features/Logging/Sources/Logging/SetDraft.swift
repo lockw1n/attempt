@@ -21,16 +21,8 @@ enum OptionalField<Value: Equatable>: Equatable {
 
 /// What the set editor holds while a set is being filled in, and what it refuses (`FR-1.2.3`).
 ///
-/// **Text, not numbers, and that is `Weight`'s failable initializer meeting a keyboard.** A
-/// `TextField` bound to a `Double` reverts what the user is halfway through typing — "10" on the way
-/// to "102.5" is a complete number, and a lone "." is not one at all — so the fields here are
-/// `String` and the crossing into `Weight` happens once, on confirm. That crossing is the only place
-/// floating point exists in the logging path (`G-1.1`): a parsed decimal becomes grams immediately
-/// and nothing downstream sees the `Double`.
-///
-/// **Both numeric fields are parsed against an explicit locale** (`G-3.4`). `Double("102,5")` is
-/// `nil` in every locale that writes it that way, and a user in one of them cannot enter a
-/// half-kilo.
+/// **Text, not numbers**, and every crossing back into one is ``LocalizedNumberField``'s — which is
+/// where that rule and the locale it is read in are argued.
 ///
 /// **The unit is the user's display preference, not a constant** (`G-3.1`, `G-3.2`): the number
 /// typed here means kilograms or pounds depending on a settings row, and reading it as the wrong one
@@ -119,10 +111,10 @@ struct SetDraft: Equatable, Sendable {
     ///   - locale: The locale to render the numbers in.
     init(repeating set: SetEntryValues, unit: MassUnit, locale: Locale) {
         self.init(unit: unit, locale: locale)
-        weightText = Self.render(set.weight.converted(to: unit), locale: locale)
-        repsText = Self.render(Double(set.reps), locale: locale)
+        weightText = LocalizedNumberField.render(set.weight, in: unit, locale: locale)
+        repsText = LocalizedNumberField.render(Double(set.reps), locale: locale)
         if let rpe = set.rpe {
-            rpeText = Self.render(rpe, locale: locale)
+            rpeText = LocalizedNumberField.render(rpe, locale: locale)
         }
         isWarmup = set.isWarmup
         modifiers = set.modifiers
@@ -149,25 +141,9 @@ struct SetDraft: Equatable, Sendable {
 
 extension SetDraft {
     /// The load, or `nil` when the field is empty, holds something that is not a number, or is
-    /// negative.
-    ///
-    /// Rounded to the nearest gram, which is the only rounding this crossing performs: `G-3.3`'s
-    /// display step governs the ± controls, not what a typed number is allowed to be. A user who
-    /// types 102.3 kg gets 102.3 kg.
-    ///
-    /// **Refused below zero, which `Weight` itself deliberately does not do.** That type is signed
-    /// because it doubles as a delta — an increment, a deload — and says outright that a load being
-    /// non-negative is the caller's invariant. This crossing is that caller, and it is the only one
-    /// standing between a pasted minus sign and a negative load in `FR-1.6`'s calculator. The ±
-    /// controls already floor at zero; the field is what was left.
+    /// negative — see ``LocalizedNumberField/weight(_:in:locale:)`` for why each is refused.
     var weight: Weight? {
-        guard let entered = Self.decimal(weightText, locale: locale), entered >= 0 else {
-            return nil
-        }
-        switch unit {
-        case .kilograms: return Weight(kilograms: entered, rounding: .nearest)
-        case .pounds: return Weight(pounds: entered, rounding: .nearest)
-        }
+        LocalizedNumberField.weight(weightText, in: unit, locale: locale)
     }
 
     /// The repetitions, or `nil` when the field is empty, unparseable, fractional or negative.
@@ -175,24 +151,14 @@ extension SetDraft {
     /// **Zero is a value here, not an absence** — `FR-1.2.5`'s failed set records zero reps, so a
     /// guard that demanded one would refuse exactly the set the requirement names.
     ///
-    /// **The ceiling is `Int(exactly:)` rather than a comparison, and the difference is a crash.**
-    /// `Double(Int.max)` is not `Int.max`: it rounds up to 2⁶³, so a guard reading
-    /// `entered <= Double(Int.max)` admits the one value whose conversion then traps. Nineteen
-    /// digits is a reachable thing to type into a number pad, and this property is recomputed on
-    /// every keystroke.
     var reps: Int? {
-        guard let entered = Self.decimal(repsText, locale: locale) else { return nil }
-        guard entered >= 0, entered == entered.rounded(.down), let count = Int(exactly: entered)
-        else {
-            return nil
-        }
-        return count
+        LocalizedNumberField.count(repsText, locale: locale)
     }
 
     /// The RPE, whether it was skipped, or whether what is there is not one.
     var rpe: OptionalField<Double> {
         if rpeText.trimmingCharacters(in: .whitespaces).isEmpty { return .absent }
-        guard let entered = Self.decimal(rpeText, locale: locale),
+        guard let entered = LocalizedNumberField.decimal(rpeText, locale: locale),
             Self.rpeRange.contains(entered)
         else {
             return .invalid
@@ -255,10 +221,10 @@ extension SetDraft {
     /// - Parameter steps: How many steps to move — negative is down.
     /// - Returns: The adjusted draft.
     func adjustingWeight(by steps: Int) -> SetDraft {
-        let current = Self.decimal(weightText, locale: locale) ?? 0
+        let current = LocalizedNumberField.decimal(weightText, locale: locale) ?? 0
         let moved = max(0, current + Double(steps) * weightStep)
         var adjusted = self
-        adjusted.weightText = Self.render(moved, locale: locale)
+        adjusted.weightText = LocalizedNumberField.render(moved, locale: locale)
         return adjusted
     }
 
@@ -270,57 +236,8 @@ extension SetDraft {
     func adjustingReps(by steps: Int) -> SetDraft {
         let current = reps ?? 0
         var adjusted = self
-        adjusted.repsText = Self.render(Double(max(0, current + steps)), locale: locale)
+        adjusted.repsText = LocalizedNumberField.render(Double(max(0, current + steps)), locale: locale)
         return adjusted
-    }
-}
-
-// MARK: - Crossing between text and numbers
-
-extension SetDraft {
-    /// Reads a decimal the user typed, in their locale.
-    ///
-    /// **Strict, and that is measured rather than cautious.** Lenient parsing — the default —
-    /// consumes the leading part of a field it cannot finish, so `102.5` typed in a locale that
-    /// writes the decimal as a comma resolves to **102**, and the set is logged half a kilo light
-    /// with nothing on screen saying so. Observed in the simulator, whose locale writes the comma.
-    /// Refused instead, the confirming command stays disabled and the message beside it says what
-    /// the field wants — a set that will not log is recoverable, and a set logged wrong is not.
-    ///
-    /// Grouping separators still parse, because they are the locale's own and a strict read accepts
-    /// what the locale writes; they are never written back out. See ``render(_:locale:)``.
-    ///
-    /// - Parameters:
-    ///   - text: What is in the field.
-    ///   - locale: The locale to read it in.
-    /// - Returns: The value, or `nil` if the field is empty or is not a number in that locale.
-    private static func decimal(_ text: String, locale: Locale) -> Double? {
-        let trimmed = text.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return nil }
-        guard
-            let value = try? Double(trimmed, format: .number.locale(locale), lenient: false),
-            value.isFinite
-        else {
-            return nil
-        }
-        return value
-    }
-
-    /// Writes a value back into a field, in the user's locale.
-    ///
-    /// **No grouping separator**, deliberately: the field is re-parsed on the next keystroke, and a
-    /// separator that a locale writes as a decimal point elsewhere is a value the user cannot then
-    /// edit by hand. At most three decimals, which is a gram in kilograms and finer than any step
-    /// the ± controls take.
-    ///
-    /// - Parameters:
-    ///   - value: The number to write.
-    ///   - locale: The locale to write it in.
-    /// - Returns: The field's new contents.
-    private static func render(_ value: Double, locale: Locale) -> String {
-        value.formatted(
-            .number.grouping(.never).precision(.fractionLength(0...3)).locale(locale)
-        )
     }
 }
 

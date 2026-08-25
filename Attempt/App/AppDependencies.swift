@@ -38,7 +38,9 @@ struct AppDependencies {
     /// created with the screen. Two are the workout in progress seen from two sides — the session
     /// itself, and the preference that decides whether the screen sleeps while one is on
     /// (`NFR-1.9`). The third is the configurable modifier list (`FR-1.2.8`), which outlives the
-    /// picker, the list editor and the sheet all three are raised from.
+    /// picker, the list editor and the sheet all three are raised from. The fourth is the active
+    /// equipment profile (`FR-1.4.1`), which outlives the calculator presented over the set editor
+    /// and is edited from another tab entirely (T-1.31).
     ///
     /// They travel with ``Repositories`` in the same case rather than beside it, because there is no
     /// state in which one exists and the other does not: a store is built over a repository, and a
@@ -53,6 +55,10 @@ struct AppDependencies {
         /// The set modifiers the editor offers (`FR-1.2.8`) — one list for the whole app, so a term
         /// added in one sheet is offered by the next.
         let modifiers: SetModifierVocabulary
+
+        /// The gym the plate calculator loads against (`FR-1.4.1`, `FR-1.4.2`) — one for the whole
+        /// app, so a profile edited in Settings reaches the next loading without a relaunch.
+        let equipment: PlateCalculatorStore
     }
 
     /// The opened store's repositories, or why the store could not be opened.
@@ -92,7 +98,9 @@ struct AppDependencies {
                         settings: stack.settings
                     ),
                     screenWake: ScreenWakePreference(),
-                    modifiers: SetModifierVocabulary()
+                    modifiers: SetModifierVocabulary(),
+                    equipment: PlateCalculatorStore(
+                        repository: stack.equipment, settings: stack.settings)
                 )
             )
         } catch {
