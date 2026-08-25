@@ -159,23 +159,30 @@ struct SetRow: View {
         Button {
             edit(numbered.record)
         } label: {
-            layout {
-                HStack(spacing: Spacing.sm.points) {
-                    Text(numbered.record.weight, format: AppFormat.weight(in: unit, locale: locale))
+            VStack(alignment: .leading, spacing: Spacing.xs.points) {
+                layout {
+                    HStack(spacing: Spacing.sm.points) {
+                        Text(
+                            numbered.record.weight,
+                            format: AppFormat.weight(in: unit, locale: locale)
+                        )
                         .font(valueFont)
                         .foregroundStyle(valueColour)
-                    Image(systemName: "multiply")
-                        .font(Typography.caption.font)
-                        .foregroundStyle(ColorToken.textTertiary)
-                        .accessibilityHidden(true)
-                    Text(numbered.record.reps, format: AppFormat.count(locale: locale))
-                        .font(valueFont)
-                        .foregroundStyle(valueColour)
-                        .accessibilityLabel(Text(LoggingStrings.setReps(numbered.record.reps)))
+                        Image(systemName: "multiply")
+                            .font(Typography.caption.font)
+                            .foregroundStyle(ColorToken.textTertiary)
+                            .accessibilityHidden(true)
+                        Text(numbered.record.reps, format: AppFormat.count(locale: locale))
+                            .font(valueFont)
+                            .foregroundStyle(valueColour)
+                            .accessibilityLabel(Text(LoggingStrings.setReps(numbered.record.reps)))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    rating
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                rating
+                modifiers
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .frame(minHeight: TouchTarget.standard.points)
             .contentShape(.rect)
         }
@@ -292,6 +299,30 @@ struct SetRow: View {
     private var valueColour: ColorToken {
         guard numbered.isCompleted else { return ColorToken.negative }
         return numbered.isWarmup ? ColorToken.textSecondary : ColorToken.textPrimary
+    }
+
+    /// `FR-1.2.8`'s modifiers, where the set carries any.
+    ///
+    /// **On the row rather than only in the editor.** A modifier that could be applied and then not
+    /// seen would be a fact about the set that costs a tap to read; the row is what a lifter checks
+    /// between efforts. It takes a line of its own only when there is one to draw.
+    ///
+    /// **Below the values rather than beside them, at every size.** The line is already spending its
+    /// width on two 44pt controls and the load — T-1.23 measured a single badge breaking `102.5 kg`
+    /// into three lines — so a modifier list on the same line would come out of the number.
+    ///
+    /// A spelling this build does not recognise is drawn as itself; see ``SetModifier/displayName``.
+    @ViewBuilder private var modifiers: some View {
+        if !numbered.record.modifiers.isEmpty {
+            Text(
+                numbered.record.modifiers.map(\.displayName)
+                    .formatted(.list(type: .and).locale(locale))
+            )
+            .font(Typography.caption.font)
+            .foregroundStyle(ColorToken.textTertiary)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     /// The rating, where the set carries one.

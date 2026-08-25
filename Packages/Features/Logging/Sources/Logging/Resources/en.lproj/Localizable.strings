@@ -212,3 +212,51 @@
    explicit way out that tap-outside does not (G-4.2, NFR-1.10). A string nothing currently draws
    still resolves, so no test can tell you this — which is why it is written down here. */
 "logging.session.set.delete.confirm.cancel" = "Keep set";
+
+/* FR-1.2.8: the modifiers a set was performed under, and the configurable list they come from. */
+/* The editor's sixth row. Plural, because a set can carry several: the row is a multi-select and a
+   singular label would read as a choice of one. */
+"logging.session.set.modifier.label" = "Modifiers";
+"logging.session.set.modifier.hint" = "Optional";
+/* What the row's control says when none are applied. A word rather than an empty control: a blank
+   button reads as one that has not loaded. */
+"logging.session.set.modifier.none" = "None";
+"logging.session.set.modifier.picker.title" = "Modifiers";
+/* The way out of the picker. "Done" rather than "Save": nothing is written until the set itself is,
+   and a button promising a save would be promising the wrong one. */
+"logging.session.set.modifier.done.action" = "Done";
+"logging.session.set.modifier.manage.action" = "Manage list";
+"logging.session.set.modifier.manage.title" = "Manage modifiers";
+/* The one consequence a user cannot see: the vocabulary and the logged set are separate, so editing
+   the list never rewrites history (G-1.6). Said here because the alternative is a user renaming a
+   term and expecting last month's sets to follow. */
+"logging.session.set.modifier.manage.hint" = "Renaming or removing a modifier leaves sets you have already logged exactly as they are.";
+"logging.session.set.modifier.built-in.section" = "Built in";
+"logging.session.set.modifier.custom.section" = "Your modifiers";
+"logging.session.set.modifier.custom.empty" = "Add your own — chains, bands, anything you want to record.";
+"logging.session.set.modifier.add.label" = "New modifier";
+"logging.session.set.modifier.add.action" = "Add";
+/* Why a typed term was not added. Both refusals in one sentence rather than two strings: the field
+   is one line and the user can see which of the two it was. */
+"logging.session.set.modifier.add.refusal" = "Type a name that is not already on the list.";
+"logging.session.set.modifier.remove.action" = "Remove";
+/* A term a set carries that the list no longer offers — one written by a newer version, or one the
+   user removed. Shown beside it rather than hiding the row: the set keeps the modifier either way,
+   and a picker that omitted it would drop it on the next confirm (OpenVocabulary). */
+"logging.session.set.modifier.unlisted" = "Not on your list";
+/* VoiceOver's value on a modifier's row in the picker, which is a selection and not a command. */
+"logging.session.set.modifier.applied" = "Applied";
+"logging.session.set.modifier.not-applied" = "Not applied";
+/* The nine built-in terms (FR-1.2.8). The key is written out per case rather than built from
+   SetModifierTerm's raw value, that value being the wire format. "Touch and go" is the lifter's
+   term for reps taken without resetting; "Board" is a board press, the range shortened by a board on
+   the chest. */
+"logging.session.set.modifier.belt" = "Belt";
+"logging.session.set.modifier.sleeves" = "Sleeves";
+"logging.session.set.modifier.wraps" = "Wraps";
+"logging.session.set.modifier.straps" = "Straps";
+"logging.session.set.modifier.paused" = "Paused";
+"logging.session.set.modifier.tempo" = "Tempo";
+"logging.session.set.modifier.touch-and-go" = "Touch and go";
+"logging.session.set.modifier.deficit" = "Deficit";
+"logging.session.set.modifier.board" = "Board";

@@ -182,7 +182,7 @@ struct RootTabView: View {
     private var activeSessionRoot: some View {
         switch dependencies.state {
         case .open(_, let stores):
-            ActiveSessionView(store: stores.activeSession)
+            ActiveSessionView(store: stores.activeSession, vocabulary: stores.modifiers)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

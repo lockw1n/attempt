@@ -49,9 +49,9 @@ extension ActiveSessionView {
 
     /// The editor, opened over a set that already exists (`FR-1.2.7`).
     ///
-    /// **Every field the editor collects comes from the row**, the note included — see
-    /// ``draft(for:)``. The outcome and the position do not: neither is on this form, and both are
-    /// carried across by the write.
+    /// **Every field the editor collects comes from the row**, the note and `FR-1.2.8`'s modifiers
+    /// included — see ``draft(for:)``. The outcome and the position do not: neither is on this form,
+    /// and both are carried across by the write.
     ///
     /// - Parameter set: The set to edit.
     /// - Returns: The target the sheet presents over.
@@ -63,6 +63,7 @@ extension ActiveSessionView {
                 reps: set.reps,
                 rpe: set.rpe,
                 isWarmup: set.isWarmup,
+                modifiers: set.modifiers,
                 notes: set.notes
             ),
             editing: set.id
@@ -127,6 +128,7 @@ extension ActiveSessionView {
             reps: reps,
             rpe: draft.storedRPE,
             isWarmup: draft.isWarmup,
+            modifiers: draft.modifiers,
             notes: draft.notes
         )
         guard let setID = target.editing else {

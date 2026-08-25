@@ -166,6 +166,62 @@ struct RefusedSetEditingTests {
         #expect(failure.contains("recordNotFound"))
     }
 
+    @Test("A confirmed form carries the modifiers it was opened with, unrecognised ones included")
+    func theWriteCarriesTheModifiers() throws {
+        let entryID = UUID()
+        let setID = UUID()
+        let carried = [SetModifier(.belt), SetModifier(rawValue: "chains")]
+        var draft = SetDraft(unit: .kilograms, locale: .posix)
+        draft.weightText = "102.5"
+        draft.repsText = "5"
+        draft.modifiers = carried
+
+        let added = try #require(
+            ActiveSessionView.write(draft, over: SetEditorTarget(entryID: entryID)))
+        let rewritten = try #require(
+            ActiveSessionView.write(
+                draft, over: SetEditorTarget(entryID: entryID, editing: setID)))
+
+        guard case .add(_, let addedValues) = added,
+            case .rewrite(_, _, let rewrittenValues) = rewritten
+        else {
+            Issue.record("the form resolved to neither kind of write")
+            return
+        }
+        // `FR-1.2.8` reaching the write path: before this task the column was carried across from
+        // the stored row, so a picked modifier had nowhere to go and a removed one could not go.
+        #expect(addedValues.modifiers == carried)
+        #expect(rewrittenValues.modifiers == carried)
+        // The unrecognised spelling is the one that matters — see `OpenVocabulary`.
+        #expect(addedValues.modifiers.last?.rawValue == "chains")
+    }
+
+    @Test("A form the user cleared writes no modifiers, which is what takes one off a set")
+    func theWriteCanClearTheModifiers() throws {
+        var draft = SetDraft(
+            editing: SetEntryValues(
+                weight: Weight(grams: 100_000),
+                reps: 5,
+                rpe: nil,
+                isWarmup: false,
+                modifiers: [SetModifier(.belt)]
+            ),
+            unit: .kilograms,
+            locale: .posix
+        )
+        draft.modifiers = []
+
+        let write = try #require(
+            ActiveSessionView.write(
+                draft, over: SetEditorTarget(entryID: UUID(), editing: UUID())))
+
+        guard case .rewrite(_, _, let values) = write else {
+            Issue.record("an edit resolved to an addition")
+            return
+        }
+        #expect(values.modifiers.isEmpty)
+    }
+
     /// A store holding a workout, over a repository that refuses every call about a set.
     ///
     /// - Returns: The store.

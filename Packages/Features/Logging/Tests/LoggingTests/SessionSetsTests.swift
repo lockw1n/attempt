@@ -36,6 +36,39 @@ struct SessionSetsTests {
         #expect(stored.map(\.id) == [held.id])
     }
 
+    @Test("A modifier the user invented survives from the list editor onto the stored set")
+    func aUserAddedModifierSurvivesTheRoundTrip() async throws {
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: workout.squat.id)
+        let entry = try #require(workout.store.exercises.first)
+        let name = "modifiers.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let vocabulary = SetModifierVocabulary(defaults: defaults)
+        let added = try #require(vocabulary.add("reverse band"))
+
+        await workout.store.addSet(
+            toEntryID: entry.id,
+            values: SetEntryValues(
+                weight: Weight(grams: 102_500),
+                reps: 5,
+                rpe: 8,
+                isWarmup: false,
+                modifiers: [SetModifier(.belt), added]
+            )
+        )
+
+        // On the card, in the store, and still offered by a list read fresh — the three places the
+        // term has to be for `FR-1.2.8`'s round trip to hold. The last is what a relaunch sees.
+        let held = try #require(workout.store.exercises.first?.sets.first)
+        #expect(held.modifiers == [SetModifier(.belt), SetModifier(rawValue: "reverse band")])
+        let stored = try #require(
+            await workout.repositories.workouts.sets(forEntryID: entry.id, includingDeleted: false)
+                .first)
+        #expect(stored.modifiers.contains(SetModifier(rawValue: "reverse band")))
+        #expect(SetModifierVocabulary(defaults: defaults).custom == ["reverse band"])
+    }
+
     @Test("A logged set is a performed working set — G-1.8's two flags, decided rather than defaulted")
     func flagsAreDecided() async throws {
         let workout = try await Workout.started()

@@ -224,6 +224,61 @@
             }
         }
 
+        // MARK: - Modifiers (FR-1.2.8)
+
+        @Test func setEditorWithModifiers() throws {
+            // The row in its filled-in state: the summary is a locale-aware list, and the third
+            // term is a spelling this build does not recognise — drawn as itself, which is the
+            // whole of OpenVocabulary's preservation reaching a screen. Its own reference because
+            // the row is one line when empty and wraps when it is not, and NFR-1.10's ceiling is
+            // where that stops being free.
+            try assertSnapshots(named: "Session-set-editor-modifiers") {
+                fixedEnvironment { editor(over: Fixtures.modifiedDraft) }
+            }
+        }
+
+        @Test func modifierPicker() throws {
+            // FR-1.2.8's multi-select. Two things a picture settles: applied and not applied differ
+            // by a checkmark and not only by a tint (G-4.5), and the unlisted term carries its own
+            // note rather than being indistinguishable from an offered one.
+            let applied = [
+                SetModifier(.belt), SetModifier(rawValue: "reverse band"), Fixtures.unlisted,
+            ]
+            let vocabulary = Fixtures.vocabulary
+            try assertSnapshots(named: "Session-modifier-picker") {
+                fixedEnvironment {
+                    SetModifierSelection(
+                        rows: vocabulary.offered(with: applied),
+                        applied: applied,
+                        isOffered: { vocabulary.terms.contains($0) },
+                        toggle: { _ in },
+                        destination: { EmptyView() }
+                    )
+                }
+            }
+        }
+
+        @Test func modifierListEditor() throws {
+            // The list itself: the hint that says editing it leaves logged sets alone, the add
+            // field, the user's own terms with their removals, and the nine that have neither.
+            // What a reference checks here is that the two sections stay told apart at
+            // accessibility3, where every row is taller than the heading above it.
+            try assertSnapshots(named: "Session-modifier-list") {
+                fixedEnvironment {
+                    SetModifierListFields(vocabulary: Fixtures.vocabulary)
+                }
+            }
+        }
+
+        @Test func setRowsWithModifiers() throws {
+            // FR-1.2.8 on the row rather than only in the editor. The line the modifiers take is a
+            // second one under the values at every size, so what this checks is that it does not
+            // come out of the load — which is the budget T-1.23 measured a 44pt badge spending.
+            try assertSnapshots(named: "Session-set-rows-modifiers") {
+                fixedEnvironment { rows(Fixtures.modifiedSets) }
+            }
+        }
+
         @Test func loggedSets() throws {
             // One card's worth of logged sets, with and without a rating. The multiplication sign
             // between the two numerals is drawn and hidden from VoiceOver; what a reference can
@@ -386,7 +441,10 @@
         private func editor(over draft: SetDraft, isEditing: Bool = false) -> some View {
             VStack(spacing: Spacing.sm.points) {
                 SetEditorFields(
-                    draft: .constant(draft), hasInput: .constant(true), isEditing: isEditing
+                    draft: .constant(draft),
+                    hasInput: .constant(true),
+                    isEditing: isEditing,
+                    vocabulary: Fixtures.vocabulary
                 )
                 .padding(Spacing.lg.points)
                 SetEditorCommands(

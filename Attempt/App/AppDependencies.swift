@@ -33,11 +33,12 @@ struct AppDependencies {
 
     /// The app-lifetime stores (`TR-1.2`), built over the repositories beside them.
     ///
-    /// **Two of these exist by rule and not by taste.** `TR-1.2` allows a store exactly where a
-    /// piece of state outlives every screen that shows it; everything else is a screen's own
-    /// `@Observable`, created with the screen. Both of the ones here are the workout in progress
-    /// seen from two sides — the session itself, and the preference that decides whether the screen
-    /// sleeps while one is on (`NFR-1.9`).
+    /// **These exist by rule and not by taste.** `TR-1.2` allows a store exactly where a piece of
+    /// state outlives every screen that shows it; everything else is a screen's own `@Observable`,
+    /// created with the screen. Two are the workout in progress seen from two sides — the session
+    /// itself, and the preference that decides whether the screen sleeps while one is on
+    /// (`NFR-1.9`). The third is the configurable modifier list (`FR-1.2.8`), which outlives the
+    /// picker, the list editor and the sheet all three are raised from.
     ///
     /// They travel with ``Repositories`` in the same case rather than beside it, because there is no
     /// state in which one exists and the other does not: a store is built over a repository, and a
@@ -48,6 +49,10 @@ struct AppDependencies {
 
         /// Whether the screen is held awake during one (`NFR-1.9`).
         let screenWake: ScreenWakePreference
+
+        /// The set modifiers the editor offers (`FR-1.2.8`) — one list for the whole app, so a term
+        /// added in one sheet is offered by the next.
+        let modifiers: SetModifierVocabulary
     }
 
     /// The opened store's repositories, or why the store could not be opened.
@@ -86,7 +91,8 @@ struct AppDependencies {
                         catalogue: stack.exercises,
                         settings: stack.settings
                     ),
-                    screenWake: ScreenWakePreference()
+                    screenWake: ScreenWakePreference(),
+                    modifiers: SetModifierVocabulary()
                 )
             )
         } catch {

@@ -57,7 +57,7 @@ enum SetEditorWrite: Equatable {
 /// editor over a set that already exists.
 ///
 /// **One form for both, and the difference is three words and a command.** Adding and editing
-/// collect exactly the same five fields, so a second sheet would be the same layout maintained
+/// collect exactly the same six fields, so a second sheet would be the same layout maintained
 /// twice — what changes is the title, the confirming command's words, and a deletion offered only
 /// where there is something to delete.
 ///
@@ -69,7 +69,7 @@ enum SetEditorWrite: Equatable {
 /// inside the card would sit wherever the user had scrolled that card to, which is as often the top
 /// as the bottom. A sheet at the medium detent is the lower half of the screen by construction, and
 /// it is the same place for every exercise in the workout. The larger detent is offered as well
-/// rather than instead, because at `accessibility3` the five fields no longer fit the medium one and
+/// rather than instead, because at `accessibility3` the fields no longer fit the medium one and
 /// a control that cannot be scrolled to is worse than one that is briefly higher up.
 ///
 /// **Three taps, counted rather than assumed** (`NFR-1.3`): **Repeat set** opens this already filled
@@ -92,6 +92,9 @@ struct SetEditorSheet: View {
     /// Whether the form is editing a logged set rather than adding one (`FR-1.2.7`).
     let isEditing: Bool
 
+    /// The modifier terms on offer (`FR-1.2.8`), handed down to the row that picks from them.
+    let vocabulary: SetModifierVocabulary
+
     /// Logs the set, or saves the edit. The caller is what knows which set or exercise it is.
     let log: (SetDraft) -> Void
 
@@ -107,12 +110,14 @@ struct SetEditorSheet: View {
     ///   - draft: What the form opens holding — blank, `FR-1.2.6`'s copy of the last set, or the
     ///     set being edited.
     ///   - isEditing: Whether that set already exists.
+    ///   - vocabulary: The modifier terms on offer (`FR-1.2.8`).
     ///   - log: Logs the set, or saves the edit.
     ///   - cancel: Closes the form.
     ///   - delete: Deletes the set being edited. Ignored while one is being added.
     init(
         draft: SetDraft,
         isEditing: Bool = false,
+        vocabulary: SetModifierVocabulary,
         log: @escaping (SetDraft) -> Void,
         cancel: @escaping () -> Void,
         delete: @escaping () -> Void = {}
@@ -120,12 +125,13 @@ struct SetEditorSheet: View {
         _draft = State(initialValue: draft)
         _hasInput = State(initialValue: !draft.isBlank)
         self.isEditing = isEditing
+        self.vocabulary = vocabulary
         self.log = log
         self.cancel = cancel
         self.delete = delete
     }
 
-    /// The five fields, scrolling, with the two commands pinned beneath them.
+    /// The fields, scrolling, with the two commands pinned beneath them.
     ///
     /// **The commands are outside the scroll view, and that is measured rather than assumed.** With
     /// them inside it, **Log set** sat below the fold at the medium detent — `NFR-1.3`'s third tap
@@ -135,8 +141,13 @@ struct SetEditorSheet: View {
     var body: some View {
         VStack(spacing: Spacing.sm.points) {
             ScrollView {
-                SetEditorFields(draft: $draft, hasInput: $hasInput, isEditing: isEditing)
-                    .padding(Spacing.lg.points)
+                SetEditorFields(
+                    draft: $draft,
+                    hasInput: $hasInput,
+                    isEditing: isEditing,
+                    vocabulary: vocabulary
+                )
+                .padding(Spacing.lg.points)
             }
             SetEditorCommands(
                 isLoggable: draft.isLoggable,
@@ -151,7 +162,7 @@ struct SetEditorSheet: View {
     }
 }
 
-/// The set editor's five fields (`FR-1.2.3`, `FR-1.2.4`).
+/// The set editor's six fields (`FR-1.2.3`, `FR-1.2.4`, `FR-1.2.8`).
 ///
 /// **A type of its own so a reference can be taken of it**, which is `TR-1.12` rather than
 /// decomposition for its own sake: `ImageRenderer` lays a `ScrollView`'s content out and draws none
@@ -159,8 +170,8 @@ struct SetEditorSheet: View {
 /// form missing. Rendered directly, the fields are a picture again — and `NFR-1.10`'s claim that
 /// they still fit at `accessibility3` is something the gate can actually check.
 ///
-/// The two fields that decide whether the set logs lead, then the kind, then the two optional
-/// ones: at the medium detent the load and the repetitions are what is on screen without scrolling.
+/// The two fields that decide whether the set logs lead, then the kind, then the optional ones: at
+/// the medium detent the load and the repetitions are what is on screen without scrolling.
 struct SetEditorFields: View {
     /// What the user has entered so far.
     @Binding var draft: SetDraft
@@ -172,7 +183,16 @@ struct SetEditorFields: View {
     /// the title.
     var isEditing: Bool = false
 
-    /// Title, then the five rows.
+    /// The modifier terms on offer (`FR-1.2.8`).
+    let vocabulary: SetModifierVocabulary
+
+    /// Whether `FR-1.2.8`'s picker is on screen.
+    ///
+    /// The row's own, so it cannot outlive the sheet it was raised from — `SetEditorCommands`'
+    /// confirmation's rule.
+    @State private var isPicking = false
+
+    /// Title, then the six rows.
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.lg.points) {
             Text(isEditing ? LoggingStrings.setEditorEditTitle : LoggingStrings.setEditorTitle)
@@ -182,9 +202,77 @@ struct SetEditorFields: View {
             repsField
             warmupField
             rpeField
+            modifiersField
             notesField
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .sheet(isPresented: $isPicking) {
+            SetModifierPicker(
+                applied: $draft.modifiers,
+                vocabulary: vocabulary,
+                dismiss: { isPicking = false }
+            )
+        }
+    }
+
+    /// `FR-1.2.8`'s modifiers — a summary of what is applied, and the way into the picker.
+    ///
+    /// **One row that opens a sheet, rather than the nine-plus controls the choice actually is.**
+    /// The form is at `NFR-1.10`'s ceiling with the rows it already has; a wrapping grid of chips
+    /// would be the tallest thing on it and would grow with the user's own list, which has no
+    /// ceiling at all. What the row costs instead is fixed.
+    ///
+    /// **Fifth rather than last**: a modifier is a fact about how the set was performed, like the
+    /// rating above it, where the note is prose about the occasion.
+    ///
+    /// The summary is a list in the user's locale (`G-3.4`) — the separator between two modifiers is
+    /// not a comma in every language.
+    private var modifiersField: some View {
+        FieldRow(
+            label: Text(LoggingStrings.setModifierLabel),
+            hint: Text(LoggingStrings.setModifierHint)
+        ) {
+            Button {
+                hasInput = true
+                isPicking = true
+            } label: {
+                HStack(spacing: Spacing.sm.points) {
+                    summary
+                    Spacer(minLength: Spacing.sm.points)
+                    Image(systemName: "chevron.right")
+                        .font(Typography.caption.font)
+                        .foregroundStyle(ColorToken.textTertiary)
+                        .accessibilityHidden(true)
+                }
+                .frame(maxWidth: .infinity, minHeight: TouchTarget.logging.points)
+                .padding(.horizontal, Spacing.md.points)
+                .background(
+                    ColorToken.surfaceRaised, in: .rect(cornerRadius: CornerRadius.control.points)
+                )
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text(LoggingStrings.setModifierLabel))
+        }
+    }
+
+    /// What the row says: the applied modifiers, or that there are none.
+    @ViewBuilder private var summary: some View {
+        if draft.modifiers.isEmpty {
+            Text(LoggingStrings.setModifierNone)
+                .font(Typography.body.font)
+                .foregroundStyle(ColorToken.textTertiary)
+        } else {
+            Text(
+                draft.modifiers.map(\.displayName)
+                    .formatted(.list(type: .and).locale(draft.locale))
+            )
+            .font(Typography.body.font)
+            .foregroundStyle(ColorToken.textPrimary)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     /// The load, its unit, and the ± pair that steps it by `G-3.3`'s display increment.
@@ -347,7 +435,7 @@ struct SetEditorFields: View {
 /// A labelled row in the set editor — the label, the control, and the one line of guidance a label
 /// has no room for.
 ///
-/// A shape of its own so the four fields are laid out by one rule rather than four.
+/// A shape of its own so every field is laid out by one rule rather than one rule each.
 struct FieldRow<Content: View>: View {
     /// What the field is.
     let label: Text

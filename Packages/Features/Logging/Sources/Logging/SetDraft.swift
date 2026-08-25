@@ -72,6 +72,18 @@ struct SetDraft: Equatable, Sendable {
     /// would open complaining about fields nobody has touched yet.
     var isWarmup: Bool = false
 
+    /// The modifiers applied to the set (`FR-1.2.8`) — none, one, or several.
+    ///
+    /// **`SetModifier` rather than `SetModifierTerm`, so a spelling this build does not recognise
+    /// survives the form.** A set edited here can carry a term written by a newer version or one the
+    /// user has since removed from their list; held as the enum it would arrive as `nil` and the
+    /// next confirm would delete it. See ``SetModifierVocabulary``.
+    ///
+    /// **Order is not meaningful and is not preserved past this type**: the storage layer sorts by
+    /// spelling and deduplicates. Kept as written here only so a row the user just tapped does not
+    /// jump.
+    var modifiers: [SetModifier] = []
+
     /// The scale RPE is entered on. Outside it, the field is a typo rather than a rating.
     static let rpeRange: ClosedRange<Double> = 1...10
 
@@ -91,6 +103,11 @@ struct SetDraft: Equatable, Sendable {
     /// performed and repeat by default; a note says something about one set — "left knee", "belt on
     /// the last two" — and repeating it would put words in the user's mouth on every subsequent set.
     ///
+    /// **The modifiers are carried too**, on the same argument: a belt is on for the whole top set
+    /// and knee wraps do not come off between attempts, so a duplicate that dropped them would cost
+    /// a tap per set to put back — and, unlike the note, a modifier describes the effort rather than
+    /// the occasion.
+    ///
     /// **The warmup flag *is* carried**, and it is the one field where repeating matters most: a
     /// ramp is three or four warmups in a row, each one a repeat of the last with the load moved, so
     /// a duplicate that came back as a working set would put every rung of the ramp into the work
@@ -108,6 +125,7 @@ struct SetDraft: Equatable, Sendable {
             rpeText = Self.render(rpe, locale: locale)
         }
         isWarmup = set.isWarmup
+        modifiers = set.modifiers
     }
 
     /// A draft carrying everything `set` records — `FR-1.2.7`'s edit.
@@ -187,7 +205,12 @@ extension SetDraft {
         weight != nil && reps != nil && rpe != .invalid
     }
 
-    /// Whether nothing has been entered — all four fields empty.
+    /// Whether nothing has been entered — every field empty and no modifier picked.
+    ///
+    /// **The modifiers count where ``isWarmup`` does not**, and the difference is that a list can be
+    /// empty where a boolean cannot: counting the flag would make every draft non-blank, and *not*
+    /// counting the modifiers would leave a form the user has only picked a modifier on reading as
+    /// untouched.
     ///
     /// **Not the negation of ``isLoggable``, and reading it as one hides a refusal.** A form nobody
     /// has filled in and a form filled in wrongly are opposite situations: the first has nothing to
@@ -196,9 +219,10 @@ extension SetDraft {
     /// outside `1...10`, which a stored row is deliberately allowed to be, explains itself instead
     /// of opening on a dead button.
     var isBlank: Bool {
-        [weightText, repsText, rpeText, notes].allSatisfy {
-            $0.trimmingCharacters(in: .whitespaces).isEmpty
-        }
+        modifiers.isEmpty
+            && [weightText, repsText, rpeText, notes].allSatisfy {
+                $0.trimmingCharacters(in: .whitespaces).isEmpty
+            }
     }
 
     /// The RPE to store, once ``isLoggable`` is known to hold.
@@ -300,13 +324,13 @@ extension SetDraft {
     }
 }
 
-/// What one logged set records, apart from where it sits — the five fields the editor collects and
-/// the store writes (`FR-1.2.3`, `FR-1.2.4`).
+/// What one logged set records, apart from where it sits — the six fields the editor collects and
+/// the store writes (`FR-1.2.3`, `FR-1.2.4`, `FR-1.2.8`).
 ///
 /// **A value rather than `SetEntry` itself**, so a draft can be built in a test — and in a preview —
 /// without a stored row behind it, and so the store's command takes one argument rather than five.
 ///
-/// **`FR-1.2.6`'s duplicate carries four of the five and deliberately drops ``notes``** — which is
+/// **`FR-1.2.6`'s duplicate carries five of the six and deliberately drops ``notes``** — which is
 /// the duplicate's decision rather than this type's, and is argued at the initialiser that makes
 /// one.
 public struct SetEntryValues: Equatable, Sendable {
@@ -322,6 +346,11 @@ public struct SetEntryValues: Equatable, Sendable {
     /// Whether it was a warmup rather than working (`FR-1.2.4`).
     public let isWarmup: Bool
 
+    /// The modifiers the set was performed under (`FR-1.2.8`), or none.
+    ///
+    /// Passed through as written; the storage layer is what deduplicates and sorts it.
+    public let modifiers: [SetModifier]
+
     /// The per-set note, or empty (`FR-1.2.3`).
     public let notes: String
 
@@ -332,12 +361,21 @@ public struct SetEntryValues: Equatable, Sendable {
     ///   - reps: The repetitions performed.
     ///   - rpe: The rating, where there is one.
     ///   - isWarmup: Whether it is a warmup.
+    ///   - modifiers: The modifiers applied, or none.
     ///   - notes: The per-set note, or empty.
-    public init(weight: Weight, reps: Int, rpe: Double?, isWarmup: Bool, notes: String = "") {
+    public init(
+        weight: Weight,
+        reps: Int,
+        rpe: Double?,
+        isWarmup: Bool,
+        modifiers: [SetModifier] = [],
+        notes: String = ""
+    ) {
         self.weight = weight
         self.reps = reps
         self.rpe = rpe
         self.isWarmup = isWarmup
+        self.modifiers = modifiers
         self.notes = notes
     }
 }

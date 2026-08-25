@@ -34,18 +34,19 @@ public struct LoggedSetWriter: Sendable {
         self.repository = repository
     }
 
-    /// Rewrites a logged set's five editable fields (`FR-1.2.7`).
+    /// Rewrites a logged set's six editable fields (`FR-1.2.7`).
     ///
-    /// **The five the editor collects, and nothing else.** `order`, `isCompleted`, `completedAt`,
-    /// `modifiers`, the two target columns, `rir` and all three timestamps are carried across
-    /// untouched — the outcome has its own control (`FR-1.2.5`), the position is the card's, and
-    /// `completedAt` records that the set was tracked live, which editing it afterwards does not
-    /// undo. `modifiers` is carried rather than collected because `FR-1.2.8` has built nothing to
-    /// collect it with; when it has, the field joins ``SetEntryValues`` and this call changes only
-    /// by reading it from there. That is
+    /// **The six the editor collects, and nothing else.** `order`, `isCompleted`, `completedAt`, the
+    /// two target columns, `rir` and all three timestamps are carried across untouched — the outcome
+    /// has its own control (`FR-1.2.5`), the position is the card's, and `completedAt` records that
+    /// the set was tracked live, which editing it afterwards does not undo. That is
     /// also what makes the retroactive correction `FR-1.2.5` needs a single edit: a set already
     /// marked failed keeps its outcome while its ``RepositoryInterface/SetEntry/reps`` come down to
     /// what was actually achieved.
+    ///
+    /// **`modifiers` is collected rather than carried** (`FR-1.2.8`), which is what lets an edit take
+    /// one off. A spelling this build does not recognise reaches the form and comes back unchanged —
+    /// see ``SetModifierVocabulary`` — so editing a set is not how such a value is lost.
     ///
     /// **A set that resolves to exactly what is stored is not written**, which is `G-2.4` rather
     /// than tidiness: every save restamps `updatedAt`, the conflict key, so a no-op local write
@@ -115,7 +116,7 @@ public struct LoggedSetWriter: Sendable {
             isCompleted: set.isCompleted,
             targetWeight: set.targetWeight,
             targetReps: set.targetReps,
-            modifiers: set.modifiers,
+            modifiers: values.modifiers,
             notes: values.notes,
             completedAt: set.completedAt
         )

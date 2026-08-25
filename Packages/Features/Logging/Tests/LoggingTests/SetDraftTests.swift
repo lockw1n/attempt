@@ -367,6 +367,51 @@ struct SetDraftTests {
         #expect(draft.weight == Weight(grams: 60_000))
         #expect(draft.reps == 5)
     }
+
+    // MARK: - Modifiers (FR-1.2.8)
+
+    @Test("A duplicate repeats the modifiers, and an edit keeps them")
+    func modifiersAreCarriedIntoTheForm() {
+        let set = SetEntryValues(
+            weight: Weight(grams: 102_500),
+            reps: 5,
+            rpe: 8,
+            isWarmup: false,
+            modifiers: [SetModifier(.belt), SetModifier(rawValue: "chains")],
+            notes: "third attempt"
+        )
+
+        let repeated = SetDraft(repeating: set, unit: .kilograms, locale: .posix)
+        let edited = SetDraft(editing: set, unit: .kilograms, locale: .posix)
+
+        // Carried where the note is not: a belt is on for the whole top set, where a note describes
+        // one set's occasion.
+        #expect(repeated.modifiers == [SetModifier(.belt), SetModifier(rawValue: "chains")])
+        #expect(repeated.notes.isEmpty)
+        #expect(edited.modifiers == repeated.modifiers)
+        #expect(edited.notes == "third attempt")
+        // A spelling this build does not recognise reaches the form as itself rather than as `nil`,
+        // which is what keeps the next confirm from dropping it.
+        #expect(edited.modifiers.last?.known == nil)
+        #expect(edited.modifiers.last?.rawValue == "chains")
+    }
+
+    @Test("A form with only a modifier picked is not a form nobody has touched")
+    func aPickedModifierIsInput() {
+        var draft = SetDraft(unit: .kilograms, locale: .posix)
+        #expect(draft.isBlank)
+
+        draft.modifiers = [SetModifier(.belt)]
+
+        // Unlike the warmup switch, which always holds a value: a modifier list can be empty, so an
+        // entry in it is something the user did.
+        #expect(!draft.isBlank)
+        // And it decides nothing about whether the set logs — the two required fields still do.
+        #expect(!draft.isLoggable)
+        draft.weightText = "60"
+        draft.repsText = "5"
+        #expect(draft.isLoggable)
+    }
 }
 
 extension Locale {

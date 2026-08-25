@@ -372,7 +372,7 @@ extension ActiveSessionStore {
                     isCompleted: true,
                     targetWeight: nil,
                     targetReps: nil,
-                    modifiers: [],
+                    modifiers: values.modifiers,
                     notes: values.notes,
                     completedAt: now
                 )

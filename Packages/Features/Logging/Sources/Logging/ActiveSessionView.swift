@@ -25,6 +25,13 @@ import SwiftUI
 public struct ActiveSessionView: View {
     let store: ActiveSessionStore
 
+    /// The modifier terms the set editor offers (`FR-1.2.8`).
+    ///
+    /// **Held here rather than made with the sheet**, on `TR-1.2`'s rule: the list outlives every
+    /// screen that shows it — the picker, the list editor, and History's own editor when T-1.35
+    /// reaches it — and a copy made per sheet would not see a term added in the last one.
+    let vocabulary: SetModifierVocabulary
+
     /// The way back to the root once the workout has ended, one way or the other.
     @Environment(\.dismiss) private var dismiss
 
@@ -67,9 +74,12 @@ public struct ActiveSessionView: View {
 
     /// Builds the screen over the store that holds the workout.
     ///
-    /// - Parameter store: The workout in progress. One per app, built where the repositories are.
-    public init(store: ActiveSessionStore) {
+    /// - Parameters:
+    ///   - store: The workout in progress. One per app, built where the repositories are.
+    ///   - vocabulary: The modifier terms the set editor offers (`FR-1.2.8`), built there too.
+    public init(store: ActiveSessionStore, vocabulary: SetModifierVocabulary) {
         self.store = store
+        self.vocabulary = vocabulary
     }
 
     /// The workout, or whichever of the screen's other states is current.
@@ -107,12 +117,13 @@ public struct ActiveSessionView: View {
             SetEditorSheet(
                 draft: draft(for: target),
                 isEditing: target.editing != nil,
+                vocabulary: vocabulary,
                 log: { write($0, target) },
                 cancel: { editing = nil },
                 delete: { delete(target) }
             )
             // The medium detent is what puts every logging control in the lower two-thirds
-            // (`NFR-1.4`); the large one is there because at `accessibility3` the five fields no
+            // (`NFR-1.4`); the large one is there because at `accessibility3` the fields no
             // longer fit the medium one.
             .presentationDetents([.medium, .large])
         }

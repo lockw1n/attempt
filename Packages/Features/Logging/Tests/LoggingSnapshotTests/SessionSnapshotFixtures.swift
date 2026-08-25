@@ -43,6 +43,40 @@
             return SetDraft(editing: set, unit: .kilograms, locale: locale)
         }
 
+        /// A draft carrying `FR-1.2.8`'s modifiers — one built-in and one spelling this build does
+        /// not recognise, which is the pair the row has to draw side by side.
+        static var modifiedDraft: SetDraft {
+            var draft = SetDraft(
+                repeating: SetEntryValues(
+                    weight: Weight(grams: 102_500), reps: 5, rpe: 8, isWarmup: false),
+                unit: .kilograms,
+                locale: locale
+            )
+            draft.modifiers = [
+                SetModifier(.belt), SetModifier(.sleeves), SetModifier(rawValue: "reverse band"),
+            ]
+            return draft
+        }
+
+        /// A spelling neither the nine nor ``vocabulary`` offers — what a set logged by a newer
+        /// version carries, and the row that has to say so.
+        static let unlisted = SetModifier(rawValue: "chains")
+
+        /// The modifier list these references draw, in a suite nothing else can see.
+        ///
+        /// Removed from disk as soon as it has been read, on ``preference(isEnabled:)``' argument:
+        /// a suite that outlived the run would be inherited by the next one.
+        static var vocabulary: SetModifierVocabulary {
+            let name = "snapshots.\(UUID().uuidString)"
+            guard let defaults = UserDefaults(suiteName: name) else {
+                return SetModifierVocabulary(defaults: .standard)
+            }
+            defaults.set(["reverse band"], forKey: SetModifierVocabulary.key)
+            let vocabulary = SetModifierVocabulary(defaults: defaults)
+            defaults.removePersistentDomain(forName: name)
+            return vocabulary
+        }
+
         /// A draft the form refuses: the load and the reps resolve, the rating does not.
         static var refusingDraft: SetDraft {
             var draft = SetDraft(unit: .kilograms, locale: locale)
@@ -51,6 +85,25 @@
             draft.rpeText = "18"
             return draft
         }
+
+        /// Two logged sets carrying `FR-1.2.8`'s modifiers — the second one a spelling this build
+        /// does not recognise, drawn as itself rather than dropped.
+        static let modifiedSets: [SetEntry] = [
+            loggedSet(
+                index: 0,
+                weight: Weight(grams: 102_500),
+                reps: 5,
+                rpe: 8,
+                modifiers: [SetModifier(.belt), SetModifier(.sleeves)]
+            ),
+            loggedSet(
+                index: 1,
+                weight: Weight(grams: 102_500),
+                reps: 3,
+                rpe: nil,
+                modifiers: [SetModifier(rawValue: "reverse band")]
+            ),
+        ]
 
         /// Two logged sets, one rated and one not.
         static let loggedSets: [SetEntry] = [
@@ -121,7 +174,8 @@
             reps: Int,
             rpe: Double?,
             isWarmup: Bool = false,
-            isCompleted: Bool = true
+            isCompleted: Bool = true,
+            modifiers: [SetModifier] = []
         ) -> SetEntry {
             SetEntry(
                 id: identifier("E\(index)"),
@@ -138,7 +192,7 @@
                 isCompleted: isCompleted,
                 targetWeight: nil,
                 targetReps: nil,
-                modifiers: [],
+                modifiers: modifiers,
                 notes: "",
                 completedAt: startedAt
             )

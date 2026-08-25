@@ -1,7 +1,8 @@
 import Foundation
 import PowerliftingCore
 
-/// This module's copy (`G-3.4`), and the only place a logging string literal is written.
+/// This module's copy (`G-3.4`), and — with `LoggingModifierStrings.swift`, which is this same type
+/// — the only place a logging string literal is written.
 ///
 /// Each entry names a key in `Resources/en.lproj/Localizable.strings` and binds it to this module's
 /// own bundle. The key convention is documented once, in `Localization`.
@@ -423,14 +424,17 @@ enum LoggingStrings {
             setDeleteConfirmCancel,
             setWarmupNumber("1"), setWarmupPosition(1), setWarmupSection, setWarmupLabel,
             setWarmupHint,
-        ] + MassUnit.allCases.map(setUnitSymbol(for:))
+        ] + allModifierStrings + MassUnit.allCases.map(setUnitSymbol(for:))
             + [true, false].map(setMarkAction(isWarmup:))
             + [true, false].map(setOutcome(isCompleted:))
             + [true, false].map(setOutcomeAction(isCompleted:))
     }
 
     /// Binds a key to this module's catalogue.
-    private static func resource(_ key: String.LocalizationValue) -> LocalizedStringResource {
+    ///
+    /// Internal rather than file-private because `LoggingModifierStrings.swift` is the same type in
+    /// a second file — see that file for why there is one.
+    static func resource(_ key: String.LocalizationValue) -> LocalizedStringResource {
         LocalizedStringResource(key, bundle: .atURL(Bundle.module.bundleURL))
     }
 }
