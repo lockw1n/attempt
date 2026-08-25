@@ -1,5 +1,6 @@
 import Foundation
 import PowerliftingCore
+import RepositoryFakes
 import RepositoryInterface
 import Testing
 
@@ -24,7 +25,7 @@ struct ExerciseDetailStateTests {
 
     @Test("An identifier that names nothing is missing, not a failed read")
     func unknownIdentifierIsMissing() async {
-        let state = ExerciseDetailState(
+        let state = DetailFixtures.state(
             exerciseID: DetailFixtures.identifier("F"),
             repository: ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
         )
@@ -35,8 +36,7 @@ struct ExerciseDetailStateTests {
     @Test("A missing exercise is not read again — retrying resolves to the same absence")
     func missingIsTerminal() async {
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.identifier("F"), repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.identifier("F"), repository: repository)
         await state.load()
         await state.load()
         #expect(await repository.reads == 1)
@@ -48,8 +48,7 @@ struct ExerciseDetailStateTests {
             exercises: DetailFixtures.catalogue,
             readError: .recordNotFound(id: UUID())
         )
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         guard case .failed(let diagnostic) = state.phase else {
             Issue.record("expected a failed phase, got \(state.phase)")
@@ -66,15 +65,14 @@ struct ExerciseDetailStateTests {
     @Test("Soft-deleted rows are asked for by the repository calls, not filtered afterwards")
     func deletedRowsAreNotRequested() async {
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         #expect(await repository.readsIncludingDeleted == [false, false])
     }
 
     @Test("Nothing is claimed about an exercise before a read has finished")
     func nothingIsClaimedBeforeLoading() {
-        let state = ExerciseDetailState(
+        let state = DetailFixtures.state(
             exerciseID: DetailFixtures.backSquat.id,
             repository: ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
         )
@@ -155,8 +153,7 @@ struct ExerciseDetailStateTests {
     @Test("Typing makes the draft unsaved; saving it reaches the store and the screen")
     func savingNotesWritesAndRepublishes() async {
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
 
         state.notesDraft = "Knees out, chest up."
@@ -173,8 +170,7 @@ struct ExerciseDetailStateTests {
     @Test("A save of the text already stored writes nothing — G-2.4's key must not be restamped")
     func unchangedNotesAreNotWritten() async {
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         await state.saveNotes()
         #expect(await repository.savedNotes.isEmpty)
@@ -184,7 +180,7 @@ struct ExerciseDetailStateTests {
     func savingLeavesEveryOtherFieldAlone() async {
         let original = DetailFixtures.everyFieldDistinct
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue + [original])
-        let state = ExerciseDetailState(exerciseID: original.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: original.id, repository: repository)
         await state.load()
         state.notesDraft = "Rewritten."
         await state.saveNotes()
@@ -212,8 +208,7 @@ struct ExerciseDetailStateTests {
     @Test("A write keeps the variation's parent link, which the tree depends on")
     func savingKeepsTheParentLink() async {
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.frontSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.frontSquat.id, repository: repository)
         await state.load()
         state.notesDraft = "Front rack mobility first."
         await state.saveNotes()
@@ -224,8 +219,7 @@ struct ExerciseDetailStateTests {
     @Test("A read that fails after the write landed is a failed read, not a failed write")
     func readFailureAfterAWriteIsNotAWriteFailure() async {
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         state.notesDraft = "Knees out, chest up."
         await repository.failReads(.recordNotFound(id: UUID()))
@@ -263,8 +257,7 @@ struct ExerciseDetailStateTests {
     )
     func typingDuringASaveIsKept(hops: Int) async {
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         state.notesDraft = "Knees out"
 
@@ -285,8 +278,7 @@ struct ExerciseDetailStateTests {
     @Test("Overlapping saves are serialized, so the second has nothing left to store")
     func overlappingSavesAreSerialized() async {
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         state.notesDraft = "Knees out, chest up."
 
@@ -305,8 +297,7 @@ struct ExerciseDetailStateTests {
             exercises: DetailFixtures.catalogue,
             writeError: .recordNotFound(id: UUID())
         )
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         state.notesDraft = "A typo."
         await state.saveNotes()
@@ -326,8 +317,7 @@ struct ExerciseDetailStateTests {
             exercises: DetailFixtures.catalogue,
             writeError: .recordNotFound(id: UUID())
         )
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         state.notesDraft = "Typed and then lost?"
         await state.saveNotes()
@@ -349,8 +339,7 @@ struct ExerciseDetailStateTests {
             exercises: DetailFixtures.catalogue,
             writeError: .recordNotFound(id: UUID())
         )
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         state.notesDraft = "Second thoughts."
         await state.saveNotes()
@@ -364,7 +353,7 @@ struct ExerciseDetailStateTests {
 
     @Test("Nothing is unsaved on a screen that never resolved an exercise")
     func nothingIsUnsavedWithoutAnExercise() async {
-        let state = ExerciseDetailState(
+        let state = DetailFixtures.state(
             exerciseID: DetailFixtures.identifier("F"),
             repository: ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
         )
@@ -389,6 +378,20 @@ extension ExerciseDetailState {
 
 /// The catalogue these tests resolve against: a parent with two variations, one unrelated exercise.
 enum DetailFixtures {
+    /// A detail state over `repository`, with a workout store no test here logs into.
+    ///
+    /// **One helper rather than a third argument at thirty call sites.** The set count behind
+    /// `FR-1.13.3`'s copy is the only thing the workout store is read for here, and every test in
+    /// this file is about the catalogue — `ExerciseDetailLoggedSetsTests` is where the count itself
+    /// is the subject, and it wires its own.
+    static func state(exerciseID: UUID, repository: any ExerciseRepository) -> ExerciseDetailState {
+        ExerciseDetailState(
+            exerciseID: exerciseID,
+            repository: repository,
+            workouts: InMemoryRepositoryStack().workouts
+        )
+    }
+
     /// A root exercise with two variations and notes already on it.
     static let backSquat = exercise(
         id: identifier("1"), name: "Back Squat", movement: .squat, notes: "Belt from 140 kg.")
@@ -447,7 +450,7 @@ enum DetailFixtures {
     ///   - extra: Rows beyond the catalogue, for the tests that need an archived one.
     /// - Returns: The state, loaded.
     static func loaded(_ exerciseID: UUID, extra: [Exercise] = []) async -> ExerciseDetailState {
-        let state = ExerciseDetailState(
+        let state = DetailFixtures.state(
             exerciseID: exerciseID,
             repository: ScriptedExerciseRepository(exercises: catalogue + extra)
         )

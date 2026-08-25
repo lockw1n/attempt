@@ -1,5 +1,6 @@
 import Foundation
 import PowerliftingCore
+import RepositoryFakes
 import RepositoryInterface
 import Testing
 
@@ -17,8 +18,7 @@ struct ExerciseDetailRefreshTests {
     @Test("A refresh shows an edit made since the screen was read")
     func refreshPicksUpAnEdit() async throws {
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         #expect(state.detail?.exercise.name == "Back Squat")
 
@@ -33,8 +33,7 @@ struct ExerciseDetailRefreshTests {
     @Test("A refresh does not overwrite notes the user has typed and not saved")
     func refreshKeepsAnUnsavedDraft() async {
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         state.notesDraft = "Typed, not yet saved."
 
@@ -46,8 +45,7 @@ struct ExerciseDetailRefreshTests {
     @Test("A refresh with nothing unsaved shows the notes as they are now stored")
     func refreshFollowsTheStoredNotes() async throws {
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.backSquat.id, repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         #expect(state.notesDraft == "Belt from 140 kg.")
 
@@ -67,8 +65,7 @@ struct ExerciseDetailRefreshTests {
     @Test("A refresh does not re-read an identifier that already resolved to nothing")
     func refreshLeavesMissingAlone() async {
         let repository = ScriptedExerciseRepository(exercises: DetailFixtures.catalogue)
-        let state = ExerciseDetailState(
-            exerciseID: DetailFixtures.identifier("F"), repository: repository)
+        let state = DetailFixtures.state(exerciseID: DetailFixtures.identifier("F"), repository: repository)
         await state.load()
         await state.refresh()
         #expect(state.phase == .missing)

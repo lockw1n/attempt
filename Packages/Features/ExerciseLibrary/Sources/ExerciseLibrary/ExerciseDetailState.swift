@@ -22,6 +22,17 @@ public struct ExerciseDetail: Sendable, Equatable {
     /// into other detail screens, and `FR-1.1.5` is what takes an exercise out of those.
     public let variations: [Exercise]
 
+    /// Whether any set has ever been logged against this exercise (`FR-1.13.3`).
+    ///
+    /// **What the three derived sections' copy is conditioned on**, and the reason it is a fact
+    /// about the workout store rather than about the catalogue: "log a set and its history appears
+    /// here" is true only while no set can exist, and it stops being true the moment one does. A
+    /// user who has logged sets and is told to log one has been told the display is missing data it
+    /// already has.
+    ///
+    /// Deleted sets do not count: a set the user removed is not history.
+    public let hasLoggedSets: Bool
+
     /// Whether there is any relationship to show at all.
     ///
     /// The screen omits the variations section when this is `false` — a heading over nothing claims
@@ -103,6 +114,7 @@ public final class ExerciseDetailState {
     public let exerciseID: UUID
 
     private let repository: any ExerciseRepository
+    private let workouts: any WorkoutRepository
 
     /// The write chain. See ``saveNotes()``.
     private var pendingWrite: Task<Void, Never>?
@@ -114,9 +126,17 @@ public final class ExerciseDetailState {
     ///     store has been read, and a route holding a copy of a row would be a second source of
     ///     truth for it (`G-1.4`).
     ///   - repository: Where the exercise and the catalogue come from.
-    public init(exerciseID: UUID, repository: any ExerciseRepository) {
+    ///   - workouts: Where the sets logged against it come from — read for a count and nothing
+    ///     else, which is what ``ExerciseDetail/hasLoggedSets`` needs and all `FR-1.1.6`'s derived
+    ///     sections can say until T-1.36, T-1.41 and T-1.43 build them.
+    public init(
+        exerciseID: UUID,
+        repository: any ExerciseRepository,
+        workouts: any WorkoutRepository
+    ) {
         self.exerciseID = exerciseID
         self.repository = repository
+        self.workouts = workouts
     }
 
     /// Reads the exercise and its relationships, on first appearance and on every retry.
@@ -318,7 +338,8 @@ public final class ExerciseDetailState {
             return
         }
         let catalogue = try await repository.exercises(includingDeleted: false)
-        phase = .loaded(Self.detail(for: exercise, in: catalogue))
+        phase = .loaded(
+            Self.detail(for: exercise, in: catalogue, hasLoggedSets: await hasLoggedSets()))
         // A keystroke that landed while the read was in flight is a fresh edit and survives it,
         // whichever kind of read this was. Failing that, the draft gives way to the record only if
         // the two already agreed when the read began.
@@ -329,8 +350,25 @@ public final class ExerciseDetailState {
         }
     }
 
+    /// Whether any set has ever been logged against this exercise, or `false` where the workout
+    /// store could not answer.
+    ///
+    /// **Its own failure, and swallowed on purpose.** This read decides which of two sentences three
+    /// derived sections carry, and nothing else on the screen depends on it — so taking the whole
+    /// screen to its error state for it would let a workout-store fault hide the movement, equipment
+    /// and notes the catalogue answered for perfectly well. The quiet wrong answer is the sentence
+    /// the screen showed before this read existed, which is the smaller of the two mistakes.
+    private func hasLoggedSets() async -> Bool {
+        let logged = try? await workouts.sets(forExerciseID: exerciseID, includingDeleted: false)
+        return !(logged?.isEmpty ?? true)
+    }
+
     /// Pairs an exercise with its parent and its variations, from the whole catalogue.
-    private static func detail(for exercise: Exercise, in catalogue: [Exercise]) -> ExerciseDetail {
+    private static func detail(
+        for exercise: Exercise,
+        in catalogue: [Exercise],
+        hasLoggedSets: Bool
+    ) -> ExerciseDetail {
         ExerciseDetail(
             exercise: exercise,
             parent: exercise.parentExerciseID.flatMap { parentID in
@@ -339,7 +377,8 @@ public final class ExerciseDetailState {
             variations:
                 catalogue
                 .filter { $0.parentExerciseID == exercise.id && !$0.isArchived }
-                .sorted(by: ExerciseOrder.precedes)
+                .sorted(by: ExerciseOrder.precedes),
+            hasLoggedSets: hasLoggedSets
         )
     }
 

@@ -92,6 +92,23 @@ public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
     /// Carries the identifier and not the record, for the reason ``exerciseDetail(exerciseID:)``
     /// gives.
     case exerciseEdit(exerciseID: UUID)
+
+    /// The catalogue as a chooser, for adding an exercise to the workout in progress (`FR-1.2.2`).
+    ///
+    /// **The library's route rather than logging's, and pushed rather than presented.** The screen
+    /// is ``exerciseList``'s in a second mode — same rows, same search, same filters — so it belongs
+    /// to the area that owns those. Pushing it also keeps `Logging` from depending on
+    /// `ExerciseLibrary` to reach it (`TR-1.3`): the app target composes the two, handing the
+    /// catalogue screen a closure that writes into the session, exactly as it composes every other
+    /// screen over a repository.
+    ///
+    /// **It carries no session identifier**, for ``TrainingRoute/activeSession``'s reason: which
+    /// workout is being logged is one fact about the app rather than a parameter of a push. A
+    /// restored stack that opens here with no workout in progress therefore lands on a chooser whose
+    /// selection has nowhere to go: the row is refused silently, and the screen it pops back to is
+    /// already the one saying there is no workout to add to. Nothing is reported here because
+    /// nothing was lost, and a diagnostic would land on a screen the user is leaving.
+    case exercisePicker
 }
 
 /// Destinations pushed from history (`FR-1.5`).

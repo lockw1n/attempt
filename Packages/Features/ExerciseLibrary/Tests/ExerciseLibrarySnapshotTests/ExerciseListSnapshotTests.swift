@@ -60,6 +60,27 @@
             }
         }
 
+        @Test func recencyChipInForce() throws {
+            // `FR-1.1.2`'s recency filter once something has been trained inside the window. Its
+            // own reference beside the disabled one above, because the two are what the chip looks
+            // like in its two lives and the difference between them is exactly what a picture
+            // checks — a control that is off and one that cannot be used must not look alike.
+            try assertSnapshots(named: "ExerciseList-recency-chip") {
+                VStack(alignment: .leading, spacing: Spacing.sm.points) {
+                    FilterChip(
+                        label: Text(ExerciseLibraryStrings.recentlyUsedFilter),
+                        isSelected: false,
+                        isEnabled: true
+                    ) {}
+                    FilterChip(
+                        label: Text(ExerciseLibraryStrings.recentlyUsedFilter),
+                        isSelected: true,
+                        isEnabled: true
+                    ) {}
+                }
+            }
+        }
+
         @Test func archivedChip() throws {
             // Its own reference rather than a line in `filterChips`: this control sits on a row of
             // its own, outside the horizontal scrollers the three facets use, and that placement is
@@ -88,6 +109,28 @@
                     // existed (`FR-1.1.3`). A reference built without it pictures a screen the app
                     // no longer has, and passes while doing so.
                     action: StateAction(Text(ExerciseLibraryStrings.createAction)) {}
+                )
+            }
+        }
+
+        @Test func chooserRows() throws {
+            // FR-1.2.2's chooser is this same list with the rows turned into commands. The picture
+            // worth keeping is the difference: no chevron, because the tap writes an exercise into
+            // the workout and pops rather than opening anything.
+            try assertSnapshots(named: "ExerciseList-picker") {
+                ExerciseGroupList(groups: Fixtures.groups, select: { _ in })
+            }
+        }
+
+        @Test func everythingArchivedInTheChooser() throws {
+            // No action, unlike the browsing screen's version below: the chooser has no "Show
+            // archived" control to offer, FR-1.1.5 being what takes an archived exercise out of the
+            // pickers in the first place.
+            try assertSnapshots(named: "ExerciseList-picker-archived-only") {
+                EmptyStateView(
+                    symbolName: "archivebox",
+                    headline: Text(ExerciseLibraryStrings.archivedOnlyHeadline),
+                    message: Text(ExerciseLibraryStrings.archivedOnlyPickerMessage)
                 )
             }
         }
