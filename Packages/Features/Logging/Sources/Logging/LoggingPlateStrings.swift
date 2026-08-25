@@ -61,12 +61,23 @@ extension LoggingStrings {
     /// The heading over which gym the loading was computed on.
     static let plateEquipmentSection = resource("logging.session.plate.equipment.section")
 
-    /// What the interim default is called, since it is not a gym the user named (`G-6.2`).
-    static let plateEquipmentInterim = resource("logging.session.plate.equipment.interim")
-
-    /// What a profile the user configured and left unnamed is called. **Not the interim sentence**:
-    /// this gym is theirs, and only its name is missing.
+    /// What a profile the user configured and left unnamed is called. Their gym either way — only
+    /// the name is missing, and nothing validates one on the way in.
     static let plateEquipmentUnnamed = resource("logging.session.plate.equipment.unnamed")
+
+    /// The way from a loading to the gym it was worked out on (`FR-1.4.3`).
+    static let plateChangeEquipmentAction = resource("logging.session.plate.change-equipment.action")
+
+    /// The heading when the user has configured no gym at all — the screen has nothing to load
+    /// against and nothing failed.
+    static let plateNoEquipmentHeadline = resource("logging.session.plate.no-equipment.headline")
+
+    /// What to do about it, which is the same one tap whether no gym has been set up yet or the one
+    /// in use has been deleted.
+    static let plateNoEquipmentMessage = resource("logging.session.plate.no-equipment.message")
+
+    /// The command that opens the equipment screen from here.
+    static let plateNoEquipmentAction = resource("logging.session.plate.no-equipment.action")
 
     /// The heading when the equipment could not be read.
     static let plateErrorHeadline = resource("logging.session.plate.error.headline")
@@ -113,7 +124,8 @@ extension LoggingStrings {
             plateTargetLabel, plateExactSection, plateBelowSection, plateAboveSection,
             plateBelowNoneHeadline, plateBelowNoneMessage, plateAboveNoneHeadline,
             plateAboveNoneMessage, plateBareBar, platePerSideLabel, plateEquipmentSection,
-            plateEquipmentInterim, plateEquipmentUnnamed, plateErrorHeadline, plateErrorMessage,
+            plateEquipmentUnnamed, plateChangeEquipmentAction, plateNoEquipmentHeadline,
+            plateNoEquipmentMessage, plateNoEquipmentAction, plateErrorHeadline, plateErrorMessage,
             plateUnusableHeadline, plateUnusableMessage, plateEquipmentBar(bar: "", collar: ""),
             plateCount(plate: "", count: ""),
         ]

@@ -25,10 +25,28 @@
 # minimum test count, for the tests that back no reference at all — the harness probes, which are
 # the half of this gate that proves the comparison can fail.
 #
-# WHY THE DEVICE BARELY MATTERS. Every reference is rendered at a fixed width and scale (see
-# SnapshotHarness.swift), so the destination contributes only its OS version, which is what resolves
-# the fonts. Override it with SNAPSHOT_DESTINATION when the pinned device is missing; a different
-# iOS *version* is the one substitution that will fail the comparison.
+# WHICH SIMULATOR, AND WHY THE VERSION IS THE HALF THAT MATTERS. Every reference is rendered at a
+# fixed width and scale (see SnapshotHarness.swift), so the destination contributes only its OS
+# version, which is what resolves the fonts. So the device is RESOLVED and the version is PINNED:
+# SNAPSHOT_IOS names the version the committed references were rendered on, and the first available
+# iPhone on it is chosen by id.
+#
+# Measured, not assumed: the full set of 328 references compares clean on iPhone 17 Pro and on
+# iPhone 17 — a different size and a different device family, same iOS 26.5. That is the claim this
+# resolution rests on, so it is the one worth having run.
+#
+# A device name was pinned here until it cost a CI run. `name:iPhone 17 Pro` exists on a developer's
+# Mac and did not exist on the runner, so xcodebuild refused the destination, nothing was rendered,
+# and this script reported "does not match" — naming the one cause (changed pixels) that was not the
+# cause. Nothing about a reference depends on which iPhone drew it, so nothing should have to.
+#
+# The version is pinned rather than resolved for the opposite reason: it DOES change the rendering,
+# so a runner image that gained a newer iOS would silently start producing pixel diffs nobody could
+# explain. Bump SNAPSHOT_IOS in the same change that re-records — that is the only moment the
+# references stop being renderings of the old one. A machine with no simulator on that version is
+# told so, rather than being quietly compared against the wrong fonts.
+#
+# SNAPSHOT_DESTINATION still overrides the whole thing, for a machine this resolution cannot serve.
 #
 # REGENERATING. `--record` deletes every reference directory and runs each suite twice: the first
 # run records what is missing and fails on purpose (a reference nobody has looked at must never make
@@ -48,16 +66,47 @@ cd "$(dirname "$0")/.."
 # honest setting rather than a number chosen to look like the former.
 #   DesignSystem:    27 tests, 15 reference-backed, 12 harness probes  -> 20, above the 15.
 #   ExerciseLibrary: 21 tests, all of them reference-backed, no probes -> 21, its own count.
-#   Logging:         39 tests, 38 reference-backed, one width probe    -> 39, above the 38.
+#   Logging:         45 tests, 44 reference-backed, one width probe    -> 45, above the 44.
 # A screen suite added later is the ExerciseLibrary case unless it brings probes of its own, and a
 # screen added to an existing package raises that package's floor rather than adding a row.
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|20"
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|21"
-    "Packages/Features/Logging|Logging|LoggingSnapshotTests|39"
+    "Packages/Features/Logging|Logging|LoggingSnapshotTests|45"
 )
 
-DESTINATION="${SNAPSHOT_DESTINATION:-platform=iOS Simulator,OS=latest,name=iPhone 17 Pro}"
+# The iOS version the committed references were rendered on. See the header: bump it only when
+# re-recording, in the same change.
+SNAPSHOT_IOS="${SNAPSHOT_IOS:-26.5}"
+
+# The first available iPhone simulator on SNAPSHOT_IOS, as a destination naming its id.
+#
+# By id and not by name, because a name is what broke: two runners stock different iPhones and every
+# one of them draws these references identically. The iPad section is skipped — the harness renders
+# at a fixed width, but a destination has to be something this app actually runs on.
+resolved_destination() {
+    local version_pattern id
+    version_pattern="${SNAPSHOT_IOS//./\\.}"
+    id=$(
+        xcrun simctl list devices available \
+            | sed -n "/^-- iOS ${version_pattern} --\$/,/^-- /p" \
+            | sed -nE 's/^ *iPhone[^(]*\(([0-9A-Fa-f-]{36})\).*/\1/p' \
+            | head -1
+    )
+    if [[ -z "$id" ]]; then
+        echo "snapshot-tests.sh: no iPhone simulator on iOS ${SNAPSHOT_IOS}, which is the version" >&2
+        echo "every committed reference was rendered on. A different version resolves different" >&2
+        echo "fonts, so comparing against one would fail on pixels and say nothing about why." >&2
+        echo "Install that runtime, or set SNAPSHOT_DESTINATION to accept the substitution." >&2
+        echo "--- iPhone simulators this machine has ---" >&2
+        xcrun simctl list devices available | grep -E '^-- iOS |iPhone' >&2 || true
+        exit 70
+    fi
+    echo "platform=iOS Simulator,id=$id"
+}
+
+DESTINATION="${SNAPSHOT_DESTINATION:-$(resolved_destination)}"
+echo "==> rendering against $DESTINATION (iOS $SNAPSHOT_IOS)"
 
 RECORD=0
 while [[ $# -gt 0 ]]; do

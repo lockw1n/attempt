@@ -74,6 +74,8 @@ struct RootTabView: View {
             exercisePickerRoot
         case .training(.activeSession):
             activeSessionRoot
+        case .settings(.equipmentProfiles):
+            equipmentProfilesRoot
         default:
             PlaceholderScreen(route: route)
         }
@@ -140,6 +142,23 @@ struct RootTabView: View {
             ) { exercise in
                 await stores.activeSession.addExercise(id: exercise.id)
             }
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// The gyms (`FR-1.10.3`), or the reason they cannot be shown.
+    ///
+    /// **A `Logging` screen answering a Settings route**, which is the exercise picker's join in its
+    /// other direction: `FR-1.10.3` and `FR-1.4.2` are one screen described from two tabs, `TR-1.3`
+    /// keeps `Settings` and `Logging` from depending on each other, so this target — which already
+    /// owns both — is where the two meet. It is handed the same store the calculator loads against,
+    /// so a gym switched here is the gym the next loading uses.
+    @ViewBuilder
+    private var equipmentProfilesRoot: some View {
+        switch dependencies.state {
+        case .open(_, let stores):
+            EquipmentProfilesView(store: stores.equipment)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

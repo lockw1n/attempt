@@ -62,7 +62,8 @@
                         state: .unusable,
                         equipment: nil,
                         unit: .kilograms,
-                        retry: {}
+                        retry: {},
+                        chooseEquipment: {}
                     )
                 }
             }
@@ -83,7 +84,25 @@
             }
         }
 
-        /// The screen over the interim default, at one target.
+        @Test func noEquipment() throws {
+            // FR-1.13.1's empty state, which replaced the interim plate set this screen used to fall
+            // back to: nothing was read, nothing failed, and the action is the only thing that makes
+            // a gym.
+            try assertSnapshots(named: "Plate-no-equipment") {
+                fixedEnvironment {
+                    PlateCalculatorContent(
+                        target: Weight(grams: 102_500),
+                        state: .noEquipment,
+                        equipment: nil,
+                        unit: .kilograms,
+                        retry: {},
+                        chooseEquipment: {}
+                    )
+                }
+            }
+        }
+
+        /// The screen over the metric gym below, at one target.
         ///
         /// - Parameter target: The weight being loaded for.
         /// - Returns: The content, ready to render.
@@ -92,18 +111,18 @@
                 target: target,
                 state: .ready,
                 equipment: LoadedEquipment(
-                    profile: PlateCalculatorStore.interimProfile,
-                    calculator: try Self.calculator(),
-                    isInterim: true
+                    profile: EquipmentFixtures.metricGym,
+                    calculator: try Self.calculator()
                 ),
                 unit: .kilograms,
-                retry: {}
+                retry: {},
+                chooseEquipment: {}
             )
         }
 
-        /// The interim default's calculator, projected the same way the store projects it.
+        /// That gym's calculator, projected the same way the store projects it.
         private static func calculator() throws -> PlateCalculator {
-            let profile = PlateCalculatorStore.interimProfile
+            let profile = EquipmentFixtures.metricGym
             return try #require(
                 PlateCalculator(
                     bar: profile.barWeight,

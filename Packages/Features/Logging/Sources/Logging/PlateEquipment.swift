@@ -13,32 +13,16 @@ struct LoadedEquipment {
     /// That profile's bar, collars and inventory, ready to load.
     let calculator: PlateCalculator
 
-    /// Whether this is ``PlateCalculatorStore/interimProfile`` rather than a gym the user set up.
-    ///
-    /// The screen says so, because a plate list the user did not choose is a claim about their gym
-    /// and an unattributed one would be read as a fact about it (`G-6.2`).
-    let isInterim: Bool
-
-    /// What to call this gym on screen.
-    ///
-    /// **Three cases and not two, because ``isInterim`` and an empty name are different facts.**
-    /// The interim default carries no name *and* is not the user's, so it gets the catalogue's
-    /// sentence saying as much. A profile the user configured and left unnamed is still theirs —
-    /// nothing validates the name on the way in (`FR-1.4.2` owns the editor, and a restored or
-    /// synced row reaches the store without one) — and answering it with the interim sentence would
-    /// disclaim a gym they set up, which is the `G-6.2` attribution run backwards.
-    var displayName: String {
-        if isInterim { return String(localized: LoggingStrings.plateEquipmentInterim) }
-        guard profile.name.isEmpty else { return profile.name }
-        return String(localized: LoggingStrings.plateEquipmentUnnamed)
-    }
+    /// What to call this gym on screen — ``EquipmentProfileSummary/name(of:)``'s answer, so the
+    /// calculator and the screen that named the gym cannot call it two different things.
+    var displayName: String { EquipmentProfileSummary.name(of: profile) }
 }
 
 /// Why the calculator has no equipment to load against.
 ///
 /// **Two cases and not one string**, because they are opposite facts about whether asking again
 /// could help: a read that failed may succeed on a retry, where a profile whose plate lists cannot
-/// describe a gym will refuse identically every time and is fixed by editing it (T-1.31).
+/// describe a gym will refuse identically every time and is fixed by editing it.
 enum PlateEquipmentFailure: Error, Equatable {
     /// The profile could not be read. The value is the error's description — a diagnostic, not copy
     /// (`G-3.4`).
@@ -54,17 +38,17 @@ enum PlateEquipmentFailure: Error, Equatable {
 ///
 /// **A store rather than a screen's own state, on ``ActiveSessionStore``'s rule: lifetime, not
 /// complexity.** Which gym is active outlives every surface that shows a loading — the row inside
-/// the set editor, the calculator presented over it, and T-1.31's profile editor in another tab —
+/// the set editor, the calculator presented over it, and the equipment editor in another tab —
 /// and all three read the same fact. Two objects would be two answers to *which gym is this*.
 ///
-/// **The interim default is this layer's and never the repository's.** `EquipmentRepository`
-/// answers `nil` for a user who has configured no gym and invents nothing, deliberately, because a
-/// bar and plate set written into the store would be a data claim `G-6.2` wants cited and a row
-/// nobody authored. What this type supplies instead is a *display* fallback: nothing is written, the
-/// screen labels it as not-yours, and T-1.31 deletes it the moment a profile can be authored.
+/// **A user with no gym gets no equipment, and that is a state rather than a fallback.**
+/// `EquipmentRepository` answers `nil` for a lifter who has configured nothing and invents nothing,
+/// deliberately: a bar and plate set this app chose would be a data claim `G-6.2` wants cited and a
+/// row nobody authored. The screen says there is no gym and offers the one tap that makes one.
 @Observable
 public final class PlateCalculatorStore {
-    /// The gym currently loaded against, or `nil` before the first read and after a failed one.
+    /// The gym currently loaded against, or `nil` before the first read, after a failed one, and
+    /// for a lifter who has set none up.
     private(set) var equipment: LoadedEquipment?
 
     /// Why there is none, or `nil`.
@@ -76,24 +60,51 @@ public final class PlateCalculatorStore {
     /// carry — ``ActiveSessionStore/hasCheckedForSession``'s argument, one screen along.
     private(set) var hasLoaded = false
 
-    @ObservationIgnored private let repository: any EquipmentRepository
-
-    /// Builds the store over the profile repository.
+    /// The unit every weight on the equipment screens is entered and drawn in (`G-3.1`).
     ///
-    /// - Parameter repository: Where the user's equipment profiles live.
-    public init(repository: any EquipmentRepository) {
+    /// **Read here rather than passed in**, on ``ActiveSessionStore/displayUnit``'s argument: the
+    /// preference is one settings row, and a screen handed a unit by whichever surface opened it
+    /// would show kilograms from one entry point and pounds from the other. A failed read leaves it
+    /// as it was — the preference is not what this screen is about, and refusing to draw a gym
+    /// because a settings row could not be read would be the wrong failure.
+    private(set) var displayUnit: MassUnit = .kilograms
+
+    /// Where the profiles live.
+    ///
+    /// **Readable inside this module**, because `FR-1.4.3`'s switcher is reachable from the
+    /// calculator this store feeds: the screen it opens writes through the same repository, and this
+    /// store's next ``load()`` is what picks the change up. A second repository handed in beside
+    /// this one would be a second answer to *which store is this*.
+    @ObservationIgnored let repository: any EquipmentRepository
+
+    /// Where ``displayUnit`` is read from.
+    @ObservationIgnored private let settings: any SettingsRepository
+
+    /// Builds the store over the two rows a loading is drawn from.
+    ///
+    /// - Parameters:
+    ///   - repository: Where the user's equipment profiles live.
+    ///   - settings: Where the display unit lives (`G-3.1`).
+    public init(repository: any EquipmentRepository, settings: any SettingsRepository) {
         self.repository = repository
+        self.settings = settings
     }
 
-    /// Reads the active profile and projects it, falling back to ``interimProfile``.
+    /// Reads the active profile and projects it.
     ///
     /// Re-read rather than cached-once, so a profile edited in another tab reaches the next loading
     /// without the app being relaunched. The read is local and synchronous underneath (`G-2.3`), so
     /// what a second one costs is a store hit.
+    ///
+    /// **No profile is not a failure**, and the two are kept apart: ``failure`` stays `nil` and
+    /// ``equipment`` is `nil`, which is the pair ``PlateEquipmentState`` reads as "no gym set up".
     func load() async {
+        if let unit = try? await settings.settings().displayUnit {
+            displayUnit = unit
+        }
         do {
             let stored = try await repository.defaultProfile()
-            equipment = try Self.project(stored ?? Self.interimProfile, isInterim: stored == nil)
+            equipment = try stored.map(Self.project)
             failure = nil
         } catch let error as PlateEquipmentFailure {
             equipment = nil
@@ -116,20 +127,10 @@ public final class PlateCalculatorStore {
 
     /// Projects one profile, turning both refusals into ``PlateEquipmentFailure/unusable(_:)``.
     ///
-    /// **The interim default goes through this same path**, which is what keeps it from needing a
-    /// branch that cannot be reached: `PlateInventory` and `PlateCalculator` both refuse, both
-    /// refusals already have a state, and a hand-built profile that stopped being loadable would
-    /// say so on screen instead of being force-unwrapped into a crash.
-    ///
-    /// - Parameters:
-    ///   - profile: The record to project.
-    ///   - isInterim: Whether it is the interim default.
+    /// - Parameter profile: The record to project.
     /// - Returns: The gym, ready to load.
     /// - Throws: ``PlateEquipmentFailure/unusable(_:)``.
-    private static func project(
-        _ profile: EquipmentProfile,
-        isInterim: Bool
-    ) throws -> LoadedEquipment {
+    private static func project(_ profile: EquipmentProfile) throws -> LoadedEquipment {
         let inventory: PlateInventory
         do {
             inventory = try profile.inventory()
@@ -142,33 +143,8 @@ public final class PlateCalculatorStore {
         else {
             throw PlateEquipmentFailure.unusable("bar, collars and inventory overflow")
         }
-        return LoadedEquipment(profile: profile, calculator: calculator, isInterim: isInterim)
+        return LoadedEquipment(profile: profile, calculator: calculator)
     }
-
-    /// The gym assumed until the user sets one up — a 20 kg bar, 2.5 kg collars and a metric
-    /// competition plate set.
-    ///
-    /// **Never written to the store, and its identifier is therefore disposable.** It exists to give
-    /// `FR-1.4.1` an answer on first launch rather than a blank screen, and T-1.31 replaces it with
-    /// a profile the user authored. Its ``EquipmentProfile/name`` is deliberately empty: a name is a
-    /// user's word for their gym, and copy for this one belongs in the catalogue with the rest
-    /// (`G-3.4`), not in a record.
-    ///
-    /// **Metric, and that is a choice rather than a default.** The denominations of a pound gym are
-    /// not the kilo ones converted; picking one set means picking a gym, so the screen says which it
-    /// picked. Loads are still drawn in the user's display unit (`G-3.1`).
-    static let interimProfile = EquipmentProfile(
-        id: UUID(),
-        createdAt: .distantPast,
-        updatedAt: .distantPast,
-        deletedAt: nil,
-        name: "",
-        barWeight: Weight(grams: 20_000),
-        collarWeight: Weight(grams: 2_500),
-        plates: [25_000, 20_000, 15_000, 10_000, 5_000, 2_500, 1_250].map(Weight.init(grams:)),
-        platePairCounts: [4, 1, 1, 1, 1, 1, 1],
-        isDefault: false
-    )
 }
 
 /// Which of `FR-1.13.1`'s states the calculator screen is in.
@@ -182,6 +158,10 @@ enum PlateEquipmentState: Equatable {
 
     /// A gym is loaded and the target can be answered.
     case ready
+
+    /// The read answered and the user has configured no gym — `FR-1.13.1`'s empty state, whose
+    /// action is the only thing that produces one.
+    case noEquipment
 
     /// The profile could not be read; a retry may work.
     case readFailed
@@ -208,10 +188,12 @@ enum PlateEquipmentState: Equatable {
         if hasEquipment { return .ready }
         switch failure {
         case .unusable: return .unusable
-        // A read that answered with neither equipment nor a diagnostic is not a state this store
-        // can produce — `load()` sets one or the other — and reporting it as a failed read is the
-        // one of the four that offers the user a way out of it.
-        case .readFailed, nil: return .readFailed
+        case .readFailed: return .readFailed
+        // Neither equipment nor a diagnostic is the ordinary answer for a lifter who has set up no
+        // gym — `defaultProfile()` returns `nil` and invents nothing — so it is an empty state and
+        // not a failure. Reporting it as a failed read would offer a retry that answers the same
+        // way every time, in place of the one tap that fixes it.
+        case nil: return .noEquipment
         }
     }
 }

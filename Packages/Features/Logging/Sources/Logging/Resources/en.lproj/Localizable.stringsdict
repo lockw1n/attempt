@@ -22,5 +22,24 @@
 			<string>%lld exercises</string>
 		</dict>
 	</dict>
+	<!-- FR-1.4.2's plate list. Plural on the pair count: a gym with one pair of 20s reads
+	     "20 kg × 1 pair", and a .strings entry can only ever say "1 pairs". The plate itself is
+	     already rendered — AppFormat decides how a weight reads, and a catalogue cannot. -->
+	<key>logging.equipment.plate-pairs %@ %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$@ × %2$#@pairs@</string>
+		<key>pairs</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld pair</string>
+			<key>other</key>
+			<string>%lld pairs</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

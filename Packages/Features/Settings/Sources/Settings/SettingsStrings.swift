@@ -32,6 +32,16 @@ enum SettingsStrings {
     /// The appearance read-out's label.
     static let scaffoldAppearance = resource("settings.landing.scaffold.appearance")
 
+    /// The header over the sections that open another screen.
+    static let equipmentTitle = resource("settings.landing.equipment.title")
+
+    /// The row into the gyms (`FR-1.10.3`). The screen it opens belongs to another module and
+    /// carries its own copy; this is the way in, and names what is behind it.
+    static let equipmentRow = resource("settings.landing.equipment.row")
+
+    /// What is on that screen, in one line.
+    static let equipmentDetail = resource("settings.landing.equipment.detail")
+
     /// A display unit's abbreviation, as a lifter writes it.
     ///
     /// Copy rather than ICU's: Foundation names `pounds` in full whenever no number is attached.
@@ -49,7 +59,8 @@ enum SettingsStrings {
     static var all: [LocalizedStringResource] {
         [
             unitsTitle, unitsPicker, writeErrorTitle, loadErrorTitle, loadErrorRetry,
-            scaffoldTitle, scaffoldEstimator, scaffoldAppearance,
+            scaffoldTitle, scaffoldEstimator, scaffoldAppearance, equipmentTitle, equipmentRow,
+            equipmentDetail,
         ] + MassUnit.allCases.map(unitSymbol(for:))
     }
 

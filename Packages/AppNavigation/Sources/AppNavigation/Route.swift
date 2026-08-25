@@ -121,4 +121,17 @@ public enum HistoryRoute: Hashable, Sendable, Codable {
 public enum SettingsRoute: Hashable, Sendable, Codable {
     /// About, version, acknowledgements, privacy (`FR-1.10.5`). T-1.63 builds it.
     case about
+
+    /// The gyms — bar, collars and plate inventory, one of them in use (`FR-1.10.3`, `FR-1.4.2`,
+    /// `FR-1.4.3`).
+    ///
+    /// **Settings' route over a screen the logging module owns**, which is this enum's tab rule
+    /// doing exactly what it is for: `FR-1.10.3` puts equipment management under Settings and
+    /// `FR-1.4.2` reaches the same screen from the plate calculator, so the route names the tab and
+    /// the app target composes whichever module's screen answers it — see
+    /// ``ExerciseLibraryRoute/exercisePicker`` for the other half of the same argument.
+    ///
+    /// **The editor over one gym has no case**, deliberately: it is a form holding an unsaved draft,
+    /// which is not a place the app can be restored to.
+    case equipmentProfiles
 }

@@ -12,19 +12,25 @@ import Testing
 /// or the one there is cannot be used, and what the two answers say.
 @Suite("Plate calculator equipment")
 struct PlateCalculatorStoreTests {
-    /// The interim profile's own base: a 20 kg bar and two 2.5 kg collars.
+    /// The metric gym every arithmetic case here runs on: a 20 kg bar and two 2.5 kg collars.
     private static let barAndCollars = Weight(grams: 25_000)
 
-    @Test("With no profile configured, the interim default is what is loaded against")
-    func fallsBackToTheInterimDefault() async {
-        let store = PlateCalculatorStore(repository: InMemoryRepositoryStack().equipment)
+    @Test("A lifter who has set up no gym gets the empty state, not a failure")
+    func noProfileIsAnEmptyState() async {
+        let fakes = InMemoryRepositoryStack()
+        let store = PlateCalculatorStore(repository: fakes.equipment, settings: fakes.settings)
         await store.load()
 
         #expect(store.hasLoaded)
+        #expect(store.equipment == nil)
+        // The pair that separates "no gym" from "the read failed": nothing to load against and
+        // nothing to report. Anchored to the literal, since two nils satisfy any comparison.
         #expect(store.failure == nil)
-        #expect(store.equipment?.isInterim == true)
-        #expect(store.equipment?.calculator.bar == Weight(grams: 20_000))
-        #expect(store.equipment?.calculator.collar == Weight(grams: 2_500))
+        #expect(
+            PlateEquipmentState.current(
+                hasLoaded: store.hasLoaded, hasEquipment: false, failure: store.failure)
+                == .noEquipment)
+        #expect(store.loading(for: Weight(grams: 100_000)) == nil)
     }
 
     @Test(
@@ -56,7 +62,7 @@ struct PlateCalculatorStoreTests {
     @Test("A weight that will not load shows the nearest either side of it (FR-1.4.4)")
     func nearestBelowAndAbove() async throws {
         let store = try await Self.loaded()
-        // 101 kg needs 38 kg a side; the interim set reaches 37.5 and then 38.75.
+        // 101 kg needs 38 kg a side; the metric set reaches 37.5 and then 38.75.
         let result = try #require(store.loading(for: Weight(grams: 101_000)))
 
         guard case .nearest(let below, let above) = result else {
@@ -86,7 +92,7 @@ struct PlateCalculatorStoreTests {
     @Test("A target past what the gym stocks has nothing above it, and something below")
     func heavierThanTheInventory() async throws {
         let store = try await Self.loaded()
-        // The interim set carries 153.75 kg a side, so the heaviest it loads is 332.5 kg.
+        // The metric set carries 153.75 kg a side, so the heaviest it loads is 332.5 kg.
         let result = try #require(store.loading(for: Weight(grams: 400_000)))
 
         guard case .nearest(let below, let above) = result else {
@@ -111,17 +117,16 @@ struct PlateCalculatorStoreTests {
         }
     }
 
-    @Test("A configured profile outranks the interim default")
-    func aStoredProfileWins() async throws {
+    @Test("The gym in use is the one every loading is worked out on")
+    func aStoredProfileIsLoadedAgainst() async throws {
         let fakes = InMemoryRepositoryStack()
         let profile = Self.profile(bar: 15_000, collar: 0, plates: [10_000], pairs: [2])
         try await fakes.equipment.save(profile)
         try await fakes.equipment.makeDefault(profileID: profile.id)
 
-        let store = PlateCalculatorStore(repository: fakes.equipment)
+        let store = PlateCalculatorStore(repository: fakes.equipment, settings: fakes.settings)
         await store.load()
 
-        #expect(store.equipment?.isInterim == false)
         #expect(store.equipment?.profile.name == "Home gym")
         guard case .exact(let loading) = try #require(store.loading(for: Weight(grams: 35_000)))
         else {
@@ -131,45 +136,37 @@ struct PlateCalculatorStoreTests {
         #expect(Self.plates(of: loading) == [Weight(grams: 10_000)])
     }
 
-    @Test("An unnamed profile the user configured is not disclaimed as the interim default")
+    @Test("A profile the user left unnamed is named as one, not disclaimed")
     func anUnnamedProfileIsStillTheirs() async throws {
         let fakes = InMemoryRepositoryStack()
         let profile = Self.profile(bar: 20_000, collar: 0, plates: [10_000], pairs: [1], name: "")
         try await fakes.equipment.save(profile)
         try await fakes.equipment.makeDefault(profileID: profile.id)
 
-        let store = PlateCalculatorStore(repository: fakes.equipment)
+        let store = PlateCalculatorStore(repository: fakes.equipment, settings: fakes.settings)
         await store.load()
         let equipment = try #require(store.equipment)
 
-        #expect(equipment.isInterim == false)
-        // Anchored to the interim sentence rather than to another rendering: the defect is this
-        // gym being labelled as one the user has not set up, and only that string says so.
-        #expect(
-            equipment.displayName
-                != String(localized: LoggingStrings.plateEquipmentInterim))
         #expect(equipment.displayName == String(localized: LoggingStrings.plateEquipmentUnnamed))
     }
 
-    @Test("A named profile is called what the user called it, and the interim one says what it is")
+    @Test("A named profile is called what the user called it")
     func gymsAreNamedByWhoeverNamedThem() async throws {
         let store = try await Self.loaded()
-        #expect(
-            try #require(store.equipment).displayName
-                == String(localized: LoggingStrings.plateEquipmentInterim))
+        #expect(try #require(store.equipment).displayName == "Home gym")
 
-        let named = LoadedEquipment(
-            profile: Self.profile(bar: 20_000, collar: 0, plates: [10_000], pairs: [1]),
-            calculator: try #require(store.equipment).calculator,
-            isInterim: false
+        let unnamed = LoadedEquipment(
+            profile: Self.profile(bar: 20_000, collar: 0, plates: [10_000], pairs: [1], name: ""),
+            calculator: try #require(store.equipment).calculator
         )
-        #expect(named.displayName == "Home gym")
+        #expect(unnamed.displayName == String(localized: LoggingStrings.plateEquipmentUnnamed))
     }
 
     @Test("A read that failed costs the screen its equipment and offers a retry")
     func readFailure() async {
         let store = PlateCalculatorStore(
-            repository: RefusingEquipment(error: .recordNotFound(id: UUID())))
+            repository: RefusingEquipment(error: .recordNotFound(id: UUID())),
+            settings: InMemoryRepositoryStack().settings)
         await store.load()
 
         #expect(store.hasLoaded)
@@ -190,7 +187,9 @@ struct PlateCalculatorStoreTests {
         // It cannot be written through `save`, which projects first — only read back from a store
         // that received it some other way, which is exactly what the projection exists for.
         let malformed = Self.profile(bar: 20_000, collar: 2_500, plates: [25_000, 20_000], pairs: [1])
-        let store = PlateCalculatorStore(repository: StubEquipment(profile: malformed))
+        let store = PlateCalculatorStore(
+            repository: StubEquipment(profile: malformed),
+            settings: InMemoryRepositoryStack().settings)
         await store.load()
 
         #expect(store.equipment == nil)
@@ -219,9 +218,22 @@ struct PlateCalculatorStoreTests {
             PlateEquipmentState.current(hasLoaded: true, hasEquipment: true, failure: nil) == .ready)
     }
 
-    /// A store over the interim default, already read.
+    /// A store over the metric gym below, saved, marked in use, and already read.
+    ///
+    /// **The profile is written rather than assumed**, which is the change this task made: nothing
+    /// in the app invents a gym any more, so every arithmetic case here runs on one the "user" set
+    /// up — a 20 kg bar, 2.5 kg collars and a metric competition plate set.
     private static func loaded() async throws -> PlateCalculatorStore {
-        let store = PlateCalculatorStore(repository: InMemoryRepositoryStack().equipment)
+        let fakes = InMemoryRepositoryStack()
+        let profile = Self.profile(
+            bar: 20_000,
+            collar: 2_500,
+            plates: [25_000, 20_000, 15_000, 10_000, 5_000, 2_500, 1_250],
+            pairs: [4, 1, 1, 1, 1, 1, 1]
+        )
+        try await fakes.equipment.save(profile)
+        try await fakes.equipment.makeDefault(profileID: profile.id)
+        let store = PlateCalculatorStore(repository: fakes.equipment, settings: fakes.settings)
         await store.load()
         _ = try #require(store.equipment)
         return store
@@ -259,7 +271,7 @@ struct PlateCalculatorStoreTests {
 /// An equipment repository whose reads all refuse.
 ///
 /// The failure a faithful fake will not produce: `defaultProfile()` answering `nil` is a *user* with
-/// no gym, which is the interim default's case and not a failure at all.
+/// no gym, which is an empty state and not a failure at all.
 struct RefusingEquipment: EquipmentRepository {
     let error: RepositoryError
 

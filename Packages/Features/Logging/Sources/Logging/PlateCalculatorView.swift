@@ -98,6 +98,15 @@ struct PlateCalculatorSheet: View {
     /// Closes the sheet.
     let dismiss: () -> Void
 
+    /// Whether `FR-1.4.3`'s switcher is on this sheet's own stack.
+    ///
+    /// **Pushed onto the sheet's `NavigationStack` rather than presented over it**: the calculator
+    /// is already a presentation, and a second sheet over the first is where a control starts losing
+    /// taps to the presentation's own gestures. It is the sheet's rather than a `Route` for the
+    /// reason this screen has none — a calculator opened over a half-filled set is not a place the
+    /// app can be restored to, so nothing on it can be either.
+    @State private var isChoosingEquipment = false
+
     /// The content, with the sheet's own chrome around it.
     var body: some View {
         NavigationStack {
@@ -111,11 +120,15 @@ struct PlateCalculatorSheet: View {
                     ),
                     equipment: store.equipment,
                     unit: unit,
-                    retry: { Task { await store.load() } }
+                    retry: { Task { await store.load() } },
+                    chooseEquipment: { isChoosingEquipment = true }
                 )
                 .padding(Spacing.lg.points)
             }
             .background(ColorToken.background)
+            .navigationDestination(isPresented: $isChoosingEquipment) {
+                EquipmentProfilesView(store: store)
+            }
             .navigationTitle(Text(LoggingStrings.plateTitle))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -147,6 +160,10 @@ struct PlateCalculatorContent: View {
     /// Reads the equipment again — offered on the one failure a second read could resolve.
     let retry: () -> Void
 
+    /// Opens the gyms (`FR-1.4.3`) — from the empty state, and from the equipment section under an
+    /// answer this screen already gave.
+    let chooseEquipment: () -> Void
+
     /// Which locale the loads are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
@@ -175,11 +192,11 @@ struct PlateCalculatorContent: View {
 
     /// The screen's four states (`FR-1.13.1`), each one of T-1.09's shared components.
     ///
-    /// **No empty state, and that is a decision rather than an omission.** A profile stocking no
-    /// plates at all is a gym where exactly one weight loads — the bare bar — which the sections
-    /// below say in words. Rendering that as "nothing here yet" would report a real answer as an
-    /// absence, and there is nothing for an empty state's action to create that `FR-1.4.2` does not
-    /// already put in T-1.31's editor.
+    /// **The empty state is a gym that has not been set up, and not a gym with no plates.** A
+    /// profile stocking nothing is a gym where exactly one weight loads — the bare bar — which the
+    /// sections below say in words; rendering that as "nothing here yet" would report a real answer
+    /// as an absence. What is genuinely empty is a lifter who has configured no equipment at all,
+    /// and its action is the only thing that produces some (`FR-1.13.2`).
     ///
     /// **No offline state**: the profile is a local row (`G-2.1`, `G-2.3`), so a connection has
     /// nothing to do with whether this screen can answer.
@@ -192,6 +209,14 @@ struct PlateCalculatorContent: View {
         switch state {
         case .loading:
             LoadingStateView()
+        case .noEquipment:
+            EmptyStateView(
+                symbolName: "dumbbell",
+                headline: Text(LoggingStrings.plateNoEquipmentHeadline),
+                message: Text(LoggingStrings.plateNoEquipmentMessage),
+                action: StateAction(
+                    Text(LoggingStrings.plateNoEquipmentAction), handler: chooseEquipment)
+            )
         case .readFailed:
             ErrorStateView(
                 headline: Text(LoggingStrings.plateErrorHeadline),
@@ -301,16 +326,29 @@ struct PlateCalculatorContent: View {
     /// - Returns: The section.
     private func equipmentSection(_ equipment: LoadedEquipment) -> some View {
         GroupedSection(Text(LoggingStrings.plateEquipmentSection)) {
-            VStack(alignment: .leading, spacing: Spacing.xxs.points) {
-                Text(verbatim: equipment.displayName)
-                    .font(Typography.body.font)
-                    .foregroundStyle(ColorToken.textPrimary)
-                Text(barLine(of: equipment))
-                    .font(Typography.caption.font)
-                    .foregroundStyle(ColorToken.textSecondary)
+            VStack(alignment: .leading, spacing: Spacing.sm.points) {
+                VStack(alignment: .leading, spacing: Spacing.xxs.points) {
+                    Text(verbatim: equipment.displayName)
+                        .font(Typography.body.font)
+                        .foregroundStyle(ColorToken.textPrimary)
+                    Text(barLine(of: equipment))
+                        .font(Typography.caption.font)
+                        .foregroundStyle(ColorToken.textSecondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .combine)
+                // `FR-1.4.3` from here rather than from Settings alone: the moment a loading looks
+                // wrong is the moment the user knows which gym they are actually in.
+                Button(action: chooseEquipment) {
+                    Text(LoggingStrings.plateChangeEquipmentAction)
+                        .font(Typography.actionLabel.font)
+                        .foregroundStyle(ColorToken.brandAccent)
+                        .frame(maxWidth: .infinity, minHeight: TouchTarget.logging.points, alignment: .leading)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
         }
     }
 

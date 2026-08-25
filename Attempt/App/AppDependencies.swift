@@ -99,7 +99,8 @@ struct AppDependencies {
                     ),
                     screenWake: ScreenWakePreference(),
                     modifiers: SetModifierVocabulary(),
-                    equipment: PlateCalculatorStore(repository: stack.equipment)
+                    equipment: PlateCalculatorStore(
+                        repository: stack.equipment, settings: stack.settings)
                 )
             )
         } catch {

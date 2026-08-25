@@ -97,7 +97,8 @@
         /// What the editor's reference therefore compares is the row's *unread* line — which is a
         /// state the screen really has, on a first open before the local read answers.
         static var equipment: PlateCalculatorStore {
-            PlateCalculatorStore(repository: InMemoryRepositoryStack().equipment)
+            let fakes = InMemoryRepositoryStack()
+            return PlateCalculatorStore(repository: fakes.equipment, settings: fakes.settings)
         }
 
         /// The modifier list these references draw, in a suite nothing else can see.

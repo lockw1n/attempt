@@ -1,3 +1,4 @@
+import AppNavigation
 import DesignSystem
 import PowerliftingCore
 import RepositoryInterface
@@ -34,12 +35,49 @@ public struct SettingsLandingView: View {
                 case .failed(let diagnostic):
                     failure(diagnostic)
                 }
+                equipment
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Spacing.lg.points)
         }
         .background(ColorToken.background)
         .task { await state.load() }
+    }
+
+    /// `FR-1.10.3`'s way into the gyms.
+    ///
+    /// **Outside the phase switch**, and that is not tidiness: the equipment profiles are their own
+    /// rows in their own repository, so a preferences read that failed says nothing about whether
+    /// they can be shown — putting the link inside `.loaded` would make one failed read take away a
+    /// screen that does not depend on it.
+    ///
+    /// A `NavigationLink` over a `Route` rather than a closure: the destination is a screen another
+    /// module owns and the app target composes (`TR-1.3`), and the route is what lets this one name
+    /// it without importing it.
+    private var equipment: some View {
+        GroupedSection(Text(SettingsStrings.equipmentTitle)) {
+            NavigationLink(value: Route.settings(.equipmentProfiles)) {
+                HStack {
+                    VStack(alignment: .leading, spacing: Spacing.xxs.points) {
+                        Text(SettingsStrings.equipmentRow)
+                            .font(Typography.body.font)
+                            .foregroundStyle(ColorToken.textPrimary)
+                        Text(SettingsStrings.equipmentDetail)
+                            .font(Typography.caption.font)
+                            .foregroundStyle(ColorToken.textSecondary)
+                    }
+                    Spacer(minLength: Spacing.sm.points)
+                    Image(systemName: "chevron.right")
+                        .font(Typography.caption.font)
+                        .foregroundStyle(ColorToken.textTertiary)
+                        .accessibilityHidden(true)
+                }
+                .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points, alignment: .leading)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+        }
     }
 
     /// The loaded row: the one preference this task wires end to end, and the rest as read-outs.

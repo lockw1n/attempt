@@ -473,7 +473,8 @@ enum LoggingStrings {
             setDeleteConfirmCancel,
             setWarmupNumber("1"), setWarmupPosition(1), setWarmupSection, setWarmupLabel,
             setWarmupHint,
-        ] + allModifierStrings + allPlateStrings + MassUnit.allCases.map(setUnitSymbol(for:))
+        ] + allModifierStrings + allPlateStrings + allEquipmentStrings
+            + MassUnit.allCases.map(setUnitSymbol(for:))
             + [true, false].map(setMarkAction(isWarmup:))
             + [true, false].map(setOutcome(isCompleted:))
             + [true, false].map(setOutcomeAction(isCompleted:))
