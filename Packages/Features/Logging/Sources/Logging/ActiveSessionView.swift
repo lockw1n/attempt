@@ -32,6 +32,12 @@ public struct ActiveSessionView: View {
     /// reaches it — and a copy made per sheet would not see a term added in the last one.
     let vocabulary: SetModifierVocabulary
 
+    /// The gym `FR-1.4.1`'s loading is worked out on.
+    ///
+    /// **Held here for ``vocabulary``'s reason** (`TR-1.2`): which gym is active outlives the sheet
+    /// the calculator is presented from, and T-1.31 edits it in another tab.
+    let equipment: PlateCalculatorStore
+
     /// The way back to the root once the workout has ended, one way or the other.
     @Environment(\.dismiss) private var dismiss
 
@@ -85,9 +91,15 @@ public struct ActiveSessionView: View {
     /// - Parameters:
     ///   - store: The workout in progress. One per app, built where the repositories are.
     ///   - vocabulary: The modifier terms the set editor offers (`FR-1.2.8`), built there too.
-    public init(store: ActiveSessionStore, vocabulary: SetModifierVocabulary) {
+    ///   - equipment: The gym the plate calculator loads against (`FR-1.4.1`), built there too.
+    public init(
+        store: ActiveSessionStore,
+        vocabulary: SetModifierVocabulary,
+        equipment: PlateCalculatorStore
+    ) {
         self.store = store
         self.vocabulary = vocabulary
+        self.equipment = equipment
     }
 
     /// The workout, or whichever of the screen's other states is current.
@@ -134,6 +146,7 @@ public struct ActiveSessionView: View {
                 draft: draft(for: target),
                 isEditing: target.editing != nil,
                 vocabulary: vocabulary,
+                equipment: equipment,
                 log: { write($0, target) },
                 cancel: { editing = nil },
                 delete: { delete(target) }

@@ -285,3 +285,42 @@
 "logging.session.set.modifier.touch-and-go" = "Touch and go";
 "logging.session.set.modifier.deficit" = "Deficit";
 "logging.session.set.modifier.board" = "Board";
+
+/* FR-1.4.1 and FR-1.4.4 — the plate calculator, reached from the set editor's weight field. One
+   label for the row and the screen: the row is the screen's summary and the screen is the row
+   expanded, so two spellings would be two names for one thing. */
+"logging.session.plate.row.label" = "Plate loading";
+/* Drawn before the equipment has been read and after a read that failed. It names the tap rather
+   than the wait — the tap resolves both, where "loading" would go on saying so over a read that is
+   never coming back. */
+"logging.session.plate.row.unknown" = "Tap to check your equipment";
+/* A weight that will not go on the bar. The two nearest weights are the screen's job (FR-1.4.4);
+   this row is one line inside a sheet already at NFR-1.10's ceiling. */
+"logging.session.plate.row.not-loadable" = "Not exactly loadable";
+"logging.session.plate.title" = "Plate loading";
+"logging.session.plate.done.action" = "Done";
+"logging.session.plate.target.label" = "Target";
+"logging.session.plate.exact.section" = "Loads exactly";
+"logging.session.plate.below.section" = "Nearest below";
+"logging.session.plate.above.section" = "Nearest above";
+/* FR-1.13.3, and the two halves say different things because the remedies are nothing alike: one is
+   a target lighter than the equipment can go, the other is a gym without heavy enough plates. */
+"logging.session.plate.below.none.headline" = "Nothing loads below";
+"logging.session.plate.below.none.message" = "The bar and its collars already weigh more than this target.";
+"logging.session.plate.above.none.headline" = "Nothing loads above";
+"logging.session.plate.above.none.message" = "This gym's plates do not reach that weight. Add heavier pairs to the equipment profile.";
+/* A loading that carries no plates — an answer, not a blank. */
+"logging.session.plate.bare-bar" = "Bar and collars only";
+"logging.session.plate.per-side.label" = "Per side";
+"logging.session.plate.equipment.section" = "Equipment";
+/* G-6.2: the interim plate set is a claim about the user's gym that the user did not make, so it is
+   labelled rather than presented as theirs. T-1.31 replaces it with a profile they author. */
+"logging.session.plate.equipment.interim" = "A standard metric gym, assumed until you set up your own.";
+"logging.session.plate.equipment.bar %@ %@" = "Bar %1$@, collars %2$@ each";
+/* One denomination on one side. The multiplication sign is a character here rather than a drawn
+   glyph, so VoiceOver reads it as a word. */
+"logging.session.plate.count %@ %@" = "%1$@ × %2$@";
+"logging.session.plate.error.headline" = "Equipment could not be read";
+"logging.session.plate.error.message" = "Your bar and plates could not be loaded, so there is nothing to work the loading out from.";
+"logging.session.plate.unusable.headline" = "This equipment cannot be used";
+"logging.session.plate.unusable.message" = "Its plate list does not describe a gym. Edit the equipment profile to put it right.";

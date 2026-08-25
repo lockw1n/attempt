@@ -2,6 +2,7 @@
 
     import Foundation
     import PowerliftingCore
+    import RepositoryFakes
     import RepositoryInterface
     import SwiftUI
 
@@ -94,6 +95,15 @@
         ///
         /// Removed from disk as soon as it has been read, on ``preference(isEnabled:)``' argument:
         /// a suite that outlived the run would be inherited by the next one.
+        /// A plate-calculator store that has read nothing, which is the only state `ImageRenderer`
+        /// can put the set editor's row in: the read is a `.task`, and the renderer runs none.
+        ///
+        /// What the editor's reference therefore compares is the row's *unread* line — which is a
+        /// state the screen really has, on a first open before the local read answers.
+        static var equipment: PlateCalculatorStore {
+            PlateCalculatorStore(repository: InMemoryRepositoryStack().equipment)
+        }
+
         static var vocabulary: SetModifierVocabulary {
             let name = "snapshots.\(UUID().uuidString)"
             guard let defaults = UserDefaults(suiteName: name) else {
