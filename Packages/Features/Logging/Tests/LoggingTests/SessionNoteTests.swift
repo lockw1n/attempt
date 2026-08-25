@@ -180,6 +180,21 @@ struct SessionNoteTests {
         #expect(store.session == session)
     }
 
+    @Test("A failed note write does not follow the user into the next workout")
+    func failedWriteIsForgottenWithTheWorkout() async throws {
+        // The screen retires this on the next keystroke, and two workouts whose notes are both
+        // empty produce no keystroke — so without the store dropping it, the next workout's field
+        // would open already carrying the last one's failure.
+        let workout = try await Workout.started()
+        workout.store.noteWriteFailure = "left over"
+
+        await workout.store.finish()
+        await workout.store.start(on: .now)
+
+        #expect(workout.store.session != nil)
+        #expect(workout.store.noteWriteFailure == nil)
+    }
+
     @Test("A note that lands after one that failed retires the diagnostic")
     func aLaterSaveRetiresTheDiagnostic() async throws {
         let workout = try await Workout.started()

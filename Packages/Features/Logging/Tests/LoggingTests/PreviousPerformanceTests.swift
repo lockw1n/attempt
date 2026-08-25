@@ -113,6 +113,61 @@ struct PreviousPerformanceTests {
                 == [Weight(grams: 105_000)])
     }
 
+    @Test("Two workouts on one day are ordered by when they started, not by identifier")
+    func sameDaySessionIsFoundEitherWayRound() async throws {
+        // `sessions(in:)` orders by `(date, id)` and `date` is the training *day*, so two workouts
+        // on it are separated by a UUID and by nothing else. Both orientations, because either one
+        // alone passes by luck: the evening session is dropped along with the morning one it exists
+        // to compare against exactly when its identifier sorts lower.
+        let low = try #require(UUID(uuidString: "00000000-0000-4000-8000-000000000000"))
+        let high = try #require(UUID(uuidString: "FFFFFFFF-FFFF-4FFF-BFFF-FFFFFFFFFFFF"))
+
+        let currentSortsLow = try await sameDayPrevious(currentID: low, pastID: high)
+        let currentSortsHigh = try await sameDayPrevious(currentID: high, pastID: low)
+
+        #expect(currentSortsLow == .weeksAgo(0))
+        #expect(currentSortsHigh == .weeksAgo(0))
+    }
+
+    /// A morning workout and an evening one on the same training day, with both identifiers pinned.
+    ///
+    /// - Parameters:
+    ///   - currentID: What the workout in progress carries.
+    ///   - pastID: What the morning workout carries.
+    /// - Returns: The training day the one card's strip found, or `nil` if it found nothing.
+    private func sameDayPrevious(currentID: UUID, pastID: UUID) async throws -> Date? {
+        let day = Date.weeksAgo(0)
+        let repositories = InMemoryRepositoryStack()
+        let catalogue = try await Workout.seed(into: repositories)
+        let morning = try await History.session(
+            on: day, startedAt: day, id: pastID, in: repositories)
+        try await History.entry(
+            for: catalogue[0].id, in: morning, order: 0, kilos: 100, in: repositories)
+        try await repositories.workouts.save(
+            WorkoutSession(
+                id: currentID,
+                createdAt: day,
+                updatedAt: day,
+                deletedAt: nil,
+                date: day,
+                startedAt: day.addingTimeInterval(28_800),
+                endedAt: nil,
+                notes: "",
+                bodyweight: nil,
+                programRunID: nil,
+                scheduledWorkoutID: nil
+            ))
+        let store = ActiveSessionStore(
+            repository: repositories.workouts,
+            catalogue: repositories.exercises,
+            settings: repositories.settings)
+        await store.adopt(sessionID: currentID)
+        await store.addExercise(id: catalogue[0].id)
+
+        let card = try #require(store.exercises.first)
+        return store.previous.byEntryID[card.id]?.date
+    }
+
     // MARK: - What the card makes of it (FR-1.2.10, FR-1.13.3)
 
     @Test("An exercise never trained before has no previous session, and says so")
@@ -145,7 +200,7 @@ struct PreviousPerformanceTests {
             on: .weeksAgo(1),
             exercise: workout.squat.id,
             kilos: 60,
-            sets: [true],
+            sets: [PastSet(isWarmup: true)],
             in: workout.repositories
         )
         await workout.store.addExercise(id: workout.squat.id)
@@ -166,7 +221,7 @@ struct PreviousPerformanceTests {
             in: past,
             order: 0,
             kilos: 100,
-            sets: [true, false],
+            sets: [PastSet(isWarmup: true), PastSet()],
             in: workout.repositories
         )
         await workout.store.addExercise(id: workout.squat.id)
@@ -179,6 +234,49 @@ struct PreviousPerformanceTests {
         #expect(performance.sets.count == 2)
         #expect(performance.workingSets.count == 1)
         #expect(workout.store.previous.state(forEntryID: card.id) == .performed(performance))
+    }
+
+    @Test("A previous session whose every working set failed is no previous performance")
+    func failedWorkOnlyIsNotAPerformance() async throws {
+        // The other half of `G-1.8`'s partition, and the same answer the warmups-only case gets:
+        // a strip naming a date with a load against zero reps under it is not a comparison.
+        let workout = try await Workout.started()
+        try await History.workout(
+            on: .weeksAgo(1),
+            exercise: workout.squat.id,
+            kilos: 140,
+            sets: [PastSet(isCompleted: false)],
+            in: workout.repositories
+        )
+        await workout.store.addExercise(id: workout.squat.id)
+
+        await workout.store.loadPreviousPerformances()
+
+        let card = try #require(workout.store.exercises.first)
+        #expect(workout.store.previous.byEntryID[card.id]?.sets.count == 1)
+        #expect(workout.store.previous.state(forEntryID: card.id) == .noneYet)
+    }
+
+    @Test("The strip carries the failed sets it does not draw")
+    func failedSetsAreCarriedButNotCompared() async throws {
+        let workout = try await Workout.started()
+        let past = try await History.session(on: .weeksAgo(1), in: workout.repositories)
+        try await History.entry(
+            for: workout.squat.id,
+            in: past,
+            order: 0,
+            kilos: 140,
+            sets: [PastSet(), PastSet(isCompleted: false)],
+            in: workout.repositories
+        )
+        await workout.store.addExercise(id: workout.squat.id)
+
+        await workout.store.loadPreviousPerformances()
+
+        let card = try #require(workout.store.exercises.first)
+        let performance = try #require(workout.store.previous.byEntryID[card.id])
+        #expect(performance.sets.count == 2)
+        #expect(performance.workingSets.map(\.order) == [0])
     }
 
     // MARK: - When it is read, and when it fails
@@ -249,171 +347,5 @@ struct PreviousPerformanceTests {
         #expect(workout.store.previous.hasLoaded)
         #expect(workout.store.previous.byEntryID.isEmpty)
         #expect(workout.store.previous.readFailure == nil)
-    }
-}
-
-/// Sessions logged before the one in progress — what `FR-1.2.10` reads back.
-enum History {
-    /// One past workout with one exercise in it.
-    ///
-    /// - Parameters:
-    ///   - day: The training day.
-    ///   - exercise: The catalogue row performed.
-    ///   - kilos: The load, in whole kilograms.
-    ///   - sets: One flag per set logged — `true` for a warmup. One working set by default.
-    ///   - repositories: Where it is written.
-    static func workout(
-        on day: Date,
-        exercise: UUID,
-        kilos: Int,
-        sets: [Bool] = [false],
-        in repositories: InMemoryRepositoryStack
-    ) async throws {
-        let session = try await session(on: day, in: repositories)
-        try await entry(
-            for: exercise, in: session, order: 0, kilos: kilos, sets: sets, in: repositories)
-    }
-
-    /// One finished past session, with nothing in it yet.
-    ///
-    /// Finished, which is what makes it a *past* session: nothing would resume it.
-    ///
-    /// - Parameters:
-    ///   - day: The training day.
-    ///   - repositories: Where it is written.
-    /// - Returns: The session.
-    @discardableResult
-    static func session(
-        on day: Date,
-        in repositories: InMemoryRepositoryStack
-    ) async throws -> WorkoutSession {
-        let session = WorkoutSession(
-            id: UUID(),
-            createdAt: day,
-            updatedAt: day,
-            deletedAt: nil,
-            date: day,
-            startedAt: day,
-            endedAt: day.addingTimeInterval(3600),
-            notes: "",
-            bodyweight: nil,
-            programRunID: nil,
-            scheduledWorkoutID: nil
-        )
-        try await repositories.workouts.save(session)
-        return session
-    }
-
-    /// One exercise performed in a past session, with a single set logged against it.
-    ///
-    /// - Parameters:
-    ///   - exercise: The catalogue row performed.
-    ///   - session: The workout it was performed in.
-    ///   - order: Its place in that workout.
-    ///   - kilos: The load, in whole kilograms.
-    ///   - sets: One flag per set logged — `true` for a warmup. An entry of nothing but warmups is
-    ///     a ramp and no performance, which is one of the cases above.
-    ///   - repositories: Where it is written.
-    static func entry(
-        for exercise: UUID,
-        in session: WorkoutSession,
-        order: Int,
-        kilos: Int,
-        sets: [Bool] = [false],
-        in repositories: InMemoryRepositoryStack
-    ) async throws {
-        let day = session.date
-        let entry = ExerciseEntry(
-            id: UUID(),
-            createdAt: day,
-            updatedAt: day,
-            deletedAt: nil,
-            sessionID: session.id,
-            exerciseID: exercise,
-            order: order,
-            notes: ""
-        )
-        try await repositories.workouts.save(entry)
-        for (position, isWarmup) in sets.enumerated() {
-            try await repositories.workouts.save(
-                SetEntry(
-                    id: UUID(),
-                    createdAt: day,
-                    updatedAt: day,
-                    deletedAt: nil,
-                    entryID: entry.id,
-                    order: position,
-                    weight: Weight(grams: kilos * 1_000),
-                    reps: 5,
-                    rpe: nil,
-                    rir: nil,
-                    isWarmup: isWarmup,
-                    isCompleted: true,
-                    targetWeight: nil,
-                    targetReps: nil,
-                    modifiers: [],
-                    notes: "",
-                    completedAt: day
-                ))
-        }
-    }
-}
-
-/// A repository that answers everything but the list of sessions, which it refuses.
-///
-/// The one failure this suite needs and a faithful fake will not produce: the workout in progress
-/// still reads, so the cards are on screen when the history behind them is not.
-actor UnreadableHistory: WorkoutRepository {
-    private let base: any WorkoutRepository
-    private let error: RepositoryError
-
-    init(base: any WorkoutRepository, error: RepositoryError) {
-        self.base = base
-        self.error = error
-    }
-
-    func sessions(
-        in range: ClosedRange<Date>,
-        includingDeleted: Bool
-    ) async throws -> [WorkoutSession] {
-        throw error
-    }
-
-    func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
-        try await base.session(id: id, includingDeleted: includingDeleted)
-    }
-
-    func save(_ session: WorkoutSession) async throws { try await base.save(session) }
-
-    func deleteSession(id: UUID) async throws { try await base.deleteSession(id: id) }
-
-    func entries(
-        forSessionID sessionID: UUID,
-        includingDeleted: Bool
-    ) async throws -> [ExerciseEntry] {
-        try await base.entries(forSessionID: sessionID, includingDeleted: includingDeleted)
-    }
-
-    func save(_ entry: ExerciseEntry) async throws { try await base.save(entry) }
-
-    func deleteExerciseEntry(id: UUID) async throws { try await base.deleteExerciseEntry(id: id) }
-
-    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
-        try await base.sets(forEntryID: entryID, includingDeleted: includingDeleted)
-    }
-
-    func save(_ set: SetEntry) async throws { try await base.save(set) }
-
-    func deleteSet(id: UUID) async throws { try await base.deleteSet(id: id) }
-
-    func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
-        try await base.sets(forExerciseID: exerciseID, includingDeleted: includingDeleted)
-    }
-}
-
-extension Date {
-    /// A fixed training day, so a comparison in these tests is between two constants.
-    fileprivate static func weeksAgo(_ weeks: Int) -> Date {
-        Date(timeIntervalSince1970: 1_700_000_000 - Double(weeks) * 604_800)
     }
 }

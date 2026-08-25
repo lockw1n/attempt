@@ -375,16 +375,24 @@ public final class ActiveSessionStore {
 
     /// Drops the exercise list, because the workout it belonged to is no longer the one held.
     ///
-    /// **Both diagnostics go with it, and so does the previous-performance answer.** A failure
+    /// **All three diagnostics go with it, and so does the previous-performance answer.** A failure
     /// describes a read or a write against a workout, and carrying one across a change of session
     /// would report it against the next one; the "last time" strips are keyed on the *entries* of
     /// the workout just dropped, so keeping them would draw one workout's history on another's
     /// cards.
+    ///
+    /// The note's diagnostic is on that list rather than left to the screen that clears it on the
+    /// next keystroke: two workouts whose notes are both empty produce no keystroke, so the field
+    /// would open on the next workout already carrying the last one's failure.
+    ///
+    /// Every caller replaces the held session or drops it, which is what makes clearing all four
+    /// safe — nothing here runs while the workout a diagnostic belongs to is still on screen.
     private func forgetExercises() {
         exercises = []
         hasLoadedExercises = false
         exercisesReadFailure = nil
         exercisesWriteFailure = nil
+        noteWriteFailure = nil
         previous = PreviousPerformances()
     }
 

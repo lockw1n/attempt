@@ -18,9 +18,13 @@ struct PreviousPerformance: Equatable, Sendable {
 
     /// The work proper, which is what "how it went last time" means.
     ///
-    /// Warmups are excluded for the reason every derived value in this app excludes them: they are
-    /// the ramp, not the effort being compared against.
-    var workingSets: [SetEntry] { sets.filter { !$0.isWarmup } }
+    /// **Both of `G-1.8`'s columns, which is the partition every derived value in this app makes.**
+    /// A warmup is the ramp rather than the effort being compared against, and a set that was not
+    /// completed is `FR-1.2.5`'s failed one — drawn, it would put a load against zero reps under
+    /// *Last time* as though it were work done. The personal record and the e1RM read the two
+    /// columns together, so a strip that read one of them would compare today against a number no
+    /// other screen recognises.
+    var workingSets: [SetEntry] { sets.filter { !$0.isWarmup && $0.isCompleted } }
 }
 
 /// The previous performance behind every card in the workout, and whether it is known yet.
@@ -49,7 +53,8 @@ struct PreviousPerformances: Equatable, Sendable {
     /// card, so a failure is one fact — rendered once beneath the list, where the exercises' own
     /// failed write is rendered, instead of repeated inside every card in the workout.
     ///
-    /// **A previous session with nothing but warmups in it counts as no previous performance.** The
+    /// **A previous session with no work in it counts as no previous performance** — one of nothing
+    /// but warmups, and one whose every working set failed, being the two ways that happens. The
     /// alternative is a strip naming a date with nothing under it, which is exactly the blank area
     /// `FR-1.2.10` is served by the insufficient-data state instead of.
     ///
@@ -86,11 +91,12 @@ enum PreviousPerformanceState: Equatable {
 extension ActiveSessionStore {
     /// Reads the previous performance behind every card in the workout (`FR-1.2.10`).
     ///
-    /// **"Previous" is the repository's own order rather than a comparison written here.**
-    /// `WorkoutRepository` lists sessions newest first by `(date, id)`, which is the first key of
-    /// the `(session date, entry order, set order)` chronology every derived value in this app is
-    /// computed against — so everything listed *after* the workout being logged is what came before
-    /// it, backdating included, and no second ordering is invented for this screen.
+    /// **"Previous" is the repository's own order with one key inserted** — `WorkoutRepository`
+    /// lists sessions newest first by `(date, id)`, and `date` is the first key of the
+    /// `(session date, entry order, set order)` chronology every derived value in this app is
+    /// computed against, so everything listed *after* the workout being logged is what came before
+    /// it, backdating included. What that order cannot answer is two workouts on one training day;
+    /// see ``chronological(_:)``.
     ///
     /// **A session's own last entry wins.** An exercise performed twice in one past workout is two
     /// entries, and the later of the two is what was done last.
@@ -142,7 +148,7 @@ extension ActiveSessionStore {
         // Dropping *to* the current workout rather than filtering it out: a history that somehow
         // does not list it yields no previous session at all, which is the honest answer, where a
         // filter would silently compare against workouts logged after it.
-        let past = history.drop { $0.id != current.id }.dropFirst()
+        let past = Self.chronological(history).drop { $0.id != current.id }.dropFirst()
         var wanted = Set(cards.map(\.entry.exerciseID))
         var found: [UUID: PreviousPerformance] = [:]
         for session in past where !wanted.isEmpty {
@@ -160,5 +166,30 @@ extension ActiveSessionStore {
             uniqueKeysWithValues: cards.compactMap { card in
                 found[card.entry.exerciseID].map { (card.id, $0) }
             })
+    }
+
+    /// The history newest first, with two workouts on one training day in the order they happened.
+    ///
+    /// **The repository's order with a key inserted, not a second ordering.** `sessions(in:)` sorts
+    /// by `(date, id)` descending and `date` is a training *day*, so two workouts on it carry the
+    /// same value and their relative order falls to a `UUID` — which says nothing about which came
+    /// first. The walk above reads that order as chronology, so without this an evening session
+    /// drops the morning one it exists to compare against, on the spelling of an identifier and
+    /// therefore about half the time.
+    ///
+    /// ``RepositoryInterface/WorkoutSession/startedAt`` is the only column that separates two
+    /// workouts inside a day, so it goes second; `date` stays first, and the identifier stays last
+    /// so the result is still a total order over rows a user could otherwise not tell apart.
+    ///
+    /// **A session never tracked live sorts earliest in its day.** It carries no start time, and
+    /// nothing about it claims to have happened after a workout that does.
+    ///
+    /// - Parameter sessions: The history, in the order the repository returned it.
+    /// - Returns: The same sessions, newest first.
+    private static func chronological(_ sessions: [WorkoutSession]) -> [WorkoutSession] {
+        sessions
+            .map { (key: ($0.date, $0.startedAt ?? .distantPast, $0.id.uuidString), session: $0) }
+            .sorted { $0.key > $1.key }
+            .map(\.session)
     }
 }

@@ -237,7 +237,7 @@
             return draft
         }
 
-        /// One logged set, with every identifier and timestamp fixed.        /// One logged set, with every identifier and timestamp fixed.
+        /// One logged set, with every identifier and timestamp fixed.
         private static func loggedSet(
             index: Int,
             weight: Weight,
