@@ -233,7 +233,6 @@ struct SetEditorFields: View {
             hint: Text(LoggingStrings.setModifierHint)
         ) {
             Button {
-                hasInput = true
                 isPicking = true
             } label: {
                 HStack(spacing: Spacing.sm.points) {
@@ -254,24 +253,40 @@ struct SetEditorFields: View {
             .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(Text(LoggingStrings.setModifierLabel))
+            // The summary as a *value* and not as the label (`G-4.2`): combining the children builds
+            // one from them, and the label below replaces it — so what is applied, which this row is
+            // the only place on the form to see, would be announced nowhere.
+            .accessibilityValue(Text(verbatim: summaryValue))
+            // Rather than on the tap that opens the picker: `hasInput` is what keeps a form nobody
+            // has filled in from opening on a refusal, and opening the picker and dismissing it is
+            // not filling anything in. Every other field here marks input on the change too.
+            .onChange(of: draft.modifiers) { hasInput = true }
         }
     }
 
-    /// What the row says: the applied modifiers, or that there are none.
+    /// What the row says: the applied modifiers as a list in the user's locale, or that there are
+    /// none.
+    ///
+    /// A string rather than a `Text`, because the row announces it as well as drawing it.
+    private var summaryValue: String {
+        draft.modifiers.isEmpty
+            ? String(localized: LoggingStrings.setModifierNone)
+            : draft.modifiers.map(\.displayName)
+                .formatted(.list(type: .and).locale(draft.locale))
+    }
+
+    /// The summary, drawn — quiet where there is nothing applied.
     @ViewBuilder private var summary: some View {
         if draft.modifiers.isEmpty {
             Text(LoggingStrings.setModifierNone)
                 .font(Typography.body.font)
                 .foregroundStyle(ColorToken.textTertiary)
         } else {
-            Text(
-                draft.modifiers.map(\.displayName)
-                    .formatted(.list(type: .and).locale(draft.locale))
-            )
-            .font(Typography.body.font)
-            .foregroundStyle(ColorToken.textPrimary)
-            .multilineTextAlignment(.leading)
-            .fixedSize(horizontal: false, vertical: true)
+            Text(verbatim: summaryValue)
+                .font(Typography.body.font)
+                .foregroundStyle(ColorToken.textPrimary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

@@ -69,19 +69,29 @@ struct SetModifierVocabularyTests {
         #expect(vocabulary.add("Belt") == nil)
         #expect(vocabulary.add("CHAINS") == nil)
         #expect(vocabulary.add("Touch and go") == nil)
+        // And against the *stored* spelling as well as the drawn one. `touchAndGo` reads as "Touch
+        // and go", so a check against the drawn name alone admits it — and the list then holds two
+        // entries sharing one `SetModifier`, which is a repeated identity in the picker's rows and a
+        // built-in that `rename` will happily edit. Outside English that is every built-in, not one.
+        #expect(vocabulary.add("touchAndGo") == nil)
+        #expect(vocabulary.add("TOUCHANDGO") == nil)
         #expect(vocabulary.custom == ["chains"])
+        // Anchored to the count rather than to a spelling: what the refusals are protecting is that
+        // no two offered terms are the same value.
+        #expect(Set(vocabulary.terms.map(\.rawValue)).count == 10)
     }
 
     @Test("Only the user's own terms can be renamed or removed")
     func theBuiltInTermsAreNotEditable() {
         let (vocabulary, _) = Self.vocabulary(stored: ["chains"])
 
-        #expect(vocabulary.isEditable(SetModifier(rawValue: "chains")))
-        #expect(!vocabulary.isEditable(SetModifier(.belt)))
         #expect(!vocabulary.rename(SetModifier(.belt), to: "girdle"))
         #expect(!vocabulary.remove(SetModifier(.belt)))
+        // The contrast in the same test: the user's own term takes both calls the built-in refused.
+        #expect(vocabulary.rename(SetModifier(rawValue: "chains"), to: "bands"))
+        #expect(vocabulary.remove(SetModifier(rawValue: "bands")))
         #expect(vocabulary.terms.contains(SetModifier(.belt)))
-        #expect(vocabulary.terms.count == 10)
+        #expect(vocabulary.terms.count == 9)
     }
 
     @Test("A rename keeps the term's place, and is refused where an add would be")

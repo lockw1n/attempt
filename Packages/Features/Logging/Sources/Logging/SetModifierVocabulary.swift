@@ -71,14 +71,6 @@ public final class SetModifierVocabulary {
         return known + extra
     }
 
-    /// Whether the user may rename or remove this term — true for their own, false for the nine.
-    ///
-    /// - Parameter modifier: The term in question.
-    /// - Returns: Whether it is one of ``custom``.
-    public func isEditable(_ modifier: SetModifier) -> Bool {
-        custom.contains(modifier.rawValue)
-    }
-
     /// Adds a term to the list (`FR-1.2.8`).
     ///
     /// **Trimmed of surrounding whitespace and refused when empty or already offered**, which is the
@@ -86,9 +78,9 @@ public final class SetModifierVocabulary {
     /// typed into a text field has a trailing space by accident, where a spelling that arrived from
     /// storage has one on purpose.
     ///
-    /// **The duplicate check is against what the picker *draws*, case-insensitively** — see
-    /// ``isDuplicate(_:)``. Stored verbatim all the same: what is refused is a second row the user
-    /// could not tell from the first, not a spelling.
+    /// **The duplicate check is against both the drawn name and the stored spelling,
+    /// case-insensitively** — see ``isDuplicate(_:excluding:)``. Stored verbatim all the same: what
+    /// is refused is a second row the user could not tell from the first, not a spelling.
     ///
     /// - Parameter spelling: What the user typed.
     /// - Returns: The term, or `nil` where it was empty or duplicated.
@@ -101,22 +93,28 @@ public final class SetModifierVocabulary {
         return SetModifier(rawValue: trimmed)
     }
 
-    /// Whether a term reading `spelling` is already on the list.
+    /// Whether a term reading `spelling` — or *stored* as it — is already on the list.
     ///
-    /// **Compared against the *drawn* name and without regard to case**, which is the software
+    /// **Both names are compared, and without regard to case.** The drawn one is the software
     /// keyboard rather than a preference: it capitalises the first word by default, so a user typing
     /// `belt` gets `Belt` — a term the app would neither recognise nor refuse, drawn in the picker as
-    /// a second row indistinguishable from the built-in one. The built-in nine are compared by their
-    /// localised names for the same reason: what makes two rows a duplicate is that they read alike.
+    /// a second row indistinguishable from the built-in one. The stored one is the half a display
+    /// name cannot cover: `touchAndGo` reads as *Touch and go*, so a spelling check against the drawn
+    /// name alone admits the raw one and the list then holds two terms with one ``SetModifier`` —
+    /// which is a repeated identity in the picker's rows and a built-in that ``rename(_:to:)`` will
+    /// edit. Localisation makes that the ordinary case rather than the exotic one: outside English
+    /// no built-in's drawn name is its spelling (`G-3.4`).
     ///
     /// - Parameters:
     ///   - spelling: The trimmed spelling.
     ///   - term: A term to ignore — the one being renamed, so that correcting its own capitalisation
     ///     is not refused as a duplicate of itself.
-    /// - Returns: Whether something already offered reads the same.
+    /// - Returns: Whether something already offered reads the same, or is spelled the same.
     private func isDuplicate(_ spelling: String, excluding term: SetModifier? = nil) -> Bool {
-        terms.contains {
-            $0 != term && $0.displayName.caseInsensitiveCompare(spelling) == .orderedSame
+        terms.contains { offered in
+            guard offered != term else { return false }
+            return offered.displayName.caseInsensitiveCompare(spelling) == .orderedSame
+                || offered.rawValue.caseInsensitiveCompare(spelling) == .orderedSame
         }
     }
 

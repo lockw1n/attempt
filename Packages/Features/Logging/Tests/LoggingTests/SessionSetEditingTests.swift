@@ -285,6 +285,38 @@ struct PastSessionSetEditingTests {
         #expect(edited.modifiers.last?.known == nil)
     }
 
+    @Test("An edit that drops a modifier drops it — the column is collected, not carried")
+    func editingASetRewritesItsModifiers() async throws {
+        let history = try await TrainingHistory.threeSessions()
+        let target = try #require(history.sets(inSession: 0).first)
+        #expect(target.modifiers == [SetModifier(.belt), SetModifier(rawValue: "chains")])
+
+        // Every other field is handed back as it stands, so the modifiers are the only thing that
+        // can account for the row being written at all.
+        let wrote = try await history.writer.edit(
+            id: target.id,
+            inEntryID: target.entryID,
+            to: SetEntryValues(
+                weight: target.weight,
+                reps: target.reps,
+                rpe: target.rpe,
+                isWarmup: target.isWarmup,
+                modifiers: [SetModifier(.sleeves)],
+                notes: target.notes
+            )
+        )
+
+        // The assertion the suite above cannot make: it hands the writer the modifiers the row
+        // already holds, so carrying the stored column and collecting the form's are the same
+        // answer there. Here they are opposite ones — carried, the belt and the unrecognised
+        // spelling both survive, `edited == target` holds, nothing is written, and taking a modifier
+        // off a set is impossible from any screen.
+        #expect(wrote)
+        let edited = try #require(await history.stored(id: target.id, inEntryID: target.entryID))
+        #expect(edited.modifiers == [SetModifier(.sleeves)])
+        #expect(!edited.modifiers.contains(SetModifier(.belt)))
+    }
+
     @Test("The set beside it in the same session does not move either")
     func editingAPastSetLeavesItsNeighbourAlone() async throws {
         let history = try await TrainingHistory.threeSessions()
