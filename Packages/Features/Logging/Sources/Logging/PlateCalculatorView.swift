@@ -166,7 +166,7 @@ struct PlateCalculatorContent: View {
             Text(LoggingStrings.plateTargetLabel)
                 .font(Typography.metricLabel.font)
                 .foregroundStyle(ColorToken.textSecondary)
-            Text(verbatim: PlateLoadingSummary.render(target, in: unit, locale: locale))
+            Text(verbatim: PlateLoadingSummary.load(target, in: unit, locale: locale))
                 .font(Typography.numericValue.font)
                 .foregroundStyle(ColorToken.textPrimary)
         }
@@ -275,7 +275,7 @@ struct PlateCalculatorContent: View {
     /// - Returns: The row.
     private func loadingRow(_ loading: PlateLoading) -> some View {
         VStack(alignment: .leading, spacing: Spacing.xs.points) {
-            Text(verbatim: PlateLoadingSummary.render(loading.totalWeight, in: unit, locale: locale))
+            Text(verbatim: PlateLoadingSummary.load(loading.totalWeight, in: unit, locale: locale))
                 .font(Typography.numericValue.font)
                 .foregroundStyle(ColorToken.textPrimary)
             Text(LoggingStrings.platePerSideLabel)
@@ -302,7 +302,7 @@ struct PlateCalculatorContent: View {
     private func equipmentSection(_ equipment: LoadedEquipment) -> some View {
         GroupedSection(Text(LoggingStrings.plateEquipmentSection)) {
             VStack(alignment: .leading, spacing: Spacing.xxs.points) {
-                Text(verbatim: name(of: equipment))
+                Text(verbatim: equipment.displayName)
                     .font(Typography.body.font)
                     .foregroundStyle(ColorToken.textPrimary)
                 Text(barLine(of: equipment))
@@ -312,18 +312,6 @@ struct PlateCalculatorContent: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
         }
-    }
-
-    /// What to call the gym: the user's own word for it, or the catalogue's sentence for the one
-    /// they have not set up.
-    ///
-    /// - Parameter equipment: The gym.
-    /// - Returns: The name.
-    private func name(of equipment: LoadedEquipment) -> String {
-        guard !equipment.isInterim, !equipment.profile.name.isEmpty else {
-            return String(localized: LoggingStrings.plateEquipmentInterim)
-        }
-        return equipment.profile.name
     }
 
     /// The bar and its collars, which is the half of a profile a plate list does not show.

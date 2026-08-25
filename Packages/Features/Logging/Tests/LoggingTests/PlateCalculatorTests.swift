@@ -131,6 +131,41 @@ struct PlateCalculatorStoreTests {
         #expect(Self.plates(of: loading) == [Weight(grams: 10_000)])
     }
 
+    @Test("An unnamed profile the user configured is not disclaimed as the interim default")
+    func anUnnamedProfileIsStillTheirs() async throws {
+        let fakes = InMemoryRepositoryStack()
+        let profile = Self.profile(bar: 20_000, collar: 0, plates: [10_000], pairs: [1], name: "")
+        try await fakes.equipment.save(profile)
+        try await fakes.equipment.makeDefault(profileID: profile.id)
+
+        let store = PlateCalculatorStore(repository: fakes.equipment)
+        await store.load()
+        let equipment = try #require(store.equipment)
+
+        #expect(equipment.isInterim == false)
+        // Anchored to the interim sentence rather than to another rendering: the defect is this
+        // gym being labelled as one the user has not set up, and only that string says so.
+        #expect(
+            equipment.displayName
+                != String(localized: LoggingStrings.plateEquipmentInterim))
+        #expect(equipment.displayName == String(localized: LoggingStrings.plateEquipmentUnnamed))
+    }
+
+    @Test("A named profile is called what the user called it, and the interim one says what it is")
+    func gymsAreNamedByWhoeverNamedThem() async throws {
+        let store = try await Self.loaded()
+        #expect(
+            try #require(store.equipment).displayName
+                == String(localized: LoggingStrings.plateEquipmentInterim))
+
+        let named = LoadedEquipment(
+            profile: Self.profile(bar: 20_000, collar: 0, plates: [10_000], pairs: [1]),
+            calculator: try #require(store.equipment).calculator,
+            isInterim: false
+        )
+        #expect(named.displayName == "Home gym")
+    }
+
     @Test("A read that failed costs the screen its equipment and offers a retry")
     func readFailure() async {
         let store = PlateCalculatorStore(
@@ -203,14 +238,15 @@ struct PlateCalculatorStoreTests {
         bar: Int,
         collar: Int,
         plates: [Int],
-        pairs: [Int]
+        pairs: [Int],
+        name: String = "Home gym"
     ) -> EquipmentProfile {
         EquipmentProfile(
             id: UUID(),
             createdAt: .distantPast,
             updatedAt: .distantPast,
             deletedAt: nil,
-            name: "Home gym",
+            name: name,
             barWeight: Weight(grams: bar),
             collarWeight: Weight(grams: collar),
             plates: plates.map(Weight.init(grams:)),

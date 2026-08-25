@@ -64,6 +64,10 @@ extension LoggingStrings {
     /// What the interim default is called, since it is not a gym the user named (`G-6.2`).
     static let plateEquipmentInterim = resource("logging.session.plate.equipment.interim")
 
+    /// What a profile the user configured and left unnamed is called. **Not the interim sentence**:
+    /// this gym is theirs, and only its name is missing.
+    static let plateEquipmentUnnamed = resource("logging.session.plate.equipment.unnamed")
+
     /// The heading when the equipment could not be read.
     static let plateErrorHeadline = resource("logging.session.plate.error.headline")
 
@@ -109,8 +113,8 @@ extension LoggingStrings {
             plateTargetLabel, plateExactSection, plateBelowSection, plateAboveSection,
             plateBelowNoneHeadline, plateBelowNoneMessage, plateAboveNoneHeadline,
             plateAboveNoneMessage, plateBareBar, platePerSideLabel, plateEquipmentSection,
-            plateEquipmentInterim, plateErrorHeadline, plateErrorMessage, plateUnusableHeadline,
-            plateUnusableMessage, plateEquipmentBar(bar: "", collar: ""),
+            plateEquipmentInterim, plateEquipmentUnnamed, plateErrorHeadline, plateErrorMessage,
+            plateUnusableHeadline, plateUnusableMessage, plateEquipmentBar(bar: "", collar: ""),
             plateCount(plate: "", count: ""),
         ]
     }

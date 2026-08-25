@@ -51,6 +51,56 @@ struct PlateLoadingSummaryTests {
         #expect(PlateLoadingSummary.step(for: Weight(grams: 102_500), in: .kilograms) == .half)
     }
 
+    @Test(
+        "A plate below the quarter floor is drawn as something rather than as nothing",
+        arguments: [
+            // The defect this exists for: anchored at the floor, a 100 g plate rounds to zero
+            // there, every coarser step agrees with that zero, and the coarsest-matching rule
+            // printed `0 kg × 1` as the instruction for what to put on the bar.
+            (100, "0.1 kg"),
+            (124, "0.1 kg"),
+            (40, "0.04 kg"),
+            (1, "0.001 kg"),
+        ])
+    func denominationsBelowTheFloor(grams: Int, drawn: String) {
+        let line = PlateLoadingSummary.perSide(
+            PlateLoading(
+                totalWeight: Weight(grams: 25_000 + 2 * grams),
+                perSide: [PlateCount(plate: Weight(grams: grams), count: 1)]),
+            unit: .kilograms,
+            locale: Self.english
+        )
+        #expect(line == "\(drawn) × 1")
+        // Anchored to the literal as well as to the whole line: the failure this guards is a
+        // number that renders as zero, which no equality against another rendering would catch.
+        #expect(!line.hasPrefix("0 kg"))
+    }
+
+    @Test("The floor itself still answers at the quarter, and zero is still zero")
+    func theFloorIsUnmoved() {
+        #expect(PlateLoadingSummary.step(for: Weight(grams: 125), in: .kilograms) == .quarter)
+        #expect(PlateLoadingSummary.step(for: Weight(grams: 0), in: .kilograms) == .whole)
+        #expect(
+            PlateLoadingSummary.render(Weight(grams: 0), in: .kilograms, locale: Self.english)
+                == "0 kg")
+    }
+
+    @Test("A load keeps G-3.3's display step, where a denomination does not")
+    func loadsAreDrawnAtTheDisplayStep() {
+        // The two sit one under the other as FR-1.4.4's pair, which is the column a fixed fraction
+        // width exists for: at the denomination step they would read `100 kg` over `102.5 kg`.
+        #expect(
+            PlateLoadingSummary.load(Weight(grams: 100_000), in: .kilograms, locale: Self.english)
+                == "100.0 kg")
+        #expect(
+            PlateLoadingSummary.load(Weight(grams: 102_500), in: .kilograms, locale: Self.english)
+                == "102.5 kg")
+        // The same weight as a plate, which is what makes the split visible.
+        #expect(
+            PlateLoadingSummary.render(Weight(grams: 100_000), in: .kilograms, locale: Self.english)
+                == "100 kg")
+    }
+
     @Test("The editor's row shows the plates for a target that loads")
     func rowForAnExactTarget() {
         let loading = PlateLoading(

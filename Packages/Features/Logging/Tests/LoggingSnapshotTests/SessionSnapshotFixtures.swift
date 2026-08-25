@@ -91,10 +91,6 @@
         /// version carries, and the row that has to say so.
         static let unlisted = SetModifier(rawValue: "chains")
 
-        /// The modifier list these references draw, in a suite nothing else can see.
-        ///
-        /// Removed from disk as soon as it has been read, on ``preference(isEnabled:)``' argument:
-        /// a suite that outlived the run would be inherited by the next one.
         /// A plate-calculator store that has read nothing, which is the only state `ImageRenderer`
         /// can put the set editor's row in: the read is a `.task`, and the renderer runs none.
         ///
@@ -104,6 +100,10 @@
             PlateCalculatorStore(repository: InMemoryRepositoryStack().equipment)
         }
 
+        /// The modifier list these references draw, in a suite nothing else can see.
+        ///
+        /// Removed from disk as soon as it has been read, on ``preference(isEnabled:)``' argument:
+        /// a suite that outlived the run would be inherited by the next one.
         static var vocabulary: SetModifierVocabulary {
             let name = "snapshots.\(UUID().uuidString)"
             guard let defaults = UserDefaults(suiteName: name) else {

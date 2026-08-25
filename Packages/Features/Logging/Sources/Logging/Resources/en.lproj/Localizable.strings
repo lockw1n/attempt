@@ -316,6 +316,9 @@
 /* G-6.2: the interim plate set is a claim about the user's gym that the user did not make, so it is
    labelled rather than presented as theirs. T-1.31 replaces it with a profile they author. */
 "logging.session.plate.equipment.interim" = "A standard metric gym, assumed until you set up your own.";
+/* A profile the user configured and left unnamed. Deliberately not the sentence above: that one
+   disclaims the equipment, and this gym is theirs. */
+"logging.session.plate.equipment.unnamed" = "Unnamed gym";
 "logging.session.plate.equipment.bar %@ %@" = "Bar %1$@, collars %2$@ each";
 /* One denomination on one side. The multiplication sign is a character here rather than a drawn
    glyph, so VoiceOver reads it as a word. */

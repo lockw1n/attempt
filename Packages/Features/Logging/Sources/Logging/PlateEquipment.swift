@@ -18,6 +18,20 @@ struct LoadedEquipment {
     /// The screen says so, because a plate list the user did not choose is a claim about their gym
     /// and an unattributed one would be read as a fact about it (`G-6.2`).
     let isInterim: Bool
+
+    /// What to call this gym on screen.
+    ///
+    /// **Three cases and not two, because ``isInterim`` and an empty name are different facts.**
+    /// The interim default carries no name *and* is not the user's, so it gets the catalogue's
+    /// sentence saying as much. A profile the user configured and left unnamed is still theirs —
+    /// nothing validates the name on the way in (`FR-1.4.2` owns the editor, and a restored or
+    /// synced row reaches the store without one) — and answering it with the interim sentence would
+    /// disclaim a gym they set up, which is the `G-6.2` attribution run backwards.
+    var displayName: String {
+        if isInterim { return String(localized: LoggingStrings.plateEquipmentInterim) }
+        guard profile.name.isEmpty else { return profile.name }
+        return String(localized: LoggingStrings.plateEquipmentUnnamed)
+    }
 }
 
 /// Why the calculator has no equipment to load against.
