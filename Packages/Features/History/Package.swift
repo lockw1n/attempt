@@ -33,6 +33,10 @@ let package = Package(
         .package(path: "../../DesignSystem"),
         .package(path: "../../AppNavigation"),
         .package(path: "../../Localization"),
+        // TEST-ONLY, on the test target alone — the shape the other feature manifests have. The
+        // session list's arithmetic is asserted against a store that was actually written to, so a
+        // fake returning what a test handed it could not fail it.
+        .package(path: "../../RepositoryFakes"),
     ],
     targets: [
         .target(
@@ -46,6 +50,23 @@ let package = Package(
             ],
             resources: [.process("Resources")],
             swiftSettings: settings
-        )
+        ),
+        .testTarget(
+            name: "HistoryTests",
+            dependencies: ["History", "RepositoryFakes"],
+            swiftSettings: settings
+        ),
+        // TR-1.12's references for this module's screens, in a target of its own for the reason
+        // ExerciseLibrary's manifest gives: every file in it is `#if os(iOS)`, and
+        // `scripts/snapshot-tests.sh` runs it on a simulator.
+        .testTarget(
+            name: "HistorySnapshotTests",
+            dependencies: [
+                "History",
+                .product(name: "SnapshotTesting", package: "DesignSystem"),
+            ],
+            exclude: ["__Snapshots__"],
+            swiftSettings: settings
+        ),
     ]
 )

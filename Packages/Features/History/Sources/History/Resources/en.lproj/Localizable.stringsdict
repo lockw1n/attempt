@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The row's two numbers, as one line that is also what VoiceOver reads (G-4.2) — a pair of
+	     labelled tiles reads out as bare numerals out of context, and wraps its numeral across
+	     three lines at the largest Dynamic Type size. Positional, so a translation can reorder
+	     them, and plural on the set count: a session with one working set in it must not read
+	     "1 working sets". The volume is already rendered — AppFormat decides how a weight reads,
+	     and a catalogue cannot. -->
+	<key>history.list.metrics.summary %lld %@</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@sets@, %2$@</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld working set</string>
+			<key>other</key>
+			<string>%lld working sets</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

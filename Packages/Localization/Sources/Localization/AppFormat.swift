@@ -1,8 +1,7 @@
 import Foundation
 import PowerliftingCore
 
-/// The four kinds of value this app renders, each as a `FormatStyle` bound to an explicit locale
-/// (`G-3.4`).
+/// The kinds of value this app renders, each bound to an explicit locale (`G-3.4`).
 ///
 /// **No style here defaults its locale**, which is the point: a default is how a screen ends up
 /// rendering against `Locale.autoupdatingCurrent` in a preview and against the environment in the
@@ -69,5 +68,20 @@ public enum AppFormat {
     /// - Returns: The style.
     public static func dateAndTime(locale: Locale) -> Date.FormatStyle {
         .dateTime.year().month(.abbreviated).day().hour().minute().locale(locale)
+    }
+
+    /// Names run together as one phrase — "Squat, Bench Press and Deadlift".
+    ///
+    /// **A rendered string rather than a style**, unlike everything above it: the conjunction and
+    /// the separators are the locale's, and a screen joining names with a literal `", "` writes an
+    /// English list into every language. It is the one case where the value being formatted is
+    /// already text, so there is no `formatted(_:)` call site to hand a style to.
+    ///
+    /// - Parameters:
+    ///   - names: The items, in the order they should read.
+    ///   - locale: The locale to render for.
+    /// - Returns: The joined phrase, empty when `names` is.
+    public static func list(_ names: [String], locale: Locale) -> String {
+        names.formatted(.list(type: .and).locale(locale))
     }
 }

@@ -2,6 +2,7 @@ import AppNavigation
 import DesignSystem
 import ExerciseLibrary
 import Foundation
+import History
 import Logging
 import RepositoryInterface
 import Settings
@@ -164,7 +165,7 @@ struct RootTabView: View {
         }
     }
 
-    /// A tab's root. Two are real screens now; Home and History are still scaffolding.
+    /// A tab's root. Three are real screens now; Home is still scaffolding.
     ///
     /// The title is applied here rather than inside the feature package, for the reason
     /// ``AppTab/title`` gives: the catalogue is this target's (`G-3.4`).
@@ -174,11 +175,33 @@ struct RootTabView: View {
         case .train:
             trainRoot
                 .navigationTitle(tab.title)
+        case .history:
+            historyRoot
+                .navigationTitle(tab.title)
         case .settings:
             settingsRoot
                 .navigationTitle(tab.title)
-        case .home, .history:
+        case .home:
             PlaceholderScreen(tab: tab, navigation: navigation)
+        }
+    }
+
+    /// History's root — every session logged (`FR-1.5.1`) — or the reason it cannot be shown.
+    ///
+    /// Three repositories, because a summary line is three facts from three tables: the sessions and
+    /// their sets, the catalogue the entries name, and the settings row that decides what unit the
+    /// tonnage reads in. The screen joins them; `G-2.5` forbids the schema doing it.
+    @ViewBuilder
+    private var historyRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, _):
+            SessionListView(
+                workouts: repositories.workouts,
+                exercises: repositories.exercises,
+                settings: repositories.settings
+            )
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
         }
     }
 

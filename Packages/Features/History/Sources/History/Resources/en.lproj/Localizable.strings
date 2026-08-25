@@ -1,2 +1,26 @@
-/* History (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the
-   Localization module doc. No copy in this module yet. */
+/* History (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization module doc.
+   The one screen here is the session list, the History tab's root. Nothing is translated: only `en`
+   ships in Phase 1. */
+
+/* FR-1.13.2's first launch. The headline says what there is none of; the message says the one thing
+   that makes one, and the action is that thing — a tab away, which is why it is worth a button
+   rather than a sentence.
+   NOT "finished workouts": the list carries the workout in progress too, so a message promising
+   only finished ones would be contradicted by the first row the user ever sees. */
+"history.list.empty.headline" = "No training logged yet";
+"history.list.empty.message" = "Your workouts appear here, newest first.";
+"history.list.empty.action" = "Start a workout";
+
+/* A failed read of the whole list. Copy, not the diagnostic: what the store said is for the log,
+   not for the screen (G-3.4). */
+"history.list.error.headline" = "History unavailable";
+"history.list.error.message" = "Your past sessions could not be read. Try again.";
+
+/* A failed read of the *next* page, shown under the rows that did load. It says which half failed,
+   because the screen is visibly full of sessions and "History unavailable" beside them would read
+   as a contradiction. */
+"history.list.more.error" = "Could not load more sessions.";
+
+/* A session with no exercises in it — started, then finished empty. Not an error and not the empty
+   state: the session is real and its date is worth showing. */
+"history.list.exercises.none" = "No exercises";
