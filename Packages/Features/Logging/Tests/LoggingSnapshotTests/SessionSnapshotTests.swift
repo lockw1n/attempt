@@ -32,18 +32,6 @@
     // what it renders. What stays out of the copy is the data — a workout's date is a record's field,
     // and it is rendered through `AppFormat` exactly as the screen renders it.
 
-    /// Pins the process time zone, so a rendered date is the same picture on a developer's machine as
-    /// it is on the CI runner.
-    ///
-    /// **A reference that renders a date is otherwise not reproducible**, and the failure is
-    /// asymmetric: recorded in `EDT` and compared in `UTC`, a time renders four hours out and every
-    /// such reference fails on CI alone. `AppFormat`'s styles take a locale and read the process's
-    /// time zone, so the locale is pinned per subject below and this is the other half.
-    private let pinnedTimeZone: Bool = {
-        NSTimeZone.default = TimeZone(identifier: "UTC") ?? .gmt
-        return true
-    }()
-
     @MainActor
     @Suite("Session lifecycle snapshots")
     struct SessionSnapshotTests {
@@ -161,6 +149,7 @@
                         warmupExpansion: .constant([:]),
                         move: { _, _ in },
                         unit: .kilograms,
+                        previous: Fixtures.previousPerformances,
                         logSet: { _ in },
                         mark: { _, _ in },
                         markCompleted: { _, _ in },
@@ -416,10 +405,6 @@
             }
         }
 
-        /// A subject whose rendering depends on a locale or a time zone, pinned to both.
-        ///
-        /// The locale is the environment's, which is what `AppFormat` reads through the view; the
-        /// time zone is the process's, pinned once above.
         /// The set editor's two halves, stacked the way the sheet stacks them.
         ///
         /// **The `ScrollView` between them is left out, and that is the gate rather than the
@@ -456,13 +441,6 @@
                     delete: {}
                 )
             }
-        }
-
-        private func fixedEnvironment(@ViewBuilder _ subject: () -> some View) -> some View {
-            _ = pinnedTimeZone
-            return subject()
-                .environment(\.locale, Fixtures.locale)
-                .environment(\.timeZone, .gmt)
         }
     }
 

@@ -82,6 +82,36 @@ enum LoggingStrings {
     /// When it was started.
     static let sessionStarted = resource("logging.session.started")
 
+    // MARK: - Session notes and the previous session (FR-1.2.9, FR-1.2.10)
+
+    /// The heading over `FR-1.2.9`'s session note.
+    static let sessionNotesSection = resource("logging.session.notes.section")
+
+    /// What the empty field invites, where the heading alone does not say it.
+    static let sessionNotesPrompt = resource("logging.session.notes.prompt")
+
+    /// The command that stores the note.
+    static let sessionNotesSave = resource("logging.session.notes.save")
+
+    /// The command that puts the stored note back.
+    static let sessionNotesDiscard = resource("logging.session.notes.discard")
+
+    /// What the user can understand about a note that did not store — never the diagnostic.
+    static let sessionNotesError = resource("logging.session.notes.error")
+
+    /// The heading over `FR-1.2.10`'s strip, which the date is drawn beside.
+    static let sessionPreviousHeading = resource("logging.session.previous.heading")
+
+    /// The heading when this exercise has never been trained before (`FR-1.13.3`).
+    static let sessionPreviousEmptyHeadline = resource("logging.session.previous.empty.headline")
+
+    /// What would make a comparison possible — the requirement's "concretely" (`FR-1.13.3`).
+    static let sessionPreviousEmptyMessage = resource("logging.session.previous.empty.message")
+
+    /// What the user can understand about a history that could not be read. Rendered once beneath
+    /// the cards rather than inside each of them — one walk answers every strip.
+    static let sessionPreviousErrorMessage = resource("logging.session.previous.error.message")
+
     /// The heading when the workout has no exercises in it yet.
     static let sessionEmptyHeadline = resource("logging.session.empty.headline")
 
@@ -280,6 +310,21 @@ enum LoggingStrings {
         resource("logging.session.set.reps \(reps)")
     }
 
+    /// One set on `FR-1.2.10`'s strip — a load and a repetition count, already rendered.
+    ///
+    /// **A format string rather than an interpolation** (`G-3.4`): the multiplication sign is a
+    /// character in this language and the order of the two values is not fixed in every one. Both
+    /// arguments arrive formatted, because the load's unit symbol and the numerals are
+    /// `AppFormat`'s and not this catalogue's.
+    ///
+    /// - Parameters:
+    ///   - weight: The load, rendered.
+    ///   - reps: The repetitions, rendered.
+    /// - Returns: The line.
+    static func sessionPreviousSet(weight: String, reps: String) -> LocalizedStringResource {
+        resource("logging.session.previous.set \(weight) \(reps)")
+    }
+
     /// The badge a warmup row leads with — `FR-1.2.14`'s `W1`, `W2`.
     ///
     /// **A string rather than a `W` in front of a numeral** (`G-3.4`): the prefix is a word in the
@@ -414,6 +459,10 @@ enum LoggingStrings {
             sessionExerciseExpanded, sessionExerciseCollapsed,
             sessionExerciseMoveUp, sessionExerciseMoveDown, sessionExercisesErrorHeadline,
             sessionExercisesErrorMessage, sessionExercisesWriteErrorMessage,
+            sessionNotesSection, sessionNotesPrompt, sessionNotesSave, sessionNotesDiscard,
+            sessionNotesError, sessionPreviousHeading, sessionPreviousEmptyHeadline,
+            sessionPreviousEmptyMessage, sessionPreviousErrorMessage,
+            sessionPreviousSet(weight: "", reps: ""),
             sessionProgress(completed: 0, total: 0), sessionProgress(completed: 1, total: 1),
             setListEmpty, setAddAction, setRepeatAction, setEditorTitle, setWeightLabel,
             setRepsLabel, setRPELabel, setRPEHint, setNotesLabel, setNotesHint, setConfirmAction,

@@ -63,6 +63,10 @@ extension ActiveSessionStore {
             exercisesWriteFailure = String(describing: error)
         }
         await loadExercises()
+        // The one command that changes which exercises the workout holds, and therefore the only
+        // one that can leave a card with no `FR-1.2.10` strip behind it. Every other write here
+        // moves a set or a position, neither of which any past session can hear about.
+        await loadPreviousPerformances()
     }
 
     /// Moves one exercise `offset` places through the workout, renumbering it (`FR-1.2.2`).

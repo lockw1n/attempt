@@ -125,6 +125,13 @@ struct SessionExerciseList: View {
     /// The unit every load on these cards is shown in (`G-3.1`).
     let unit: MassUnit
 
+    /// What each card's `FR-1.2.10` strip is drawn from, keyed on the entry.
+    ///
+    /// **The whole map rather than one lookup per card**, because the answer is one read: a card
+    /// handed a closure could not tell "not read yet" from "never trained" without asking the store
+    /// itself, which is the thing a snapshot has none of.
+    let previous: PreviousPerformances
+
     /// Opens the set editor over one exercise (`FR-1.2.3`, `FR-1.2.6`).
     let logSet: (SetEditorTarget) -> Void
 
@@ -154,6 +161,7 @@ struct SessionExerciseList: View {
                     },
                     move: move,
                     unit: unit,
+                    previous: previous.state(forEntryID: item.id),
                     logSet: logSet,
                     mark: mark,
                     markCompleted: markCompleted,
@@ -214,6 +222,9 @@ struct SessionExerciseCard: View {
 
     /// The unit this card's loads are shown in (`G-3.1`).
     let unit: MassUnit
+
+    /// What this exercise looked like the last time it was trained (`FR-1.2.10`).
+    let previous: PreviousPerformanceState
 
     /// Opens the set editor over this exercise (`FR-1.2.3`, `FR-1.2.6`).
     let logSet: (SetEditorTarget) -> Void
@@ -341,13 +352,15 @@ struct SessionExerciseCard: View {
         .accessibilityLabel(Text(label))
     }
 
-    /// What the card holds while it is open: the sets logged against it, and the two ways to add one.
+    /// What the card holds while it is open: `FR-1.2.10`'s previous session, the sets logged against
+    /// it, and the two ways to add one.
     ///
     /// **An empty card says so in a sentence rather than in one of `FR-1.13.1`'s states.** Zero sets
     /// is a count the same way three is, and a state placeholder per card would be five of them down
     /// a workout.
     private var contents: some View {
         VStack(alignment: .leading, spacing: Spacing.sm.points) {
+            PreviousPerformanceStrip(state: previous, unit: unit)
             if item.sets.isEmpty {
                 Text(LoggingStrings.setListEmpty)
                     .font(Typography.body.font)

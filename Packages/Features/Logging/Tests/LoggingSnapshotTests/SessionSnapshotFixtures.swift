@@ -3,12 +3,40 @@
     import Foundation
     import PowerliftingCore
     import RepositoryInterface
+    import SwiftUI
 
     @testable import Logging
 
     // The workout every reference in `SessionSnapshotTests` renders. A file of its own so neither it
     // nor the suite beside it runs into `file_length` — the two grow for different reasons, a
     // reference being added and a fixture shape being added.
+
+    /// Pins the process time zone, so a rendered date is the same picture on a developer's machine
+    /// as it is on the CI runner.
+    ///
+    /// **A reference that renders a date is otherwise not reproducible**, and the failure is
+    /// asymmetric: recorded in `EDT` and compared in `UTC`, a time renders four hours out and every
+    /// such reference fails on CI alone. `AppFormat`'s styles take a locale and read the process's
+    /// time zone, so the locale is pinned per subject and this is the other half.
+    private let pinnedTimeZone: Bool = {
+        NSTimeZone.default = TimeZone(identifier: "UTC") ?? .gmt
+        return true
+    }()
+
+    /// A subject whose rendering depends on a locale or a time zone, pinned to both.
+    ///
+    /// The locale is the environment's, which is what `AppFormat` reads through the view; the time
+    /// zone is the process's, pinned once above. Here rather than on a suite because both suites in
+    /// this target render dates.
+    ///
+    /// - Parameter subject: What to render.
+    /// - Returns: The subject, pinned.
+    func fixedEnvironment(@ViewBuilder _ subject: () -> some View) -> some View {
+        _ = pinnedTimeZone
+        return subject()
+            .environment(\.locale, Fixtures.locale)
+            .environment(\.timeZone, .gmt)
+    }
 
     /// The workout these references render, and the two things it takes to render one.
     enum Fixtures {
@@ -167,7 +195,49 @@
             loggedSet(index: 12, weight: Weight(grams: 123_456_700), reps: 5, rpe: 10)
         ]
 
-        /// One logged set, with every identifier and timestamp fixed.
+        /// `FR-1.2.10`'s previous session, as the strip draws it: a ramp and then three working
+        /// sets, the last of them short of the other two.
+        ///
+        /// The warmup is here because the strip has to *not* draw it — a value that had dropped it
+        /// could not picture the rule.
+        static let previousPerformance = PreviousPerformance(
+            date: calendar.date(from: DateComponents(year: 2026, month: 3, day: 7)) ?? .distantPast,
+            sets: [
+                loggedSet(index: 20, weight: Weight(grams: 60_000), reps: 5, rpe: nil, isWarmup: true),
+                loggedSet(index: 21, weight: Weight(grams: 100_000), reps: 5, rpe: 8),
+                loggedSet(index: 22, weight: Weight(grams: 100_000), reps: 5, rpe: 8.5),
+                loggedSet(index: 23, weight: Weight(grams: 100_000), reps: 3, rpe: 10),
+            ]
+        )
+
+        /// The strips behind ``exercises``: two cards that have a previous session and one that has
+        /// none.
+        ///
+        /// The unstarted card is the one with none, which is the case `FR-1.13.3` is drawn for; the
+        /// finished card has one too, but it is folded, so the list pictures both states at once.
+        static let previousPerformances = PreviousPerformances(
+            byEntryID: [
+                identifier("B2"): previousPerformance,
+                identifier("B4"): previousPerformance,
+            ],
+            hasLoaded: true
+        )
+
+        /// A session note as the field holds one that has been stored.
+        static var storedNote: SessionNoteDraft {
+            var draft = SessionNoteDraft()
+            draft.follow(session.withNote("Bar felt fast. Next time start the ramp at 60."))
+            return draft
+        }
+
+        /// The same note, edited and not yet saved — which is what puts the two commands on screen.
+        static var editedNote: SessionNoteDraft {
+            var draft = storedNote
+            draft.text += " Sleeves from the second set."
+            return draft
+        }
+
+        /// One logged set, with every identifier and timestamp fixed.        /// One logged set, with every identifier and timestamp fixed.
         private static func loggedSet(
             index: Int,
             weight: Weight,
@@ -346,6 +416,25 @@
             let preference = ScreenWakePreference(defaults: defaults)
             defaults.removePersistentDomain(forName: name)
             return preference
+        }
+    }
+
+    extension WorkoutSession {
+        /// The same workout carrying a different note — the one field these references move.
+        fileprivate func withNote(_ note: String) -> WorkoutSession {
+            WorkoutSession(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                date: date,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                notes: note,
+                bodyweight: bodyweight,
+                programRunID: programRunID,
+                scheduledWorkoutID: scheduledWorkoutID
+            )
         }
     }
 

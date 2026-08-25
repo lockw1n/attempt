@@ -81,6 +81,19 @@ public final class ActiveSessionStore {
     /// set it lives in `ActiveSessionCommands.swift`. Nothing outside `Logging` can write it.
     public internal(set) var exercisesWriteFailure: String?
 
+    /// The last attempt to store `FR-1.2.9`'s session note that failed, or `nil`.
+    ///
+    /// A **diagnostic**, not copy (`G-3.4`), and a third one rather than a reading of ``failure``
+    /// for the reason the two above are kept apart: a failed note save leaves the workout, its
+    /// cards and the typed text exactly as they were, and the retry the user reaches for is the
+    /// **Save** beside the field rather than **Finish** at the foot of the screen.
+    var noteWriteFailure: String?
+
+    /// What each card's "last time" strip is drawn from (`FR-1.2.10`).
+    ///
+    /// One value rather than three properties — see ``PreviousPerformances``.
+    var previous = PreviousPerformances()
+
     /// The unit a load is entered and shown in (`G-3.1`, `G-3.2`, `FR-1.10.2`).
     ///
     /// **On this store rather than read by the editor, for the reason the exercises are here.** The
@@ -195,13 +208,7 @@ public final class ActiveSessionStore {
     public func update(_ session: WorkoutSession) async {
         guard let current = self.session, current.id == session.id, current != session else { return }
         do {
-            try await repository.save(session)
-            // Re-read for the same reason the settings screen does: the save path stamps
-            // `updatedAt` itself, so the record handed in describes the write before this one.
-            guard let stored = try await repository.session(id: session.id, includingDeleted: false) else {
-                throw RepositoryError.recordNotFound(id: session.id)
-            }
-            self.session = stored
+            try await persist(session)
             failure = nil
         } catch {
             // The held session is left alone: it is stale, but a screen mid-set has to keep
@@ -277,15 +284,7 @@ public final class ActiveSessionStore {
             scheduledWorkoutID: nil
         )
         do {
-            try await repository.save(started)
-            // Re-read rather than hold what was handed in, for ``update(_:)``'s reason: the save
-            // path stamps `updatedAt` itself. A row that is not there afterwards is the same failure
-            // it is there — the record this call just wrote is gone.
-            guard let stored = try await repository.session(id: started.id, includingDeleted: false)
-            else {
-                throw RepositoryError.recordNotFound(id: started.id)
-            }
-            session = stored
+            try await persist(started)
             failure = nil
         } catch {
             failure = String(describing: error)
@@ -376,13 +375,37 @@ public final class ActiveSessionStore {
 
     /// Drops the exercise list, because the workout it belonged to is no longer the one held.
     ///
-    /// **Both diagnostics go with it.** A failure describes a read or a write against a workout, and
-    /// carrying one across a change of session would report it against the next one.
+    /// **Both diagnostics go with it, and so does the previous-performance answer.** A failure
+    /// describes a read or a write against a workout, and carrying one across a change of session
+    /// would report it against the next one; the "last time" strips are keyed on the *entries* of
+    /// the workout just dropped, so keeping them would draw one workout's history on another's
+    /// cards.
     private func forgetExercises() {
         exercises = []
         hasLoadedExercises = false
         exercisesReadFailure = nil
         exercisesWriteFailure = nil
+        previous = PreviousPerformances()
+    }
+
+    /// Writes one session record through and holds what the store kept.
+    ///
+    /// **The re-read is not a courtesy.** The save path stamps `updatedAt` itself, so the record
+    /// handed in describes the write before this one; holding it would leave the store one version
+    /// behind `G-2.4`'s conflict key. A row that is not live afterwards is a **failure** — it is the
+    /// record this call just wrote, so it went away underneath a screen that is logging into it.
+    ///
+    /// Internal rather than private because the note command is in another file, and shared by all
+    /// three writers rather than written out three times.
+    ///
+    /// - Parameter session: The record to store.
+    func persist(_ session: WorkoutSession) async throws {
+        try await repository.save(session)
+        guard let stored = try await repository.session(id: session.id, includingDeleted: false)
+        else {
+            throw RepositoryError.recordNotFound(id: session.id)
+        }
+        self.session = stored
     }
 
     /// `session` with `endedAt` set, and every other field untouched.

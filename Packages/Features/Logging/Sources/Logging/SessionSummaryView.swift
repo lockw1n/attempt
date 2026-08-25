@@ -77,3 +77,100 @@ struct SessionCommandsSection: View {
         }
     }
 }
+
+/// `FR-1.2.9`'s session note — prose about the workout, not about one set.
+///
+/// **Under the workout's own facts and above its exercises**, because that is what it is about: the
+/// day, how it felt, what to remember. The per-set note (`FR-1.2.3`) stays where it is, on the set
+/// editor.
+///
+/// **The commands appear only once the field is dirty**, on the exercise detail screen's rule: a
+/// workout the user is only logging into carries no buttons here, and an unsaved edit is therefore
+/// visible as one.
+///
+/// Taking a binding and closures rather than the store, for ``SessionSummarySection``'s reason.
+struct SessionNotesSection: View {
+    /// The field, and what it is being compared against.
+    @Binding var draft: SessionNoteDraft
+
+    /// Whether the last attempt to store it failed. The typed text stays on screen either way, so
+    /// the retry is another tap at the same command.
+    let hasFailed: Bool
+
+    /// Stores what the field holds.
+    let save: () -> Void
+
+    /// The field, the two commands once there is something to commit, and a failed write beneath.
+    ///
+    /// **A `TextField(axis: .vertical)` rather than a `TextEditor`**, for the reason the exercise
+    /// notes give: an editor brings its own scroll view, and inside this screen's `ScrollView` that
+    /// is two scroll views arguing.
+    var body: some View {
+        GroupedSection(Text(LoggingStrings.sessionNotesSection)) {
+            TextField(
+                text: $draft.text,
+                prompt: Text(LoggingStrings.sessionNotesPrompt),
+                axis: .vertical
+            ) {
+                Text(LoggingStrings.sessionNotesSection)
+            }
+            .labelsHidden()
+            .lineLimit(3...10)
+            .font(Typography.body.font)
+            .foregroundStyle(ColorToken.textPrimary)
+            .textFieldStyle(.plain)
+            .padding(Spacing.md.points)
+            .background(
+                ColorToken.surfaceRaised,
+                in: .rect(cornerRadius: CornerRadius.control.points)
+            )
+
+            if draft.hasUnsavedChanges {
+                commands
+            }
+
+            if hasFailed {
+                // **No retry of its own**, unlike the exercise detail screen's otherwise identical
+                // notes section: **Save note** is directly above this and is the same command, so a
+                // second button would be two ways to ask for one thing a thumb's width apart. It is
+                // `SessionCommandsSection`'s rule — the retry is the command the user reached for.
+                ErrorStateView(message: Text(LoggingStrings.sessionNotesError))
+            }
+        }
+    }
+
+    /// Save and discard, wrapping where they do not fit on one line at `NFR-1.10`'s ceiling.
+    private var commands: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Spacing.sm.points) {
+                saveButton
+                discardButton
+            }
+            VStack(alignment: .leading, spacing: Spacing.sm.points) {
+                saveButton
+                discardButton
+            }
+        }
+    }
+
+    /// Commits the field.
+    private var saveButton: some View {
+        Button(action: save) {
+            Text(LoggingStrings.sessionNotesSave)
+        }
+        .buttonStyle(.primaryAction)
+    }
+
+    /// Puts the stored note back.
+    private var discardButton: some View {
+        Button {
+            draft.discard()
+        } label: {
+            Text(LoggingStrings.sessionNotesDiscard)
+                .font(Typography.actionLabel.font)
+                .foregroundStyle(ColorToken.textSecondary)
+                .frame(minHeight: TouchTarget.standard.points)
+        }
+        .buttonStyle(.plain)
+    }
+}

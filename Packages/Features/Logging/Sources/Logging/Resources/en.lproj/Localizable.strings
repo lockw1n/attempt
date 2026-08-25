@@ -81,6 +81,31 @@
 /* A write that did not land. The workout stays on screen beside it, so the retry is another tap. */
 "logging.session.write-error.message" = "That could not be saved. Nothing has been lost — try again.";
 
+/* FR-1.2.9: the workout's own note, which is prose about the session rather than about one set —
+   the per-set note is logging.session.set.notes.* further down. */
+"logging.session.notes.section" = "Session notes";
+"logging.session.notes.prompt" = "How did the session go?";
+"logging.session.notes.save" = "Save note";
+"logging.session.notes.discard" = "Discard changes";
+/* The note did not store. The typed text stays on screen beside this, so the retry is another tap
+   at Save rather than a note the user has to write again. */
+"logging.session.notes.error" = "That note could not be saved. Nothing has been lost — try again.";
+
+/* FR-1.2.10: what this exercise looked like the last time it was trained, drawn inside the card so
+   that seeing it needs no navigation. The date is rendered beside this heading through AppFormat. */
+"logging.session.previous.heading" = "Last time";
+/* One set on that strip: a load and a repetition count, both already rendered by AppFormat. The
+   multiplication sign is a character of this language, and the order of the two is not fixed in
+   every language — which is why this is a format string and not an interpolation. */
+"logging.session.previous.set %@ %@" = "%1$@ × %2$@";
+/* FR-1.13.3, not FR-1.13.1's empty: there is history here and none of it is about this exercise, so
+   the message says what would make a comparison possible rather than what to create. */
+"logging.session.previous.empty.headline" = "No previous session";
+"logging.session.previous.empty.message" = "Log it today and it will be here next time.";
+/* The history could not be read. Shown once beneath the cards rather than inside each of them: one
+   read answers every strip in the workout. */
+"logging.session.previous.error.message" = "Your previous sessions could not be read just now.";
+
 /* FR-1.2.2 and FR-1.2.13: the workout's exercises, as a vertical list of cards. */
 "logging.session.exercises.section" = "Exercises";
 "logging.session.add-exercise.action" = "Add exercise";

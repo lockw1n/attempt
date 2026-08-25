@@ -61,6 +61,14 @@ public struct ActiveSessionView: View {
     /// in that one because the two folds are independent — see ``SessionExerciseList``.
     @State var warmupExpansion: [UUID: Bool] = [:]
 
+    /// What is in `FR-1.2.9`'s session-note field.
+    ///
+    /// **The screen's, like every other half-typed thing here**, and the store's own rule for what
+    /// it holds: a note being typed is not a fact about the workout until it is saved. It follows
+    /// the held session — see ``SessionNoteDraft/follow(_:)`` for what happens to an unsaved edit
+    /// when the record is re-read.
+    @State var noteDraft = SessionNoteDraft()
+
     /// Which exercise the set editor is open over, or `nil` (`FR-1.2.3`, `FR-1.2.6`).
     ///
     /// **The screen's, and it carries no route.** A half-filled set is not a place in the app: a
@@ -111,8 +119,16 @@ public struct ActiveSessionView: View {
             // lives in another tab, and this screen is returned to rather than rebuilt.
             await store.resume()
             await store.loadExercises()
+            // Third, because it is read against the workout the resume settled on and the cards it
+            // is keyed to. `FR-1.2.10`'s answer cannot move while this workout is being logged, so
+            // nothing but an added exercise reads it again.
+            await store.loadPreviousPerformances()
             await store.loadDisplayUnit()
+            noteDraft.follow(store.session)
         }
+        // Every path that replaces the held record, the note's own save among them: the draft gives
+        // way to what is stored only where the two already agreed.
+        .onChange(of: store.session) { noteDraft.follow(store.session) }
         .sheet(item: $editing) { target in
             SetEditorSheet(
                 draft: draft(for: target),
@@ -183,6 +199,7 @@ public struct ActiveSessionView: View {
                         // this screen's `.task` has already run and does not run again.
                         await store.resume()
                         await store.loadExercises()
+                        await store.loadPreviousPerformances()
                     }
                 }
             )
@@ -203,6 +220,15 @@ public struct ActiveSessionView: View {
     /// - Returns: The workout, in full.
     @ViewBuilder private func loaded(_ session: WorkoutSession, writeFailed: Bool) -> some View {
         SessionSummarySection(session: session)
+        SessionNotesSection(
+            draft: $noteDraft,
+            hasFailed: store.noteWriteFailure != nil,
+            save: { Task { await store.saveNote(noteDraft.text) } }
+        )
+        // The banner describes one attempt to store one piece of text, so the next keystroke ends
+        // it — including the one that puts the stored note back. Without this it outlives the edit
+        // it belongs to, leaving a retry on screen with nothing left to write.
+        .onChange(of: noteDraft.text) { store.noteWriteFailure = nil }
         exercises
         SessionCommandsSection(
             hasFailed: writeFailed,
@@ -254,18 +280,25 @@ public struct ActiveSessionView: View {
                         Task { await store.moveExercise(id: id, by: offset) }
                     },
                     unit: store.displayUnit,
+                    previous: store.previous,
                     logSet: { editing = $0 },
                     mark: { markSet($0, asWarmup: $1) },
                     markCompleted: { markSet($0, asCompleted: $1) },
                     edit: { editing = Self.target(editing: $0) }
                 )
                 writeFailure(writeFailed)
+                previousFailure
                 addExerciseLink
             case .readFailed:
                 ErrorStateView(
                     headline: Text(LoggingStrings.sessionExercisesErrorHeadline),
                     message: Text(LoggingStrings.sessionExercisesErrorMessage),
-                    retry: { Task { await store.loadExercises() } }
+                    retry: {
+                        Task {
+                            await store.loadExercises()
+                            await store.loadPreviousPerformances()
+                        }
+                    }
                 )
             }
         }
@@ -278,6 +311,21 @@ public struct ActiveSessionView: View {
     @ViewBuilder private func writeFailure(_ hasFailed: Bool) -> some View {
         if hasFailed {
             ErrorStateView(message: Text(LoggingStrings.sessionExercisesWriteErrorMessage))
+        }
+    }
+
+    /// A history that could not be read, where there was one (`FR-1.2.10`).
+    ///
+    /// **Once, under the cards — not inside each of them.** One walk answers every strip in the
+    /// workout, so a failure is one fact; repeated per card it would be the same sentence six times
+    /// down a session. The cards keep everything else, so this is not a phase, and the retry is the
+    /// exercises' own.
+    @ViewBuilder private var previousFailure: some View {
+        if store.previous.readFailure != nil {
+            ErrorStateView(
+                message: Text(LoggingStrings.sessionPreviousErrorMessage),
+                retry: { Task { await store.loadPreviousPerformances() } }
+            )
         }
     }
 
