@@ -16,6 +16,13 @@ struct EquipmentProfileEditorSheet: View {
     /// The unit every weight here is entered in (`G-3.1`).
     let unit: MassUnit
 
+    /// The last write that failed, as a diagnostic (`G-3.4`), or `nil`.
+    ///
+    /// **Drawn here and not only on the list behind**, which is what a failed save costs otherwise:
+    /// this sheet has no detent and covers the screen, so a diagnostic rendered under it reports
+    /// the failure to nobody and the command reads as having done nothing at all (`FR-1.13.3`).
+    let writeFailure: String?
+
     /// Writes the profile. Leaves the sheet open when the write fails, so the draft is not lost.
     let save: (EquipmentProfileDraft) async -> Void
 
@@ -28,10 +35,13 @@ struct EquipmentProfileEditorSheet: View {
     /// What the form holds. Seeded once, from the row being edited or from nothing at all.
     @State private var draft: EquipmentProfileDraft
 
-    /// Whether the deletion's confirmation is on screen.
+    /// Whether a write is in flight.
     ///
-    /// Held here so it cannot outlive the sheet it was raised from — `SetEditorCommands`' rule.
-    @State private var isConfirmingDelete = false
+    /// **The command is disabled while one runs**, and that is not a spinner's job: the save is
+    /// `async` and this sheet stays open across it, so without this a second tap starts a second
+    /// write. On a new profile the two would race to insert — see ``EquipmentProfileDraft`` for the
+    /// other half of that fix, which is what keeps them writing to one row.
+    @State private var isSaving = false
 
     /// Which locale the numbers are read and written in (`G-3.4`).
     @Environment(\.locale) private var locale
@@ -41,18 +51,21 @@ struct EquipmentProfileEditorSheet: View {
     /// - Parameters:
     ///   - profile: The gym being edited, or `nil` for a new one.
     ///   - unit: The unit weights are entered in.
+    ///   - writeFailure: The diagnostic from the last failed write, or `nil`.
     ///   - save: Writes the profile.
     ///   - delete: Deletes the profile being edited.
     ///   - cancel: Leaves without writing.
     init(
         profile: EquipmentProfile?,
         unit: MassUnit,
+        writeFailure: String?,
         save: @escaping (EquipmentProfileDraft) async -> Void,
         delete: @escaping () async -> Void,
         cancel: @escaping () -> Void
     ) {
         self.profile = profile
         self.unit = unit
+        self.writeFailure = writeFailure
         self.save = save
         self.delete = delete
         self.cancel = cancel
@@ -79,7 +92,24 @@ struct EquipmentProfileEditorSheet: View {
                         ? LoggingStrings.equipmentCreateTitle
                         : LoggingStrings.equipmentEditTitle)
             )
-            .safeAreaInset(edge: .bottom) { commands }
+            .safeAreaInset(edge: .bottom) {
+                EquipmentProfileEditorCommands(
+                    refusal: draft.isBlank ? nil : draft.refusal,
+                    writeFailure: writeFailure,
+                    isSavable: draft.isSavable,
+                    isSaving: isSaving,
+                    isEditing: profile != nil,
+                    save: {
+                        guard !isSaving else { return }
+                        isSaving = true
+                        Task {
+                            await save(draft)
+                            isSaving = false
+                        }
+                    },
+                    delete: { Task { await delete() } }
+                )
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(action: cancel) { Text(LoggingStrings.equipmentCancelAction) }
@@ -89,35 +119,78 @@ struct EquipmentProfileEditorSheet: View {
         // The environment's locale rather than the process's: a draft seeded in the wrong one parses
         // "102,5" against a decimal point and refuses a weight the user can see on screen. Re-seeded
         // only when they differ, so a form the user is typing into is never rebuilt under them.
+        // The identity is carried across, not re-minted: it is what a save writes to, and a form
+        // that changed it here would be a different row from the one the user started filling in.
         .onAppear {
             guard draft.locale != locale else { return }
+            let identity = draft.newProfileID
             draft =
-                profile.map { EquipmentProfileDraft(editing: $0, unit: unit, locale: locale) }
-                ?? EquipmentProfileDraft(unit: unit, locale: locale)
+                profile.map {
+                    EquipmentProfileDraft(
+                        editing: $0, unit: unit, locale: locale, newProfileID: identity)
+                }
+                ?? EquipmentProfileDraft(unit: unit, locale: locale, newProfileID: identity)
         }
     }
+}
 
-    /// The refusal, the save, and — on an existing gym — the deletion behind a confirmation.
+/// The pinned command bar: what refused the save, what a failed write said, and the two commands.
+///
+/// **A type of its own for `SetEditorCommands`' reason, and for `TR-1.12`'s.** The bar is a
+/// `safeAreaInset` over a `ScrollView`, so it is drawn by neither a reference of the sheet nor one
+/// of the fields — and it is where the refusal, the diagnostic and the destructive command all
+/// live, which makes it the part of this form most likely to overflow at `accessibility3` and the
+/// part nothing was checking.
+struct EquipmentProfileEditorCommands: View {
+    /// Why the save will not go, or `nil` — already filtered for a form nobody has filled in yet,
+    /// which has nothing to complain about (`FR-1.13.3`).
+    let refusal: EquipmentDraftRefusal?
+
+    /// The last write that failed, as a diagnostic (`G-3.4`), or `nil`.
+    let writeFailure: String?
+
+    /// Whether the draft resolves to a profile.
+    let isSavable: Bool
+
+    /// Whether a write is already in flight.
+    let isSaving: Bool
+
+    /// Whether this form is over a stored gym, which is what offers the deletion.
+    let isEditing: Bool
+
+    /// Writes the profile.
+    let save: () -> Void
+
+    /// Soft-deletes the gym being edited (`G-1.3`).
+    let delete: () -> Void
+
+    /// Whether the deletion's confirmation is on screen.
+    ///
+    /// Held here so it cannot outlive the sheet it was raised from — `SetEditorCommands`' rule.
+    @State private var isConfirmingDelete = false
+
+    /// The diagnostic, the refusal, the save, and — on an existing gym — the deletion.
     ///
     /// **Pinned below the fields** on `SetEditorCommands`' argument: the save must not need a scroll
     /// first, and the deletion sits last so the two commands a thumb reaches for are not one
-    /// destructive tap apart.
-    private var commands: some View {
+    /// destructive tap apart. The failed write sits **above** the refusal: one says the form is not
+    /// ready and the other says the store refused a form that was, and the second is the newer fact.
+    var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md.points) {
             Divider().overlay(ColorToken.separator)
             VStack(alignment: .leading, spacing: Spacing.md.points) {
-                if let refusal = draft.refusal, !draft.isBlank {
+                if let writeFailure {
+                    DiagnosticCard(
+                        title: Text(LoggingStrings.equipmentWriteErrorTitle), detail: writeFailure)
+                }
+                if let refusal {
                     FieldRefusal(message: Text(LoggingStrings.equipmentRefusal(refusal)))
                 }
-                Button {
-                    Task { await save(draft) }
-                } label: {
-                    Text(LoggingStrings.equipmentSaveAction)
-                }
-                .buttonStyle(.primaryAction(.fill))
-                .disabled(!draft.isSavable)
+                Button(action: save) { Text(LoggingStrings.equipmentSaveAction) }
+                    .buttonStyle(.primaryAction(.fill))
+                    .disabled(!isSavable || isSaving)
 
-                if profile != nil {
+                if isEditing {
                     deleteCommand
                 }
             }
@@ -130,9 +203,7 @@ struct EquipmentProfileEditorSheet: View {
             isPresented: $isConfirmingDelete,
             titleVisibility: .visible
         ) {
-            Button(role: .destructive) {
-                Task { await delete() }
-            } label: {
+            Button(role: .destructive, action: delete) {
                 Text(LoggingStrings.equipmentDeleteConfirmAction)
             }
             Button(role: .cancel) {
@@ -164,6 +235,7 @@ struct EquipmentProfileEditorSheet: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .disabled(isSaving)
         .accessibilityElement(children: .combine)
     }
 }

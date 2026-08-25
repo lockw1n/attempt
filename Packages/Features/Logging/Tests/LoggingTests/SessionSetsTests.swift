@@ -276,9 +276,12 @@ extension UserSettings {
     ///
     /// Rebuilt rather than mutated because the record is a value with `let` properties.
     ///
+    /// Internal rather than `fileprivate`: the equipment store reads the same row, and a second
+    /// copy of this would be a second answer to what an amended settings record looks like.
+    ///
     /// - Parameter unit: The unit to store.
     /// - Returns: The amended row.
-    fileprivate func with(displayUnit unit: MassUnit) -> UserSettings {
+    func with(displayUnit unit: MassUnit) -> UserSettings {
         UserSettings(
             id: id,
             createdAt: createdAt,

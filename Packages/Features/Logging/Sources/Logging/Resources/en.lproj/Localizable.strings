@@ -343,6 +343,10 @@
    user chose it, and nothing here falls back to it. */
 "logging.equipment.active.badge" = "In use";
 "logging.equipment.use.action" = "Use this gym";
+/* Deleting the gym in use promotes nothing — which gym a lifter trains at next is not derivable, and
+   a silently promoted one would compute every loading on a different bar without saying so. So the
+   fact is stated instead, on the screen that can act on it. */
+"logging.equipment.none-active" = "No gym is in use. Pick one and every loading is worked out from it.";
 "logging.equipment.edit.action" = "Edit";
 "logging.equipment.error.headline" = "Equipment could not be read";
 "logging.equipment.error.message" = "Your gyms could not be loaded. Nothing has been lost — try again.";

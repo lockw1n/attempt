@@ -49,8 +49,14 @@ public struct EquipmentProfilesView: View {
                 activeProfileID: state.activeProfileID,
                 unit: store.displayUnit,
                 writeFailure: state.writeFailure,
-                add: { editing = .create },
-                edit: { editing = .edit($0) },
+                add: {
+                    state.clearWriteFailure()
+                    editing = .create
+                },
+                edit: {
+                    state.clearWriteFailure()
+                    editing = .edit($0)
+                },
                 use: { profileID in perform { await state.makeActive(profileID) } },
                 retry: { perform { await state.load() } }
             )
@@ -66,6 +72,7 @@ public struct EquipmentProfilesView: View {
             EquipmentProfileEditorSheet(
                 profile: target.profile,
                 unit: store.displayUnit,
+                writeFailure: state.writeFailure,
                 save: { draft in
                     let saved = await state.save(draft, replacing: target.profile)
                     if saved {
@@ -206,8 +213,22 @@ struct EquipmentProfilesContent: View {
     }
 
     /// The gyms, then the command that adds another.
+    ///
+    /// **A line above them when none is in use**, which is the state deleting the active gym leaves
+    /// behind: the repository promotes nothing, deliberately, so every row here offers *Use this
+    /// gym* and not one carries the badge. Read off the badges alone that is an absence the user has
+    /// to notice; the calculator says it outright, and this is the screen that can act on it.
     private var list: some View {
         VStack(alignment: .leading, spacing: Spacing.lg.points) {
+            if activeProfileID == nil {
+                Card {
+                    Text(LoggingStrings.equipmentNoneActive)
+                        .font(Typography.body.font)
+                        .foregroundStyle(ColorToken.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
             ForEach(profiles, id: \.id) { profile in
                 row(profile)
             }

@@ -29,6 +29,10 @@ extension LoggingStrings {
     /// The command that switches to a gym (`FR-1.4.3`).
     static let equipmentUseAction = resource("logging.equipment.use.action")
 
+    /// What the list says when the user has gyms but none is in use — the state deleting the active
+    /// one leaves behind, which no badge can show because the badge is what is missing.
+    static let equipmentNoneActive = resource("logging.equipment.none-active")
+
     /// The command that opens one for editing.
     static let equipmentEditAction = resource("logging.equipment.edit.action")
 
@@ -147,7 +151,8 @@ extension LoggingStrings {
     static var allEquipmentStrings: [LocalizedStringResource] {
         [
             equipmentTitle, equipmentEmptyHeadline, equipmentEmptyMessage, equipmentAddAction,
-            equipmentActiveBadge, equipmentUseAction, equipmentEditAction, equipmentErrorHeadline,
+            equipmentActiveBadge, equipmentUseAction, equipmentNoneActive, equipmentEditAction,
+            equipmentErrorHeadline,
             equipmentErrorMessage, equipmentWriteErrorTitle, equipmentCreateTitle,
             equipmentEditTitle, equipmentNameLabel, equipmentNameHint, equipmentBarLabel,
             equipmentCollarLabel, equipmentCollarHint, equipmentPlatesSection, equipmentPlatesHint,

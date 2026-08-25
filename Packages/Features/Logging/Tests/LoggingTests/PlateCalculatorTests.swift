@@ -162,6 +162,31 @@ struct PlateCalculatorStoreTests {
         #expect(unnamed.displayName == String(localized: LoggingStrings.plateEquipmentUnnamed))
     }
 
+    @Test("The unit the equipment screens draw is the settings row's, kilograms until one is read")
+    func displayUnitFollowsTheSettingsRow() async throws {
+        // `G-3.1`, and it is this store's rather than each screen's: the calculator and the gyms are
+        // reached from two tabs, and a unit handed in by whichever surface opened them would show
+        // kilograms from one entry point and pounds from the other.
+        let fakes = InMemoryRepositoryStack()
+        let store = PlateCalculatorStore(repository: fakes.equipment, settings: fakes.settings)
+        #expect(store.displayUnit == .kilograms)
+
+        let stored = try await fakes.settings.settings()
+        try await fakes.settings.save(stored.with(displayUnit: .pounds))
+        await store.load()
+
+        #expect(store.displayUnit == .pounds)
+    }
+
+    @Test("A settings row that cannot be read leaves the unit as it was, and the gym still loads")
+    func aFailedSettingsReadDoesNotCostTheEquipment() async throws {
+        // The preference is not what this screen is about: refusing to draw a gym because a settings
+        // row could not be read would be the wrong failure.
+        let store = try await Self.loaded()
+        #expect(store.displayUnit == .kilograms)
+        #expect(store.equipment != nil)
+    }
+
     @Test("A read that failed costs the screen its equipment and offers a retry")
     func readFailure() async {
         let store = PlateCalculatorStore(

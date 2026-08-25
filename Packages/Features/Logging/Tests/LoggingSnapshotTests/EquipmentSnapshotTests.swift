@@ -59,6 +59,20 @@
             }
         }
 
+        @Test func noProfileInUse() throws {
+            // What deleting the gym in use leaves behind: rows, no badge on any of them, and the
+            // line that says so. The absence of a badge is not something a reader can be asked to
+            // notice, which is what this reference is checking is no longer the only cue.
+            try assertSnapshots(named: "Equipment-none-active") {
+                fixedEnvironment {
+                    list(
+                        profiles: [EquipmentFixtures.metricGym, EquipmentFixtures.travelGym],
+                        activeProfileID: nil
+                    )
+                }
+            }
+        }
+
         // MARK: - The editor (FR-1.4.2)
 
         @Test func editorOverAStoredGym() throws {
@@ -86,6 +100,44 @@
                         draft: .constant(
                             EquipmentProfileDraft(unit: .kilograms, locale: Fixtures.locale)),
                         unit: .kilograms
+                    )
+                }
+            }
+        }
+
+        @Test func editorCommandsOverANewGym() throws {
+            // The pinned bar is a `safeAreaInset` over a `ScrollView`, so neither the sheet's
+            // reference nor the fields' draws it — and it carries the refusal, the save and the
+            // deletion, which makes it the densest thing on the form at `accessibility3`.
+            try assertSnapshots(named: "Equipment-commands") {
+                fixedEnvironment {
+                    EquipmentProfileEditorCommands(
+                        refusal: .collarNotAWeight,
+                        writeFailure: nil,
+                        isSavable: false,
+                        isSaving: false,
+                        isEditing: false,
+                        save: {},
+                        delete: {}
+                    )
+                }
+            }
+        }
+
+        @Test func editorCommandsOverAFailedWrite() throws {
+            // The other half of the bar: a write the store refused, reported on the form that
+            // attempted it rather than on a list this sheet is covering, and the deletion an
+            // existing gym offers.
+            try assertSnapshots(named: "Equipment-commands-failed") {
+                fixedEnvironment {
+                    EquipmentProfileEditorCommands(
+                        refusal: nil,
+                        writeFailure: "unusableRecord(recordID: 0000, reason: \"plates\")",
+                        isSavable: true,
+                        isSaving: false,
+                        isEditing: true,
+                        save: {},
+                        delete: {}
                     )
                 }
             }

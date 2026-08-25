@@ -79,6 +79,16 @@ enum EquipmentDraftRefusal: Equatable {
 /// a number entered as the pair doubles every loading the app produces; the field says which it
 /// wants, in its own label rather than in a placeholder.
 struct EquipmentProfileDraft: Equatable {
+    /// The identity a new profile takes when this form is saved.
+    ///
+    /// **Minted once with the draft rather than at each save**, and that is the difference between
+    /// one gym and several. A save is `async` and the command stays on screen while it runs, so a
+    /// second tap — an impatient one, or a retry after a write that failed *after* the row landed —
+    /// runs ``profile(replacing:)`` again; an identity minted there would be a different one every
+    /// time, and each attempt would insert rather than replace. An edit ignores this: the stored
+    /// row's own id wins.
+    let newProfileID: UUID
+
     /// The unit ``barText``, ``collarText`` and every plate row are read in — the user's display
     /// preference (`G-3.1`).
     let unit: MassUnit
@@ -104,9 +114,12 @@ struct EquipmentProfileDraft: Equatable {
     /// - Parameters:
     ///   - unit: The unit weights are entered in.
     ///   - locale: The locale the numbers are read in.
-    init(unit: MassUnit, locale: Locale) {
+    ///   - newProfileID: The identity a saved profile takes. Defaults to a fresh one; pass the
+    ///     draft's own to re-seed a form the user has already opened.
+    init(unit: MassUnit, locale: Locale, newProfileID: UUID = UUID()) {
         self.unit = unit
         self.locale = locale
+        self.newProfileID = newProfileID
     }
 
     /// A draft over a stored profile — `FR-1.4.2`'s edit.
@@ -120,8 +133,14 @@ struct EquipmentProfileDraft: Equatable {
     ///   - profile: The stored profile.
     ///   - unit: The unit to render its weights in.
     ///   - locale: The locale to render the numbers in.
-    init(editing profile: EquipmentProfile, unit: MassUnit, locale: Locale) {
-        self.init(unit: unit, locale: locale)
+    ///   - newProfileID: Unused while editing — the stored row's own id is what a save keeps.
+    init(
+        editing profile: EquipmentProfile,
+        unit: MassUnit,
+        locale: Locale,
+        newProfileID: UUID = UUID()
+    ) {
+        self.init(unit: unit, locale: locale, newProfileID: newProfileID)
         name = profile.name
         barText = Self.render(profile.barWeight, unit: unit, locale: locale)
         collarText = Self.render(profile.collarWeight, unit: unit, locale: locale)
@@ -220,13 +239,16 @@ extension EquipmentProfileDraft {
     /// that only ``EquipmentRepository/makeDefault(profileID:)`` can hold, and a save does not
     /// honour the flag whatever the record carries.
     ///
+    /// **Called twice, this answers with the same identity twice** — see ``newProfileID``, which is
+    /// what makes a repeated save replace one row rather than write a second.
+    ///
     /// - Parameter existing: The row being edited, or `nil` when this is a new profile.
     /// - Returns: The record to save, or `nil` if the draft does not resolve.
     func profile(replacing existing: EquipmentProfile?) -> EquipmentProfile? {
         guard let barWeight, let collarWeight, let inventory, isSavable else { return nil }
         let now = Date.now
         return EquipmentProfile(
-            id: existing?.id ?? UUID(),
+            id: existing?.id ?? newProfileID,
             createdAt: existing?.createdAt ?? now,
             updatedAt: now,
             deletedAt: existing?.deletedAt,

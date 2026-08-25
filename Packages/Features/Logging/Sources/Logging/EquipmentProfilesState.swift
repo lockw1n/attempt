@@ -110,6 +110,15 @@ final class EquipmentProfilesState {
         return true
     }
 
+    /// Retires the last failure.
+    ///
+    /// **Called when a form opens**, because ``writeFailure`` outlives the operation that set it:
+    /// a switch that failed on the list would otherwise be the first thing a freshly opened editor
+    /// reported, over a form the user has not yet saved and about a gym they were not editing.
+    func clearWriteFailure() {
+        writeFailure = nil
+    }
+
     /// Switches which gym every loading is worked out on (`FR-1.4.3`).
     ///
     /// - Parameter profileID: The profile to make active.

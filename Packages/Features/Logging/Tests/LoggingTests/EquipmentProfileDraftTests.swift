@@ -208,6 +208,54 @@ struct EquipmentProfileDraftTests {
         #expect(try #require(draft.profile(replacing: active)).isDefault)
     }
 
+    @Test("A form with anything in it is not blank, which is what lets it complain")
+    func aTouchedFormIsNotBlank() {
+        // The direction that matters. `isBlank` gates the only refusal this form shows, so a version
+        // answering `true` unconditionally silences every message on the screen — and the true
+        // direction alone cannot see that. One field at a time, because each one has to count.
+        var draft = EquipmentProfileDraft(unit: .kilograms, locale: Self.locale)
+        #expect(draft.isBlank)
+
+        draft.name = "   "
+        #expect(draft.isBlank, "whitespace is not something typed")
+
+        draft.name = "Home gym"
+        #expect(draft.isBlank == false)
+
+        draft = EquipmentProfileDraft(unit: .kilograms, locale: Self.locale)
+        draft.barText = "20"
+        #expect(draft.isBlank == false)
+
+        draft = EquipmentProfileDraft(unit: .kilograms, locale: Self.locale)
+        draft.collarText = "0"
+        #expect(draft.isBlank == false)
+
+        // A row added and not yet filled in is still a form the user has touched.
+        draft = EquipmentProfileDraft(unit: .kilograms, locale: Self.locale)
+        draft.plates = [PlateDraft()]
+        #expect(draft.isBlank == false)
+    }
+
+    @Test("A new gym's identity is minted once, not at every save")
+    func theNewProfileIdentityIsStable() throws {
+        // The save is async and the command outlives it, so this resolves twice on a double tap.
+        // An identity minted here would make the second attempt an insert rather than a replace.
+        var draft = EquipmentProfileDraft(unit: .kilograms, locale: Self.locale)
+        draft.barText = "20"
+        draft.collarText = "0"
+
+        let first = try #require(draft.profile(replacing: nil))
+        let second = try #require(draft.profile(replacing: nil))
+        #expect(first.id == second.id)
+        #expect(first.id == draft.newProfileID)
+
+        // And two forms are still two gyms — the identity is the draft's, not the type's.
+        var other = EquipmentProfileDraft(unit: .kilograms, locale: Self.locale)
+        other.barText = "20"
+        other.collarText = "0"
+        #expect(try #require(other.profile(replacing: nil)).id != first.id)
+    }
+
     /// A profile record, with only the fields these cases vary.
     private static func profile(
         bar: Int,

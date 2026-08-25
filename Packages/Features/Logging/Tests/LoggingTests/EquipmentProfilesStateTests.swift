@@ -160,6 +160,23 @@ struct EquipmentProfilesStateTests {
         #expect(store.equipment?.calculator.collar == .zero)
     }
 
+    @Test("Saving the same new gym twice writes one row, not two")
+    func aRepeatedSaveReplacesRatherThanInserts() async throws {
+        // The save is async and the command stays on screen while it runs, so two taps are two
+        // writes. They have to land on one row — an identity minted per attempt would insert twice
+        // and leave the user with two gyms of the same name and no way to tell them apart.
+        let fakes = InMemoryRepositoryStack()
+        let state = EquipmentProfilesState(repository: fakes.equipment)
+        await state.load()
+        let draft = Self.draft(name: "Home gym", bar: "20", collar: "2.5")
+
+        await state.save(draft, replacing: nil)
+        await state.save(draft, replacing: nil)
+
+        #expect(state.profiles.count == 1)
+        #expect(state.activeProfileID == state.profiles.first?.id)
+    }
+
     @Test("A read that failed is reported as one, and retried")
     func readFailure() async {
         let state = EquipmentProfilesState(
