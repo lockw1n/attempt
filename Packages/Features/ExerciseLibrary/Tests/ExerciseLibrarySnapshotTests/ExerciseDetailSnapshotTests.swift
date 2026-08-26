@@ -13,6 +13,10 @@
     // the same terms — see `ExerciseListSnapshotTests` for why the pieces are rendered rather than the
     // screen, why a row's text is dimmer here than in the app, and why the copy is the real copy.
     //
+    // FR-1.5.2's history is covered as a group rather than as a section, on the same terms: the
+    // section's body is a `.task` that reads a store, and what a group of rows looks like is the
+    // thing TR-1.12 is a gate over.
+    //
     // THE NOTES SECTION HAS NO REFERENCE, and that is the harness's limit rather than an omission: it
     // is a `TextField`, `ImageRenderer` draws its unsupported-view placeholder for anything
     // UIKit-backed, and a reference over a grey rectangle would be a gate over nothing. What the notes
@@ -40,6 +44,16 @@
                     parent: DetailFixtures.backSquat,
                     variations: [DetailFixtures.frontSquat, DetailFixtures.pauseSquat]
                 )
+            }
+        }
+
+        @Test func history() throws {
+            // One picture with every row variant in it: a working set with a rating, one without,
+            // a warmup, and a failed set. Four references over four rows rather than four suites —
+            // what each of the four does to the row is a font, a colour and a word, and they are
+            // only comparable side by side.
+            try assertSnapshots(named: "ExerciseDetail-history") {
+                ExerciseHistoryGroupView(group: DetailFixtures.trainingDay, unit: .kilograms)
             }
         }
 
@@ -103,6 +117,55 @@
             isArchived: true,
             barType: .noBar
         )
+
+        /// One training day, carrying every distinction a history row draws (`FR-1.5.2`).
+        ///
+        /// The date is fixed rather than relative to now, so a reference committed today still
+        /// matches next year. THE PAGE CONTROL HAS NO REFERENCE, and that is the same limit the
+        /// notes section runs into one layer up: it lives inside `ExerciseHistorySection`, whose
+        /// body is a `.task` that reads a store. What it does is `ExerciseHistoryStateTests`', and
+        /// what it looks like is the simulator run's.
+        static let trainingDay = ExerciseSessionHistory(
+            id: UUID(),
+            date: Date(timeIntervalSince1970: 1_700_000_000),
+            sets: [
+                loggedSet(order: 0, kilos: 60, reps: 5, isWarmup: true),
+                loggedSet(order: 1, kilos: 102.5, reps: 5, rpe: 8),
+                loggedSet(order: 2, kilos: 102.5, reps: 5),
+                loggedSet(order: 3, kilos: 102.5, reps: 3, rpe: 9.5, isCompleted: false),
+            ]
+        )
+
+        /// One set, spelled out once so a field nothing in the picture turns on is not repeated.
+        private static func loggedSet(
+            order: Int,
+            kilos: Double,
+            reps: Int,
+            rpe: Double? = nil,
+            isWarmup: Bool = false,
+            isCompleted: Bool = true
+        ) -> SetEntry {
+            let stamp = Date(timeIntervalSince1970: 1_700_000_000)
+            return SetEntry(
+                id: UUID(),
+                createdAt: stamp,
+                updatedAt: stamp,
+                deletedAt: nil,
+                entryID: UUID(),
+                order: order,
+                weight: Weight(grams: Int(kilos * 1000)),
+                reps: reps,
+                rpe: rpe,
+                rir: nil,
+                isWarmup: isWarmup,
+                isCompleted: isCompleted,
+                targetWeight: nil,
+                targetReps: nil,
+                modifiers: [],
+                notes: "",
+                completedAt: nil
+            )
+        }
     }
 
 #endif

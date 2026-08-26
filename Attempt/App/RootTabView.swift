@@ -109,7 +109,8 @@ struct RootTabView: View {
             ExerciseDetailView(
                 exerciseID: exerciseID,
                 repository: repositories.exercises,
-                workouts: repositories.workouts
+                workouts: repositories.workouts,
+                settings: repositories.settings
             )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)

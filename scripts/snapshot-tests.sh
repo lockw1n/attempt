@@ -72,7 +72,7 @@ cd "$(dirname "$0")/.."
 # screen added to an existing package raises that package's floor rather than adding a row.
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|20"
-    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|21"
+    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|22"
     "Packages/Features/Logging|Logging|LoggingSnapshotTests|52"
     "Packages/Features/History|History|HistorySnapshotTests|7"
 )
