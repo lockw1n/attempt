@@ -62,7 +62,7 @@ public enum AppFormat {
         .dateTime.year().month(.abbreviated).day().locale(locale)
     }
 
-    /// The day and month a calendar grid is showing — "August 2026".
+    /// The month and year a calendar grid is showing — "August 2026".
     ///
     /// The month is spelled out rather than abbreviated: it is a screen title with a whole line to
     /// itself, not a cell in a list.

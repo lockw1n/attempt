@@ -17,6 +17,14 @@
     // section's body is a `.task` that reads a store, and what a group of rows looks like is the
     // thing TR-1.12 is a gate over.
     //
+    // THE HISTORY REFERENCE PINS ITS LOCALE AND ITS TIME ZONE, and it is the only one here that
+    // renders anything either can reach. The harness pins neither, so an unpinned reference records
+    // whatever REGION the recording Mac is set to — not its language. That is the failure this
+    // suite shipped with: recorded under `en_US@rg=uazzzz`, whose decimal separator is a comma, and
+    // compared on a runner under plain `en_US`, whose separator is a full stop. Four separators and
+    // a date is 201 pixels, which reads as a rendering regression and is a machine difference.
+    // `SessionListSnapshotTests` and `SessionSnapshotFixtures` had already met the same trap.
+    //
     // THE NOTES SECTION HAS NO REFERENCE, and that is the harness's limit rather than an omission: it
     // is a `TextField`, `ImageRenderer` draws its unsupported-view placeholder for anything
     // UIKit-backed, and a reference over a grey rectangle would be a gate over nothing. What the notes
@@ -54,6 +62,8 @@
             // only comparable side by side.
             try assertSnapshots(named: "ExerciseDetail-history") {
                 ExerciseHistoryGroupView(group: DetailFixtures.trainingDay, unit: .kilograms)
+                    .environment(\.locale, DetailFixtures.locale)
+                    .environment(\.timeZone, .gmt)
             }
         }
 
@@ -96,6 +106,12 @@
     /// The variation carries a non-default bar and laterality so the reference shows the vocabulary
     /// mapping doing something rather than five rows of the schema's defaults.
     enum DetailFixtures {
+        /// The locale the history reference renders its date, loads and ratings for.
+        ///
+        /// Pinned because a Mac's region is not its language: `en_US@rg=uazzzz` is a US English
+        /// machine that writes `102,5`, and it is what recorded this suite's first history images.
+        static let locale = Locale(identifier: "en_US")
+
         static let backSquat = Fixtures.exercise(id: 1, name: "Back Squat", movement: .squat)
 
         static let frontSquat = Fixtures.exercise(

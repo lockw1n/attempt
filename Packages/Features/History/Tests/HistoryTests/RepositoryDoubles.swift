@@ -254,3 +254,56 @@ actor CountingWorkoutRepository: WorkoutRepository {
         try await wrapped.sets(forExerciseID: exerciseID, includingDeleted: includingDeleted)
     }
 }
+
+/// A workout store holding two sessions under one identifier, which no local write can produce.
+///
+/// `save` is keyed on the identifier, so a second row sharing one replaces the first here; `G-2.5`'s
+/// "no unique constraints" is a fact about the *store*, and a sync or a restore is what puts a
+/// duplicated pair in one. This models that store — the session list is the rows it was handed, in
+/// the order it was handed them, and everything below a session is the wrapped store's own so that
+/// a summary still resolves.
+struct ForeignWorkoutLog: WorkoutRepository {
+    /// The sessions this store answers with, newest first.
+    let held: [WorkoutSession]
+
+    private let wrapped: any WorkoutRepository
+
+    /// - Parameters:
+    ///   - held: The rows to answer with, newest first.
+    ///   - wrapped: Where the entries and sets beneath them come from.
+    init(holding held: [WorkoutSession], over wrapped: any WorkoutRepository) {
+        self.held = held
+        self.wrapped = wrapped
+    }
+
+    func sessions(
+        in range: ClosedRange<Date>, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        held.filter { range.contains($0.date) && (includingDeleted || $0.deletedAt == nil) }
+    }
+
+    func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
+        held.first { $0.id == id && (includingDeleted || $0.deletedAt == nil) }
+    }
+    func save(_ session: WorkoutSession) async throws {
+        throw RepositoryError.recordNotFound(id: session.id)
+    }
+    func deleteSession(id: UUID) async throws { try await wrapped.deleteSession(id: id) }
+    func entries(
+        forSessionID sessionID: UUID, includingDeleted: Bool
+    ) async throws -> [ExerciseEntry] {
+        try await wrapped.entries(forSessionID: sessionID, includingDeleted: includingDeleted)
+    }
+    func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
+    func deleteExerciseEntry(id: UUID) async throws {
+        try await wrapped.deleteExerciseEntry(id: id)
+    }
+    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        try await wrapped.sets(forEntryID: entryID, includingDeleted: includingDeleted)
+    }
+    func save(_ set: SetEntry) async throws { try await wrapped.save(set) }
+    func deleteSet(id: UUID) async throws { try await wrapped.deleteSet(id: id) }
+    func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        try await wrapped.sets(forExerciseID: exerciseID, includingDeleted: includingDeleted)
+    }
+}

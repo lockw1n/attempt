@@ -71,8 +71,15 @@
             // which the section's heading carries instead. The picture that shows the two not
             // printing the same day twice.
             try assertSnapshots(named: "Calendar-day-card") {
-                SessionSummaryCard(summary: CalendarFixtures.session, unit: .kilograms, showsDate: false)
-                    .environment(\.locale, CalendarFixtures.locale)
+                SessionSummaryCard(
+                    summary: CalendarFixtures.session, unit: .kilograms, showsDate: false
+                )
+                .environment(\.locale, CalendarFixtures.locale)
+                // The card's own date is drawn through `Text(_:format:)` even though this reference
+                // hides it, and the fixture's instant is midnight UTC — a different day in every
+                // zone west of it. Every other subject here renders through
+                // `AppFormat.resolved(_:in:)`, which binds the zone and needs no environment.
+                .environment(\.timeZone, .gmt)
             }
         }
 

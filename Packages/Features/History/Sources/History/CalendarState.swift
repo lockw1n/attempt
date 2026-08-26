@@ -184,7 +184,11 @@ final class CalendarState {
             displayUnit = unit
         }
         do {
-            sessions = try await workouts.sessions(in: Self.everySession, includingDeleted: false)
+            // Deduplicated on the way in, for the reason ``SessionListState/deduplicated(_:)``
+            // gives one screen along: a day's section is a `ForEach` keyed on the session
+            // identifier, and `G-2.5` is what lets a store hold two rows under one.
+            sessions = SessionListState.deduplicated(
+                try await workouts.sessions(in: Self.everySession, includingDeleted: false))
             names = try await exerciseNames()
             index(sessions)
             phase = .loaded
@@ -273,9 +277,15 @@ final class CalendarState {
         bounds = Self.bounds(over: trainingDays, containing: currentMonth, in: calendar)
         // The month the grid opened on may now be outside the range — it cannot be, since the range
         // is built to contain it — but a month reached by a chevron before a re-read shrank the
-        // history can be. Snapping back is what stops the chevrons from both being disabled.
+        // history can be. Left there, the chevron pointing back into the range reads as enabled and
+        // refuses every step, `showMonth(offsetBy:)` rejecting each target as out of bounds.
+        //
+        // **Clamped to the nearest end rather than snapped to one of them.** The user was reading
+        // the oldest month they could reach; the oldest one that survives is the smaller move, and
+        // the far end is a jump to today for a deletion that happened years from it.
         if !bounds.contains(grid.month) {
-            grid = MonthGrid(containing: bounds.upperBound, in: calendar)
+            let nearest = min(max(grid.month, bounds.lowerBound), bounds.upperBound)
+            grid = MonthGrid(containing: nearest, in: calendar)
         }
     }
 

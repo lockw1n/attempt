@@ -98,6 +98,11 @@
         static func card(_ summary: SessionSummary, unit: MassUnit = .kilograms) -> some View {
             SessionSummaryCard(summary: summary, unit: unit)
                 .environment(\.locale, Locale(identifier: "en_US"))
+                // The date goes through `Text(_:format:)`, which resolves its time zone from the
+                // environment — so an unpinned reference is only reproducible while the fixture's
+                // instant happens to fall on one day in every zone. This one does; pinning is what
+                // stops the next fixture from depending on that.
+                .environment(\.timeZone, .gmt)
         }
 
         /// A day that looks like most days: two exercises, a round number of sets, no note.
