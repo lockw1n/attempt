@@ -190,6 +190,8 @@
 "logging.session.set.mark-working" = "Mark as working";
 /* FR-1.2.14's collapsible group. A label beside a numeral, so it stays a count in every language
    rather than needing a plural rule. */
+"logging.session.set.record" = "PR";
+"logging.session.set.record.label %@" = "Personal record for %@ reps";
 "logging.session.set.warmup.section" = "Warmups";
 /* The set editor's fifth row: which kind the set being logged is. The sentence says what the choice
    costs rather than what the switch does — that warmups are excluded from the work is the fact a

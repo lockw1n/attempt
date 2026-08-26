@@ -316,7 +316,12 @@ struct PastSessionExerciseCard: View {
     /// - Parameter numbered: The set and its number.
     /// - Returns: The row.
     private func row(for numbered: NumberedSet) -> some View {
-        SetRow(numbered: numbered, unit: unit, mark: nil, markCompleted: nil, edit: edit)
+        // No record badge here. `FR-1.6.3` puts it on the set "at the moment it is logged", which is
+        // the workout in progress; a past session would need the workout's map read for a screen that
+        // is not logging, and marking an old set as a record it may since have lost is worse than not
+        // marking it. Whichever task first wants records on this screen owns that read.
+        SetRow(
+            numbered: numbered, unit: unit, recordReps: [], mark: nil, markCompleted: nil, edit: edit)
     }
 
     /// This card's sets, each carrying its number within its own sequence (`FR-1.2.14`).

@@ -294,6 +294,7 @@ public struct ActiveSessionView: View {
                     },
                     unit: store.displayUnit,
                     previous: store.previous,
+                    personalRecords: store.personalRecords,
                     logSet: { editing = $0 },
                     mark: { markSet($0, asWarmup: $1) },
                     markCompleted: { markSet($0, asCompleted: $1) },

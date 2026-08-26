@@ -95,6 +95,15 @@ public final class ActiveSessionStore {
     /// One value rather than three properties — see ``PreviousPerformances``.
     var previous = PreviousPerformances()
 
+    /// Which of the workout's sets hold a personal record (`FR-1.6.3`).
+    ///
+    /// **Refreshed inside ``loadExercises()`` rather than by a call of its own**, which is what makes
+    /// the badge appear in the same interaction the set was logged in. Every writer of a set column
+    /// already `await`s `PersonalRecordRecomputer.setDidChange(inEntryID:)` and *then* re-reads the
+    /// list, so by the time this runs the recompute has written the cache and the read below is a
+    /// cache hit — the confirmed answer, with no optimistic mark to correct afterwards.
+    private(set) var personalRecords = SessionRecordMarks()
+
     /// The unit a load is entered and shown in (`G-3.1`, `G-3.2`, `FR-1.10.2`).
     ///
     /// **On this store rather than read by the editor, for the reason the exercises are here.** The
@@ -378,12 +387,41 @@ public final class ActiveSessionStore {
                 )
             }
             exercises = loaded
+            personalRecords = await recordMarks(over: loaded)
             exercisesReadFailure = nil
         } catch {
             exercises = []
+            personalRecords = SessionRecordMarks()
             exercisesReadFailure = String(describing: error)
         }
         hasLoadedExercises = true
+    }
+
+    /// Which of `exercises`' sets hold a record, and at which rep counts (`FR-1.6.3`).
+    ///
+    /// **One cache read per distinct exercise, not per card and not per set.** A workout names a
+    /// handful of exercises and two entries can name the same one; the read is `G-1.5`'s cached
+    /// answer, so a workout of six exercises costs six table reads and no walk of anything.
+    ///
+    /// **A refusal costs that exercise its badges and nothing else.** The sets are stored and drawn
+    /// either way, and a derived value that could not be read is not something to fail a workout
+    /// over (`G-1.4`) — the same swallow the recompute triggers make, for the same reason.
+    ///
+    /// - Parameter exercises: The workout's exercises, already read.
+    /// - Returns: The marks, ready to hand to the cards.
+    private func recordMarks(over exercises: [SessionExercise]) async -> SessionRecordMarks {
+        var marks = SessionRecordMarks()
+        for exerciseID in Set(exercises.map(\.entry.exerciseID)) {
+            guard let repMaxes = try? await records.repMaxes(forExerciseID: exerciseID) else {
+                continue
+            }
+            for repMax in repMaxes {
+                marks.bySetID[repMax.record.sourceSetID, default: []].append(repMax.reps)
+            }
+        }
+        for setID in marks.bySetID.keys { marks.bySetID[setID]?.sort() }
+        marks.hasLoaded = true
+        return marks
     }
 
     /// Whether a workout is in progress — what the screen-wake policy and every entry point read.
@@ -394,20 +432,24 @@ public final class ActiveSessionStore {
 
     /// Drops the exercise list, because the workout it belonged to is no longer the one held.
     ///
-    /// **All three diagnostics go with it, and so does the previous-performance answer.** A failure
+    /// **All three diagnostics go with it, and so do the previous-performance answer and the record
+    /// marks.** A failure
     /// describes a read or a write against a workout, and carrying one across a change of session
     /// would report it against the next one; the "last time" strips are keyed on the *entries* of
     /// the workout just dropped, so keeping them would draw one workout's history on another's
-    /// cards.
+    /// cards. The marks are keyed on sets that are not in the next workout at all, so they would
+    /// answer nothing rather than answer wrongly — dropped anyway, because a badge is a claim about
+    /// the workout on screen.
     ///
     /// The note's diagnostic is on that list rather than left to the screen that clears it on the
     /// next keystroke: two workouts whose notes are both empty produce no keystroke, so the field
     /// would open on the next workout already carrying the last one's failure.
     ///
-    /// Every caller replaces the held session or drops it, which is what makes clearing all four
+    /// Every caller replaces the held session or drops it, which is what makes clearing all of them
     /// safe — nothing here runs while the workout a diagnostic belongs to is still on screen.
     private func forgetExercises() {
         exercises = []
+        personalRecords = SessionRecordMarks()
         hasLoadedExercises = false
         exercisesReadFailure = nil
         exercisesWriteFailure = nil

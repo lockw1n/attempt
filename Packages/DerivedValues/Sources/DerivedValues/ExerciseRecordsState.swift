@@ -11,15 +11,16 @@ import RepositoryInterface
 /// rather than asking the actor again — two readers of one store cannot disagree, two callers of one
 /// actor can.
 ///
-/// **The two halves are loaded separately because they cost differently.** ``loadRecords()`` is
-/// answered from `TR-0.3.9`'s cache whenever it is current and is what a PR list wants;
-/// ``loadEstimate()`` always walks the exercise's history, because an estimate depends on a setting
-/// no cache can carry. A screen showing only one of them should load only that one — ``load()`` is
-/// for a screen showing both.
+/// **The three loads are separate because they cost differently.** ``loadRecords()`` is answered
+/// from `TR-0.3.9`'s cache whenever it is current, so it is the one a badge on a logging screen can
+/// afford; ``loadSources()`` and ``loadEstimate()`` each walk the exercise's history, the first
+/// because a set is not readable by its own identifier and the second because an estimate depends on
+/// a setting no cache can carry. A screen showing only the numbers loads only the first — ``load()``
+/// is for a screen showing all of it.
 ///
 /// **``observeChanges()`` is what makes it a subscription rather than a snapshot.** It runs until
-/// cancelled, so it belongs in a `.task` on the screen; a change to *this* exercise reloads both
-/// halves, and a settings change reloads the estimate alone — a rep max reads no setting, so nothing
+/// cancelled, so it belongs in a `.task` on the screen; a change to *this* exercise reloads all of
+/// it, and a settings change reloads the estimate alone — a rep max reads no setting, so nothing
 /// a picker does can move one.
 @MainActor
 @Observable
@@ -30,6 +31,17 @@ public final class ExerciseRecordsState {
 
     /// The best estimated one-rep maximum, or `nil` when no set yielded one.
     public private(set) var estimatedMax: DatedRecord?
+
+    /// The session each record's source set was performed in, keyed on the set — `FR-1.6.2`'s link.
+    ///
+    /// **A separate map rather than a field on ``DatedRepMax``**, because the two have the lifetimes
+    /// the type's note describes: a rep max is cached and a session is a join resolved on read, so a
+    /// record carrying one would be a cached copy of where a set lives (`G-1.4`).
+    ///
+    /// **A set missing from here is a record with no link, not a record with no session.** The
+    /// resolution is best-effort — see ``PersonalRecordRecomputer/sessionIDs(forSetIDs:inExerciseID:)``
+    /// — and a row simply renders without its link.
+    public private(set) var sourceSessions: [UUID: UUID] = [:]
 
     /// Whether ``loadRecords()`` has ever completed. An exercise with no records and one nothing has
     /// looked at are both an empty ``repMaxes``, and a screen says opposite things about them.
@@ -76,9 +88,17 @@ public final class ExerciseRecordsState {
         self.recomputer = recomputer
     }
 
-    /// Reloads both halves.
+    /// Reloads everything a screen showing the whole picture needs.
+    ///
+    /// **The link resolution is in here rather than left to the caller**, because a change that moves
+    /// a record moves the set behind it: a list that reloaded its numbers and kept the old links
+    /// would offer `FR-1.6.2`'s navigation to the session that *used* to hold the record. It costs one
+    /// more walk of the exercise's sets, which is the walk ``loadEstimate()`` already performs
+    /// unconditionally two lines below — a screen that wants only the cached numbers calls
+    /// ``loadRecords()`` and pays neither.
     public func load() async {
         await loadRecords()
+        await loadSources()
         await loadEstimate()
     }
 
@@ -91,6 +111,10 @@ public final class ExerciseRecordsState {
             let loaded = try await recomputer.repMaxes(forExerciseID: exerciseID)
             guard isCurrent(token) else { return }
             repMaxes = loaded
+            // The links belong to the list they were resolved for. Kept across a replacement they
+            // would key on sets that are no longer records, which is a link on the wrong row rather
+            // than a missing one — see ``sourceSessions``.
+            sourceSessions = [:]
             hasLoaded = true
             recordsFailure = nil
         } catch {
@@ -98,6 +122,26 @@ public final class ExerciseRecordsState {
             hasLoaded = true
             recordsFailure = String(describing: error)
         }
+    }
+
+    /// Reloads where each record's source set was performed (`FR-1.6.2`).
+    ///
+    /// **Resolves whatever ``repMaxes`` holds now**, so it belongs after ``loadRecords()`` and not
+    /// before it; called on its own it re-resolves the list already on screen, which is what a retry
+    /// of a link that came back empty would want.
+    ///
+    /// **It cannot fail.** The resolution is best-effort, so there is no third diagnostic here and
+    /// ``failure`` keeps its two — see ``sourceSessions``.
+    public func loadSources() async {
+        let wanted = Set(repMaxes.map(\.record.sourceSetID))
+        guard !wanted.isEmpty else {
+            sourceSessions = [:]
+            return
+        }
+        let token = beginRead()
+        let resolved = await recomputer.sessionIDs(forSetIDs: wanted, inExerciseID: exerciseID)
+        guard isCurrent(token) else { return }
+        sourceSessions = resolved
     }
 
     /// Reloads the estimated one-rep maximum (`FR-1.7.1`).

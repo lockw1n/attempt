@@ -1,5 +1,6 @@
 #if os(iOS)
 
+    import DerivedValues
     import DesignSystem
     import PowerliftingCore
     import RepositoryInterface
@@ -64,6 +65,51 @@
                 ExerciseHistoryGroupView(group: DetailFixtures.trainingDay, unit: .kilograms)
                     .environment(\.locale, DetailFixtures.locale)
                     .environment(\.timeZone, .gmt)
+            }
+        }
+
+        @Test func personalRecords() throws {
+            // FR-1.6.2's list, at the shape the section draws when the disclosure is closed and again
+            // when it is open. Rendered as rows rather than as `ExerciseRecordsSection`, on the
+            // history section's terms: that view's body is a `.task` over a recompute actor.
+            //
+            // THE ROWS ARE THE UNLINKED FORM, which is what a record whose source set could not be
+            // located draws — and it is also what the linked one looks like, since the link is a
+            // `NavigationLink` with the plain button style over exactly this content. What cannot be
+            // pictured is the NavigationStack it needs to be a control at all: the stack is
+            // UIKit-backed, so a reference taken through one is the renderer's placeholder. That the
+            // link navigates is `ExerciseRecordsSectionTests`', and that it looks right is the
+            // simulator run's.
+            let list = ExerciseRecordList(DetailFixtures.repMaxes)
+            try assertSnapshots(named: "ExerciseDetail-records") {
+                GroupedSection(Text(ExerciseLibraryStrings.recordsSection)) {
+                    ForEach(list.prominent, id: \.reps) { repMax in
+                        ExerciseRecordRow(repMax: repMax, unit: .kilograms, sessionID: nil)
+                    }
+                    RecordDisclosureHeader(isExpanded: false) {}
+                }
+                .environment(\.locale, DetailFixtures.locale)
+                .environment(\.timeZone, .gmt)
+            }
+        }
+
+        @Test func personalRecordsDisclosed() throws {
+            // The same section with FR-1.6.2's disclosure open — the 6–10RM under the control, and
+            // the chevron turned. Two references rather than one, because "behind an explicit
+            // disclosure control" is a claim about what is NOT on screen in the first of them.
+            let list = ExerciseRecordList(DetailFixtures.repMaxes)
+            try assertSnapshots(named: "ExerciseDetail-records-disclosed") {
+                GroupedSection(Text(ExerciseLibraryStrings.recordsSection)) {
+                    ForEach(list.prominent, id: \.reps) { repMax in
+                        ExerciseRecordRow(repMax: repMax, unit: .kilograms, sessionID: nil)
+                    }
+                    RecordDisclosureHeader(isExpanded: true) {}
+                    ForEach(list.disclosed, id: \.reps) { repMax in
+                        ExerciseRecordRow(repMax: repMax, unit: .kilograms, sessionID: nil)
+                    }
+                }
+                .environment(\.locale, DetailFixtures.locale)
+                .environment(\.timeZone, .gmt)
             }
         }
 
@@ -151,6 +197,37 @@
                 loggedSet(order: 3, kilos: 102.5, reps: 3, rpe: 9.5, isCompleted: false),
             ]
         )
+
+        /// One exercise's records, one at every N the two references have to picture.
+        ///
+        /// **Five N's, not ten**, and the gaps are the point: an N no set reached is absent rather
+        /// than drawn at zero, so the prominent half has three rows and the disclosed half two.
+        static let repMaxes: [DatedRepMax] = [
+            repMax(reps: 1, kilos: 140, daysAgo: 42),
+            repMax(reps: 3, kilos: 125, daysAgo: 14),
+            repMax(reps: 5, kilos: 110, daysAgo: 7),
+            repMax(reps: 8, kilos: 95, daysAgo: 28),
+            repMax(reps: 10, kilos: 85, daysAgo: 63),
+        ]
+
+        /// One record, spelled out once so a field nothing in the picture turns on is not repeated.
+        ///
+        /// The source set is a fixed identifier rather than a fresh `UUID` for the reason every other
+        /// fixture here has one: nothing in these renderings may depend on a value that changes per
+        /// run, and a row keyed on a fresh one could not be looked up in a links map either.
+        private static func repMax(reps: Int, kilos: Double, daysAgo: Int) -> DatedRepMax {
+            DatedRepMax(
+                reps: reps,
+                record: DatedRecord(
+                    weight: Weight(grams: Int(kilos * 1000)),
+                    sourceSetID: UUID(
+                        uuidString: "0F5A1E24-9B7D-4C31-8E62-0000000000\(String(format: "%02d", reps))"
+                    ) ?? UUID(),
+                    achievedAt: Date(timeIntervalSince1970: 1_700_000_000)
+                        .addingTimeInterval(-Double(daysAgo) * 86_400)
+                )
+            )
+        }
 
         /// One set, spelled out once so a field nothing in the picture turns on is not repeated.
         private static func loggedSet(

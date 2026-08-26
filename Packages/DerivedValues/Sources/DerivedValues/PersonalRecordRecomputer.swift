@@ -35,6 +35,19 @@ public actor PersonalRecordRecomputer {
     /// The subscribers ``changes()`` handed a stream to, keyed by a token their termination carries.
     private var subscribers: [UUID: AsyncStream<RecordChange>.Continuation] = [:]
 
+    /// The latest cache-writing recompute started per exercise, so an older one can tell that it is
+    /// no longer the answer.
+    ///
+    /// **An actor serialises, which is not the same as ordering its results.** Two recomputes of one
+    /// exercise interleave at their `await` points, so the row is written by whichever *finishes*
+    /// last — and measured, the one that finishes last is the one holding the older sets. A counter
+    /// rather than a lock, because what is missing is not exclusion but a way for a call to know its
+    /// own work has been superseded; a lock would serialise two walks that need not both happen.
+    ///
+    /// One entry per exercise ever recomputed in this process, and never removed: an exercise is a
+    /// catalogue row, so the map is bounded by the catalogue rather than by the training history.
+    private var writeGenerations: [UUID: Int] = [:]
+
     /// Builds the recomputer over the two repositories it reads and writes.
     ///
     /// - Parameters:
@@ -143,6 +156,41 @@ public actor PersonalRecordRecomputer {
     /// The formula estimates are currently produced under.
     public func formulaInForce() -> E1RMFormulaID { formula }
 
+    /// The session each of `setIDs` was performed in — `FR-1.6.2`'s "link to the source set".
+    ///
+    /// **The cache cannot answer this and deliberately does not try.** `PersonalRecordCacheEntity`
+    /// stores the set, not the session, because the session is a *join* and a cached copy of one is a
+    /// second source of truth for where a set was performed (`G-1.4`); a set moved to another entry
+    /// would leave the stored answer pointing at a workout the set is no longer in.
+    ///
+    /// **A walk of the exercise's sets, because a set is not readable by id.** `WorkoutRepository`
+    /// reads sets by entry or by exercise and never by their own identifier, so the exercise's list is
+    /// what turns a record's `sourceSetID` into the entry that names its session. Only the entries
+    /// actually holding a record are then resolved — at most eleven, whatever the history is, which is
+    /// ``sessionDates(forEntryIDs:)``'s bound for its reason.
+    ///
+    /// **Best-effort, and a set that will not resolve is simply absent** rather than a failure or a
+    /// sentinel: what is lost is a link on one row, and a screen that reported a read failure over a
+    /// record it is successfully displaying would name the wrong thing as broken.
+    ///
+    /// - Parameters:
+    ///   - setIDs: The sets to locate — a record's ``DatedRecord/sourceSetID``.
+    ///   - exerciseID: The exercise they were logged against.
+    /// - Returns: The session behind each set that resolves, keyed on the set.
+    public func sessionIDs(
+        forSetIDs setIDs: Set<UUID>, inExerciseID exerciseID: UUID
+    ) async -> [UUID: UUID] {
+        guard !setIDs.isEmpty,
+            let stored = try? await workouts.sets(
+                forExerciseID: exerciseID, includingDeleted: false)
+        else { return [:] }
+        let holding = stored.filter { setIDs.contains($0.id) }
+        let sessions = await sessionIDs(forEntryIDs: Set(holding.map(\.entryID)))
+        return holding.reduce(into: [:]) { found, set in
+            found[set.id] = sessions[set.entryID]
+        }
+    }
+
     // MARK: - Triggers
 
     /// Recomputes one exercise and stores the result (`FR-1.6.4`, `TR-1.6`).
@@ -235,6 +283,9 @@ public actor PersonalRecordRecomputer {
     private func recomputed(
         _ exerciseID: UUID, writingCache: Bool
     ) async throws -> ExerciseRecords {
+        // Claimed before the first `await`, and only by a call that intends to write: two reads that
+        // never touch the row cannot supersede each other.
+        let generation = writingCache ? claimWriteGeneration(exerciseID) : 0
         let stored = try await workouts.sets(forExerciseID: exerciseID, includingDeleted: false)
         let analysed = stored.compactMap { set in (try? set.setRecord()).map { (set, $0) } }
 
@@ -253,7 +304,10 @@ public actor PersonalRecordRecomputer {
         }
         let bestE1RM = computed.bestE1RM.map { dated($0, over: analysed, using: dates) }
 
-        if writingCache {
+        // Refused rather than written where a newer recompute of this exercise has started since:
+        // the value is still returned, because the caller asked for what *these* sets produce and
+        // that is what it computed. See ``writeGenerations``.
+        if writingCache, writeGenerations[exerciseID] == generation {
             try await cache.replacePersonalRecords(
                 forExerciseID: exerciseID,
                 with: repMaxes.map {
@@ -298,6 +352,13 @@ public actor PersonalRecordRecomputer {
     ///
     /// A row that will not resolve is simply absent, and the caller falls back to the set's own
     /// timestamps rather than to a sentinel.
+    /// Claims the next cache-writing generation for `exerciseID`. See ``writeGenerations``.
+    private func claimWriteGeneration(_ exerciseID: UUID) -> Int {
+        let next = (writeGenerations[exerciseID] ?? 0) + 1
+        writeGenerations[exerciseID] = next
+        return next
+    }
+
     private func sessionDates(forEntryIDs entryIDs: Set<UUID>) async -> [UUID: Date] {
         var dates: [UUID: Date] = [:]
         for entryID in entryIDs {
@@ -308,5 +369,21 @@ public actor PersonalRecordRecomputer {
             dates[entryID] = session.date
         }
         return dates
+    }
+
+    /// The session each of `entryIDs` belongs to, for the ones that resolve.
+    ///
+    /// Deleted entries are read, and a row that will not resolve is absent, both for
+    /// ``sessionDates(forEntryIDs:)``'s reasons. The *session row* is not read at all: an entry names
+    /// its session in a column, so nothing here has to fetch it to know which one it is.
+    private func sessionIDs(forEntryIDs entryIDs: Set<UUID>) async -> [UUID: UUID] {
+        var sessions: [UUID: UUID] = [:]
+        for entryID in entryIDs {
+            guard let entry = try? await workouts.entry(id: entryID, includingDeleted: true) else {
+                continue
+            }
+            sessions[entryID] = entry.sessionID
+        }
+        return sessions
     }
 }

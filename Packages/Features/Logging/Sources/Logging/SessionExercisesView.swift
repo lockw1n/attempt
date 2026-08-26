@@ -132,6 +132,12 @@ struct SessionExerciseList: View {
     /// itself, which is the thing a snapshot has none of.
     let previous: PreviousPerformances
 
+    /// Which of the workout's sets hold a record (`FR-1.6.3`), keyed on the set.
+    ///
+    /// The whole map rather than one lookup per card, for ``previous``' reason: one read answers
+    /// every card, and a card handed a closure could not be snapshotted.
+    let personalRecords: SessionRecordMarks
+
     /// Opens the set editor over one exercise (`FR-1.2.3`, `FR-1.2.6`).
     let logSet: (SetEditorTarget) -> Void
 
@@ -162,6 +168,7 @@ struct SessionExerciseList: View {
                     move: move,
                     unit: unit,
                     previous: previous.state(forEntryID: item.id),
+                    personalRecords: personalRecords,
                     logSet: logSet,
                     mark: mark,
                     markCompleted: markCompleted,
@@ -225,6 +232,14 @@ struct SessionExerciseCard: View {
 
     /// What this exercise looked like the last time it was trained (`FR-1.2.10`).
     let previous: PreviousPerformanceState
+
+    /// Which sets hold a record (`FR-1.6.3`), keyed on the set.
+    ///
+    /// **The workout's map rather than this card's slice**, because slicing it would need the card to
+    /// know which of the exercise's records were set today — and a record's source set is not
+    /// necessarily on this card at all. The lookup is by set, so a map holding other cards' sets
+    /// answers this one exactly as well.
+    let personalRecords: SessionRecordMarks
 
     /// Opens the set editor over this exercise (`FR-1.2.3`, `FR-1.2.6`).
     let logSet: (SetEditorTarget) -> Void
@@ -402,6 +417,7 @@ struct SessionExerciseCard: View {
         SetRow(
             numbered: numbered,
             unit: unit,
+            recordReps: personalRecords.repCounts(forSetID: numbered.id),
             mark: mark,
             markCompleted: markCompleted,
             edit: edit

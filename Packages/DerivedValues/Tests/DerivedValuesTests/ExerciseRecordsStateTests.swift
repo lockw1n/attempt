@@ -223,6 +223,101 @@ struct ExerciseRecordsStateTests {
         #expect(state.repMaxes.first { $0.reps == 5 }?.record.weight == Weight(grams: 120_000))
     }
 
+    /// **A superseded recompute must not write the cache either.** The token above protects what is
+    /// on screen; nothing protected the row, and the row is what `FR-1.6.2`'s list and `FR-1.6.3`'s
+    /// badge read. Measured before the generation counter landed: the screen held 120 kg while the
+    /// cache held 100 kg, until the next mutation of that exercise happened to recompute it.
+    @Test("A superseded recompute does not write the cache over a newer one")
+    func aSupersededRecomputeDoesNotWriteTheCache() async throws {
+        let log = TrainingLog()
+        let exerciseID = try await log.exercise()
+        let entryID = try await log.session(
+            of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
+        let gated = GatedWorkouts(wrapped: log.repositories.workouts)
+        let recomputer = PersonalRecordRecomputer(
+            workouts: gated, cache: log.repositories.personalRecords)
+        let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
+
+        // The first read walks, sees 100 kg, and is held before it can write.
+        let stale = Task { await state.loadRecords() }
+        for _ in 0..<200 {
+            if await gated.startedWalks >= 1 { break }
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+
+        // A heavier set lands, and a newer read computes and stores 120 kg.
+        try await log.repositories.workouts.save(
+            log.setEntry(entryID: entryID, order: 1, on: weeksAgo(2), working(120_000, 5)))
+        await state.loadRecords()
+
+        await gated.open()
+        await stale.value
+
+        let cached = try await log.repositories.personalRecords.personalRecords(
+            forExerciseID: exerciseID, includingDeleted: false)
+        #expect(cached.first { $0.repCount == 5 }?.weight == Weight(grams: 120_000))
+        #expect(cached.first { $0.repCount == 5 }?.weight != Weight(grams: 100_000))
+    }
+
+    /// **`FR-1.6.2`'s link, and it is a join rather than a stored column.** The cache holds the set;
+    /// the session behind it is resolved on read, so a record that moved to another workout cannot
+    /// leave a link pointing at the old one.
+    @Test("Each record resolves to the session its source set was performed in")
+    func recordsResolveToTheirSessions() async throws {
+        let log = TrainingLog()
+        let exerciseID = try await log.exercise()
+        let old = try await log.session(
+            of: exerciseID, on: weeksAgo(4), sets: [working(140_000, 1)])
+        let recent = try await log.session(
+            of: exerciseID, on: weeksAgo(1), sets: [working(120_000, 5)])
+        let recomputer = PersonalRecordRecomputer(
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+        let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
+
+        await state.load()
+
+        // The heaviest single is four weeks back; the 5RM is last week's. Two records, two sessions.
+        let single = try #require(state.repMaxes.first { $0.reps == 1 })
+        let five = try #require(state.repMaxes.first { $0.reps == 5 })
+        let oldSession = try #require(
+            try await log.repositories.workouts.entry(id: old, includingDeleted: false)?.sessionID)
+        let recentSession = try #require(
+            try await log.repositories.workouts.entry(id: recent, includingDeleted: false)?
+                .sessionID)
+        #expect(state.sourceSessions[single.record.sourceSetID] == oldSession)
+        #expect(state.sourceSessions[five.record.sourceSetID] == recentSession)
+        #expect(oldSession != recentSession)
+    }
+
+    /// **A reload replaces the links with the list they belong to.** Kept across a replacement they
+    /// would key on sets that are no longer records — a link on the wrong row rather than a missing
+    /// one.
+    @Test("Reloading the records drops links the new list does not own")
+    func reloadingRecordsDropsStaleLinks() async throws {
+        let log = TrainingLog()
+        let exerciseID = try await log.exercise()
+        let entryID = try await log.session(
+            of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
+        let recomputer = PersonalRecordRecomputer(
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+        let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
+
+        await state.load()
+        let first = try #require(state.repMaxes.first { $0.reps == 5 }).record.sourceSetID
+        #expect(state.sourceSessions[first] != nil)
+
+        // A heavier set in a different workout takes the 5RM. The old set is no longer a record.
+        try await log.session(of: exerciseID, on: weeksAgo(1), sets: [working(120_000, 5)])
+        _ = try await recomputer.recompute(forExerciseID: exerciseID)
+        await state.load()
+
+        let second = try #require(state.repMaxes.first { $0.reps == 5 }).record.sourceSetID
+        #expect(second != first)
+        #expect(state.sourceSessions[first] == nil)
+        #expect(state.sourceSessions[second] != nil)
+        #expect(entryID != second)
+    }
+
     /// **The estimate's success must not speak for the list.** ``ExerciseRecordsState/load()`` runs
     /// the estimate second, so one shared diagnostic let it clear a failed record read — leaving an
     /// empty list, a `true` `hasLoaded` and no failure, which is exactly what a screen renders as

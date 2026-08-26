@@ -107,12 +107,13 @@ struct RootTabView: View {
     @ViewBuilder
     private func exerciseDetailRoot(_ exerciseID: UUID) -> some View {
         switch dependencies.state {
-        case .open(let repositories, _):
+        case .open(let repositories, let stores):
             ExerciseDetailView(
                 exerciseID: exerciseID,
                 repository: repositories.exercises,
                 workouts: repositories.workouts,
-                settings: repositories.settings
+                settings: repositories.settings,
+                records: stores.records
             )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)

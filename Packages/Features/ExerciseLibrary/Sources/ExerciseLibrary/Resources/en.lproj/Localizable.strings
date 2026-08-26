@@ -140,6 +140,12 @@
 "exerciselibrary.detail.history.rpe %@" = "RPE %@";
 "exerciselibrary.detail.section.records" = "Personal records";
 "exerciselibrary.detail.records.none" = "Log a set against this exercise and its personal records appear here.";
+"exerciselibrary.detail.records.error" = "This exercise's personal records could not be read.";
+"exerciselibrary.detail.records.rep-max %lld" = "%lld-rep max";
+"exerciselibrary.detail.records.more" = "6–10-rep maxes";
+"exerciselibrary.detail.records.source-hint" = "Shows the session this record was set in.";
+"exerciselibrary.detail.records.more.expanded" = "Expanded";
+"exerciselibrary.detail.records.more.collapsed" = "Collapsed";
 "exerciselibrary.detail.section.e1rm" = "Estimated 1RM";
 "exerciselibrary.detail.e1rm.none" = "Log a completed working set and an estimate appears here.";
 
@@ -245,4 +251,4 @@
    they have already logged. This says what is actually true in that case. Scaffolding with a named
    replacement — the real record display. The history section's twin has been retired: FR-1.5.2's
    display now exists, so the only thing left for it to say is that nothing has been logged. */
-"exerciselibrary.detail.records.pending" = "Sets have been logged against this exercise. Showing personal records here is not built yet.";
+"exerciselibrary.detail.records.no-working-sets" = "Personal records come from completed working sets of ten reps or fewer. None have been logged against this exercise yet.";

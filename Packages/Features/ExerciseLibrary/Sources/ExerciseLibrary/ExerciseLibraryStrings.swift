@@ -207,11 +207,47 @@ enum ExerciseLibraryStrings {
     /// The heading over this exercise's personal records.
     static let recordsSection = resource("exerciselibrary.detail.section.records")
 
-    /// The personal-records section, same case.
-    static let recordsPending = resource("exerciselibrary.detail.records.pending")
+    /// Why an exercise with logged sets still holds no records, and what would produce one.
+    ///
+    /// **A different sentence from ``recordsNone`` because a different thing is missing.** Sets exist
+    /// here; what does not is a set `FR-1.6.1` counts — warmups, failed sets and anything past ten
+    /// reps are all excluded, and a user who has logged only those is owed the rule rather than an
+    /// instruction to do what they have already done.
+    static let recordsNoWorkingSets = resource("exerciselibrary.detail.records.no-working-sets")
 
     /// Why there are no records yet, and what would produce some.
     static let recordsNone = resource("exerciselibrary.detail.records.none")
+
+    /// Why the records could not be read.
+    static let recordsError = resource("exerciselibrary.detail.records.error")
+
+    /// One record's row heading — the N it is the record for (`FR-1.6.2`).
+    ///
+    /// **The N is the rep count the record stands at, not what the set was performed for**: one
+    /// five-rep set holds the 1RM through the 5RM, so the same set legitimately heads five rows.
+    ///
+    /// - Parameter reps: The N.
+    /// - Returns: The heading.
+    static func recordsRepMax(_ reps: Int) -> LocalizedStringResource {
+        resource("exerciselibrary.detail.records.rep-max \(reps)")
+    }
+
+    /// `FR-1.6.2`'s disclosure control over the 6–10RM.
+    ///
+    /// **What is behind it, not "Show" plus what is behind it**, on ``LoggingStrings``' warmup
+    /// heading's rule: the control's label does not change with the fold, so a verb in it would be
+    /// wrong in one of the two states.
+    static let recordsMore = resource("exerciselibrary.detail.records.more")
+
+    /// What tapping a record does, as VoiceOver reads it (`G-4.2`).
+    static let recordsSourceHint = resource("exerciselibrary.detail.records.source-hint")
+
+    /// The disclosure's state, announced as a **value** — there is no expanded trait, and
+    /// `.isSelected` means a chosen filter everywhere else in this app.
+    static let recordsMoreExpanded = resource("exerciselibrary.detail.records.more.expanded")
+
+    /// The other half of ``recordsMoreExpanded``.
+    static let recordsMoreCollapsed = resource("exerciselibrary.detail.records.more.collapsed")
 
     /// The heading over the current estimated one-rep max.
     static let e1rmSection = resource("exerciselibrary.detail.section.e1rm")
@@ -399,7 +435,9 @@ enum ExerciseLibraryStrings {
             variationsSection, variationOf,
             historySection, historyNone, historyError, historyMore, historyMoreError,
             historyWarmup, historyFailed, historyReps(5), historyRPE("8"),
-            recordsSection, recordsNone, recordsPending,
+            recordsSection, recordsNone, recordsNoWorkingSets, recordsError,
+            recordsRepMax(5), recordsMore, recordsSourceHint,
+            recordsMoreExpanded, recordsMoreCollapsed,
             e1rmSection, e1rmNone,
             detailErrorHeadline, detailErrorMessage, detailMissingHeadline, detailMissingMessage,
             createAction, editAction, formCreateTitle, formEditTitle, formSection,
