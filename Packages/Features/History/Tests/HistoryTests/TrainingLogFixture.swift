@@ -30,11 +30,33 @@ struct TrainingLog {
     /// - Returns: The record.
     @discardableResult
     mutating func exercise(named name: String, archived: Bool = false) async throws -> Exercise {
-        let exercise = Exercise(
-            id: UUID(),
-            createdAt: Self.epoch,
-            updatedAt: Self.epoch,
-            deletedAt: nil,
+        let exercise = Self.exercise(named: name, archived: archived)
+        try await repositories.exercises.save(exercise)
+        catalogue.append(exercise)
+        return exercise
+    }
+
+    /// One exercise as a value, written to nothing.
+    ///
+    /// A repository's `save` is keyed on the identifier, so two rows sharing one is a shape no store
+    /// here will hold — and `G-2.5` is what says a real one may. This is how a test builds the pair.
+    ///
+    /// - Parameters:
+    ///   - id: Its identifier.
+    ///   - name: What it is called.
+    ///   - archived: Whether it has been retired (`FR-1.1.5`).
+    ///   - deleted: Whether it has been soft-deleted (`G-1.3`). Honoured only by a double that
+    ///     models a foreign store: a repository's `save` drops `deletedAt` on the way in, and
+    ///     `ExerciseRepository` has no delete, so no local write produces this.
+    /// - Returns: The value.
+    static func exercise(
+        id: UUID = UUID(), named name: String, archived: Bool = false, deleted: Bool = false
+    ) -> Exercise {
+        Exercise(
+            id: id,
+            createdAt: epoch,
+            updatedAt: epoch,
+            deletedAt: deleted ? epoch : nil,
             name: name,
             movement: .squat,
             parentExerciseID: nil,
@@ -46,9 +68,6 @@ struct TrainingLog {
             isArchived: archived,
             notes: ""
         )
-        try await repositories.exercises.save(exercise)
-        catalogue.append(exercise)
-        return exercise
     }
 
     /// Writes one session.
@@ -56,25 +75,44 @@ struct TrainingLog {
     /// - Parameters:
     ///   - day: How many days before the fixture's epoch it was trained. Larger is older.
     ///   - notes: The session note (`FR-1.2.9`).
+    ///   - isFinished: Whether it was ever ended. `false` leaves `endedAt` null — a workout still
+    ///     being logged, which the list carries like any other.
     /// - Returns: The record.
     @discardableResult
-    func session(daysAgo day: Int, notes: String = "") async throws -> WorkoutSession {
-        let date = Self.epoch.addingTimeInterval(-Double(day) * 86_400)
-        let session = WorkoutSession(
-            id: UUID(),
+    func session(
+        daysAgo day: Int, notes: String = "", isFinished: Bool = true
+    ) async throws -> WorkoutSession {
+        let session = Self.session(daysAgo: day, notes: notes, isFinished: isFinished)
+        try await repositories.workouts.save(session)
+        return session
+    }
+
+    /// One session as a value, written to nothing — ``exercise(id:named:archived:deleted:)``'s
+    /// reason, one level up.
+    ///
+    /// - Parameters:
+    ///   - id: Its identifier.
+    ///   - day: How many days before the fixture's epoch it was trained. Larger is older.
+    ///   - notes: The session note (`FR-1.2.9`).
+    ///   - isFinished: Whether it was ever ended.
+    /// - Returns: The value.
+    static func session(
+        id: UUID = UUID(), daysAgo day: Int, notes: String = "", isFinished: Bool = true
+    ) -> WorkoutSession {
+        let date = epoch.addingTimeInterval(-Double(day) * 86_400)
+        return WorkoutSession(
+            id: id,
             createdAt: date,
             updatedAt: date,
             deletedAt: nil,
             date: date,
             startedAt: date,
-            endedAt: date.addingTimeInterval(3_600),
+            endedAt: isFinished ? date.addingTimeInterval(3_600) : nil,
             notes: notes,
             bodyweight: nil,
             programRunID: nil,
             scheduledWorkoutID: nil
         )
-        try await repositories.workouts.save(session)
-        return session
     }
 
     /// Adds one exercise to a session.

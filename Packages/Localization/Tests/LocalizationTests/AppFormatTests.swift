@@ -95,6 +95,31 @@ struct AppFormatTests {
         #expect(moment.formatted(style) == "Nov 14, 2023 at 10:13\u{202F}PM")
     }
 
+    @Test("A list of names is joined the way the locale joins one")
+    func listJoinsWithTheLocalesConjunction() {
+        // The reason this exists rather than `joined(separator: ", ")`: the conjunction and the
+        // separators are the locale's, and a literal writes English into every language.
+        #expect(
+            AppFormat.list(["Squat", "Bench Press", "Deadlift"], locale: english)
+                == "Squat, Bench Press, and Deadlift")
+        #expect(AppFormat.list(["Squat", "Bench Press"], locale: english) == "Squat and Bench Press")
+    }
+
+    @Test("A list rebound to another locale uses that locale's conjunction")
+    func listFollowsTheLocale() {
+        let names = ["Squat", "Bench Press"]
+        #expect(AppFormat.list(names, locale: german) == "Squat und Bench Press")
+        #expect(AppFormat.list(names, locale: english) != AppFormat.list(names, locale: german))
+    }
+
+    @Test("Nothing renders as nothing, which is what a caller branches on")
+    func listOfNothingIsEmpty() {
+        // `SessionSummaryCard` shows its own copy instead of an empty phrase, so this is a contract
+        // rather than an incidental.
+        #expect(AppFormat.list([], locale: english).isEmpty)
+        #expect(AppFormat.list(["Squat"], locale: english) == "Squat")
+    }
+
     @Test("A style rebound to another locale renders as that one")
     func styleRebinds() {
         let weight = Weight(grams: 102_500)

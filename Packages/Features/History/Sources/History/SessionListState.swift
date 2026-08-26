@@ -18,6 +18,12 @@ import RepositoryInterface
 /// **A failure to extend does not cost the screen what it has.** The first page failing is a screen
 /// with nothing on it; the fourth page failing is a screen with three pages on it and a retry, which
 /// is why the two are separate properties rather than one phase.
+///
+/// **Every session is here, the one in progress included.** `FR-1.5.1` is all of them, and neither
+/// way of leaving one out survives its own edge case: `endedAt == nil` is not "in progress" — a
+/// backdated workout never marked finished is past training with a null column — and asking the
+/// training surface which session it holds would put `ActiveSessionStore`'s rule in a second place.
+/// A row for a workout still being logged carries what has been logged so far.
 @Observable
 final class SessionListState {
     /// What the screen has to show, as one value rather than three flags.
@@ -103,20 +109,26 @@ final class SessionListState {
     /// Reads every session and summarises the first page.
     ///
     /// **Re-read on every appearance**, on `EquipmentProfilesState`'s rule: a workout finished above
-    /// this screen has to be here on the way back down. Only a read already in flight is skipped, so
-    /// nothing publishes over a newer answer.
+    /// this screen has to be here on the way back down. A read already in flight is skipped, and an
+    /// *extension* in flight is invalidated — see ``isCurrent(_:)`` — so nothing publishes over a
+    /// newer answer.
     func load() async {
         guard phase != .loading else { return }
         phase = .loading
         extendFailure = nil
+        // An extension that started from the rows this read is about to replace will refuse to
+        // publish. Clearing its flag here is what stops that refusal from also wedging the next
+        // one: the flag's owner only clears it when it resumes, which may be after the user has
+        // already scrolled to the bottom of the list this read produces.
+        isExtending = false
         // Read again on every appearance rather than once: the preference is changed in another
         // tab, and a cached unit would relabel every row in this list wrongly.
         if let unit = try? await settings.settings().displayUnit {
             displayUnit = unit
         }
         do {
-            sessions = try await workouts.sessions(
-                in: Self.everySession, includingDeleted: false)
+            sessions = Self.deduplicated(
+                try await workouts.sessions(in: Self.everySession, includingDeleted: false))
             names = try await exerciseNames()
             // The first page is published *with* the phase rather than before it. A `.loaded([])`
             // set on the way past is an empty list on screen for as long as the page takes to
@@ -136,16 +148,37 @@ final class SessionListState {
     ///
     /// **Re-entrancy is refused rather than serialised.** Every step below is `await`, so a second
     /// caller arriving mid-page would read the same row count as the first and build one page twice.
+    /// The refusal is an optimisation only — what makes a duplicate page impossible is
+    /// ``isCurrent(_:)``, which every publish below goes through.
     func loadMore() async {
         guard case .loaded(let built) = phase, hasMore, !isExtending else { return }
         isExtending = true
         defer { isExtending = false }
         do {
-            phase = .loaded(try await page(after: built))
+            let extended = try await page(after: built)
+            guard isCurrent(built) else { return }
+            phase = .loaded(extended)
             extendFailure = nil
         } catch {
+            guard isCurrent(built) else { return }
             extendFailure = String(describing: error)
         }
+    }
+
+    /// Whether the rows an extension started from are still the rows on screen.
+    ///
+    /// **This is what stops a slow extension from publishing over a newer read.** ``loadMore()``
+    /// captures its rows before its first `await` and ``page(after:)`` reads ``sessions`` after it,
+    /// so an extension that a ``load()`` overtook would otherwise splice rows from the old list onto
+    /// offsets in the new one — dropping the session that read was run to pick up, and repeating the
+    /// row at the seam. Both surfaces fire together on a return to this tab: the screen's `task` and
+    /// the last row's `onAppear`.
+    ///
+    /// - Parameter built: The rows the extension started from.
+    /// - Returns: Whether they are still what the screen is showing.
+    private func isCurrent(_ built: [SessionSummary]) -> Bool {
+        guard case .loaded(let current) = phase else { return false }
+        return current == built
     }
 
     /// `built`, plus up to ``pageSize`` more summaries from where it left off.
@@ -204,8 +237,31 @@ final class SessionListState {
     ///
     /// - Returns: Each exercise's name, keyed by its identifier.
     private func exerciseNames() async throws -> [UUID: String] {
-        let catalogue = try await exercises.exercises(includingDeleted: true)
-        return Dictionary(catalogue.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+        Self.names(in: try await exercises.exercises(includingDeleted: true))
+    }
+
+    /// `catalogue` as a name lookup, first row winning where two share an identifier.
+    ///
+    /// Separate from the read above because the store cannot produce the case it defends against —
+    /// a repository's `save` is keyed on the identifier — so the tiebreak is only assertable here.
+    ///
+    /// - Parameter catalogue: The exercises, in the order the repository returned them.
+    /// - Returns: Each name, keyed by its identifier.
+    static func names(in catalogue: [Exercise]) -> [UUID: String] {
+        Dictionary(catalogue.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// `sessions` with at most one row per identifier, the first — the newest — kept.
+    ///
+    /// The same `G-2.5` argument as ``names(in:)``, one level up and with a sharper consequence: the
+    /// list is a `ForEach` keyed on this identifier, which renders neither of a duplicated pair
+    /// correctly, and the paging trigger compares against the last row's.
+    ///
+    /// - Parameter sessions: The sessions, newest first.
+    /// - Returns: Them, less any repeat of an identifier already seen.
+    static func deduplicated(_ sessions: [WorkoutSession]) -> [WorkoutSession] {
+        var seen: Set<UUID> = []
+        return sessions.filter { seen.insert($0.id).inserted }
     }
 
     /// What a row calls an exercise whose catalogue row is gone.

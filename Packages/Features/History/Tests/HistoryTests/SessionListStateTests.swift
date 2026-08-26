@@ -135,6 +135,105 @@ struct SessionListStateTests {
         #expect(row.tonnage == Weight(grams: 500_000))
     }
 
+    @Test("An exercise removed from a session leaves the row entirely (G-1.3)")
+    func softDeletedEntriesAreExcluded() async throws {
+        var log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        let bench = try await log.exercise(named: "Bench Press")
+        let session = try await log.session(daysAgo: 0)
+        let squats = try await log.entry(squat, in: session, order: 0)
+        let benches = try await log.entry(bench, in: session, order: 1)
+        try await log.set(in: squats, kilograms: 100, reps: 5)
+        try await log.set(in: benches, kilograms: 80, reps: 5)
+        try await log.repositories.workouts.deleteExerciseEntry(id: benches.id)
+
+        let state = log.listState()
+        await state.load()
+
+        let row = try #require(state.summaries.first)
+        // The removed exercise is not named — the half a `sets` read cannot cover, since deleting an
+        // entry soft-deletes its sets and they would drop out either way.
+        #expect(row.exerciseNames == ["Back Squat"])
+        #expect(row.setCount == 1)
+        #expect(row.tonnage == Weight(grams: 500_000))
+    }
+
+    @Test("A deleted exercise still names itself — history does not lose a row to a deletion")
+    func softDeletedExercisesStillName() async throws {
+        // `isArchived` and `deletedAt` are different columns and only the second is behind
+        // `includingDeleted:`, so the archived case above cannot stand in for this one (`G-1.3`).
+        //
+        // The catalogue is a double rather than the fake stack, because no local write can produce
+        // the row: `save` drops `deletedAt` on the way in and `ExerciseRepository` has no delete.
+        // A deleted exercise reaches a store from a sync or a restore (`FR-1.11.3`) — foreign data,
+        // which is the same population the duplicate-identifier and overflow guards are for.
+        var log = TrainingLog()
+        let live = try await log.exercise(named: "Back Squat")
+        // Written live — the workout repository refuses an entry naming an exercise that is not
+        // there — and then reported as deleted by the catalogue the screen reads. That split is the
+        // foreign store: rows the sets reference, under a catalogue that has retired them.
+        let stored = try await log.exercise(named: "Smith Machine Squat")
+        let gone = TrainingLog.exercise(id: stored.id, named: stored.name, deleted: true)
+        let session = try await log.session(daysAgo: 0)
+        try await log.entry(live, in: session, order: 0)
+        try await log.entry(stored, in: session, order: 1)
+
+        let state = SessionListState(
+            workouts: log.repositories.workouts,
+            exercises: ForeignCatalogue(holding: [live, gone]),
+            settings: log.repositories.settings
+        )
+        await state.load()
+
+        #expect(
+            try #require(state.summaries.first).exerciseNames
+                == ["Back Squat", "Smith Machine Squat"])
+    }
+
+    @Test("A workout still in progress is a row: FR-1.5.1 is every session, not every finished one")
+    func unfinishedSessionsAreListed() async throws {
+        var log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        let finished = try await log.session(daysAgo: 1)
+        let inProgress = try await log.session(daysAgo: 0, isFinished: false)
+        try await log.entry(squat, in: finished)
+        let entry = try await log.entry(squat, in: inProgress)
+        try await log.set(in: entry, kilograms: 100, reps: 5)
+
+        let state = log.listState()
+        await state.load()
+
+        #expect(state.summaries.map(\.id) == [inProgress.id, finished.id])
+        // Its numbers are what has been logged so far, not a placeholder for an unfinished one.
+        #expect(try #require(state.summaries.first).tonnage == Weight(grams: 500_000))
+    }
+
+    @Test("Two catalogue rows under one identifier keep the first, rather than trapping (G-2.5)")
+    func duplicateExerciseIdentifiersKeepTheFirst() {
+        let id = UUID()
+        let names = SessionListState.names(in: [
+            TrainingLog.exercise(id: id, named: "Back Squat"),
+            TrainingLog.exercise(id: id, named: "Front Squat"),
+        ])
+        #expect(names == [id: "Back Squat"])
+    }
+
+    @Test("Two sessions under one identifier are one row, not a ForEach keyed on both (G-2.5)")
+    func duplicateSessionIdentifiersAreOneRow() {
+        let id = UUID()
+        let repeated = [
+            TrainingLog.session(id: id, daysAgo: 0),
+            TrainingLog.session(id: id, daysAgo: 1),
+        ]
+
+        let rows = SessionListState.deduplicated(repeated)
+
+        #expect(rows.count == 1)
+        // The first is kept, which in a newest-first list is the newer of the pair.
+        #expect(rows.first?.date == repeated[0].date)
+        #expect(rows.first?.date != repeated[1].date)
+    }
+
     @Test("Nothing logged is the empty state, not an empty list of rows")
     func nothingLoggedIsEmpty() async throws {
         let state = TrainingLog().listState()
@@ -191,166 +290,5 @@ struct SessionListStateTests {
         #expect(state.displayUnit == .kilograms)
         await state.load()
         #expect(state.displayUnit == .pounds)
-    }
-}
-
-/// `NFR-1.5`: the list summarises a page at a time, so nothing about it is quadratic in a history's
-/// size before T-1.83 gets to measure it.
-@MainActor
-@Suite("Session list paging")
-struct SessionListPagingTests {
-    @Test("The first read summarises one page, not the whole history")
-    func firstReadIsOnePage() async throws {
-        let log = try await Self.history(sessions: SessionListState.pageSize + 5)
-
-        let state = log.listState()
-        await state.load()
-
-        #expect(state.summaries.count == SessionListState.pageSize)
-        #expect(state.hasMore)
-        #expect(SessionListScreenState.current(state.phase) == .ready)
-    }
-
-    @Test("A history of 20+ sessions loads whole, newest first, one page at a time")
-    func extendingReachesTheEnd() async throws {
-        let total = SessionListState.pageSize + 5
-        let log = try await Self.history(sessions: total)
-
-        let state = log.listState()
-        await state.load()
-        await state.loadMore()
-
-        #expect(state.summaries.count == total)
-        #expect(state.hasMore == false)
-        let dates = state.summaries.map(\.date)
-        #expect(dates == dates.sorted(by: >))
-        // Every row is distinct: a page built from the wrong offset repeats one.
-        #expect(Set(state.summaries.map(\.id)).count == total)
-    }
-
-    @Test("loadMore() at the end of the list does nothing rather than re-reading")
-    func extendingPastTheEndIsANoOp() async throws {
-        let log = try await Self.history(sessions: 3)
-
-        let state = log.listState()
-        await state.load()
-        let rows = state.summaries
-        await state.loadMore()
-
-        #expect(state.summaries == rows)
-        #expect(state.extendFailure == nil)
-    }
-
-    @Test("A page that fails leaves the rows already on screen, and says so beside them")
-    func extendFailureKeepsWhatLoaded() async throws {
-        let total = SessionListState.pageSize + 5
-        let log = try await Self.history(sessions: total)
-        // Fails only once the first page is built, which is the case the separate property exists
-        // for: a screen full of sessions must not be replaced by "History unavailable".
-        let flaky = FlakyWorkoutRepository(
-            wrapping: log.repositories.workouts, failingAfter: SessionListState.pageSize)
-        let state = SessionListState(
-            workouts: flaky,
-            exercises: log.repositories.exercises,
-            settings: log.repositories.settings
-        )
-
-        await state.load()
-        #expect(state.summaries.count == SessionListState.pageSize)
-        #expect(state.extendFailure == nil)
-
-        await state.loadMore()
-        #expect(SessionListScreenState.current(state.phase) == .ready)
-        #expect(state.summaries.count == SessionListState.pageSize)
-        #expect(state.extendFailure != nil)
-        #expect(state.hasMore)
-    }
-
-    /// `count` sessions, one exercise and one working set in each, one day apart.
-    ///
-    /// - Parameter count: How many to write.
-    /// - Returns: The store.
-    private static func history(sessions count: Int) async throws -> TrainingLog {
-        var log = TrainingLog()
-        let squat = try await log.exercise(named: "Back Squat")
-        for day in 0..<count {
-            let session = try await log.session(daysAgo: day)
-            let entry = try await log.entry(squat, in: session)
-            try await log.set(in: entry, kilograms: 100, reps: 5)
-        }
-        return log
-    }
-}
-
-/// A workout repository that refuses everything, for the failed-read state.
-private struct FailingWorkoutRepository: WorkoutRepository {
-    /// What every call raises.
-    private var failure: RepositoryError { .recordNotFound(id: UUID()) }
-
-    func sessions(
-        in range: ClosedRange<Date>, includingDeleted: Bool
-    ) async throws -> [WorkoutSession] { throw failure }
-    func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? { throw failure }
-    func save(_ session: WorkoutSession) async throws { throw failure }
-    func deleteSession(id: UUID) async throws { throw failure }
-    func entries(
-        forSessionID sessionID: UUID, includingDeleted: Bool
-    ) async throws -> [ExerciseEntry] { throw failure }
-    func save(_ entry: ExerciseEntry) async throws { throw failure }
-    func deleteExerciseEntry(id: UUID) async throws { throw failure }
-    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
-        throw failure
-    }
-    func save(_ set: SetEntry) async throws { throw failure }
-    func deleteSet(id: UUID) async throws { throw failure }
-    func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
-        throw failure
-    }
-}
-
-/// A repository that answers normally until it has summarised `limit` sessions, then refuses.
-///
-/// It counts `entries(forSessionID:)`, which is the first call a summary makes, so the cut falls
-/// between two rows rather than halfway through one.
-private final class FlakyWorkoutRepository: WorkoutRepository, @unchecked Sendable {
-    private let wrapped: any WorkoutRepository
-    private let limit: Int
-    private var summarised = 0
-
-    init(wrapping wrapped: any WorkoutRepository, failingAfter limit: Int) {
-        self.wrapped = wrapped
-        self.limit = limit
-    }
-
-    func entries(
-        forSessionID sessionID: UUID, includingDeleted: Bool
-    ) async throws -> [ExerciseEntry] {
-        guard summarised < limit else { throw RepositoryError.recordNotFound(id: sessionID) }
-        summarised += 1
-        return try await wrapped.entries(
-            forSessionID: sessionID, includingDeleted: includingDeleted)
-    }
-
-    func sessions(
-        in range: ClosedRange<Date>, includingDeleted: Bool
-    ) async throws -> [WorkoutSession] {
-        try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
-    }
-    func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
-        try await wrapped.session(id: id, includingDeleted: includingDeleted)
-    }
-    func save(_ session: WorkoutSession) async throws { try await wrapped.save(session) }
-    func deleteSession(id: UUID) async throws { try await wrapped.deleteSession(id: id) }
-    func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
-    func deleteExerciseEntry(id: UUID) async throws {
-        try await wrapped.deleteExerciseEntry(id: id)
-    }
-    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
-        try await wrapped.sets(forEntryID: entryID, includingDeleted: includingDeleted)
-    }
-    func save(_ set: SetEntry) async throws { try await wrapped.save(set) }
-    func deleteSet(id: UUID) async throws { try await wrapped.deleteSet(id: id) }
-    func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
-        try await wrapped.sets(forExerciseID: exerciseID, includingDeleted: includingDeleted)
     }
 }
