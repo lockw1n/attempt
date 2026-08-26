@@ -17,11 +17,16 @@ actor RefusingSettingsRepository: SettingsRepository {
     }
 }
 
-/// Counts the per-session reads, which is what makes "the walk stops early" an assertion rather than
-/// a claim in a doc comment.
+/// Counts the reads, which is what makes "the walk stops early" and "the second read is conditional
+/// on the first" assertions rather than claims in a doc comment.
 actor CountingWorkoutRepository: WorkoutRepository {
     private let wrapped: any WorkoutRepository
+
+    /// How many sessions have had their entries read — the walk's per-session cost.
     private(set) var sessionsRead = 0
+
+    /// How many times the whole session list has been read.
+    private(set) var sessionListsRead = 0
 
     init(wrapping wrapped: any WorkoutRepository) {
         self.wrapped = wrapped
@@ -33,7 +38,8 @@ actor CountingWorkoutRepository: WorkoutRepository {
     }
 
     func sessions(in range: ClosedRange<Date>, includingDeleted: Bool) async throws -> [WorkoutSession] {
-        try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
+        sessionListsRead += 1
+        return try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
     }
 
     func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {

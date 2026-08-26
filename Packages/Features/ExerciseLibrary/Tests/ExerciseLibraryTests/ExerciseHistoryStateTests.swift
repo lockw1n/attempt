@@ -18,12 +18,25 @@ struct ExerciseHistoryStateTests {
         let gym = TrainingHistory()
         let squat = try await gym.exercise(named: "Back Squat")
 
-        let state = gym.history(of: squat)
+        let counter = CountingWorkoutRepository(wrapping: gym.workouts)
+
+        let state = ExerciseHistoryState(
+            exerciseID: squat.id, workouts: counter, settings: gym.settings)
+        // Before the first read: `FR-1.13.1`'s loading state. "Nothing logged yet" is the one
+        // thing this section must not say before it has looked.
+        #expect(ExerciseHistoryScreenState.current(state.phase) == .loading)
         await state.load()
 
         #expect(state.groups.isEmpty)
         #expect(state.hasMore == false)
         #expect(ExerciseHistoryScreenState.current(state.phase) == .noneYet)
+
+        // And it cost one read. The exercise-detail screen is reached from a catalogue of
+        // exercises, most of which a given lifter has never trained; reading every session in the
+        // store to discover that none of them is wanted is the eager read this walk is paged to
+        // avoid.
+        #expect(await counter.sessionListsRead == 0)
+        #expect(await counter.sessionsRead == 0)
     }
 
     @Test("Sessions are grouped, newest first")
@@ -279,6 +292,65 @@ struct ExerciseHistoryStateTests {
         #expect(state.extendFailure == nil)
     }
 
+    @Test("A fresh read retires the diagnostic from a page that failed")
+    func aFreshReadRetiresTheExtendFailure() async throws {
+        let gym = TrainingHistory()
+        let squat = try await gym.exercise(named: "Back Squat")
+        for day in 1...6 {
+            try await gym.train(squat, onDay: day, reps: [day])
+        }
+        let flaky = FlakyWorkoutRepository(wrapping: gym.workouts)
+
+        let state = ExerciseHistoryState(
+            exerciseID: squat.id, workouts: flaky, settings: gym.settings)
+        await state.load()
+        await flaky.refuseEntries(true)
+        await state.loadMore()
+        #expect(state.extendFailure != nil)
+
+        await flaky.refuseEntries(false)
+        await state.load()
+
+        // The pages that failure was reported beside are gone, replaced by this read's own — so
+        // the message beside them cannot outlive them.
+        #expect(state.extendFailure == nil)
+        #expect(state.groups.count == ExerciseHistoryState.pageSize)
+    }
+
+    @Test("An extension left in flight does not wedge the next one")
+    func aStrandedExtensionDoesNotWedgeTheNext() async throws {
+        let gym = TrainingHistory()
+        let squat = try await gym.exercise(named: "Back Squat")
+        for day in 1...6 {
+            try await gym.train(squat, onDay: day, reps: [day])
+        }
+        let gate = GatedWorkoutRepository(wrapping: gym.workouts)
+        let state = ExerciseHistoryState(
+            exerciseID: squat.id, workouts: gate, settings: gym.settings)
+        await state.load()
+
+        // An extension stopped mid-read. It holds the re-entrancy flag and will not clear it until
+        // it resumes, which may be long after the reader has asked for the next page.
+        await gate.gateNextEntriesRead()
+        let stranded = Task { await state.loadMore() }
+        await gate.waitForArrival()
+
+        // A fresh read, then the page the reader asks for. Without `load()` clearing the flag this
+        // extension is refused as re-entrant and day 1 never arrives.
+        await state.load()
+        await state.loadMore()
+
+        #expect(state.groups.count == 6)
+        #expect(state.hasMore == false)
+
+        await gate.release()
+        await stranded.value
+
+        // And the stranded one still refuses to publish over the read that overtook it.
+        #expect(state.groups.count == 6)
+        #expect(state.extendFailure == nil)
+    }
+
     @Test("A re-read picks up a set logged since, and does not double the first page")
     func reReading() async throws {
         let gym = TrainingHistory()
@@ -293,6 +365,52 @@ struct ExerciseHistoryStateTests {
         await state.load()
 
         #expect(state.groups.map(\.date) == [gym.day(2), gym.day(1)])
+    }
+
+    @Test("A set corrected away and a workout discarded are both gone from the history")
+    func softDeletionsAreExcluded() async throws {
+        let gym = TrainingHistory()
+        let squat = try await gym.exercise(named: "Back Squat")
+        let kept = try await gym.session(onDay: 1)
+        try await gym.perform(squat, in: kept, order: 0, reps: [5, 3])
+        let discarded = try await gym.session(onDay: 2)
+        try await gym.perform(squat, in: discarded, order: 0, reps: [8])
+
+        // One set deleted on the past-session screen (`FR-1.2.7`), one whole workout discarded
+        // (`FR-1.2.12`). Deletion is soft (`G-1.3`), so both rows are still in the store and it is
+        // this read that has to leave them out.
+        let logged = try await gym.workouts.sets(forExerciseID: squat.id, includingDeleted: false)
+        let corrected = try #require(logged.first { $0.reps == 3 })
+        try await gym.workouts.deleteSet(id: corrected.id)
+        try await gym.workouts.deleteSession(id: discarded.id)
+
+        let state = gym.history(of: squat)
+        await state.load()
+
+        // Anchored to the reps rather than to a count: a read that returned nothing would satisfy
+        // "the deleted rows are absent".
+        #expect(state.groups.map { $0.sets.map(\.reps) } == [[5]])
+        #expect(state.hasMore == false)
+    }
+
+    @Test("A set no live session accounts for does not leave a page control that never finishes")
+    func strandedSetsOfferNoPage() async throws {
+        let gym = TrainingHistory()
+        let squat = try await gym.exercise(named: "Back Squat")
+        try await gym.train(squat, onDay: 2, reps: [5])
+        // A live set under a session that is gone — the cascade forbids it, a restored backup can
+        // still produce it (`G-2.5`), and the walk is now looking for two sets it can only find
+        // one of.
+        try await gym.strandedWork(squat, onDay: 1, reps: [3])
+
+        let state = gym.history(of: squat)
+        await state.load()
+
+        // The one group there is to build, and no offer to build another: the count alone still
+        // says there is work outstanding, and a walk that believed it would read past the end of
+        // the history it was given.
+        #expect(state.groups.map { $0.sets.map(\.reps) } == [[5]])
+        #expect(state.hasMore == false)
     }
 
     @Test("A repeated row is read once")

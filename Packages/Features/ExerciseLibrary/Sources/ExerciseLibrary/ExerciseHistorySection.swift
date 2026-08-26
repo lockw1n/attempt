@@ -63,7 +63,16 @@ struct ExerciseHistorySection: View {
         ForEach(state.groups) { group in
             ExerciseHistoryGroupView(group: group, unit: state.displayUnit)
         }
-        if state.hasMore {
+        if state.extendFailure != nil {
+            // Beside the groups already built rather than in place of them: nothing on screen was
+            // lost. It stands **in place of the control** rather than under it, because its retry
+            // is that same command — two tappable affordances for one action, one of them silent
+            // about the failure, is the worse of the two readings (`FR-1.13.1`).
+            ErrorStateView(
+                message: Text(ExerciseLibraryStrings.historyMoreError),
+                retry: { Task { await state.loadMore() } }
+            )
+        } else if state.hasMore {
             Button {
                 Task { await state.loadMore() }
             } label: {
@@ -73,14 +82,6 @@ struct ExerciseHistorySection: View {
                     .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points)
             }
             .buttonStyle(.plain)
-        }
-        if state.extendFailure != nil {
-            // Beside the groups already built rather than in place of them: nothing on screen was
-            // lost, and the retry is another tap at the same command.
-            ErrorStateView(
-                message: Text(ExerciseLibraryStrings.historyMoreError),
-                retry: { Task { await state.loadMore() } }
-            )
         }
     }
 }

@@ -107,6 +107,17 @@ final class TrainingHistory {
         let session = try await session(onDay: offset)
         try await perform(exercise, in: session, order: 0, reps: reps)
     }
+
+    /// Work whose session is soft-deleted while its entry and sets stay live.
+    ///
+    /// The shape the cascade forbids and a restored backup can still produce (`G-2.5`), so the
+    /// writes are in that order deliberately: `deleteSession` cascades into the entries it finds,
+    /// and the entry therefore has to arrive after the delete rather than before it.
+    func strandedWork(_ exercise: Exercise, onDay offset: Int, reps: [Int]) async throws {
+        let session = try await session(onDay: offset)
+        try await stack.workouts.deleteSession(id: session.id)
+        try await perform(exercise, in: session, order: 0, reps: reps)
+    }
 }
 
 /// The three records these tests write, built once so a field nobody asserts is not spelled out at
@@ -131,11 +142,17 @@ enum Builder {
         )
     }
 
+    /// A workout on `date`.
+    ///
+    /// **`createdAt` is deliberately not `date`.** A session's date is the training day and
+    /// `createdAt` is when the row was written; equal, they make a reader that confused the two
+    /// indistinguishable from one that did not.
     static func session(id: UUID, date: Date, startedAt: Date? = nil) -> WorkoutSession {
-        WorkoutSession(
+        let written = date.addingTimeInterval(86_400)
+        return WorkoutSession(
             id: id,
-            createdAt: date,
-            updatedAt: date,
+            createdAt: written,
+            updatedAt: written,
             deletedAt: nil,
             date: date,
             startedAt: startedAt,

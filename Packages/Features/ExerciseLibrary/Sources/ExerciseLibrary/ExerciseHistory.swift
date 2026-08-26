@@ -37,6 +37,10 @@ struct ExerciseSessionHistory: Identifiable, Equatable, Sendable {
 /// (which is also the total, and therefore the walk's own stopping condition), the sessions in a
 /// second, and the walk reads entries per session until it has grouped every set it was given.
 ///
+/// **The second read is conditional on the first, and that is not a micro-optimisation.** Reading
+/// every session in the store is what this section costs a screen that may have nothing to show, and
+/// the exercise-detail screen is reached from a catalogue of them.
+///
 /// **A page is a number of sessions, not of sets.** A session's worth of work is what a reader scans
 /// — a group of one set and a group of nine are one glance each — and `FR-1.5.2`'s unit is the
 /// session. See ``pageSize``.
@@ -89,10 +93,14 @@ final class ExerciseHistoryState {
 
     /// The unit a load is shown in (`G-3.1`, `G-3.2`).
     ///
-    /// **Kilograms until the settings row has been read, and after a read that failed** — the
-    /// schema's own default, on `SessionListState`'s reasoning: a load with no unit on it is worse
-    /// than one showing the majority default, and a failure here is not something this section can
-    /// say anything useful about.
+    /// **Kilograms until the settings row has been read** — the schema's own default, on
+    /// `SessionListState`'s reasoning: a load with no unit on it is worse than one showing the
+    /// majority default, and a failure here is not something this section can say anything useful
+    /// about.
+    ///
+    /// **A read that fails leaves the last unit read in place** rather than reverting to the
+    /// default: on a re-read the preference was already answered once, and relabelling every row on
+    /// screen because the second answer did not arrive would be a worse lie than the stale one.
     private(set) var displayUnit: MassUnit = .kilograms
 
     /// The groups built so far, or none while the first read has not answered.
@@ -161,17 +169,22 @@ final class ExerciseHistoryState {
         }
         do {
             // The sets first, and deliberately: it is the cheap question — an exercise nothing has
-            // been logged against is answered here, without the session walk running at all.
+            // been logged against is answered by this read alone, and the empty cursor below is
+            // what keeps that promise. Reading every session in the store to discover that none of
+            // them is wanted is the eager read this walk is paged to avoid.
             let logged = Self.deduplicated(
                 try await workouts.sets(forExerciseID: exerciseID, includingDeleted: false))
-            var start = Cursor(
-                sessions: Self.chronological(
-                    Self.deduplicated(
-                        try await workouts.sessions(
-                            in: Self.everySession, includingDeleted: false))),
-                byEntry: Dictionary(grouping: logged, by: \.entryID),
-                remaining: logged.count
-            )
+            var start = Cursor()
+            if !logged.isEmpty {
+                start = Cursor(
+                    sessions: Self.chronological(
+                        Self.deduplicated(
+                            try await workouts.sessions(
+                                in: Self.everySession, includingDeleted: false))),
+                    byEntry: Dictionary(grouping: logged, by: \.entryID),
+                    remaining: logged.count
+                )
+            }
             // Published with the phase rather than before it, on `SessionListState`'s rule: a
             // `.loaded([])` set on the way past is `FR-1.13.3`'s "nothing logged yet" on screen for
             // as long as the walk takes, which is the one thing this section must not say to a user
@@ -243,6 +256,9 @@ final class ExerciseHistoryState {
         while page.count < Self.pageSize, cursor.hasMore {
             let session = cursor.sessions[cursor.scanned]
             cursor.scanned += 1
+            // `includingDeleted: false` is the contract's argument rather than a filter that can
+            // fire: a deleted entry's sets are deleted with it, so its id was never in `byEntry` to
+            // be matched. It stays because the alternative reads as a deliberate exception.
             let entries = try await workouts.entries(
                 forSessionID: session.id, includingDeleted: false)
             // The entries in `order`, which is what the repository returns them in, and each one's
@@ -325,10 +341,11 @@ final class ExerciseHistoryState {
 
         /// Whether there is anything left to find, and anywhere left to look.
         ///
-        /// **Both halves, and the second is not redundant.** A store whose sets outlive the session
-        /// that owned them — which the cascade forbids and a restored backup could still produce —
-        /// leaves `remaining` above zero with no session left to assign it to, and a walk that
-        /// checked only the count would offer a "show earlier" that could never finish.
+        /// **Both halves, and the second is load-bearing rather than defensive.** A store whose sets
+        /// outlive the session that owned them — which the cascade forbids and a restored backup
+        /// could still produce — leaves `remaining` above zero with no session left to assign it to.
+        /// A walk that checked only the count would not merely offer a "show earlier" that never
+        /// finishes: its next step is ``sessions`` at ``scanned``, and there is no such element.
         var hasMore: Bool { remaining > 0 && scanned < sessions.count }
     }
 }
