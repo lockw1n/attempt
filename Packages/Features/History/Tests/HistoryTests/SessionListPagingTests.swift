@@ -103,7 +103,7 @@ struct SessionListPagingTests {
         let finished = try await log.session(daysAgo: -1)
         await state.load()
 
-        gate.release()
+        await gate.release()
         await extending.value
 
         // The newer read's list, whole. The extension's rows were offsets into a list that no
@@ -122,14 +122,14 @@ struct SessionListPagingTests {
         let state = Self.state(over: log, workouts: gate)
 
         await state.load()
-        let afterFirstPage = gate.entryReads
+        let afterFirstPage = await gate.entryReads
 
         let extending = Task { await state.loadMore() }
         await gate.arrival()
         // The last row's `onAppear` fires again while the page it asked for is still being built.
         let second = Task { await state.loadMore() }
         await Task.yield()
-        gate.release()
+        await gate.release()
         await extending.value
         await second.value
 
@@ -137,7 +137,8 @@ struct SessionListPagingTests {
         #expect(Set(state.summaries.map(\.id)).count == total)
         // Five sessions were left to summarise, so five entry reads happened — not ten. Asserted as
         // work not done, because the rows come out right either way.
-        #expect(gate.entryReads == afterFirstPage + 5)
+        let reads = await gate.entryReads
+        #expect(reads == afterFirstPage + 5)
     }
 
     @Test("An extension left behind by a re-read does not wedge the next one")
@@ -161,7 +162,7 @@ struct SessionListPagingTests {
         await state.loadMore()
         #expect(state.summaries.count == total)
 
-        gate.release()
+        await gate.release()
         await abandoned.value
 
         #expect(state.summaries.count == total)
@@ -180,12 +181,13 @@ struct SessionListPagingTests {
         // The screen appeared twice — a tab switched away from and back — mid-read.
         let second = Task { await state.load() }
         await Task.yield()
-        gate.release()
+        await gate.release()
         await reading.value
         await second.value
 
         #expect(state.summaries.count == SessionListState.pageSize)
-        #expect(gate.entryReads == SessionListState.pageSize)
+        let reads = await gate.entryReads
+        #expect(reads == SessionListState.pageSize)
     }
 
     /// A gate over `log`'s workouts, holding one entry read.

@@ -43,6 +43,17 @@ final class PastSessionState {
     /// The screen's read state.
     private(set) var phase: Phase = .idle
 
+    /// The session this screen holds, or `nil` in every state where it holds none.
+    ///
+    /// **A re-read answers `nil` here for as long as it is out**, ``Phase/loading`` carrying no
+    /// record — which is why the note draft follows this through
+    /// ``SessionNoteDraft/follow(holding:)`` rather than through ``follow(_:)``: the gap is the
+    /// screen reading, not the session going away.
+    var session: WorkoutSession? {
+        guard case .loaded(let session) = phase else { return nil }
+        return session
+    }
+
     /// The session's exercises and their sets, in entry order.
     ///
     /// **Beside ``phase`` rather than inside its loaded case**, because the two do not move
@@ -124,6 +135,11 @@ final class PastSessionState {
     func load() async {
         guard phase != .loading else { return }
         phase = .loading
+        // Both diagnostics are retired here: each describes one attempt against rows this read is
+        // about to replace, so a banner that outlived it would be reporting a failure the user can
+        // no longer act on against a screen that has since been rebuilt.
+        writeFailure = nil
+        noteWriteFailure = nil
         await loadDisplayUnit()
         do {
             guard let session = try await workouts.session(id: sessionID, includingDeleted: false)
@@ -185,16 +201,29 @@ final class PastSessionState {
 
     /// Runs one write and re-reads the exercises behind it.
     ///
+    /// **The two are caught separately, because they fail into different states.** A write the
+    /// repository turned down leaves every row exactly as it was and is ``writeFailure``'s whole
+    /// case. A *re-read* that fails comes after a change that is already stored, so reporting it as
+    /// the write's failure would send the user to make a correction that already landed; what it
+    /// actually costs is the screen's claim to be showing the session, which is ``Phase/failed``
+    /// and carries the retry.
+    ///
     /// - Parameter write: The write to perform. Its answer — whether anything was written — is
     ///   deliberately unused: neither writer reports a row it could not find, and the re-read below
     ///   is what tells the user either way.
     private func write(_ write: () async throws -> Bool) async {
         do {
             _ = try await write()
-            exercises = try await readExercises()
             writeFailure = nil
         } catch {
             writeFailure = String(describing: error)
+            return
+        }
+        do {
+            exercises = try await readExercises()
+        } catch {
+            exercises = []
+            phase = .failed(String(describing: error))
         }
     }
 

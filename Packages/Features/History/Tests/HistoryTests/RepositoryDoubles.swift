@@ -34,7 +34,11 @@ struct FailingWorkoutRepository: WorkoutRepository {
 ///
 /// It counts `entries(forSessionID:)`, which is the first call a summary makes, so the cut falls
 /// between two rows rather than halfway through one.
-final class FlakyWorkoutRepository: WorkoutRepository, @unchecked Sendable {
+///
+/// **An actor, and it has to be one** (`G-6.4`): `WorkoutRepository` refines `Sendable`, so a class
+/// with a mutable counter can conform only through `@unchecked Sendable` — an assertion no reader
+/// can check — and an isolated conformance is refused outright for a `Sendable` protocol.
+actor FlakyWorkoutRepository: WorkoutRepository {
     private let wrapped: any WorkoutRepository
     private let limit: Int
     private var summarised = 0
@@ -83,7 +87,10 @@ final class FlakyWorkoutRepository: WorkoutRepository, @unchecked Sendable {
 /// ``arrival()`` returns once the held read is suspended *inside* the gate, so a test knows exactly
 /// where one caller is standing before it starts a second. ``entryReads`` is the other half — the
 /// duplicate-work cases assert work not done, because the rows come out right either way.
-final class GatedWorkoutRepository: WorkoutRepository, @unchecked Sendable {
+///
+/// **An actor for ``FlakyWorkoutRepository``'s reason** (`G-6.4`), which is also what makes the
+/// rendezvous' own state safe to touch from the test while a read is suspended in it.
+actor GatedWorkoutRepository: WorkoutRepository {
     /// How many entry reads have been answered.
     private(set) var entryReads = 0
 

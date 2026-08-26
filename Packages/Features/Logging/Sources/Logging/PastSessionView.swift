@@ -95,11 +95,13 @@ public struct PastSessionView: View {
         // T-1.36 will link to, and the unit is changed in another tab.
         .task {
             await state.load()
-            noteDraft.follow(session)
+            noteDraft.follow(holding: state.session)
         }
         // Every path that replaces the held record, the note's own save among them: the draft gives
-        // way to what is stored only where the two already agreed.
-        .onChange(of: state.phase) { noteDraft.follow(session) }
+        // way to what is stored only where the two already agreed. `holding:` and not `follow(_:)`
+        // — a re-read passes through loading, and the gap is not the record going away. See
+        // `SessionNoteDraft.follow(holding:)`.
+        .onChange(of: state.phase) { noteDraft.follow(holding: state.session) }
         .sheet(item: $editing) { target in
             SetEditorSheet(
                 draft: draft(for: target),
@@ -195,18 +197,12 @@ public struct PastSessionView: View {
         }
     }
 
-    /// The session the state resolved to, or `nil`.
-    private var session: WorkoutSession? {
-        guard case .loaded(let session) = state.phase else { return nil }
-        return session
-    }
-
     /// The day this session belongs to, or a placeholder while there is none.
     ///
     /// **The date is the title**, because it is what identifies a past session — the live screen's
     /// title is a word because the workout in progress needs no identifying.
     private var title: Text {
-        guard let session else { return Text(LoggingStrings.pastSessionTitle) }
+        guard let session = state.session else { return Text(LoggingStrings.pastSessionTitle) }
         return Text(session.date, format: AppFormat.date(locale: locale))
     }
 
