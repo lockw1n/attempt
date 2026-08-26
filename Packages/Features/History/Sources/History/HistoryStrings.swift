@@ -31,6 +31,35 @@ enum HistoryStrings {
     /// the only thing that names it (`G-4.2`).
     static let listCalendar = resource("history.list.calendar")
 
+    /// The search field's prompt (`FR-1.5.4`). The field is the system's, so this is the only thing
+    /// that says what it searches.
+    static let searchPrompt = resource("history.list.search.prompt")
+
+    /// A failed read of the history a search walks.
+    static let searchErrorHeadline = resource("history.list.search.error.headline")
+
+    /// What to do about it.
+    static let searchErrorMessage = resource("history.list.search.error.message")
+
+    /// The heading when nothing in the history contains the query.
+    static let noMatchesHeadline = resource("history.list.nomatches.headline")
+
+    /// What to do about a search that matched nothing.
+    static let noMatchesMessage = resource("history.list.nomatches.message")
+
+    /// The way back out of it.
+    static let noMatchesAction = resource("history.list.nomatches.action")
+
+    /// Why a result row is in the results: the query names one of its exercises.
+    static let matchExercise = resource("history.list.match.exercise")
+
+    /// The query is in the session's own note (`FR-1.2.9`).
+    static let matchSessionNote = resource("history.list.match.note")
+
+    /// The query is in a note on one of its sets (`FR-1.2.3`) — the one match a row shows no other
+    /// evidence of, which is why the note itself is drawn beneath this line.
+    static let matchSetNote = resource("history.list.match.setnote")
+
     /// The month grid's own title (`FR-1.5.3`). A pushed screen names itself.
     static let calendarTitle = resource("history.calendar.title")
 
@@ -103,6 +132,9 @@ enum HistoryStrings {
             emptyHeadline, emptyMessage, emptyAction,
             errorHeadline, errorMessage, moreErrorMessage,
             noExercises, listCalendar,
+            searchPrompt, searchErrorHeadline, searchErrorMessage,
+            noMatchesHeadline, noMatchesMessage, noMatchesAction,
+            matchExercise, matchSessionNote, matchSetNote,
             calendarTitle, calendarEarlier, calendarLater,
             calendarEmptyHeadline, calendarEmptyMessage, calendarEmptyAction,
             calendarErrorHeadline, calendarErrorMessage, calendarDayError,

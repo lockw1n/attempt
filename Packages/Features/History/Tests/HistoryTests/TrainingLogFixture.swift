@@ -149,6 +149,7 @@ struct TrainingLog {
     ///   - reps: Repetitions performed.
     ///   - isWarmup: Whether it was a warmup (`G-1.8`).
     ///   - isCompleted: Whether it was actually performed (`G-1.8`).
+    ///   - notes: The set's own note (`FR-1.2.3`) — what `FR-1.5.4`'s search looks in.
     /// - Returns: The record.
     @discardableResult
     func set(
@@ -157,7 +158,8 @@ struct TrainingLog {
         kilograms: Int,
         reps: Int,
         isWarmup: Bool = false,
-        isCompleted: Bool = true
+        isCompleted: Bool = true,
+        notes: String = ""
     ) async throws -> SetEntry {
         let set = SetEntry(
             id: UUID(),
@@ -175,7 +177,7 @@ struct TrainingLog {
             targetWeight: nil,
             targetReps: nil,
             modifiers: [],
-            notes: "",
+            notes: notes,
             completedAt: nil
         )
         try await repositories.workouts.save(set)
@@ -308,6 +310,19 @@ struct TrainingLog {
     func listState() -> SessionListState {
         SessionListState(
             workouts: repositories.workouts,
+            exercises: repositories.exercises,
+            settings: repositories.settings
+        )
+    }
+
+    /// The search mode's state, over this store.
+    ///
+    /// - Parameter workouts: The workout repository to read through, for the cases that need one
+    ///   that refuses. Defaults to this store's own.
+    /// - Returns: A fresh state that has read nothing yet.
+    func searchState(workouts: (any WorkoutRepository)? = nil) -> SessionSearchState {
+        SessionSearchState(
+            workouts: workouts ?? repositories.workouts,
             exercises: repositories.exercises,
             settings: repositories.settings
         )

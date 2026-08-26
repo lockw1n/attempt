@@ -1,6 +1,6 @@
 /* History (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization module doc.
-   The one screen here is the session list, the History tab's root. Nothing is translated: only `en`
-   ships in Phase 1. */
+   The screens here are the session list (the History tab's root, with `FR-1.5.4`'s search as a mode
+   of it) and the calendar. Nothing is translated: only `en` ships in Phase 1. */
 
 /* FR-1.13.2's first launch. The headline says what there is none of; the message says the one thing
    that makes one, and the action is that thing — a tab away, which is why it is worth a button
@@ -24,6 +24,33 @@
 /* A session with no exercises in it — started, then finished empty. Not an error and not the empty
    state: the session is real and its date is worth showing. */
 "history.list.exercises.none" = "No exercises";
+
+/* FR-1.5.4's search, over the session list. The field is the system's `.searchable`, so the prompt
+   is the only thing naming what it looks in — and it names both halves, because a field prompted
+   only "Search" would not tell a user that a note they typed at the rack is findable. */
+"history.list.search.prompt" = "Search exercises and notes";
+
+/* A failed read of the history the search walks. Copy, not the diagnostic (G-3.4). Separate from
+   history.list.error.* because the two are different reads and the user is in a different place:
+   this one arrives with a query already typed. */
+"history.list.search.error.headline" = "Search unavailable";
+"history.list.search.error.message" = "Your history could not be searched. Try again.";
+
+/* A search that matched nothing. NOT "no training logged yet": the history may be full, and the
+   action is the one thing that changes what is on screen. */
+"history.list.nomatches.headline" = "No sessions found";
+"history.list.nomatches.message" = "No session names that exercise or has it in a note.";
+"history.list.nomatches.action" = "Clear search";
+
+/* Why a result row is in the results. A row that matched on a *set* note draws nothing the query
+   appears in — the card shows the day, the exercises, the session note and two numbers — so
+   without this the result list is rows the user cannot account for. The other two are visible on
+   the card already and are named anyway: a row that explains itself only sometimes is worse than
+   one that always does. Each is its own line rather than a run-together list, because at the
+   largest Dynamic Type size three short lines beat one wrapped sentence. */
+"history.list.match.exercise" = "Matched an exercise";
+"history.list.match.note" = "Matched the session note";
+"history.list.match.setnote" = "Matched a set note";
 
 /* FR-1.5.3's calendar. The way in is a toolbar symbol on the list, so its label is the only thing
    VoiceOver has to go on (G-4.2); the screen itself names its own title, a pushed screen being

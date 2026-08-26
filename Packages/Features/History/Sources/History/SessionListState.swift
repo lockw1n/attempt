@@ -242,7 +242,9 @@ final class SessionListState {
     /// `WorkoutRepository` offers sessions by date range and nothing else, so "all of them" is
     /// spelled as the widest range — which both implementations answer newest-first and neither
     /// narrows. A repository method of its own would buy nothing this does not.
-    private static let everySession = Date.distantPast...Date.distantFuture
+    ///
+    /// Not `private`: ``SessionSearchState`` asks the same question and must ask it the same way.
+    static let everySession = Date.distantPast...Date.distantFuture
 }
 
 /// Which of `FR-1.13.1`'s states the session list is in.
