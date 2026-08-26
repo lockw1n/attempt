@@ -113,7 +113,7 @@ public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
 
 /// Destinations pushed from history (`FR-1.5`).
 public enum HistoryRoute: Hashable, Sendable, Codable {
-    /// One past session (`FR-1.5.1`). T-1.35 builds it.
+    /// One past session (`FR-1.2.7`, `FR-1.2.9`). T-1.39 builds it.
     case session(sessionID: UUID)
 }
 
