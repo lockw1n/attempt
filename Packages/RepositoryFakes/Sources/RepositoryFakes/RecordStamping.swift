@@ -233,3 +233,20 @@ extension UserSettings: AuditStamped {
         )
     }
 }
+
+extension PersonalRecordCache: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> PersonalRecordCache {
+        PersonalRecordCache(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            exerciseID: exerciseID,
+            repCount: repCount,
+            weight: weight,
+            sourceSetID: sourceSetID,
+            achievedAt: achievedAt,
+            computationVersion: computationVersion
+        )
+    }
+}

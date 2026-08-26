@@ -52,6 +52,9 @@ actor CountingWorkoutRepository: WorkoutRepository {
 
     func save(_ session: WorkoutSession) async throws { try await wrapped.save(session) }
     func deleteSession(id: UUID) async throws { try await wrapped.deleteSession(id: id) }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        try await wrapped.entry(id: id, includingDeleted: includingDeleted)
+    }
     func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
     func deleteExerciseEntry(id: UUID) async throws { try await wrapped.deleteExerciseEntry(id: id) }
     func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
@@ -100,6 +103,9 @@ actor FlakyWorkoutRepository: WorkoutRepository {
 
     func save(_ session: WorkoutSession) async throws { try await wrapped.save(session) }
     func deleteSession(id: UUID) async throws { try await wrapped.deleteSession(id: id) }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        try await wrapped.entry(id: id, includingDeleted: includingDeleted)
+    }
     func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
     func deleteExerciseEntry(id: UUID) async throws { try await wrapped.deleteExerciseEntry(id: id) }
     func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
@@ -170,6 +176,9 @@ actor GatedWorkoutRepository: WorkoutRepository {
 
     func save(_ session: WorkoutSession) async throws { try await wrapped.save(session) }
     func deleteSession(id: UUID) async throws { try await wrapped.deleteSession(id: id) }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        try await wrapped.entry(id: id, includingDeleted: includingDeleted)
+    }
     func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
     func deleteExerciseEntry(id: UUID) async throws { try await wrapped.deleteExerciseEntry(id: id) }
     func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {

@@ -198,6 +198,8 @@ private actor RefusingWorkoutRepository: WorkoutRepository {
         throw refusal
     }
 
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? { throw refusal }
+
     func save(_ entry: ExerciseEntry) async throws { throw refusal }
 
     func deleteExerciseEntry(id: UUID) async throws { throw refusal }

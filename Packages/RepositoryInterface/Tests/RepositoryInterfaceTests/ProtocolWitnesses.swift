@@ -53,6 +53,7 @@ actor WorkoutWitness: WorkoutRepository {
     func save(_ session: WorkoutSession) async throws {}
     func deleteSession(id: UUID) async throws { throw RepositoryError.recordNotFound(id: id) }
     func entries(forSessionID sessionID: UUID, includingDeleted: Bool) async throws -> [ExerciseEntry] { [] }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? { nil }
     func save(_ entry: ExerciseEntry) async throws {}
     func deleteExerciseEntry(id: UUID) async throws { throw RepositoryError.recordNotFound(id: id) }
     func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] { [] }

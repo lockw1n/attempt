@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryFakes
@@ -136,7 +137,11 @@ struct RefusedSetEditingTests {
 
     @Test("Both calls propagate what the repository throws")
     func theWriterPropagates() async throws {
-        let writer = LoggedSetWriter(repository: ScriptedWorkoutRepository(row: .fixture()))
+        let scripted = ScriptedWorkoutRepository(row: .fixture())
+        let writer = LoggedSetWriter(
+            repository: scripted,
+            records: PersonalRecordRecomputer(
+                workouts: scripted, cache: InMemoryRepositoryStack().personalRecords))
 
         await #expect(throws: RepositoryError.self) {
             try await writer.edit(id: UUID(), inEntryID: UUID(), to: Self.values)

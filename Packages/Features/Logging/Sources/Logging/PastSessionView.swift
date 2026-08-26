@@ -1,3 +1,4 @@
+import DerivedValues
 import DesignSystem
 import Foundation
 import Localization
@@ -65,17 +66,24 @@ public struct PastSessionView: View {
     ///   - settings: The settings row, for the unit the loads are shown in.
     ///   - vocabulary: The modifier terms the set editor offers (`FR-1.2.8`).
     ///   - equipment: The gym the plate calculator loads against (`FR-1.4.1`).
+    ///   - records: The app's one recompute actor (`TR-1.6`) — an edit here moves a personal record
+    ///     as much as one made during the workout does.
     public init(
         sessionID: UUID,
         workouts: any WorkoutRepository,
         catalogue: any ExerciseRepository,
         settings: any SettingsRepository,
         vocabulary: SetModifierVocabulary,
-        equipment: PlateCalculatorStore
+        equipment: PlateCalculatorStore,
+        records: PersonalRecordRecomputer
     ) {
         _state = State(
             initialValue: PastSessionState(
-                sessionID: sessionID, workouts: workouts, catalogue: catalogue, settings: settings))
+                sessionID: sessionID,
+                workouts: workouts,
+                catalogue: catalogue,
+                settings: settings,
+                records: records))
         self.vocabulary = vocabulary
         self.equipment = equipment
     }

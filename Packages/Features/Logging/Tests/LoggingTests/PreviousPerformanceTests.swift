@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryFakes
@@ -43,10 +44,7 @@ struct PreviousPerformanceTests {
             on: .weeksAgo(3), exercise: catalogue[0].id, kilos: 100, in: repositories)
         try await History.workout(
             on: .weeksAgo(1), exercise: catalogue[0].id, kilos: 105, in: repositories)
-        let store = ActiveSessionStore(
-            repository: repositories.workouts,
-            catalogue: repositories.exercises,
-            settings: repositories.settings)
+        let store = ActiveSessionStore.over(repositories)
         await store.start(on: .weeksAgo(2))
         await store.addExercise(id: catalogue[0].id)
 
@@ -157,10 +155,7 @@ struct PreviousPerformanceTests {
                 programRunID: nil,
                 scheduledWorkoutID: nil
             ))
-        let store = ActiveSessionStore(
-            repository: repositories.workouts,
-            catalogue: repositories.exercises,
-            settings: repositories.settings)
+        let store = ActiveSessionStore.over(repositories)
         await store.adopt(sessionID: currentID)
         await store.addExercise(id: catalogue[0].id)
 
@@ -300,18 +295,18 @@ struct PreviousPerformanceTests {
         let failure = RepositoryError.recordNotFound(id: UUID())
         let repositories = InMemoryRepositoryStack()
         let catalogue = try await Workout.seed(into: repositories)
-        let store = ActiveSessionStore(
-            repository: repositories.workouts,
-            catalogue: repositories.exercises,
-            settings: repositories.settings)
+        let store = ActiveSessionStore.over(repositories)
         await store.start(on: .now)
         await store.addExercise(id: catalogue[0].id)
         let card = try #require(store.exercises.first)
 
+        let unreadable = UnreadableHistory(base: repositories.workouts, error: failure)
         let failing = ActiveSessionStore(
-            repository: UnreadableHistory(base: repositories.workouts, error: failure),
+            repository: unreadable,
             catalogue: repositories.exercises,
-            settings: repositories.settings)
+            settings: repositories.settings,
+            records: PersonalRecordRecomputer(
+                workouts: unreadable, cache: repositories.personalRecords))
         let session = try #require(store.session)
         await failing.adopt(sessionID: session.id)
         await failing.loadExercises()

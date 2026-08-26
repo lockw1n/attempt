@@ -29,6 +29,14 @@ public protocol WorkoutRepository: Sendable {
     /// The exercises performed in one session, in ``ExerciseEntry/order`` (`FR-1.2.2`).
     func entries(forSessionID sessionID: UUID, includingDeleted: Bool) async throws -> [ExerciseEntry]
 
+    /// One entry, or `nil` if no row carries that id.
+    ///
+    /// **The read that resolves a set to its day.** A set names its entry and an entry names its
+    /// session, so this plus ``session(id:includingDeleted:)`` is how `TR-0.3.9`'s `achievedAt` — the
+    /// date of the session a personal record was set in — is filled. The alternative is walking every
+    /// session for one date, which `NFR-1.6` puts out of reach on the recompute path.
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry?
+
     /// Inserts or replaces the entry, keyed on ``ExerciseEntry/id``.
     ///
     /// - Throws: ``RepositoryError/danglingReference(recordID:referencing:)`` if the session or the

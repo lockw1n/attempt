@@ -169,6 +169,10 @@ actor UnreadableHistory: WorkoutRepository {
         try await base.entries(forSessionID: sessionID, includingDeleted: includingDeleted)
     }
 
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        try await base.entry(id: id, includingDeleted: includingDeleted)
+    }
+
     func save(_ entry: ExerciseEntry) async throws { try await base.save(entry) }
 
     func deleteExerciseEntry(id: UUID) async throws { try await base.deleteExerciseEntry(id: id) }

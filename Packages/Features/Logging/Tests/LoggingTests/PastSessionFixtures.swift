@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryFakes
@@ -72,11 +73,14 @@ struct PastSession {
         over repositories: InMemoryRepositoryStack,
         workouts: (any WorkoutRepository)? = nil
     ) -> PastSessionState {
-        PastSessionState(
+        let reader = workouts ?? repositories.workouts
+        return PastSessionState(
             sessionID: sessionID,
-            workouts: workouts ?? repositories.workouts,
+            workouts: reader,
             catalogue: repositories.exercises,
-            settings: repositories.settings
+            settings: repositories.settings,
+            records: PersonalRecordRecomputer(
+                workouts: reader, cache: repositories.personalRecords)
         )
     }
 
@@ -260,6 +264,13 @@ actor FailableWorkoutRepository: WorkoutRepository {
         if refusesWrites { throw failure }
         try await wrapped.save(session)
     }
+    /// Honours ``refuseReads()`` but **not** `refusesEntryReads`, which is about the entries-of-a-
+    /// session read specifically. This one is the recompute's, and it is not what that flag is for.
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        if refusesReads { throw failure }
+        return try await wrapped.entry(id: id, includingDeleted: includingDeleted)
+    }
+
     func save(_ entry: ExerciseEntry) async throws {
         if refusesWrites { throw failure }
         try await wrapped.save(entry)
@@ -345,6 +356,9 @@ actor GatedWorkoutRepository: WorkoutRepository {
     }
     func save(_ session: WorkoutSession) async throws { try await wrapped.save(session) }
     func deleteSession(id: UUID) async throws { try await wrapped.deleteSession(id: id) }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        try await wrapped.entry(id: id, includingDeleted: includingDeleted)
+    }
     func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
     func deleteExerciseEntry(id: UUID) async throws { try await wrapped.deleteExerciseEntry(id: id) }
     func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
@@ -371,6 +385,7 @@ struct RefusingWorkoutRepository: WorkoutRepository {
     func entries(
         forSessionID sessionID: UUID, includingDeleted: Bool
     ) async throws -> [ExerciseEntry] { throw failure }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? { throw failure }
     func save(_ entry: ExerciseEntry) async throws { throw failure }
     func deleteExerciseEntry(id: UUID) async throws { throw failure }
     func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {

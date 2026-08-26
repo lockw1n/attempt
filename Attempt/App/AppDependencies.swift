@@ -1,3 +1,4 @@
+import DerivedValues
 import Logging
 import Persistence
 import RepositoryInterface
@@ -37,10 +38,12 @@ struct AppDependencies {
     /// state outlives every screen that shows it; everything else is a screen's own `@Observable`,
     /// created with the screen. Two are the workout in progress seen from two sides — the session
     /// itself, and the preference that decides whether the screen sleeps while one is on
-    /// (`NFR-1.9`). The third is the configurable modifier list (`FR-1.2.8`), which outlives the
-    /// picker, the list editor and the sheet all three are raised from. The fourth is the active
-    /// equipment profile (`FR-1.4.1`), which outlives the calculator presented over the set editor
-    /// and is edited from another tab entirely (T-1.31).
+    /// (`NFR-1.9`). One is the configurable modifier list (`FR-1.2.8`), which outlives the picker,
+    /// the list editor and the sheet all three are raised from. One is the active equipment profile
+    /// (`FR-1.4.1`), which outlives the calculator presented over the set editor and is edited from
+    /// another tab entirely. The last is the recompute actor, which is not a store at all — it is a
+    /// background actor, and it is here for the same reason: what it publishes has to reach every
+    /// screen, so there can only be one.
     ///
     /// They travel with ``Repositories`` in the same case rather than beside it, because there is no
     /// state in which one exists and the other does not: a store is built over a repository, and a
@@ -48,6 +51,12 @@ struct AppDependencies {
     struct Stores {
         /// The workout in progress (`FR-1.2.1`, `FR-1.2.11`, `FR-1.2.12`).
         let activeSession: ActiveSessionStore
+
+        /// The derived-value pipeline (`TR-1.5`, `TR-1.6`) — **one for the whole app**, because it
+        /// is what publishes a recompute to every screen showing the number that moved. A second
+        /// one would announce to its own subscribers only, which is the shape a stale personal
+        /// record on a screen that was open at the time takes.
+        let records: PersonalRecordRecomputer
 
         /// Whether the screen is held awake during one (`NFR-1.9`).
         let screenWake: ScreenWakePreference
@@ -85,6 +94,8 @@ struct AppDependencies {
     init(location: StoreLocation = .applicationDefault) {
         do {
             let stack = try PersistenceStack(location: location)
+            let records = PersonalRecordRecomputer(
+                workouts: stack.workouts, cache: stack.personalRecords)
             state = .open(
                 Repositories(
                     settings: stack.settings,
@@ -95,8 +106,10 @@ struct AppDependencies {
                     activeSession: ActiveSessionStore(
                         repository: stack.workouts,
                         catalogue: stack.exercises,
-                        settings: stack.settings
+                        settings: stack.settings,
+                        records: records
                     ),
+                    records: records,
                     screenWake: ScreenWakePreference(),
                     modifiers: SetModifierVocabulary(),
                     equipment: PlateCalculatorStore(

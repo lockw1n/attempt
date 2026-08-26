@@ -49,11 +49,7 @@ struct SessionExercisesTests {
         // The chooser is reachable from a restored stack that never drew the workout, so the store
         // can be asked to add with nothing loaded. Measuring the held list there would put every
         // exercise at position zero.
-        let cold = ActiveSessionStore(
-            repository: workout.repositories.workouts,
-            catalogue: workout.repositories.exercises,
-            settings: workout.repositories.settings
-        )
+        let cold = ActiveSessionStore.over(workout.repositories)
         await cold.resume()
 
         await cold.addExercise(id: workout.deadlift.id)
@@ -83,10 +79,7 @@ struct SessionExercisesTests {
     func addRefusedWithoutAWorkout() async throws {
         let repositories = InMemoryRepositoryStack()
         let catalogue = try await Workout.seed(into: repositories)
-        let store = ActiveSessionStore(
-            repository: repositories.workouts,
-            catalogue: repositories.exercises,
-            settings: repositories.settings)
+        let store = ActiveSessionStore.over(repositories)
 
         await store.addExercise(id: catalogue[0].id)
 
@@ -155,11 +148,7 @@ struct SessionExercisesTests {
         #expect(workout.store.exercises.map(\.exercise?.name) == ["Deadlift", "Back Squat", "Bench Press"])
         #expect(workout.store.exercises.map(\.entry.order) == [0, 1, 2])
         // A relaunch reads the order back out of the store rather than out of this list.
-        let reopened = ActiveSessionStore(
-            repository: workout.repositories.workouts,
-            catalogue: workout.repositories.exercises,
-            settings: workout.repositories.settings
-        )
+        let reopened = ActiveSessionStore.over(workout.repositories)
         await reopened.resume()
         await reopened.loadExercises()
         #expect(reopened.exercises.map(\.exercise?.name) == ["Deadlift", "Back Squat", "Bench Press"])
@@ -240,10 +229,7 @@ struct SessionExercisesTests {
     func loadWithoutAWorkout() async throws {
         let repositories = InMemoryRepositoryStack()
         _ = try await Workout.seed(into: repositories)
-        let store = ActiveSessionStore(
-            repository: repositories.workouts,
-            catalogue: repositories.exercises,
-            settings: repositories.settings)
+        let store = ActiveSessionStore.over(repositories)
 
         await store.loadExercises()
 
@@ -304,10 +290,7 @@ struct Workout {
     static func started() async throws -> Workout {
         let repositories = InMemoryRepositoryStack()
         let catalogue = try await seed(into: repositories)
-        let store = ActiveSessionStore(
-            repository: repositories.workouts,
-            catalogue: repositories.exercises,
-            settings: repositories.settings)
+        let store = ActiveSessionStore.over(repositories)
         await store.start(on: .now)
         await store.loadExercises()
         return Workout(

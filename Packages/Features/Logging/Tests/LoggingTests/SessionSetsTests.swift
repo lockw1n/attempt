@@ -236,11 +236,7 @@ struct SessionSetsTests {
             values: SetEntryValues(
                 weight: Weight(grams: 102_500), reps: 5, rpe: 8, isWarmup: false, notes: "belt"))
 
-        let reopened = ActiveSessionStore(
-            repository: workout.repositories.workouts,
-            catalogue: workout.repositories.exercises,
-            settings: workout.repositories.settings
-        )
+        let reopened = ActiveSessionStore.over(workout.repositories)
         await reopened.resume()
         await reopened.loadExercises()
 
@@ -256,11 +252,7 @@ struct SessionSetsTests {
     @Test("The unit is the settings row's, and kilograms until one has been read")
     func displayUnitFollowsTheSettingsRow() async throws {
         let repositories = InMemoryRepositoryStack()
-        let store = ActiveSessionStore(
-            repository: repositories.workouts,
-            catalogue: repositories.exercises,
-            settings: repositories.settings
-        )
+        let store = ActiveSessionStore.over(repositories)
         #expect(store.displayUnit == .kilograms)
         let stored = try await repositories.settings.settings()
         try await repositories.settings.save(stored.with(displayUnit: .pounds))

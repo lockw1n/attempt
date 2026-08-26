@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -120,9 +121,17 @@ public final class ActiveSessionStore {
     /// What performs `FR-1.2.7`'s edit and delete — see ``LoggedSetWriter`` for why they are not
     /// this object's own writes.
     ///
-    /// Built per call rather than stored: it holds ``repository`` and nothing else, so a second one
-    /// is not a second writer.
-    var setWriter: LoggedSetWriter { LoggedSetWriter(repository: repository) }
+    /// Built per call rather than stored: it holds ``repository`` and ``records`` and nothing else,
+    /// so a second one is not a second writer.
+    var setWriter: LoggedSetWriter {
+        LoggedSetWriter(repository: repository, records: records)
+    }
+
+    /// What is told that a set moved (`FR-1.6.4`, `TR-1.6`).
+    ///
+    /// Internal for ``setWriter``'s reason — the three commands that write a set column themselves
+    /// live in `ActiveSessionCommands.swift`, and `private` is file-scoped.
+    let records: PersonalRecordRecomputer
 
     private let settings: any SettingsRepository
 
@@ -148,14 +157,19 @@ public final class ActiveSessionStore {
     ///   - settings: The single settings row, for the unit a load is entered in. A third protocol
     ///     rather than a unit passed in, so that nothing above this has to know a preference decides
     ///     what a typed number means.
+    ///   - records: The app's one recompute actor (`TR-1.6`). Not a repository: what a set changing
+    ///     owes is a recomputation, and handing this store the cache instead would make it the
+    ///     second thing in the app that knows how a personal record is derived.
     public init(
         repository: any WorkoutRepository,
         catalogue: any ExerciseRepository,
-        settings: any SettingsRepository
+        settings: any SettingsRepository,
+        records: PersonalRecordRecomputer
     ) {
         self.repository = repository
         self.catalogue = catalogue
         self.settings = settings
+        self.records = records
     }
 
     /// Reads the unit a load is entered and shown in (`G-3.1`, `G-3.2`).
