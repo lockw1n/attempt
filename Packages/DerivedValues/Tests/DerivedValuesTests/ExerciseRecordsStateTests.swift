@@ -161,6 +161,90 @@ struct ExerciseRecordsStateTests {
         #expect(state.repMaxes == recordsBefore)
     }
 
+    /// **A read may not announce, and this is the loop that proves why.** A cache holding nothing
+    /// is recomputed on every read — an exercise with no records writes nothing that would stop the
+    /// next pass — so a read that published would be told to read again by the subscriber it had
+    /// just woken. Measured before the fix: ~10,000 walks of the exercise's history in 300 ms, with
+    /// no exit.
+    @Test("An exercise with no records does not recompute itself in a loop")
+    func anEmptyExerciseSettles() async throws {
+        let log = TrainingLog()
+        let exerciseID = try await log.exercise()
+        let counting = CountingWorkouts(wrapped: log.repositories.workouts)
+        let recomputer = PersonalRecordRecomputer(
+            workouts: counting, cache: log.repositories.personalRecords)
+        let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
+
+        let watching = Task { await state.observeChanges() }
+        defer { watching.cancel() }
+        await awaitSubscriber(on: recomputer)
+        await state.load()
+
+        try? await Task.sleep(for: .milliseconds(100))
+        let settled = await counting.exerciseWalks
+        try? await Task.sleep(for: .milliseconds(100))
+
+        // Both halves of `load()` walk once, and nothing announces, so the count stops at two.
+        #expect(settled <= 2)
+        #expect(await counting.exerciseWalks == settled)
+    }
+
+    /// **A repository read already in flight does not notice that a newer one has started**, so
+    /// cancelling the task is not enough on its own: the abandoned read resumes and assigns. The
+    /// token is what refuses it — the same rule the history search's walk carries.
+    @Test("A superseded read does not publish over a newer one")
+    func aSupersededReadDoesNotPublish() async throws {
+        let log = TrainingLog()
+        let exerciseID = try await log.exercise()
+        let entryID = try await log.session(
+            of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
+        let gated = GatedWorkouts(wrapped: log.repositories.workouts)
+        let recomputer = PersonalRecordRecomputer(
+            workouts: gated, cache: log.repositories.personalRecords)
+        let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
+
+        // The first read walks, sees 100 kg, and is held before it can assign.
+        let stale = Task { await state.loadRecords() }
+        for _ in 0..<200 {
+            if await gated.startedWalks >= 1 { break }
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+
+        // A heavier set lands, and a newer read takes the answer.
+        try await log.repositories.workouts.save(
+            log.setEntry(entryID: entryID, order: 1, on: weeksAgo(2), working(120_000, 5)))
+        await state.loadRecords()
+        #expect(state.repMaxes.first { $0.reps == 5 }?.record.weight == Weight(grams: 120_000))
+
+        await gated.open()
+        await stale.value
+
+        // The abandoned read resumed holding 100 kg. It must not have landed.
+        #expect(state.repMaxes.first { $0.reps == 5 }?.record.weight == Weight(grams: 120_000))
+    }
+
+    /// **The estimate's success must not speak for the list.** ``ExerciseRecordsState/load()`` runs
+    /// the estimate second, so one shared diagnostic let it clear a failed record read — leaving an
+    /// empty list, a `true` `hasLoaded` and no failure, which is exactly what a screen renders as
+    /// "this exercise holds no records" (`FR-1.13.1`).
+    @Test("A successful estimate does not clear a failed record read")
+    func aSucceedingEstimateKeepsTheRecordsFailure() async throws {
+        let log = TrainingLog()
+        let exerciseID = try await log.exercise()
+        try await log.session(of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
+        let failure = RepositoryError.recordNotFound(id: UUID())
+        let recomputer = PersonalRecordRecomputer(
+            workouts: log.repositories.workouts, cache: RefusingCache(failure: failure))
+        let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
+
+        await state.load()
+
+        // The estimate reads no cache, so it succeeds where the records read did not.
+        #expect(state.estimatedMax != nil)
+        #expect(state.repMaxes.isEmpty)
+        #expect(state.failure == String(describing: failure))
+    }
+
     @Test("A read that fails is reported as a diagnostic and does not claim records")
     func aFailedReadIsReported() async throws {
         let failure = RepositoryError.recordNotFound(id: UUID())
@@ -175,6 +259,80 @@ struct ExerciseRecordsStateTests {
         #expect(state.repMaxes.isEmpty)
         #expect(state.failure == String(describing: failure))
     }
+}
+
+/// A cache that refuses everything, so the records half fails while the estimate half does not.
+struct RefusingCache: PersonalRecordCacheRepository {
+    let failure: RepositoryError
+
+    func personalRecords(
+        forExerciseID exerciseID: UUID, includingDeleted: Bool
+    ) async throws -> [PersonalRecordCache] { throw failure }
+    func replacePersonalRecords(
+        forExerciseID exerciseID: UUID, with values: [PersonalRecordCacheValues]
+    ) async throws { throw failure }
+}
+
+/// A repository whose first exercise walk is held open *after* it has read, so a superseded read can
+/// be made to resume last while holding the older answer.
+actor GatedWorkouts: WorkoutRepository {
+    private let wrapped: any WorkoutRepository
+    private var walks = 0
+    private var isOpen = false
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    init(wrapped: any WorkoutRepository) {
+        self.wrapped = wrapped
+    }
+
+    /// How many exercise walks have begun.
+    var startedWalks: Int { walks }
+
+    /// Lets the held walk return.
+    func open() {
+        isOpen = true
+        for continuation in waiting { continuation.resume() }
+        waiting = []
+    }
+
+    func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        walks += 1
+        let held = walks == 1
+        let answer = try await wrapped.sets(
+            forExerciseID: exerciseID, includingDeleted: includingDeleted)
+        if held, !isOpen {
+            await withCheckedContinuation { waiting.append($0) }
+        }
+        return answer
+    }
+
+    func sessions(
+        in range: ClosedRange<Date>, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
+    }
+    func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
+        try await wrapped.session(id: id, includingDeleted: includingDeleted)
+    }
+    func save(_ session: WorkoutSession) async throws { try await wrapped.save(session) }
+    func deleteSession(id: UUID) async throws { try await wrapped.deleteSession(id: id) }
+    func entries(
+        forSessionID sessionID: UUID, includingDeleted: Bool
+    ) async throws -> [ExerciseEntry] {
+        try await wrapped.entries(forSessionID: sessionID, includingDeleted: includingDeleted)
+    }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        try await wrapped.entry(id: id, includingDeleted: includingDeleted)
+    }
+    func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
+    func deleteExerciseEntry(id: UUID) async throws {
+        try await wrapped.deleteExerciseEntry(id: id)
+    }
+    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        try await wrapped.sets(forEntryID: entryID, includingDeleted: includingDeleted)
+    }
+    func save(_ set: SetEntry) async throws { try await wrapped.save(set) }
+    func deleteSet(id: UUID) async throws { try await wrapped.deleteSet(id: id) }
 }
 
 /// A repository that refuses every read, for the diagnostic path.

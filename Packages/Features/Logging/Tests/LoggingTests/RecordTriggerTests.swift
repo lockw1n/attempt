@@ -127,6 +127,20 @@ struct RecordTriggerTests {
         #expect(try await cached(workout, workout.squat.id, reps: 5) == Weight(grams: 145_000))
     }
 
+    /// **The sixth trigger, and not a writer of a set column.** `FR-1.2.12`'s discard soft-deletes
+    /// the session and cascades to every entry and set under it, so not one of the five hooks above
+    /// fires — and the cache would keep a record whose source set no longer exists, which is what
+    /// `FR-1.6.2`'s link would then navigate to.
+    @Test("Discarding the workout takes its records with it")
+    func discardingRecomputes() async throws {
+        let (workout, _) = try await loggedSquat()
+        #expect(try await cached(workout, workout.squat.id, reps: 5) == Weight(grams: 100_000))
+
+        await workout.store.discard()
+
+        #expect(try await cached(workout, workout.squat.id, reps: 5) == nil)
+    }
+
     /// **A write that changed nothing announces nothing**, which is the same `G-2.4` argument the
     /// writer's own no-op guard rests on: the announcement costs every screen showing this exercise
     /// a re-read, and the record cannot have moved.

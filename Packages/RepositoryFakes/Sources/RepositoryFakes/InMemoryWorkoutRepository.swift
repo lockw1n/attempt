@@ -69,12 +69,12 @@ struct InMemoryWorkoutRepository: WorkoutRepository, Sendable {
         await store.allEntries(forSessionID: sessionID, includingDeleted: includingDeleted)
     }
 
-    /// Inserts or replaces the entry, refusing a session or exercise that does not exist.
     /// The entry carrying `id`, or `nil`.
     func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
         await store.entry(id: id, includingDeleted: includingDeleted)
     }
 
+    /// Inserts or replaces the entry, refusing a session or exercise that does not exist.
     func save(_ entry: ExerciseEntry) async throws {
         try await store.saveEntry(entry)
     }
@@ -151,15 +151,15 @@ extension InMemoryRepositoryStore {
             .sortedDeterministically { ($0.order, $0.id.uuidString) }
     }
 
-    /// Inserts or replaces `entry`, checking both of its join keys.
-    ///
-    /// - Throws: ``RepositoryInterface/RepositoryError/danglingReference(recordID:referencing:)``
-    ///   when either names no row.
     /// The entry carrying `id`, subject to the flag.
     func entry(id: UUID, includingDeleted: Bool) -> ExerciseEntry? {
         entries[id].flatMap { includingDeleted || !$0.isSoftDeleted ? $0 : nil }
     }
 
+    /// Inserts or replaces `entry`, checking both of its join keys.
+    ///
+    /// - Throws: ``RepositoryInterface/RepositoryError/danglingReference(recordID:referencing:)``
+    ///   when either names no row.
     func saveEntry(_ entry: ExerciseEntry) throws {
         try requireReferenced(sessions, id: entry.sessionID, from: entry.id)
         try requireReferenced(exercises, id: entry.exerciseID, from: entry.id)

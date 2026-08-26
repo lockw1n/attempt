@@ -97,6 +97,11 @@ public actor PersonalRecordRecomputer {
     /// from "this exercise holds no records". The walk it costs is the cheap one — an exercise with
     /// no sets has no entries to fetch them through.
     ///
+    /// **A miss recomputes but announces nothing.** Publication belongs to the triggers below.
+    /// A read that published would be told to read again by every subscriber it woke, and an
+    /// exercise holding no records caches nothing to stop the next pass — so what looks like a slow
+    /// path is an unbounded loop, and only for the exercises that hold no records at all.
+    ///
     /// **Every row has to match, not just one.** A partially-written cache — a bumped version
     /// landing mid-write, or a restore of a backup taken under older rules — would otherwise be read
     /// as current on the strength of whichever row was checked.
@@ -112,7 +117,9 @@ public actor PersonalRecordRecomputer {
             && cached.allSatisfy {
                 $0.computationVersion == PersonalRecordCalculator.computationVersion
             }
-        guard current else { return try await recompute(forExerciseID: exerciseID).repMaxes }
+        guard current else {
+            return try await recomputed(exerciseID, writingCache: true).repMaxes
+        }
         return cached.map {
             DatedRepMax(
                 reps: $0.repCount,
@@ -169,6 +176,33 @@ public actor PersonalRecordRecomputer {
             return
         }
         _ = try? await recompute(forExerciseID: entry.exerciseID)
+    }
+
+    /// The session trigger: a whole session was discarded or restored (`FR-1.6.4`, `FR-1.2.12`).
+    ///
+    /// **The sixth writer, and it is not a writer of a set column** — which is why
+    /// ``setDidChange(inEntryID:)``'s five call sites do not cover it. Discarding a workout
+    /// soft-deletes the session and cascades to every entry and set under it (`G-1.3`), so records
+    /// the discarded sets held stop standing without any set column being written. Left unhooked,
+    /// the cache keeps a record whose source set is deleted, and `FR-1.6.2`'s link navigates to it.
+    ///
+    /// **Every exercise the session touched, once each.** A session names a bounded handful of
+    /// entries and two of them can name the same exercise, so the walk is per distinct exercise —
+    /// still `FR-1.6.4`'s scope rather than a catalogue pass.
+    ///
+    /// A failure is swallowed for ``setDidChange(inEntryID:)``'s reason: the session is already
+    /// discarded, and the cache is stale rather than wrong.
+    ///
+    /// - Parameter sessionID: The session whose sets moved. Read including deleted rows, since the
+    ///   ordinary caller has just deleted it.
+    public func sessionDidChange(id sessionID: UUID) async {
+        guard
+            let entries = try? await workouts.entries(
+                forSessionID: sessionID, includingDeleted: true)
+        else { return }
+        for exerciseID in Set(entries.map(\.exerciseID)) {
+            _ = try? await recompute(forExerciseID: exerciseID)
+        }
     }
 
     /// The settings trigger: the e1RM formula changed (`FR-1.6.4`, `FR-1.7.3`, `TR-1.6`).

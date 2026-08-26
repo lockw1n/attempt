@@ -99,6 +99,12 @@ struct TrainingLog {
 
     /// One logged set, with only the columns the calculators read varying.
     ///
+    /// **The set's own timestamps are deliberately not its session's date**, and that is load-bearing
+    /// rather than realism. `TR-0.3.9` dates a record from the session it was set in, and the set's
+    /// `completedAt` is only the *fallback* for when that row cannot be read; a fixture that made the
+    /// two equal cannot tell the rule from its fallback, and the test asserting the rule passes with
+    /// the session dating removed altogether — measured.
+    ///
     /// - Parameter rpe: Stored unvalidated, as the column is — which is how a row `SetRecord`
     ///   refuses is written through the front door.
     func setEntry(
@@ -109,10 +115,11 @@ struct TrainingLog {
         rpe: Double? = nil,
         _ set: LoggedSet
     ) -> SetEntry {
-        SetEntry(
+        let entered = date.addingTimeInterval(enteredLate)
+        return SetEntry(
             id: id,
-            createdAt: date,
-            updatedAt: date,
+            createdAt: entered,
+            updatedAt: entered,
             deletedAt: nil,
             entryID: entryID,
             order: order,
@@ -126,9 +133,15 @@ struct TrainingLog {
             targetReps: nil,
             modifiers: [],
             notes: "",
-            completedAt: date)
+            completedAt: entered)
     }
 }
+
+/// How long after its session a fixture's set claims to have been entered.
+///
+/// Any non-zero value works; a day and a half is chosen to be visibly not a rounding difference. See
+/// ``TrainingLog/setEntry(entryID:order:on:id:rpe:_:)`` for why it must not be zero.
+let enteredLate: TimeInterval = 36 * 3_600
 
 /// A working set: the ordinary case, neither a warmup nor a failure.
 func working(_ grams: Int, _ reps: Int) -> LoggedSet {

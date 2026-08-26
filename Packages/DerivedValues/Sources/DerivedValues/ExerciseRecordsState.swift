@@ -37,7 +37,20 @@ public final class ExerciseRecordsState {
 
     /// The last read that failed, as the error's description, or `nil`. A **diagnostic**, not copy
     /// (`G-3.4`).
-    public private(set) var failure: String?
+    ///
+    /// **Two reads, one report, and the records' half is the one that speaks.** The halves fail
+    /// independently, so each records its own privately; one stored property shared between them let
+    /// whichever finished *last* answer for both, and since ``load()`` runs the estimate second, a
+    /// successful estimate cleared a failed record read's diagnostic — leaving an empty list, a
+    /// `true` ``hasLoaded`` and no failure, which is precisely the "this exercise holds no records"
+    /// state those two exist to keep apart (`FR-1.13.1`).
+    public var failure: String? { recordsFailure ?? estimateFailure }
+
+    /// Why ``loadRecords()`` last failed, or `nil`.
+    private var recordsFailure: String?
+
+    /// Why ``loadEstimate()`` last failed, or `nil`.
+    private var estimateFailure: String?
 
     /// The exercise this is about.
     @ObservationIgnored public let exerciseID: UUID
@@ -79,29 +92,30 @@ public final class ExerciseRecordsState {
             guard isCurrent(token) else { return }
             repMaxes = loaded
             hasLoaded = true
-            failure = nil
+            recordsFailure = nil
         } catch {
             guard isCurrent(token) else { return }
             hasLoaded = true
-            failure = String(describing: error)
+            recordsFailure = String(describing: error)
         }
     }
 
     /// Reloads the estimated one-rep maximum (`FR-1.7.1`).
     ///
-    /// **A failure here leaves the previous estimate on screen and does not clear ``failure``'s
-    /// counterpart**: the estimate is one number beside a list, and blanking the list because the
-    /// tile could not be refreshed reports the wrong thing failed.
+    /// **A failure here leaves the previous estimate on screen and says nothing about the list**:
+    /// the estimate is one number beside it, and blanking the list because the tile could not be
+    /// refreshed reports the wrong thing failed. It does not run the other way either — see
+    /// ``failure``.
     public func loadEstimate() async {
         let token = beginRead()
         do {
             let loaded = try await recomputer.estimatedMax(forExerciseID: exerciseID)
             guard isCurrent(token) else { return }
             estimatedMax = loaded
-            failure = nil
+            estimateFailure = nil
         } catch {
             guard isCurrent(token) else { return }
-            failure = String(describing: error)
+            estimateFailure = String(describing: error)
         }
     }
 

@@ -328,10 +328,15 @@ public final class ActiveSessionStore {
     /// **Soft, like every deletion here** (`G-1.3`): the repository stamps `deletedAt` and cascades
     /// to the entries and sets underneath, and nothing is removed from the store until an explicit
     /// purge runs. The confirmation `FR-1.2.12` asks for is the screen's — a store cannot ask.
+    ///
+    /// **The cascade is why this announces** (`FR-1.6.4`). Every set the workout logged stops
+    /// standing at once without a single set column being written, so none of ``setWriter``'s five
+    /// hooks fires and a record the discarded work set would survive its own source set.
     public func discard() async {
         guard let current = session else { return }
         do {
             try await repository.deleteSession(id: current.id)
+            await records.sessionDidChange(id: current.id)
             session = nil
             failure = nil
             forgetExercises()

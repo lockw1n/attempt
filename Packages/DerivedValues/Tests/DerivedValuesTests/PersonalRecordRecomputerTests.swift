@@ -10,34 +10,6 @@ import Testing
 /// alone (`FR-1.6.1`, `FR-1.6.4`, `TR-1.6`, `G-1.5`).
 @Suite("Personal record recompute")
 struct PersonalRecordRecomputerTests {
-    /// One exercise trained once, and the recomputer over the store it was logged into.
-    struct Fixture {
-        /// The store, so a test can read the cache back or log another set.
-        let log: TrainingLog
-
-        /// The exercise trained.
-        let exerciseID: UUID
-
-        /// Its entry in the session — what a set-change trigger is given.
-        let entryID: UUID
-
-        /// The subject.
-        let recomputer: PersonalRecordRecomputer
-    }
-
-    /// A log holding one exercise trained once, and the recomputer over it.
-    private func oneSession(sets: [LoggedSet]) async throws -> Fixture {
-        let log = TrainingLog()
-        let exerciseID = try await log.exercise()
-        let entryID = try await log.session(of: exerciseID, on: weeksAgo(1), sets: sets)
-        return Fixture(
-            log: log,
-            exerciseID: exerciseID,
-            entryID: entryID,
-            recomputer: PersonalRecordRecomputer(
-                workouts: log.repositories.workouts, cache: log.repositories.personalRecords))
-    }
-
     @Test("A 5-rep set holds every rep max from 1 to 5, and none above it")
     func aSetHoldsEveryRepMaxUpToItsReps() async throws {
         let fixture = try await oneSession(sets: [working(100_000, 5)])
@@ -76,6 +48,9 @@ struct PersonalRecordRecomputerTests {
         let records = try await recomputer.recompute(forExerciseID: exerciseID)
 
         #expect(records.repMax(forReps: 5)?.achievedAt == weeksAgo(6))
+        // Anchored against the fallback as well as against the literal: the set claims a later
+        // `completedAt`, so dating it from the set rather than the session is a visible failure.
+        #expect(records.repMax(forReps: 5)?.achievedAt != weeksAgo(6).addingTimeInterval(enteredLate))
     }
 
     @Test("The record names the set that holds it, so a screen can link to it")
@@ -335,6 +310,34 @@ struct PersonalRecordRecomputerTests {
             ).isEmpty)
     }
 
+    /// `FR-1.2.12`'s discard cascades to every set under the session without writing a single set
+    /// column, so none of ``setDidChange(inEntryID:)``'s five call sites fires.
+    @Test("A discarded session's records stop standing, for every exercise it touched")
+    func aSessionChangeRecomputesEveryExerciseInIt() async throws {
+        let log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        let bench = try await log.exercise(named: "Bench Press")
+        let entryID = try await log.session(
+            of: squat, on: weeksAgo(1), sets: [working(100_000, 5)])
+        try await log.session(of: bench, on: weeksAgo(1), sets: [working(70_000, 5)])
+        let recomputer = PersonalRecordRecomputer(
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+        try await recomputer.recompute(forExerciseID: squat)
+        let entry = try #require(
+            try await log.repositories.workouts.entry(id: entryID, includingDeleted: false))
+        try await log.repositories.workouts.deleteSession(id: entry.sessionID)
+
+        await recomputer.sessionDidChange(id: entry.sessionID)
+
+        let squatCache = try await log.repositories.personalRecords.personalRecords(
+            forExerciseID: squat, includingDeleted: false)
+        #expect(squatCache.isEmpty)
+        // The other exercise trained that day was in a different session and is untouched.
+        let benchSets = try await log.repositories.workouts.sets(
+            forExerciseID: bench, includingDeleted: false)
+        #expect(benchSets.count == 1)
+    }
+
     @Test("A formula change touches no cached record")
     func aFormulaChangeLeavesTheCacheAlone() async throws {
         let fixture = try await oneSession(sets: [working(100_000, 5)])
@@ -349,9 +352,42 @@ struct PersonalRecordRecomputerTests {
         #expect(after == before)
         #expect(await fixture.recomputer.formulaInForce() == .brzycki)
     }
+}
 
-    // MARK: - Publication
+/// One exercise trained once, and the recomputer over the store it was logged into.
+struct Fixture {
+    /// The store, so a test can read the cache back or log another set.
+    let log: TrainingLog
 
+    /// The exercise trained.
+    let exerciseID: UUID
+
+    /// Its entry in the session — what a set-change trigger is given.
+    let entryID: UUID
+
+    /// The subject.
+    let recomputer: PersonalRecordRecomputer
+}
+
+/// A log holding one exercise trained once, and the recomputer over it.
+func oneSession(sets: [LoggedSet]) async throws -> Fixture {
+    let log = TrainingLog()
+    let exerciseID = try await log.exercise()
+    let entryID = try await log.session(of: exerciseID, on: weeksAgo(1), sets: sets)
+    return Fixture(
+        log: log,
+        exerciseID: exerciseID,
+        entryID: entryID,
+        recomputer: PersonalRecordRecomputer(
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords))
+}
+
+/// What the pipeline announces, and to whom (`TR-1.5`).
+///
+/// A suite of its own rather than a `// MARK:` in the one above: the file had reached SwiftLint's
+/// `type_body_length` ceiling, and publication is the section that shares least with the rest.
+@Suite("Personal record publication")
+struct PersonalRecordPublicationTests {
     @Test("A recompute is announced to a subscriber")
     func aRecomputeIsPublished() async throws {
         let fixture = try await oneSession(sets: [working(100_000, 5)])
