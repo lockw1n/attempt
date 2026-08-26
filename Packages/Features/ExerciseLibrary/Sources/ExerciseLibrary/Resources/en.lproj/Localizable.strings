@@ -246,9 +246,10 @@
    the pickers in the first place — so this message names the way back rather than offering it. */
 "exerciselibrary.picker.archived-only.message" = "Every exercise has been archived. Unarchive one in the exercise library to add it to a workout.";
 
-/* FR-1.13.3, the other half. The "none" copy above tells the user to log a set; it is true only
-   while no set can exist, and once one can, a user who has logged sets would be told to log a set
-   they have already logged. This says what is actually true in that case. Scaffolding with a named
-   replacement — the real record display. The history section's twin has been retired: FR-1.5.2's
-   display now exists, so the only thing left for it to say is that nothing has been logged. */
+/* FR-1.13.3, the other half, and no longer scaffolding — FR-1.6.2's list exists, and this is the
+   sentence it shows when the list is empty. The "none" copy above tells the user to log a set; it is
+   true only while no set can exist, and once one can, a user who has logged sets would be told to log
+   a set they have already logged. This names the rule instead: what FR-1.6.1 counts, so a user whose
+   every set was a warmup, a failed set or past ten reps is told why rather than told to repeat
+   themselves. */
 "exerciselibrary.detail.records.no-working-sets" = "Personal records come from completed working sets of ten reps or fewer. None have been logged against this exercise yet.";

@@ -23,14 +23,30 @@ extension LoggingStrings {
     /// and a list of them assembled by string interpolation would be the one place on this row a
     /// number is not formatted for the locale (`G-3.4`).
     ///
-    /// - Parameter rendered: The rep counts, formatted and joined for the locale.
+    /// **Two forms, and what picks between them is the counts and not how many there are.** A set
+    /// holding the 1RM alone is the one list English wants "rep" for; a set holding only the 6RM is
+    /// just as short and wants "reps". Two strings rather than one with a numeral in it, on
+    /// ``setMarkAction(isWarmup:)``' rule — and no plural rule, on this module's, which is why the
+    /// seam is a flag the caller computes rather than a `.stringsdict`.
+    ///
+    /// - Parameters:
+    ///   - rendered: The rep counts, formatted and joined for the locale.
+    ///   - isSingleRep: Whether those counts are the single rep `1` and nothing else.
     /// - Returns: The label.
-    static func setPersonalRecordLabel(_ rendered: String) -> LocalizedStringResource {
-        resource("logging.session.set.record.label \(rendered)")
+    static func setPersonalRecordLabel(
+        _ rendered: String, isSingleRep: Bool
+    ) -> LocalizedStringResource {
+        isSingleRep
+            ? resource("logging.session.set.record.label.one \(rendered)")
+            : resource("logging.session.set.record.label \(rendered)")
     }
 
     /// This file's strings, for ``LoggingStrings/all``.
     static var allRecordStrings: [LocalizedStringResource] {
-        [setPersonalRecord, setPersonalRecordLabel("5")]
+        [
+            setPersonalRecord,
+            setPersonalRecordLabel("5", isSingleRep: false),
+            setPersonalRecordLabel("1", isSingleRep: true),
+        ]
     }
 }

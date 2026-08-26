@@ -105,7 +105,7 @@ struct ExerciseRecordsSectionTests {
         #expect(fiveDay.id != singleDay.id)
     }
 
-    // MARK: - The four states (FR-1.13.1, FR-1.13.3)
+    // MARK: - The five states (FR-1.13.1, FR-1.13.3)
 
     @Test("Nothing has looked yet is loading, not an empty list")
     func nothingLookedYetIsLoading() async throws {
@@ -177,8 +177,63 @@ struct ExerciseRecordsSectionTests {
                 cache: RefusingRecordCache(failure: .recordNotFound(id: squat.id))))
         await refused.loadRecords()
 
-        #expect(refused.failure != nil)
+        #expect(refused.recordsFailure != nil)
         #expect(ExerciseRecordsScreenState.current(refused, hasLoggedSets: true) == .failed)
+    }
+
+    /// **A failed *estimate* is not a failed record list.** The halves read different stores — the
+    /// records answer from `G-1.5`'s cache and the estimate walks the history — so a workout store
+    /// that refuses leaves this section holding a list it read perfectly well. Reading the merged
+    /// diagnostic drew `FR-1.13.1`'s error over that list, naming the wrong thing as broken.
+    @Test("An estimate that could not be read is not a failed record list")
+    func aFailedEstimateDoesNotBlankTheList() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        try await fixture.trainWeighted(squat, onDay: 0, work: [(reps: 5, kilos: 150)])
+        // Warmed through a healthy read, so the cache is what the records half answers from below.
+        await fixture.records(of: squat, through: fixture.recomputer()).loadRecords()
+
+        let state = fixture.records(
+            of: squat,
+            through: PersonalRecordRecomputer(
+                workouts: RefusingWorkouts(failure: .recordNotFound(id: squat.id)),
+                cache: fixture.stack.personalRecords
+            )
+        )
+        // `load()` rather than the section's own read: the rule under test is which diagnostic the
+        // state is asked for, and it has to hold for a state that ran the estimate too.
+        await state.load()
+
+        #expect(!state.repMaxes.isEmpty)
+        #expect(state.estimateFailure != nil)
+        #expect(state.recordsFailure == nil)
+        #expect(ExerciseRecordsScreenState.current(state, hasLoggedSets: true) == .ready)
+    }
+}
+
+/// A workout store that refuses every read, so the estimate fails while the record cache answers.
+struct RefusingWorkouts: WorkoutRepository {
+    let failure: RepositoryError
+
+    func sessions(
+        in range: ClosedRange<Date>, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] { throw failure }
+    func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? { throw failure }
+    func save(_ session: WorkoutSession) async throws { throw failure }
+    func deleteSession(id: UUID) async throws { throw failure }
+    func entries(
+        forSessionID sessionID: UUID, includingDeleted: Bool
+    ) async throws -> [ExerciseEntry] { throw failure }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? { throw failure }
+    func save(_ entry: ExerciseEntry) async throws { throw failure }
+    func deleteExerciseEntry(id: UUID) async throws { throw failure }
+    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        throw failure
+    }
+    func save(_ set: SetEntry) async throws { throw failure }
+    func deleteSet(id: UUID) async throws { throw failure }
+    func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        throw failure
     }
 }
 

@@ -188,10 +188,16 @@
    happen, and "Mark as warmup" on a set that already is one is the opposite instruction. */
 "logging.session.set.mark-warmup" = "Mark as warmup";
 "logging.session.set.mark-working" = "Mark as working";
-/* FR-1.2.14's collapsible group. A label beside a numeral, so it stays a count in every language
-   rather than needing a plural rule. */
+/* FR-1.6.3's badge, and what VoiceOver reads in its place. Two characters on the row because the
+   line is already spending its width on the load and two 44pt controls; the label carries the whole
+   claim. Two forms of the label, chosen on the rep counts themselves rather than on how many there
+   are: a set holding only the 1RM is the one case English wants a singular for, and a lone 6RM is
+   not. */
 "logging.session.set.record" = "PR";
 "logging.session.set.record.label %@" = "Personal record for %@ reps";
+"logging.session.set.record.label.one %@" = "Personal record for %@ rep";
+/* FR-1.2.14's collapsible group. A label beside a numeral, so it stays a count in every language
+   rather than needing a plural rule. */
 "logging.session.set.warmup.section" = "Warmups";
 /* The set editor's fifth row: which kind the set being logged is. The sentence says what the choice
    costs rather than what the switch does — that warmups are excluded from the work is the fact a

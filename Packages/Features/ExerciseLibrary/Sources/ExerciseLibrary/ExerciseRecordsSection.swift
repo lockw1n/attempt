@@ -40,9 +40,9 @@ struct ExerciseRecordList: Equatable {
     var isEmpty: Bool { prominent.isEmpty && disclosed.isEmpty }
 }
 
-/// Which of the section's four states is current (`FR-1.13.1`, `FR-1.13.3`).
+/// Which of the section's five states is current (`FR-1.13.1`, `FR-1.13.3`).
 ///
-/// **Four, and two of them are "nothing to show".** An exercise nothing has ever been logged against
+/// **Five, and two of them are "nothing to show".** An exercise nothing has ever been logged against
 /// and one whose every set is a warmup are told apart by the *sets*, not by the records — both hold
 /// no records, and the sentence each is owed is different. See ``ExerciseLibraryStrings/recordsNone``.
 ///
@@ -72,12 +72,18 @@ enum ExerciseRecordsScreenState: Equatable {
     /// drawing it under no diagnostic would present a stale list as a current one — which is the
     /// distinction `FR-1.13.1` exists to keep.
     ///
+    /// **The *list's* failure, not the merged one.** The two halves read different stores — the
+    /// records answer from `G-1.5`'s cache and the estimate walks the history — so a workout store
+    /// that refuses fails the estimate while the cache answers this section perfectly well. Read
+    /// merged, that drew an error over a list nothing was wrong with, which names the wrong thing as
+    /// broken; this section draws no estimate and does not speak for one.
+    ///
     /// - Parameters:
     ///   - state: The records' load.
     ///   - hasLoggedSets: Whether any set at all has been logged against this exercise.
     /// - Returns: The state to draw.
     static func current(_ state: ExerciseRecordsState, hasLoggedSets: Bool) -> Self {
-        if state.failure != nil { return .failed }
+        if state.recordsFailure != nil { return .failed }
         guard state.hasLoaded else { return .loading }
         if !state.repMaxes.isEmpty { return .ready }
         return hasLoggedSets ? .noRecordsYet : .noneYet
@@ -137,7 +143,7 @@ struct ExerciseRecordsSection: View {
         _state = State(initialValue: ExerciseRecordsState(exerciseID: exerciseID, recomputer: records))
     }
 
-    /// The heading, then whichever of the section's four states is current.
+    /// The heading, then whichever of the section's five states is current.
     ///
     /// **Two tasks, because they have different lifetimes.** The first is a read that finishes; the
     /// second runs until the screen goes away, which is what `TR-1.5`'s subscription is.
@@ -153,17 +159,26 @@ struct ExerciseRecordsSection: View {
             case .failed:
                 ErrorStateView(
                     message: Text(ExerciseLibraryStrings.recordsError),
-                    retry: { Task { await state.load() } }
+                    retry: { Task { await reload() } }
                 )
             case .ready:
                 records
             }
         }
         .task {
-            await state.load()
+            await reload()
             if let stored = try? await settings.settings().displayUnit { unit = stored }
         }
-        .task { await state.observeChanges() }
+        .task { await state.observeChanges(includingEstimate: false) }
+    }
+
+    /// This section's own read: `G-1.5`'s cached numbers, then the links they resolve to.
+    ///
+    /// **Not ``DerivedValues/ExerciseRecordsState/load()``**, which also walks the whole history for
+    /// `FR-1.7.1`'s estimate — a number drawn in the section below this one and never in this one.
+    private func reload() async {
+        await state.loadRecords()
+        await state.loadSources()
     }
 
     /// The 1–5RM, then the control that reveals the rest.

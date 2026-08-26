@@ -369,7 +369,8 @@ struct SetRow: View {
                     Text(
                         LoggingStrings.setPersonalRecordLabel(
                             recordReps.map { $0.formatted(AppFormat.count(locale: locale)) }
-                                .formatted(.list(type: .and).locale(locale))
+                                .formatted(.list(type: .and).locale(locale)),
+                            isSingleRep: recordReps == [1]
                         )
                     )
                 )

@@ -56,13 +56,20 @@ public final class ExerciseRecordsState {
     /// successful estimate cleared a failed record read's diagnostic — leaving an empty list, a
     /// `true` ``hasLoaded`` and no failure, which is precisely the "this exercise holds no records"
     /// state those two exist to keep apart (`FR-1.13.1`).
+    ///
+    /// **A screen drawing one half reads that half's own** — ``recordsFailure`` or
+    /// ``estimateFailure`` — rather than this. Merged, a failure of the half it does not draw has it
+    /// report the half it does as unreadable, which is the same confusion one shared property caused
+    /// one level down. This is for a screen showing both.
     public var failure: String? { recordsFailure ?? estimateFailure }
 
-    /// Why ``loadRecords()`` last failed, or `nil`.
-    private var recordsFailure: String?
+    /// Why ``loadRecords()`` last failed, or `nil` — the list's own, and what a screen drawing only
+    /// the list reads.
+    public private(set) var recordsFailure: String?
 
-    /// Why ``loadEstimate()`` last failed, or `nil`.
-    private var estimateFailure: String?
+    /// Why ``loadEstimate()`` last failed, or `nil` — the estimate's own, on ``recordsFailure``'s
+    /// rule.
+    public private(set) var estimateFailure: String?
 
     /// The exercise this is about.
     @ObservationIgnored public let exerciseID: UUID
@@ -168,14 +175,25 @@ public final class ExerciseRecordsState {
     /// **A change to another exercise is ignored rather than reloaded**, which is `FR-1.6.4`'s scope
     /// arriving on the read side: every logged set publishes, and a screen that reloaded on all of
     /// them would walk this exercise's history because a different one was trained.
-    public func observeChanges() async {
+    ///
+    /// **A screen that draws no estimate declines it here as well as on its first read.** The
+    /// subscription is the path every later change arrives by, so one that reloaded through
+    /// ``load()`` would walk the history for a number it never draws each time this exercise moved —
+    /// and a settings change, which moves no rep max at all, would wake it for nothing.
+    ///
+    /// - Parameter includingEstimate: Whether `FR-1.7.1`'s estimate is one of the values this
+    ///   subscriber draws. `false` narrows a change to the records and their links, and ignores a
+    ///   settings change outright.
+    public func observeChanges(includingEstimate: Bool = true) async {
         for await change in await recomputer.changes() {
             switch change {
             case .exercise(let changed) where changed == exerciseID:
-                await load()
-            case .everyExercise:
+                await loadRecords()
+                await loadSources()
+                if includingEstimate { await loadEstimate() }
+            case .everyExercise where includingEstimate:
                 await loadEstimate()
-            case .exercise:
+            case .exercise, .everyExercise:
                 continue
             }
         }

@@ -309,8 +309,15 @@ struct ExerciseRecordsStateTests {
         // A heavier set in a different workout takes the 5RM. The old set is no longer a record.
         try await log.session(of: exerciseID, on: weeksAgo(1), sets: [working(120_000, 5)])
         _ = try await recomputer.recompute(forExerciseID: exerciseID)
-        await state.load()
 
+        // The list alone, before anything re-resolves. This is the assertion that can fail: after
+        // `loadSources()` the map is replaced wholesale, so a test looking only at the end state
+        // passes whether or not the replacement ever dropped the previous list's links — which is
+        // exactly the window a screen draws in between the two reads.
+        await state.loadRecords()
+        #expect(state.sourceSessions.isEmpty)
+
+        await state.loadSources()
         let second = try #require(state.repMaxes.first { $0.reps == 5 }).record.sourceSetID
         #expect(second != first)
         #expect(state.sourceSessions[first] == nil)
