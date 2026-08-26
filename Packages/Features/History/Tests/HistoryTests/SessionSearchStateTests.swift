@@ -15,15 +15,17 @@ struct SessionSearchStateTests {
         var log = TrainingLog()
         let squat = try await log.exercise(named: "Back Squat")
         let bench = try await log.exercise(named: "Bench Press")
-        // Squats on four days; benching on exactly one of them plus one of its own.
+        let press = try await log.exercise(named: "Overhead Press")
+        // The two multiplicities the claim is about: squats on four days, benching on exactly one
+        // of them. The press has a day to itself so that "and only those" has a session to leave
+        // out rather than only the ones it shares.
         let squatDays = [0, 2, 5, 9]
         for day in squatDays {
             let session = try await log.session(daysAgo: day)
             try await log.entry(squat, in: session, order: 0)
             if day == 2 { try await log.entry(bench, in: session, order: 1) }
         }
-        let benchOnly = try await log.session(daysAgo: 12)
-        try await log.entry(bench, in: benchOnly, order: 0)
+        try await log.entry(press, in: try await log.session(daysAgo: 12), order: 0)
 
         let state = log.searchState()
         state.query = "squat"
@@ -34,11 +36,12 @@ struct SessionSearchStateTests {
         #expect(state.results.map(\.summary.date) == state.results.map(\.summary.date).sorted(by: >))
         #expect(state.results.allSatisfy { $0.match.fields == .exerciseName })
 
-        // …and exactly one for the exercise trained on two, minus the day it shared with squats.
+        // …and exactly one for the exercise trained on exactly one day, which is the day it shared
+        // with a squat rather than one of its own: a count keyed on the exercise, not on the row.
         state.query = "bench"
-        #expect(state.results.count == 2)
+        #expect(state.results.count == 1)
         state.query = "Bench Press"
-        #expect(state.results.count == 2)
+        #expect(state.results.count == 1)
     }
 
     @Test("A session-level note and a per-set note both match, and each says which it was")
@@ -237,6 +240,168 @@ struct SessionSearchStateTests {
         state.query = "squat"
         await state.load()
         #expect(state.displayUnit == .pounds)
+    }
+
+    @Test("A superseded walk neither wedges the next search nor publishes over its answer")
+    func supersededWalkDoesNotPublish() async throws {
+        var log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        try await log.entry(squat, in: try await log.session(daysAgo: 0))
+
+        // Held with the walk suspended inside the read, and refusing once released — which is what
+        // a store that reports a cancellation as an error looks like from up here.
+        let gate = GatedWorkoutRepository(
+            wrapping: log.repositories.workouts, holdingRead: 1, failsHeldRead: true)
+        let state = log.searchState(workouts: gate)
+        state.query = "squat"
+
+        // The keystroke that starts a search, the field emptied — which cancels that walk without
+        // waiting for it to unwind — and the keystroke that starts the next one, all while the
+        // first is still standing in a read it will return from eventually.
+        let abandoned = Task { await state.load() }
+        await gate.arrival()
+        abandoned.cancel()
+        await state.load()
+
+        // The second walk answered. A refusal to start one while another is in flight would have
+        // left this on a spinner that no later keystroke could clear.
+        #expect(state.results.count == 1)
+
+        await gate.release()
+        await abandoned.value
+
+        // And the first reports its refusal to nobody.
+        #expect(state.results.count == 1)
+        #expect(
+            SessionSearchScreenState.current(state.phase, hasResults: !state.results.isEmpty)
+                == .ready)
+    }
+
+    @Test("A cancelled walk publishes nothing, not even the index it had finished building")
+    func cancelledWalkPublishesNothing() async throws {
+        var log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        for day in [0, 1] {
+            try await log.entry(squat, in: try await log.session(daysAgo: day))
+        }
+
+        // Held on the *last* session's read, so the walk has a complete index in hand by the time
+        // it is let go: what refuses it is the check before the publish, the one in the loop having
+        // no iteration left to run.
+        let gate = GatedWorkoutRepository(wrapping: log.repositories.workouts, holdingRead: 2)
+        let state = log.searchState(workouts: gate)
+        state.query = "squat"
+
+        let cancelled = Task { await state.load() }
+        await gate.arrival()
+        cancelled.cancel()
+        await gate.release()
+        await cancelled.value
+
+        #expect(state.phase == .indexing)
+        #expect(state.results.isEmpty)
+
+        // Nor does what it left behind stop the next search: a walk supersedes, it is not refused.
+        await state.load()
+        #expect(state.results.count == 2)
+    }
+
+    @Test("A walk another overtook publishes nothing, though nothing cancelled it")
+    func overtakenWalkDoesNotPublish() async throws {
+        var log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        try await log.entry(squat, in: try await log.session(daysAgo: 0))
+
+        let gate = GatedWorkoutRepository(wrapping: log.repositories.workouts, holdingRead: 1)
+        let state = log.searchState(workouts: gate)
+        state.query = "squat"
+
+        // Held after its session read, so this walk's answer is the one-session history.
+        let overtaken = Task { await state.load() }
+        await gate.arrival()
+
+        // A workout is logged and a second walk picks it up. Nothing cancelled the first — the
+        // retry on the failed state runs in a task of its own, which the screen's trigger does not
+        // reach — so being stale is the only thing that can stop it publishing.
+        try await log.entry(squat, in: try await log.session(daysAgo: 1))
+        await state.load()
+        #expect(state.results.count == 2)
+
+        await gate.release()
+        await overtaken.value
+
+        // The older answer does not come back and take the newer session off the screen.
+        #expect(state.results.count == 2)
+    }
+
+    @Test("A walk the field emptied under publishes nothing, though nothing cancelled it")
+    func walkEmptiedUnderDoesNotPublish() async throws {
+        var log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        try await log.entry(squat, in: try await log.session(daysAgo: 0))
+
+        let gate = GatedWorkoutRepository(wrapping: log.repositories.workouts, holdingRead: 1)
+        let state = log.searchState(workouts: gate)
+        state.query = "squat"
+
+        let abandoned = Task { await state.load() }
+        await gate.arrival()
+
+        // The user gives up on the search. This walk is not the screen's, so nothing cancels it.
+        state.clear()
+        await state.loadIfSearching()
+
+        await gate.release()
+        await abandoned.value
+
+        // The index it built does not arrive after the screen stopped asking for one.
+        #expect(state.phase == .idle)
+        #expect(state.results.isEmpty)
+    }
+
+    @Test("A cancelled walk stops reading rather than finishing a history nobody is waiting for")
+    func cancelledWalkStopsReading() async throws {
+        var log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        for day in [0, 1, 2] {
+            try await log.entry(squat, in: try await log.session(daysAgo: day))
+        }
+
+        let gate = GatedWorkoutRepository(wrapping: log.repositories.workouts, holdingRead: 1)
+        let state = log.searchState(workouts: gate)
+        state.query = "squat"
+
+        let cancelled = Task { await state.load() }
+        await gate.arrival()
+        cancelled.cancel()
+        await gate.release()
+        await cancelled.value
+
+        // Work not done is the only thing that can assert an early exit — the refusal to publish
+        // looks the same whether the walk stopped at the first session or ran through all three,
+        // and at `NFR-1.5`'s 15,000 sets the difference is the whole point of checking.
+        #expect(await gate.entryReads == 1)
+    }
+
+    @Test("Emptying the field drops the index rather than leaving the history in memory")
+    func emptyingTheFieldDropsTheIndex() async throws {
+        var log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        try await log.entry(squat, in: try await log.session(daysAgo: 0))
+
+        let state = log.searchState()
+        state.query = "squat"
+        await state.load()
+        #expect(state.results.count == 1)
+
+        // `clear()` and the search field's own button are the same thing from here: both empty the
+        // query, and the screen's trigger fires on that rather than on either button.
+        state.clear()
+        await state.loadIfSearching()
+
+        #expect(!state.isSearching)
+        #expect(state.phase == .idle)
+        #expect(state.results.isEmpty)
     }
 
     @Test("A search is re-read rather than cached, so training logged in between is findable")

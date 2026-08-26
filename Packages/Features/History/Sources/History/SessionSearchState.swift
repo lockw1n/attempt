@@ -21,7 +21,10 @@ import RepositoryInterface
 ///
 /// **The index is dropped when the search field is emptied**, and rebuilt on the next search. It is
 /// a picture of the store taken at a moment, and a workout logged between two searches has to appear
-/// in the second — the same reason ``SessionListState/load()`` re-reads on every appearance.
+/// in the second — the same reason ``SessionListState/load()`` re-reads on every appearance. It is
+/// also the largest thing this module holds — every session's summary and every set note in the
+/// history — so leaving it behind for a screen that stopped reading it is the memory `NFR-1.5` is
+/// about.
 @Observable
 final class SessionSearchState {
     /// What the search mode has to show, as one value rather than three flags.
@@ -70,6 +73,16 @@ final class SessionSearchState {
         return SessionSearch.results(in: sessions, matching: SessionSearch.trimmed(query))
     }
 
+    /// Which walk the screen is waiting for. Bumped by ``load()`` and by ``dropIndex()``.
+    ///
+    /// **This is what stops a walk the user has moved on from publishing over a newer one.** The
+    /// screen's trigger cancels the old walk and starts the next without waiting for the first to
+    /// unwind, and a repository read that does not honour cancellation is still in flight when it
+    /// does — so whatever that walk publishes on its way out lands on a screen that has since asked
+    /// a different question. ``SessionListState/isCurrent(_:)`` is the same rule over the list's
+    /// rows; a walk has no rows to compare, so it carries a token instead.
+    @ObservationIgnored private var walk = 0
+
     @ObservationIgnored private let workouts: any WorkoutRepository
     @ObservationIgnored private let exercises: any ExerciseRepository
     @ObservationIgnored private let settings: any SettingsRepository
@@ -96,25 +109,48 @@ final class SessionSearchState {
     ///
     /// **The screen's only trigger**, driven by ``isSearching`` so that it fires on the keystroke
     /// that starts a search and on a return to a screen left mid-search — and not on every keystroke
-    /// after either, the flag not having changed. Emptying the field cancels the walk instead.
+    /// after either, the flag not having changed. Emptying the field lands on the other branch,
+    /// which is the only thing that drops the index.
     func loadIfSearching() async {
-        guard isSearching else { return }
+        guard isSearching else {
+            dropIndex()
+            return
+        }
         await load()
+    }
+
+    /// Drops the index and abandons any walk still in flight.
+    ///
+    /// **Both ways out of search mode come through here**, ``clear()``'s button and the search
+    /// field's own, because both empty the field and it is the field ``loadIfSearching()`` keys on.
+    /// Bumping the token is the other half of it: a walk suspended in a read that never noticed the
+    /// cancellation would otherwise publish, on the next redraw, an index nothing is waiting for.
+    func dropIndex() {
+        walk &+= 1
+        phase = .idle
     }
 
     /// Reads and indexes every session.
     ///
     /// Also the retry on the failed state, which is why it is callable directly.
     ///
-    /// **A cancelled walk publishes nothing and returns to ``Phase/idle``.** The walk is the longest
-    /// read in this module and the cheapest way out of it is the user emptying the field; a
-    /// half-built index published as `.indexed` would answer the next query with part of the history
-    /// and look exactly like a complete answer.
+    /// **A cancelled walk publishes nothing.** The walk is the longest read in this module and the
+    /// cheapest way out of it is the user emptying the field; a half-built index published as
+    /// `.indexed` would answer the next query with part of the history and look exactly like a
+    /// complete answer.
+    ///
+    /// **A second walk supersedes the first rather than being refused**, which is where this parts
+    /// company with ``SessionListState/load()``. A guard that returned early while one was in flight
+    /// would do nothing at all on the keystroke that restarts a search — the walk it deferred to
+    /// having already been cancelled — and leave the screen on a spinner no later keystroke could
+    /// clear, the trigger's identity not having changed. The token is what makes starting a second
+    /// safe.
     func load() async {
-        guard phase != .indexing else { return }
+        walk &+= 1
+        let token = walk
         phase = .indexing
         // Re-read on every search rather than caching: the preference is changed in another tab.
-        if let unit = try? await settings.settings().displayUnit {
+        if let unit = try? await settings.settings().displayUnit, isCurrent(token) {
             displayUnit = unit
         }
         do {
@@ -128,22 +164,36 @@ final class SessionSearchState {
             var indexed: [IndexedSession] = []
             indexed.reserveCapacity(sessions.count)
             for session in sessions {
-                guard !Task.isCancelled else {
-                    phase = .idle
-                    return
-                }
+                guard isCurrent(token) else { return }
                 indexed.append(try await reader.indexed(for: session))
             }
+            guard isCurrent(token) else { return }
             phase = .indexed(indexed)
         } catch {
+            guard isCurrent(token) else { return }
             phase = .failed(String(describing: error))
         }
     }
 
+    /// Whether the walk `token` belongs to is still the one the screen is waiting for.
+    ///
+    /// **Every publish in ``load()`` goes through this**, the refusal included: a walk that failed
+    /// after the user moved on would otherwise put `FR-1.13.1`'s error state over results a later
+    /// walk had already delivered. The two clauses are the two ways a walk goes stale — another
+    /// started, or the field emptied — and cancellation on its own, with no successor, is what makes
+    /// the in-loop check an early exit rather than the whole mechanism.
+    ///
+    /// - Parameter token: The walk's token, taken before its first `await`.
+    /// - Returns: Whether it may still publish.
+    private func isCurrent(_ token: Int) -> Bool {
+        token == walk && !Task.isCancelled
+    }
+
     /// Empties the search field — the action on the "nothing matched" state.
     ///
-    /// It does not drop the index: the screen leaves search mode on the next redraw, which cancels
-    /// the walk's task and returns the phase to ``Phase/idle`` anyway.
+    /// The index goes with it, by way of ``dropIndex()`` on the redraw that follows: emptying the
+    /// field is what the screen's trigger keys on, and this button is only one of the two things
+    /// that does it.
     func clear() {
         query = ""
     }
