@@ -48,9 +48,9 @@ Packages/
 │                            locale-explicit FormatStyles for numbers, weights, dates and percentages.
 ├── Features/                Feature modules, one level deeper — the level is load-bearing:
 │                            .swiftlint.yml scopes the no-raw-values rules to this path.
-│   ├── ExerciseLibrary/     The exercise catalogue
+│   ├── ExerciseLibrary/     The exercise catalogue, including its per-exercise history section
 │   ├── Logging/             The active session and everything logged into it
-│   ├── History/             Past training: sessions, per-exercise history, calendar, search
+│   ├── History/             Past training: sessions, calendar, search
 │   ├── Dashboard/           e1RM tiles, the recent-PR feed, the start-workout action
 │   └── Settings/            Preferences, data portability, sync
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
