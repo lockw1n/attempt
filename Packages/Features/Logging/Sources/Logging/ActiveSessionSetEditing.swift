@@ -122,15 +122,7 @@ extension ActiveSessionView {
     ///   - target: What the editor was open over.
     /// - Returns: The write, or `nil` where the draft does not resolve.
     static func write(_ draft: SetDraft, over target: SetEditorTarget) -> SetEditorWrite? {
-        guard let weight = draft.weight, let reps = draft.reps, draft.isLoggable else { return nil }
-        let values = SetEntryValues(
-            weight: weight,
-            reps: reps,
-            rpe: draft.storedRPE,
-            isWarmup: draft.isWarmup,
-            modifiers: draft.modifiers,
-            notes: draft.notes
-        )
+        guard let values = draft.resolved else { return nil }
         guard let setID = target.editing else {
             return .add(entryID: target.entryID, values: values)
         }

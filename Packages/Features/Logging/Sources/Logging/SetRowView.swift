@@ -86,11 +86,22 @@ struct SetRow: View {
     /// The unit the load is shown in (`G-3.1`).
     let unit: MassUnit
 
-    /// Marks this set as a warmup or as working (`FR-1.2.4`) — the set, then which it becomes.
-    let mark: (SetEntry, Bool) -> Void
+    /// Marks this set as a warmup or as working (`FR-1.2.4`) — the set, then which it becomes, or
+    /// `nil` where the row does not offer it.
+    ///
+    /// **Optional because the two surfaces that draw this row are not offered the same commands.**
+    /// `FR-1.2.4` and `FR-1.2.5` are the workout in progress'; `FR-1.2.7`'s edit and delete are the
+    /// only writes a *past* session's row carries, and a badge that opened nothing there would be a
+    /// control announcing an action it cannot perform. Absent, the number and the outcome are drawn
+    /// as what they are — labels — so the row reads identically and answers to no tap.
+    ///
+    /// The warmup flag is still correctable from a past session: it is a field of the set editor,
+    /// which ``edit`` opens.
+    let mark: ((SetEntry, Bool) -> Void)?
 
-    /// Marks this set as completed or failed (`FR-1.2.5`) — the set, then which it becomes.
-    let markCompleted: (SetEntry, Bool) -> Void
+    /// Marks this set as completed or failed (`FR-1.2.5`) — the set, then which it becomes, or `nil`
+    /// where the row does not offer it. See ``mark``.
+    let markCompleted: ((SetEntry, Bool) -> Void)?
 
     /// Opens `FR-1.2.7`'s editor over this set.
     let edit: (SetEntry) -> Void
@@ -201,22 +212,34 @@ struct SetRow: View {
     ///
     /// At the standard touch target rather than the logging one: marking a set is a correction made
     /// between efforts, not one of `NFR-1.3`'s counted taps.
-    private var badge: some View {
-        Button {
-            mark(numbered.record, !numbered.isWarmup)
-        } label: {
-            numberText
-                .font(numberFont)
-                .foregroundStyle(ColorToken.textTertiary)
-                .frame(
-                    minWidth: TouchTarget.standard.points, minHeight: TouchTarget.standard.points
-                )
+    @ViewBuilder private var badge: some View {
+        if let mark {
+            Button {
+                mark(numbered.record, !numbered.isWarmup)
+            } label: {
+                badgeLabel
+                    .background(ColorToken.surfaceRaised, in: .capsule)
+                    .contentShape(.capsule)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(numberLabel))
+            .accessibilityHint(Text(LoggingStrings.setMarkAction(isWarmup: numbered.isWarmup)))
+        } else {
+            // The capsule stays, so a past session's row keeps the alignment a live one has — what
+            // goes is the tap and the hint that promised one.
+            badgeLabel
                 .background(ColorToken.surfaceRaised, in: .capsule)
-                .contentShape(.capsule)
+                .accessibilityElement()
+                .accessibilityLabel(Text(numberLabel))
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(numberLabel))
-        .accessibilityHint(Text(LoggingStrings.setMarkAction(isWarmup: numbered.isWarmup)))
+    }
+
+    /// The badge as it is drawn, tappable or not.
+    private var badgeLabel: some View {
+        numberText
+            .font(numberFont)
+            .foregroundStyle(ColorToken.textTertiary)
+            .frame(minWidth: TouchTarget.standard.points, minHeight: TouchTarget.standard.points)
     }
 
     /// `FR-1.2.5`'s outcome, and the control that changes it.
@@ -241,22 +264,34 @@ struct SetRow: View {
     ///
     /// At the standard touch target rather than the logging one, for the badge's reason: marking a
     /// set failed is a correction between efforts, not one of `NFR-1.3`'s counted taps.
-    private var outcome: some View {
-        Button {
-            markCompleted(numbered.record, !numbered.isCompleted)
-        } label: {
-            Image(systemName: numbered.isCompleted ? "checkmark.circle" : "xmark.circle")
-                .font(Typography.caption.font)
-                .foregroundStyle(numbered.isCompleted ? ColorToken.textTertiary : ColorToken.negative)
-                .frame(
-                    minWidth: TouchTarget.standard.points, minHeight: TouchTarget.standard.points
-                )
-                .contentShape(.rect)
+    @ViewBuilder private var outcome: some View {
+        if let markCompleted {
+            Button {
+                markCompleted(numbered.record, !numbered.isCompleted)
+            } label: {
+                outcomeLabel
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(LoggingStrings.setOutcome(isCompleted: numbered.isCompleted)))
+            .accessibilityHint(
+                Text(LoggingStrings.setOutcomeAction(isCompleted: numbered.isCompleted)))
+        } else {
+            // Still drawn, and still red where the set failed: the glyph is `G-4.5`'s second cue for
+            // an outcome the row reports whether or not this surface can change it.
+            outcomeLabel
+                .accessibilityElement()
+                .accessibilityLabel(
+                    Text(LoggingStrings.setOutcome(isCompleted: numbered.isCompleted)))
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(LoggingStrings.setOutcome(isCompleted: numbered.isCompleted)))
-        .accessibilityHint(
-            Text(LoggingStrings.setOutcomeAction(isCompleted: numbered.isCompleted)))
+    }
+
+    /// The outcome as it is drawn, tappable or not.
+    private var outcomeLabel: some View {
+        Image(systemName: numbered.isCompleted ? "checkmark.circle" : "xmark.circle")
+            .font(Typography.caption.font)
+            .foregroundStyle(numbered.isCompleted ? ColorToken.textTertiary : ColorToken.negative)
+            .frame(minWidth: TouchTarget.standard.points, minHeight: TouchTarget.standard.points)
     }
 
     /// The badge's text — `W1` for a warmup, a bare numeral for a working set.

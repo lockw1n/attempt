@@ -77,6 +77,8 @@ struct RootTabView: View {
             activeSessionRoot
         case .settings(.equipmentProfiles):
             equipmentProfilesRoot
+        case .history(.session(let sessionID)):
+            pastSessionRoot(sessionID)
         default:
             PlaceholderScreen(route: route)
         }
@@ -160,6 +162,34 @@ struct RootTabView: View {
         switch dependencies.state {
         case .open(_, let stores):
             EquipmentProfilesView(store: stores.equipment)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// One past session (`FR-1.2.7`, `FR-1.2.9`), or the reason it cannot be shown.
+    ///
+    /// **A `Logging` screen answering a History route**, which is the third of these joins and the
+    /// same shape as the other two: everything a past session draws — the set row, the set editor,
+    /// the note field — is `Logging`'s, `TR-1.3` keeps `History` and `Logging` from depending on
+    /// each other, so this target composes them. It is handed the same modifier list and the same
+    /// gym the workout in progress uses, so a set corrected here is corrected against what a set
+    /// logged live is.
+    ///
+    /// The screen is handed the identifier the route carried, not a record: resolving it is the
+    /// screen's own first read (`G-1.4`).
+    @ViewBuilder
+    private func pastSessionRoot(_ sessionID: UUID) -> some View {
+        switch dependencies.state {
+        case .open(let repositories, let stores):
+            PastSessionView(
+                sessionID: sessionID,
+                workouts: repositories.workouts,
+                catalogue: repositories.exercises,
+                settings: repositories.settings,
+                vocabulary: stores.modifiers,
+                equipment: stores.equipment
+            )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

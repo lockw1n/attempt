@@ -196,6 +196,28 @@ extension SetDraft {
         if case .value(let rating) = rpe { return rating }
         return nil
     }
+
+    /// What this draft becomes once it resolves, or `nil` where it does not.
+    ///
+    /// **The one place a typed form turns into six stored columns**, and it has one home because
+    /// two screens confirm this form now: the workout in progress and one being corrected
+    /// afterwards (`FR-1.2.7`). A second mapping is a second chance to drop the note, the rating or
+    /// `FR-1.2.8`'s modifiers on one of them.
+    ///
+    /// The refusal is ``isLoggable``'s, read a second time here rather than trusted from the
+    /// confirming command: that command is disabled in this state, so a caller reaching this with a
+    /// draft that does not resolve has nothing to write.
+    var resolved: SetEntryValues? {
+        guard let weight, let reps, isLoggable else { return nil }
+        return SetEntryValues(
+            weight: weight,
+            reps: reps,
+            rpe: storedRPE,
+            isWarmup: isWarmup,
+            modifiers: modifiers,
+            notes: notes
+        )
+    }
 }
 
 // MARK: - The ± controls
