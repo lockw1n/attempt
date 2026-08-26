@@ -79,6 +79,8 @@ struct RootTabView: View {
             equipmentProfilesRoot
         case .history(.session(let sessionID)):
             pastSessionRoot(sessionID)
+        case .history(.calendar):
+            calendarRoot
         default:
             PlaceholderScreen(route: route)
         }
@@ -227,6 +229,25 @@ struct RootTabView: View {
         switch dependencies.state {
         case .open(let repositories, _):
             SessionListView(
+                workouts: repositories.workouts,
+                exercises: repositories.exercises,
+                settings: repositories.settings
+            )
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// The month grid of training days (`FR-1.5.3`), or the reason it cannot be shown.
+    ///
+    /// The same three repositories as ``historyRoot``, and for the same reason: selecting a day
+    /// draws that day's sessions as the list's own summary cards, which are three facts from three
+    /// tables.
+    @ViewBuilder
+    private var calendarRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, _):
+            CalendarView(
                 workouts: repositories.workouts,
                 exercises: repositories.exercises,
                 settings: repositories.settings

@@ -182,6 +182,126 @@ struct TrainingLog {
         return set
     }
 
+    /// Writes one session on an explicit day.
+    ///
+    /// The day-arithmetic cases need dates named rather than counted: "the last day of December"
+    /// is not a number of days before the fixture's epoch, and writing it as one is how a test
+    /// stops asserting what it was written to assert.
+    ///
+    /// - Parameters:
+    ///   - date: When it was trained. Stored verbatim, **not** normalised to a day start — a row
+    ///     that arrived by sync or restore was not written by this app and need not be one.
+    ///   - notes: The session note (`FR-1.2.9`).
+    ///   - enteredOn: When the row was created. Later than `date` is `FR-1.2.1`'s backdating.
+    /// - Returns: The record.
+    @discardableResult
+    func session(
+        on date: Date, notes: String = "", enteredOn: Date? = nil
+    ) async throws -> WorkoutSession {
+        let created = enteredOn ?? date
+        let session = WorkoutSession(
+            id: UUID(),
+            createdAt: created,
+            updatedAt: created,
+            deletedAt: nil,
+            date: date,
+            startedAt: date,
+            endedAt: date.addingTimeInterval(3_600),
+            notes: notes,
+            bodyweight: nil,
+            programRunID: nil,
+            scheduledWorkoutID: nil
+        )
+        try await repositories.workouts.save(session)
+        return session
+    }
+
+    /// The calendar screen's state, over this store.
+    ///
+    /// - Parameters:
+    ///   - calendar: The calendar the grid and the day index are computed in.
+    ///   - today: The instant the screen opens on.
+    ///   - workouts: The workout repository to read through, for the cases that need one that
+    ///     refuses. Defaults to this store's own.
+    /// - Returns: A fresh state that has read nothing yet.
+    func calendarState(
+        calendar: Calendar = TrainingLog.utc,
+        today: Date,
+        workouts: (any WorkoutRepository)? = nil
+    ) -> CalendarState {
+        CalendarState(
+            workouts: workouts ?? repositories.workouts,
+            exercises: repositories.exercises,
+            settings: repositories.settings,
+            calendar: calendar,
+            today: today
+        )
+    }
+
+    /// Switches the stored display unit (`G-3.1`).
+    ///
+    /// The settings row is a single record with ten columns and no `with`-style copy, so changing
+    /// one field means restating the other nine. Doing that once here is what keeps a test about
+    /// the unit from being nine lines about everything else.
+    ///
+    /// - Parameter unit: What loads should read in.
+    func setDisplayUnit(_ unit: MassUnit) async throws {
+        let stored = try await repositories.settings.settings()
+        try await repositories.settings.save(
+            UserSettings(
+                id: stored.id,
+                createdAt: stored.createdAt,
+                updatedAt: stored.updatedAt,
+                deletedAt: stored.deletedAt,
+                userID: stored.userID,
+                displayUnit: unit,
+                e1RMFormula: stored.e1RMFormula,
+                theme: stored.theme,
+                defaultRoundingIncrement: stored.defaultRoundingIncrement,
+                defaultRoundingStrategy: stored.defaultRoundingStrategy
+            ))
+    }
+
+    /// A Gregorian calendar in UTC, weeks starting on Sunday.
+    ///
+    /// **Pinned rather than `.current`**, for the reason every snapshot here pins its locale: the
+    /// running machine decides both the time zone and the first weekday, so a grid asserted against
+    /// `Calendar.current` asserts whatever that machine is set to.
+    static var utc: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        calendar.firstWeekday = 1
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        return calendar
+    }
+
+    /// A calendar one hour behind UTC, otherwise ``utc``.
+    ///
+    /// The time zone is what makes a day start move: an instant just after midnight in UTC is the
+    /// previous day here.
+    static var oneHourBehind: Calendar {
+        var calendar = utc
+        calendar.timeZone = TimeZone(secondsFromGMT: -3_600) ?? .gmt
+        return calendar
+    }
+
+    /// A named day, in `calendar`, at its start.
+    ///
+    /// - Parameters:
+    ///   - year: The year.
+    ///   - month: The month, 1-based.
+    ///   - day: The day of the month.
+    ///   - hour: The hour within it. Zero — the day's start — unless a case is about an instant
+    ///     that lands on a different day in another time zone.
+    ///   - calendar: The calendar to resolve it in.
+    /// - Returns: The instant.
+    static func day(
+        _ year: Int, _ month: Int, _ day: Int, hour: Int = 0, in calendar: Calendar = utc
+    ) -> Date {
+        calendar.date(
+            from: DateComponents(year: year, month: month, day: day, hour: hour)) ?? epoch
+    }
+
     /// The state under test, over this store.
     ///
     /// - Returns: A fresh state that has read nothing yet.

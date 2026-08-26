@@ -27,6 +27,57 @@ enum HistoryStrings {
     /// A session that was finished with nothing logged into it.
     static let noExercises = resource("history.list.exercises.none")
 
+    /// The way from the list to the month grid — a toolbar control drawn as a symbol, so this is
+    /// the only thing that names it (`G-4.2`).
+    static let listCalendar = resource("history.list.calendar")
+
+    /// The month grid's own title (`FR-1.5.3`). A pushed screen names itself.
+    static let calendarTitle = resource("history.calendar.title")
+
+    /// The chevron back a month. A symbol, so the label is the whole of what VoiceOver gets.
+    static let calendarEarlier = resource("history.calendar.earlier")
+
+    /// The chevron on a month.
+    static let calendarLater = resource("history.calendar.later")
+
+    /// Nothing has ever been logged, so there is nothing to mark (`FR-1.13.2`).
+    static let calendarEmptyHeadline = resource("history.calendar.empty.headline")
+
+    /// What will appear here once there is.
+    static let calendarEmptyMessage = resource("history.calendar.empty.message")
+
+    /// The way to make the first one — a tab away, so it is a button rather than a sentence.
+    static let calendarEmptyAction = resource("history.calendar.empty.action")
+
+    /// A failed read of the sessions the grid marks.
+    static let calendarErrorHeadline = resource("history.calendar.error.headline")
+
+    /// What to do about it.
+    static let calendarErrorMessage = resource("history.calendar.error.message")
+
+    /// A failed read of one day's sessions, reported under the grid that is still correct.
+    static let calendarDayError = resource("history.calendar.day.error")
+
+    /// A grid cell's VoiceOver label for a day training was logged on.
+    ///
+    /// The cell shows one or two digits, so the date has to be spoken in full (`G-4.2`) — and the
+    /// marker itself is a fill and a dot, neither of which VoiceOver reads. This sentence is the
+    /// third of `G-4.5`'s non-colour signals rather than a decoration on the other two.
+    ///
+    /// - Parameter date: The day, already rendered — how a date reads is `AppFormat`'s.
+    /// - Returns: The label.
+    static func calendarDayTrained(date: String) -> LocalizedStringResource {
+        resource("history.calendar.day.trained \(date)")
+    }
+
+    /// A grid cell's VoiceOver label for a day with nothing logged on it.
+    ///
+    /// - Parameter date: The day, already rendered.
+    /// - Returns: The label.
+    static func calendarDayUntrained(date: String) -> LocalizedStringResource {
+        resource("history.calendar.day.untrained \(date)")
+    }
+
     /// The row's two numbers as one line — "8 working sets, 7,240 kg".
     ///
     /// **The line is the copy and the accessibility label both.** A pair of labelled metric tiles
@@ -51,7 +102,11 @@ enum HistoryStrings {
         [
             emptyHeadline, emptyMessage, emptyAction,
             errorHeadline, errorMessage, moreErrorMessage,
-            noExercises,
+            noExercises, listCalendar,
+            calendarTitle, calendarEarlier, calendarLater,
+            calendarEmptyHeadline, calendarEmptyMessage, calendarEmptyAction,
+            calendarErrorHeadline, calendarErrorMessage, calendarDayError,
+            calendarDayTrained(date: ""), calendarDayUntrained(date: ""),
             metricsSummary(sets: 1, volume: ""),
         ]
     }

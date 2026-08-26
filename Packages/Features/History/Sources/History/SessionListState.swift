@@ -78,8 +78,13 @@ final class SessionListState {
     /// Every session the store holds, newest first — the order the repository already guarantees.
     @ObservationIgnored private var sessions: [WorkoutSession] = []
 
-    /// What each exercise is called, for the summary line.
+    /// What each exercise is called, for the summary line — empty until the catalogue is read.
     @ObservationIgnored private var names: [UUID: String] = [:]
+
+    /// How a session becomes a row, over the catalogue this screen last read.
+    private var reader: SessionSummaryReader {
+        SessionSummaryReader(workouts: workouts, names: names)
+    }
 
     /// Whether an extension is already running, so two scroll events do not build one page twice.
     @ObservationIgnored private var isExtending = false
@@ -188,41 +193,9 @@ final class SessionListState {
     private func page(after built: [SessionSummary]) async throws -> [SessionSummary] {
         var built = built
         for session in sessions.dropFirst(built.count).prefix(Self.pageSize) {
-            built.append(try await summary(for: session))
+            built.append(try await reader.summary(for: session))
         }
         return built
-    }
-
-    /// One session's row: its exercises, its working sets and what they weighed.
-    ///
-    /// - Parameter session: The session to summarise.
-    /// - Returns: The row.
-    private func summary(for session: WorkoutSession) async throws -> SessionSummary {
-        let entries = try await workouts.entries(
-            forSessionID: session.id, includingDeleted: false)
-
-        var exerciseNames: [String] = []
-        var seen: Set<UUID> = []
-        var setCount = 0
-        var tonnage = Weight.zero
-
-        for entry in entries {
-            if seen.insert(entry.exerciseID).inserted {
-                exerciseNames.append(names[entry.exerciseID] ?? Self.unnamedExercise)
-            }
-            let sets = try await workouts.sets(forEntryID: entry.id, includingDeleted: false)
-            setCount += sets.count(where: Tonnage.counts)
-            tonnage += Tonnage.of(sets)
-        }
-
-        return SessionSummary(
-            id: session.id,
-            date: session.date,
-            exerciseNames: exerciseNames,
-            setCount: setCount,
-            tonnage: tonnage,
-            notes: session.notes
-        )
     }
 
     /// The catalogue as a name lookup.
@@ -263,14 +236,6 @@ final class SessionListState {
         var seen: Set<UUID> = []
         return sessions.filter { seen.insert($0.id).inserted }
     }
-
-    /// What a row calls an exercise whose catalogue row is gone.
-    ///
-    /// Not localized, and not shown: the read above includes deleted rows, so this is reachable only
-    /// from a store missing a row a session references — a dangling reference the repository refuses
-    /// to create. An empty name renders as nothing rather than as a translated apology for a case
-    /// that cannot happen.
-    private static let unnamedExercise = ""
 
     /// Every session there has ever been.
     ///

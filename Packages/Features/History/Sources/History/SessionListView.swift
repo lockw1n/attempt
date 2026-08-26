@@ -48,6 +48,20 @@ public struct SessionListView: View {
                 .padding(Spacing.lg.points)
         }
         .background(ColorToken.background)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                // `FR-1.5.3`'s calendar, as a sibling of this list rather than a mode of it: the
+                // two answer different questions (*what did I do* against *which days did I
+                // train*) and neither is a filter on the other.
+                NavigationLink(value: Route.history(.calendar)) {
+                    Label {
+                        Text(HistoryStrings.listCalendar)
+                    } icon: {
+                        Image(systemName: "calendar")
+                    }
+                }
+            }
+        }
         // `load()` on every appearance, not once: a workout finished in the Train tab has to be
         // here on the way back.
         .task { await state.load() }
@@ -128,6 +142,13 @@ struct SessionSummaryCard: View {
     /// The unit the tonnage is shown in (`G-3.1`).
     let unit: MassUnit
 
+    /// Whether the card names its own day.
+    ///
+    /// **True in a list, false under a heading that already says it.** In the chronological list the
+    /// date is what identifies a row; in the calendar's day section it is the section's own heading,
+    /// and a card repeating it prints the same date twice in a row — on screen and to VoiceOver.
+    var showsDate = true
+
     /// Which locale the day, the names and the numbers are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
@@ -135,9 +156,11 @@ struct SessionSummaryCard: View {
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: Spacing.md.points) {
-                Text(summary.date, format: AppFormat.date(locale: locale))
-                    .font(Typography.cardTitle.font)
-                    .foregroundStyle(ColorToken.textPrimary)
+                if showsDate {
+                    Text(summary.date, format: AppFormat.date(locale: locale))
+                        .font(Typography.cardTitle.font)
+                        .foregroundStyle(ColorToken.textPrimary)
+                }
 
                 exercises
 

@@ -21,6 +21,7 @@ struct RouteTests {
         .exerciseLibrary(.exerciseEdit(exerciseID: exerciseID)),
         .exerciseLibrary(.exercisePicker),
         .history(.session(sessionID: sessionID)),
+        .history(.calendar),
         .settings(.about),
     ]
 
@@ -71,6 +72,9 @@ struct RouteTests {
         #expect(
             try Self.encodedKeyPath(.exerciseLibrary(.exercisePicker))
                 == ["exerciseLibrary", "_0", "exercisePicker"]
+        )
+        #expect(
+            try Self.encodedKeyPath(.history(.calendar)) == ["history", "_0", "calendar"]
         )
         #expect(
             try Self.encodedKeyPath(.history(.session(sessionID: Self.sessionID)))

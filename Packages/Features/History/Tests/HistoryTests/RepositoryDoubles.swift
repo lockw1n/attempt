@@ -96,6 +96,7 @@ actor GatedWorkoutRepository: WorkoutRepository {
 
     private let wrapped: any WorkoutRepository
     private let held: Int
+    private let failsHeldRead: Bool
     private var hasHeld = false
     private var arrived: CheckedContinuation<Void, Never>?
     private var waiting: CheckedContinuation<Void, Never>?
@@ -106,9 +107,18 @@ actor GatedWorkoutRepository: WorkoutRepository {
     ///     session**, so that a change to the list's order — a re-sort, a filter, a broken
     ///     de-duplication — fails these tests on their assertions instead of deadlocking the suite
     ///     on a read that never arrives.
-    init(wrapping wrapped: any WorkoutRepository, holdingRead held: Int) {
+    ///   - failsHeldRead: Whether the held read raises once released, rather than answering. It has
+    ///     to be *this* read that fails rather than a `FlakyWorkoutRepository` wrapped around the
+    ///     gate: a refusal outside the gate never reaches it, and ``arrival()`` would then wait for
+    ///     a read that no longer arrives.
+    init(
+        wrapping wrapped: any WorkoutRepository,
+        holdingRead held: Int,
+        failsHeldRead: Bool = false
+    ) {
         self.wrapped = wrapped
         self.held = held
+        self.failsHeldRead = failsHeldRead
     }
 
     /// Suspends until the held read has reached the gate.
@@ -134,6 +144,7 @@ actor GatedWorkoutRepository: WorkoutRepository {
                 arrived?.resume()
                 arrived = nil
             }
+            if failsHeldRead { throw RepositoryError.recordNotFound(id: sessionID) }
         }
         return try await wrapped.entries(
             forSessionID: sessionID, includingDeleted: includingDeleted)
@@ -194,5 +205,52 @@ struct ForeignCatalogue: ExerciseRepository {
     ) async throws -> [TrainingMaxEntry] { [] }
     func saveTrainingMax(_ entry: TrainingMaxEntry) async throws {
         throw RepositoryError.recordNotFound(id: entry.id)
+    }
+}
+
+/// A repository that counts the session reads passed through it.
+///
+/// The re-entrancy refusals in this module are *work not done* rather than a different answer — two
+/// concurrent reads converge on the same rows — so the only thing that can assert one is a count.
+///
+/// **An actor for ``FlakyWorkoutRepository``'s reason** (`G-6.4`).
+actor CountingWorkoutRepository: WorkoutRepository {
+    /// How many times the whole history has been read.
+    private(set) var sessionReads = 0
+
+    private let wrapped: any WorkoutRepository
+
+    init(wrapping wrapped: any WorkoutRepository) {
+        self.wrapped = wrapped
+    }
+
+    func sessions(
+        in range: ClosedRange<Date>, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        sessionReads += 1
+        return try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
+    }
+
+    func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
+        try await wrapped.session(id: id, includingDeleted: includingDeleted)
+    }
+    func save(_ session: WorkoutSession) async throws { try await wrapped.save(session) }
+    func deleteSession(id: UUID) async throws { try await wrapped.deleteSession(id: id) }
+    func entries(
+        forSessionID sessionID: UUID, includingDeleted: Bool
+    ) async throws -> [ExerciseEntry] {
+        try await wrapped.entries(forSessionID: sessionID, includingDeleted: includingDeleted)
+    }
+    func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
+    func deleteExerciseEntry(id: UUID) async throws {
+        try await wrapped.deleteExerciseEntry(id: id)
+    }
+    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        try await wrapped.sets(forEntryID: entryID, includingDeleted: includingDeleted)
+    }
+    func save(_ set: SetEntry) async throws { try await wrapped.save(set) }
+    func deleteSet(id: UUID) async throws { try await wrapped.deleteSet(id: id) }
+    func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        try await wrapped.sets(forExerciseID: exerciseID, includingDeleted: includingDeleted)
     }
 }

@@ -24,3 +24,36 @@
 /* A session with no exercises in it — started, then finished empty. Not an error and not the empty
    state: the session is real and its date is worth showing. */
 "history.list.exercises.none" = "No exercises";
+
+/* FR-1.5.3's calendar. The way in is a toolbar symbol on the list, so its label is the only thing
+   VoiceOver has to go on (G-4.2); the screen itself names its own title, a pushed screen being
+   responsible for that where a tab root is not. */
+"history.list.calendar" = "Calendar";
+"history.calendar.title" = "Calendar";
+
+/* The two chevrons. Symbols again, so again the label is all of it. They say *month* because a
+   chevron on a calendar could as easily mean a week or a year. */
+"history.calendar.earlier" = "Previous month";
+"history.calendar.later" = "Next month";
+
+/* Nothing logged, ever — the same fact the list's empty state reports, in this screen's own words.
+   NOT an empty grid: a month with no marks says *this month* had no training and invites a walk
+   back through earlier ones, and there are none. */
+"history.calendar.empty.headline" = "No training logged yet";
+"history.calendar.empty.message" = "The days you train are marked here.";
+"history.calendar.empty.action" = "Start a workout";
+
+/* A failed read of the sessions the grid marks. Copy, not the diagnostic (G-3.4). */
+"history.calendar.error.headline" = "Calendar unavailable";
+"history.calendar.error.message" = "Your training days could not be read. Try again.";
+
+/* A failed read of *one day's* sessions, shown under a grid that is still correct and still marked.
+   It names the half that failed, for the reason history.list.more.error does. */
+"history.calendar.day.error" = "Could not load that day's sessions.";
+
+/* A grid cell's VoiceOver label. The cell draws one or two digits, so the date is spoken in full;
+   and the marker is a fill plus a dot, neither of which VoiceOver reads — this sentence is the
+   third of G-4.5's non-colour signals, not a gloss on the other two. Positional, so a translation
+   can put the date last. */
+"history.calendar.day.trained %@" = "%1$@, trained";
+"history.calendar.day.untrained %@" = "%1$@, no training";
