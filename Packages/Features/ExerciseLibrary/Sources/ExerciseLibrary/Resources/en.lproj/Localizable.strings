@@ -120,6 +120,24 @@
    supply the real content. */
 "exerciselibrary.detail.section.history" = "History";
 "exerciselibrary.detail.history.none" = "Log a set against this exercise and its history appears here.";
+
+/* FR-1.5.2's history, and the three things that can go wrong reading it. The error message is a
+   sentence the user can act on; the error's own description is a diagnostic and is never shown
+   (G-3.4). The "more" control's copy says which direction it goes — the section opens with the most
+   recent sessions, so what is past the boundary is the older training, not simply "more". */
+"exerciselibrary.detail.history.error" = "This exercise's history could not be read.";
+"exerciselibrary.detail.history.more" = "Show earlier sessions";
+"exerciselibrary.detail.history.more.error" = "Earlier sessions could not be read.";
+
+/* One history row. G-1.8's warmup flag and FR-1.2.5's failed set are each said in words, so neither
+   distinction rests on the dimmer or redder type alone (G-4.5) — the second is the VoiceOver label
+   for the glyph the row draws. The reps label gives the numeral a unit for a reader who hears the
+   row rather than seeing the multiplication sign; the rating takes its number already rendered, so
+   the decimal separator is the locale's. */
+"exerciselibrary.detail.history.warmup" = "Warmup";
+"exerciselibrary.detail.history.failed" = "Failed";
+"exerciselibrary.detail.history.reps %lld" = "Reps %lld";
+"exerciselibrary.detail.history.rpe %@" = "RPE %@";
 "exerciselibrary.detail.section.records" = "Personal records";
 "exerciselibrary.detail.records.none" = "Log a set against this exercise and its personal records appear here.";
 "exerciselibrary.detail.section.e1rm" = "Estimated 1RM";
@@ -224,7 +242,7 @@
 
 /* FR-1.13.3, the other half. The "none" copy above tells the user to log a set; it is true only
    while no set can exist, and once one can, a user who has logged sets would be told to log a set
-   they have already logged. These two say what is actually true in that case. Both are scaffolding
-   with a named replacement — the real history and record displays. */
-"exerciselibrary.detail.history.pending" = "Sets have been logged against this exercise. Showing them here is not built yet.";
+   they have already logged. This says what is actually true in that case. Scaffolding with a named
+   replacement — the real record display. The history section's twin has been retired: FR-1.5.2's
+   display now exists, so the only thing left for it to say is that nothing has been logged. */
 "exerciselibrary.detail.records.pending" = "Sets have been logged against this exercise. Showing personal records here is not built yet.";

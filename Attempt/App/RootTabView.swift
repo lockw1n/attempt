@@ -2,6 +2,7 @@ import AppNavigation
 import DesignSystem
 import ExerciseLibrary
 import Foundation
+import History
 import Logging
 import RepositoryInterface
 import Settings
@@ -76,6 +77,10 @@ struct RootTabView: View {
             activeSessionRoot
         case .settings(.equipmentProfiles):
             equipmentProfilesRoot
+        case .history(.session(let sessionID)):
+            pastSessionRoot(sessionID)
+        case .history(.calendar):
+            calendarRoot
         default:
             PlaceholderScreen(route: route)
         }
@@ -106,7 +111,8 @@ struct RootTabView: View {
             ExerciseDetailView(
                 exerciseID: exerciseID,
                 repository: repositories.exercises,
-                workouts: repositories.workouts
+                workouts: repositories.workouts,
+                settings: repositories.settings
             )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
@@ -164,7 +170,35 @@ struct RootTabView: View {
         }
     }
 
-    /// A tab's root. Two are real screens now; Home and History are still scaffolding.
+    /// One past session (`FR-1.2.7`, `FR-1.2.9`), or the reason it cannot be shown.
+    ///
+    /// **A `Logging` screen answering a History route**, which is the third of these joins and the
+    /// same shape as the other two: everything a past session draws — the set row, the set editor,
+    /// the note field — is `Logging`'s, `TR-1.3` keeps `History` and `Logging` from depending on
+    /// each other, so this target composes them. It is handed the same modifier list and the same
+    /// gym the workout in progress uses, so a set corrected here is corrected against what a set
+    /// logged live is.
+    ///
+    /// The screen is handed the identifier the route carried, not a record: resolving it is the
+    /// screen's own first read (`G-1.4`).
+    @ViewBuilder
+    private func pastSessionRoot(_ sessionID: UUID) -> some View {
+        switch dependencies.state {
+        case .open(let repositories, let stores):
+            PastSessionView(
+                sessionID: sessionID,
+                workouts: repositories.workouts,
+                catalogue: repositories.exercises,
+                settings: repositories.settings,
+                vocabulary: stores.modifiers,
+                equipment: stores.equipment
+            )
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// A tab's root. Three are real screens now; Home is still scaffolding.
     ///
     /// The title is applied here rather than inside the feature package, for the reason
     /// ``AppTab/title`` gives: the catalogue is this target's (`G-3.4`).
@@ -174,11 +208,52 @@ struct RootTabView: View {
         case .train:
             trainRoot
                 .navigationTitle(tab.title)
+        case .history:
+            historyRoot
+                .navigationTitle(tab.title)
         case .settings:
             settingsRoot
                 .navigationTitle(tab.title)
-        case .home, .history:
+        case .home:
             PlaceholderScreen(tab: tab, navigation: navigation)
+        }
+    }
+
+    /// History's root — every session logged (`FR-1.5.1`) — or the reason it cannot be shown.
+    ///
+    /// Three repositories, because a summary line is three facts from three tables: the sessions and
+    /// their sets, the catalogue the entries name, and the settings row that decides what unit the
+    /// tonnage reads in. The screen joins them; `G-2.5` forbids the schema doing it.
+    @ViewBuilder
+    private var historyRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, _):
+            SessionListView(
+                workouts: repositories.workouts,
+                exercises: repositories.exercises,
+                settings: repositories.settings
+            )
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// The month grid of training days (`FR-1.5.3`), or the reason it cannot be shown.
+    ///
+    /// The same three repositories as ``historyRoot``, and for the same reason: selecting a day
+    /// draws that day's sessions as the list's own summary cards, which are three facts from three
+    /// tables.
+    @ViewBuilder
+    private var calendarRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, _):
+            CalendarView(
+                workouts: repositories.workouts,
+                exercises: repositories.exercises,
+                settings: repositories.settings
+            )
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
         }
     }
 

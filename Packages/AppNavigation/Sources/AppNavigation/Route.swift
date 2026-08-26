@@ -113,8 +113,20 @@ public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
 
 /// Destinations pushed from history (`FR-1.5`).
 public enum HistoryRoute: Hashable, Sendable, Codable {
-    /// One past session (`FR-1.5.1`). T-1.35 builds it.
+    /// One past session (`FR-1.2.7`, `FR-1.2.9`). T-1.39 builds it.
     case session(sessionID: UUID)
+
+    /// A month grid of the days training was logged on (`FR-1.5.3`).
+    ///
+    /// **It carries no month**, deliberately: which month is on screen is a place the user scrolled
+    /// to rather than a place the app can be restored to, and a route holding one would make every
+    /// tap on the back-and-forward chevrons a stack edit. A restored stack opens this screen on the
+    /// current month, the same as a fresh push does.
+    ///
+    /// **Nor does it carry the selected day.** Selecting a day reveals that day's sessions beneath
+    /// the grid rather than pushing a screen — the sessions are ``session(sessionID:)``'s, and this
+    /// is the step that says *which one* where a day holds two.
+    case calendar
 }
 
 /// Destinations pushed from settings (`FR-1.10`).

@@ -389,3 +389,14 @@
 
 /* A gym that stocks nothing — an answer, not a blank. */
 "logging.equipment.no-plates" = "No plates";
+
+/* A session that is over (FR-1.2.7, FR-1.2.9). The keys are `past-session.*` and not
+   `session.*`: the workout in progress is a different screen and the two are free to diverge. */
+"logging.past-session.title" = "Session";
+"logging.past-session.error.headline" = "Session unavailable";
+"logging.past-session.error.message" = "This session could not be read just now.";
+"logging.past-session.missing.headline" = "Session not found";
+"logging.past-session.missing.message" = "It has been deleted, or it was never on this device.";
+"logging.past-session.empty.headline" = "Nothing was logged";
+"logging.past-session.empty.message" = "This workout was started but no exercises were added to it.";
+"logging.past-session.write-error.message" = "That change could not be saved. Nothing has been lost — try again.";

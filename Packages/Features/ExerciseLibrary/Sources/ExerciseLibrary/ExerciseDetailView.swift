@@ -11,12 +11,23 @@ import SwiftUI
 /// for the same reason — `TR-1.12`'s harness renders through `ImageRenderer`, which draws a
 /// placeholder for anything UIKit-backed, so a `List` here would snapshot as a grey box.
 ///
-/// **Three of its seven sections have no data yet and say so** rather than being absent: history,
-/// personal records and the current estimate each carry an ``DesignSystem/InsufficientDataView``
-/// whose message names what would produce some (`FR-1.13.3`). The sections exist now so that
-/// `T-1.36`, `T-1.41` and `T-1.43` change what is inside one rather than adding one.
+/// **Two of its seven sections have no data yet and say so** rather than being absent: personal
+/// records and the current estimate each carry an ``DesignSystem/InsufficientDataView`` whose message
+/// names what would produce some (`FR-1.13.3`). The sections exist now so that `T-1.41` and `T-1.43`
+/// change what is inside one rather than adding one — which is what the history section, the first of
+/// the three to be filled in, did.
 public struct ExerciseDetailView: View {
     @State private var state: ExerciseDetailState
+
+    /// Which exercise this screen is about — handed on to the history section, which reads for
+    /// itself.
+    private let exerciseID: UUID
+
+    /// Where the history section's sets come from.
+    private let workouts: any WorkoutRepository
+
+    /// Where its display unit comes from.
+    private let settings: any SettingsRepository
 
     /// Builds the screen over the identifier the route carried.
     ///
@@ -24,13 +35,19 @@ public struct ExerciseDetailView: View {
     ///   - exerciseID: Which exercise to show.
     ///   - repository: Where it comes from. `Persistence`'s implementation in the app; anything
     ///     conforming in a test or a preview.
-    ///   - workouts: Where the sets logged against it come from. Read for a count, which is what the
-    ///     three derived sections' copy turns on — see ``ExerciseDetail/hasLoggedSets``.
+    ///   - workouts: Where the sets logged against it come from — a count for
+    ///     ``ExerciseDetail/hasLoggedSets``, which the records section's copy turns on, and
+    ///     `FR-1.5.2`'s history for the section that reads it properly.
+    ///   - settings: The settings row, for the unit those loads are shown in (`G-3.1`).
     public init(
         exerciseID: UUID,
         repository: any ExerciseRepository,
-        workouts: any WorkoutRepository
+        workouts: any WorkoutRepository,
+        settings: any SettingsRepository
     ) {
+        self.exerciseID = exerciseID
+        self.workouts = workouts
+        self.settings = settings
         _state = State(
             initialValue: ExerciseDetailState(
                 exerciseID: exerciseID,
@@ -83,7 +100,8 @@ public struct ExerciseDetailView: View {
     /// bundle-seeded, so there is no fetch to be offline for (`G-2.1`, `NFR-1.7`) — the same
     /// argument the list makes. And this screen is about exactly one exercise: it either resolves or
     /// it does not, and the second of those is ``ExerciseDetailState/Phase/missing`` rather than an
-    /// empty. `FR-1.13.3`'s insufficient-data state appears three times below.
+    /// empty. `FR-1.13.3`'s insufficient-data state appears three times below — twice as a section
+    /// with nothing in it, and once as one of ``ExerciseHistorySection``'s own four states.
     @ViewBuilder private var content: some View {
         switch state.phase {
         case .idle, .loading:
@@ -106,9 +124,9 @@ public struct ExerciseDetailView: View {
     }
 
     /// The seven sections: the record's own fields, then the one thing here the user can change,
-    /// then `FR-1.1.7`'s relationships, and `FR-1.1.6`'s three derived values — where they stay once
-    /// they hold real data, since a screen opened to check a cue should not be scrolled past three
-    /// charts to reach the notes.
+    /// then `FR-1.1.7`'s relationships, and `FR-1.1.6`'s three derived values — where they stay now
+    /// that the first of them holds real data, since a screen opened to check a cue should not be
+    /// scrolled past a training history to reach the notes.
     ///
     /// **`FR-1.1.5`'s archive control is last, below all of them.** It is the one command here that
     /// changes what the rest of the app shows, and the foot of a screen is where a command like that
@@ -119,22 +137,20 @@ public struct ExerciseDetailView: View {
         if detail.hasRelationships {
             ExerciseVariationsSection(parent: detail.parent, variations: detail.variations)
         }
-        // The copy of the first two turns on whether a set has ever been logged, not on whether
-        // this screen can display one: "log a set and its history appears here" is true only while
-        // no set can exist, and telling a user who has logged sets to log a set is telling them the
-        // wrong thing about their own data. The non-empty branch says what is actually true — the
-        // sets are there, the display for them is not built — and T-1.36 and T-1.41 replace it.
+        // The history reads for itself rather than off `detail`, and its heading is its own: it has
+        // four states where a section with nothing in it has one, and a workout store that cannot
+        // answer must not cost this screen the exercise. See `ExerciseHistorySection`.
+        ExerciseHistorySection(exerciseID: exerciseID, workouts: workouts, settings: settings)
+        // The records copy still turns on whether a set has ever been logged, not on whether this
+        // screen can display one: "log a set and its records appear here" is true only while no set
+        // can exist, and telling a user who has logged sets to log a set is telling them the wrong
+        // thing about their own data. The non-empty branch says what is actually true — the sets are
+        // there, the display for them is not built — and T-1.41 replaces it.
         //
         // THE ESTIMATE IS NOT ONE OF THE TWO, and that is deliberate. A 12-rep set, assisted work
         // and a set that targets ten and fails at eight each produce no estimate BY DESIGN, so a
         // user can have logged sets and still correctly have no e1RM — a count cannot tell those
         // apart from an exercise nothing has been logged against. T-1.43 owns that copy.
-        DerivedValueSection(
-            title: ExerciseLibraryStrings.historySection,
-            nothingYet: detail.hasLoggedSets
-                ? ExerciseLibraryStrings.historyPending
-                : ExerciseLibraryStrings.historyNone
-        )
         DerivedValueSection(
             title: ExerciseLibraryStrings.recordsSection,
             nothingYet: detail.hasLoggedSets

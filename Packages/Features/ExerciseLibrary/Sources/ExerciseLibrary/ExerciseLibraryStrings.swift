@@ -165,11 +165,47 @@ enum ExerciseLibraryStrings {
     /// Why there is no history yet, and what would produce some.
     static let historyNone = resource("exerciselibrary.detail.history.none")
 
+    /// What the user can understand about a history that could not be read (`FR-1.5.2`).
+    static let historyError = resource("exerciselibrary.detail.history.error")
+
+    /// The control that reaches past the page boundary — see ``ExerciseHistoryState/pageSize``.
+    static let historyMore = resource("exerciselibrary.detail.history.more")
+
+    /// A page that could not be read. The groups already shown are still there, so this names what
+    /// failed rather than what is missing.
+    static let historyMoreError = resource("exerciselibrary.detail.history.more.error")
+
+    /// `G-1.8`'s warmup flag, as a history row says it.
+    ///
+    /// A word rather than the live row's `W1` badge: there is no number to prefix here — a past
+    /// session's set is read in place, not counted off during a workout — and `G-4.5` will not let
+    /// the dimmer type carry the distinction alone.
+    static let historyWarmup = resource("exerciselibrary.detail.history.warmup")
+
+    /// `FR-1.2.5`'s failed set, as VoiceOver reads the glyph on that row (`G-4.2`).
+    static let historyFailed = resource("exerciselibrary.detail.history.failed")
+
+    /// The repetitions, as VoiceOver reads them — the numeral alone is a number with no unit.
+    ///
+    /// - Parameter reps: How many were performed.
+    /// - Returns: The label.
+    static func historyReps(_ reps: Int) -> LocalizedStringResource {
+        resource("exerciselibrary.detail.history.reps \(reps)")
+    }
+
+    /// The rating, in `FR-1.5.2`'s `@ RPE` position.
+    ///
+    /// **The number arrives already rendered**, on `SetRow`'s rule: it is a `Double` with an optional
+    /// half step, and interpolating it here would write `8.5` into a locale that writes `8,5`.
+    ///
+    /// - Parameter rendered: The rating, formatted for the locale.
+    /// - Returns: The label.
+    static func historyRPE(_ rendered: String) -> LocalizedStringResource {
+        resource("exerciselibrary.detail.history.rpe \(rendered)")
+    }
+
     /// The heading over this exercise's personal records.
     static let recordsSection = resource("exerciselibrary.detail.section.records")
-
-    /// The history section when sets **have** been logged and the display for them is not built.
-    static let historyPending = resource("exerciselibrary.detail.history.pending")
 
     /// The personal-records section, same case.
     static let recordsPending = resource("exerciselibrary.detail.records.pending")
@@ -361,7 +397,9 @@ enum ExerciseLibraryStrings {
             archiveSection, archiveExplanation, archiveAction,
             unarchiveExplanation, unarchiveAction, archiveError,
             variationsSection, variationOf,
-            historySection, historyNone, historyPending, recordsSection, recordsNone, recordsPending,
+            historySection, historyNone, historyError, historyMore, historyMoreError,
+            historyWarmup, historyFailed, historyReps(5), historyRPE("8"),
+            recordsSection, recordsNone, recordsPending,
             e1rmSection, e1rmNone,
             detailErrorHeadline, detailErrorMessage, detailMissingHeadline, detailMissingMessage,
             createAction, editAction, formCreateTitle, formEditTitle, formSection,

@@ -55,6 +55,22 @@ struct SessionNoteDraft: Equatable, Sendable {
         if !hadUnsavedChanges { text = session.notes }
     }
 
+    /// Takes the record a screen is holding, ignoring the states in which it holds none.
+    ///
+    /// **``follow(_:)`` with the empty case refused rather than obeyed**, and the two callers are
+    /// what make it a separate method. A screen over the workout in progress has no record exactly
+    /// when there is no workout, so emptying the field is right. A screen over one past session has
+    /// no record for a second on *every re-read* — its phase passes through loading — and handed
+    /// that gap the draft resets outright, so an edit typed and not yet saved is gone by the time
+    /// the same session comes back: silently, and along with the ``hasUnsavedChanges`` that was the
+    /// only sign of it.
+    ///
+    /// - Parameter session: The record the screen holds, or `nil` where it is between reads.
+    mutating func follow(holding session: WorkoutSession?) {
+        guard let session else { return }
+        follow(session)
+    }
+
     /// Puts the record's text back, discarding the edit.
     mutating func discard() { text = stored }
 }

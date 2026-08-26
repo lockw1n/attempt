@@ -1,2 +1,86 @@
-/* History (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the
-   Localization module doc. No copy in this module yet. */
+/* History (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization module doc.
+   The screens here are the session list (the History tab's root, with `FR-1.5.4`'s search as a mode
+   of it) and the calendar. Nothing is translated: only `en` ships in Phase 1. */
+
+/* FR-1.13.2's first launch. The headline says what there is none of; the message says the one thing
+   that makes one, and the action is that thing — a tab away, which is why it is worth a button
+   rather than a sentence.
+   NOT "finished workouts": the list carries the workout in progress too, so a message promising
+   only finished ones would be contradicted by the first row the user ever sees. */
+"history.list.empty.headline" = "No training logged yet";
+"history.list.empty.message" = "Your workouts appear here, newest first.";
+"history.list.empty.action" = "Start a workout";
+
+/* A failed read of the whole list. Copy, not the diagnostic: what the store said is for the log,
+   not for the screen (G-3.4). */
+"history.list.error.headline" = "History unavailable";
+"history.list.error.message" = "Your past sessions could not be read. Try again.";
+
+/* A failed read of the *next* page, shown under the rows that did load. It says which half failed,
+   because the screen is visibly full of sessions and "History unavailable" beside them would read
+   as a contradiction. */
+"history.list.more.error" = "Could not load more sessions.";
+
+/* A session with no exercises in it — started, then finished empty. Not an error and not the empty
+   state: the session is real and its date is worth showing. */
+"history.list.exercises.none" = "No exercises";
+
+/* FR-1.5.4's search, over the session list. The field is the system's `.searchable`, so the prompt
+   is the only thing naming what it looks in — and it names both halves, because a field prompted
+   only "Search" would not tell a user that a note they typed at the rack is findable. */
+"history.list.search.prompt" = "Search exercises and notes";
+
+/* A failed read of the history the search walks. Copy, not the diagnostic (G-3.4). Separate from
+   history.list.error.* because the two are different reads and the user is in a different place:
+   this one arrives with a query already typed. */
+"history.list.search.error.headline" = "Search unavailable";
+"history.list.search.error.message" = "Your history could not be searched. Try again.";
+
+/* A search that matched nothing. NOT "no training logged yet": the history may be full, and the
+   action is the one thing that changes what is on screen. */
+"history.list.nomatches.headline" = "No sessions found";
+"history.list.nomatches.message" = "No session names that exercise or has it in a note.";
+"history.list.nomatches.action" = "Clear search";
+
+/* Why a result row is in the results. A row that matched on a *set* note draws nothing the query
+   appears in — the card shows the day, the exercises, the session note and two numbers — so
+   without this the result list is rows the user cannot account for. The other two are visible on
+   the card already and are named anyway: a row that explains itself only sometimes is worse than
+   one that always does. Each is its own line rather than a run-together list, because at the
+   largest Dynamic Type size three short lines beat one wrapped sentence. */
+"history.list.match.exercise" = "Matched an exercise";
+"history.list.match.note" = "Matched the session note";
+"history.list.match.setnote" = "Matched a set note";
+
+/* FR-1.5.3's calendar. The way in is a toolbar symbol on the list, so its label is the only thing
+   VoiceOver has to go on (G-4.2); the screen itself names its own title, a pushed screen being
+   responsible for that where a tab root is not. */
+"history.list.calendar" = "Calendar";
+"history.calendar.title" = "Calendar";
+
+/* The two chevrons. Symbols again, so again the label is all of it. They say *month* because a
+   chevron on a calendar could as easily mean a week or a year. */
+"history.calendar.earlier" = "Previous month";
+"history.calendar.later" = "Next month";
+
+/* Nothing logged, ever — the same fact the list's empty state reports, in this screen's own words.
+   NOT an empty grid: a month with no marks says *this month* had no training and invites a walk
+   back through earlier ones, and there are none. */
+"history.calendar.empty.headline" = "No training logged yet";
+"history.calendar.empty.message" = "The days you train are marked here.";
+"history.calendar.empty.action" = "Start a workout";
+
+/* A failed read of the sessions the grid marks. Copy, not the diagnostic (G-3.4). */
+"history.calendar.error.headline" = "Calendar unavailable";
+"history.calendar.error.message" = "Your training days could not be read. Try again.";
+
+/* A failed read of *one day's* sessions, shown under a grid that is still correct and still marked.
+   It names the half that failed, for the reason history.list.more.error does. */
+"history.calendar.day.error" = "Could not load that day's sessions.";
+
+/* A grid cell's VoiceOver label. The cell draws one or two digits, so the date is spoken in full;
+   and the marker is a fill plus a dot, neither of which VoiceOver reads — this sentence is the
+   third of G-4.5's non-colour signals, not a gloss on the other two. Positional, so a translation
+   can put the date last. */
+"history.calendar.day.trained %@" = "%1$@, trained";
+"history.calendar.day.untrained %@" = "%1$@, no training";
