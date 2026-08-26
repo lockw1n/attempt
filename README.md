@@ -46,6 +46,9 @@ Packages/
 │                            serializable snapshot for restoration. No views, no user-visible strings.
 ├── Localization/            The key convention every module's catalogue follows, plus
 │                            locale-explicit FormatStyles for numbers, weights, dates and percentages.
+├── DerivedValues/           Background actor recomputing personal records and estimated max on set
+│                            mutation, behind its own cache repository. Not a feature module — four
+│                            of the five below read it, so it cannot live inside any one of them.
 ├── Features/                Feature modules, one level deeper — the level is load-bearing:
 │                            .swiftlint.yml scopes the no-raw-values rules to this path.
 │   ├── ExerciseLibrary/     The exercise catalogue, including its per-exercise history section
@@ -73,10 +76,13 @@ must not be shaped like a storage record. `RemoteFetch` sits above both
 `RemoteContent` and `SeedContent`, for the same reason `SeedImport` sits above
 `SeedContent` and `RepositoryInterface` — it is the one place that names both,
 because the bundled leg of `exercises.json`'s fallback lives in `SeedContent`.
-The five packages under `Packages/Features/` sit at the top: each depends on
-`PowerliftingCore`, `RepositoryInterface`, `DesignSystem`, `AppNavigation` and
-`Localization`, and never on `Persistence` — a feature reaches storage through
-the protocols alone.
+`DerivedValues` depends on `PowerliftingCore` and `RepositoryInterface` alone —
+no `DesignSystem`, no `AppNavigation`, since nothing in it renders, and no
+`Persistence` for the same reason no feature has one. The five packages under
+`Packages/Features/` sit at the top: each depends on `PowerliftingCore`,
+`RepositoryInterface`, `DesignSystem`, `AppNavigation` and `Localization`, and
+never on `Persistence` — a feature reaches storage through the protocols
+alone. Four of the five also depend on `DerivedValues`.
 Two constraints are load-bearing rather than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
@@ -250,6 +256,7 @@ swift test --package-path Packages/RemoteFetch
 swift test --package-path Packages/DesignSystem
 swift test --package-path Packages/AppNavigation
 swift test --package-path Packages/Localization
+swift test --package-path Packages/DerivedValues
 swift test --package-path Packages/DebugHarness
 ```
 
