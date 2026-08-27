@@ -154,9 +154,18 @@ public struct EstimatedMax: Sendable, Hashable {
 
     /// How far the computed number moved, or `nil` where there is nothing to compare (`FR-1.9.1`).
     ///
-    /// Signed, because ``Weight`` is: an estimate that fell reports a negative change rather than a
-    /// magnitude and a flag. **Zero is a real answer** and means the number did not move — which a
-    /// tile draws as `G-7.3`'s unchanged direction, not as an absent delta.
+    /// **It is strictly positive wherever it is not `nil`, and that follows from the definition
+    /// rather than from a guard here.** ``previous`` is the best estimate over a *subset* of the
+    /// sets the current one is the best over, so it can never exceed it; and a value that merely
+    /// matched cannot appear either, ties resolving to the earlier set, which makes the matched
+    /// estimate the current one and leaves nothing before it. A caller therefore gets a rise or
+    /// nothing — never a fall, and never a zero.
+    ///
+    /// **The type stays signed anyway**, because ``Weight`` is and because the sign is the honest
+    /// carrier of a direction this definition happens not to produce: reading the magnitude out and
+    /// asserting the direction here would put a claim in the type that only the definition above
+    /// supports. Whether a declining estimate *should* be reportable is `FR-1.9.1`'s own question
+    /// and a different definition of "the previous value" — not something this property decides.
     public var delta: Weight? {
         guard case .record(let record) = content, let previous else { return nil }
         return record.weight - previous.weight

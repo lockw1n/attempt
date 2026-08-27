@@ -61,9 +61,18 @@ final class LastWorkoutState {
 
     /// Reads the workout to report and summarises it.
     ///
-    /// **The set read is one session's**, so what this costs is a workout rather than a history —
-    /// the bound `NFR-1.6` asks of the screen the app launches into.
+    /// **The set read is one session's.** The *session* read is not bounded and cannot be: an open
+    /// workout may be backdated behind any number of finished ones, so finding it means looking at
+    /// them all — ``Logging/ActiveSessionStore/resume()`` reads the same unbounded range for the
+    /// same reason, and this card agreeing with Train's root is the point. `NFR-1.6`'s formal
+    /// number is `T-1.83`'s, and this is a second caller for it to weigh.
+    ///
+    /// **A fresh read retires ``repeatDidFail``**, on `TrainingHomeView`'s rule: a failure left
+    /// standing across a read would be drawn beside a card that has since changed under it, and a
+    /// user who leaves Home and returns would be told again about a write that is no longer what
+    /// the screen is showing.
     func load() async {
+        repeatDidFail = false
         do {
             let sessions = try await workouts.sessions(
                 in: Date.distantPast...Date.distantFuture, includingDeleted: false)

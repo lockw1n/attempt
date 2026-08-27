@@ -90,41 +90,49 @@ struct EstimatedMaxTilesStateTests {
         #expect(state.tiles.first?.estimate.absence == .refused(.repsOutOfRange))
     }
 
-    @Test("Saving a selection stores it and redraws the tiles")
-    func savingASelectionStoresIt() async throws {
+    /// **Driven through the picker, which is the only thing that writes this column.** The tiles
+    /// state reads the selection and never stores one, so a test that wrote it directly would be
+    /// proving a path the app does not have.
+    @Test("A tile removed in the picker is gone from the dashboard on the next read")
+    func atileRemovedInThePickerIsGone() async throws {
         let fixture = DashboardFixture()
         let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
         let bench = try await fixture.exercise(named: "Bench Press", movement: .bench)
+        let picker = TiledExerciseSelectionState(
+            catalogue: fixture.repositories.exercises, settings: fixture.repositories.settings)
+        await picker.load()
 
+        await picker.toggle(squat)
+
+        #expect(try await fixture.repositories.settings.settings().dashboardExerciseIDs == [bench])
         let state = tiles(over: fixture)
         await state.load()
-        await state.save([bench])
-
+        #expect(state.selection == [bench])
         #expect(state.tiles.map(\.exerciseID) == [bench])
-        #expect(try await fixture.repositories.settings.settings().dashboardExerciseIDs == [bench])
-        #expect(state.selection != [squat])
     }
 
     /// The one case the column's optionality exists for: "no tiles" is a choice, and it has to
     /// survive a relaunch instead of handing the three defaults back.
-    @Test("An empty selection is stored as a choice rather than as never having chosen")
-    func anemptySelectionIsStoredAsAChoice() async throws {
+    @Test("An empty selection is a choice rather than never having chosen")
+    func anemptySelectionIsAChoice() async throws {
         let fixture = DashboardFixture()
-        try await fixture.exercise(named: "Back Squat", movement: .squat)
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        let picker = TiledExerciseSelectionState(
+            catalogue: fixture.repositories.exercises, settings: fixture.repositories.settings)
+        await picker.load()
 
-        let state = tiles(over: fixture)
-        await state.load()
-        await state.save([])
+        await picker.toggle(squat)
 
-        #expect(state.tiles.isEmpty)
-        #expect(state.isConfigured)
         #expect(try await fixture.repositories.settings.settings().dashboardExerciseIDs == [])
 
-        // The relaunch: a second state over the same store reads a choice, not an absence.
+        // The relaunch: a fresh state over the same store reads a choice, not an absence — the
+        // empty state rather than the three defaults handed back.
         let relaunched = tiles(over: fixture)
         await relaunched.load()
         #expect(relaunched.tiles.isEmpty)
         #expect(relaunched.selection.isEmpty)
+        #expect(relaunched.isConfigured)
+        #expect(EstimatedMaxTilesScreenState.current(relaunched) == .noneTiled)
     }
 
     @Test("The unit the loads are drawn in is the stored one")
@@ -142,7 +150,11 @@ struct EstimatedMaxTilesStateTests {
                 e1RMFormula: stored.e1RMFormula,
                 theme: stored.theme,
                 defaultRoundingIncrement: stored.defaultRoundingIncrement,
-                defaultRoundingStrategy: stored.defaultRoundingStrategy))
+                defaultRoundingStrategy: stored.defaultRoundingStrategy,
+                // Carried rather than defaulted away: rebuilding a row by hand is the stale-write
+                // shape `UserSettings.tiling(_:)` exists to keep out of the app, and a fixture is
+                // not exempt from it.
+                dashboardExerciseIDs: stored.dashboardExerciseIDs))
 
         let state = tiles(over: fixture)
         await state.load()
@@ -181,8 +193,10 @@ struct EstimatedMaxTilesStateTests {
         #expect(EstimatedMaxTilesScreenState.current(tiles(over: DashboardFixture())) == .loading)
     }
 
-    /// Zero is a direction rather than an absence — see ``EstimatedMaxTileView/direction(of:)``.
-    @Test("The delta's direction follows the arithmetic, zero included")
+    /// The function reads the arithmetic, though only ``DesignSystem/DeltaDirection/increase`` is
+    /// reachable from the pipeline above — see ``EstimatedMaxTileView/direction(of:)``, and
+    /// ``DerivedValues/EstimatedMax/delta`` for why.
+    @Test("The delta's direction follows the arithmetic, zero and negative included")
     func thedeltaDirectionFollowsTheArithmetic() {
         #expect(EstimatedMaxTileView.direction(of: Weight(grams: 500)) == .increase)
         #expect(EstimatedMaxTileView.direction(of: Weight(grams: -500)) == .decrease)

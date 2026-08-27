@@ -125,6 +125,19 @@ struct LastWorkoutStateTests {
         #expect(!state.repeatDidFail)
     }
 
+    /// `TrainingHomeView`'s rule: a fresh read retires what the last write said. Leaving Home and
+    /// coming back must not redraw a failure beside a card that has changed under it.
+    @Test("A failed repeat is retired by the next read")
+    func afailedRepeatIsRetiredByTheNextRead() async {
+        let state = card(over: DashboardFixture())
+        state.repeatDidFinish(started: false)
+        #expect(state.repeatDidFail)
+
+        await state.load()
+
+        #expect(!state.repeatDidFail)
+    }
+
     // MARK: - Fixtures
 
     private func card(over fixture: DashboardFixture) -> LastWorkoutState {

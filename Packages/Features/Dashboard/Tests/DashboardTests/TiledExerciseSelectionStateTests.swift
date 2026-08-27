@@ -97,6 +97,27 @@ struct TiledExerciseSelectionStateTests {
         #expect(try await fixture.repositories.settings.settings().dashboardExerciseIDs == [])
     }
 
+    /// A failed write is reported beside the rows it did not change — and those rows are what the
+    /// next read replaces, so the diagnostic goes with them rather than outliving them.
+    @Test("A failed toggle changes nothing, and is retired by the next read")
+    func afailedToggleIsRetiredByTheNextRead() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        let state = TiledExerciseSelectionState(
+            catalogue: fixture.repositories.exercises,
+            settings: ReadOnlySettingsRepository(stored: fixture.repositories.settings))
+        await state.load()
+
+        await state.toggle(squat)
+
+        #expect(state.writeFailure != nil)
+        #expect(state.selection == [squat])
+        #expect(try await fixture.repositories.settings.settings().dashboardExerciseIDs == nil)
+
+        await state.load()
+        #expect(state.writeFailure == nil)
+    }
+
     // MARK: - The screen's four states
 
     @Test("A failed read is the error state")

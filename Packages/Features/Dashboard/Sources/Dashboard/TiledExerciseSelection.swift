@@ -64,7 +64,12 @@ final class TiledExerciseSelectionState {
     ///
     /// The selection defaults exactly as the tiles do — ``DashboardDefaults`` — so the picker opens
     /// showing the three the user can already see, rather than nothing ticked under three tiles.
+    ///
+    /// **A fresh read retires ``writeFailure``**, the rule ``LastWorkoutState/load()`` states: a
+    /// failed toggle is reported beside the rows it did not change, and those rows are exactly what
+    /// this replaces.
     func load() async {
+        writeFailure = nil
         do {
             let stored = try await settings.settings()
             let exercises = try await catalogue.exercises(includingDeleted: false)

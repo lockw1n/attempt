@@ -72,3 +72,20 @@ struct FailingWorkoutRepository: WorkoutRepository {
         throw failure
     }
 }
+
+/// A settings row that reads but refuses every write, for the failed-toggle diagnostic
+/// (`FR-1.9.1`).
+///
+/// **It delegates the read** rather than answering a fixture of its own: the picker has to get as
+/// far as drawing rows before a toggle can fail at all, so a double refusing both would only ever
+/// reach the error state and never the one this is for.
+struct ReadOnlySettingsRepository: SettingsRepository {
+    /// Where the read is answered from.
+    let stored: any SettingsRepository
+
+    func settings() async throws -> UserSettings { try await stored.settings() }
+
+    func save(_ settings: UserSettings) async throws {
+        throw RepositoryError.recordNotFound(id: settings.id)
+    }
+}

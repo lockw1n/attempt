@@ -77,6 +77,26 @@ struct SessionRepeatTests {
             ).isEmpty)
     }
 
+    /// **The copy is best-effort and the workout is kept either way.** Discarding it to report the
+    /// failure would throw away a session row `NFR-1.8` has already persisted, leaving the user with
+    /// neither the workout nor the exercises; keeping it leaves them where ``start(on:)`` alone
+    /// would have — an empty workout they can add to — with the diagnostic beside the list.
+    @Test("A repeat whose entries cannot be written still leaves a workout in progress")
+    func arepeatWhoseEntriesCannotBeWrittenStillStartsOne() async throws {
+        let fixture = try await RepeatFixture()
+        let store = ActiveSessionStore.overWorkouts(
+            EntryWriteRefusingRepository(wrapped: fixture.stack.workouts))
+
+        #expect(await store.start(on: fixture.today, repeating: fixture.sourceID))
+
+        let session = try #require(store.session)
+        #expect(store.exercisesWriteFailure != nil)
+        #expect(
+            try await fixture.stack.workouts.entries(
+                forSessionID: session.id, includingDeleted: false
+            ).isEmpty)
+    }
+
     @Test("Repeating a session that does not exist still leaves a workout in progress")
     func repeatingAMissingSessionStillStartsOne() async throws {
         let fixture = try await RepeatFixture()
@@ -179,5 +199,49 @@ private struct RepeatFixture {
             modifiers: [],
             notes: "",
             completedAt: past)
+    }
+}
+
+/// Everything the fakes do, except writing an ``ExerciseEntry``.
+///
+/// **Only that one method refuses**, which is what makes this the repeat's half-failure rather than
+/// a failure: the session still persists, so the test can ask what happens to a workout whose
+/// exercises did not follow it.
+private struct EntryWriteRefusingRepository: WorkoutRepository {
+    /// The fakes everything else delegates to.
+    let wrapped: any WorkoutRepository
+
+    func save(_ entry: ExerciseEntry) async throws {
+        throw RepositoryError.recordNotFound(id: entry.id)
+    }
+
+    func sessions(
+        in range: ClosedRange<Date>, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
+    }
+    func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
+        try await wrapped.session(id: id, includingDeleted: includingDeleted)
+    }
+    func save(_ session: WorkoutSession) async throws { try await wrapped.save(session) }
+    func deleteSession(id: UUID) async throws { try await wrapped.deleteSession(id: id) }
+    func entries(
+        forSessionID sessionID: UUID, includingDeleted: Bool
+    ) async throws -> [ExerciseEntry] {
+        try await wrapped.entries(forSessionID: sessionID, includingDeleted: includingDeleted)
+    }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        try await wrapped.entry(id: id, includingDeleted: includingDeleted)
+    }
+    func deleteExerciseEntry(id: UUID) async throws {
+        try await wrapped.deleteExerciseEntry(id: id)
+    }
+    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        try await wrapped.sets(forEntryID: entryID, includingDeleted: includingDeleted)
+    }
+    func save(_ set: SetEntry) async throws { try await wrapped.save(set) }
+    func deleteSet(id: UUID) async throws { try await wrapped.deleteSet(id: id) }
+    func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        try await wrapped.sets(forExerciseID: exerciseID, includingDeleted: includingDeleted)
     }
 }

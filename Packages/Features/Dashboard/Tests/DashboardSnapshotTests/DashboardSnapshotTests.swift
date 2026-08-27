@@ -25,9 +25,14 @@
     @Suite("Dashboard snapshots")
     struct DashboardSnapshotTests {
         @Test func tiles() throws {
-            // One picture with every tile variant in it: a rising estimate, a falling one, a first
-            // estimate with nothing to compare against, a manual override, and a refusal. They are
-            // only comparable side by side, which is why this is one reference rather than five.
+            // One picture with every tile variant in it: a rising estimate, a first estimate with
+            // nothing to compare against, a manual override, and a refusal. They are only
+            // comparable side by side, which is why this is one reference rather than four.
+            //
+            // NO FALLING TILE, and its absence is the point rather than an omission.
+            // `EstimatedMax.delta` is strictly positive wherever it is not nil — see its own doc
+            // comment — so a reference picturing a decline would be a committed image of a state
+            // the app cannot produce, and the strongest kind of wrong: one a reader trusts.
             try assertSnapshots(named: "Dashboard-tiles") {
                 EstimatedMaxTilesReading(
                     state: .ready(DashboardFixtures.tiles), unit: .kilograms, retry: {}
@@ -114,10 +119,9 @@
         /// matches next year.
         static let day = Date(timeIntervalSince1970: 1_700_000_000)
 
-        /// Five tiles: up, down, first, manual, refused.
+        /// Four tiles: up, first, manual, refused — every variant the pipeline can reach.
         static let tiles: [EstimatedMaxTile] = [
             tile("Back Squat", kilos: 182.5, previousKilos: 175),
-            tile("Bench Press", kilos: 122.5, previousKilos: 127.5),
             tile("Deadlift", kilos: 210, previousKilos: nil),
             EstimatedMaxTile(
                 exerciseID: id(4),

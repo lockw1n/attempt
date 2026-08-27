@@ -191,11 +191,13 @@ struct EstimatedMaxTileView: View {
 
     /// Which way the estimate moved.
     ///
-    /// **Zero is ``DesignSystem/DeltaDirection/unchanged`` rather than an absent delta**, and the
-    /// distinction is deliberate even though the pipeline above cannot currently reach it: a tie
-    /// resolves to the earlier set, so a matched estimate arrives here as *no previous value* instead
-    /// of an equal one. Reading a zero as "no change" is what this function has to do the day that
-    /// stops being true; collapsing it into the absent case would make the two indistinguishable.
+    /// **Only ``DesignSystem/DeltaDirection/increase`` is reachable today**, and the other two are
+    /// written out rather than folded away. ``DerivedValues/EstimatedMax/delta`` is strictly
+    /// positive wherever it is not `nil` — its own doc comment has the argument — so a fall and a
+    /// zero both arrive here as *no previous value* instead. This function reads the arithmetic
+    /// rather than restating that: a definition of "the previous value" that can report a decline
+    /// costs this screen nothing, where a function that had collapsed the cases would have to be
+    /// found and re-derived first.
     ///
     /// - Parameter delta: The signed change.
     /// - Returns: The direction to draw it in.

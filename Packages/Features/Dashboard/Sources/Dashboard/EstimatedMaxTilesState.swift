@@ -38,7 +38,13 @@ final class EstimatedMaxTilesState {
     /// that would stop it.
     private(set) var tiles: [EstimatedMaxTile] = []
 
-    /// Which exercises are tiled, as stored or as defaulted — what the picker opens holding.
+    /// Which exercises are tiled, as stored or as defaulted.
+    ///
+    /// **It is what was asked for, where ``tiles`` is what could be built** — the two differ by
+    /// every identifier the catalogue could not resolve, which is the distinction a deleted exercise
+    /// makes and the reason both are kept. ``TiledExerciseSelectionState`` resolves the same
+    /// selection for itself rather than reading this: the picker is a separate screen with a
+    /// separate read, and a stale copy handed across is the shape that write is trying to avoid.
     private(set) var selection: [UUID] = []
 
     /// Whether the user has ever chosen. `false` means ``selection`` is ``DashboardDefaults``'.
@@ -49,9 +55,6 @@ final class EstimatedMaxTilesState {
 
     /// Why the read failed, or `nil`. A retry may work.
     private(set) var failure: String?
-
-    /// Why the last selection write failed, or `nil`. The tiles on screen are unchanged either way.
-    private(set) var writeFailure: String?
 
     /// The unit the loads are shown in (`G-3.1`) — read here rather than by each tile, since one
     /// settings read already answers it.
@@ -111,28 +114,6 @@ final class EstimatedMaxTilesState {
             failure = String(describing: error)
         }
         hasLoaded = true
-    }
-
-    /// Stores which exercises are tiled (`FR-1.9.1`), then redraws them.
-    ///
-    /// **An empty selection is stored rather than treated as a clearing.** "No tiles" is a choice the
-    /// picker can express, and writing `nil` for it would hand the user the three defaults back on
-    /// the next launch — see ``RepositoryInterface/UserSettings/dashboardExerciseIDs``.
-    ///
-    /// A failed write leaves the screen showing what it already showed, with the failure beside the
-    /// control that issued it — the rule every write on this app's screens follows.
-    ///
-    /// - Parameter exerciseIDs: The exercises to tile, in the order to draw them.
-    func save(_ exerciseIDs: [UUID]) async {
-        do {
-            let stored = try await settings.settings()
-            try await settings.save(stored.tiling(exerciseIDs))
-            writeFailure = nil
-        } catch {
-            writeFailure = String(describing: error)
-            return
-        }
-        await load()
     }
 
     /// Re-reads whenever a set logged anywhere, or a formula chosen in Settings, moves a number

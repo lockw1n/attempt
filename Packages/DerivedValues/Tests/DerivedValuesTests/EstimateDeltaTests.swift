@@ -25,10 +25,12 @@ struct EstimateDeltaTests {
         #expect(estimate.delta == Weight(grams: 11_666))
     }
 
-    /// The direction is the arithmetic's, not the sentiment's — a fallen estimate reports a negative
-    /// delta rather than a magnitude and a flag.
-    @Test("An estimate that fell reports a negative delta")
-    func afallenEstimateIsNegative() async throws {
+    /// **The case that shows the delta cannot fall.** A lighter session does not lower the estimate
+    /// — the heavier one is still the best inside the window, so it is still what the tile shows,
+    /// and nothing precedes it. Together with the tie rule below this is why
+    /// ``DerivedValues/EstimatedMax/delta`` is strictly positive wherever it is not `nil`.
+    @Test("A lighter session leaves the estimate, and its delta, where they were")
+    func alighterSessionDoesNotLowerTheEstimate() async throws {
         let log = TrainingLog()
         let exerciseID = try await log.exercise()
         try await log.session(of: exerciseID, on: weeksAgo(4), sets: [working(110_000, 5)])
@@ -37,8 +39,8 @@ struct EstimateDeltaTests {
         let estimate = try await recomputer(over: log).estimatedMax(forExerciseID: exerciseID)
 
         // The heavier set is still the best in the window, so the *current* estimate is the older
-        // one — and nothing precedes it. This is the case the definition has to get right: the
-        // number on the tile did not move, so there is no delta rather than a negative one.
+        // one — and nothing precedes it. The number on the tile did not move, so there is no delta
+        // rather than a negative one, and no screen ever draws a fall.
         #expect(estimate.record?.weight == Weight(grams: 128_333))
         #expect(estimate.previous == nil)
         #expect(estimate.delta == nil)
