@@ -7,8 +7,13 @@
 /* FR-1.13.3's insufficient-data case, not an emptied list: records are computed from logged sets,
    so what is missing is the sets rather than a fetch. Names the two things a set has to be for a
    record to come from it — completed, and a working set — because "no records yet" on its own does
-   not say why a warmup-only log produced none. */
-"dashboard.recent-records.none" = "Complete a working set and the personal records it sets appear here.";
+   not say why a warmup-only log produced none.
+   THE SECOND SENTENCE IS FR-1.6.1's REFUSAL, and this is the only screen that says it. A set that
+   fell short of its target keeps the reps it reached and still sets no record — not even at those
+   reps — because isCompleted is false on a set that was never performed as well as on one that
+   failed, and no column separates them. It names the set rather than the lifter: "fell short of its
+   target" is a fact about a row, where "you failed" is a verdict. */
+"dashboard.recent-records.none" = "Complete a working set and the personal records it sets appear here. A set that fell short of its target doesn't set one, even at the reps you reached.";
 "dashboard.recent-records.error" = "Recent personal records could not be read.";
 /* Opens the full list behind the dashboard's card. */
 "dashboard.recent-records.see-all" = "See all";
@@ -71,3 +76,28 @@
 "dashboard.tiles.absence.high-reps %lld" = "No estimate from the last %lld days: the best candidate went past ten reps, which is further than these formulas are accurate.";
 "dashboard.tiles.absence.assisted" = "Assisted sets have no estimated max: the formulas would read more assistance as a heavier lift.";
 "dashboard.tiles.absence.no-effort" = "This formula reads the RPE or RIR on a set, and the recent sets here record neither.";
+
+/* FR-1.13.2. Shown INSTEAD OF every section on an install with nothing logged — one guided state
+   rather than five apologies pointing at the same action, which is why it carries the action itself
+   and the separate "Start workout" button is not drawn above it. The headline is about the app
+   filling up rather than about emptiness: "No data" is true and says nothing worth reading. */
+"dashboard.first-launch.headline" = "Your training log starts here";
+/* Names the three things the screen becomes, in the order it draws them, so the reward is concrete
+   rather than a promise. */
+"dashboard.first-launch.message" = "Log your first workout and this screen fills in: what you last trained, your week's volume, your personal records and your estimated maxes.";
+
+/* FR-1.9.5's this-week summary. "This week" is the user's own week — Calendar.current decides which
+   day it starts on, so a locale beginning on Monday gets one. */
+"dashboard.week.title" = "This week";
+/* MetricTile labels: what each numeral is. Nouns rather than counted phrases, so neither needs a
+   plural rule — the number sits above the label, not inside it. */
+"dashboard.week.workouts" = "Workouts";
+"dashboard.week.volume" = "Volume";
+/* FR-1.13.3 rather than a pair of zeros: a quiet week has nothing to report, and "0 kg" invites the
+   reading that the training was worthless rather than absent. */
+"dashboard.week.none" = "No working sets logged this week yet.";
+/* Tonnage's third clause, said out loud on the one screen that can. The week has real workouts and a
+   volume that cannot be computed — every set in it was bodyweight or assisted, and an assisted set's
+   load is negative, so summing it would make the total fall as more work was done. */
+"dashboard.week.unweighed" = "Nothing this week carries a load to weigh — bodyweight and assisted sets add no volume.";
+"dashboard.week.error" = "This week's training could not be read.";

@@ -3,7 +3,7 @@ import PowerliftingCore
 import RepositoryInterface
 import Testing
 
-@testable import History
+@testable import DerivedValues
 
 /// `FR-1.5.1`'s tonnage — the first arithmetic Phase 1 does outside `PowerliftingCore`, pinned the
 /// way Phase 0 pinned its formulas: against numbers worked out by hand rather than against what the

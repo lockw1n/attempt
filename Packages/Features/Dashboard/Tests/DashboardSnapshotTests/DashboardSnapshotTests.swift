@@ -98,6 +98,54 @@
             }
         }
 
+        @Test func weekSummary() throws {
+            // FR-1.9.5's two numbers side by side. At accessibility3 they stack — the reference
+            // pair is what proves the switch, since a formatted tonnage beside a count is what
+            // wraps first.
+            try assertSnapshots(named: "Dashboard-week") {
+                WeekSummaryReading(
+                    state: .ready(WeekSummary(workoutCount: 4, tonnage: DashboardFixtures.volume)),
+                    unit: .kilograms,
+                    retry: {}
+                )
+                .environment(\.locale, DashboardFixtures.locale)
+            }
+        }
+
+        @Test func weekSummaryQuiet() throws {
+            // FR-1.13.3's whole point, pictured: this is what the card draws INSTEAD OF "0
+            // workouts, 0 kg".
+            try assertSnapshots(named: "Dashboard-week-quiet") {
+                WeekSummaryReading(state: .quiet, unit: .kilograms, retry: {})
+            }
+        }
+
+        @Test func weekSummaryUnweighed() throws {
+            // A real workout count above a volume that cannot be computed — Tonnage's third clause
+            // drawn as the two different things it is, rather than as one zero.
+            try assertSnapshots(named: "Dashboard-week-unweighed") {
+                WeekSummaryReading(
+                    state: .unweighed(workouts: 3), unit: .kilograms, retry: {}
+                )
+                .environment(\.locale, DashboardFixtures.locale)
+            }
+        }
+
+        @Test func weekSummaryUnreadable() throws {
+            try assertSnapshots(named: "Dashboard-week-error") {
+                WeekSummaryReading(state: .failed, unit: .kilograms, retry: {})
+            }
+        }
+
+        @Test func firstLaunch() throws {
+            // FR-1.13.2, and the one reference where what is NOT in the picture is the assertion:
+            // no section cards, and one action rather than the separate "Start workout" button
+            // above them.
+            try assertSnapshots(named: "Dashboard-first-launch") {
+                FirstLaunchReading(start: {})
+            }
+        }
+
         @Test func tilePicker() throws {
             try assertSnapshots(named: "Dashboard-tile-picker") {
                 TiledExerciseSelectionReading(
@@ -134,6 +182,9 @@
                 estimate: EstimatedMax(
                     absence: .refused(.repsOutOfRange), formula: .epley, lookback: .default)),
         ]
+
+        /// A week's load: 12,400 kg, enough digits that a grouping separator shows.
+        static let volume = Weight(grams: 12_400_000)
 
         /// A finished workout, with what `FR-1.9.2` says about it.
         static let finished = LastWorkoutSummary(
