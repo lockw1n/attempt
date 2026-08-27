@@ -72,11 +72,11 @@ struct RecentRecordsScreenStateTests {
 @MainActor
 private final class TrainingLogFixture {
     let repositories = InMemoryRepositoryStack()
-    private let cache = SwitchableCache()
+    private let cache: SwitchableCache
     lazy var recomputer = PersonalRecordRecomputer(
         workouts: repositories.workouts, cache: cache)
 
-    init() { cache.wrapped = repositories.personalRecords }
+    init() { cache = SwitchableCache(wrapping: repositories.personalRecords) }
 
     /// Logs one working set against one exercise and recomputes it.
     @discardableResult
@@ -165,34 +165,57 @@ private final class TrainingLogFixture {
 
     /// Makes every later cache read throw, so a second load fails over a feed already on screen.
     func refuseReads() async {
-        cache.isRefusing = true
+        await cache.refuse()
     }
 }
 
 /// A cache that answers from the fakes until it is told to refuse.
-private final class SwitchableCache: PersonalRecordCacheRepository, @unchecked Sendable {
-    var wrapped: (any PersonalRecordCacheRepository)?
-    var isRefusing = false
+///
+/// **An actor rather than a class with an escape hatch** (`G-6.4`). The switch is written from the
+/// test's `@MainActor` fixture and read from inside `PersonalRecordRecomputer`, which is an actor on
+/// the cooperative pool — two isolation domains over one mutable flag, which is a real race rather
+/// than an over-strict diagnostic. `PersonalRecordCacheRepository` is `Sendable` and every member is
+/// `async throws`, so an actor conforms with nothing unchecked.
+///
+/// The wrapped store is a `let` for the same reason: it was only ever assigned once, at
+/// construction, so making it settable bought a second shared mutable field and no test used it.
+private actor SwitchableCache: PersonalRecordCacheRepository {
+    /// Where a read that is not refusing is answered from.
+    private let wrapped: any PersonalRecordCacheRepository
 
+    /// Whether every later read throws.
+    private var isRefusing = false
+
+    /// What a refusal throws. The case does not matter — the state under test reports *that* a read
+    /// failed, never which error it was.
     private var failure: RepositoryError { .recordNotFound(id: UUID()) }
+
+    init(wrapping wrapped: any PersonalRecordCacheRepository) {
+        self.wrapped = wrapped
+    }
+
+    /// Makes every later read throw.
+    func refuse() {
+        isRefusing = true
+    }
 
     func personalRecords(
         forExerciseID exerciseID: UUID, includingDeleted: Bool
     ) async throws -> [PersonalRecordCache] {
-        guard !isRefusing, let wrapped else { throw failure }
+        guard !isRefusing else { throw failure }
         return try await wrapped.personalRecords(
             forExerciseID: exerciseID, includingDeleted: includingDeleted)
     }
 
     func personalRecords(includingDeleted: Bool) async throws -> [PersonalRecordCache] {
-        guard !isRefusing, let wrapped else { throw failure }
+        guard !isRefusing else { throw failure }
         return try await wrapped.personalRecords(includingDeleted: includingDeleted)
     }
 
     func replacePersonalRecords(
         forExerciseID exerciseID: UUID, with values: [PersonalRecordCacheValues]
     ) async throws {
-        guard !isRefusing, let wrapped else { throw failure }
+        guard !isRefusing else { throw failure }
         try await wrapped.replacePersonalRecords(forExerciseID: exerciseID, with: values)
     }
 }
