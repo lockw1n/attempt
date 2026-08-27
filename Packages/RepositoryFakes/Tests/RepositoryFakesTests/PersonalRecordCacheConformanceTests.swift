@@ -70,6 +70,36 @@ struct PersonalRecordCacheConformanceTests {
         #expect(feed.map(\.achievedAt) == [newer, older])
     }
 
+    /// **The tie is the common case, not the edge**, which is why the feed's order is only as
+    /// deterministic as this: every record one session set carries that session's date, so a lifter
+    /// who trains three exercises in a workout has every one of that day's rows tied on `achievedAt`.
+    /// The contract names ``StoredRecord/id`` as the second key, and it is the whole reason the
+    /// Persistence side sorts in Swift rather than by the descriptor — `id.uuidString` is not a
+    /// stored column, so a store-side sort could order the dates and nothing else.
+    ///
+    /// Asserted as "descending by id within the tie" rather than against a literal order, because
+    /// the ids are minted by the write and neither side lets a test choose them. Thirteen rows share
+    /// the date, so a wrong tie-break agreeing with this by chance is a 1-in-13! coincidence.
+    @Test("Records sharing a date are ordered by id, so the two implementations agree", arguments: Subject.all)
+    func theFeedReadBreaksTiesOnID(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let (squat, bench) = (UUID(), UUID())
+        let day = fixtureCreatedAt
+        // One session's worth of work on each: ten N's from one set, three from another, one date.
+        try await repositories.personalRecords.replacePersonalRecords(
+            forExerciseID: squat,
+            with: (1...10).map { values(reps: $0, grams: 140_000, achievedAt: day) })
+        try await repositories.personalRecords.replacePersonalRecords(
+            forExerciseID: bench,
+            with: (1...3).map { values(reps: $0, grams: 100_000, achievedAt: day) })
+
+        let feed = try await repositories.personalRecords.personalRecords(includingDeleted: false)
+
+        #expect(feed.count == 13)
+        #expect(feed.allSatisfy { $0.achievedAt == day }, "the fixture is meant to be all ties")
+        #expect(feed.map(\.id) == feed.map(\.id).sorted { $0.uuidString > $1.uuidString })
+    }
+
     /// A record that no longer stands is soft-deleted rather than removed (`G-1.3`), so a read that
     /// ignored the flag would put a superseded record at the top of the feed.
     @Test("A superseded record leaves the feed unless deleted rows are asked for", arguments: Subject.all)
