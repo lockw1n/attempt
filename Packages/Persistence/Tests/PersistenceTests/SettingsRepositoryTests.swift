@@ -21,6 +21,23 @@ struct SettingsRepositoryTests {
         #expect(try harness.store().fetch(FetchDescriptor<UserSettingsEntity>()).count == 1)
     }
 
+    /// `FR-1.9.1`'s tile selection is the one preference where "never chosen" and "chose none" are
+    /// different answers, so the round trip has to keep all three states apart — and this is also
+    /// what says SwiftData stores the column at all.
+    @Test("The dashboard selection round-trips, empty and absent included")
+    func thedashboardSelectionRoundTrips() async throws {
+        let harness = try RepositoryHarness()
+        let stored = try await harness.stack.settings.settings()
+        #expect(stored.dashboardExerciseIDs == nil)
+
+        let chosen = [UUID(), UUID()]
+        try await harness.stack.settings.save(stored.tiling(chosen))
+        #expect(try await harness.stack.settings.settings().dashboardExerciseIDs == chosen)
+
+        try await harness.stack.settings.save(stored.tiling([]))
+        #expect(try await harness.stack.settings.settings().dashboardExerciseIDs == [])
+    }
+
     @Test("A second repository over the same store finds the row rather than minting a second id")
     func aSecondRepositoryDoesNotMintASecondIdentity() async throws {
         let harness = try RepositoryHarness()

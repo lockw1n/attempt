@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -64,7 +65,7 @@ struct SessionSummaryReader {
             }
             let sets = try await workouts.sets(forEntryID: entry.id, includingDeleted: false)
             setCount += sets.count(where: Tonnage.counts)
-            tonnage += Tonnage.of(sets)
+            tonnage = Tonnage.adding(sets, to: tonnage)
             // Every set's note, warmups and incomplete ones included: `Tonnage.counts` partitions
             // what was *lifted*, and a note written on a warmup is still a note the user typed and
             // expects to find again (`FR-1.5.4`). Soft-deleted sets are already out — the read

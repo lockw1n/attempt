@@ -97,6 +97,18 @@ public struct EstimatedMax: Sendable, Hashable {
     /// Which of the three this is. A screen switches on it rather than testing three optionals.
     public let content: Content
 
+    /// What this number replaced: the best estimate the exercise held before the day the current one
+    /// was set, or `nil` when there is no earlier one (`FR-1.9.1`).
+    ///
+    /// **`nil` for a manual override and for an absence, and not because it could not be computed.**
+    /// An override is a number the user typed, so nothing about the sets is what it moved from
+    /// (`FR-1.7.5`); an absence has no number to have moved. A screen therefore never draws a delta
+    /// beside either, which is the same rule the provenance line already follows.
+    ///
+    /// See ``PersonalRecordRecomputer`` for why the comparison excludes the current record's whole
+    /// day rather than only its set.
+    public let previous: DatedRecord?
+
     /// The formula it was produced under (`FR-1.7.2`).
     public let formula: E1RMFormulaID
 
@@ -140,9 +152,34 @@ public struct EstimatedMax: Sendable, Hashable {
     /// marked as manual", as a screen asks it.
     public var isManual: Bool { manual != nil }
 
-    /// An estimate.
-    public init(record: DatedRecord, formula: E1RMFormulaID, lookback: E1RMLookback) {
-        self.init(content: .record(record), formula: formula, lookback: lookback)
+    /// How far the computed number moved, or `nil` where there is nothing to compare (`FR-1.9.1`).
+    ///
+    /// **It is strictly positive wherever it is not `nil`, and that follows from the definition
+    /// rather than from a guard here.** ``previous`` is the best estimate over a *subset* of the
+    /// sets the current one is the best over, so it can never exceed it; and a value that merely
+    /// matched cannot appear either, ties resolving to the earlier set, which makes the matched
+    /// estimate the current one and leaves nothing before it. A caller therefore gets a rise or
+    /// nothing — never a fall, and never a zero.
+    ///
+    /// **The type stays signed anyway**, because ``Weight`` is and because the sign is the honest
+    /// carrier of a direction this definition happens not to produce: reading the magnitude out and
+    /// asserting the direction here would put a claim in the type that only the definition above
+    /// supports. Whether a declining estimate *should* be reportable is `FR-1.9.1`'s own question
+    /// and a different definition of "the previous value" — not something this property decides.
+    public var delta: Weight? {
+        guard case .record(let record) = content, let previous else { return nil }
+        return record.weight - previous.weight
+    }
+
+    /// An estimate, and what it replaced.
+    public init(
+        record: DatedRecord,
+        previous: DatedRecord? = nil,
+        formula: E1RMFormulaID,
+        lookback: E1RMLookback
+    ) {
+        self.init(
+            content: .record(record), previous: previous, formula: formula, lookback: lookback)
     }
 
     /// A manual override.
@@ -156,8 +193,14 @@ public struct EstimatedMax: Sendable, Hashable {
     }
 
     /// Any of the three, as its content.
-    public init(content: Content, formula: E1RMFormulaID, lookback: E1RMLookback) {
+    public init(
+        content: Content,
+        previous: DatedRecord? = nil,
+        formula: E1RMFormulaID,
+        lookback: E1RMLookback
+    ) {
         self.content = content
+        self.previous = previous
         self.formula = formula
         self.lookback = lookback
     }

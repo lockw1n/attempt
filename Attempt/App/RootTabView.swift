@@ -84,6 +84,8 @@ struct RootTabView: View {
             calendarRoot
         case .dashboard(.recentPersonalRecords):
             recentRecordsRoot
+        case .dashboard(.estimatedMaxExercises):
+            tiledExerciseSelectionRoot
         default:
             PlaceholderScreen(route: route)
         }
@@ -223,7 +225,46 @@ struct RootTabView: View {
         }
     }
 
-    /// A tab's root. Three are real screens now; Home is still scaffolding.
+    /// `FR-1.9.1`'s picker: which exercises the dashboard tiles, or the reason it cannot be shown.
+    @ViewBuilder
+    private var tiledExerciseSelectionRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, _):
+            TiledExerciseSelectionView(
+                catalogue: repositories.exercises, settings: repositories.settings)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// Home's root — the dashboard (`FR-1.9`) — or the reason it cannot be shown.
+    ///
+    /// **The fourth of this file's cross-module joins, and the only one that hands over a command
+    /// rather than a screen.** `FR-1.9.2`'s repeat starts a workout, which is `Logging`'s to write
+    /// and `TR-1.3` keeps `Dashboard` from importing; so the dashboard takes a closure and this
+    /// target — which owns both — supplies the store's own method. ``ActiveSessionStore/resume()``
+    /// runs first because the store may never have looked: repeating without it would start a second
+    /// workout on top of one already open.
+    @ViewBuilder
+    private var dashboardRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, let stores):
+            DashboardView(
+                records: stores.records,
+                catalogue: repositories.exercises,
+                workouts: repositories.workouts,
+                settings: repositories.settings,
+                repeatSession: { sessionID in
+                    await stores.activeSession.resume()
+                    return await stores.activeSession.start(on: .now, repeating: sessionID)
+                }
+            )
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// A tab's root. All four are real screens now.
     ///
     /// The title is applied here rather than inside the feature package, for the reason
     /// ``AppTab/title`` gives: the catalogue is this target's (`G-3.4`).
@@ -240,7 +281,8 @@ struct RootTabView: View {
             settingsRoot
                 .navigationTitle(tab.title)
         case .home:
-            PlaceholderScreen(tab: tab, navigation: navigation)
+            dashboardRoot
+                .navigationTitle(tab.title)
         }
     }
 

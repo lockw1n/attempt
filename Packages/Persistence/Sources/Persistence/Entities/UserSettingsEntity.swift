@@ -53,6 +53,18 @@ final class UserSettingsEntity: StoredEntity {
     /// ``PowerliftingCore/RoundingStrategy``'s raw value, the direction half of the same default.
     var defaultRoundingStrategyRawValue: String = SchemaDefaults.roundingStrategy
 
+    /// Which exercises the dashboard tiles an estimated max for, in the order they are drawn
+    /// (`FR-1.9.1`), or `nil` where the user has never chosen.
+    ///
+    /// **Optional rather than defaulted to empty**, which is the one column here where the two differ
+    /// in meaning: `nil` is "never configured" and `[]` is "configured to none", and the screen shows
+    /// the competition lifts for the first and its insufficient-data state for the second.
+    ///
+    /// **Identifiers and not a relationship**, on the rule every join key here follows (`G-2.5`
+    /// forbids the constraint that would make one safe): a tiled exercise that is later deleted
+    /// leaves a dangling id, which the dashboard drops rather than resolving to a row.
+    var dashboardExerciseIDs: [UUID]?
+
     init(
         id: UUID = UUID(),
         userID: UUID,
@@ -61,6 +73,7 @@ final class UserSettingsEntity: StoredEntity {
         theme: ThemePreference,
         defaultRoundingIncrementGrams: Int,
         defaultRoundingStrategy: RoundingStrategy,
+        dashboardExerciseIDs: [UUID]? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
@@ -71,6 +84,7 @@ final class UserSettingsEntity: StoredEntity {
         self.themeRawValue = theme.rawValue
         self.defaultRoundingIncrementGrams = defaultRoundingIncrementGrams
         self.defaultRoundingStrategyRawValue = defaultRoundingStrategy.rawValue
+        self.dashboardExerciseIDs = dashboardExerciseIDs
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

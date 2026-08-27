@@ -33,6 +33,11 @@ let package = Package(
         .package(path: "../../DesignSystem"),
         .package(path: "../../AppNavigation"),
         .package(path: "../../Localization"),
+        // NOT A FEATURE PACKAGE and no breach of TR-0.1.2, for the reason Dashboard's manifest
+        // gives: `DerivedValues` sits below this level, over `RepositoryInterface` alone. It is
+        // here for `Tonnage` — `FR-1.5.1`'s session tonnage and `FR-1.9.5`'s week volume are one
+        // definition, and it cannot live in either of the two feature modules that weigh sets.
+        .package(path: "../../DerivedValues"),
         // TEST-ONLY, on the test target alone — the shape the other feature manifests have. The
         // session list's arithmetic is asserted against a store that was actually written to, so a
         // fake returning what a test handed it could not fail it.
@@ -44,6 +49,7 @@ let package = Package(
             dependencies: [
                 "PowerliftingCore",
                 "RepositoryInterface",
+                "DerivedValues",
                 "DesignSystem",
                 "AppNavigation",
                 "Localization",

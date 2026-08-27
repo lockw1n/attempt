@@ -9,7 +9,8 @@ import RepositoryInterface
 /// length ceiling — ``PersonalRecordSourceLinks``' reason. It is the same actor and the same
 /// isolation.
 extension PersonalRecordRecomputer {
-    /// The entries of this exercise that fall inside the lookback window (`FR-1.7.1`).
+    /// The entries of this exercise that fall inside the lookback window (`FR-1.7.1`), each with the
+    /// day its session was performed on.
     ///
     /// **Read forwards from the sessions, not backwards from the sets**, and that is what bounds the
     /// walk. Dating every set costs two reads per session the exercise was ever trained in, which is
@@ -21,16 +22,21 @@ extension PersonalRecordRecomputer {
     /// corrected today into the window on behalf of a workout performed last year.
     ///
     /// Deleted sessions and entries are excluded: a discarded workout is not current work.
-    func entryIDsInWindow(forExerciseID exerciseID: UUID) async throws -> Set<UUID> {
+    /// **It reports the day as well as the membership**, which is what makes `FR-1.9.1`'s delta free:
+    /// the session row is already in hand here, so dating every in-window set costs nothing, where
+    /// asking for the dates afterwards would be two reads per set.
+    func entryDatesInWindow(forExerciseID exerciseID: UUID) async throws -> [UUID: Date] {
         let sessions = try await workouts.sessions(
             in: lookback.range(from: now()), includingDeleted: false)
-        var entryIDs: Set<UUID> = []
+        var dates: [UUID: Date] = [:]
         for session in sessions {
             let entries = try await workouts.entries(
                 forSessionID: session.id, includingDeleted: false)
-            for entry in entries where entry.exerciseID == exerciseID { entryIDs.insert(entry.id) }
+            for entry in entries where entry.exerciseID == exerciseID {
+                dates[entry.id] = session.date
+            }
         }
-        return entryIDs
+        return dates
     }
 
     /// Why there is no estimate (`FR-1.13.3`).
@@ -53,5 +59,42 @@ extension PersonalRecordRecomputer {
         }
         guard let nearest = refusals.max() else { return .noneInWindow }
         return .refused(nearest)
+    }
+
+    /// `FR-1.9.1`'s "previous value": the best estimate this exercise held **before the day the
+    /// current one was set**, or `nil` when it held none.
+    ///
+    /// **A day and not a set**, which is the whole of the definition. The alternative — the
+    /// next-best set — would report a ranking *within* one session as a change over time, so a
+    /// lifter whose top single and back-off single were both logged on Tuesday would be told their
+    /// maximum moved between them. Excluding the whole day makes the delta answer the question a
+    /// tile is actually asking: what did this number just replace.
+    ///
+    /// **It is read over the same window and never outside it** (`FR-1.7.1`). A value from before
+    /// the window is one the tile has not shown for months, and a delta against it would compare
+    /// today's number with one this app stopped displaying — the window's own rule, applied to the
+    /// comparison as well as to the number.
+    ///
+    /// **An estimate that was matched and not beaten has none**, which follows from the tie rule
+    /// rather than from this one: `PersonalRecordCalculator` resolves a tie to the *earlier* set, so
+    /// a repeated best keeps the day it first appeared on and nothing precedes it. That is the
+    /// honest reading — the number has not moved since the day it was set.
+    ///
+    /// It costs no read: the sets and their days are the ones the estimate was computed over.
+    func previous(
+        before current: DatedRecord,
+        over inWindow: [(SetEntry, SetRecord)],
+        using dates: [UUID: Date],
+        by calculator: PersonalRecordCalculator
+    ) -> DatedRecord? {
+        let earlier = inWindow.filter { day(of: $0.0, using: dates) < current.achievedAt }
+        guard let best = calculator.bestE1RM(in: earlier.map(\.1)) else { return nil }
+        return dated(best, over: earlier, using: dates)
+    }
+
+    /// The day a set belongs to — its session's, or its own timestamps where the session did not
+    /// resolve. ``dated(_:over:using:)``'s fallback, as one expression both callers share.
+    func day(of set: SetEntry, using dates: [UUID: Date]) -> Date {
+        dates[set.entryID] ?? set.completedAt ?? set.createdAt
     }
 }

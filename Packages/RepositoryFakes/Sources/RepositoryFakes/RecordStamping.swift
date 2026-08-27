@@ -209,7 +209,8 @@ extension UserSettings: AuditStamped {
             e1RMFormula: e1RMFormula,
             theme: theme,
             defaultRoundingIncrement: defaultRoundingIncrement,
-            defaultRoundingStrategy: defaultRoundingStrategy
+            defaultRoundingStrategy: defaultRoundingStrategy,
+            dashboardExerciseIDs: dashboardExerciseIDs
         )
     }
 
@@ -229,7 +230,8 @@ extension UserSettings: AuditStamped {
             e1RMFormula: e1RMFormula,
             theme: theme,
             defaultRoundingIncrement: defaultRoundingIncrement,
-            defaultRoundingStrategy: defaultRoundingStrategy
+            defaultRoundingStrategy: defaultRoundingStrategy,
+            dashboardExerciseIDs: dashboardExerciseIDs
         )
     }
 }

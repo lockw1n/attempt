@@ -11,7 +11,14 @@ enum DashboardStrings {
     /// lengths — two spellings would let a translation make them look like different features.
     static let recentRecordsTitle = resource("dashboard.recent-records.title")
 
-    /// Why the feed is empty, and what would fill it (`FR-1.13.3`).
+    /// Why the feed is empty, and what would fill it (`FR-1.13.3`, `FR-1.6.1`).
+    ///
+    /// **Two sentences, and the second is the one no other screen says.** A set that fell short of
+    /// its target keeps the reps it reached (`FR-1.2.5`) and still sets no record, because
+    /// `TR-0.2.8` counts completed sets only — and it counts them only because `isCompleted` is
+    /// `false` on a set that was never performed as well as on one that failed, so reps read out of
+    /// an incomplete set would credit a record to training that did not happen. That refusal is
+    /// correct and invisible: an empty feed after a hard session reads as a bug.
     static let recentRecordsNone = resource("dashboard.recent-records.none")
 
     /// Why the feed could not be read.
@@ -44,16 +51,85 @@ enum DashboardStrings {
     /// What tapping a feed entry does.
     static let recentRecordsExerciseHint = resource("dashboard.recent-records.exercise-hint")
 
+    /// `FR-1.9.4`'s primary action, which navigates to Train rather than logging anything here.
+    ///
+    /// **Also `FR-1.13.2`'s action**, where the first-launch state carries it instead of the button.
+    static let startWorkout = resource("dashboard.start.action")
+
+    /// `FR-1.13.2`'s heading: an install with nothing in it.
+    static let firstLaunchHeadline = resource("dashboard.first-launch.headline")
+
+    /// What logging one workout turns this screen into.
+    static let firstLaunchMessage = resource("dashboard.first-launch.message")
+
+    /// `FR-1.9.5`'s heading.
+    static let weekTitle = resource("dashboard.week.title")
+
+    /// What the first of `FR-1.9.5`'s two numbers counts.
+    static let weekWorkouts = resource("dashboard.week.workouts")
+
+    /// What the second of them weighs.
+    static let weekVolume = resource("dashboard.week.volume")
+
+    /// Nothing this week counts as training done (`FR-1.13.3`).
+    static let weekNone = resource("dashboard.week.none")
+
+    /// Training happened and none of it can be weighed — `Tonnage`'s third clause, said out loud.
+    static let weekUnweighed = resource("dashboard.week.unweighed")
+
+    /// The sessions could not be read.
+    static let weekError = resource("dashboard.week.error")
+
+    /// `FR-1.9.2`'s heading.
+    static let lastWorkoutTitle = resource("dashboard.last-workout.title")
+
+    /// Nothing has ever been logged.
+    static let lastWorkoutNone = resource("dashboard.last-workout.none.headline")
+
+    /// What to do about it — the action itself is the button above this card.
+    static let lastWorkoutNoneMessage = resource("dashboard.last-workout.none.message")
+
+    /// The sessions could not be read.
+    static let lastWorkoutError = resource("dashboard.last-workout.error")
+
+    /// The workout on the card has not been finished.
+    static let lastWorkoutInProgress = resource("dashboard.last-workout.in-progress")
+
+    /// `FR-1.9.2`'s resume, for a workout still open.
+    static let lastWorkoutResume = resource("dashboard.last-workout.resume")
+
+    /// `FR-1.9.2`'s repeat: a fresh workout holding the same exercises and no sets.
+    static let lastWorkoutRepeat = resource("dashboard.last-workout.repeat")
+
+    /// The repeat could not be started. Nothing was written.
+    static let lastWorkoutRepeatError = resource("dashboard.last-workout.repeat-error")
+
+    /// How much work a finished session holds.
+    ///
+    /// - Parameter count: The working sets — completed, and not warmups (`G-1.8`).
+    /// - Returns: The line.
+    static func lastWorkoutSets(_ count: Int) -> LocalizedStringResource {
+        resource("dashboard.last-workout.sets \(count)")
+    }
+
     /// Every string this module owns, for the test that asserts each one resolves.
     static var all: [LocalizedStringResource] {
         [
             recentRecordsTitle, recentRecordsNone, recentRecordsError, recentRecordsSeeAll,
             recentRecordsRepMax(3), recentRecordsRepMaxRange(1, 3), recentRecordsExerciseHint,
-        ]
+            startWorkout, lastWorkoutTitle, lastWorkoutNone, lastWorkoutNoneMessage,
+            lastWorkoutError, lastWorkoutInProgress, lastWorkoutResume, lastWorkoutRepeat,
+            lastWorkoutRepeatError, lastWorkoutSets(4),
+            firstLaunchHeadline, firstLaunchMessage,
+            weekTitle, weekWorkouts, weekVolume, weekNone, weekUnweighed, weekError,
+            tilesTitle, tilesError, tilesNoneChosen, tilesNoneChosenMessage, tileManual,
+            tileNoPrevious, tilesChooseAction, tilesChooseTitle, tilesChooseEmpty,
+            tilesChooseError, tilesChooseWriteError,
+        ] + absences.map { tileAbsence($0, days: 90) }
     }
 
     /// Binds a key to this module's catalogue.
-    private static func resource(_ key: String.LocalizationValue) -> LocalizedStringResource {
+    static func resource(_ key: String.LocalizationValue) -> LocalizedStringResource {
         LocalizedStringResource(key, bundle: .atURL(Bundle.module.bundleURL))
     }
 }

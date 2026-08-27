@@ -409,8 +409,8 @@ public actor PersonalRecordRecomputer {
         // The filter preserves the repository's order, which is what keeps "ties resolve to the
         // earlier set" meaning the same thing over the subsequence.
         let window =
-            walk.stored.isEmpty ? [] : try await entryIDsInWindow(forExerciseID: walk.exerciseID)
-        let inWindow = walk.analysed.filter { window.contains($0.0.entryID) }
+            walk.stored.isEmpty ? [:] : try await entryDatesInWindow(forExerciseID: walk.exerciseID)
+        let inWindow = walk.analysed.filter { window[$0.0.entryID] != nil }
 
         guard let computed = walk.calculator.bestE1RM(in: inWindow.map(\.1)) else {
             return EstimatedMax(
@@ -419,9 +419,10 @@ public actor PersonalRecordRecomputer {
                 formula: formula,
                 lookback: lookback)
         }
-        let dates = await sessionDates(forEntryIDs: [inWindow[computed.setOffset].0.entryID])
+        let current = dated(computed, over: inWindow, using: window)
         return EstimatedMax(
-            record: dated(computed, over: inWindow, using: dates),
+            record: current,
+            previous: previous(before: current, over: inWindow, using: window, by: walk.calculator),
             formula: formula,
             lookback: lookback)
     }
@@ -451,16 +452,14 @@ public actor PersonalRecordRecomputer {
     ///
     /// **The offset is an index into `analysed`, not into what the repository returned**, and the
     /// two differ whenever a set was refused — see ``recomputed(_:writingCache:)``.
-    private func dated(
+    func dated(
         _ record: PersonalRecord,
         over analysed: [(SetEntry, SetRecord)],
         using dates: [UUID: Date]
     ) -> DatedRecord {
         let set = analysed[record.setOffset].0
         return DatedRecord(
-            weight: record.weight,
-            sourceSetID: set.id,
-            achievedAt: dates[set.entryID] ?? set.completedAt ?? set.createdAt)
+            weight: record.weight, sourceSetID: set.id, achievedAt: day(of: set, using: dates))
     }
 
     /// The session date behind each of `entryIDs`, for the ones that resolve.

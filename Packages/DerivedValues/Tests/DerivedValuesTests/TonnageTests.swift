@@ -3,7 +3,7 @@ import PowerliftingCore
 import RepositoryInterface
 import Testing
 
-@testable import History
+@testable import DerivedValues
 
 /// `FR-1.5.1`'s tonnage — the first arithmetic Phase 1 does outside `PowerliftingCore`, pinned the
 /// way Phase 0 pinned its formulas: against numbers worked out by hand rather than against what the
@@ -77,6 +77,20 @@ struct TonnageTests {
         // And the other direction: the running total is already large when the next term arrives.
         let heavy = Self.set(kilograms: Int.max / 2_000, reps: 1)
         #expect(Tonnage.of([heavy, heavy, heavy]) == Tonnage.of([heavy, heavy]))
+    }
+
+    @Test("A total carried across entries skips what will not fit, rather than trapping")
+    func accumulationDoesNotTrap() {
+        // `of(_:)` alone cannot exceed `Int.max`, so the guard inside it says nothing about what
+        // two of its answers do when added. A caller summing entries with `+` traps here; through
+        // `adding(_:to:)` the term that will not fit is the one that is dropped.
+        let heavy = Self.set(kilograms: Int.max / 1_500, reps: 1)
+        let running = Tonnage.adding([heavy], to: .zero)
+        #expect(running == Weight(grams: (Int.max / 1_500) * 1_000))
+        #expect(Tonnage.adding([heavy], to: running) == running)
+        // And a term that still fits is still taken, so the guard is not just refusing everything.
+        let light = Self.set(kilograms: 100, reps: 5, order: 1)
+        #expect(Tonnage.adding([light], to: running) == running + Weight(grams: 500_000))
     }
 
     @Test("Nothing to weigh is zero, not a refusal")
