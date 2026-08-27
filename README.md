@@ -58,7 +58,7 @@ Packages/
 │   ├── History/             Past training: sessions, calendar, search
 │   ├── Dashboard/           e1RM tiles, the recent-PR feed, the week summary, the start-workout
 │   │                        action
-│   └── Settings/            Preferences, data portability, sync
+│   └── Settings/            Preferences, data portability, sync, the bodyweight log
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
 Attempt/
 ├── App/                     App entry point and DI wiring
