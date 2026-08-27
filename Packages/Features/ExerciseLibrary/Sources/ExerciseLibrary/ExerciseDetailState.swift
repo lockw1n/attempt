@@ -259,6 +259,12 @@ public final class ExerciseDetailState {
 
     /// One link of ``saveNotes()``'s chain: decide against the record as it stands now, then write.
     ///
+    /// **The record written is re-read here, not the one on screen.** This row has a second writer
+    /// — `FR-1.7.5`'s manual estimate, stored by the estimate section through its own store — and a
+    /// save rebuilds every column, so a copy built from the screen's picture would clear an
+    /// override entered since that picture was taken. The screen is never shown that column, so it
+    /// cannot carry it; the stored row can.
+    ///
     /// **The write and the re-read are reported apart, because they fail differently.** A failed
     /// write is ``writeFailure``: nothing reached the store, and the screen keeps both the exercise
     /// and the text. A read that fails *after* the write landed is a failed **read** — the notes are
@@ -271,7 +277,18 @@ public final class ExerciseDetailState {
     private func writeNotes(_ submitted: String) async {
         guard case .loaded(let detail) = phase, submitted != detail.exercise.notes else { return }
         do {
-            try await repository.save(Self.withNotes(submitted, on: detail.exercise))
+            guard let current = try await repository.exercise(id: exerciseID, includingDeleted: false)
+            else {
+                // The row went away under the edit. Nothing to write it onto, and reading again
+                // resolves to the same absence — ``Phase/missing``'s own terms.
+                phase = .missing
+                return
+            }
+            // Asked of the stored row as well as of the screen's: the outer guard answers whether
+            // the *user* changed anything, this one whether the store still needs telling.
+            if submitted != current.notes {
+                try await repository.save(Self.withNotes(submitted, on: current))
+            }
         } catch {
             writeFailure = String(describing: error)
             return
@@ -293,7 +310,9 @@ public final class ExerciseDetailState {
     /// real remote edit.
     ///
     /// **The stored notes are carried, not the draft.** Archiving is not a way to commit an edit the
-    /// user has not saved — and the re-read that follows keeps that draft on screen.
+    /// user has not saved — and the re-read that follows keeps that draft on screen. The record is
+    /// re-read before the write for ``writeNotes(_:)``'s reason, which applies to every column this
+    /// screen does not show.
     ///
     /// The write and the re-read are reported apart, on ``writeNotes(_:)``'s split: a failed write
     /// is ``archiveFailure`` and costs the screen nothing, where a read that fails after the write
@@ -303,7 +322,14 @@ public final class ExerciseDetailState {
     private func writeArchived(_ archived: Bool) async {
         guard case .loaded(let detail) = phase, detail.exercise.isArchived != archived else { return }
         do {
-            try await repository.save(Self.archived(archived, on: detail.exercise))
+            guard let current = try await repository.exercise(id: exerciseID, includingDeleted: false)
+            else {
+                phase = .missing
+                return
+            }
+            if current.isArchived != archived {
+                try await repository.save(Self.archived(archived, on: current))
+            }
         } catch {
             archiveFailure = String(describing: error)
             return

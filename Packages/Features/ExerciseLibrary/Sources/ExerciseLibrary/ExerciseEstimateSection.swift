@@ -63,7 +63,8 @@ enum ExerciseEstimateScreenState: Equatable {
     }
 
     /// The number on screen, or `nil` when there is none — what the override field starts from, so
-    /// that a user adjusting an estimate types over it rather than retyping it.
+    /// that a user adjusting an estimate types over it rather than retyping it. Reachable in both
+    /// directions: an override is editable without being cleared first.
     var weight: Weight? {
         switch self {
         case .ready(let record, _, _, _): record.weight
@@ -72,7 +73,25 @@ enum ExerciseEstimateScreenState: Equatable {
         }
     }
 
-    /// Whether an override is what is on screen, which decides which of `FR-1.7.5`'s two commands
+    /// What the override field opens holding: the number above it, at **the step that number is
+    /// displayed at**, or empty where there is none to type over.
+    ///
+    /// **Not the exact grams.** The tile is snapped to `G-3.3`'s step and a computed estimate lands
+    /// on one only by accident, so a field seeded with the exact value opens reading `116,667` under
+    /// a tile reading `116,5` — and a save with no edit stores a number the user never saw. See
+    /// ``Localization/LocalizedNumberField/render(_:in:at:locale:)``.
+    ///
+    /// - Parameters:
+    ///   - unit: The unit the tile is drawn in (`G-3.1`).
+    ///   - locale: The locale it is drawn for (`G-3.4`).
+    /// - Returns: The field's opening contents.
+    func prefill(in unit: MassUnit, locale: Locale) -> String {
+        guard let weight else { return "" }
+        return LocalizedNumberField.render(
+            weight, in: unit, at: .default(for: unit), locale: locale)
+    }
+
+    /// Whether an override is what is on screen, which decides which of `FR-1.7.5`'s commands
     /// the section offers.
     var isManual: Bool {
         if case .manual = self { return true }
@@ -261,18 +280,26 @@ struct ExerciseEstimateReading: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// `FR-1.7.5`'s controls: the field while it is open, and otherwise the one command that
-    /// applies.
+    /// `FR-1.7.5`'s controls: the field while it is open, and otherwise the commands that apply.
+    ///
+    /// **An override is editable, not only revertible.** Offering the way back alone would make
+    /// adjusting a manual number a two-step round trip through the computed one — which writes,
+    /// announces and re-walks the history to produce a value the user is about to overwrite, and
+    /// loses the figure they were adjusting on the way.
     @ViewBuilder private var override: some View {
         if draft != nil {
             editor
         } else if state.isManual {
+            command(Text(ExerciseLibraryStrings.e1rmOverrideEdit)) { openEditor() }
             command(Text(ExerciseLibraryStrings.e1rmOverrideRevert)) { commit(nil) }
         } else {
-            command(Text(ExerciseLibraryStrings.e1rmOverrideAction)) {
-                draft = state.weight.map { LocalizedNumberField.render($0, in: unit, locale: locale) } ?? ""
-            }
+            command(Text(ExerciseLibraryStrings.e1rmOverrideAction)) { openEditor() }
         }
+    }
+
+    /// Opens the field over whatever number is on screen. See ``ExerciseEstimateScreenState/prefill(in:locale:)``.
+    private func openEditor() {
+        draft = state.prefill(in: unit, locale: locale)
     }
 
     /// The field, with the two commands that act on it.

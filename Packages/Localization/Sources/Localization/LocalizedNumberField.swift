@@ -114,6 +114,37 @@ public enum LocalizedNumberField {
         return render(converted, locale: locale)
     }
 
+    /// Writes a mass into a field at the step it is *displayed* at (`G-3.3`), rather than exactly.
+    ///
+    /// **For a field opened over a number the user is looking at rather than one they typed.**
+    /// ``render(_:in:locale:)`` names the stored grams exactly, which is right when the field is
+    /// the value's origin — it round-trips what was entered. It is wrong when the field is seeded
+    /// from a *computed* value shown through ``AppFormat/weight(in:locale:)``: that tile is snapped
+    /// to the display step and a computed number lands on one only by accident, so the field would
+    /// open disagreeing with the figure above it and a save with no edit would store a number the
+    /// user never saw.
+    ///
+    /// The rounding is ``PowerliftingCore/Weight/formatted(in:precision:)``'s, not a second copy of
+    /// it, so the field and the tile cannot disagree at the ties. Trailing zeros are dropped —
+    /// that method's fraction is fixed width, and `"116.0"` is not what a field wants.
+    ///
+    /// - Parameters:
+    ///   - weight: The mass to write.
+    ///   - unit: The unit to write it in (`G-3.1`).
+    ///   - precision: The display step to snap to; the tile's own (`G-3.3`).
+    ///   - locale: The locale to write it in (`G-3.4`).
+    /// - Returns: The field's contents.
+    public static func render(
+        _ weight: Weight, in unit: MassUnit, at precision: DisplayPrecision, locale: Locale
+    ) -> String {
+        // Unreachable in practice — the domain documents that string as a plain decimal — and the
+        // fallback is the exact rendering, which is wrong about the step and right about the mass.
+        guard let snapped = Double(weight.formatted(in: unit, precision: precision)) else {
+            return render(weight, in: unit, locale: locale)
+        }
+        return render(snapped, locale: locale)
+    }
+
     /// What a field's contents come to in grams, sign and all.
     ///
     /// - Parameters:

@@ -1,5 +1,6 @@
 import DerivedValues
 import Foundation
+import Localization
 import PowerliftingCore
 import RepositoryInterface
 import Testing
@@ -116,6 +117,152 @@ struct ExerciseEstimateSectionTests {
         await state.loadEstimate()
 
         #expect(ExerciseEstimateScreenState.current(state).isSettled)
+    }
+
+    /// The other half of ``isSettled``: a store that has just refused to answer is not a number to
+    /// offer an override over either.
+    @Test("Nothing is offered to override over a failed read")
+    func theOverrideIsWithheldFromTheErrorState() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        let state = ExerciseRecordsState(
+            exerciseID: squat.id,
+            recomputer: PersonalRecordRecomputer(
+                workouts: RefusingWorkouts(failure: .recordNotFound(id: squat.id)),
+                exercises: fixture.stack.exercises,
+                cache: fixture.stack.personalRecords))
+
+        await state.loadEstimate()
+
+        #expect(ExerciseEstimateScreenState.current(state) == .failed)
+        #expect(!ExerciseEstimateScreenState.current(state).isSettled)
+    }
+
+    /// **A refused write is reported without costing the reader the number.** The estimate on
+    /// screen is unchanged — nothing was stored — which is why the diagnostic is its own property
+    /// rather than the read's.
+    @Test("A refused override is reported and leaves the number where it was")
+    func aRefusedOverrideKeepsTheNumber() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        try await fixture.trainWeighted(squat, onDay: 0, work: [(reps: 5, kilos: 100)])
+        let instant = fixture.day(0)
+        let state = ExerciseRecordsState(
+            exerciseID: squat.id,
+            recomputer: PersonalRecordRecomputer(
+                workouts: fixture.workouts,
+                // Reads answer, writes refuse: the estimate loads and only the override fails.
+                exercises: ScriptedExerciseRepository(
+                    exercises: [squat], writeError: .recordNotFound(id: squat.id)),
+                cache: fixture.stack.personalRecords,
+                now: { instant }))
+        await state.loadEstimate()
+        let before = ExerciseEstimateScreenState.current(state)
+
+        await state.setManualEstimate(Weight(grams: 140_000))
+
+        #expect(state.manualFailure != nil)
+        #expect(ExerciseEstimateScreenState.current(state) == before)
+        #expect(!ExerciseEstimateScreenState.current(state).isManual)
+    }
+
+    /// A write that lands after one that failed clears the diagnostic — the retry is the same
+    /// command, so nothing else would.
+    @Test("An override that lands clears the previous failure")
+    func aLandedOverrideClearsTheFailure() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        let refusing = ScriptedExerciseRepository(
+            exercises: [squat], writeError: .recordNotFound(id: squat.id))
+        let instant = fixture.day(0)
+        let state = ExerciseRecordsState(
+            exerciseID: squat.id,
+            recomputer: PersonalRecordRecomputer(
+                workouts: fixture.workouts,
+                exercises: refusing,
+                cache: fixture.stack.personalRecords,
+                now: { instant }))
+        await state.setManualEstimate(Weight(grams: 140_000))
+        #expect(state.manualFailure != nil)
+
+        await refusing.recoverWrites()
+        await state.setManualEstimate(Weight(grams: 140_000))
+
+        #expect(state.manualFailure == nil)
+        #expect(ExerciseEstimateScreenState.current(state) == .manual(Weight(grams: 140_000)))
+    }
+
+    // MARK: - The override field's opening contents
+
+    /// **The field opens agreeing with the tile above it.** A computed estimate lands on `G-3.3`'s
+    /// display step only by accident, so a field seeded with the exact grams would read `116.667`
+    /// under a tile reading `116.5` — and Save with no edit would store a number the user never
+    /// saw.
+    @Test("The override field opens at the step the number is displayed at")
+    func thePrefillMatchesTheDisplayedNumber() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        try await fixture.trainWeighted(squat, onDay: 0, work: [(reps: 5, kilos: 100)])
+        let state = fixture.records(of: squat, through: fixture.recomputer())
+        await state.loadEstimate()
+        let screen = ExerciseEstimateScreenState.current(state)
+        // Epley over 100 kg × 5 is 116.667 kg exactly, which is not on the half-kilo step.
+        #expect(screen.weight == Weight(grams: 116_667))
+
+        let prefill = screen.prefill(in: .kilograms, locale: Locale(identifier: "en_GB"))
+
+        #expect(prefill == "116.5")
+        #expect(prefill == Weight(grams: 116_667).formatted(in: .kilograms, precision: .half))
+    }
+
+    /// The same in a comma-decimal locale, since the field is read back in the user's own (`G-3.4`)
+    /// and a prefill written with a period would be refused by the parser that reads it.
+    @Test("The override field opens in the reader's own locale")
+    func thePrefillIsLocalised() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        try await fixture.trainWeighted(squat, onDay: 0, work: [(reps: 5, kilos: 100)])
+        let state = fixture.records(of: squat, through: fixture.recomputer())
+        await state.loadEstimate()
+        let german = Locale(identifier: "de_DE")
+
+        let prefill = ExerciseEstimateScreenState.current(state)
+            .prefill(in: .kilograms, locale: german)
+
+        #expect(prefill == "116,5")
+        #expect(
+            LocalizedNumberField.weight(prefill, in: .kilograms, locale: german)
+                == Weight(grams: 116_500))
+    }
+
+    /// An override is edited over, not cleared and retyped — see the section's `override` controls.
+    @Test("The field opens over an override too, holding the override")
+    func thePrefillReadsAnOverride() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        let state = fixture.records(of: squat, through: fixture.recomputer())
+        await state.setManualEstimate(Weight(grams: 142_500))
+
+        let screen = ExerciseEstimateScreenState.current(state)
+
+        #expect(screen.isManual)
+        #expect(screen.weight == Weight(grams: 142_500))
+        #expect(screen.prefill(in: .kilograms, locale: Locale(identifier: "en_GB")) == "142.5")
+    }
+
+    /// Nothing on screen is nothing to type over — the field opens blank rather than at zero, which
+    /// is a real load a user could otherwise save by accident.
+    @Test("The field opens empty where there is no number")
+    func thePrefillIsEmptyWithoutANumber() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        let state = fixture.records(of: squat, through: fixture.recomputer())
+        await state.loadEstimate()
+
+        let screen = ExerciseEstimateScreenState.current(state)
+
+        #expect(screen == .insufficient(.noSetsLogged, days: 90))
+        #expect(screen.prefill(in: .kilograms, locale: Locale(identifier: "en_GB")).isEmpty)
     }
 
     /// **The seven sentences are seven, and the test that would have caught the old copy.** Before

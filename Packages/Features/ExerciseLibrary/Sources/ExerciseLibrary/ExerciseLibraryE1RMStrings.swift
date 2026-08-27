@@ -90,6 +90,10 @@ extension ExerciseLibraryStrings {
     /// Abandons it, leaving whatever was in force.
     static let e1rmOverrideCancel = resource("exerciselibrary.detail.e1rm.override.cancel")
 
+    /// Re-opens the field over an override already in force, so adjusting one does not mean
+    /// clearing it first.
+    static let e1rmOverrideEdit = resource("exerciselibrary.detail.e1rm.override.edit")
+
     /// `FR-1.7.5`'s way back: one tap, and the computed estimate returns.
     static let e1rmOverrideRevert = resource("exerciselibrary.detail.e1rm.override.revert")
 

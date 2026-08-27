@@ -443,7 +443,7 @@ enum ExerciseLibraryStrings {
             e1rmProvenance("Epley", days: 90),
             e1rmSourceHint, e1rmManualBadge,
             e1rmOverrideAction, e1rmOverrideField, e1rmOverrideSave, e1rmOverrideCancel,
-            e1rmOverrideRevert, e1rmOverrideError,
+            e1rmOverrideEdit, e1rmOverrideRevert, e1rmOverrideError,
             detailErrorHeadline, detailErrorMessage, detailMissingHeadline, detailMissingMessage,
             createAction, editAction, formCreateTitle, formEditTitle, formSection,
             formName, formNamePrompt, formNameRequired, formMovement, formEquipment, formBar,

@@ -64,8 +64,8 @@ extension Exercise {
     /// ``Exercise/name``, because `FR-1.1.4` lets a user rename a built-in and a later import must
     /// not undo it; ``Exercise/notes``, ``Exercise/isArchived`` and ``Exercise/manualE1RM`` for the
     /// same reason, being edits the payload cannot express; ``Exercise/isCustom``, which decides
-    /// the question rather than answering to it. The audit columns are copied so that a caller can compare this against the
-    /// stored row and learn whether the import has anything to write.
+    /// the question rather than answering to it. The audit columns are copied so that a caller can
+    /// compare this against the stored row and learn whether the import has anything to write.
     ///
     /// **A kept column is kept unconditionally, so the catalogue cannot correct one.** Nothing
     /// stored records whether a column holds a user's edit or the value the seed last wrote, and

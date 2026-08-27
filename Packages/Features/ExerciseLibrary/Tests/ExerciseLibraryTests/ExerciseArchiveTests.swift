@@ -160,7 +160,8 @@ struct ExerciseArchiveTests {
         let repository = ScriptedExerciseRepository(exercises: [DetailFixtures.backSquat])
         let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
-        await repository.failReads(.recordNotFound(id: UUID()))
+        // Past the read the write itself does — see `failReads(_:afterNext:)`.
+        await repository.failReads(.recordNotFound(id: UUID()), afterNext: 1)
 
         await state.setArchived(true)
 
@@ -318,6 +319,8 @@ extension DetailFixtures {
             isCustom: exercise.isCustom,
             isArchived: isArchived,
             notes: exercise.notes,
-            manualE1RM: nil)
+            // Carried, not defaulted: this helper's contract is "nothing else touched", and a
+            // column dropped here would make the write assertions agree with a write that lost it.
+            manualE1RM: exercise.manualE1RM)
     }
 }
