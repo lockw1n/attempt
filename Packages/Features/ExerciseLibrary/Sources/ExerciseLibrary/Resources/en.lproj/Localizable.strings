@@ -147,7 +147,28 @@
 "exerciselibrary.detail.records.more.expanded" = "Expanded";
 "exerciselibrary.detail.records.more.collapsed" = "Collapsed";
 "exerciselibrary.detail.section.e1rm" = "Estimated 1RM";
+"exerciselibrary.detail.e1rm.value" = "Current estimate";
+"exerciselibrary.detail.e1rm.error" = "This exercise's estimated 1RM could not be computed.";
+"exerciselibrary.detail.e1rm.provenance %@ %lld" = "%1$@, from the last %2$lld days";
+
+/* FR-1.13.3 over E1RMCalculator's refusals. Seven sentences rather than one blank: each names the
+   thing that would have to change, because every one of these is a lifter who DID log the set. The
+   first is the only one that means "nothing here yet". */
 "exerciselibrary.detail.e1rm.none" = "Log a completed working set and an estimate appears here.";
+"exerciselibrary.detail.e1rm.stale %lld" = "Nothing has been logged here in the last %lld days. An estimate reads recent training only.";
+"exerciselibrary.detail.e1rm.warmups %lld" = "Only warm-up sets in the last %lld days. An estimate comes from working sets.";
+"exerciselibrary.detail.e1rm.incomplete %lld" = "No completed set in the last %lld days. A set has to be finished before it says anything about a maximum.";
+"exerciselibrary.detail.e1rm.high-reps %lld" = "Every working set in the last %lld days went past ten reps, which is further than these formulas are accurate.";
+"exerciselibrary.detail.e1rm.assisted" = "Assisted sets have no estimated max: the formulas would read more assistance as a heavier lift.";
+"exerciselibrary.detail.e1rm.no-effort" = "This formula reads the RPE or RIR on a set, and the recent sets here record neither.";
+
+/* Five surnames and one description. Only the last would ever be translated. */
+"exerciselibrary.detail.e1rm.formula.epley" = "Epley";
+"exerciselibrary.detail.e1rm.formula.brzycki" = "Brzycki";
+"exerciselibrary.detail.e1rm.formula.lombardi" = "Lombardi";
+"exerciselibrary.detail.e1rm.formula.oconner" = "O'Conner";
+"exerciselibrary.detail.e1rm.formula.wathan" = "Wathan";
+"exerciselibrary.detail.e1rm.formula.rpebased" = "RPE-based";
 
 /* The read failed and running it again could work. */
 "exerciselibrary.detail.error.headline" = "Exercise unavailable";

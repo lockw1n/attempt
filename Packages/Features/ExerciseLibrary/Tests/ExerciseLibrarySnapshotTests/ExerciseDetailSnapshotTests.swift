@@ -113,11 +113,36 @@
             }
         }
 
-        @Test func derivedValueWithNothingToShow() throws {
-            try assertSnapshots(named: "ExerciseDetail-derived") {
-                DerivedValueSection(
-                    title: ExerciseLibraryStrings.e1rmSection,
-                    nothingYet: ExerciseLibraryStrings.e1rmNone
+        @Test func estimate() throws {
+            // FR-1.7.1's number with its provenance under it: the formula and the window are what
+            // make the figure reconcilable with one seen anywhere else, so they are part of what
+            // this reference gates.
+            try assertSnapshots(named: "ExerciseDetail-estimate") {
+                ExerciseEstimateReading(
+                    state: .ready(
+                        DatedRecord(
+                            weight: Weight(grams: 116_667),
+                            sourceSetID: UUID(),
+                            achievedAt: DetailFixtures.recordDay),
+                        formula: .epley,
+                        days: 90),
+                    unit: .kilograms,
+                    retry: {}
+                )
+                .environment(\.locale, DetailFixtures.locale)
+                .environment(\.timeZone, .gmt)
+            }
+        }
+
+        @Test func estimateRefused() throws {
+            // FR-1.13.3 at its sharpest: a lifter who HAS logged sets and still has no number. The
+            // reference is over the longest of the seven sentences, which is the one that decides
+            // whether the state component wraps at `accessibility3`.
+            try assertSnapshots(named: "ExerciseDetail-estimate-refused") {
+                ExerciseEstimateReading(
+                    state: .insufficient(.refused(.incomplete), days: 90),
+                    unit: .kilograms,
+                    retry: {}
                 )
             }
         }
@@ -157,6 +182,10 @@
         /// Pinned because a Mac's region is not its language: `en_US@rg=uazzzz` is a US English
         /// machine that writes `102,5`, and it is what recorded this suite's first history images.
         static let locale = Locale(identifier: "en_US")
+
+        /// The day the estimate's source set was performed. Fixed rather than relative to now, on
+        /// ``trainingDay``'s rule.
+        static let recordDay = Date(timeIntervalSince1970: 1_700_000_000)
 
         static let backSquat = Fixtures.exercise(id: 1, name: "Back Squat", movement: .squat)
 

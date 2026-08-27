@@ -36,8 +36,25 @@ final class TrainingHistory {
     /// Built on demand rather than stored, and a test that needs the *same* one twice holds it
     /// itself: two actors over one store compute the same numbers, but only one of them announces to
     /// a given subscriber.
-    func recomputer(cache: (any PersonalRecordCacheRepository)? = nil) -> PersonalRecordRecomputer {
-        PersonalRecordRecomputer(workouts: workouts, cache: cache ?? stack.personalRecords)
+    ///
+    /// **"Now" is day zero unless a test says otherwise**, and it has to be pinned: `FR-1.7.1`'s
+    /// window is measured from it, and these fixtures are dated from a fixed epoch — left at the
+    /// real clock, every one of them would fall outside the ninety days and every estimate would be
+    /// absent for a reason no test intended. The window has no ceiling, so a later training day is
+    /// still inside it.
+    func recomputer(
+        cache: (any PersonalRecordCacheRepository)? = nil,
+        formula: E1RMFormulaID = .defaultFormula,
+        lookback: E1RMLookback = .default,
+        now: Date? = nil
+    ) -> PersonalRecordRecomputer {
+        let instant = now ?? day(0)
+        return PersonalRecordRecomputer(
+            workouts: workouts,
+            cache: cache ?? stack.personalRecords,
+            formula: formula,
+            lookback: lookback,
+            now: { instant })
     }
 
     /// `FR-1.6.2`'s state, over this store.

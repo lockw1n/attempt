@@ -157,17 +157,15 @@ public struct ExerciseDetailView: View {
         // THE ESTIMATE IS NOT ONE OF THE TWO, and that is deliberate. A 12-rep set, assisted work
         // and a set that targets ten and fails at eight each produce no estimate BY DESIGN, so a
         // user can have logged sets and still correctly have no e1RM — a count cannot tell those
-        // apart from an exercise nothing has been logged against. T-1.43 owns that copy.
+        // apart from an exercise nothing has been logged against. The estimate's own section reads
+        // the reason from the pipeline instead; see `ExerciseEstimateScreenState`.
         ExerciseRecordsSection(
             exerciseID: exerciseID,
             hasLoggedSets: detail.hasLoggedSets,
             records: records,
             settings: settings
         )
-        DerivedValueSection(
-            title: ExerciseLibraryStrings.e1rmSection,
-            nothingYet: ExerciseLibraryStrings.e1rmNone
-        )
+        ExerciseEstimateSection(exerciseID: exerciseID, records: records, settings: settings)
         ExerciseArchiveSection(
             isArchived: detail.exercise.isArchived,
             hasFailed: state.archiveFailure != nil
@@ -472,26 +470,6 @@ struct ExerciseArchiveSection: View {
                     retry: toggle
                 )
             }
-        }
-    }
-}
-
-/// A derived value that has nothing to show yet (`FR-1.13.3`).
-///
-/// One type for however many need it, because the difference between them is one string. The
-/// headline is the component's own generic one: the section heading directly above already names
-/// what is missing, and a second sentence saying it again is noise repeated down the screen.
-struct DerivedValueSection: View {
-    /// The section's heading.
-    let title: LocalizedStringResource
-
-    /// What would produce some data — the sentence `FR-1.13.3` requires in place of a blank.
-    let nothingYet: LocalizedStringResource
-
-    /// The heading, then the insufficient-data state under it.
-    var body: some View {
-        GroupedSection(Text(title)) {
-            InsufficientDataView(message: Text(nothingYet))
         }
     }
 }

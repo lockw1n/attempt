@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 
@@ -438,7 +439,8 @@ enum ExerciseLibraryStrings {
             recordsSection, recordsNone, recordsNoWorkingSets, recordsError,
             recordsRepMax(5), recordsMore, recordsSourceHint,
             recordsMoreExpanded, recordsMoreCollapsed,
-            e1rmSection, e1rmNone,
+            e1rmSection, e1rmNone, e1rmValue, e1rmError,
+            e1rmProvenance("Epley", days: 90),
             detailErrorHeadline, detailErrorMessage, detailMissingHeadline, detailMissingMessage,
             createAction, editAction, formCreateTitle, formEditTitle, formSection,
             formName, formNamePrompt, formNameRequired, formMovement, formEquipment, formBar,
@@ -452,10 +454,16 @@ enum ExerciseLibraryStrings {
             + ExerciseOrigin.allCases.map(label(for:))
             + Laterality.allCases.map(label(for:))
             + BarType.allCases.map(label(for:))
+            + E1RMFormulaID.allCases.map(name(for:))
+            + absences.map { e1rmAbsence($0, days: 90) }
     }
 
     /// Binds a key to this module's catalogue.
-    private static func resource(_ key: String.LocalizationValue) -> LocalizedStringResource {
+    ///
+    /// Internal rather than private so the e1RM copy can live in its own file — this enum had
+    /// outgrown SwiftLint's file ceiling. It stays the only way a key is bound, and a string
+    /// literal still belongs in one of this type's files and nowhere else.
+    static func resource(_ key: String.LocalizationValue) -> LocalizedStringResource {
         LocalizedStringResource(key, bundle: .atURL(Bundle.module.bundleURL))
     }
 }

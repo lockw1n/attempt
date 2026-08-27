@@ -43,6 +43,85 @@ public struct DatedRepMax: Sendable, Hashable {
     }
 }
 
+/// Why there is no estimated one-rep maximum (`FR-1.7.1`, `FR-1.13.3`).
+///
+/// **Three reasons, and only one of them is "nothing has been logged".** The other two are the ones
+/// `FR-1.13.3` exists for: the lifter did log sets and the number is still absent, and a screen that
+/// says "log a set and an estimate appears here" over a twelve-rep set is telling them something
+/// they can see is untrue.
+///
+/// ``refused(_:)`` carries `PowerliftingCore`'s own vocabulary rather than restating it, so a guard
+/// added to `E1RMCalculator` cannot be one this layer has no sentence for.
+public enum EstimateAbsence: Sendable, Hashable {
+    /// Nothing at all has ever been logged against this exercise.
+    case noSetsLogged
+
+    /// Sets exist, but none inside the lookback window said anything about a maximum — either none
+    /// falls inside it, or every one that does was turned away without a reason worth naming.
+    case noneInWindow
+
+    /// The nearest miss among the in-window sets, and why it missed. See `E1RMRefusal`'s ordering.
+    case refused(E1RMRefusal)
+}
+
+/// `FR-1.7.1`'s answer for one exercise: the estimate, or the reason there is none.
+///
+/// **Exactly one of ``record`` and ``absence`` is non-`nil`.** A number with no explanation and an
+/// explanation with no number are the two states a screen has to draw, and pairing two independent
+/// optionals would add two it cannot.
+///
+/// ``formula`` and ``lookback`` travel with it because the number means nothing without them: the
+/// same sets estimate differently under Brzycki, and "no set in the window" is a different sentence
+/// at thirty days than at ninety.
+public struct EstimatedMax: Sendable, Hashable {
+    /// The number, or the reason there is none — never both and never neither.
+    public enum Content: Sendable, Hashable {
+        /// The heaviest estimate any in-window set produced.
+        case record(DatedRecord)
+
+        /// Why none did.
+        case absence(EstimateAbsence)
+    }
+
+    /// Which of the two this is. A screen switches on it rather than testing two optionals.
+    public let content: Content
+
+    /// The formula it was produced under (`FR-1.7.2`).
+    public let formula: E1RMFormulaID
+
+    /// The window it was produced over (`FR-1.7.1`).
+    public let lookback: E1RMLookback
+
+    /// The estimate, or `nil`.
+    public var record: DatedRecord? {
+        guard case .record(let record) = content else { return nil }
+        return record
+    }
+
+    /// Why there is none, or `nil` when there is one.
+    public var absence: EstimateAbsence? {
+        guard case .absence(let absence) = content else { return nil }
+        return absence
+    }
+
+    /// An estimate.
+    public init(record: DatedRecord, formula: E1RMFormulaID, lookback: E1RMLookback) {
+        self.init(content: .record(record), formula: formula, lookback: lookback)
+    }
+
+    /// The absence of one.
+    public init(absence: EstimateAbsence, formula: E1RMFormulaID, lookback: E1RMLookback) {
+        self.init(content: .absence(absence), formula: formula, lookback: lookback)
+    }
+
+    /// Either, as its content.
+    public init(content: Content, formula: E1RMFormulaID, lookback: E1RMLookback) {
+        self.content = content
+        self.formula = formula
+        self.lookback = lookback
+    }
+}
+
 /// Everything one recompute of one exercise produced (`FR-1.6.1`, `FR-1.7.1`).
 ///
 /// **The two halves have different lifetimes, which is why they are usually read apart.** The rep
@@ -50,6 +129,10 @@ public struct DatedRepMax: Sendable, Hashable {
 /// time because it depends on a setting a version cannot carry (`CachedDerivedEntity`). They arrive
 /// together only here, from the one walk that produced both — see
 /// ``PersonalRecordRecomputer/recompute(forExerciseID:)``.
+///
+/// **The halves are also computed over different sets.** A rep max is all-time (`FR-1.6.1`); an
+/// estimate reads only the lookback window (`FR-1.7.1`), so an exercise can hold a 5RM from last
+/// year and no current estimate at all.
 public struct ExerciseRecords: Sendable, Hashable {
     /// The exercise these belong to. Records are never compared across exercises.
     public let exerciseID: UUID
@@ -58,24 +141,20 @@ public struct ExerciseRecords: Sendable, Hashable {
     /// present at zero — `Weight` is signed, so zero is a real load.
     public let repMaxes: [DatedRepMax]
 
-    /// The heaviest estimate any set produced under ``formula``, or `nil` when none did.
-    public let bestE1RM: DatedRecord?
+    /// The current estimated one-rep maximum, or why there is none.
+    public let estimate: EstimatedMax
 
-    /// The formula ``bestE1RM`` was produced under. Carried because the number means nothing without
-    /// it and nothing else on this value records which one was in force.
-    public let formula: E1RMFormulaID
+    /// The estimate's record alone, for a caller that has already established there is one.
+    public var bestE1RM: DatedRecord? { estimate.record }
+
+    /// The formula the estimate was produced under.
+    public var formula: E1RMFormulaID { estimate.formula }
 
     /// Creates one exercise's records.
-    public init(
-        exerciseID: UUID,
-        repMaxes: [DatedRepMax],
-        bestE1RM: DatedRecord?,
-        formula: E1RMFormulaID
-    ) {
+    public init(exerciseID: UUID, repMaxes: [DatedRepMax], estimate: EstimatedMax) {
         self.exerciseID = exerciseID
         self.repMaxes = repMaxes
-        self.bestE1RM = bestE1RM
-        self.formula = formula
+        self.estimate = estimate
     }
 
     /// The N-rep max for `reps`, or `nil` when no set reached that many.

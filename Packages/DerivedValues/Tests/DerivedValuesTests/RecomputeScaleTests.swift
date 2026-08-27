@@ -43,7 +43,7 @@ struct RecomputeScaleTests {
     func fifteenThousandSets() async throws {
         let (log, exerciseID) = try await hugeHistory()
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
         let logged = try await log.repositories.workouts.sets(
             forExerciseID: exerciseID, includingDeleted: false)
         #expect(logged.count == Self.setCount)
@@ -71,11 +71,11 @@ struct RecomputeScaleTests {
     func aCurrentCacheSkipsTheWalk() async throws {
         let (log, exerciseID) = try await hugeHistory()
         let seeding = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
         try await seeding.recompute(forExerciseID: exerciseID)
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let reader = PersonalRecordRecomputer(
-            workouts: counting, cache: log.repositories.personalRecords)
+            workouts: counting, cache: log.repositories.personalRecords, now: { fixtureNow })
 
         let read = try await reader.repMaxes(forExerciseID: exerciseID)
 

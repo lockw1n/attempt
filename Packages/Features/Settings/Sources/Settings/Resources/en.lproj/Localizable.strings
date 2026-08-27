@@ -15,9 +15,22 @@
 "settings.landing.load-error.title" = "Settings unavailable";
 "settings.landing.load-error.retry" = "Try again";
 
+/* FR-1.7.2: the e1RM formula. Five of the six names are their authors' and are not translated in
+   any locale; "RPE-based" is the one that describes rather than names, so it is the one that would
+   be. The footnote says what changing it does, because FR-1.7.3 makes it retroactive and a lifter
+   whose numbers all moved is owed a reason. */
+"settings.landing.estimator.title" = "Estimated 1RM";
+"settings.landing.estimator.picker" = "Formula";
+"settings.landing.estimator.detail" = "Changing the formula recalculates every estimate, including past ones.";
+"settings.landing.estimator.epley" = "Epley";
+"settings.landing.estimator.brzycki" = "Brzycki";
+"settings.landing.estimator.lombardi" = "Lombardi";
+"settings.landing.estimator.oconner" = "O'Conner";
+"settings.landing.estimator.wathan" = "Wathan";
+"settings.landing.estimator.rpebased" = "RPE-based";
+
 /* Scaffolding, deleted with the read-outs it labels when the full preferences surface lands. */
 "settings.landing.scaffold.title" = "Not built yet";
-"settings.landing.scaffold.estimator" = "Estimator";
 "settings.landing.scaffold.appearance" = "Appearance";
 
 /* FR-1.10.3: the way into the gyms. The screen behind it is the logging module's — one screen for

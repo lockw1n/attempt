@@ -1,4 +1,5 @@
 import AppNavigation
+import DerivedValues
 import DesignSystem
 import PowerliftingCore
 import RepositoryInterface
@@ -18,8 +19,13 @@ public struct SettingsLandingView: View {
     @State private var state: SettingsLandingState
 
     /// Builds the screen over the repository its state reads and writes through.
-    public init(repository: any SettingsRepository) {
-        _state = State(initialValue: SettingsLandingState(repository: repository))
+    ///
+    /// - Parameters:
+    ///   - repository: Where the settings row lives.
+    ///   - records: The app's one recompute actor, told when the formula moves (`FR-1.7.3`).
+    public init(repository: any SettingsRepository, records: PersonalRecordRecomputer) {
+        _state = State(
+            initialValue: SettingsLandingState(repository: repository, records: records))
     }
 
     /// The screen's three phases: in flight, loaded, failed.
@@ -102,8 +108,34 @@ public struct SettingsLandingView: View {
                 .pickerStyle(.segmented)
             }
 
+            GroupedSection(Text(SettingsStrings.estimatorTitle)) {
+                HStack {
+                    Text(SettingsStrings.estimatorPicker)
+                        .font(Typography.body.font)
+                        .foregroundStyle(ColorToken.textSecondary)
+                    Spacer(minLength: Spacing.sm.points)
+                    Picker(selection: formulaSelection) {
+                        ForEach(E1RMFormulaID.allCases, id: \.self) { formula in
+                            Text(SettingsStrings.formulaName(for: formula)).tag(formula)
+                        }
+                    } label: {
+                        Text(SettingsStrings.estimatorPicker)
+                    }
+                    // Hidden rather than absent: the menu draws only its selection, so without the
+                    // row label beside it the control reads as a bare surname — measured in the
+                    // simulator. The picker keeps the same label for VoiceOver, which is what
+                    // `.labelsHidden()` leaves behind.
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                }
+                .frame(minHeight: TouchTarget.standard.points)
+                Text(SettingsStrings.estimatorDetail)
+                    .font(Typography.caption.font)
+                    .foregroundStyle(ColorToken.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             GroupedSection(Text(SettingsStrings.scaffoldTitle)) {
-                row(SettingsStrings.scaffoldEstimator, settings.e1RMFormula.rawValue)
                 row(SettingsStrings.scaffoldAppearance, settings.theme.rawValue)
             }
         }
@@ -151,6 +183,23 @@ public struct SettingsLandingView: View {
                     .foregroundStyle(ColorToken.textTertiary)
             }
         }
+    }
+
+    /// `FR-1.7.2`'s formula, on ``unitSelection``'s shape.
+    ///
+    /// **A menu rather than a segmented control**, which the unit picker is: six names do not fit
+    /// across a phone at any Dynamic Type size, and five of them are surnames a lifter reads rather
+    /// than scans.
+    private var formulaSelection: Binding<E1RMFormulaID> {
+        Binding(
+            get: {
+                guard case .loaded(let settings) = state.phase else { return .defaultFormula }
+                return settings.e1RMFormula
+            },
+            set: { formula in
+                Task { await state.setE1RMFormula(formula) }
+            }
+        )
     }
 
     /// The picker's binding: reads the loaded row, writes through the state's one mutation.

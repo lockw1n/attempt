@@ -43,7 +43,7 @@ struct PersonalRecordRecomputerTests {
         let exerciseID = try await log.exercise()
         try await log.session(of: exerciseID, on: weeksAgo(6), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
 
         let records = try await recomputer.recompute(forExerciseID: exerciseID)
 
@@ -62,7 +62,7 @@ struct PersonalRecordRecomputerTests {
         let logged = try await log.repositories.workouts.sets(
             forEntryID: entryID, includingDeleted: false)
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
 
         let records = try await recomputer.recompute(forExerciseID: exerciseID)
 
@@ -87,7 +87,7 @@ struct PersonalRecordRecomputerTests {
         let readable = log.setEntry(entryID: entryID, order: 1, on: weeksAgo(2), working(110_000, 5))
         try await log.repositories.workouts.save(readable)
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
 
         let records = try await recomputer.recompute(forExerciseID: exerciseID)
 
@@ -138,11 +138,13 @@ struct PersonalRecordRecomputerTests {
         let epley = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
             cache: log.repositories.personalRecords,
-            formula: .epley)
+            formula: .epley,
+            now: { fixtureNow })
         let brzycki = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
             cache: log.repositories.personalRecords,
-            formula: .brzycki)
+            formula: .brzycki,
+            now: { fixtureNow })
 
         let underEpley = try await epley.recompute(forExerciseID: exerciseID)
         let underBrzycki = try await brzycki.recompute(forExerciseID: exerciseID)
@@ -159,7 +161,7 @@ struct PersonalRecordRecomputerTests {
         try await fixture.recomputer.recompute(forExerciseID: fixture.exerciseID)
         let counting = CountingWorkouts(wrapped: fixture.log.repositories.workouts)
         let reader = PersonalRecordRecomputer(
-            workouts: counting, cache: fixture.log.repositories.personalRecords)
+            workouts: counting, cache: fixture.log.repositories.personalRecords, now: { fixtureNow })
 
         let read = try await reader.repMaxes(forExerciseID: fixture.exerciseID)
 
@@ -269,7 +271,7 @@ struct PersonalRecordRecomputerTests {
         try await log.session(of: bench, on: weeksAgo(3), sets: [working(70_000, 5)])
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let recomputer = PersonalRecordRecomputer(
-            workouts: counting, cache: log.repositories.personalRecords)
+            workouts: counting, cache: log.repositories.personalRecords, now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: bench)
         let benchBefore = try await log.repositories.personalRecords.personalRecords(
             forExerciseID: bench, includingDeleted: false)
@@ -321,7 +323,7 @@ struct PersonalRecordRecomputerTests {
             of: squat, on: weeksAgo(1), sets: [working(100_000, 5)])
         try await log.session(of: bench, on: weeksAgo(1), sets: [working(70_000, 5)])
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: squat)
         let entry = try #require(
             try await log.repositories.workouts.entry(id: entryID, includingDeleted: false))
@@ -379,7 +381,7 @@ func oneSession(sets: [LoggedSet]) async throws -> Fixture {
         exerciseID: exerciseID,
         entryID: entryID,
         recomputer: PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords))
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow }))
 }
 
 /// What the pipeline announces, and to whom (`TR-1.5`).

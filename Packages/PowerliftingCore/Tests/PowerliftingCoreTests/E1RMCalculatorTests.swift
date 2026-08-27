@@ -214,3 +214,71 @@ struct E1RMCalculatorRPETests {
         #expect(calculator.estimate(for: threeReps) == Weight(grams: 200_000))
     }
 }
+
+/// `TR-0.2.5`'s refusals, reported rather than merely applied — `FR-1.13.3`'s raw material.
+///
+/// The point of the type is that a caller explaining a blank reads the *same* chain
+/// ``E1RMCalculator/estimate(for:)`` applies, so every test here pairs the reported reason with the
+/// estimate being absent for it.
+@Suite("E1RM calculator — the reported reason")
+struct E1RMOutcomeTests {
+    private let calculator = E1RMCalculator(.epley)
+
+    @Test("An accepted set reports its estimate rather than a reason")
+    func anAcceptedSetReportsItsEstimate() throws {
+        #expect(calculator.outcome(for: try anchorSet()) == .estimate(Weight(grams: 116_667)))
+    }
+
+    @Test("A warmup reports the warmup guard")
+    func aWarmupReportsItself() throws {
+        let warmup = try #require(
+            SetRecord(weight: Weight(grams: 100_000), reps: 5, isWarmup: true, isCompleted: true))
+        #expect(calculator.outcome(for: warmup) == .refused(.warmup))
+        #expect(calculator.estimate(for: warmup) == nil)
+    }
+
+    @Test("An incomplete set reports the completion guard")
+    func anIncompleteSetReportsItself() throws {
+        let failed = try #require(
+            SetRecord(weight: Weight(grams: 100_000), reps: 5, isWarmup: false, isCompleted: false))
+        #expect(calculator.outcome(for: failed) == .refused(.incomplete))
+    }
+
+    @Test("Assisted work reports the sign guard")
+    func assistedWorkReportsItself() throws {
+        let assisted = try workingSet(Weight(grams: -20_000), reps: 5)
+        #expect(calculator.outcome(for: assisted) == .refused(.assisted))
+    }
+
+    @Test("A rep count past the range reports the range guard")
+    func tooManyRepsReportsItself() throws {
+        let twelve = try workingSet(Weight(grams: 100_000), reps: 12)
+        #expect(calculator.outcome(for: twelve) == .refused(.repsOutOfRange))
+    }
+
+    /// The distinction the type exists for: the calculator asked, and the *formula* had nothing to
+    /// say. Reported as a guard it would be a refusal the calculator never made.
+    @Test("A formula that declines is not reported as a guard")
+    func aDecliningFormulaReportsItself() throws {
+        let rpe = E1RMCalculator(formula: RPEBased(table: try fixtureChart()))
+        let unrated = try workingSet(Weight(grams: 100_000), reps: 2)
+        #expect(rpe.outcome(for: unrated) == .refused(.formulaDeclined))
+    }
+
+    /// **The first guard that stopped it, not the last one it would have failed.** An assisted
+    /// twelve-rep set fails two, and reporting the rep range would tell the lifter to do fewer reps
+    /// on work that has no estimate at any rep count.
+    @Test("A set failing two guards reports the first")
+    func theFirstGuardWins() throws {
+        let assistedAndLong = try workingSet(Weight(grams: -20_000), reps: 12)
+        #expect(calculator.outcome(for: assistedAndLong) == .refused(.assisted))
+    }
+
+    /// The ordering is what "nearest miss" means to a caller choosing between several refusals.
+    @Test("The refusals are ordered by how far the set got")
+    func theRefusalsAreOrderedByProgress() {
+        #expect(
+            E1RMRefusal.allCases.sorted()
+                == [.warmup, .incomplete, .assisted, .repsOutOfRange, .formulaDeclined])
+    }
+}

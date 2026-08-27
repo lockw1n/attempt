@@ -155,6 +155,23 @@ struct AppDependencies {
         _ = try? await SeedImporter(exercises: repositories.exercises).importBundledCatalogue()
     }
 
+    /// Puts the stored e1RM formula into the recompute pipeline (`FR-1.7.2`, `FR-1.7.3`).
+    ///
+    /// **The picker writes the column and nothing reads it back.** `PersonalRecordRecomputer` holds
+    /// the formula estimates are produced under and starts every launch at
+    /// `E1RMFormulaID.defaultFormula`, so without this a formula chosen in Settings survives the
+    /// write and not the relaunch — the row would say Brzycki and every screen would show Epley.
+    ///
+    /// **A failure is swallowed, on `importSeedCatalogue()`'s rule**: the store's own read is what
+    /// failed, Settings will report it on the screen that owns it, and the fallback is the default
+    /// formula rather than no estimates at all.
+    func adoptStoredPreferences() async {
+        guard case .open(let repositories, let stores) = state,
+            let settings = try? await repositories.settings.settings()
+        else { return }
+        await stores.records.formulaDidChange(to: settings.e1RMFormula)
+    }
+
     /// An empty store that is never written to disk — what a preview wants, and the reason
     /// ``init(location:)`` takes a location at all.
     static var preview: AppDependencies { AppDependencies(location: .inMemory) }

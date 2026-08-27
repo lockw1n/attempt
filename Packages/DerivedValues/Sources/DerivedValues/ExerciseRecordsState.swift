@@ -18,10 +18,11 @@ import RepositoryInterface
 /// a setting no cache can carry. A screen showing only the numbers loads only the first — ``load()``
 /// is for a screen showing all of it.
 ///
-/// **``observeChanges()`` is what makes it a subscription rather than a snapshot.** It runs until
-/// cancelled, so it belongs in a `.task` on the screen; a change to *this* exercise reloads all of
-/// it, and a settings change reloads the estimate alone — a rep max reads no setting, so nothing
-/// a picker does can move one.
+/// **``observeChanges(includingRecords:includingEstimate:)`` is what makes it a subscription rather
+/// than a snapshot.** It runs until cancelled, so it belongs in a `.task` on the screen; a change to
+/// *this* exercise reloads all of it, and a settings change reloads the estimate alone — a rep max
+/// reads no setting, so nothing a picker does can move one. Each half can be declined by a screen
+/// that does not draw it.
 @MainActor
 @Observable
 public final class ExerciseRecordsState {
@@ -29,8 +30,12 @@ public final class ExerciseRecordsState {
     /// holds none — ``hasLoaded`` is what separates those.
     public private(set) var repMaxes: [DatedRepMax] = []
 
-    /// The best estimated one-rep maximum, or `nil` when no set yielded one.
-    public private(set) var estimatedMax: DatedRecord?
+    /// `FR-1.7.1`'s estimate — the number, or the reason there is none. `nil` before
+    /// ``loadEstimate()`` has ever answered, which is the third thing a screen says.
+    public private(set) var estimate: EstimatedMax?
+
+    /// The estimate's record alone, for a caller with no interest in why it is absent.
+    public var estimatedMax: DatedRecord? { estimate?.record }
 
     /// The session each record's source set was performed in, keyed on the set — `FR-1.6.2`'s link.
     ///
@@ -162,7 +167,7 @@ public final class ExerciseRecordsState {
         do {
             let loaded = try await recomputer.estimatedMax(forExerciseID: exerciseID)
             guard isCurrent(token) else { return }
-            estimatedMax = loaded
+            estimate = loaded
             estimateFailure = nil
         } catch {
             guard isCurrent(token) else { return }
@@ -181,15 +186,22 @@ public final class ExerciseRecordsState {
     /// ``load()`` would walk the history for a number it never draws each time this exercise moved —
     /// and a settings change, which moves no rep max at all, would wake it for nothing.
     ///
-    /// - Parameter includingEstimate: Whether `FR-1.7.1`'s estimate is one of the values this
-    ///   subscriber draws. `false` narrows a change to the records and their links, and ignores a
-    ///   settings change outright.
-    public func observeChanges(includingEstimate: Bool = true) async {
+    /// - Parameters:
+    ///   - includingRecords: Whether `FR-1.6.1`'s rep maxes and their links are values this
+    ///     subscriber draws. `false` is for a screen showing only the estimate, which would
+    ///     otherwise re-read a cached list and re-resolve its links on every set logged here.
+    ///   - includingEstimate: Whether `FR-1.7.1`'s estimate is one of them. `false` narrows a change
+    ///     to the records and their links, and ignores a settings change outright.
+    public func observeChanges(
+        includingRecords: Bool = true, includingEstimate: Bool = true
+    ) async {
         for await change in await recomputer.changes() {
             switch change {
             case .exercise(let changed) where changed == exerciseID:
-                await loadRecords()
-                await loadSources()
+                if includingRecords {
+                    await loadRecords()
+                    await loadSources()
+                }
                 if includingEstimate { await loadEstimate() }
             case .everyExercise where includingEstimate:
                 await loadEstimate()

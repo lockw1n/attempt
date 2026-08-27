@@ -322,8 +322,8 @@ struct RootTabView: View {
     @ViewBuilder
     private var settingsRoot: some View {
         switch dependencies.state {
-        case .open(let repositories, _):
-            SettingsLandingView(repository: repositories.settings)
+        case .open(let repositories, let stores):
+            SettingsLandingView(repository: repositories.settings, records: stores.records)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

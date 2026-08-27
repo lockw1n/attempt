@@ -48,7 +48,7 @@ struct ExerciseRecordsStateTests {
         let exerciseID = try await log.exercise()
         try await log.session(of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         await state.loadRecords()
@@ -65,7 +65,7 @@ struct ExerciseRecordsStateTests {
         let log = TrainingLog()
         let exerciseID = try await log.exercise()
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         #expect(!state.hasLoaded)
@@ -84,7 +84,7 @@ struct ExerciseRecordsStateTests {
         let entryID = try await log.session(
             of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
         await state.loadRecords()
         #expect(state.repMaxes.first { $0.reps == 5 }?.record.weight == Weight(grams: 100_000))
@@ -119,7 +119,7 @@ struct ExerciseRecordsStateTests {
             of: bench, on: weeksAgo(2), sets: [working(70_000, 5)])
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let recomputer = PersonalRecordRecomputer(
-            workouts: counting, cache: log.repositories.personalRecords)
+            workouts: counting, cache: log.repositories.personalRecords, now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: squat, recomputer: recomputer)
         await state.loadRecords()
 
@@ -144,7 +144,8 @@ struct ExerciseRecordsStateTests {
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
             cache: log.repositories.personalRecords,
-            formula: .epley)
+            formula: .epley,
+            now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
         await state.load()
         let recordsBefore = state.repMaxes
@@ -172,7 +173,7 @@ struct ExerciseRecordsStateTests {
         let exerciseID = try await log.exercise()
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let recomputer = PersonalRecordRecomputer(
-            workouts: counting, cache: log.repositories.personalRecords)
+            workouts: counting, cache: log.repositories.personalRecords, now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         let watching = Task { await state.observeChanges() }
@@ -200,7 +201,7 @@ struct ExerciseRecordsStateTests {
             of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let gated = GatedWorkouts(wrapped: log.repositories.workouts)
         let recomputer = PersonalRecordRecomputer(
-            workouts: gated, cache: log.repositories.personalRecords)
+            workouts: gated, cache: log.repositories.personalRecords, now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         // The first read walks, sees 100 kg, and is held before it can assign.
@@ -235,7 +236,7 @@ struct ExerciseRecordsStateTests {
             of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let gated = GatedWorkouts(wrapped: log.repositories.workouts)
         let recomputer = PersonalRecordRecomputer(
-            workouts: gated, cache: log.repositories.personalRecords)
+            workouts: gated, cache: log.repositories.personalRecords, now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         // The first read walks, sees 100 kg, and is held before it can write.
@@ -271,7 +272,7 @@ struct ExerciseRecordsStateTests {
         let recent = try await log.session(
             of: exerciseID, on: weeksAgo(1), sets: [working(120_000, 5)])
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         await state.load()
@@ -299,7 +300,7 @@ struct ExerciseRecordsStateTests {
         let entryID = try await log.session(
             of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords)
+            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         await state.load()
@@ -336,7 +337,7 @@ struct ExerciseRecordsStateTests {
         try await log.session(of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let failure = RepositoryError.recordNotFound(id: UUID())
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: RefusingCache(failure: failure))
+            workouts: log.repositories.workouts, cache: RefusingCache(failure: failure), now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         await state.load()
@@ -352,7 +353,8 @@ struct ExerciseRecordsStateTests {
         let failure = RepositoryError.recordNotFound(id: UUID())
         let recomputer = PersonalRecordRecomputer(
             workouts: RefusingWorkouts(failure: failure),
-            cache: InMemoryRepositoryStack().personalRecords)
+            cache: InMemoryRepositoryStack().personalRecords,
+            now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: UUID(), recomputer: recomputer)
 
         await state.loadRecords()

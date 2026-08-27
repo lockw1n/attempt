@@ -21,16 +21,29 @@ import RepositoryInterface
 /// computes under, so the common read costs no walk at all (`G-1.5`: a stale value is invalidated by
 /// version mismatch, not by recomputing eagerly). ``estimatedMax(forExerciseID:)`` always walks,
 /// because an estimate depends on a formula setting and one scalar cannot carry a setting — which is
-/// also what makes `FR-1.7.3`'s retroactive recalculation free.
+/// also what makes `FR-1.7.3`'s retroactive recalculation free. They also read different sets: a rep
+/// max is all-time (`FR-1.6.1`) where an estimate reads only `FR-1.7.1`'s lookback window, so an
+/// exercise can hold a year-old 5RM and no current estimate at all — and when it holds neither, the
+/// estimate says which of those it is (``EstimateAbsence``).
 public actor PersonalRecordRecomputer {
     /// The sets to compute over, and the entries and sessions a record is dated from.
-    private let workouts: any WorkoutRepository
+    ///
+    /// Internal rather than private only so `FR-1.6.2`'s link resolution can live in its own file —
+    /// this type had outgrown SwiftLint's length ceiling. Nothing outside this module can see it.
+    let workouts: any WorkoutRepository
 
     /// The N-rep max cache (`TR-0.3.9`).
     private let cache: any PersonalRecordCacheRepository
 
     /// The formula estimates are produced under (`TR-0.3.8`, `FR-1.7.2`).
     private var formula: E1RMFormulaID
+
+    /// How far back an estimate looks (`FR-1.7.1`).
+    private var lookback: E1RMLookback
+
+    /// What "now" is when the window is measured — injectable, so a boundary can be asserted rather
+    /// than waited for.
+    private let now: @Sendable () -> Date
 
     /// The subscribers ``changes()`` handed a stream to, keyed by a token their termination carries.
     private var subscribers: [UUID: AsyncStream<RecordChange>.Continuation] = [:]
@@ -42,10 +55,9 @@ public actor PersonalRecordRecomputer {
     /// exercise interleave at their `await` points, so the row is written by whichever *finishes*
     /// last — and measured, the one that finishes last is the one holding the older sets. A counter
     /// rather than a lock, because what is missing is not exclusion but a way for a call to know its
-    /// own work has been superseded; a lock would serialise two walks that need not both happen.
-    ///
-    /// One entry per exercise ever recomputed in this process, and never removed: an exercise is a
-    /// catalogue row, so the map is bounded by the catalogue rather than by the training history.
+    /// own work has been superseded; a lock would serialise two walks that need not both happen. One
+    /// entry per exercise ever recomputed and never removed: an exercise is a catalogue row, so the
+    /// map is bounded by the catalogue rather than by the training history.
     private var writeGenerations: [UUID: Int] = [:]
 
     /// Builds the recomputer over the two repositories it reads and writes.
@@ -54,14 +66,20 @@ public actor PersonalRecordRecomputer {
     ///   - workouts: Sessions, their entries and their sets.
     ///   - cache: Where the N-rep maxes are stored between recomputes.
     ///   - formula: The formula estimates start under, until ``formulaDidChange(to:)`` moves it.
+    ///   - lookback: The window estimates read, until ``lookbackDidChange(to:)`` moves it.
+    ///   - now: What the window is measured back from.
     public init(
         workouts: any WorkoutRepository,
         cache: any PersonalRecordCacheRepository,
-        formula: E1RMFormulaID = .defaultFormula
+        formula: E1RMFormulaID = .defaultFormula,
+        lookback: E1RMLookback = .default,
+        now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.workouts = workouts
         self.cache = cache
         self.formula = formula
+        self.lookback = lookback
+        self.now = now
     }
 
     // MARK: - Publication
@@ -107,17 +125,17 @@ public actor PersonalRecordRecomputer {
     /// One exercise's N-rep maxes, from the cache when it is current (`FR-1.6.1`, `G-1.5`).
     ///
     /// **An empty cache is recomputed**, because a table cannot tell "nothing has computed this yet"
-    /// from "this exercise holds no records". The walk it costs is the cheap one — an exercise with
-    /// no sets has no entries to fetch them through.
+    /// from "this exercise holds no records"; the walk it costs is the cheap one, since an exercise
+    /// with no sets has no entries to fetch them through.
     ///
-    /// **A miss recomputes but announces nothing.** Publication belongs to the triggers below.
-    /// A read that published would be told to read again by every subscriber it woke, and an
-    /// exercise holding no records caches nothing to stop the next pass — so what looks like a slow
-    /// path is an unbounded loop, and only for the exercises that hold no records at all.
+    /// **A miss recomputes but announces nothing.** Publication belongs to the triggers below. A
+    /// read that published would be told to read again by every subscriber it woke, and an exercise
+    /// holding no records caches nothing to stop the next pass — so what looks like a slow path is an
+    /// unbounded loop, for exactly the exercises that hold no records.
     ///
-    /// **Every row has to match, not just one.** A partially-written cache — a bumped version
-    /// landing mid-write, or a restore of a backup taken under older rules — would otherwise be read
-    /// as current on the strength of whichever row was checked.
+    /// **Every row has to match, not just one.** A partially-written cache — a bumped version landing
+    /// mid-write, or a restore of a backup taken under older rules — would otherwise read as current
+    /// on the strength of whichever row was checked.
     ///
     /// - Parameter exerciseID: The exercise.
     /// - Returns: The records, ascending by rep count.
@@ -141,25 +159,25 @@ public actor PersonalRecordRecomputer {
         }
     }
 
-    /// One exercise's best estimated one-rep maximum under the formula in force (`FR-1.7.1`).
+    /// One exercise's best estimate, under the formula and window in force (`FR-1.7.1`).
     ///
     /// Never cached and never read from the cache — see this type's note, and
     /// `PersonalRecordCacheEntity`, which says why the column does not exist.
     ///
     /// - Parameter exerciseID: The exercise.
-    /// - Returns: The estimate, or `nil` when no set yielded one.
+    /// - Returns: The estimate, or why there is none — see ``EstimatedMax``.
     /// - Throws: Whatever the repository throws reading the exercise's sets.
-    public func estimatedMax(forExerciseID exerciseID: UUID) async throws -> DatedRecord? {
-        try await recomputed(exerciseID, writingCache: false).bestE1RM
+    public func estimatedMax(forExerciseID exerciseID: UUID) async throws -> EstimatedMax {
+        try await recomputed(exerciseID, writingCache: false).estimate
     }
 
     /// `FR-1.6.5`'s global feed: the most recent PR-setting sets, across every exercise.
     ///
-    /// **The cache is read and nothing is recomputed** — the one read here that cannot fall back to
-    /// a walk, and deliberately so. A miss on one exercise is answered by recomputing it because a
-    /// walk of one exercise's sets is what `NFR-1.6` budgets; a miss here would be a walk of the
-    /// whole catalogue on the screen the app launches into. What a row this build did not compute
-    /// costs the feed is written on ``RecentRecord/feed(from:limit:)``.
+    /// **The cache is read and nothing is recomputed** — the one read here that cannot fall back to a
+    /// walk, deliberately. A miss on one exercise is answered by recomputing it because a walk of one
+    /// exercise's sets is what `NFR-1.6` budgets; a miss here would be a walk of the whole catalogue
+    /// on the screen the app launches into. What a row this build did not compute costs the feed is
+    /// written on ``RecentRecord/feed(from:limit:)``.
     ///
     /// - Parameter limit: How many entries to return, counted in PR-setting *sets* rather than in
     ///   cached rows.
@@ -173,40 +191,8 @@ public actor PersonalRecordRecomputer {
     /// The formula estimates are currently produced under.
     public func formulaInForce() -> E1RMFormulaID { formula }
 
-    /// The session each of `setIDs` was performed in — `FR-1.6.2`'s "link to the source set".
-    ///
-    /// **The cache cannot answer this and deliberately does not try.** `PersonalRecordCacheEntity`
-    /// stores the set, not the session, because the session is a *join* and a cached copy of one is a
-    /// second source of truth for where a set was performed (`G-1.4`); a set moved to another entry
-    /// would leave the stored answer pointing at a workout the set is no longer in.
-    ///
-    /// **A walk of the exercise's sets, because a set is not readable by id.** `WorkoutRepository`
-    /// reads sets by entry or by exercise and never by their own identifier, so the exercise's list is
-    /// what turns a record's `sourceSetID` into the entry that names its session. Only the entries
-    /// actually holding a record are then resolved — at most eleven, whatever the history is, which is
-    /// ``sessionDates(forEntryIDs:)``'s bound for its reason.
-    ///
-    /// **Best-effort, and a set that will not resolve is simply absent** rather than a failure or a
-    /// sentinel: what is lost is a link on one row, and a screen that reported a read failure over a
-    /// record it is successfully displaying would name the wrong thing as broken.
-    ///
-    /// - Parameters:
-    ///   - setIDs: The sets to locate — a record's ``DatedRecord/sourceSetID``.
-    ///   - exerciseID: The exercise they were logged against.
-    /// - Returns: The session behind each set that resolves, keyed on the set.
-    public func sessionIDs(
-        forSetIDs setIDs: Set<UUID>, inExerciseID exerciseID: UUID
-    ) async -> [UUID: UUID] {
-        guard !setIDs.isEmpty,
-            let stored = try? await workouts.sets(
-                forExerciseID: exerciseID, includingDeleted: false)
-        else { return [:] }
-        let holding = stored.filter { setIDs.contains($0.id) }
-        let sessions = await sessionIDs(forEntryIDs: Set(holding.map(\.entryID)))
-        return holding.reduce(into: [:]) { found, set in
-            found[set.id] = sessions[set.entryID]
-        }
-    }
+    /// The window estimates are currently read over.
+    public func lookbackInForce() -> E1RMLookback { lookback }
 
     // MARK: - Triggers
 
@@ -287,6 +273,19 @@ public actor PersonalRecordRecomputer {
         publish(.everyExercise)
     }
 
+    /// The other settings trigger: the lookback window changed (`FR-1.7.1`).
+    ///
+    /// ``formulaDidChange(to:)``'s shape exactly, and for its reasons — a window moves no rep max, so
+    /// nothing is invalidated and every subscriber is told to read the estimate again. One already in
+    /// force publishes nothing.
+    ///
+    /// - Parameter lookback: The window now chosen.
+    public func lookbackDidChange(to lookback: E1RMLookback) {
+        guard lookback != self.lookback else { return }
+        self.lookback = lookback
+        publish(.everyExercise)
+    }
+
     // MARK: - The computation
 
     /// One walk, both calculators, and the cache written if asked.
@@ -306,20 +305,41 @@ public actor PersonalRecordRecomputer {
         let stored = try await workouts.sets(forExerciseID: exerciseID, includingDeleted: false)
         let analysed = stored.compactMap { set in (try? set.setRecord()).map { (set, $0) } }
 
-        let calculator = PersonalRecordCalculator(e1rm: E1RMCalculator(formula))
-        let computed = calculator.records(in: analysed.map(\.1))
+        let estimator = E1RMCalculator(formula)
+        let calculator = PersonalRecordCalculator(e1rm: estimator)
+
+        // All-time, per `FR-1.6.1`.
+        let computedRepMaxes = PersonalRecords.repRange.compactMap { reps in
+            calculator.repMax(forReps: reps, in: analysed.map(\.1))
+                .map { (reps: reps, record: $0) }
+        }
+        // `FR-1.7.1`'s window, and the filter preserves the repository's order — which is what keeps
+        // "ties resolve to the earlier set" meaning the same thing over the subsequence.
+        let window = stored.isEmpty ? [] : try await entryIDsInWindow(forExerciseID: exerciseID)
+        let inWindow = analysed.filter { window.contains($0.0.entryID) }
+        let computedE1RM = calculator.bestE1RM(in: inWindow.map(\.1))
 
         let holding =
-            computed.repMaxes.map { analysed[$0.record.setOffset].0 }
-            + (computed.bestE1RM.map { [analysed[$0.setOffset].0] } ?? [])
+            computedRepMaxes.map { analysed[$0.record.setOffset].0 }
+            + (computedE1RM.map { [inWindow[$0.setOffset].0] } ?? [])
         let dates = await sessionDates(forEntryIDs: Set(holding.map(\.entryID)))
 
-        let repMaxes = computed.repMaxes.map { repMax in
+        let repMaxes = computedRepMaxes.map { repMax in
             DatedRepMax(
                 reps: repMax.reps,
                 record: dated(repMax.record, over: analysed, using: dates))
         }
-        let bestE1RM = computed.bestE1RM.map { dated($0, over: analysed, using: dates) }
+        let estimate =
+            computedE1RM.map {
+                EstimatedMax(
+                    record: dated($0, over: inWindow, using: dates),
+                    formula: formula,
+                    lookback: lookback)
+            }
+            ?? EstimatedMax(
+                absence: absence(hasSets: !stored.isEmpty, inWindow: inWindow, under: estimator),
+                formula: formula,
+                lookback: lookback)
 
         // Refused rather than written where a newer recompute of this exercise has started since:
         // the value is still returned, because the caller asked for what *these* sets produce and
@@ -337,8 +357,53 @@ public actor PersonalRecordRecomputer {
                 })
         }
 
-        return ExerciseRecords(
-            exerciseID: exerciseID, repMaxes: repMaxes, bestE1RM: bestE1RM, formula: formula)
+        return ExerciseRecords(exerciseID: exerciseID, repMaxes: repMaxes, estimate: estimate)
+    }
+
+    /// The entries of this exercise that fall inside the lookback window (`FR-1.7.1`).
+    ///
+    /// **Read forwards from the sessions, not backwards from the sets**, and that is what bounds the
+    /// walk. Dating every set costs two reads per session the exercise was ever trained in, which is
+    /// unbounded in the history; one ranged read plus one entry read per session inside the window is
+    /// bounded by the *window*, so a ten-year history costs what a three-month one does.
+    ///
+    /// It also settles which date the window reads: the session's, the same one
+    /// ``DatedRecord/achievedAt`` reports. A filter on a set's own timestamps would pull a set
+    /// corrected today into the window on behalf of a workout performed last year.
+    ///
+    /// Deleted sessions and entries are excluded: a discarded workout is not current work.
+    private func entryIDsInWindow(forExerciseID exerciseID: UUID) async throws -> Set<UUID> {
+        let sessions = try await workouts.sessions(
+            in: lookback.range(from: now()), includingDeleted: false)
+        var entryIDs: Set<UUID> = []
+        for session in sessions {
+            let entries = try await workouts.entries(
+                forSessionID: session.id, includingDeleted: false)
+            for entry in entries where entry.exerciseID == exerciseID { entryIDs.insert(entry.id) }
+        }
+        return entryIDs
+    }
+
+    /// Why there is no estimate (`FR-1.13.3`).
+    ///
+    /// **The nearest miss, not the commonest one**: a lifter whose warmups sit beside one twelve-rep
+    /// working set is owed the sentence about the rep range. `E1RMRefusal`'s ordering is what
+    /// "nearest" means, and it lives there rather than here.
+    ///
+    /// - Parameters:
+    ///   - hasSets: Whether anything at all has been logged against the exercise.
+    ///   - inWindow: The in-window sets, none of which produced an estimate.
+    ///   - estimator: The calculator whose refusals these are — the same one that was asked.
+    private func absence(
+        hasSets: Bool, inWindow: [(SetEntry, SetRecord)], under estimator: E1RMCalculator
+    ) -> EstimateAbsence {
+        guard hasSets else { return .noSetsLogged }
+        let refusals = inWindow.compactMap { pair -> E1RMRefusal? in
+            guard case .refused(let why) = estimator.outcome(for: pair.1) else { return nil }
+            return why
+        }
+        guard let nearest = refusals.max() else { return .noneInWindow }
+        return .refused(nearest)
     }
 
     /// The record with the set at its offset resolved to an identity and a date.
@@ -386,21 +451,5 @@ public actor PersonalRecordRecomputer {
         let next = (writeGenerations[exerciseID] ?? 0) + 1
         writeGenerations[exerciseID] = next
         return next
-    }
-
-    /// The session each of `entryIDs` belongs to, for the ones that resolve.
-    ///
-    /// Deleted entries are read, and a row that will not resolve is absent, both for
-    /// ``sessionDates(forEntryIDs:)``'s reasons. The *session row* is not read at all: an entry names
-    /// its session in a column, so nothing here has to fetch it to know which one it is.
-    private func sessionIDs(forEntryIDs entryIDs: Set<UUID>) async -> [UUID: UUID] {
-        var sessions: [UUID: UUID] = [:]
-        for entryID in entryIDs {
-            guard let entry = try? await workouts.entry(id: entryID, includingDeleted: true) else {
-                continue
-            }
-            sessions[entryID] = entry.sessionID
-        }
-        return sessions
     }
 }

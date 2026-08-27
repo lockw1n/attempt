@@ -148,7 +148,14 @@ func working(_ grams: Int, _ reps: Int) -> LoggedSet {
     LoggedSet(grams: grams, reps: reps, isWarmup: false, isCompleted: true)
 }
 
-/// A fixed day, `weeks` before a fixed reference — no `Date.now`, so nothing here drifts by run.
+/// The day every fixture is dated back from, and what a recomputer here is told "now" is.
+///
+/// A fixed instant rather than `Date.now`, so nothing drifts by run — and injected rather than
+/// implied, because `FR-1.7.1`'s window is measured from it: left at the real clock, every fixture
+/// date would fall years outside the ninety days and every estimate would be absent.
+let fixtureNow = Date(timeIntervalSince1970: 1_700_000_000)
+
+/// A fixed day, `weeks` before ``fixtureNow``.
 func weeksAgo(_ weeks: Int) -> Date {
-    Date(timeIntervalSince1970: 1_700_000_000).addingTimeInterval(-Double(weeks) * 7 * 86_400)
+    fixtureNow.addingTimeInterval(-Double(weeks) * 7 * 86_400)
 }
