@@ -280,3 +280,24 @@
    every set was a warmup, a failed set or past ten reps is told why rather than told to repeat
    themselves. */
 "exerciselibrary.detail.records.no-working-sets" = "Personal records come from completed working sets of ten reps or fewer. None have been logged against this exercise yet.";
+
+/* FR-1.7.4: the estimate names its source. The hint is the estimate's own rather than the records'
+   — an estimate is computed from a set, where a record is one. */
+"exerciselibrary.detail.e1rm.source-hint" = "Shows the session the source set was logged in.";
+
+/* FR-1.7.5. It stands where the formula and window line stands for a computed number, because that
+   is exactly what it replaces: neither took part in this one. */
+"exerciselibrary.detail.e1rm.manual" = "Entered manually";
+
+/* The override's four commands. "Use computed value" rather than "Clear" or "Remove": what the tap
+   does is name where the number comes back from, and a lifter who has forgotten what they typed
+   should not have to work out what clearing it leaves behind. */
+"exerciselibrary.detail.e1rm.override.action" = "Set manually";
+"exerciselibrary.detail.e1rm.override.field" = "Manual 1RM";
+"exerciselibrary.detail.e1rm.override.save" = "Save";
+"exerciselibrary.detail.e1rm.override.cancel" = "Cancel";
+"exerciselibrary.detail.e1rm.override.revert" = "Use computed value";
+
+/* The write failed. Nothing was stored and the number on screen is unchanged, so the retry is
+   another tap at the same command. */
+"exerciselibrary.detail.e1rm.override.error" = "This manual estimate could not be saved.";

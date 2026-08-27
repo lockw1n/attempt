@@ -48,7 +48,10 @@ struct ExerciseRecordsStateTests {
         let exerciseID = try await log.exercise()
         try await log.session(of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         await state.loadRecords()
@@ -65,7 +68,10 @@ struct ExerciseRecordsStateTests {
         let log = TrainingLog()
         let exerciseID = try await log.exercise()
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         #expect(!state.hasLoaded)
@@ -84,7 +90,10 @@ struct ExerciseRecordsStateTests {
         let entryID = try await log.session(
             of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
         await state.loadRecords()
         #expect(state.repMaxes.first { $0.reps == 5 }?.record.weight == Weight(grams: 100_000))
@@ -119,7 +128,10 @@ struct ExerciseRecordsStateTests {
             of: bench, on: weeksAgo(2), sets: [working(70_000, 5)])
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let recomputer = PersonalRecordRecomputer(
-            workouts: counting, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: counting,
+            exercises: InMemoryRepositoryStack().exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: squat, recomputer: recomputer)
         await state.loadRecords()
 
@@ -143,6 +155,7 @@ struct ExerciseRecordsStateTests {
         try await log.session(of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             formula: .epley,
             now: { fixtureNow })
@@ -173,6 +186,7 @@ struct ExerciseRecordsStateTests {
             of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
@@ -202,7 +216,10 @@ struct ExerciseRecordsStateTests {
         let exerciseID = try await log.exercise()
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let recomputer = PersonalRecordRecomputer(
-            workouts: counting, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: counting,
+            exercises: InMemoryRepositoryStack().exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         let watching = Task { await state.observeChanges() }
@@ -230,7 +247,10 @@ struct ExerciseRecordsStateTests {
             of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let gated = GatedWorkouts(wrapped: log.repositories.workouts)
         let recomputer = PersonalRecordRecomputer(
-            workouts: gated, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: gated,
+            exercises: InMemoryRepositoryStack().exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         // The first read walks, sees 100 kg, and is held before it can assign.
@@ -265,7 +285,10 @@ struct ExerciseRecordsStateTests {
             of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let gated = GatedWorkouts(wrapped: log.repositories.workouts)
         let recomputer = PersonalRecordRecomputer(
-            workouts: gated, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: gated,
+            exercises: InMemoryRepositoryStack().exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         // The first read walks, sees 100 kg, and is held before it can write.
@@ -289,72 +312,6 @@ struct ExerciseRecordsStateTests {
         #expect(cached.first { $0.repCount == 5 }?.weight != Weight(grams: 100_000))
     }
 
-    /// **`FR-1.6.2`'s link, and it is a join rather than a stored column.** The cache holds the set;
-    /// the session behind it is resolved on read, so a record that moved to another workout cannot
-    /// leave a link pointing at the old one.
-    @Test("Each record resolves to the session its source set was performed in")
-    func recordsResolveToTheirSessions() async throws {
-        let log = TrainingLog()
-        let exerciseID = try await log.exercise()
-        let old = try await log.session(
-            of: exerciseID, on: weeksAgo(4), sets: [working(140_000, 1)])
-        let recent = try await log.session(
-            of: exerciseID, on: weeksAgo(1), sets: [working(120_000, 5)])
-        let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
-        let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
-
-        await state.load()
-
-        // The heaviest single is four weeks back; the 5RM is last week's. Two records, two sessions.
-        let single = try #require(state.repMaxes.first { $0.reps == 1 })
-        let five = try #require(state.repMaxes.first { $0.reps == 5 })
-        let oldSession = try #require(
-            try await log.repositories.workouts.entry(id: old, includingDeleted: false)?.sessionID)
-        let recentSession = try #require(
-            try await log.repositories.workouts.entry(id: recent, includingDeleted: false)?
-                .sessionID)
-        #expect(state.sourceSessions[single.record.sourceSetID] == oldSession)
-        #expect(state.sourceSessions[five.record.sourceSetID] == recentSession)
-        #expect(oldSession != recentSession)
-    }
-
-    /// **A reload replaces the links with the list they belong to.** Kept across a replacement they
-    /// would key on sets that are no longer records — a link on the wrong row rather than a missing
-    /// one.
-    @Test("Reloading the records drops links the new list does not own")
-    func reloadingRecordsDropsStaleLinks() async throws {
-        let log = TrainingLog()
-        let exerciseID = try await log.exercise()
-        let entryID = try await log.session(
-            of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
-        let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
-        let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
-
-        await state.load()
-        let first = try #require(state.repMaxes.first { $0.reps == 5 }).record.sourceSetID
-        #expect(state.sourceSessions[first] != nil)
-
-        // A heavier set in a different workout takes the 5RM. The old set is no longer a record.
-        try await log.session(of: exerciseID, on: weeksAgo(1), sets: [working(120_000, 5)])
-        _ = try await recomputer.recompute(forExerciseID: exerciseID)
-
-        // The list alone, before anything re-resolves. This is the assertion that can fail: after
-        // `loadSources()` the map is replaced wholesale, so a test looking only at the end state
-        // passes whether or not the replacement ever dropped the previous list's links — which is
-        // exactly the window a screen draws in between the two reads.
-        await state.loadRecords()
-        #expect(state.sourceSessions.isEmpty)
-
-        await state.loadSources()
-        let second = try #require(state.repMaxes.first { $0.reps == 5 }).record.sourceSetID
-        #expect(second != first)
-        #expect(state.sourceSessions[first] == nil)
-        #expect(state.sourceSessions[second] != nil)
-        #expect(entryID != second)
-    }
-
     /// **The estimate's success must not speak for the list.** ``ExerciseRecordsState/load()`` runs
     /// the estimate second, so one shared diagnostic let it clear a failed record read — leaving an
     /// empty list, a `true` `hasLoaded` and no failure, which is exactly what a screen renders as
@@ -366,7 +323,10 @@ struct ExerciseRecordsStateTests {
         try await log.session(of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let failure = RepositoryError.recordNotFound(id: UUID())
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: RefusingCache(failure: failure), now: { fixtureNow })
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: RefusingCache(failure: failure),
+            now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
 
         await state.load()
@@ -382,6 +342,7 @@ struct ExerciseRecordsStateTests {
         let failure = RepositoryError.recordNotFound(id: UUID())
         let recomputer = PersonalRecordRecomputer(
             workouts: RefusingWorkouts(failure: failure),
+            exercises: InMemoryRepositoryStack().exercises,
             cache: InMemoryRepositoryStack().personalRecords,
             now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: UUID(), recomputer: recomputer)

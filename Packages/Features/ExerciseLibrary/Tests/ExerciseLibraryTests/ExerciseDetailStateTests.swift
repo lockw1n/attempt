@@ -436,8 +436,8 @@ enum DetailFixtures {
         implementCount: 2,
         isCustom: true,
         isArchived: true,
-        notes: "Pins at the sticking point."
-    )
+        notes: "Pins at the sticking point.",
+        manualE1RM: nil)
 
     /// **Deliberately in no order any assertion expects**, for the reason
     /// `ExerciseListStateTests.Fixtures.catalogue` gives.

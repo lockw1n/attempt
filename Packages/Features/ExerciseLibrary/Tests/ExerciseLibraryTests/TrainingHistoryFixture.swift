@@ -51,6 +51,7 @@ final class TrainingHistory {
         let instant = now ?? day(0)
         return PersonalRecordRecomputer(
             workouts: workouts,
+            exercises: stack.exercises,
             cache: cache ?? stack.personalRecords,
             formula: formula,
             lookback: lookback,
@@ -216,8 +217,8 @@ enum Builder {
             implementCount: 1,
             isCustom: false,
             isArchived: false,
-            notes: ""
-        )
+            notes: "",
+            manualE1RM: nil)
     }
 
     /// A workout on `date`.

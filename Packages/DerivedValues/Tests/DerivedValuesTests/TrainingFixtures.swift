@@ -48,7 +48,8 @@ struct TrainingLog {
                 implementCount: 1,
                 isCustom: false,
                 isArchived: false,
-                notes: ""))
+                notes: "",
+                manualE1RM: nil))
         return id
     }
 

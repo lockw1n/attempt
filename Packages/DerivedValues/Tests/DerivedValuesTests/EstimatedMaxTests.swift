@@ -195,7 +195,10 @@ struct EstimatedMaxTests {
             of: exerciseID, on: weeksAgo(1), sets: [working(100_000, 5)])
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let subject = PersonalRecordRecomputer(
-            workouts: counting, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: counting,
+            exercises: InMemoryRepositoryStack().exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         await counting.reset()
 
         await subject.setDidChange(inEntryID: entryID)
@@ -213,7 +216,10 @@ struct EstimatedMaxTests {
         try await log.session(of: exerciseID, on: weeksAgo(1), sets: [working(100_000, 5)])
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let subject = PersonalRecordRecomputer(
-            workouts: counting, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: counting,
+            exercises: InMemoryRepositoryStack().exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         await counting.reset()
 
         let estimate = try await subject.estimatedMax(forExerciseID: exerciseID)
@@ -230,7 +236,10 @@ struct EstimatedMaxTests {
         try await log.session(of: exerciseID, on: weeksAgo(1), sets: [working(100_000, 5)])
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let subject = PersonalRecordRecomputer(
-            workouts: counting, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: counting,
+            exercises: InMemoryRepositoryStack().exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         await counting.reset()
 
         let repMaxes = try await subject.repMaxes(forExerciseID: exerciseID)
@@ -274,6 +283,7 @@ struct EstimatedMaxTests {
     ) async throws -> PersonalRecordRecomputer {
         PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             formula: formula,
             lookback: lookback,

@@ -48,7 +48,10 @@ struct RecentRecordsStateTests {
         try await log.session(of: squat, on: weeksAgo(4), sets: [working(140_000, 3)])
         try await log.session(of: bench, on: weeksAgo(1), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: squat)
         try await recomputer.recompute(forExerciseID: bench)
         return Trained(log: log, recomputer: recomputer, exercises: [squat, bench])
@@ -75,7 +78,10 @@ struct RecentRecordsStateTests {
     func nothingLoggedIsLoadedAndEmpty() async throws {
         let log = TrainingLog()
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         let state = RecentRecordsState(
             recomputer: recomputer, catalogue: log.repositories.exercises, limit: 10)
 
@@ -105,7 +111,10 @@ struct RecentRecordsStateTests {
     func anUnreadableCacheReports() async throws {
         let failure = RepositoryError.recordNotFound(id: UUID())
         let recomputer = PersonalRecordRecomputer(
-            workouts: InMemoryRepositoryStack().workouts, cache: RefusingCache(failure: failure), now: { fixtureNow })
+            workouts: InMemoryRepositoryStack().workouts,
+            exercises: InMemoryRepositoryStack().exercises,
+            cache: RefusingCache(failure: failure),
+            now: { fixtureNow })
         let state = RecentRecordsState(
             recomputer: recomputer, catalogue: InMemoryRepositoryStack().exercises, limit: 10)
 
@@ -167,7 +176,10 @@ struct RecentRecordsStateTests {
         try await log.session(of: bench, on: weeksAgo(1), sets: [working(100_000, 5)])
         let gated = GatedCache(wrapped: log.repositories.personalRecords)
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: gated, now: { fixtureNow })
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: gated,
+            now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: bench)
         let state = RecentRecordsState(
             recomputer: recomputer, catalogue: log.repositories.exercises, limit: 10)
@@ -331,7 +343,8 @@ struct RetiredCatalogue: ExerciseRepository {
             implementCount: 1,
             isCustom: false,
             isArchived: false,
-            notes: "")
+            notes: "",
+            manualE1RM: nil)
     }
 
     func exercises(includingDeleted: Bool) async throws -> [Exercise] {

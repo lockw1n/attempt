@@ -165,7 +165,10 @@ struct RecentRecordsAcrossExercisesTests {
     func theFeedIsChronologicalAcrossExercises() async throws {
         let (log, exercises) = try await trainedLog()
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         for exerciseID in exercises {
             try await recomputer.recompute(forExerciseID: exerciseID)
         }
@@ -183,7 +186,10 @@ struct RecentRecordsAcrossExercisesTests {
     func anUncomputedExerciseIsAbsent() async throws {
         let (log, exercises) = try await trainedLog()
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: exercises[0])
 
         let feed = try await recomputer.recentRecords(limit: 10)

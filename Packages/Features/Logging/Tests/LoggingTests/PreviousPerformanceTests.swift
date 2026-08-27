@@ -306,7 +306,9 @@ struct PreviousPerformanceTests {
             catalogue: repositories.exercises,
             settings: repositories.settings,
             records: PersonalRecordRecomputer(
-                workouts: unreadable, cache: repositories.personalRecords))
+                workouts: unreadable,
+                exercises: InMemoryRepositoryStack().exercises,
+                cache: repositories.personalRecords))
         let session = try #require(store.session)
         await failing.adopt(sessionID: session.id)
         await failing.loadExercises()

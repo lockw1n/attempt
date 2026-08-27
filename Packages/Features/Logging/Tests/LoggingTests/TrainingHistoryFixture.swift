@@ -45,7 +45,9 @@ struct TrainingHistory {
             writer: LoggedSetWriter(
                 repository: repositories.workouts,
                 records: PersonalRecordRecomputer(
-                    workouts: repositories.workouts, cache: repositories.personalRecords)),
+                    workouts: repositories.workouts,
+                    exercises: repositories.exercises,
+                    cache: repositories.personalRecords)),
             entries: entries,
             sets: sets
         )

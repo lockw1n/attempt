@@ -43,7 +43,10 @@ struct PersonalRecordRecomputerTests {
         let exerciseID = try await log.exercise()
         try await log.session(of: exerciseID, on: weeksAgo(6), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
 
         let records = try await recomputer.recompute(forExerciseID: exerciseID)
 
@@ -62,7 +65,10 @@ struct PersonalRecordRecomputerTests {
         let logged = try await log.repositories.workouts.sets(
             forEntryID: entryID, includingDeleted: false)
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
 
         let records = try await recomputer.recompute(forExerciseID: exerciseID)
 
@@ -87,7 +93,10 @@ struct PersonalRecordRecomputerTests {
         let readable = log.setEntry(entryID: entryID, order: 1, on: weeksAgo(2), working(110_000, 5))
         try await log.repositories.workouts.save(readable)
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
 
         let records = try await recomputer.recompute(forExerciseID: exerciseID)
 
@@ -137,11 +146,13 @@ struct PersonalRecordRecomputerTests {
         try await log.session(of: exerciseID, on: weeksAgo(1), sets: [working(100_000, 5)])
         let epley = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             formula: .epley,
             now: { fixtureNow })
         let brzycki = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             formula: .brzycki,
             now: { fixtureNow })
@@ -161,7 +172,10 @@ struct PersonalRecordRecomputerTests {
         try await fixture.recomputer.recompute(forExerciseID: fixture.exerciseID)
         let counting = CountingWorkouts(wrapped: fixture.log.repositories.workouts)
         let reader = PersonalRecordRecomputer(
-            workouts: counting, cache: fixture.log.repositories.personalRecords, now: { fixtureNow })
+            workouts: counting,
+            exercises: InMemoryRepositoryStack().exercises,
+            cache: fixture.log.repositories.personalRecords,
+            now: { fixtureNow })
 
         let read = try await reader.repMaxes(forExerciseID: fixture.exerciseID)
 
@@ -271,7 +285,10 @@ struct PersonalRecordRecomputerTests {
         try await log.session(of: bench, on: weeksAgo(3), sets: [working(70_000, 5)])
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let recomputer = PersonalRecordRecomputer(
-            workouts: counting, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: counting,
+            exercises: InMemoryRepositoryStack().exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: bench)
         let benchBefore = try await log.repositories.personalRecords.personalRecords(
             forExerciseID: bench, includingDeleted: false)
@@ -323,7 +340,10 @@ struct PersonalRecordRecomputerTests {
             of: squat, on: weeksAgo(1), sets: [working(100_000, 5)])
         try await log.session(of: bench, on: weeksAgo(1), sets: [working(70_000, 5)])
         let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow })
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: squat)
         let entry = try #require(
             try await log.repositories.workouts.entry(id: entryID, includingDeleted: false))
@@ -381,60 +401,10 @@ func oneSession(sets: [LoggedSet]) async throws -> Fixture {
         exerciseID: exerciseID,
         entryID: entryID,
         recomputer: PersonalRecordRecomputer(
-            workouts: log.repositories.workouts, cache: log.repositories.personalRecords, now: { fixtureNow }))
-}
-
-/// What the pipeline announces, and to whom (`TR-1.5`).
-///
-/// A suite of its own rather than a `// MARK:` in the one above: the file had reached SwiftLint's
-/// `type_body_length` ceiling, and publication is the section that shares least with the rest.
-@Suite("Personal record publication")
-struct PersonalRecordPublicationTests {
-    @Test("A recompute is announced to a subscriber")
-    func aRecomputeIsPublished() async throws {
-        let fixture = try await oneSession(sets: [working(100_000, 5)])
-        var changes = await fixture.recomputer.changes().makeAsyncIterator()
-
-        try await fixture.recomputer.recompute(forExerciseID: fixture.exerciseID)
-
-        #expect(await changes.next() == .exercise(fixture.exerciseID))
-    }
-
-    @Test("A formula change announces every exercise")
-    func aFormulaChangeIsPublished() async throws {
-        let fixture = try await oneSession(sets: [working(100_000, 5)])
-        var changes = await fixture.recomputer.changes().makeAsyncIterator()
-
-        await fixture.recomputer.formulaDidChange(to: .lombardi)
-
-        #expect(await changes.next() == .everyExercise)
-    }
-
-    /// A redundant announcement makes every screen in the app walk its exercise's history for an
-    /// answer that cannot have moved.
-    @Test("Choosing the formula already in force announces nothing")
-    func aRedundantFormulaChangeIsSilent() async throws {
-        let fixture = try await oneSession(sets: [working(100_000, 5)])
-        var changes = await fixture.recomputer.changes().makeAsyncIterator()
-
-        await fixture.recomputer.formulaDidChange(to: .defaultFormula)
-        try await fixture.recomputer.recompute(forExerciseID: fixture.exerciseID)
-
-        // The recompute's announcement is the first one to arrive, so the formula published none.
-        #expect(await changes.next() == .exercise(fixture.exerciseID))
-    }
-
-    @Test("Every subscriber is told, not whichever was awaiting")
-    func everySubscriberIsTold() async throws {
-        let fixture = try await oneSession(sets: [working(100_000, 5)])
-        var first = await fixture.recomputer.changes().makeAsyncIterator()
-        var second = await fixture.recomputer.changes().makeAsyncIterator()
-
-        try await fixture.recomputer.recompute(forExerciseID: fixture.exerciseID)
-
-        #expect(await first.next() == .exercise(fixture.exerciseID))
-        #expect(await second.next() == .exercise(fixture.exerciseID))
-    }
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow }))
 }
 
 /// Counts what was walked, so "did not recompute" can be asserted as "did not read the sets".

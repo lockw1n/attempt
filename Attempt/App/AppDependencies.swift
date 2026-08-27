@@ -95,7 +95,9 @@ struct AppDependencies {
         do {
             let stack = try PersistenceStack(location: location)
             let records = PersonalRecordRecomputer(
-                workouts: stack.workouts, cache: stack.personalRecords)
+                workouts: stack.workouts,
+                exercises: stack.exercises,
+                cache: stack.personalRecords)
             state = .open(
                 Repositories(
                     settings: stack.settings,

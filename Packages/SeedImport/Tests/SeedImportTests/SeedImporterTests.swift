@@ -1,4 +1,5 @@
 import Foundation
+import PowerliftingCore
 import RepositoryInterface
 import SeedContent
 import Testing
@@ -67,7 +68,7 @@ struct SeedImporterTests {
         #expect(before.isEmpty == false)
     }
 
-    @Test("A newly seeded row gets the five columns the payload has no opinion on")
+    @Test("A newly seeded row gets the six columns the payload has no opinion on")
     func aNewRowGetsTheColumnsThePayloadDoesNotCarry() async throws {
         let subject = Subject()
         let now = Date(timeIntervalSince1970: 1_700_000_000)
@@ -80,6 +81,7 @@ struct SeedImporterTests {
         #expect(row.isCustom == false)
         #expect(row.isArchived == false)
         #expect(row.notes.isEmpty)
+        #expect(row.manualE1RM == nil)
         #expect(row.deletedAt == nil)
         #expect(row.createdAt == now)
         #expect(row.name == "Back Squat")
@@ -169,7 +171,12 @@ struct SeedImporterTests {
         let entry = AuthoredEntry(squatID, "Back Squat")
         try await subject.importing(payload([entry]))
         let edited = try #require(await subject.stored(squatID))
-            .edited(name: "Comp Squat", notes: "belt only", isArchived: true, isCustom: true)
+            .edited(
+                name: "Comp Squat",
+                notes: "belt only",
+                isArchived: true,
+                isCustom: true,
+                manualE1RM: Weight(grams: 182_500))
 
         let decodedEntry = try #require(decoded(payload([entry])).first)
 

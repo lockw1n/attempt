@@ -35,8 +35,8 @@ func makeExercise(
         implementCount: implementCount,
         isCustom: true,
         isArchived: isArchived,
-        notes: "belt from 140"
-    )
+        notes: "belt from 140",
+        manualE1RM: nil)
 }
 
 func makeSetEntry(

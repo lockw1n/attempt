@@ -141,7 +141,9 @@ struct RefusedSetEditingTests {
         let writer = LoggedSetWriter(
             repository: scripted,
             records: PersonalRecordRecomputer(
-                workouts: scripted, cache: InMemoryRepositoryStack().personalRecords))
+                workouts: scripted,
+                exercises: InMemoryRepositoryStack().exercises,
+                cache: InMemoryRepositoryStack().personalRecords))
 
         await #expect(throws: RepositoryError.self) {
             try await writer.edit(id: UUID(), inEntryID: UUID(), to: Self.values)

@@ -83,6 +83,7 @@ func mappingSourceExercise(id: UUID) -> ExerciseEntity {
         parentExerciseID: UUID(uuidString: "11111111-1111-1111-1111-111111111111"),
         isArchived: true,
         notes: "belt from 140",
+        manualE1RMGrams: 182_500,
         createdAt: mappingCreatedAt,
         updatedAt: mappingUpdatedAt
     )

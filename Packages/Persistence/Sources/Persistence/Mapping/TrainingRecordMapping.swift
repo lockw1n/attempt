@@ -23,8 +23,8 @@ extension ExerciseEntity: RecordMappable {
             implementCount: implementCount,
             isCustom: isCustom,
             isArchived: isArchived,
-            notes: notes
-        )
+            notes: notes,
+            manualE1RM: manualE1RMGrams.map(Weight.init(grams:)))
     }
 
     /// A new row carrying `record`.
@@ -41,6 +41,7 @@ extension ExerciseEntity: RecordMappable {
             parentExerciseID: record.parentExerciseID,
             isArchived: record.isArchived,
             notes: record.notes,
+            manualE1RMGrams: record.manualE1RM?.grams,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt
         )
@@ -62,6 +63,7 @@ extension ExerciseEntity: RecordMappable {
         isCustom = record.isCustom
         isArchived = record.isArchived
         notes = record.notes
+        manualE1RMGrams = record.manualE1RM?.grams
     }
 }
 

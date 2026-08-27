@@ -110,8 +110,8 @@ struct ExerciseDetailLoggedSetsTests {
             implementCount: 1,
             isCustom: false,
             isArchived: false,
-            notes: ""
-        )
+            notes: "",
+            manualE1RM: nil)
         try await repositories.exercises.save(exercise)
         return exercise
     }

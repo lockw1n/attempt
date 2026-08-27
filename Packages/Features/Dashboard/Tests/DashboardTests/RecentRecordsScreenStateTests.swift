@@ -17,7 +17,9 @@ struct RecentRecordsScreenStateTests {
         let repositories = InMemoryRepositoryStack()
         return RecentRecordsState(
             recomputer: PersonalRecordRecomputer(
-                workouts: repositories.workouts, cache: repositories.personalRecords),
+                workouts: repositories.workouts,
+                exercises: repositories.exercises,
+                cache: repositories.personalRecords),
             catalogue: repositories.exercises,
             limit: limit)
     }
@@ -74,7 +76,9 @@ private final class TrainingLogFixture {
     let repositories = InMemoryRepositoryStack()
     private let cache: SwitchableCache
     lazy var recomputer = PersonalRecordRecomputer(
-        workouts: repositories.workouts, cache: cache)
+        workouts: repositories.workouts,
+        exercises: repositories.exercises,
+        cache: cache)
 
     init() { cache = SwitchableCache(wrapping: repositories.personalRecords) }
 
@@ -108,7 +112,8 @@ private final class TrainingLogFixture {
             implementCount: 1,
             isCustom: false,
             isArchived: false,
-            notes: "")
+            notes: "",
+            manualE1RM: nil)
     }
 
     /// A session and one entry under it, saved — returns the entry a set can be logged against.

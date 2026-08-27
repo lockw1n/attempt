@@ -401,8 +401,8 @@ public final class ExerciseDetailState {
             implementCount: exercise.implementCount,
             isCustom: exercise.isCustom,
             isArchived: archived,
-            notes: exercise.notes
-        )
+            notes: exercise.notes,
+            manualE1RM: exercise.manualE1RM)
     }
 
     /// `exercise` with `notes` in place of its own, and every other field untouched.
@@ -426,7 +426,7 @@ public final class ExerciseDetailState {
             implementCount: exercise.implementCount,
             isCustom: exercise.isCustom,
             isArchived: exercise.isArchived,
-            notes: notes
-        )
+            notes: notes,
+            manualE1RM: exercise.manualE1RM)
     }
 }

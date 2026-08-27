@@ -317,7 +317,7 @@ extension DetailFixtures {
             implementCount: exercise.implementCount,
             isCustom: exercise.isCustom,
             isArchived: isArchived,
-            notes: exercise.notes
-        )
+            notes: exercise.notes,
+            manualE1RM: nil)
     }
 }

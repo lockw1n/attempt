@@ -24,7 +24,9 @@ extension ActiveSessionStore {
             catalogue: fakes.exercises,
             settings: fakes.settings,
             records: PersonalRecordRecomputer(
-                workouts: repository, cache: fakes.personalRecords))
+                workouts: repository,
+                exercises: InMemoryRepositoryStack().exercises,
+                cache: fakes.personalRecords))
     }
 
     /// A store over a whole fake stack, recompute actor included.
@@ -40,6 +42,8 @@ extension ActiveSessionStore {
             catalogue: stack.exercises,
             settings: stack.settings,
             records: PersonalRecordRecomputer(
-                workouts: stack.workouts, cache: stack.personalRecords))
+                workouts: stack.workouts,
+                exercises: stack.exercises,
+                cache: stack.personalRecords))
     }
 }

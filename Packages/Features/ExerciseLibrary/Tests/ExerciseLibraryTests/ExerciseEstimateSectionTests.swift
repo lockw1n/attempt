@@ -6,8 +6,9 @@ import Testing
 
 @testable import ExerciseLibrary
 
-/// `FR-1.7.1` on screen: which of the section's four states is current, and which sentence the
-/// insufficient one carries (`FR-1.13.3`).
+/// `FR-1.7.1` on screen: which of the section's five states is current, which sentence the
+/// insufficient one carries (`FR-1.13.3`), and what `FR-1.7.4`'s link and `FR-1.7.5`'s override do
+/// to both.
 @MainActor
 @Suite("Exercise estimate section")
 struct ExerciseEstimateSectionTests {
@@ -20,11 +21,15 @@ struct ExerciseEstimateSectionTests {
         #expect(ExerciseEstimateScreenState.current(state) == .loading)
     }
 
-    @Test("A computed estimate is drawn with the formula and window that produced it")
+    /// The `sessionID` is `FR-1.7.4`'s half: it is the session the fixture actually wrote, not
+    /// whatever the state happens to hold — an assertion against the state's own answer would be
+    /// satisfied by a link that resolved to nothing.
+    @Test("A computed estimate is drawn with the formula, window and source set that produced it")
     func anEstimateCarriesItsProvenance() async throws {
         let fixture = TrainingHistory()
         let squat = try await fixture.exercise(named: "Back Squat")
-        try await fixture.trainWeighted(squat, onDay: 0, work: [(reps: 5, kilos: 100)])
+        let session = try await fixture.trainWeighted(
+            squat, onDay: 0, work: [(reps: 5, kilos: 100)])
         let state = fixture.records(of: squat, through: fixture.recomputer(formula: .brzycki))
 
         await state.loadEstimate()
@@ -37,7 +42,80 @@ struct ExerciseEstimateSectionTests {
                         sourceSetID: try #require(state.estimatedMax?.sourceSetID),
                         achievedAt: fixture.day(0)),
                     formula: .brzycki,
-                    days: 90))
+                    days: 90,
+                    sessionID: session.id))
+    }
+
+    /// `FR-1.7.5` on screen: the override replaces the number *and* the provenance line, since
+    /// neither the formula nor the window took part in it.
+    @Test("An override is drawn as manual, in place of the computed estimate")
+    func anOverrideReplacesTheEstimate() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        try await fixture.trainWeighted(squat, onDay: 0, work: [(reps: 5, kilos: 100)])
+        let state = fixture.records(of: squat, through: fixture.recomputer())
+        await state.loadEstimate()
+
+        await state.setManualEstimate(Weight(grams: 140_000))
+
+        #expect(ExerciseEstimateScreenState.current(state) == .manual(Weight(grams: 140_000)))
+        #expect(ExerciseEstimateScreenState.current(state).isManual)
+        #expect(state.manualFailure == nil)
+    }
+
+    /// The way back, and that it leaves nothing behind: the section returns to the *computed*
+    /// state, links included, rather than to a manual state holding the computed number.
+    @Test("Reverting restores the computed estimate with no manual artifact")
+    func revertingRestoresTheComputedEstimate() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        let session = try await fixture.trainWeighted(
+            squat, onDay: 0, work: [(reps: 5, kilos: 100)])
+        let state = fixture.records(of: squat, through: fixture.recomputer())
+        await state.setManualEstimate(Weight(grams: 140_000))
+
+        await state.setManualEstimate(nil)
+
+        #expect(
+            ExerciseEstimateScreenState.current(state)
+                == .ready(
+                    DatedRecord(
+                        weight: Weight(grams: 116_667),
+                        sourceSetID: try #require(state.estimatedMax?.sourceSetID),
+                        achievedAt: fixture.day(0)),
+                    formula: .defaultFormula,
+                    days: 90,
+                    sessionID: session.id))
+        #expect(!ExerciseEstimateScreenState.current(state).isManual)
+    }
+
+    /// An override answers for an exercise that has nothing to compute from at all — which is the
+    /// whole of what "takes precedence" means when there is no computed number to take it over.
+    @Test("An override outranks an absence, not only a number")
+    func anOverrideOutranksAnAbsence() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        let state = fixture.records(of: squat, through: fixture.recomputer())
+        await state.loadEstimate()
+        #expect(ExerciseEstimateScreenState.current(state) == .insufficient(.noSetsLogged, days: 90))
+
+        await state.setManualEstimate(Weight(grams: 100_000))
+
+        #expect(ExerciseEstimateScreenState.current(state) == .manual(Weight(grams: 100_000)))
+    }
+
+    /// The override controls are drawn only once the section knows what is in force — see
+    /// ``ExerciseEstimateScreenState/isSettled``.
+    @Test("Nothing is offered to override until the estimate has settled")
+    func theOverrideWaitsForTheRead() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        let state = fixture.records(of: squat, through: fixture.recomputer())
+        #expect(!ExerciseEstimateScreenState.current(state).isSettled)
+
+        await state.loadEstimate()
+
+        #expect(ExerciseEstimateScreenState.current(state).isSettled)
     }
 
     /// **The seven sentences are seven, and the test that would have caught the old copy.** Before
@@ -123,6 +201,7 @@ struct ExerciseEstimateSectionTests {
             exerciseID: squat.id,
             recomputer: PersonalRecordRecomputer(
                 workouts: RefusingWorkouts(failure: .recordNotFound(id: squat.id)),
+                exercises: fixture.stack.exercises,
                 cache: fixture.stack.personalRecords))
         await failing.loadEstimate()
 

@@ -34,8 +34,26 @@ public final class ExerciseRecordsState {
     /// ``loadEstimate()`` has ever answered, which is the third thing a screen says.
     public private(set) var estimate: EstimatedMax?
 
-    /// The estimate's record alone, for a caller with no interest in why it is absent.
+    /// The estimate's **computed** record alone, for a caller with no interest in why it is absent.
+    /// A manual override answers `nil` — see ``DerivedValues/EstimatedMax/record``.
     public var estimatedMax: DatedRecord? { estimate?.record }
+
+    /// The session the estimate's source set was performed in, or `nil` — `FR-1.7.4`'s link.
+    ///
+    /// **Resolved by ``loadEstimate()`` rather than by ``loadSources()``**, because the two answer
+    /// for different halves and a screen drawing only the estimate calls only the one. Best-effort,
+    /// on ``sourceSessions``' rule: a set that will not resolve is a number with no link.
+    ///
+    /// `nil` for a manual override, which has no source set at all, and for an absent estimate.
+    public private(set) var estimateSourceSession: UUID?
+
+    /// Why the last ``setManualEstimate(_:)`` failed, or `nil` — a **diagnostic**, not copy
+    /// (`G-3.4`).
+    ///
+    /// Its own property rather than one of the two reads': a write that fails leaves the number on
+    /// screen exactly as it was, and reporting it as a failed *read* would blank a value nothing is
+    /// wrong with.
+    public private(set) var manualFailure: String?
 
     /// The session each record's source set was performed in, keyed on the set — `FR-1.6.2`'s link.
     ///
@@ -169,10 +187,45 @@ public final class ExerciseRecordsState {
             guard isCurrent(token) else { return }
             estimate = loaded
             estimateFailure = nil
+            // No `beginRead()` of its own: the link belongs to the estimate just published, and a
+            // second token would let a load started in between look like this one.
+            let source = await sourceSession(of: loaded)
+            guard isCurrent(token) else { return }
+            estimateSourceSession = source
         } catch {
             guard isCurrent(token) else { return }
             estimateFailure = String(describing: error)
         }
+    }
+
+    /// Where `estimate`'s source set was performed, for the one kind of estimate that has one.
+    ///
+    /// A computed estimate names exactly one set, so this resolves one identifier rather than the
+    /// list ``loadSources()`` resolves — the same walk either way, which is why it is skipped
+    /// outright for an override and for an absence.
+    private func sourceSession(of estimate: EstimatedMax) async -> UUID? {
+        guard let setID = estimate.record?.sourceSetID else { return nil }
+        return await recomputer.sessionIDs(forSetIDs: [setID], inExerciseID: exerciseID)[setID]
+    }
+
+    /// Sets `FR-1.7.5`'s manual override, or clears it, and shows the result of its own write.
+    ///
+    /// **It reloads rather than waiting to be told.** The recomputer announces the change and this
+    /// state is subscribed to it, but a stream is delivered whenever the runtime gets to it — and a
+    /// screen whose own command takes visible effect at some later moment is one the user taps
+    /// twice. The announcement still matters: it is what moves the number on every *other* screen.
+    ///
+    /// - Parameter weight: The number the user entered, or `nil` to return to the computed
+    ///   estimate.
+    public func setManualEstimate(_ weight: Weight?) async {
+        do {
+            try await recomputer.setManualEstimate(weight, forExerciseID: exerciseID)
+            manualFailure = nil
+        } catch {
+            manualFailure = String(describing: error)
+            return
+        }
+        await loadEstimate()
     }
 
     /// Keeps this current until cancelled (`TR-1.5`).

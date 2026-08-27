@@ -117,6 +117,12 @@
             // FR-1.7.1's number with its provenance under it: the formula and the window are what
             // make the figure reconcilable with one seen anywhere else, so they are part of what
             // this reference gates.
+            //
+            // THE UNLINKED FORM, on the records rows' rule and for a reason measured here: a
+            // `NavigationLink` outside a `NavigationStack` renders *disabled*, so a reference taken
+            // over `FR-1.7.4`'s link is a picture of a greyed-out tile rather than of the number.
+            // The linked form is this content inside a plain-styled link. That the link navigates
+            // is `ExerciseEstimateSectionTests`', and that it looks right is the simulator run's.
             try assertSnapshots(named: "ExerciseDetail-estimate") {
                 ExerciseEstimateReading(
                     state: .ready(
@@ -125,9 +131,13 @@
                             sourceSetID: UUID(),
                             achievedAt: DetailFixtures.recordDay),
                         formula: .epley,
-                        days: 90),
+                        days: 90,
+                        sessionID: nil),
                     unit: .kilograms,
-                    retry: {}
+                    draft: .constant(nil),
+                    hasFailedWrite: false,
+                    retry: {},
+                    commit: { _ in }
                 )
                 .environment(\.locale, DetailFixtures.locale)
                 .environment(\.timeZone, .gmt)
@@ -144,8 +154,56 @@
                 ExerciseEstimateReading(
                     state: .insufficient(.refused(.repsOutOfRange), days: 90),
                     unit: .kilograms,
-                    retry: {}
+                    draft: .constant(nil),
+                    hasFailedWrite: false,
+                    retry: {},
+                    commit: { _ in }
                 )
+            }
+        }
+
+        @Test func estimateOverridden() throws {
+            // FR-1.7.5's two halves in one reference: the badge that replaces the provenance line,
+            // and the command that is the way back. At `accessibility3` the badge and the number
+            // are what this gates — a manual estimate that reads as a computed one is the failure
+            // the requirement's "clearly marked" names.
+            try assertSnapshots(named: "ExerciseDetail-estimate-manual") {
+                ExerciseEstimateReading(
+                    state: .manual(Weight(grams: 140_000)),
+                    unit: .kilograms,
+                    draft: .constant(nil),
+                    hasFailedWrite: false,
+                    retry: {},
+                    commit: { _ in }
+                )
+                .environment(\.locale, DetailFixtures.locale)
+            }
+        }
+
+        @Test func estimateOverrideEditor() throws {
+            // The field open, over a computed number, with the failed write beneath it: the two
+            // commands wrap at `accessibility3` and the banner has to stay legible under them.
+            // **The field itself renders as the unsupported-view placeholder**, a `TextField`
+            // being UIKit-backed — the harness's own limit, the same one the loading state's
+            // reference is a picture of. What this gates is everything around it.
+            try assertSnapshots(named: "ExerciseDetail-estimate-override-editor") {
+                ExerciseEstimateReading(
+                    state: .ready(
+                        DatedRecord(
+                            weight: Weight(grams: 116_667),
+                            sourceSetID: UUID(),
+                            achievedAt: DetailFixtures.recordDay),
+                        formula: .epley,
+                        days: 90,
+                        sessionID: nil),
+                    unit: .kilograms,
+                    draft: .constant("140"),
+                    hasFailedWrite: true,
+                    retry: {},
+                    commit: { _ in }
+                )
+                .environment(\.locale, DetailFixtures.locale)
+                .environment(\.timeZone, .gmt)
             }
         }
 

@@ -12,11 +12,10 @@ import SwiftUI
 /// for the same reason — `TR-1.12`'s harness renders through `ImageRenderer`, which draws a
 /// placeholder for anything UIKit-backed, so a `List` here would snapshot as a grey box.
 ///
-/// **One of its seven sections has no data yet and says so** rather than being absent: the current
-/// estimate carries a ``DesignSystem/InsufficientDataView`` whose message names what would produce
-/// one (`FR-1.13.3`). The section exists now so that `T-1.43` changes what is inside it rather than
-/// adding one — which is what the history section and then the records section, the first two of the
-/// three to be filled in, did.
+/// **All three of its derived sections now read for themselves**, each with its own store, its own
+/// `.task` and its own states — so a value that cannot be computed costs the reader that section
+/// and never `FR-1.1.6`'s movement, equipment and notes. The estimate's is also the screen's second
+/// write: `FR-1.7.5`'s override is entered there.
 public struct ExerciseDetailView: View {
     @State private var state: ExerciseDetailState
 

@@ -365,8 +365,8 @@ enum Fixtures {
             implementCount: 1,
             isCustom: isCustom,
             isArchived: isArchived,
-            notes: notes
-        )
+            notes: notes,
+            manualE1RM: nil)
     }
 }
 

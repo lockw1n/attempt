@@ -20,12 +20,12 @@ struct RecordCodingKeyTests {
     // Every fixture has all of its optionals populated, because an omitted key is not a missing
     // one: the omit-when-nil rule has its own test.
 
-    @Test("An exercise writes fourteen keys")
+    @Test("An exercise writes fifteen keys")
     func exerciseKeys() throws {
         #expect(
             try encodedKeys(of: codingExercise()) == [
                 "barType", "createdAt", "deletedAt", "equipment", "id", "implementCount",
-                "isArchived", "isCustom", "laterality", "movement", "name", "notes",
+                "isArchived", "isCustom", "laterality", "manualE1RM", "movement", "name", "notes",
                 "parentExerciseID", "updatedAt",
             ])
     }
@@ -130,6 +130,8 @@ struct RecordNestedShapeTests {
         #expect(json.contains("\"movement\":\"squat\""))
         #expect(json.contains("\"laterality\":\"unilateral\""))
         #expect(json.contains("\"barType\":\"safetySquat\""))
+        // `FR-1.7.5`'s override crosses the wire as grams, like every other mass (`G-1.1`).
+        #expect(json.contains("\"manualE1RM\":182500"))
     }
 
     @Test("A profile's inventory stays two positionally paired lists")

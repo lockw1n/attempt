@@ -144,7 +144,8 @@ extension Exercise {
         notes: String? = nil,
         isArchived: Bool? = nil,
         isCustom: Bool? = nil,
-        movement: Movement? = nil
+        movement: Movement? = nil,
+        manualE1RM: Weight? = nil
     ) -> Exercise {
         Exercise(
             id: id,
@@ -160,8 +161,8 @@ extension Exercise {
             implementCount: implementCount,
             isCustom: isCustom ?? self.isCustom,
             isArchived: isArchived ?? self.isArchived,
-            notes: notes ?? self.notes
-        )
+            notes: notes ?? self.notes,
+            manualE1RM: manualE1RM ?? self.manualE1RM)
     }
 }
 
@@ -229,8 +230,8 @@ func userAuthored(_ id: UUID, _ name: String, at now: Date = Date()) -> Exercise
         implementCount: 1,
         isCustom: true,
         isArchived: false,
-        notes: "mine"
-    )
+        notes: "mine",
+        manualE1RM: nil)
 }
 
 /// The spelling a stored row carries for `field`, so a test can walk the four rather than name them.

@@ -80,7 +80,9 @@ struct PastSession {
             catalogue: repositories.exercises,
             settings: repositories.settings,
             records: PersonalRecordRecomputer(
-                workouts: reader, cache: repositories.personalRecords)
+                workouts: reader,
+                exercises: InMemoryRepositoryStack().exercises,
+                cache: repositories.personalRecords)
         )
     }
 
@@ -181,8 +183,8 @@ extension Exercise {
             implementCount: 1,
             isCustom: false,
             isArchived: false,
-            notes: ""
-        )
+            notes: "",
+            manualE1RM: nil)
     }
 }
 

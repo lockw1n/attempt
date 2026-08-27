@@ -197,6 +197,7 @@ struct ExerciseRecordsSectionTests {
             of: squat,
             through: PersonalRecordRecomputer(
                 workouts: RefusingWorkouts(failure: .recordNotFound(id: squat.id)),
+                exercises: fixture.stack.exercises,
                 cache: fixture.stack.personalRecords
             )
         )

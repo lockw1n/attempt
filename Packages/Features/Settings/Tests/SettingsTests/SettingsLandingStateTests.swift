@@ -295,7 +295,9 @@ func landingState(
         repository: repository,
         records: records
             ?? PersonalRecordRecomputer(
-                workouts: fakes.workouts, cache: fakes.personalRecords))
+                workouts: fakes.workouts,
+                exercises: fakes.exercises,
+                cache: fakes.personalRecords))
 }
 
 /// `FR-1.7.2`'s picker, and the half of `FR-1.7.3` that is not the pipeline's.
@@ -306,7 +308,9 @@ struct SettingsFormulaTests {
         let repository = InMemoryRepositoryStack().settings
         let fakes = InMemoryRepositoryStack()
         let records = PersonalRecordRecomputer(
-            workouts: fakes.workouts, cache: fakes.personalRecords)
+            workouts: fakes.workouts,
+            exercises: fakes.exercises,
+            cache: fakes.personalRecords)
         let state = landingState(over: repository, records: records)
         await state.load()
 
@@ -324,7 +328,9 @@ struct SettingsFormulaTests {
         let repository = InMemoryRepositoryStack().settings
         let fakes = InMemoryRepositoryStack()
         let records = PersonalRecordRecomputer(
-            workouts: fakes.workouts, cache: fakes.personalRecords)
+            workouts: fakes.workouts,
+            exercises: fakes.exercises,
+            cache: fakes.personalRecords)
         let state = landingState(over: repository, records: records)
         await state.load()
         var changes = await records.changes().makeAsyncIterator()
@@ -355,7 +361,9 @@ struct SettingsFormulaTests {
         let repository = ScriptedSettingsRepository(row: .fixture(), writeError: .recordNotFound(id: UUID()))
         let fakes = InMemoryRepositoryStack()
         let records = PersonalRecordRecomputer(
-            workouts: fakes.workouts, cache: fakes.personalRecords)
+            workouts: fakes.workouts,
+            exercises: fakes.exercises,
+            cache: fakes.personalRecords)
         let state = landingState(over: repository, records: records)
         await state.load()
 
