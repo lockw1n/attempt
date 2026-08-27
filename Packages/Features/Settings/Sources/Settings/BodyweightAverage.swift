@@ -41,6 +41,11 @@ enum BodyweightAverage {
 
     /// Every entry as a row, newest first, each carrying its own window's average.
     ///
+    /// **One walk over a sorted log, not a window scan per row.** Both of a window's bounds move
+    /// forward with the reading it ends on, so the first and last entries inside it never step
+    /// backwards and one pair of indices can cross the whole log once. Re-filtering every reading
+    /// for every row is the same answer at `n²` comparisons, and this list is unbounded.
+    ///
     /// - Parameters:
     ///   - entries: The log, in any order. Soft-deleted rows must already be excluded.
     ///   - calendar: Whose days the window is measured in (`G-3.4`).
@@ -48,18 +53,30 @@ enum BodyweightAverage {
     static func readings(
         from entries: some Sequence<BodyweightEntry>, calendar: Calendar
     ) -> [BodyweightReading] {
-        let all = Array(entries)
-        return
-            all
-            .sorted { ($0.date, $0.id.uuidString) > ($1.date, $1.id.uuidString) }
-            .map { entry in
-                BodyweightReading(
-                    id: entry.id,
-                    date: entry.date,
-                    weight: entry.weight,
-                    average: rolling(endingOn: entry.date, over: all, calendar: calendar)
-                )
+        let ascending = entries.sorted { ($0.date, $0.id.uuidString) < ($1.date, $1.id.uuidString) }
+        var first = 0
+        var past = 0
+        var rows: [BodyweightReading] = []
+        rows.reserveCapacity(ascending.count)
+        for entry in ascending {
+            var average: Weight?
+            if let window = window(endingOn: entry.date, calendar: calendar) {
+                while first < ascending.count, ascending[first].date < window.lowerBound {
+                    first += 1
+                }
+                while past < ascending.count, ascending[past].date < window.upperBound {
+                    past += 1
+                }
+                let inWindow = ascending[first..<past]
+                if inWindow.count >= minimumReadings {
+                    average = mean(of: inWindow.map(\.weight))
+                }
             }
+            rows.append(
+                BodyweightReading(
+                    id: entry.id, date: entry.date, weight: entry.weight, average: average))
+        }
+        return Array(rows.reversed())
     }
 
     /// The average of the readings in the seven days ending on `day`.

@@ -87,10 +87,12 @@ struct BodyweightEntryDraft: Equatable {
 
     /// The record this draft describes, or `nil` when it is refused.
     ///
-    /// - Parameter existing: The reading being corrected, or `nil` for a new one. An edit keeps the
-    ///   stored row's identity and its `createdAt`; the store restamps `updatedAt` itself.
+    /// **Always a new reading.** `FR-1.8.1` is entry with a date and nothing asks to correct one,
+    /// so there is no row to carry an identity or a `createdAt` over from; the day a reading is
+    /// *for* is ``date``, and backdating moves that rather than the stamps.
+    ///
     /// - Returns: The record to save.
-    func entry(replacing existing: BodyweightEntry? = nil) -> BodyweightEntry? {
+    func entry() -> BodyweightEntry? {
         guard let weight = LocalizedNumberField.weight(weightText, in: unit, locale: locale),
             weight > .zero
         else {
@@ -98,8 +100,8 @@ struct BodyweightEntryDraft: Equatable {
         }
         let now = Date.now
         return BodyweightEntry(
-            id: existing?.id ?? newEntryID,
-            createdAt: existing?.createdAt ?? now,
+            id: newEntryID,
+            createdAt: now,
             updatedAt: now,
             // Rule 7: a soft-deleted row is not reinstated by a write from a form (`G-1.3`).
             deletedAt: nil,

@@ -9,13 +9,15 @@ extension SettingsStrings {
     /// The command that opens the form, in the toolbar and in the empty state.
     static let bodyweightAddAction = resource("settings.bodyweight.add.action")
 
-    /// The heading over `FR-1.8.3`'s average.
+    /// The heading over `FR-1.8.3`'s average — the window ending **today**, which is why the copy
+    /// says "current": a row's caption below names a different window and the two disagree.
     static let bodyweightAverageTitle = resource("settings.bodyweight.average.title")
 
     /// What would make an average showable (`FR-1.13.3`), for the week that holds too few readings.
     static let bodyweightAverageNone = resource("settings.bodyweight.average.none")
 
-    /// The label beside a row's own seven-day figure.
+    /// The label beside a row's own seven-day figure — the window ending on **that row's** day,
+    /// named as such so it is not read as the card's.
     static let bodyweightReadingAverage = resource("settings.bodyweight.reading.average")
 
     /// The heading over the list itself.

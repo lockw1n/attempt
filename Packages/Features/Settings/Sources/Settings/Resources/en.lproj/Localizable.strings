@@ -48,12 +48,17 @@
 /* FR-1.8.1 and FR-1.8.3: the log itself. The average is over the readings there are in the seven
    days ending on a given day, not over seven days each holding one — a lifter does not weigh in
    every morning, and the copy that says what would be enough is the average.none line below
-   (FR-1.13.3). */
+   (FR-1.13.3).
+
+   THE CARD AND A ROW NAME TWO DIFFERENT WINDOWS AND MUST NOT SHARE A LABEL. The card is the window
+   ending TODAY; a row's caption is the window ending on that row's OWN day. They disagree whenever
+   the last weigh-in is old — the card refuses while every row below it still carries a figure — so
+   each says which window it means: "current" above, "to this date" on the row. */
 "settings.bodyweight.title" = "Bodyweight";
 "settings.bodyweight.add.action" = "Add reading";
-"settings.bodyweight.average.title" = "Seven-day average";
-"settings.bodyweight.average.none" = "Weigh in twice in a week to see an average.";
-"settings.bodyweight.reading.average" = "7-day average";
+"settings.bodyweight.average.title" = "Current seven-day average";
+"settings.bodyweight.average.none" = "Weigh in twice within seven days to see your current average.";
+"settings.bodyweight.reading.average" = "7-day average to this date";
 "settings.bodyweight.history.title" = "History";
 "settings.bodyweight.empty.headline" = "No readings yet";
 "settings.bodyweight.empty.message" = "Add what you weighed and the seven-day average follows from the readings.";

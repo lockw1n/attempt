@@ -68,6 +68,18 @@ struct BodyweightEntryDraftTests {
         #expect(negative.entry() == nil)
     }
 
+    @Test("A field holding only spaces is blank, so the opening form does not scold")
+    func whitespaceOnlyIsBlank() {
+        var draft = makeDraft()
+        draft.weightText = "   "
+
+        // The trim is the whole of this: without it the form draws a refusal at a field the user
+        // has typed nothing into.
+        #expect(draft.isBlank)
+        #expect(draft.refusal == .notAWeight)
+        #expect(draft.isSavable == false)
+    }
+
     @Test("Half a field is not a reading")
     func partialFieldIsRefused() {
         var draft = makeDraft()
@@ -88,28 +100,11 @@ struct BodyweightEntryDraftTests {
         #expect(first.id == second.id)
     }
 
-    @Test("An edit keeps the stored row's identity and the day it was created")
-    func editKeepsTheStoredIdentity() throws {
-        var draft = makeDraft()
-        draft.weightText = "83"
-        let existing = try #require(makeDraft(text: "80").entry())
-
-        let corrected = try #require(draft.entry(replacing: existing))
-
-        #expect(corrected.id == existing.id)
-        #expect(corrected.createdAt == existing.createdAt)
-        #expect(corrected.weight == Weight(grams: 83_000))
-    }
-
     /// A draft over a fixed day, so nothing here depends on when it runs.
     private func makeDraft(
         unit: MassUnit = .kilograms,
-        locale: Locale = Locale(identifier: "en_US"),
-        text: String = ""
+        locale: Locale = Locale(identifier: "en_US")
     ) -> BodyweightEntryDraft {
-        var draft = BodyweightEntryDraft(
-            unit: unit, locale: locale, calendar: .gmt, day: Self.day)
-        draft.weightText = text
-        return draft
+        BodyweightEntryDraft(unit: unit, locale: locale, calendar: .gmt, day: Self.day)
     }
 }

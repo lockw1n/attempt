@@ -106,6 +106,43 @@ struct BodyweightAverageTests {
             ])
     }
 
+    @Test("Rows keep their own windows when one day holds more than one reading")
+    func readingsWithSameDayEntries() {
+        // The walk that builds these rows carries one pair of indices across the log, and a second
+        // reading on a row's own day sits *after* it — so this is the case where the window's far
+        // end has to reach forward rather than only back.
+        let log = [
+            entry(day: 1, kilos: 80),
+            entry(day: 4, kilos: 82, hour: 7),
+            entry(day: 4, kilos: 84, hour: 20),
+            entry(day: 12, kilos: 90),
+        ]
+
+        let readings = BodyweightAverage.readings(from: log, calendar: .gmt)
+
+        #expect(readings.map(\.weight.grams) == [90_000, 84_000, 82_000, 80_000])
+        // Both 4 Feb rows see one window — 29 Jan…4 Feb, holding all three earlier readings,
+        // the morning row included by the evening one: (80 + 82 + 84) / 3 = 82 kg. 12 Feb reaches
+        // back only to the 6th and finds nothing but itself.
+        #expect(
+            readings.map(\.average) == [nil, Weight(grams: 82_000), Weight(grams: 82_000), nil])
+    }
+
+    @Test("Two readings stamped at the same instant come back in a stable order")
+    func identicalInstantsAreOrderedOnTheIdentifier() {
+        // Handed over in the order the tie-break has to *undo* — the larger identifier first — so
+        // a sort that only compared dates would leave them where they came in and be caught here.
+        let pair = [
+            entry(day: 4, kilos: 84, slot: 2),
+            entry(day: 4, kilos: 82, slot: 1),
+        ]
+
+        let readings = BodyweightAverage.readings(from: pair, calendar: .gmt)
+
+        #expect(readings.map(\.id) == [pair[0].id, pair[1].id])
+        #expect(readings.map(\.weight.grams) == [84_000, 82_000])
+    }
+
     @Test("An empty log has no rows and no average")
     func emptyLog() {
         #expect(BodyweightAverage.readings(from: [BodyweightEntry](), calendar: .gmt).isEmpty)
@@ -135,15 +172,22 @@ struct BodyweightAverageTests {
 }
 
 /// A reading dated `day` February 2024 in GMT, at `hour`.
-private func entry(day: Int, kilos: Double, hour: Int = 8) -> BodyweightEntry {
-    entry(day: day, grams: Int(kilos * 1000), hour: hour)
+///
+/// - Parameter slot: Separates two readings stamped at the same instant, which differ only by
+///   identifier — the one thing the row order falls back on.
+private func entry(day: Int, kilos: Double, hour: Int = 8, slot: Int = 0) -> BodyweightEntry {
+    entry(day: day, grams: Int(kilos * 1000), hour: hour, slot: slot)
 }
 
 /// The same, in grams.
-private func entry(day: Int, grams: Int, hour: Int = 8) -> BodyweightEntry {
+private func entry(day: Int, grams: Int, hour: Int = 8, slot: Int = 0) -> BodyweightEntry {
     let stamp = Date(timeIntervalSince1970: 1_700_000_000)
     return BodyweightEntry(
-        id: UUID(uuidString: "B0DE0000-0000-4000-8000-0000000000\(String(format: "%02d", day))")
+        // The hour and the slot are in the identifier as well as the day: two readings on one day
+        // are ordinary, and rows are ordered on the identifier where their dates tie.
+        id: UUID(
+            uuidString: "B0DE0000-0000-4000-8000-000000"
+                + String(format: "%02d%02d%02d", day, hour, slot))
             ?? UUID(),
         createdAt: stamp,
         updatedAt: stamp,
