@@ -51,6 +51,44 @@ struct PersonalRecordCacheConformanceTests {
         #expect(stored.allSatisfy { $0.deletedAt == nil })
     }
 
+    /// `FR-1.6.5`'s feed reads this, and the two implementations resolve the order differently — one
+    /// over a `ModelContext`, one over a dictionary — so it is the ordering rather than the contents
+    /// that this is here for.
+    @Test("The cross-exercise read is every live row, newest first", arguments: Subject.all)
+    func theFeedReadIsOrderedAndGlobal(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let (squat, bench) = (UUID(), UUID())
+        let (older, newer) = (fixtureCreatedAt, fixtureCreatedAt.addingTimeInterval(86_400))
+        try await repositories.personalRecords.replacePersonalRecords(
+            forExerciseID: squat, with: [values(reps: 3, grams: 140_000, achievedAt: older)])
+        try await repositories.personalRecords.replacePersonalRecords(
+            forExerciseID: bench, with: [values(reps: 5, grams: 100_000, achievedAt: newer)])
+
+        let feed = try await repositories.personalRecords.personalRecords(includingDeleted: false)
+
+        #expect(feed.map(\.exerciseID) == [bench, squat])
+        #expect(feed.map(\.achievedAt) == [newer, older])
+    }
+
+    /// A record that no longer stands is soft-deleted rather than removed (`G-1.3`), so a read that
+    /// ignored the flag would put a superseded record at the top of the feed.
+    @Test("A superseded record leaves the feed unless deleted rows are asked for", arguments: Subject.all)
+    func theFeedReadRespectsSoftDeletion(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let exerciseID = UUID()
+        try await repositories.personalRecords.replacePersonalRecords(
+            forExerciseID: exerciseID,
+            with: [values(reps: 3, grams: 140_000), values(reps: 5, grams: 100_000)])
+        try await repositories.personalRecords.replacePersonalRecords(
+            forExerciseID: exerciseID, with: [values(reps: 3, grams: 140_000)])
+
+        let live = try await repositories.personalRecords.personalRecords(includingDeleted: false)
+        let all = try await repositories.personalRecords.personalRecords(includingDeleted: true)
+
+        #expect(live.map(\.repCount) == [3])
+        #expect(Set(all.map(\.repCount)) == [3, 5])
+    }
+
     @Test("A record another exercise holds is not touched", arguments: Subject.all)
     func theWriteIsScopedToOneExercise(_ subject: Subject) async throws {
         let repositories = try subject.make()

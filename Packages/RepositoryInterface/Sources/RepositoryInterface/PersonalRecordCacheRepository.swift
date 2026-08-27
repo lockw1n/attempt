@@ -63,6 +63,23 @@ public protocol PersonalRecordCacheRepository: Sendable {
         forExerciseID exerciseID: UUID, includingDeleted: Bool
     ) async throws -> [PersonalRecordCache]
 
+    /// Every cached record the store holds, newest first — `FR-1.6.5`'s global feed.
+    ///
+    /// **No exercise, and no limit either.** The table holds at most ten rows per exercise, so the
+    /// whole of it is one fetch of a few thousand small rows; the alternative — the caller walking
+    /// the catalogue and asking ``personalRecords(forExerciseID:includingDeleted:)`` once per row —
+    /// is one store round trip per exercise, and the seeded catalogue alone is 116 of them. A
+    /// `limit:` is not offered because it could not be honoured deterministically: several
+    /// exercises' records share a session's date, so a cut taken at the store would fall inside a
+    /// group of ties. **How much of this is a feed is the caller's**, and it takes the prefix.
+    ///
+    /// **Ordered newest first by ``PersonalRecordCache/achievedAt``**, ties broken on
+    /// ``StoredRecord/id`` so the two implementations cannot disagree on a boundary.
+    ///
+    /// Rows the caller's rules version did not produce are returned here too, for the reason the
+    /// per-exercise read returns them.
+    func personalRecords(includingDeleted: Bool) async throws -> [PersonalRecordCache]
+
     /// Makes one exercise's cached records exactly `values` (`TR-1.6`, `FR-1.6.4`).
     ///
     /// **Reconciled per rep count, not cleared and rewritten.** A row's identity is its

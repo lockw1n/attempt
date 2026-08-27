@@ -20,6 +20,19 @@ actor SwiftDataPersonalRecordCacheRepository: PersonalRecordCacheRepository {
         .map(\.record)
     }
 
+    /// Every cached record, newest first.
+    ///
+    /// **Sorted here rather than by the descriptor**, which is what the tie-break costs: `achievedAt`
+    /// is a stored column and `id.uuidString` is not, so a store-side sort could order the dates and
+    /// nothing else — and the ties are the common case, since every record a session set carries that
+    /// session's date.
+    func personalRecords(includingDeleted: Bool) throws -> [PersonalRecordCache] {
+        try modelContext.rows(PersonalRecordCacheEntity.self, includingDeleted: includingDeleted)
+            .map(\.record)
+            .sortedDeterministically(
+                by: { ($0.achievedAt, $0.id.uuidString) }, descending: true)
+    }
+
     /// Makes the exercise's live rows say exactly what `values` says.
     ///
     /// **Every duplicate of a rep count is rewritten, not just the tiebreak winner** — the same rule

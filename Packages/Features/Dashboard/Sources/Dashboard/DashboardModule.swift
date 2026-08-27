@@ -1,15 +1,6 @@
-import AppNavigation
-import DesignSystem
-import PowerliftingCore
-import RepositoryInterface
-
 /// The dashboard (`FR-1.9`) — e1RM tiles, the recent-PR feed and the start-workout action.
 ///
-/// A namespace and nothing else, its four aliases pinning the module's dependency surface
-/// (`TR-1.3`) until the screens land — the argument is in `ExerciseLibraryModule`.
-public enum DashboardModule {
-    typealias Storage = WorkoutRepository
-    typealias Domain = Weight
-    typealias Destination = DashboardRoute
-    typealias Tokens = ColorToken
-}
+/// The four aliases that pinned `TR-1.3`'s package edges are gone, on `ExerciseLibraryModule`'s
+/// rule: `RecentRecordsView` names ``ExerciseRepository``, ``Route`` and the token scales for real,
+/// so the scaffolding that stood in for a screen has nothing left to prove.
+public enum DashboardModule {}

@@ -153,6 +153,23 @@ public actor PersonalRecordRecomputer {
         try await recomputed(exerciseID, writingCache: false).bestE1RM
     }
 
+    /// `FR-1.6.5`'s global feed: the most recent PR-setting sets, across every exercise.
+    ///
+    /// **The cache is read and nothing is recomputed** — the one read here that cannot fall back to
+    /// a walk, and deliberately so. A miss on one exercise is answered by recomputing it because a
+    /// walk of one exercise's sets is what `NFR-1.6` budgets; a miss here would be a walk of the
+    /// whole catalogue on the screen the app launches into. What a row this build did not compute
+    /// costs the feed is written on ``RecentRecord/feed(from:limit:)``.
+    ///
+    /// - Parameter limit: How many entries to return, counted in PR-setting *sets* rather than in
+    ///   cached rows.
+    /// - Returns: The feed, newest first.
+    /// - Throws: Whatever the repository throws reading the cache.
+    public func recentRecords(limit: Int) async throws -> [RecentRecord] {
+        RecentRecord.feed(
+            from: try await cache.personalRecords(includingDeleted: false), limit: limit)
+    }
+
     /// The formula estimates are currently produced under.
     public func formulaInForce() -> E1RMFormulaID { formula }
 
@@ -352,13 +369,6 @@ public actor PersonalRecordRecomputer {
     ///
     /// A row that will not resolve is simply absent, and the caller falls back to the set's own
     /// timestamps rather than to a sentinel.
-    /// Claims the next cache-writing generation for `exerciseID`. See ``writeGenerations``.
-    private func claimWriteGeneration(_ exerciseID: UUID) -> Int {
-        let next = (writeGenerations[exerciseID] ?? 0) + 1
-        writeGenerations[exerciseID] = next
-        return next
-    }
-
     private func sessionDates(forEntryIDs entryIDs: Set<UUID>) async -> [UUID: Date] {
         var dates: [UUID: Date] = [:]
         for entryID in entryIDs {
@@ -369,6 +379,13 @@ public actor PersonalRecordRecomputer {
             dates[entryID] = session.date
         }
         return dates
+    }
+
+    /// Claims the next cache-writing generation for `exerciseID`. See ``writeGenerations``.
+    private func claimWriteGeneration(_ exerciseID: UUID) -> Int {
+        let next = (writeGenerations[exerciseID] ?? 0) + 1
+        writeGenerations[exerciseID] = next
+        return next
     }
 
     /// The session each of `entryIDs` belongs to, for the ones that resolve.

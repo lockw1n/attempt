@@ -370,6 +370,9 @@ struct RefusingCache: PersonalRecordCacheRepository {
     func personalRecords(
         forExerciseID exerciseID: UUID, includingDeleted: Bool
     ) async throws -> [PersonalRecordCache] { throw failure }
+    func personalRecords(includingDeleted: Bool) async throws -> [PersonalRecordCache] {
+        throw failure
+    }
     func replacePersonalRecords(
         forExerciseID exerciseID: UUID, with values: [PersonalRecordCacheValues]
     ) async throws { throw failure }

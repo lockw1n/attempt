@@ -12,6 +12,11 @@ struct InMemoryPersonalRecordCacheRepository: PersonalRecordCacheRepository, Sen
         await store.personalRecords(forExerciseID: exerciseID, includingDeleted: includingDeleted)
     }
 
+    /// Every cached record, newest first.
+    func personalRecords(includingDeleted: Bool) async throws -> [PersonalRecordCache] {
+        await store.personalRecords(includingDeleted: includingDeleted)
+    }
+
     /// Reconciles the exercise's rows against `values`.
     func replacePersonalRecords(
         forExerciseID exerciseID: UUID, with values: [PersonalRecordCacheValues]
@@ -29,6 +34,14 @@ extension InMemoryRepositoryStore {
             .filter { $0.exerciseID == exerciseID }
             .live(includingDeleted: includingDeleted)
             .sortedDeterministically { ($0.repCount, $0.id.uuidString) }
+    }
+
+    /// Every cached record, newest first — see the protocol for why the sort is written out here.
+    func personalRecords(includingDeleted: Bool) -> [PersonalRecordCache] {
+        personalRecordCache.values
+            .live(includingDeleted: includingDeleted)
+            .sortedDeterministically(
+                by: { ($0.achievedAt, $0.id.uuidString) }, descending: true)
     }
 
     /// Makes the exercise's live rows say exactly what `values` says.
