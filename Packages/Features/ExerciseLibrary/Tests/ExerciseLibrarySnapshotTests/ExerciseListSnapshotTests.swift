@@ -232,8 +232,8 @@
                 implementCount: 1,
                 isCustom: isCustom,
                 isArchived: isArchived,
-                notes: ""
-            )
+                notes: "",
+                manualE1RM: nil)
         }
     }
 

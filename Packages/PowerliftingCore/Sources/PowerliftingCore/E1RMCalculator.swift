@@ -35,22 +35,90 @@ public struct E1RMCalculator: Sendable {
     /// The estimated one-rep maximum for `set`, or `nil` when the set says nothing about a maximum.
     ///
     /// - Parameter set: The logged set.
-    /// - Returns: `nil` for a warmup, for an incomplete set, for a negative ``SetRecord/weight``,
-    ///   or for a rep count outside the formula's ``E1RMFormula/validRepRange``; otherwise whatever
-    ///   the formula answers, which may itself be `nil` — ``RPEBased`` has nothing to say about a
-    ///   set that recorded no effort.
-    ///
-    ///   The rep-range guard is applied here as well as inside every formula, so the refusal
-    ///   `TR-0.2.5` names holds for any conformance rather than for the ones that remember.
+    /// - Returns: `nil` for any set ``outcome(for:)`` refuses; otherwise what the formula answered.
     public func estimate(for set: SetRecord) -> Weight? {
-        guard !set.isWarmup,
-            set.isCompleted,
-            set.weight.grams >= 0,
-            formula.validRepRange.contains(set.reps)
-        else {
-            return nil
+        guard case .estimate(let weight) = outcome(for: set) else { return nil }
+        return weight
+    }
+
+    /// The estimate for `set`, or which of the four guards turned it away (`TR-0.2.5`,
+    /// `FR-1.13.3`).
+    ///
+    /// **The guard chain has one home, and this is it.** A caller that has to explain the blank to
+    /// a user needs the same chain ``estimate(for:)`` applies, and a second copy of it elsewhere is
+    /// one that drifts — a refusal reported for a reason the calculator did not actually refuse for.
+    ///
+    /// The order is the answer where a set fails more than one guard: an assisted twelve-rep set is
+    /// ``E1RMRefusal/assisted``, because that is the guard that stopped it.
+    ///
+    /// The rep-range guard is applied here as well as inside every formula, so the refusal
+    /// `TR-0.2.5` names holds for any conformance rather than for the ones that remember.
+    ///
+    /// - Parameter set: The logged set.
+    /// - Returns: What this calculator did with it.
+    public func outcome(for set: SetRecord) -> E1RMOutcome {
+        if set.isWarmup { return .refused(.warmup) }
+        if !set.isCompleted { return .refused(.incomplete) }
+        if set.weight.grams < 0 { return .refused(.assisted) }
+        if !formula.validRepRange.contains(set.reps) { return .refused(.repsOutOfRange) }
+        guard let weight = formula.estimate(for: set) else { return .refused(.formulaDeclined) }
+        return .estimate(weight)
+    }
+}
+
+/// What ``E1RMCalculator/outcome(for:)`` made of a set.
+public enum E1RMOutcome: Sendable, Hashable {
+    /// The formula answered, and this is what it said.
+    case estimate(Weight)
+
+    /// It was never asked, or it declined — see ``E1RMRefusal``.
+    case refused(E1RMRefusal)
+}
+
+/// Why a set produced no estimated one-rep maximum (`TR-0.2.5`).
+///
+/// **Not a stored vocabulary and deliberately not `Codable`.** Every case is recomputed from the
+/// set in front of it, so there is no persisted value to meet again and no unknown case to resolve;
+/// adding one is a copy change in the presentation layer rather than a migration.
+///
+/// Declared in the order ``E1RMCalculator/outcome(for:)`` applies them, which is what makes "the
+/// first guard that stopped it" a statement about this type rather than about one call site.
+public enum E1RMRefusal: Sendable, Hashable, CaseIterable, Comparable {
+    /// A warmup. It was not an attempt at anything.
+    case warmup
+
+    /// Not completed — nothing says the load was actually lifted for the reps recorded.
+    case incomplete
+
+    /// Assisted work: a negative added load, which every equation would read as a heavier maximum
+    /// the more assistance was used.
+    case assisted
+
+    /// More reps than the formula is tabulated over — see ``E1RMFormula/validRepRange``.
+    case repsOutOfRange
+
+    /// The formula itself had nothing to say: ``RPEBased`` over a set that recorded no effort.
+    case formulaDeclined
+
+    /// Ordered by how far the set got before it was turned away, so the greater of two is the
+    /// **nearer miss**.
+    ///
+    /// That is what a caller explaining a blank over several sets wants: a lifter whose warmups sit
+    /// beside one twelve-rep working set is owed the sentence about the rep range, not the one about
+    /// warmups.
+    public static func < (lhs: Self, rhs: Self) -> Bool {
+        lhs.reached < rhs.reached
+    }
+
+    /// How many of ``E1RMCalculator/outcome(for:)``'s guards this case cleared.
+    private var reached: Int {
+        switch self {
+        case .warmup: 0
+        case .incomplete: 1
+        case .assisted: 2
+        case .repsOutOfRange: 3
+        case .formulaDeclined: 4
         }
-        return formula.estimate(for: set)
     }
 }
 

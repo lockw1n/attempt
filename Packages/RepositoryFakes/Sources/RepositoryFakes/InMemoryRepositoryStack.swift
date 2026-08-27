@@ -1,9 +1,9 @@
 import Foundation
 import RepositoryInterface
 
-/// The five fakes over one store — the shape `PersistenceStack` has, without a store file.
+/// The fakes over one store — the shape `PersistenceStack` has, without a store file.
 ///
-/// **The five share a store, because the contract is cross-table.** Saving an entry checks that its
+/// **They share a store, because the contract is cross-table.** Saving an entry checks that its
 /// session and its exercise exist, and those live in tables another repository owns; five
 /// independent fakes could not refuse a dangling reference at all, which is the largest thing a
 /// caller's test would then be passing against a fiction about.
@@ -26,7 +26,10 @@ public struct InMemoryRepositoryStack: Sendable {
     /// The user's equipment profiles.
     public let equipment: any EquipmentRepository
 
-    /// Five fakes over one empty store.
+    /// The cached N-rep maxes (`TR-1.6`).
+    public let personalRecords: any PersonalRecordCacheRepository
+
+    /// The fakes over one empty store.
     public init() {
         let store = InMemoryRepositoryStore()
         exercises = InMemoryExerciseRepository(store: store)
@@ -34,5 +37,6 @@ public struct InMemoryRepositoryStack: Sendable {
         settings = InMemorySettingsRepository(store: store)
         bodyweight = InMemoryBodyweightRepository(store: store)
         equipment = InMemoryEquipmentRepository(store: store)
+        personalRecords = InMemoryPersonalRecordCacheRepository(store: store)
     }
 }

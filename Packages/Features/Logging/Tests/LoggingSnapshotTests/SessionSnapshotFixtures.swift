@@ -234,6 +234,19 @@
             hasLoaded: true
         )
 
+        /// `FR-1.6.3`'s badge, pictured on the rows.
+        ///
+        /// **One set holding one record and one holding five**, which is the pair the badge's label
+        /// has to render: "Personal record for 3 reps" against "…for 1, 2, 3, 4 and 5 reps". `E1` is
+        /// the second of ``loggedSets`` and `E4` the first working set of ``rampedSets``.
+        static let personalRecords = SessionRecordMarks(
+            bySetID: [
+                identifier("E1"): [3],
+                identifier("E4"): [1, 2, 3, 4, 5],
+            ],
+            hasLoaded: true
+        )
+
         /// A session note as the field holds one that has been stored.
         static var storedNote: SessionNoteDraft {
             var draft = SessionNoteDraft()
@@ -377,8 +390,8 @@
                     implementCount: 1,
                     isCustom: false,
                     isArchived: false,
-                    notes: ""
-                ),
+                    notes: "",
+                    manualE1RM: nil),
                 sets: sets.enumerated().map { position, flags in
                     SetEntry(
                         id: identifier("D\(index)\(position)"),

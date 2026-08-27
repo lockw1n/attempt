@@ -223,6 +223,8 @@ actor ScriptedWorkoutRepository: WorkoutRepository {
         throw unsupported
     }
 
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? { throw unsupported }
+
     func save(_ entry: ExerciseEntry) async throws { throw unsupported }
 
     func deleteExerciseEntry(id: UUID) async throws { throw unsupported }

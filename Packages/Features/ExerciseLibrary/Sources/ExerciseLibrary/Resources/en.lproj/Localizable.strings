@@ -140,8 +140,41 @@
 "exerciselibrary.detail.history.rpe %@" = "RPE %@";
 "exerciselibrary.detail.section.records" = "Personal records";
 "exerciselibrary.detail.records.none" = "Log a set against this exercise and its personal records appear here.";
+"exerciselibrary.detail.records.error" = "This exercise's personal records could not be read.";
+"exerciselibrary.detail.records.rep-max %lld" = "%lld-rep max";
+"exerciselibrary.detail.records.more" = "6–10-rep maxes";
+"exerciselibrary.detail.records.source-hint" = "Shows the session this record was set in.";
+"exerciselibrary.detail.records.more.expanded" = "Expanded";
+"exerciselibrary.detail.records.more.collapsed" = "Collapsed";
 "exerciselibrary.detail.section.e1rm" = "Estimated 1RM";
+"exerciselibrary.detail.e1rm.value" = "Current estimate";
+"exerciselibrary.detail.e1rm.error" = "This exercise's estimated 1RM could not be computed.";
+"exerciselibrary.detail.e1rm.provenance %@ %lld" = "%1$@, from the last %2$lld days";
+
+/* FR-1.13.3 over E1RMCalculator's refusals. Seven sentences rather than one blank: each names the
+   thing that would have to change, because every one of these is a lifter who DID log the set. The
+   first is the only one that means "nothing here yet".
+
+   MIND THE QUANTIFIER. The reason reported is the NEAREST MISS among the in-window sets, not the
+   only one, so a sentence saying "every set ..." is a claim the precedence rule does not establish:
+   the rep-range case is reached with assisted and unfinished sets sitting alongside. A sentence
+   here may say what stopped the best candidate, or state a universal the ordering actually implies
+   (nothing outranks "only warm-ups", so that one is safe), and nothing in between. */
 "exerciselibrary.detail.e1rm.none" = "Log a completed working set and an estimate appears here.";
+"exerciselibrary.detail.e1rm.stale %lld" = "Nothing has been logged here in the last %lld days. An estimate reads recent training only.";
+"exerciselibrary.detail.e1rm.warmups %lld" = "Only warm-up sets in the last %lld days. An estimate comes from working sets.";
+"exerciselibrary.detail.e1rm.incomplete %lld" = "No completed working set in the last %lld days. A set has to be finished before it says anything about a maximum.";
+"exerciselibrary.detail.e1rm.high-reps %lld" = "No estimate from the last %lld days: the best candidate went past ten reps, which is further than these formulas are accurate.";
+"exerciselibrary.detail.e1rm.assisted" = "Assisted sets have no estimated max: the formulas would read more assistance as a heavier lift.";
+"exerciselibrary.detail.e1rm.no-effort" = "This formula reads the RPE or RIR on a set, and the recent sets here record neither.";
+
+/* Five surnames and one description. Only the last would ever be translated. */
+"exerciselibrary.detail.e1rm.formula.epley" = "Epley";
+"exerciselibrary.detail.e1rm.formula.brzycki" = "Brzycki";
+"exerciselibrary.detail.e1rm.formula.lombardi" = "Lombardi";
+"exerciselibrary.detail.e1rm.formula.oconner" = "O'Conner";
+"exerciselibrary.detail.e1rm.formula.wathan" = "Wathan";
+"exerciselibrary.detail.e1rm.formula.rpebased" = "RPE-based";
 
 /* The read failed and running it again could work. */
 "exerciselibrary.detail.error.headline" = "Exercise unavailable";
@@ -240,9 +273,32 @@
    the pickers in the first place — so this message names the way back rather than offering it. */
 "exerciselibrary.picker.archived-only.message" = "Every exercise has been archived. Unarchive one in the exercise library to add it to a workout.";
 
-/* FR-1.13.3, the other half. The "none" copy above tells the user to log a set; it is true only
-   while no set can exist, and once one can, a user who has logged sets would be told to log a set
-   they have already logged. This says what is actually true in that case. Scaffolding with a named
-   replacement — the real record display. The history section's twin has been retired: FR-1.5.2's
-   display now exists, so the only thing left for it to say is that nothing has been logged. */
-"exerciselibrary.detail.records.pending" = "Sets have been logged against this exercise. Showing personal records here is not built yet.";
+/* FR-1.13.3, the other half, and no longer scaffolding — FR-1.6.2's list exists, and this is the
+   sentence it shows when the list is empty. The "none" copy above tells the user to log a set; it is
+   true only while no set can exist, and once one can, a user who has logged sets would be told to log
+   a set they have already logged. This names the rule instead: what FR-1.6.1 counts, so a user whose
+   every set was a warmup, a failed set or past ten reps is told why rather than told to repeat
+   themselves. */
+"exerciselibrary.detail.records.no-working-sets" = "Personal records come from completed working sets of ten reps or fewer. None have been logged against this exercise yet.";
+
+/* FR-1.7.4: the estimate names its source. The hint is the estimate's own rather than the records'
+   — an estimate is computed from a set, where a record is one. */
+"exerciselibrary.detail.e1rm.source-hint" = "Shows the session the source set was logged in.";
+
+/* FR-1.7.5. It stands where the formula and window line stands for a computed number, because that
+   is exactly what it replaces: neither took part in this one. */
+"exerciselibrary.detail.e1rm.manual" = "Entered manually";
+
+/* The override's five commands. "Use computed value" rather than "Clear" or "Remove": what the tap
+   does is name where the number comes back from, and a lifter who has forgotten what they typed
+   should not have to work out what clearing it leaves behind. */
+"exerciselibrary.detail.e1rm.override.action" = "Set manually";
+"exerciselibrary.detail.e1rm.override.field" = "Manual 1RM";
+"exerciselibrary.detail.e1rm.override.save" = "Save";
+"exerciselibrary.detail.e1rm.override.cancel" = "Cancel";
+"exerciselibrary.detail.e1rm.override.edit" = "Edit manual value";
+"exerciselibrary.detail.e1rm.override.revert" = "Use computed value";
+
+/* The write failed. Nothing was stored and the number on screen is unchanged, so the retry is
+   another tap at the same command. */
+"exerciselibrary.detail.e1rm.override.error" = "This manual estimate could not be saved.";

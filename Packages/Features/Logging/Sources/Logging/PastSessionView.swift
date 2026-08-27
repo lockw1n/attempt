@@ -1,3 +1,4 @@
+import DerivedValues
 import DesignSystem
 import Foundation
 import Localization
@@ -65,17 +66,24 @@ public struct PastSessionView: View {
     ///   - settings: The settings row, for the unit the loads are shown in.
     ///   - vocabulary: The modifier terms the set editor offers (`FR-1.2.8`).
     ///   - equipment: The gym the plate calculator loads against (`FR-1.4.1`).
+    ///   - records: The app's one recompute actor (`TR-1.6`) — an edit here moves a personal record
+    ///     as much as one made during the workout does.
     public init(
         sessionID: UUID,
         workouts: any WorkoutRepository,
         catalogue: any ExerciseRepository,
         settings: any SettingsRepository,
         vocabulary: SetModifierVocabulary,
-        equipment: PlateCalculatorStore
+        equipment: PlateCalculatorStore,
+        records: PersonalRecordRecomputer
     ) {
         _state = State(
             initialValue: PastSessionState(
-                sessionID: sessionID, workouts: workouts, catalogue: catalogue, settings: settings))
+                sessionID: sessionID,
+                workouts: workouts,
+                catalogue: catalogue,
+                settings: settings,
+                records: records))
         self.vocabulary = vocabulary
         self.equipment = equipment
     }
@@ -308,7 +316,12 @@ struct PastSessionExerciseCard: View {
     /// - Parameter numbered: The set and its number.
     /// - Returns: The row.
     private func row(for numbered: NumberedSet) -> some View {
-        SetRow(numbered: numbered, unit: unit, mark: nil, markCompleted: nil, edit: edit)
+        // No record badge here. `FR-1.6.3` puts it on the set "at the moment it is logged", which is
+        // the workout in progress; a past session would need the workout's map read for a screen that
+        // is not logging, and marking an old set as a record it may since have lost is worse than not
+        // marking it. Whichever task first wants records on this screen owns that read.
+        SetRow(
+            numbered: numbered, unit: unit, recordReps: [], mark: nil, markCompleted: nil, edit: edit)
     }
 
     /// This card's sets, each carrying its number within its own sequence (`FR-1.2.14`).

@@ -1,3 +1,4 @@
+import DerivedValues
 import Logging
 import RepositoryFakes
 import RepositoryInterface
@@ -19,6 +20,30 @@ extension ActiveSessionStore {
     static func overWorkouts(_ repository: any WorkoutRepository) -> ActiveSessionStore {
         let fakes = InMemoryRepositoryStack()
         return ActiveSessionStore(
-            repository: repository, catalogue: fakes.exercises, settings: fakes.settings)
+            repository: repository,
+            catalogue: fakes.exercises,
+            settings: fakes.settings,
+            records: PersonalRecordRecomputer(
+                workouts: repository,
+                exercises: InMemoryRepositoryStack().exercises,
+                cache: fakes.personalRecords))
+    }
+
+    /// A store over a whole fake stack, recompute actor included.
+    ///
+    /// The form for a test that has already seeded a catalogue and a session into one stack, where
+    /// ``overWorkouts(_:)``'s private catalogue would be the wrong one.
+    ///
+    /// - Parameter stack: The fakes the workout is assembled from.
+    /// - Returns: The store.
+    static func over(_ stack: InMemoryRepositoryStack) -> ActiveSessionStore {
+        ActiveSessionStore(
+            repository: stack.workouts,
+            catalogue: stack.exercises,
+            settings: stack.settings,
+            records: PersonalRecordRecomputer(
+                workouts: stack.workouts,
+                exercises: stack.exercises,
+                cache: stack.personalRecords))
     }
 }

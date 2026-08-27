@@ -30,6 +30,10 @@ struct AttemptApp: App {
                 // exercise list's own `.task`, because the seed belongs to the app and not to one
                 // screen: the picker inside a session reads the same rows.
                 .task { await dependencies.importSeedCatalogue() }
+                // The stored preferences the recompute pipeline reads (FR-1.7.2). Here rather than
+                // in Settings' own `.task`, because the formula is the app's and not that screen's:
+                // an exercise's estimate is drawn under it whether or not Settings was ever opened.
+                .task { await dependencies.adoptStoredPreferences() }
                 // On the snapshot rather than on the tab or a path: one observation covers a tab
                 // switch, a push and a back-swipe, and it cannot be the wrong one of the four.
                 .onChange(of: navigation.snapshot) { _, snapshot in

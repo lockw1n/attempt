@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -94,6 +95,15 @@ public final class ActiveSessionStore {
     /// One value rather than three properties — see ``PreviousPerformances``.
     var previous = PreviousPerformances()
 
+    /// Which of the workout's sets hold a personal record (`FR-1.6.3`).
+    ///
+    /// **Refreshed inside ``loadExercises()`` rather than by a call of its own**, which is what makes
+    /// the badge appear in the same interaction the set was logged in. Every writer of a set column
+    /// already `await`s `PersonalRecordRecomputer.setDidChange(inEntryID:)` and *then* re-reads the
+    /// list, so by the time this runs the recompute has written the cache and the read below is a
+    /// cache hit — the confirmed answer, with no optimistic mark to correct afterwards.
+    private(set) var personalRecords = SessionRecordMarks()
+
     /// The unit a load is entered and shown in (`G-3.1`, `G-3.2`, `FR-1.10.2`).
     ///
     /// **On this store rather than read by the editor, for the reason the exercises are here.** The
@@ -120,9 +130,17 @@ public final class ActiveSessionStore {
     /// What performs `FR-1.2.7`'s edit and delete — see ``LoggedSetWriter`` for why they are not
     /// this object's own writes.
     ///
-    /// Built per call rather than stored: it holds ``repository`` and nothing else, so a second one
-    /// is not a second writer.
-    var setWriter: LoggedSetWriter { LoggedSetWriter(repository: repository) }
+    /// Built per call rather than stored: it holds ``repository`` and ``records`` and nothing else,
+    /// so a second one is not a second writer.
+    var setWriter: LoggedSetWriter {
+        LoggedSetWriter(repository: repository, records: records)
+    }
+
+    /// What is told that a set moved (`FR-1.6.4`, `TR-1.6`).
+    ///
+    /// Internal for ``setWriter``'s reason — the three commands that write a set column themselves
+    /// live in `ActiveSessionCommands.swift`, and `private` is file-scoped.
+    let records: PersonalRecordRecomputer
 
     private let settings: any SettingsRepository
 
@@ -148,14 +166,19 @@ public final class ActiveSessionStore {
     ///   - settings: The single settings row, for the unit a load is entered in. A third protocol
     ///     rather than a unit passed in, so that nothing above this has to know a preference decides
     ///     what a typed number means.
+    ///   - records: The app's one recompute actor (`TR-1.6`). Not a repository: what a set changing
+    ///     owes is a recomputation, and handing this store the cache instead would make it the
+    ///     second thing in the app that knows how a personal record is derived.
     public init(
         repository: any WorkoutRepository,
         catalogue: any ExerciseRepository,
-        settings: any SettingsRepository
+        settings: any SettingsRepository,
+        records: PersonalRecordRecomputer
     ) {
         self.repository = repository
         self.catalogue = catalogue
         self.settings = settings
+        self.records = records
     }
 
     /// Reads the unit a load is entered and shown in (`G-3.1`, `G-3.2`).
@@ -314,10 +337,15 @@ public final class ActiveSessionStore {
     /// **Soft, like every deletion here** (`G-1.3`): the repository stamps `deletedAt` and cascades
     /// to the entries and sets underneath, and nothing is removed from the store until an explicit
     /// purge runs. The confirmation `FR-1.2.12` asks for is the screen's — a store cannot ask.
+    ///
+    /// **The cascade is why this announces** (`FR-1.6.4`). Every set the workout logged stops
+    /// standing at once without a single set column being written, so none of ``setWriter``'s five
+    /// hooks fires and a record the discarded work set would survive its own source set.
     public func discard() async {
         guard let current = session else { return }
         do {
             try await repository.deleteSession(id: current.id)
+            await records.sessionDidChange(id: current.id)
             session = nil
             failure = nil
             forgetExercises()
@@ -359,12 +387,41 @@ public final class ActiveSessionStore {
                 )
             }
             exercises = loaded
+            personalRecords = await recordMarks(over: loaded)
             exercisesReadFailure = nil
         } catch {
             exercises = []
+            personalRecords = SessionRecordMarks()
             exercisesReadFailure = String(describing: error)
         }
         hasLoadedExercises = true
+    }
+
+    /// Which of `exercises`' sets hold a record, and at which rep counts (`FR-1.6.3`).
+    ///
+    /// **One cache read per distinct exercise, not per card and not per set.** A workout names a
+    /// handful of exercises and two entries can name the same one; the read is `G-1.5`'s cached
+    /// answer, so a workout of six exercises costs six table reads and no walk of anything.
+    ///
+    /// **A refusal costs that exercise its badges and nothing else.** The sets are stored and drawn
+    /// either way, and a derived value that could not be read is not something to fail a workout
+    /// over (`G-1.4`) — the same swallow the recompute triggers make, for the same reason.
+    ///
+    /// - Parameter exercises: The workout's exercises, already read.
+    /// - Returns: The marks, ready to hand to the cards.
+    private func recordMarks(over exercises: [SessionExercise]) async -> SessionRecordMarks {
+        var marks = SessionRecordMarks()
+        for exerciseID in Set(exercises.map(\.entry.exerciseID)) {
+            guard let repMaxes = try? await records.repMaxes(forExerciseID: exerciseID) else {
+                continue
+            }
+            for repMax in repMaxes {
+                marks.bySetID[repMax.record.sourceSetID, default: []].append(repMax.reps)
+            }
+        }
+        for setID in marks.bySetID.keys { marks.bySetID[setID]?.sort() }
+        marks.hasLoaded = true
+        return marks
     }
 
     /// Whether a workout is in progress — what the screen-wake policy and every entry point read.
@@ -375,20 +432,24 @@ public final class ActiveSessionStore {
 
     /// Drops the exercise list, because the workout it belonged to is no longer the one held.
     ///
-    /// **All three diagnostics go with it, and so does the previous-performance answer.** A failure
+    /// **All three diagnostics go with it, and so do the previous-performance answer and the record
+    /// marks.** A failure
     /// describes a read or a write against a workout, and carrying one across a change of session
     /// would report it against the next one; the "last time" strips are keyed on the *entries* of
     /// the workout just dropped, so keeping them would draw one workout's history on another's
-    /// cards.
+    /// cards. The marks are keyed on sets that are not in the next workout at all, so they would
+    /// answer nothing rather than answer wrongly — dropped anyway, because a badge is a claim about
+    /// the workout on screen.
     ///
     /// The note's diagnostic is on that list rather than left to the screen that clears it on the
     /// next keystroke: two workouts whose notes are both empty produce no keystroke, so the field
     /// would open on the next workout already carrying the last one's failure.
     ///
-    /// Every caller replaces the held session or drops it, which is what makes clearing all four
+    /// Every caller replaces the held session or drops it, which is what makes clearing all of them
     /// safe — nothing here runs while the workout a diagnostic belongs to is still on screen.
     private func forgetExercises() {
         exercises = []
+        personalRecords = SessionRecordMarks()
         hasLoadedExercises = false
         exercisesReadFailure = nil
         exercisesWriteFailure = nil

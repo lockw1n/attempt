@@ -68,6 +68,11 @@ let package = Package(
         .package(path: "../../DesignSystem"),
         .package(path: "../../AppNavigation"),
         .package(path: "../../Localization"),
+        // THE SIXTH IS NOT A FEATURE PACKAGE and does not break TR-0.1.2, for the reason Logging's
+        // manifest gives: `DerivedValues` sits below this level, over `RepositoryInterface` alone.
+        // Logging is there because every writer of a set column announces the write; this module is
+        // there because `FR-1.6.2`'s list and `FR-1.7.1`'s estimate are what the announcement is for.
+        .package(path: "../../DerivedValues"),
         // TEST-ONLY, on the test target alone — the same shape Settings' and Logging's manifests
         // have. Two assertions in `ExerciseFormStateTests` are about what the *store* does with a
         // created or renamed exercise (`FR-1.1.3`, `FR-1.1.4`), and a fake that returns what a test
@@ -80,6 +85,7 @@ let package = Package(
             dependencies: [
                 "PowerliftingCore",
                 "RepositoryInterface",
+                "DerivedValues",
                 "DesignSystem",
                 "AppNavigation",
                 "Localization",
@@ -89,7 +95,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ExerciseLibraryTests",
-            dependencies: ["ExerciseLibrary", "RepositoryFakes"],
+            dependencies: ["ExerciseLibrary", "RepositoryFakes", "DerivedValues"],
             swiftSettings: settings
         ),
         // TR-1.12's references for this module's screens. A separate target from the one above for

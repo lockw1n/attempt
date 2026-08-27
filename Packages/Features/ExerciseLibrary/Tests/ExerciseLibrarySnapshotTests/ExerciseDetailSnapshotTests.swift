@@ -1,5 +1,6 @@
 #if os(iOS)
 
+    import DerivedValues
     import DesignSystem
     import PowerliftingCore
     import RepositoryInterface
@@ -67,12 +68,142 @@
             }
         }
 
-        @Test func derivedValueWithNothingToShow() throws {
-            try assertSnapshots(named: "ExerciseDetail-derived") {
-                DerivedValueSection(
-                    title: ExerciseLibraryStrings.e1rmSection,
-                    nothingYet: ExerciseLibraryStrings.e1rmNone
+        @Test func personalRecords() throws {
+            // FR-1.6.2's list, at the shape the section draws when the disclosure is closed and again
+            // when it is open. Rendered as rows rather than as `ExerciseRecordsSection`, on the
+            // history section's terms: that view's body is a `.task` over a recompute actor.
+            //
+            // THE ROWS ARE THE UNLINKED FORM, which is what a record whose source set could not be
+            // located draws — and it is also what the linked one looks like, since the link is a
+            // `NavigationLink` with the plain button style over exactly this content. What cannot be
+            // pictured is the NavigationStack it needs to be a control at all: the stack is
+            // UIKit-backed, so a reference taken through one is the renderer's placeholder. That the
+            // link navigates is `ExerciseRecordsSectionTests`', and that it looks right is the
+            // simulator run's.
+            let list = ExerciseRecordList(DetailFixtures.repMaxes)
+            try assertSnapshots(named: "ExerciseDetail-records") {
+                GroupedSection(Text(ExerciseLibraryStrings.recordsSection)) {
+                    ForEach(list.prominent, id: \.reps) { repMax in
+                        ExerciseRecordRow(repMax: repMax, unit: .kilograms, sessionID: nil)
+                    }
+                    RecordDisclosureHeader(isExpanded: false) {}
+                }
+                .environment(\.locale, DetailFixtures.locale)
+                .environment(\.timeZone, .gmt)
+            }
+        }
+
+        @Test func personalRecordsDisclosed() throws {
+            // The same section with FR-1.6.2's disclosure open — the 6–10RM under the control, and
+            // the chevron turned. Two references rather than one, because "behind an explicit
+            // disclosure control" is a claim about what is NOT on screen in the first of them.
+            let list = ExerciseRecordList(DetailFixtures.repMaxes)
+            try assertSnapshots(named: "ExerciseDetail-records-disclosed") {
+                GroupedSection(Text(ExerciseLibraryStrings.recordsSection)) {
+                    ForEach(list.prominent, id: \.reps) { repMax in
+                        ExerciseRecordRow(repMax: repMax, unit: .kilograms, sessionID: nil)
+                    }
+                    RecordDisclosureHeader(isExpanded: true) {}
+                    ForEach(list.disclosed, id: \.reps) { repMax in
+                        ExerciseRecordRow(repMax: repMax, unit: .kilograms, sessionID: nil)
+                    }
+                }
+                .environment(\.locale, DetailFixtures.locale)
+                .environment(\.timeZone, .gmt)
+            }
+        }
+
+        @Test func estimate() throws {
+            // FR-1.7.1's number with its provenance under it: the formula and the window are what
+            // make the figure reconcilable with one seen anywhere else, so they are part of what
+            // this reference gates.
+            //
+            // THE UNLINKED FORM, on the records rows' rule and for a reason measured here: a
+            // `NavigationLink` outside a `NavigationStack` renders *disabled*, so a reference taken
+            // over `FR-1.7.4`'s link is a picture of a greyed-out tile rather than of the number.
+            // The linked form is this content inside a plain-styled link. That the link navigates
+            // is `ExerciseEstimateSectionTests`', and that it looks right is the simulator run's.
+            try assertSnapshots(named: "ExerciseDetail-estimate") {
+                ExerciseEstimateReading(
+                    state: .ready(
+                        DatedRecord(
+                            weight: Weight(grams: 116_667),
+                            sourceSetID: UUID(),
+                            achievedAt: DetailFixtures.recordDay),
+                        formula: .epley,
+                        days: 90,
+                        sessionID: nil),
+                    unit: .kilograms,
+                    draft: .constant(nil),
+                    hasFailedWrite: false,
+                    retry: {},
+                    commit: { _ in }
                 )
+                .environment(\.locale, DetailFixtures.locale)
+                .environment(\.timeZone, .gmt)
+            }
+        }
+
+        @Test func estimateRefused() throws {
+            // FR-1.13.3 at its sharpest: a lifter who HAS logged sets and still has no number. The
+            // reference is over the longest of the seven sentences, which is the one that decides
+            // whether the state component wraps at `accessibility3` — `ExerciseEstimateSectionTests`
+            // asserts that this case is still that sentence, so the reference cannot quietly become
+            // a rendering of a shorter one.
+            try assertSnapshots(named: "ExerciseDetail-estimate-refused") {
+                ExerciseEstimateReading(
+                    state: .insufficient(.refused(.repsOutOfRange), days: 90),
+                    unit: .kilograms,
+                    draft: .constant(nil),
+                    hasFailedWrite: false,
+                    retry: {},
+                    commit: { _ in }
+                )
+            }
+        }
+
+        @Test func estimateOverridden() throws {
+            // FR-1.7.5's two halves in one reference: the badge that replaces the provenance line,
+            // and the command that is the way back. At `accessibility3` the badge and the number
+            // are what this gates — a manual estimate that reads as a computed one is the failure
+            // the requirement's "clearly marked" names.
+            try assertSnapshots(named: "ExerciseDetail-estimate-manual") {
+                ExerciseEstimateReading(
+                    state: .manual(Weight(grams: 140_000)),
+                    unit: .kilograms,
+                    draft: .constant(nil),
+                    hasFailedWrite: false,
+                    retry: {},
+                    commit: { _ in }
+                )
+                .environment(\.locale, DetailFixtures.locale)
+            }
+        }
+
+        @Test func estimateOverrideEditor() throws {
+            // The field open, over a computed number, with the failed write beneath it: the two
+            // commands wrap at `accessibility3` and the banner has to stay legible under them.
+            // **The field itself renders as the unsupported-view placeholder**, a `TextField`
+            // being UIKit-backed — the harness's own limit, the same one the loading state's
+            // reference is a picture of. What this gates is everything around it.
+            try assertSnapshots(named: "ExerciseDetail-estimate-override-editor") {
+                ExerciseEstimateReading(
+                    state: .ready(
+                        DatedRecord(
+                            weight: Weight(grams: 116_667),
+                            sourceSetID: UUID(),
+                            achievedAt: DetailFixtures.recordDay),
+                        formula: .epley,
+                        days: 90,
+                        sessionID: nil),
+                    unit: .kilograms,
+                    draft: .constant("140"),
+                    hasFailedWrite: true,
+                    retry: {},
+                    commit: { _ in }
+                )
+                .environment(\.locale, DetailFixtures.locale)
+                .environment(\.timeZone, .gmt)
             }
         }
 
@@ -111,6 +242,10 @@
         /// Pinned because a Mac's region is not its language: `en_US@rg=uazzzz` is a US English
         /// machine that writes `102,5`, and it is what recorded this suite's first history images.
         static let locale = Locale(identifier: "en_US")
+
+        /// The day the estimate's source set was performed. Fixed rather than relative to now, on
+        /// ``trainingDay``'s rule.
+        static let recordDay = Date(timeIntervalSince1970: 1_700_000_000)
 
         static let backSquat = Fixtures.exercise(id: 1, name: "Back Squat", movement: .squat)
 
@@ -151,6 +286,37 @@
                 loggedSet(order: 3, kilos: 102.5, reps: 3, rpe: 9.5, isCompleted: false),
             ]
         )
+
+        /// One exercise's records, one at every N the two references have to picture.
+        ///
+        /// **Five N's, not ten**, and the gaps are the point: an N no set reached is absent rather
+        /// than drawn at zero, so the prominent half has three rows and the disclosed half two.
+        static let repMaxes: [DatedRepMax] = [
+            repMax(reps: 1, kilos: 140, daysAgo: 42),
+            repMax(reps: 3, kilos: 125, daysAgo: 14),
+            repMax(reps: 5, kilos: 110, daysAgo: 7),
+            repMax(reps: 8, kilos: 95, daysAgo: 28),
+            repMax(reps: 10, kilos: 85, daysAgo: 63),
+        ]
+
+        /// One record, spelled out once so a field nothing in the picture turns on is not repeated.
+        ///
+        /// The source set is a fixed identifier rather than a fresh `UUID` for the reason every other
+        /// fixture here has one: nothing in these renderings may depend on a value that changes per
+        /// run, and a row keyed on a fresh one could not be looked up in a links map either.
+        private static func repMax(reps: Int, kilos: Double, daysAgo: Int) -> DatedRepMax {
+            DatedRepMax(
+                reps: reps,
+                record: DatedRecord(
+                    weight: Weight(grams: Int(kilos * 1000)),
+                    sourceSetID: UUID(
+                        uuidString: "0F5A1E24-9B7D-4C31-8E62-0000000000\(String(format: "%02d", reps))"
+                    ) ?? UUID(),
+                    achievedAt: Date(timeIntervalSince1970: 1_700_000_000)
+                        .addingTimeInterval(-Double(daysAgo) * 86_400)
+                )
+            )
+        }
 
         /// One set, spelled out once so a field nothing in the picture turns on is not repeated.
         private static func loggedSet(

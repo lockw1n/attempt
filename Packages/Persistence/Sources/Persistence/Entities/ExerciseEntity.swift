@@ -52,6 +52,14 @@ final class ExerciseEntity: StoredEntity {
 
     var notes: String = ""
 
+    /// The estimated one-rep maximum the user entered by hand, in grams (`G-1.1`), or `nil` to use
+    /// the computed one (`FR-1.7.5`).
+    ///
+    /// Not in `TR-0.3.1`'s field list. Optional rather than a sentinel because `Weight` is signed
+    /// and zero is a real load, so no in-band value can mean "no override" — and clearing it is
+    /// half of what `FR-1.7.5` asks for. Unvalidated here, as every column in this schema is.
+    var manualE1RMGrams: Int?
+
     init(
         id: UUID = UUID(),
         name: String,
@@ -64,6 +72,7 @@ final class ExerciseEntity: StoredEntity {
         parentExerciseID: UUID? = nil,
         isArchived: Bool = false,
         notes: String = "",
+        manualE1RMGrams: Int? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
@@ -78,6 +87,7 @@ final class ExerciseEntity: StoredEntity {
         self.parentExerciseID = parentExerciseID
         self.isArchived = isArchived
         self.notes = notes
+        self.manualE1RMGrams = manualE1RMGrams
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

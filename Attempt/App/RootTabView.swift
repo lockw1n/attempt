@@ -1,4 +1,5 @@
 import AppNavigation
+import Dashboard
 import DesignSystem
 import ExerciseLibrary
 import Foundation
@@ -81,6 +82,8 @@ struct RootTabView: View {
             pastSessionRoot(sessionID)
         case .history(.calendar):
             calendarRoot
+        case .dashboard(.recentPersonalRecords):
+            recentRecordsRoot
         default:
             PlaceholderScreen(route: route)
         }
@@ -107,12 +110,13 @@ struct RootTabView: View {
     @ViewBuilder
     private func exerciseDetailRoot(_ exerciseID: UUID) -> some View {
         switch dependencies.state {
-        case .open(let repositories, _):
+        case .open(let repositories, let stores):
             ExerciseDetailView(
                 exerciseID: exerciseID,
                 repository: repositories.exercises,
                 workouts: repositories.workouts,
-                settings: repositories.settings
+                settings: repositories.settings,
+                records: stores.records
             )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
@@ -191,7 +195,28 @@ struct RootTabView: View {
                 catalogue: repositories.exercises,
                 settings: repositories.settings,
                 vocabulary: stores.modifiers,
-                equipment: stores.equipment
+                equipment: stores.equipment,
+                records: stores.records
+            )
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// `FR-1.6.5`'s global feed of recent personal records, or the reason it cannot be shown.
+    ///
+    /// **Home's first real screen, and it is the one pushed from the tab rather than the tab root**
+    /// — the dashboard behind it is `T-1.55`/`T-1.56`'s. Three dependencies, because a feed entry is
+    /// three facts from three places: the cached record, the exercise the record names, and the unit
+    /// its load reads in.
+    @ViewBuilder
+    private var recentRecordsRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, let stores):
+            RecentRecordsView(
+                records: stores.records,
+                catalogue: repositories.exercises,
+                settings: repositories.settings
             )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
@@ -297,8 +322,8 @@ struct RootTabView: View {
     @ViewBuilder
     private var settingsRoot: some View {
         switch dependencies.state {
-        case .open(let repositories, _):
-            SettingsLandingView(repository: repositories.settings)
+        case .open(let repositories, let stores):
+            SettingsLandingView(repository: repositories.settings, records: stores.records)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

@@ -5,15 +5,17 @@ import PowerliftingCore
 ///
 /// **Text, not numbers, and that is a failable initializer meeting a keyboard.** A `TextField` bound
 /// to a `Double` reverts what the user is halfway through typing — "10" on the way to "102.5" is a
-/// complete number, and a lone "." is not one at all — so every numeric field in this module is a
+/// complete number, and a lone "." is not one at all — so every numeric field that takes one is a
 /// `String` and the crossing happens once, on confirm. That crossing is the only place floating
-/// point exists in the logging path: a parsed decimal becomes grams immediately and nothing
+/// point exists on the way in from a form: a parsed decimal becomes grams immediately and nothing
 /// downstream sees the `Double`.
 ///
-/// **One type rather than a copy per form**, because the two forms that need it — ``SetDraft`` and
-/// ``EquipmentProfileDraft`` — must read a number the same way. A locale that writes the decimal as
-/// a comma is not a property of what is being entered.
-enum LocalizedNumberField {
+/// **One type rather than a copy per form**, because every form that reads a number — a set's
+/// weight and RPE, a bar's mass, a manual e1RM (`FR-1.7.5`) — must read it the same way. A locale
+/// that writes the decimal as a comma is not a property of what is being entered. It lives beside
+/// ``AppFormat`` because it is that type's other direction: one writes a value out for the locale,
+/// this reads one back in.
+public enum LocalizedNumberField {
     /// Reads a decimal the user typed, in their locale.
     ///
     /// **The whole field has to be the number, and `lenient: false` does not say that.** Measured:
@@ -35,7 +37,7 @@ enum LocalizedNumberField {
     ///   - locale: The locale to read it in.
     /// - Returns: The value, or `nil` if the field is empty or is not, in whole, a number in that
     ///   locale.
-    static func decimal(_ text: String, locale: Locale) -> Double? {
+    public static func decimal(_ text: String, locale: Locale) -> Double? {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
         guard
@@ -58,7 +60,7 @@ enum LocalizedNumberField {
     ///   - value: The number to write.
     ///   - locale: The locale to write it in.
     /// - Returns: The field's new contents.
-    static func render(_ value: Double, locale: Locale) -> String {
+    public static func render(_ value: Double, locale: Locale) -> String {
         value.formatted(
             .number.grouping(.never).precision(.fractionLength(0...3)).locale(locale)
         )
@@ -80,7 +82,7 @@ enum LocalizedNumberField {
     ///   - unit: The unit the number is entered in.
     ///   - locale: The locale to read it in.
     /// - Returns: The mass, or `nil` when the field is empty, is not a number, or is negative.
-    static func weight(_ text: String, in unit: MassUnit, locale: Locale) -> Weight? {
+    public static func weight(_ text: String, in unit: MassUnit, locale: Locale) -> Weight? {
         guard let entered = decimal(text, locale: locale), entered >= 0 else { return nil }
         return mass(entered, in: unit)
     }
@@ -102,7 +104,7 @@ enum LocalizedNumberField {
     ///   - unit: The unit to write it in (`G-3.1`).
     ///   - locale: The locale to write it in (`G-3.4`).
     /// - Returns: The field's contents.
-    static func render(_ weight: Weight, in unit: MassUnit, locale: Locale) -> String {
+    public static func render(_ weight: Weight, in unit: MassUnit, locale: Locale) -> String {
         let converted = weight.converted(to: unit)
         for digits in 0...3 {
             let text = converted.formatted(
@@ -110,6 +112,37 @@ enum LocalizedNumberField {
             if grams(text, in: unit, locale: locale) == weight.grams { return text }
         }
         return render(converted, locale: locale)
+    }
+
+    /// Writes a mass into a field at the step it is *displayed* at (`G-3.3`), rather than exactly.
+    ///
+    /// **For a field opened over a number the user is looking at rather than one they typed.**
+    /// ``render(_:in:locale:)`` names the stored grams exactly, which is right when the field is
+    /// the value's origin — it round-trips what was entered. It is wrong when the field is seeded
+    /// from a *computed* value shown through ``AppFormat/weight(in:locale:)``: that tile is snapped
+    /// to the display step and a computed number lands on one only by accident, so the field would
+    /// open disagreeing with the figure above it and a save with no edit would store a number the
+    /// user never saw.
+    ///
+    /// The rounding is ``PowerliftingCore/Weight/formatted(in:precision:)``'s, not a second copy of
+    /// it, so the field and the tile cannot disagree at the ties. Trailing zeros are dropped —
+    /// that method's fraction is fixed width, and `"116.0"` is not what a field wants.
+    ///
+    /// - Parameters:
+    ///   - weight: The mass to write.
+    ///   - unit: The unit to write it in (`G-3.1`).
+    ///   - precision: The display step to snap to; the tile's own (`G-3.3`).
+    ///   - locale: The locale to write it in (`G-3.4`).
+    /// - Returns: The field's contents.
+    public static func render(
+        _ weight: Weight, in unit: MassUnit, at precision: DisplayPrecision, locale: Locale
+    ) -> String {
+        // Unreachable in practice — the domain documents that string as a plain decimal — and the
+        // fallback is the exact rendering, which is wrong about the step and right about the mass.
+        guard let snapped = Double(weight.formatted(in: unit, precision: precision)) else {
+            return render(weight, in: unit, locale: locale)
+        }
+        return render(snapped, locale: locale)
     }
 
     /// What a field's contents come to in grams, sign and all.
@@ -149,7 +182,7 @@ enum LocalizedNumberField {
     ///   - text: What is in the field.
     ///   - locale: The locale to read it in.
     /// - Returns: The count, or `nil` when the field is empty, unparseable, fractional or negative.
-    static func count(_ text: String, locale: Locale) -> Int? {
+    public static func count(_ text: String, locale: Locale) -> Int? {
         guard let entered = decimal(text, locale: locale) else { return nil }
         guard entered >= 0, entered == entered.rounded(.down), let count = Int(exactly: entered)
         else {

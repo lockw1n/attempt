@@ -66,8 +66,8 @@ struct TrainingLog {
             implementCount: 1,
             isCustom: true,
             isArchived: archived,
-            notes: ""
-        )
+            notes: "",
+            manualE1RM: nil)
     }
 
     /// Writes one session.

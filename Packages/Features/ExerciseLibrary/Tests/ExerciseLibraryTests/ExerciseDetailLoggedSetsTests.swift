@@ -110,8 +110,8 @@ struct ExerciseDetailLoggedSetsTests {
             implementCount: 1,
             isCustom: false,
             isArchived: false,
-            notes: ""
-        )
+            notes: "",
+            manualE1RM: nil)
         try await repositories.exercises.save(exercise)
         return exercise
     }
@@ -197,6 +197,8 @@ private actor RefusingWorkoutRepository: WorkoutRepository {
     func entries(forSessionID sessionID: UUID, includingDeleted: Bool) async throws -> [ExerciseEntry] {
         throw refusal
     }
+
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? { throw refusal }
 
     func save(_ entry: ExerciseEntry) async throws { throw refusal }
 

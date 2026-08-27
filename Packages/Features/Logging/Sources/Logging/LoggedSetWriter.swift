@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import RepositoryInterface
 
@@ -19,6 +20,12 @@ import RepositoryInterface
 /// excludes on, and `isWarmup`, which takes a set out of the analysed sequence altogether. A
 /// recompute hooked onto these two alone covers neither a new set nor either marking.
 ///
+/// **All five now announce, and the announcement is on the writer rather than on the screen.**
+/// ``records`` is told after a write that actually changed something — a no-op write moves no
+/// record, and publishing on one would make every screen showing this exercise re-read for nothing.
+/// The hook is here because `FR-1.2.7`'s edit is reachable from History as well as from the workout
+/// in progress (both hold one of these), and a hook on a screen would have covered one of them.
+///
 /// **Neither call reports a set it cannot find**, and that is the marking commands' rule rather than
 /// a new one: the row was deleted underneath the screen, and a diagnostic would report a failure
 /// against a set the user can no longer see. Both answer `false` instead, so a caller that needs to
@@ -27,11 +34,18 @@ public struct LoggedSetWriter: Sendable {
     /// The sets, and the entries they are read by.
     private let repository: any WorkoutRepository
 
+    /// What is told that a set moved (`FR-1.6.4`, `TR-1.6`).
+    private let records: PersonalRecordRecomputer
+
     /// Builds the writer over the repository the sets live in.
     ///
-    /// - Parameter repository: Sessions, their entries and their sets.
-    public init(repository: any WorkoutRepository) {
+    /// - Parameters:
+    ///   - repository: Sessions, their entries and their sets.
+    ///   - records: The app's one recompute actor — shared, so a set edited here reaches every
+    ///     screen showing a record it moved.
+    public init(repository: any WorkoutRepository, records: PersonalRecordRecomputer) {
         self.repository = repository
+        self.records = records
     }
 
     /// Rewrites a logged set's six editable fields (`FR-1.2.7`).
@@ -68,6 +82,7 @@ public struct LoggedSetWriter: Sendable {
         let edited = Self.edited(target, to: values)
         guard edited != target else { return false }
         try await repository.save(edited)
+        await records.setDidChange(inEntryID: entryID)
         return true
     }
 
@@ -92,6 +107,7 @@ public struct LoggedSetWriter: Sendable {
         let stored = try await repository.sets(forEntryID: entryID, includingDeleted: false)
         guard stored.contains(where: { $0.id == setID }) else { return false }
         try await repository.deleteSet(id: setID)
+        await records.setDidChange(inEntryID: entryID)
         return true
     }
 

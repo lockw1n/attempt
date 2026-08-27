@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryFakes
@@ -13,7 +14,7 @@ struct SettingsLandingStateTests {
     func loadPublishesStoredRow() async throws {
         let repository = InMemoryRepositoryStack().settings
         let stored = try await repository.settings()
-        let state = SettingsLandingState(repository: repository)
+        let state = landingState(over: repository)
 
         #expect(state.phase == .idle)
         await state.load()
@@ -24,7 +25,7 @@ struct SettingsLandingStateTests {
     @Test("A second load does not read again")
     func loadIsIdempotent() async {
         let repository = ScriptedSettingsRepository(row: .fixture())
-        let state = SettingsLandingState(repository: repository)
+        let state = landingState(over: repository)
 
         await state.load()
         await state.load()
@@ -35,7 +36,7 @@ struct SettingsLandingStateTests {
     @Test("A load requested while one is in flight does not read again")
     func loadIsNotReentrant() async {
         let repository = ScriptedSettingsRepository(row: .fixture(), gateReads: true)
-        let state = SettingsLandingState(repository: repository)
+        let state = landingState(over: repository)
 
         let first = Task { await state.load() }
         await repository.waitUntilReads(reach: 1)
@@ -60,7 +61,7 @@ struct SettingsLandingStateTests {
     func failedReadIsReported() async {
         let failure = RepositoryError.recordNotFound(id: UUID())
         let repository = ScriptedSettingsRepository(row: .fixture(), readError: failure)
-        let state = SettingsLandingState(repository: repository)
+        let state = landingState(over: repository)
 
         await state.load()
 
@@ -71,7 +72,7 @@ struct SettingsLandingStateTests {
     func failedReadIsRetryable() async {
         let repository = ScriptedSettingsRepository(
             row: .fixture(), readError: .recordNotFound(id: UUID()))
-        let state = SettingsLandingState(repository: repository)
+        let state = landingState(over: repository)
         await state.load()
         #expect(await repository.reads == 1)
 
@@ -85,7 +86,7 @@ struct SettingsLandingStateTests {
     @Test("Switching the display unit writes it through and republishes what the store kept")
     func displayUnitIsPersisted() async throws {
         let repository = InMemoryRepositoryStack().settings
-        let state = SettingsLandingState(repository: repository)
+        let state = landingState(over: repository)
         await state.load()
 
         await state.setDisplayUnit(.pounds)
@@ -99,7 +100,7 @@ struct SettingsLandingStateTests {
     @Test("Switching to the unit already stored writes nothing")
     func unchangedUnitIsNotWritten() async throws {
         let repository = InMemoryRepositoryStack().settings
-        let state = SettingsLandingState(repository: repository)
+        let state = landingState(over: repository)
         await state.load()
         let before = try await repository.settings()
 
@@ -115,7 +116,7 @@ struct SettingsLandingStateTests {
     @Test("A unit change before the row is loaded writes nothing")
     func mutationBeforeLoadIsRefused() async {
         let repository = ScriptedSettingsRepository(row: .fixture())
-        let state = SettingsLandingState(repository: repository)
+        let state = landingState(over: repository)
 
         await state.setDisplayUnit(.pounds)
 
@@ -127,7 +128,7 @@ struct SettingsLandingStateTests {
     func writesAreSerialized() async throws {
         let repository = ScriptedSettingsRepository(
             row: .fixture(displayUnit: .kilograms), gateWrites: true)
-        let state = SettingsLandingState(repository: repository)
+        let state = landingState(over: repository)
         await state.load()
 
         // kg → lb, which suspends inside the save.
@@ -152,7 +153,7 @@ struct SettingsLandingStateTests {
         let failure = RepositoryError.identityAlreadyEstablished(recordID: UUID())
         let repository = ScriptedSettingsRepository(
             row: .fixture(displayUnit: .kilograms), writeError: failure)
-        let state = SettingsLandingState(repository: repository)
+        let state = landingState(over: repository)
         await state.load()
 
         await state.setDisplayUnit(.pounds)
@@ -168,7 +169,7 @@ struct SettingsLandingStateTests {
         let repository = ScriptedSettingsRepository(
             row: .fixture(displayUnit: .kilograms),
             writeError: .identityAlreadyEstablished(recordID: UUID()))
-        let state = SettingsLandingState(repository: repository)
+        let state = landingState(over: repository)
         await state.load()
         await state.setDisplayUnit(.pounds)
         #expect(state.writeFailure != nil)
@@ -277,5 +278,98 @@ extension UserSettings {
             defaultRoundingIncrement: Weight(grams: 2500),
             defaultRoundingStrategy: .nearest
         )
+    }
+}
+
+/// A landing state over `repository`, with a recompute actor over throwaway fakes.
+///
+/// **Every test that does not touch the formula ignores it**, which is why it is defaulted here
+/// rather than threaded through each call: the pipeline is a collaborator of one preference out of
+/// the four, and making the other tests name it would say otherwise.
+func landingState(
+    over repository: any SettingsRepository,
+    records: PersonalRecordRecomputer? = nil
+) -> SettingsLandingState {
+    let fakes = InMemoryRepositoryStack()
+    return SettingsLandingState(
+        repository: repository,
+        records: records
+            ?? PersonalRecordRecomputer(
+                workouts: fakes.workouts,
+                exercises: fakes.exercises,
+                cache: fakes.personalRecords))
+}
+
+/// `FR-1.7.2`'s picker, and the half of `FR-1.7.3` that is not the pipeline's.
+@Suite("Settings e1RM formula")
+struct SettingsFormulaTests {
+    @Test("Choosing a formula stores it and tells the recompute pipeline")
+    func choosingAFormulaStoresAndAnnounces() async throws {
+        let repository = InMemoryRepositoryStack().settings
+        let fakes = InMemoryRepositoryStack()
+        let records = PersonalRecordRecomputer(
+            workouts: fakes.workouts,
+            exercises: fakes.exercises,
+            cache: fakes.personalRecords)
+        let state = landingState(over: repository, records: records)
+        await state.load()
+
+        await state.setE1RMFormula(.brzycki)
+
+        #expect(try await repository.settings().e1RMFormula == .brzycki)
+        #expect(await records.formulaInForce() == .brzycki)
+        #expect(state.writeFailure == nil)
+    }
+
+    /// `FR-1.7.3` is not the column moving, it is every estimate moving — so the announcement is
+    /// what the test asserts, not just the write.
+    @Test("Choosing a formula tells every subscribed screen to read again")
+    func choosingAFormulaPublishes() async throws {
+        let repository = InMemoryRepositoryStack().settings
+        let fakes = InMemoryRepositoryStack()
+        let records = PersonalRecordRecomputer(
+            workouts: fakes.workouts,
+            exercises: fakes.exercises,
+            cache: fakes.personalRecords)
+        let state = landingState(over: repository, records: records)
+        await state.load()
+        var changes = await records.changes().makeAsyncIterator()
+
+        await state.setE1RMFormula(.wathan)
+
+        #expect(await changes.next() == .everyExercise)
+    }
+
+    /// `G-2.4`'s conflict key is `updatedAt`, so a write of the value already stored would let a
+    /// local no-op outrank a real remote edit.
+    @Test("Choosing the formula already in force writes nothing")
+    func anUnchangedFormulaWritesNothing() async throws {
+        let repository = InMemoryRepositoryStack().settings
+        let state = landingState(over: repository)
+        await state.load()
+        let before = try await repository.settings()
+
+        await state.setE1RMFormula(before.e1RMFormula)
+
+        #expect(try await repository.settings().updatedAt == before.updatedAt)
+    }
+
+    /// A pipeline told about a formula the store refused would draw estimates the settings row does
+    /// not agree with, and the next relaunch would silently undo them.
+    @Test("A failed write leaves the pipeline on the formula that is actually stored")
+    func aFailedWriteDoesNotAnnounce() async throws {
+        let repository = ScriptedSettingsRepository(row: .fixture(), writeError: .recordNotFound(id: UUID()))
+        let fakes = InMemoryRepositoryStack()
+        let records = PersonalRecordRecomputer(
+            workouts: fakes.workouts,
+            exercises: fakes.exercises,
+            cache: fakes.personalRecords)
+        let state = landingState(over: repository, records: records)
+        await state.load()
+
+        await state.setE1RMFormula(.lombardi)
+
+        #expect(state.writeFailure != nil)
+        #expect(await records.formulaInForce() == .defaultFormula)
     }
 }

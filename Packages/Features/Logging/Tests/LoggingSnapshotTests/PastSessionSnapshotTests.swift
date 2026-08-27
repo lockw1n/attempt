@@ -137,8 +137,8 @@
                 implementCount: 1,
                 isCustom: false,
                 isArchived: false,
-                notes: ""
-            )
+                notes: "",
+                manualE1RM: nil)
         }
 
         /// One logged set, with only what the references vary named.

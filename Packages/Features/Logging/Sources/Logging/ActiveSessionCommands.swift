@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -204,6 +205,7 @@ extension ActiveSessionStore {
             let stored = try await repository.sets(forEntryID: entryID, includingDeleted: false)
             if let target = stored.first(where: { $0.id == setID }), target.isWarmup != isWarmup {
                 try await repository.save(Self.marked(target, isWarmup: isWarmup))
+                await records.setDidChange(inEntryID: entryID)
                 exercisesWriteFailure = nil
             }
         } catch {
@@ -255,6 +257,7 @@ extension ActiveSessionStore {
             let target = stored.first { $0.id == setID }
             if let target, target.isCompleted != isCompleted {
                 try await repository.save(Self.completed(target, isCompleted: isCompleted))
+                await records.setDidChange(inEntryID: entryID)
                 exercisesWriteFailure = nil
             }
         } catch {
@@ -381,6 +384,7 @@ extension ActiveSessionStore {
                     completedAt: now
                 )
             )
+            await records.setDidChange(inEntryID: entryID)
             exercisesWriteFailure = nil
         } catch {
             exercisesWriteFailure = String(describing: error)

@@ -41,6 +41,10 @@ let package = Package(
         .package(path: "../../DesignSystem"),
         .package(path: "../../AppNavigation"),
         .package(path: "../../Localization"),
+        // FR-1.7.2's picker writes a preference AND tells the recompute pipeline the estimates are
+        // stale, so this module names the same edge ExerciseLibrary does: DerivedValues sits below
+        // the feature level, over RepositoryInterface alone.
+        .package(path: "../../DerivedValues"),
         .package(path: "../../RepositoryFakes"),
     ],
     targets: [
@@ -52,13 +56,14 @@ let package = Package(
                 "DesignSystem",
                 "AppNavigation",
                 "Localization",
+                "DerivedValues",
             ],
             resources: [.process("Resources")],
             swiftSettings: settings
         ),
         .testTarget(
             name: "SettingsTests",
-            dependencies: ["Settings", "RepositoryFakes"],
+            dependencies: ["Settings", "RepositoryFakes", "DerivedValues"],
             swiftSettings: settings
         ),
     ]

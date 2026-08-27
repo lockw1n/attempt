@@ -150,6 +150,12 @@
                         move: { _, _ in },
                         unit: .kilograms,
                         previous: Fixtures.previousPerformances,
+                        // No marks, and not for want of trying: `FR-1.6.3`'s badge is drawn on a
+                        // completed working set, and none of this fixture's four cards has one
+                        // visible — the card that does is finished, so `FR-1.2.13` has it folded.
+                        // What the badge looks like is `setRowsWithRecords()`'; this reference is
+                        // about the cards.
+                        personalRecords: SessionRecordMarks(),
                         logSet: { _ in },
                         mark: { _, _ in },
                         markCompleted: { _, _ in },
@@ -300,6 +306,20 @@
             }
         }
 
+        // MARK: - The personal-record badge (FR-1.6.3)
+
+        @Test func setRowsWithRecords() throws {
+            // FR-1.6.3's badge on rows that hold a record, at both of the shapes it takes: one set
+            // holding a single N-rep max and one holding five. What the picture is checking is that
+            // the mark takes a line of its own under the values rather than competing with the load
+            // for the row's width — the measured failure T-1.23 recorded for the marking control.
+            try assertSnapshots(named: "Session-set-rows-records") {
+                fixedEnvironment {
+                    rows(Fixtures.loggedSets + Fixtures.rampedSets, records: Fixtures.personalRecords)
+                }
+            }
+        }
+
         @Test func setRowKeepsItsLineAtTheWidestHorizontalSize() throws {
             // NFR-1.10 names `accessibility3` and the references above picture it — but the row only
             // STACKS at accessibility sizes, so the tightest LINE it ever draws is `.xxxLarge`, one
@@ -389,14 +409,20 @@
 
         /// A column of set rows, numbered the way the card numbers them.
         ///
-        /// - Parameter sets: The sets, in the order they were logged.
+        /// - Parameters:
+        ///   - sets: The sets, in the order they were logged.
+        ///   - records: Which of them hold a record (`FR-1.6.3`). None by default, which is what
+        ///     every rendering taken before the badge existed pictures.
         /// - Returns: The rows.
-        private func rows(_ sets: [SetEntry]) -> some View {
+        private func rows(
+            _ sets: [SetEntry], records: SessionRecordMarks = SessionRecordMarks()
+        ) -> some View {
             VStack(alignment: .leading) {
                 ForEach(SetNumbering.numbered(sets)) { numbered in
                     SetRow(
                         numbered: numbered,
                         unit: .kilograms,
+                        recordReps: records.repCounts(forSetID: numbered.id),
                         mark: { _, _ in },
                         markCompleted: { _, _ in },
                         edit: { _ in }

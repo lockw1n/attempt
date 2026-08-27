@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -93,7 +94,9 @@ final class PastSessionState {
     ///
     /// Built per call rather than stored, on ``ActiveSessionStore/setWriter``'s reason: it holds the
     /// repository and nothing else, so a second one is not a second writer.
-    @ObservationIgnored private var setWriter: LoggedSetWriter { LoggedSetWriter(repository: workouts) }
+    @ObservationIgnored private var setWriter: LoggedSetWriter {
+        LoggedSetWriter(repository: workouts, records: records)
+    }
 
     /// What performs `FR-1.2.9`'s note. Built per call, for ``setWriter``'s reason.
     @ObservationIgnored private var noteWriter: SessionNoteWriter { SessionNoteWriter(repository: workouts) }
@@ -101,6 +104,10 @@ final class PastSessionState {
     @ObservationIgnored private let workouts: any WorkoutRepository
     @ObservationIgnored private let catalogue: any ExerciseRepository
     @ObservationIgnored private let settings: any SettingsRepository
+
+    /// What is told that a set moved (`FR-1.6.4`). A past session's sets are edited from here, which
+    /// is the History-side half of the trigger `LoggedSetWriter` carries.
+    @ObservationIgnored private let records: PersonalRecordRecomputer
 
     /// Builds the state over the session it is about and the three repositories it reads.
     ///
@@ -110,16 +117,19 @@ final class PastSessionState {
     ///   - catalogue: The exercises those entries name. A second protocol rather than a join,
     ///     because the schema declares no relationships (`G-2.5`) — see ``SessionExercise``.
     ///   - settings: The single settings row, for the unit the loads are shown in.
+    ///   - records: The app's one recompute actor (`TR-1.6`).
     init(
         sessionID: UUID,
         workouts: any WorkoutRepository,
         catalogue: any ExerciseRepository,
-        settings: any SettingsRepository
+        settings: any SettingsRepository,
+        records: PersonalRecordRecomputer
     ) {
         self.sessionID = sessionID
         self.workouts = workouts
         self.catalogue = catalogue
         self.settings = settings
+        self.records = records
     }
 
     /// Reads the session, its exercises and the display unit.

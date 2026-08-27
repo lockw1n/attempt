@@ -1,4 +1,5 @@
 import Foundation
+import Localization
 import PowerliftingCore
 import RepositoryInterface
 

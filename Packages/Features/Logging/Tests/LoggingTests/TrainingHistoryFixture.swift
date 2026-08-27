@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryFakes
@@ -41,7 +42,12 @@ struct TrainingHistory {
         }
         return TrainingHistory(
             repositories: repositories,
-            writer: LoggedSetWriter(repository: repositories.workouts),
+            writer: LoggedSetWriter(
+                repository: repositories.workouts,
+                records: PersonalRecordRecomputer(
+                    workouts: repositories.workouts,
+                    exercises: repositories.exercises,
+                    cache: repositories.personalRecords)),
             entries: entries,
             sets: sets
         )

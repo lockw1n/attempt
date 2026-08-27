@@ -86,6 +86,12 @@ struct SetRow: View {
     /// The unit the load is shown in (`G-3.1`).
     let unit: MassUnit
 
+    /// The rep counts this set holds the record at, ascending, or none (`FR-1.6.3`).
+    ///
+    /// **A list rather than a flag**, because one set can hold several: the heaviest five-rep set may
+    /// be the record at every N up to five. Empty is the ordinary case and draws nothing.
+    let recordReps: [Int]
+
     /// Marks this set as a warmup or as working (`FR-1.2.4`) — the set, then which it becomes, or
     /// `nil` where the row does not offer it.
     ///
@@ -191,6 +197,7 @@ struct SetRow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     rating
                 }
+                recordMark
                 modifiers
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -334,6 +341,40 @@ struct SetRow: View {
     private var valueColour: ColorToken {
         guard numbered.isCompleted else { return ColorToken.negative }
         return numbered.isWarmup ? ColorToken.textSecondary : ColorToken.textPrimary
+    }
+
+    /// `FR-1.6.3`'s badge, where this set holds a record.
+    ///
+    /// **Below the values rather than beside them**, on ``modifiers``' measured rule and for its
+    /// reason: the line is already spending its width on two 44pt controls and the load, and T-1.23
+    /// measured a single extra badge breaking `102.5 kg` into three lines. It takes a line of its own
+    /// only when there is a record to report.
+    ///
+    /// **A word on the accent, not a colour on the numbers** (`G-4.5`). "PR" is legible in a
+    /// monochrome rendering and to a reader who cannot separate the accent from the ramp, which a
+    /// tinted load would not be; and the semantic palette stays reserved for `G-7.3`'s distinctions —
+    /// a record is a highlight, not an outcome.
+    ///
+    /// **Two characters visible, the whole claim in the label.** Which N's this set holds is what a
+    /// lifter actually wants and what will not fit on the row, so VoiceOver is given it in full.
+    @ViewBuilder private var recordMark: some View {
+        if !recordReps.isEmpty {
+            Text(LoggingStrings.setPersonalRecord)
+                .font(Typography.metricLabel.font)
+                .foregroundStyle(ColorToken.onBrandAccent)
+                .padding(.horizontal, Spacing.sm.points)
+                .padding(.vertical, Spacing.xxs.points)
+                .background(ColorToken.brandAccent, in: .capsule)
+                .accessibilityLabel(
+                    Text(
+                        LoggingStrings.setPersonalRecordLabel(
+                            recordReps.map { $0.formatted(AppFormat.count(locale: locale)) }
+                                .formatted(.list(type: .and).locale(locale)),
+                            isSingleRep: recordReps == [1]
+                        )
+                    )
+                )
+        }
     }
 
     /// `FR-1.2.8`'s modifiers, where the set carries any.

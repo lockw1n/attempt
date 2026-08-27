@@ -35,6 +35,11 @@ let package = Package(
         .package(path: "../../DesignSystem"),
         .package(path: "../../AppNavigation"),
         .package(path: "../../Localization"),
+        // THE SIXTH IS NOT A FEATURE PACKAGE and does not break TR-0.1.2: `DerivedValues` sits below
+        // this level, over `RepositoryInterface` alone, and is where TR-1.6's recompute lives. Every
+        // writer of a set column here has to announce the write, or a personal record goes stale the
+        // moment a set is logged — see `LoggedSetWriter`.
+        .package(path: "../../DerivedValues"),
         .package(path: "../../RepositoryFakes"),
     ],
     targets: [
@@ -43,6 +48,7 @@ let package = Package(
             dependencies: [
                 "PowerliftingCore",
                 "RepositoryInterface",
+                "DerivedValues",
                 "DesignSystem",
                 "AppNavigation",
                 "Localization",

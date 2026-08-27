@@ -30,17 +30,3 @@ struct FieldRow<Content: View>: View {
         }
     }
 }
-
-extension View {
-    /// The decimal keyboard, where the platform has one.
-    ///
-    /// **A modifier rather than an `#if` at four call sites.** `keyboardType(_:)` does not exist on
-    /// macOS, and this module builds for both — the package's `platforms:` clause names each.
-    func decimalKeyboard() -> some View {
-        #if os(iOS)
-            return keyboardType(.decimalPad)
-        #else
-            return self
-        #endif
-    }
-}

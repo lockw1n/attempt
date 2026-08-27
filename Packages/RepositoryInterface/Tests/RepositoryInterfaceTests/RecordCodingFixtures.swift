@@ -32,8 +32,8 @@ func codingExercise() -> Exercise {
         implementCount: 2,
         isCustom: true,
         isArchived: true,
-        notes: "belt from 140"
-    )
+        notes: "belt from 140",
+        manualE1RM: Weight(grams: 182_500))
 }
 
 func codingSession() -> WorkoutSession {

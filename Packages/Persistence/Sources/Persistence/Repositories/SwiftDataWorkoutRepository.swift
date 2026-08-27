@@ -96,6 +96,11 @@ actor SwiftDataWorkoutRepository: WorkoutRepository {
         .map(\.record)
     }
 
+    func entry(id: UUID, includingDeleted: Bool) throws -> ExerciseEntry? {
+        try modelContext.row(ExerciseEntryEntity.self, id: id, includingDeleted: includingDeleted)?
+            .record
+    }
+
     func save(_ entry: ExerciseEntry) throws {
         try modelContext.requireReferenced(
             WorkoutSessionEntity.self, id: entry.sessionID, from: entry.id)

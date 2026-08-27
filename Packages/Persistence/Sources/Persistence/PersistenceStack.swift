@@ -17,19 +17,18 @@ public enum StoreLocation: Sendable {
     case inMemory
 }
 
-/// The five repositories over one store — the only thing this module exposes (`TR-0.4.2`,
-/// `TR-0.1.2`).
+/// The repositories over one store — the only thing this module exposes (`TR-0.4.2`, `TR-0.1.2`).
 ///
-/// **`ModelContainer` does not appear in this type's surface, and that is the point.** The five
-/// implementations are `internal`, so a consumer cannot name a SwiftData-backed type even
+/// **`ModelContainer` does not appear in this type's surface, and that is the point.** Every
+/// implementation is `internal`, so a consumer cannot name a SwiftData-backed type even
 /// deliberately: `TR-0.1.2` is held by the compiler here, exactly as `TR-0.4.3` is held by the
-/// entities being `internal`. What a composition root gets is five existentials, which is what the
+/// entities being `internal`. What a composition root gets is existentials, which is what the
 /// protocols were written to be used as.
 ///
-/// **One container, five actors, one context each.** They read each other's writes because a
-/// context reads through to the store, and each write lands before the call that made it returns —
-/// so nothing here needs a shared context, and a repository cannot see another's half-finished
-/// transaction.
+/// **One container, one actor per repository, one context each.** They read each other's writes
+/// because a context reads through to the store, and each write lands before the call that made it
+/// returns — so nothing here needs a shared context, and a repository cannot see another's
+/// half-finished transaction.
 public struct PersistenceStack: Sendable {
     /// The exercise catalogue and each exercise's training-max history.
     public let exercises: any ExerciseRepository
@@ -46,20 +45,24 @@ public struct PersistenceStack: Sendable {
     /// The user's equipment profiles.
     public let equipment: any EquipmentRepository
 
-    /// Opens the store at `location` and builds the five repositories over it.
+    /// The cached N-rep maxes (`TR-1.6`) — derived values, never truth (`G-1.4`).
+    public let personalRecords: any PersonalRecordCacheRepository
+
+    /// Opens the store at `location` and builds the repositories over it.
     ///
     /// - Throws: Whatever `ModelContainer` throws when the store cannot be opened or migrated.
     public init(location: StoreLocation = .applicationDefault) throws {
         try self.init(container: makeModelContainer(at: location))
     }
 
-    /// The five over a container the caller already has — the seam the tests use.
+    /// The repositories over a container the caller already has — the seam the tests use.
     init(container: ModelContainer) {
         exercises = SwiftDataExerciseRepository(modelContainer: container)
         workouts = SwiftDataWorkoutRepository(modelContainer: container)
         settings = SwiftDataSettingsRepository(modelContainer: container)
         bodyweight = SwiftDataBodyweightRepository(modelContainer: container)
         equipment = SwiftDataEquipmentRepository(modelContainer: container)
+        personalRecords = SwiftDataPersonalRecordCacheRepository(modelContainer: container)
     }
 }
 

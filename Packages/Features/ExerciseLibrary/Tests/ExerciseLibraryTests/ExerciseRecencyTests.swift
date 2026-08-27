@@ -238,6 +238,7 @@ private struct FailingWorkoutRepository: WorkoutRepository {
     func entries(
         forSessionID sessionID: UUID, includingDeleted: Bool
     ) async throws -> [ExerciseEntry] { throw failure }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? { throw failure }
     func save(_ entry: ExerciseEntry) async throws { throw failure }
     func deleteExerciseEntry(id: UUID) async throws { throw failure }
     func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {

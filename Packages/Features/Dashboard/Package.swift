@@ -33,6 +33,13 @@ let package = Package(
         .package(path: "../../DesignSystem"),
         .package(path: "../../AppNavigation"),
         .package(path: "../../Localization"),
+        // THE SIXTH IS NOT A FEATURE PACKAGE and does not break TR-0.1.2, for the reason
+        // ExerciseLibrary's manifest gives: `DerivedValues` sits below this level, over
+        // `RepositoryInterface` alone. It is here because `FR-1.9.3`'s card and `FR-1.6.5`'s feed
+        // behind it are both readings of the recompute actor's cache.
+        .package(path: "../../DerivedValues"),
+        // TEST-ONLY, on the test target alone — the shape every other feature manifest has.
+        .package(path: "../../RepositoryFakes"),
     ],
     targets: [
         .target(
@@ -40,12 +47,31 @@ let package = Package(
             dependencies: [
                 "PowerliftingCore",
                 "RepositoryInterface",
+                "DerivedValues",
                 "DesignSystem",
                 "AppNavigation",
                 "Localization",
             ],
             resources: [.process("Resources")],
             swiftSettings: settings
-        )
+        ),
+        .testTarget(
+            name: "DashboardTests",
+            dependencies: ["Dashboard", "RepositoryFakes", "DerivedValues"],
+            swiftSettings: settings
+        ),
+        // TR-1.12's references for this module's screens — the shape ExerciseLibrary's manifest
+        // documents: every file `#if os(iOS)`, the images beside the target rather than declared as
+        // resources, and `scripts/snapshot-tests.sh` running it on a simulator.
+        .testTarget(
+            name: "DashboardSnapshotTests",
+            dependencies: [
+                "Dashboard",
+                "DerivedValues",
+                .product(name: "SnapshotTesting", package: "DesignSystem"),
+            ],
+            exclude: ["__Snapshots__"],
+            swiftSettings: settings
+        ),
     ]
 )

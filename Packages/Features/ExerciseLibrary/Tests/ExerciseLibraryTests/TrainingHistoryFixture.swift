@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryFakes
@@ -28,6 +29,84 @@ final class TrainingHistory {
     /// The state under test, over this store.
     func history(of exercise: Exercise) -> ExerciseHistoryState {
         ExerciseHistoryState(exerciseID: exercise.id, workouts: workouts, settings: settings)
+    }
+
+    /// The recompute actor over this store (`TR-1.6`).
+    ///
+    /// Built on demand rather than stored, and a test that needs the *same* one twice holds it
+    /// itself: two actors over one store compute the same numbers, but only one of them announces to
+    /// a given subscriber.
+    ///
+    /// **"Now" is day zero unless a test says otherwise**, and it has to be pinned: `FR-1.7.1`'s
+    /// window is measured from it, and these fixtures are dated from a fixed epoch — left at the
+    /// real clock, every one of them would fall outside the ninety days and every estimate would be
+    /// absent for a reason no test intended. The window has no ceiling, so a later training day is
+    /// still inside it.
+    func recomputer(
+        cache: (any PersonalRecordCacheRepository)? = nil,
+        formula: E1RMFormulaID = .defaultFormula,
+        lookback: E1RMLookback = .default,
+        now: Date? = nil
+    ) -> PersonalRecordRecomputer {
+        let instant = now ?? day(0)
+        return PersonalRecordRecomputer(
+            workouts: workouts,
+            exercises: stack.exercises,
+            cache: cache ?? stack.personalRecords,
+            formula: formula,
+            lookback: lookback,
+            now: { instant })
+    }
+
+    /// `FR-1.6.2`'s state, over this store.
+    func records(
+        of exercise: Exercise, through recomputer: PersonalRecordRecomputer
+    ) -> ExerciseRecordsState {
+        ExerciseRecordsState(exerciseID: exercise.id, recomputer: recomputer)
+    }
+
+    /// A training day whose sets each carry their own load — what a rep-max fixture needs and
+    /// ``train(_:onDay:reps:)``, which logs everything at one weight, cannot express.
+    ///
+    /// - Parameters:
+    ///   - exercise: The exercise trained.
+    ///   - offset: Which training day.
+    ///   - work: The sets, as `(reps, kilos)` in the order performed.
+    ///   - isWarmup: Whether the whole day is warmup work — the case that has sets and no records.
+    /// - Returns: The session, so a test can assert which one a record links to.
+    @discardableResult
+    func trainWeighted(
+        _ exercise: Exercise,
+        onDay offset: Int,
+        work: [(reps: Int, kilos: Int)],
+        isWarmup: Bool = false
+    ) async throws -> WorkoutSession {
+        let session = try await session(onDay: offset)
+        let entry = ExerciseEntry(
+            id: UUID(),
+            createdAt: epoch,
+            updatedAt: epoch,
+            deletedAt: nil,
+            sessionID: session.id,
+            exerciseID: exercise.id,
+            order: 0,
+            notes: ""
+        )
+        try await stack.workouts.save(entry)
+        for (position, set) in work.enumerated() {
+            try await stack.workouts.save(
+                Builder.set(
+                    entryID: entry.id,
+                    order: position,
+                    reps: set.reps,
+                    rpe: nil,
+                    stamp: epoch,
+                    grams: set.kilos * 1000,
+                    isWarmup: isWarmup
+                )
+            )
+        }
+        return session
     }
 
     /// Puts one exercise in the catalogue.
@@ -138,8 +217,8 @@ enum Builder {
             implementCount: 1,
             isCustom: false,
             isArchived: false,
-            notes: ""
-        )
+            notes: "",
+            manualE1RM: nil)
     }
 
     /// A workout on `date`.
@@ -169,7 +248,9 @@ enum Builder {
         order: Int,
         reps: Int,
         rpe: Double?,
-        stamp: Date
+        stamp: Date,
+        grams: Int = 100_000,
+        isWarmup: Bool = false
     ) -> SetEntry {
         SetEntry(
             id: UUID(),
@@ -178,11 +259,11 @@ enum Builder {
             deletedAt: nil,
             entryID: entryID,
             order: order,
-            weight: Weight(grams: 100_000),
+            weight: Weight(grams: grams),
             reps: reps,
             rpe: rpe,
             rir: nil,
-            isWarmup: false,
+            isWarmup: isWarmup,
             isCompleted: true,
             targetWeight: nil,
             targetReps: nil,

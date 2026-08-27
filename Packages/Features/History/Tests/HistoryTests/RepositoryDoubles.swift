@@ -18,6 +18,7 @@ struct FailingWorkoutRepository: WorkoutRepository {
     func entries(
         forSessionID sessionID: UUID, includingDeleted: Bool
     ) async throws -> [ExerciseEntry] { throw failure }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? { throw failure }
     func save(_ entry: ExerciseEntry) async throws { throw failure }
     func deleteExerciseEntry(id: UUID) async throws { throw failure }
     func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
@@ -67,6 +68,9 @@ actor FlakyWorkoutRepository: WorkoutRepository {
     }
     func save(_ session: WorkoutSession) async throws { try await wrapped.save(session) }
     func deleteSession(id: UUID) async throws { try await wrapped.deleteSession(id: id) }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        try await wrapped.entry(id: id, includingDeleted: includingDeleted)
+    }
     func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
     func deleteExerciseEntry(id: UUID) async throws {
         try await wrapped.deleteExerciseEntry(id: id)
@@ -160,6 +164,9 @@ actor GatedWorkoutRepository: WorkoutRepository {
     }
     func save(_ session: WorkoutSession) async throws { try await wrapped.save(session) }
     func deleteSession(id: UUID) async throws { try await wrapped.deleteSession(id: id) }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        try await wrapped.entry(id: id, includingDeleted: includingDeleted)
+    }
     func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
     func deleteExerciseEntry(id: UUID) async throws {
         try await wrapped.deleteExerciseEntry(id: id)
@@ -241,6 +248,9 @@ actor CountingWorkoutRepository: WorkoutRepository {
     ) async throws -> [ExerciseEntry] {
         try await wrapped.entries(forSessionID: sessionID, includingDeleted: includingDeleted)
     }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        try await wrapped.entry(id: id, includingDeleted: includingDeleted)
+    }
     func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
     func deleteExerciseEntry(id: UUID) async throws {
         try await wrapped.deleteExerciseEntry(id: id)
@@ -293,6 +303,9 @@ struct ForeignWorkoutLog: WorkoutRepository {
         forSessionID sessionID: UUID, includingDeleted: Bool
     ) async throws -> [ExerciseEntry] {
         try await wrapped.entries(forSessionID: sessionID, includingDeleted: includingDeleted)
+    }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        try await wrapped.entry(id: id, includingDeleted: includingDeleted)
     }
     func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
     func deleteExerciseEntry(id: UUID) async throws {

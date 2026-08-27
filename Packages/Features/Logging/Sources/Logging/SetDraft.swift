@@ -1,4 +1,5 @@
 import Foundation
+import Localization
 import PowerliftingCore
 
 /// An optional field's three answers: left empty, filled in, or filled in with something that is not

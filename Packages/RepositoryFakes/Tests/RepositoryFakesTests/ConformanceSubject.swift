@@ -14,7 +14,7 @@ import Testing
 // suite that had to be re-listed per subject is a suite that drifts one subject at a time, which is
 // the failure this task exists to prevent.
 //
-// WHAT THE SUITE MAY DO TO A SUBJECT IS EXACTLY WHAT THE FIVE PROTOCOLS OFFER, and that boundary is
+// WHAT THE SUITE MAY DO TO A SUBJECT IS EXACTLY WHAT THE PROTOCOLS OFFER, and that boundary is
 // the settled answer to "how does a shared suite seed a row no repository will write". It does not,
 // and the three cases that prompted the question turn out to be three different answers:
 //
@@ -45,9 +45,11 @@ import Testing
 //      deletes either, so only the `includingDeleted:` flag's *live* half is reachable, and that
 //      half is asserted.
 //
-// Every other behaviour of all twenty-eight methods is here.
+// Every other behaviour of all thirty-one methods is here. `PersonalRecordCacheRepository` (TR-1.6)
+// joined a phase after the rest and brought two of those three: its reconciliation is cross-row and
+// is written twice, once per subject, which is exactly the drift this suite exists to catch.
 
-/// One implementation of the five protocols, as the suite sees it.
+/// One implementation of the protocols, as the suite sees it.
 struct Subject: Sendable, CustomTestStringConvertible {
     let name: String
     private let build: @Sendable () throws -> Repositories
@@ -70,7 +72,8 @@ struct Subject: Sendable, CustomTestStringConvertible {
                 workouts: stack.workouts,
                 settings: stack.settings,
                 bodyweight: stack.bodyweight,
-                equipment: stack.equipment
+                equipment: stack.equipment,
+                personalRecords: stack.personalRecords
             )
         },
         Subject(name: "InMemoryRepositoryStack") {
@@ -80,19 +83,21 @@ struct Subject: Sendable, CustomTestStringConvertible {
                 workouts: stack.workouts,
                 settings: stack.settings,
                 bodyweight: stack.bodyweight,
-                equipment: stack.equipment
+                equipment: stack.equipment,
+                personalRecords: stack.personalRecords
             )
         },
     ]
 }
 
-/// The five existentials, in the shape both stacks hand out.
+/// The existentials, in the shape both stacks hand out.
 struct Repositories: Sendable {
     let exercises: any ExerciseRepository
     let workouts: any WorkoutRepository
     let settings: any SettingsRepository
     let bodyweight: any BodyweightRepository
     let equipment: any EquipmentRepository
+    let personalRecords: any PersonalRecordCacheRepository
 }
 
 // MARK: - Records
@@ -125,8 +130,8 @@ func exerciseRecord(
         implementCount: 1,
         isCustom: false,
         isArchived: isArchived,
-        notes: ""
-    )
+        notes: "",
+        manualE1RM: nil)
 }
 
 func sessionRecord(

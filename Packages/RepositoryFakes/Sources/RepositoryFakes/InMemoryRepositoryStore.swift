@@ -1,17 +1,17 @@
 import Foundation
 import RepositoryInterface
 
-/// The tables the five fakes share, and the write and read rules they all obey.
+/// The tables the fakes share, and the write and read rules they all obey.
 ///
-/// **One store behind five repositories, mirroring one container behind five `@ModelActor`s.** The
-/// checks a save performs are cross-table — an entry names a session and an exercise, a set names
-/// an entry — so five independent boxes of records could not implement the contract at all. The
-/// fakes are facades over this, which is also what makes
-/// ``InMemoryRepositoryStack`` a stack rather than five unrelated objects.
+/// **One store behind every fake, mirroring one container behind `Persistence`'s `@ModelActor`s.**
+/// The checks a save performs are cross-table — an entry names a session and an exercise, a set
+/// names an entry — so independent boxes of records could not implement the contract at all. The
+/// fakes are facades over this, which is also what makes ``InMemoryRepositoryStack`` a stack rather
+/// than a handful of unrelated objects.
 ///
-/// **An actor rather than a lock.** The five real repositories are actors over one container, and
+/// **An actor rather than a lock.** The real repositories are actors over one container, and
 /// `Persistence` needed a process-wide lock on top of that for the settings singleton — an actor
-/// serialises its own calls and nothing else. Here there is one actor for all five, so the
+/// serialises its own calls and nothing else. Here there is one actor for all of them, so the
 /// singleton is safe by construction rather than by a second mechanism.
 ///
 /// The tables are keyed by `id`, which is what makes a duplicate-`id` pair unrepresentable here;
@@ -26,6 +26,7 @@ actor InMemoryRepositoryStore {
     var sets: [UUID: SetEntry] = [:]
     var bodyweightEntries: [UUID: BodyweightEntry] = [:]
     var profiles: [UUID: EquipmentProfile] = [:]
+    var personalRecordCache: [UUID: PersonalRecordCache] = [:]
     var settingsRow: UserSettings?
 
     /// An empty store.

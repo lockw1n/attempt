@@ -1,2 +1,22 @@
 /* Dashboard (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the
-   Localization module doc. No copy in this module yet. */
+   Localization module doc. */
+
+/* FR-1.6.5's global feed, and FR-1.9.3's card over the same list. One title for both: they are the
+   same feature at two lengths. */
+"dashboard.recent-records.title" = "Recent PRs";
+/* FR-1.13.3's insufficient-data case, not an emptied list: records are computed from logged sets,
+   so what is missing is the sets rather than a fetch. Names the two things a set has to be for a
+   record to come from it — completed, and a working set — because "no records yet" on its own does
+   not say why a warmup-only log produced none. */
+"dashboard.recent-records.none" = "Complete a working set and the personal records it sets appear here.";
+"dashboard.recent-records.error" = "Recent personal records could not be read.";
+/* Opens the full list behind the dashboard's card. */
+"dashboard.recent-records.see-all" = "See all";
+/* One entry's label. The single-N form and the range form are separate keys rather than one with an
+   optional half: a set that beat the 1RM through the 3RM in one go reads "1–3-rep max", and a
+   language that words a range differently needs to be able to say so. Neither needs a plural rule —
+   the number sits inside the compound before "max", so "1-rep max" is already correct. */
+"dashboard.recent-records.rep-max %lld" = "%lld-rep max";
+"dashboard.recent-records.rep-max.range %lld %lld" = "%1$lld–%2$lld-rep max";
+/* VoiceOver's hint on a feed entry. It opens the exercise, not the session — see RecentRecordRow. */
+"dashboard.recent-records.exercise-hint" = "Shows this exercise's personal records.";

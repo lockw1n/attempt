@@ -34,8 +34,8 @@ extension Exercise: AuditStamped {
             implementCount: implementCount,
             isCustom: isCustom,
             isArchived: isArchived,
-            notes: notes
-        )
+            notes: notes,
+            manualE1RM: manualE1RM)
     }
 }
 
@@ -230,6 +230,23 @@ extension UserSettings: AuditStamped {
             theme: theme,
             defaultRoundingIncrement: defaultRoundingIncrement,
             defaultRoundingStrategy: defaultRoundingStrategy
+        )
+    }
+}
+
+extension PersonalRecordCache: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> PersonalRecordCache {
+        PersonalRecordCache(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            exerciseID: exerciseID,
+            repCount: repCount,
+            weight: weight,
+            sourceSetID: sourceSetID,
+            achievedAt: achievedAt,
+            computationVersion: computationVersion
         )
     }
 }

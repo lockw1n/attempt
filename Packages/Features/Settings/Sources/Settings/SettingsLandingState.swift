@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -54,12 +55,25 @@ public final class SettingsLandingState {
 
     private let repository: any SettingsRepository
 
+    /// The recompute pipeline, told when the formula moves (`FR-1.7.3`, `TR-1.6`).
+    ///
+    /// **Told rather than asked.** The actor holds the formula estimates are produced under and
+    /// nothing re-reads this row on its behalf, so a picker that only wrote the column would leave
+    /// every screen in the app showing estimates under the *old* formula until the next relaunch —
+    /// which is `FR-1.7.3`'s "retroactively" not happening.
+    private let records: PersonalRecordRecomputer
+
     /// The write chain. See ``setDisplayUnit(_:)``.
     private var pendingWrite: Task<Void, Never>?
 
     /// Builds the state over the repository it reads and writes through.
-    public init(repository: any SettingsRepository) {
+    ///
+    /// - Parameters:
+    ///   - repository: Where the settings row lives.
+    ///   - records: The app's one recompute actor, told when a preference it reads moves.
+    public init(repository: any SettingsRepository, records: PersonalRecordRecomputer) {
         self.repository = repository
+        self.records = records
     }
 
     /// Reads the settings row, on first appearance and on every retry.
@@ -92,18 +106,35 @@ public final class SettingsLandingState {
     /// compare the user's newest choice against the value the first is in the middle of replacing
     /// and drop it. Chaining each write behind the one before it makes every decision read the
     /// result of the last.
+    ///
+    /// **The chain is shared across every preference, not one per control.** Two preferences written
+    /// at once rebuild the same record from the same read, so the second would carry the first's old
+    /// value and undo it.
     public func setDisplayUnit(_ unit: MassUnit) async {
+        await chained { [weak self] in await self?.write(displayUnit: unit) }
+    }
+
+    /// Switches which estimator every e1RM is computed with (`FR-1.7.2`, `FR-1.10.1`).
+    ///
+    /// **The write and the announcement are one operation.** `FR-1.7.3` is not the column changing,
+    /// it is every displayed estimate changing, and nothing else in the app reads this row back —
+    /// see ``records``.
+    public func setE1RMFormula(_ formula: E1RMFormulaID) async {
+        await chained { [weak self] in await self?.write(e1RMFormula: formula) }
+    }
+
+    /// Runs `operation` behind whatever write is already in flight. See ``setDisplayUnit(_:)``.
+    private func chained(_ operation: @escaping () async -> Void) async {
         let previous = pendingWrite
-        let write = Task { [weak self] in
+        let write = Task {
             await previous?.value
-            await self?.write(displayUnit: unit)
+            await operation()
         }
         pendingWrite = write
         await write.value
     }
 
-    /// One link of ``setDisplayUnit(_:)``'s chain: decide against the row as it stands now, then
-    /// write.
+    /// One link of the chain: decide against the row as it stands now, then write.
     ///
     /// **A write is skipped when the unit is already `unit`**, and that too is a correctness clause
     /// rather than an optimisation: every save restamps `updatedAt`, which is `G-2.4`'s conflict
@@ -111,14 +142,37 @@ public final class SettingsLandingState {
     /// remote edit.
     private func write(displayUnit unit: MassUnit) async {
         guard case .loaded(let current) = phase, current.displayUnit != unit else { return }
+        await save(replacing: current, displayUnit: unit)
+    }
+
+    /// The formula's link of the same chain, on ``write(displayUnit:)``'s no-op rule.
+    ///
+    /// The pipeline is told only after the row is stored, so a failed write leaves the app showing
+    /// estimates under the formula that is actually persisted. It is told unconditionally otherwise:
+    /// the actor no-ops on a formula already in force.
+    private func write(e1RMFormula formula: E1RMFormulaID) async {
+        guard case .loaded(let current) = phase, current.e1RMFormula != formula else { return }
+        guard await save(replacing: current, e1RMFormula: formula) else { return }
+        await records.formulaDidChange(to: formula)
+    }
+
+    /// Stores `current` with the named fields replaced, then republishes what came back.
+    ///
+    /// - Returns: Whether the write landed.
+    @discardableResult
+    private func save(
+        replacing current: UserSettings,
+        displayUnit: MassUnit? = nil,
+        e1RMFormula: E1RMFormulaID? = nil
+    ) async -> Bool {
         let updated = UserSettings(
             id: current.id,
             createdAt: current.createdAt,
             updatedAt: current.updatedAt,
             deletedAt: current.deletedAt,
             userID: current.userID,
-            displayUnit: unit,
-            e1RMFormula: current.e1RMFormula,
+            displayUnit: displayUnit ?? current.displayUnit,
+            e1RMFormula: e1RMFormula ?? current.e1RMFormula,
             theme: current.theme,
             defaultRoundingIncrement: current.defaultRoundingIncrement,
             defaultRoundingStrategy: current.defaultRoundingStrategy
@@ -129,8 +183,10 @@ public final class SettingsLandingState {
             // the record handed in describes the write before this one.
             phase = .loaded(try await repository.settings())
             writeFailure = nil
+            return true
         } catch {
             writeFailure = String(describing: error)
+            return false
         }
     }
 }

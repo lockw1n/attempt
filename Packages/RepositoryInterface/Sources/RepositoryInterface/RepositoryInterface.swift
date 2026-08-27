@@ -1,5 +1,5 @@
-// The storage boundary: five repository protocols (TR-0.4.1) and the record types their
-// signatures are written in (TR-0.4.3, TR-0.4.4).
+// The storage boundary: the five repository protocols TR-0.4.1 names, TR-1.6's cache repository,
+// and the record types their signatures are written in (TR-0.4.3, TR-0.4.4).
 //
 // Constraints on everything in this module:
 //
@@ -14,7 +14,9 @@
 //   the stored column. A record never holds a `Double` mass.
 // - Records and protocols are Sendable (TR-0.1.3), declared explicitly.
 //
-// Four rules the five protocols share, stated once here rather than eight times in doc comments:
+// Four rules the protocols share, stated once here rather than in every doc comment. The sixth,
+// `PersonalRecordCacheRepository`, arrived a phase later than the five and obeys all four — its own
+// header says only what is different about a table holding nothing but derived values:
 //
 // 1. READS RETURN LIVE ROWS. Deletion is soft (G-1.3) and the store filters nothing on its own, so
 //    a read that enumerates rows, or fetches one by id, takes `includingDeleted:` and it has no

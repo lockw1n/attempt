@@ -222,7 +222,9 @@ struct ExerciseDetailStateTests {
         let state = DetailFixtures.state(exerciseID: DetailFixtures.backSquat.id, repository: repository)
         await state.load()
         state.notesDraft = "Knees out, chest up."
-        await repository.failReads(.recordNotFound(id: UUID()))
+        // Past the read the write itself does, so what breaks is the re-read. See
+        // `ScriptedExerciseRepository.failReads(_:afterNext:)`.
+        await repository.failReads(.recordNotFound(id: UUID()), afterNext: 1)
         await state.saveNotes()
 
         // The notes are stored. Saying otherwise would tell the user an edit was lost.
@@ -436,8 +438,10 @@ enum DetailFixtures {
         implementCount: 2,
         isCustom: true,
         isArchived: true,
-        notes: "Pins at the sticking point."
-    )
+        notes: "Pins at the sticking point.",
+        // Non-nil for this fixture's own reason: a write that rebuilds the record from a stale
+        // copy clears `FR-1.7.5`'s override, and a fixture carrying no override cannot show it.
+        manualE1RM: Weight(grams: 152_500))
 
     /// **Deliberately in no order any assertion expects**, for the reason
     /// `ExerciseListStateTests.Fixtures.catalogue` gives.
