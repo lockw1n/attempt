@@ -31,7 +31,7 @@
 # SNAPSHOT_IOS names the version the committed references were rendered on, and the first available
 # iPhone on it is chosen by id.
 #
-# Measured, not assumed: the full set of 328 references compares clean on iPhone 17 Pro and on
+# Measured, not assumed: the full set of 500 references compares clean on iPhone 17 Pro and on
 # iPhone 17 — a different size and a different device family, same iOS 26.5. That is the claim this
 # resolution rests on, so it is the one worth having run.
 #
