@@ -58,21 +58,26 @@ struct DashboardFixture {
     ///
     /// - Parameters:
     ///   - date: The training day.
+    ///   - entered: When the row was written, if that is not the training day (`FR-1.2.1`
+    ///     backdates). Defaults to the training day, which is what a session logged the day it
+    ///     happened looks like.
     ///   - isFinished: Whether it has an end — what `FR-1.9.2` reads to choose resume or repeat.
     ///   - exercises: The exercises trained, in order, each with its sets.
     /// - Returns: The session's id.
     @discardableResult
     func session(
         on date: Date,
+        enteredOn entered: Date? = nil,
         isFinished: Bool = true,
         exercises: [(UUID, [LoggedSet])]
     ) async throws -> UUID {
         let sessionID = UUID()
+        let written = entered ?? date
         try await repositories.workouts.save(
             WorkoutSession(
                 id: sessionID,
-                createdAt: date,
-                updatedAt: date,
+                createdAt: written,
+                updatedAt: written,
                 deletedAt: nil,
                 date: date,
                 startedAt: date,

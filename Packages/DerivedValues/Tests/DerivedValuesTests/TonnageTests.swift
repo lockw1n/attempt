@@ -79,6 +79,20 @@ struct TonnageTests {
         #expect(Tonnage.of([heavy, heavy, heavy]) == Tonnage.of([heavy, heavy]))
     }
 
+    @Test("A total carried across entries skips what will not fit, rather than trapping")
+    func accumulationDoesNotTrap() {
+        // `of(_:)` alone cannot exceed `Int.max`, so the guard inside it says nothing about what
+        // two of its answers do when added. A caller summing entries with `+` traps here; through
+        // `adding(_:to:)` the term that will not fit is the one that is dropped.
+        let heavy = Self.set(kilograms: Int.max / 1_500, reps: 1)
+        let running = Tonnage.adding([heavy], to: .zero)
+        #expect(running == Weight(grams: (Int.max / 1_500) * 1_000))
+        #expect(Tonnage.adding([heavy], to: running) == running)
+        // And a term that still fits is still taken, so the guard is not just refusing everything.
+        let light = Self.set(kilograms: 100, reps: 5, order: 1)
+        #expect(Tonnage.adding([light], to: running) == running + Weight(grams: 500_000))
+    }
+
     @Test("Nothing to weigh is zero, not a refusal")
     func emptyIsZero() {
         #expect(Tonnage.of([SetEntry]()) == .zero)

@@ -20,6 +20,9 @@ import RepositoryInterface
 /// refusal the dashboard owes copy for (`FR-1.13.3`). Whatever answers it on one screen answers it
 /// on the other.
 ///
+/// **Weighing more than one entry goes through ``adding(_:to:)``**, which is where the overflow
+/// guard stays intact; `Σ` over ``of(_:)`` with `+` does not.
+///
 /// **The load is the logged set's, not the implement's.** `TR-0.2.3` makes
 /// ``RepositoryInterface/SetEntry/weight`` the load on *one* implement, so a two-dumbbell set
 /// contributes half of what was moved and a unilateral set's reps are per side. Correcting either
@@ -38,9 +41,24 @@ public enum Tonnage {
     /// - Returns: The sum, or ``PowerliftingCore/Weight/zero`` when nothing in `sets` can be
     ///   weighed.
     public static func of(_ sets: some Sequence<SetEntry>) -> Weight {
-        sets.reduce(Weight.zero) { total, set in
-            guard counts(set), set.weight > .zero, set.reps > 0 else { return total }
-            return total.adding(set.weight, times: set.reps)
+        adding(sets, to: .zero)
+    }
+
+    /// `total` plus the load moved across `sets` — the running form of ``of(_:)``.
+    ///
+    /// **A caller weighing more than one entry must accumulate through this rather than through
+    /// `+`.** ``PowerliftingCore/Weight`` traps on `Int` overflow, so a total summed with `+` puts
+    /// back the crash each call to ``of(_:)`` skips a term to avoid: one call cannot exceed
+    /// `Int.max`, but two added together can.
+    ///
+    /// - Parameters:
+    ///   - sets: Every set logged against one entry; see ``of(_:)``.
+    ///   - total: What has been weighed so far.
+    /// - Returns: The running total, unchanged by any term that will not fit.
+    public static func adding(_ sets: some Sequence<SetEntry>, to total: Weight) -> Weight {
+        sets.reduce(total) { running, set in
+            guard counts(set), set.weight > .zero, set.reps > 0 else { return running }
+            return running.adding(set.weight, times: set.reps)
         }
     }
 

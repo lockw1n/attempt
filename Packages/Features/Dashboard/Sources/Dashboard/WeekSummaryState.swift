@@ -114,7 +114,7 @@ final class WeekSummaryState {
             for entry in entries {
                 let sets = try await workouts.sets(forEntryID: entry.id, includingDeleted: false)
                 if sets.contains(where: Tonnage.counts) { didTrain = true }
-                tonnage += Tonnage.of(sets)
+                tonnage = Tonnage.adding(sets, to: tonnage)
             }
             if didTrain { workoutCount += 1 }
         }

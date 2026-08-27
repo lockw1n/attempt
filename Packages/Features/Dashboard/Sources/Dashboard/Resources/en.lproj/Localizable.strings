@@ -82,7 +82,7 @@
    and the separate "Start workout" button is not drawn above it. The headline is about the app
    filling up rather than about emptiness: "No data" is true and says nothing worth reading. */
 "dashboard.first-launch.headline" = "Your training log starts here";
-/* Names the three things the screen becomes, in the order it draws them, so the reward is concrete
+/* Names the four things the screen becomes, in the order it draws them, so the reward is concrete
    rather than a promise. */
 "dashboard.first-launch.message" = "Log your first workout and this screen fills in: what you last trained, your week's volume, your personal records and your estimated maxes.";
 

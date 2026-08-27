@@ -13,6 +13,13 @@ import SwiftUI
 /// exist, and a screen-level failure would suppress four self-reading sections on the strength of
 /// one read that says nothing about whether they can draw. `FR-1.13.2` is a claim about an install
 /// with no history, and only a read that answered can make it.
+///
+/// **The cost of that lands on the one launch `FR-1.13.2` is about**, and it is the right way round
+/// rather than free: until the read answers, a brand-new install draws the sections it is about to
+/// replace. What keeps it invisible is that the sections draw `LoadingStateView` first and every
+/// read on an empty store returns at once — not the ordering. A screen-level loading case would
+/// remove it by holding *every* launch behind the slowest read on the screen, which is the trade
+/// this refuses.
 enum DashboardScreenState: Equatable {
     /// Nothing has ever been logged. One guided state instead of five apologies.
     case firstLaunch

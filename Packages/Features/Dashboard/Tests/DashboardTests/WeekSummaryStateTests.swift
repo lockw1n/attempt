@@ -87,6 +87,29 @@ struct WeekSummaryStateTests {
         #expect(WeekSummaryScreenState.current(state) == .quiet)
     }
 
+    @Test("A backdated session is weighed into the week it was trained, not the week it was entered")
+    func backdatingDecidesTheWeek() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        // `FR-1.2.1`'s backdate: trained last week, typed in today. This is the only fixture shape
+        // that can tell `session.date` from `session.createdAt` — every other session here writes
+        // one value into both, so a read of the wrong column passes them all.
+        try await fixture.session(
+            on: weeksAgo(1),
+            enteredOn: fixtureNow,
+            exercises: [(squat, [LoggedSet(grams: 100_000, reps: 5)])])
+        // Trained this week, and the only thing that may be counted. Present so the assertion is a
+        // real total rather than a zero every broken reading also produces.
+        try await fixture.session(
+            on: fixtureNow, exercises: [(squat, [LoggedSet(grams: 120_000, reps: 3)])])
+        let state = Self.state(fixture)
+
+        await state.load()
+
+        // 360, not 860: reading `createdAt` would pull last week's 500 into this week's volume.
+        #expect(state.summary == WeekSummary(workoutCount: 1, tonnage: Weight(grams: 360_000)))
+    }
+
     @Test("Two sessions this week are two workouts, summed")
     func twoSessions() async throws {
         let fixture = DashboardFixture()
