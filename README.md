@@ -47,14 +47,17 @@ Packages/
 ├── Localization/            The key convention every module's catalogue follows, plus
 │                            locale-explicit FormatStyles for numbers, weights, dates and percentages.
 ├── DerivedValues/           Background actor recomputing personal records and estimated max on set
-│                            mutation, behind its own cache repository. Not a feature module — four
-│                            of the five below read it, so it cannot live inside any one of them.
+│                            mutation, behind its own cache repository, plus the shared tonnage
+│                            arithmetic every screen totalling logged load reads. Not a feature
+│                            module — four of the five below read it, so it cannot live inside any
+│                            one of them.
 ├── Features/                Feature modules, one level deeper — the level is load-bearing:
 │                            .swiftlint.yml scopes the no-raw-values rules to this path.
 │   ├── ExerciseLibrary/     The exercise catalogue, including its per-exercise history section
 │   ├── Logging/             The active session and everything logged into it
 │   ├── History/             Past training: sessions, calendar, search
-│   ├── Dashboard/           e1RM tiles, the recent-PR feed, the start-workout action
+│   ├── Dashboard/           e1RM tiles, the recent-PR feed, the week summary, the start-workout
+│   │                        action
 │   └── Settings/            Preferences, data portability, sync
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
 Attempt/
