@@ -30,6 +30,9 @@ struct AppDependencies {
 
         /// Sessions, the exercises in them and their sets (`FR-1.2`).
         let workouts: any WorkoutRepository
+
+        /// The bodyweight log — readings on days with no training on them too (`FR-1.8`).
+        let bodyweight: any BodyweightRepository
     }
 
     /// The app-lifetime stores (`TR-1.2`), built over the repositories beside them.
@@ -102,7 +105,8 @@ struct AppDependencies {
                 Repositories(
                     settings: stack.settings,
                     exercises: stack.exercises,
-                    workouts: stack.workouts
+                    workouts: stack.workouts,
+                    bodyweight: stack.bodyweight
                 ),
                 Stores(
                     activeSession: ActiveSessionStore(

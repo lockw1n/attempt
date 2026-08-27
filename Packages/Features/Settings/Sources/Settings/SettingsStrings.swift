@@ -41,6 +41,15 @@ enum SettingsStrings {
     /// The header over the sections that open another screen.
     static let equipmentTitle = resource("settings.landing.equipment.title")
 
+    /// The header over the section that opens the bodyweight log (`FR-1.8`).
+    static let bodyweightSectionTitle = resource("settings.landing.bodyweight.title")
+
+    /// The row into the log. The screen behind it carries its own copy; this names what is there.
+    static let bodyweightRow = resource("settings.landing.bodyweight.row")
+
+    /// What is on that screen, in one line.
+    static let bodyweightDetail = resource("settings.landing.bodyweight.detail")
+
     /// The row into the gyms (`FR-1.10.3`). The screen it opens belongs to another module and
     /// carries its own copy; this is the way in, and names what is behind it.
     static let equipmentRow = resource("settings.landing.equipment.row")
@@ -82,13 +91,16 @@ enum SettingsStrings {
             unitsTitle, unitsPicker, writeErrorTitle, loadErrorTitle, loadErrorRetry,
             estimatorTitle, estimatorPicker, estimatorDetail,
             scaffoldTitle, scaffoldAppearance, equipmentTitle, equipmentRow,
-            equipmentDetail,
-        ] + MassUnit.allCases.map(unitSymbol(for:))
+            equipmentDetail, bodyweightSectionTitle, bodyweightRow, bodyweightDetail,
+        ] + allBodyweightStrings + MassUnit.allCases.map(unitSymbol(for:))
             + E1RMFormulaID.allCases.map(formulaName(for:))
     }
 
     /// Binds a key to this module's catalogue.
-    private static func resource(_ key: String.LocalizationValue) -> LocalizedStringResource {
+    ///
+    /// Internal rather than file-private because `SettingsBodyweightStrings.swift` is the same type
+    /// in a second file — see that file for why there is one.
+    static func resource(_ key: String.LocalizationValue) -> LocalizedStringResource {
         LocalizedStringResource(key, bundle: .atURL(Bundle.module.bundleURL))
     }
 }

@@ -38,3 +38,34 @@
 "settings.landing.equipment.title" = "Equipment";
 "settings.landing.equipment.row" = "Gyms";
 "settings.landing.equipment.detail" = "Bar, collars and the plates you have";
+
+/* FR-1.8: the way into the bodyweight log. The screen behind it is this module's too, unlike the
+   gyms, but the row still only names what is there. */
+"settings.landing.bodyweight.title" = "Body";
+"settings.landing.bodyweight.row" = "Bodyweight";
+"settings.landing.bodyweight.detail" = "Weigh-ins and their seven-day average";
+
+/* FR-1.8.1 and FR-1.8.3: the log itself. The average is over the readings there are in the seven
+   days ending on a given day, not over seven days each holding one — a lifter does not weigh in
+   every morning, and the copy that says what would be enough is the average.none line below
+   (FR-1.13.3). */
+"settings.bodyweight.title" = "Bodyweight";
+"settings.bodyweight.add.action" = "Add reading";
+"settings.bodyweight.average.title" = "Seven-day average";
+"settings.bodyweight.average.none" = "Weigh in twice in a week to see an average.";
+"settings.bodyweight.reading.average" = "7-day average";
+"settings.bodyweight.history.title" = "History";
+"settings.bodyweight.empty.headline" = "No readings yet";
+"settings.bodyweight.empty.message" = "Add what you weighed and the seven-day average follows from the readings.";
+"settings.bodyweight.error.headline" = "Readings unavailable";
+"settings.bodyweight.error.message" = "The bodyweight log could not be read.";
+"settings.bodyweight.write-error.title" = "Could not save";
+
+"settings.bodyweight.form.title" = "New reading";
+"settings.bodyweight.form.weight.label" = "Weight";
+"settings.bodyweight.form.date.label" = "Reading date";
+"settings.bodyweight.form.date.hint" = "Today, unless you are entering a reading from an earlier day.";
+"settings.bodyweight.form.save.action" = "Save reading";
+"settings.bodyweight.form.cancel.action" = "Cancel";
+"settings.bodyweight.form.refusal.not-a-weight" = "Enter what you weighed as a number.";
+"settings.bodyweight.form.refusal.not-positive" = "A reading has to be more than zero.";

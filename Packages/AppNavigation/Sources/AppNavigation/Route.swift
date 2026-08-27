@@ -157,4 +157,15 @@ public enum SettingsRoute: Hashable, Sendable, Codable {
     /// **The editor over one gym has no case**, deliberately: it is a form holding an unsaved draft,
     /// which is not a place the app can be restored to.
     case equipmentProfiles
+
+    /// The bodyweight log — every reading and the seven-day average over them (`FR-1.8.1`,
+    /// `FR-1.8.3`).
+    ///
+    /// **Settings' route over a log that is not a preference**, which is `D-8` rather than an
+    /// oversight: the four tabs are fixed and none of them is the body log, so the row that opens it
+    /// sits beside the gyms — where `FR-1.10.4`'s HealthKit permission also lands, and Health is
+    /// where the same log's other readings will come from.
+    ///
+    /// **The form over one reading has no case**, for ``equipmentProfiles``' reason.
+    case bodyweight
 }
