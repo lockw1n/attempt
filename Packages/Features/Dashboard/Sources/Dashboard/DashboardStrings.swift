@@ -44,16 +44,57 @@ enum DashboardStrings {
     /// What tapping a feed entry does.
     static let recentRecordsExerciseHint = resource("dashboard.recent-records.exercise-hint")
 
+    /// `FR-1.9.4`'s primary action, which navigates to Train rather than logging anything here.
+    static let startWorkout = resource("dashboard.start.action")
+
+    /// `FR-1.9.2`'s heading.
+    static let lastWorkoutTitle = resource("dashboard.last-workout.title")
+
+    /// Nothing has ever been logged.
+    static let lastWorkoutNone = resource("dashboard.last-workout.none.headline")
+
+    /// What to do about it — the action itself is the button above this card.
+    static let lastWorkoutNoneMessage = resource("dashboard.last-workout.none.message")
+
+    /// The sessions could not be read.
+    static let lastWorkoutError = resource("dashboard.last-workout.error")
+
+    /// The workout on the card has not been finished.
+    static let lastWorkoutInProgress = resource("dashboard.last-workout.in-progress")
+
+    /// `FR-1.9.2`'s resume, for a workout still open.
+    static let lastWorkoutResume = resource("dashboard.last-workout.resume")
+
+    /// `FR-1.9.2`'s repeat: a fresh workout holding the same exercises and no sets.
+    static let lastWorkoutRepeat = resource("dashboard.last-workout.repeat")
+
+    /// The repeat could not be started. Nothing was written.
+    static let lastWorkoutRepeatError = resource("dashboard.last-workout.repeat-error")
+
+    /// How much work a finished session holds.
+    ///
+    /// - Parameter count: The working sets — completed, and not warmups (`G-1.8`).
+    /// - Returns: The line.
+    static func lastWorkoutSets(_ count: Int) -> LocalizedStringResource {
+        resource("dashboard.last-workout.sets \(count)")
+    }
+
     /// Every string this module owns, for the test that asserts each one resolves.
     static var all: [LocalizedStringResource] {
         [
             recentRecordsTitle, recentRecordsNone, recentRecordsError, recentRecordsSeeAll,
             recentRecordsRepMax(3), recentRecordsRepMaxRange(1, 3), recentRecordsExerciseHint,
-        ]
+            startWorkout, lastWorkoutTitle, lastWorkoutNone, lastWorkoutNoneMessage,
+            lastWorkoutError, lastWorkoutInProgress, lastWorkoutResume, lastWorkoutRepeat,
+            lastWorkoutRepeatError, lastWorkoutSets(4),
+            tilesTitle, tilesError, tilesNoneChosen, tilesNoneChosenMessage, tileManual,
+            tileNoPrevious, tilesChooseAction, tilesChooseTitle, tilesChooseEmpty,
+            tilesChooseError, tilesChooseWriteError,
+        ] + absences.map { tileAbsence($0, days: 90) }
     }
 
     /// Binds a key to this module's catalogue.
-    private static func resource(_ key: String.LocalizationValue) -> LocalizedStringResource {
+    static func resource(_ key: String.LocalizationValue) -> LocalizedStringResource {
         LocalizedStringResource(key, bundle: .atURL(Bundle.module.bundleURL))
     }
 }

@@ -20,3 +20,54 @@
 "dashboard.recent-records.rep-max.range %lld %lld" = "%1$lld–%2$lld-rep max";
 /* VoiceOver's hint on a feed entry. It opens the exercise, not the session — see RecentRecordRow. */
 "dashboard.recent-records.exercise-hint" = "Shows this exercise's personal records.";
+
+/* FR-1.9.4's primary action. It navigates to the Train tab (D-8) rather than logging anything on
+   Home, so the verb is the one the user reads on arrival too. */
+"dashboard.start.action" = "Start workout";
+
+/* FR-1.9.2's card: the workout in progress, or the most recent finished one. */
+"dashboard.last-workout.title" = "Last workout";
+"dashboard.last-workout.none.headline" = "No workouts yet";
+"dashboard.last-workout.none.message" = "Start one and it appears here, ready to repeat.";
+"dashboard.last-workout.error" = "Your workouts could not be read.";
+/* Said in place of a set count: a running total presented as a finished one invites the wrong
+   reading. */
+"dashboard.last-workout.in-progress" = "In progress";
+/* Working sets — completed and not warmups (G-1.8). A label with the count after it rather than a
+   counted noun phrase, on the recent-PR labels' rule: it reads correctly at every count, so no
+   plural rule file is needed for a string nothing else needs one for. */
+"dashboard.last-workout.sets %lld" = "Working sets: %lld";
+"dashboard.last-workout.resume" = "Resume workout";
+/* FR-1.9.2's repeat. Phase 1 has no prescription layer (OUT-1.1), so it copies the exercise list and
+   nothing else — the label says "exercises" rather than "workout" so the empty sets are not a
+   surprise. */
+"dashboard.last-workout.repeat" = "Repeat these exercises";
+"dashboard.last-workout.repeat-error" = "A new workout could not be started.";
+
+/* FR-1.9.1's tiles. */
+"dashboard.tiles.title" = "Estimated 1RM";
+"dashboard.tiles.error" = "Your estimated maxes could not be read.";
+"dashboard.tiles.none.headline" = "No lifts on the dashboard";
+"dashboard.tiles.none.message" = "Choose the lifts you want an estimate for.";
+/* FR-1.7.5's manual mark, where a delta would otherwise be. A manual number has nothing it moved
+   from, so this line replaces the delta rather than sitting beside it. */
+"dashboard.tiles.manual" = "Entered manually";
+/* FR-1.9.1's delta has nothing to compare against: this is the first estimate inside the window. */
+"dashboard.tiles.no-previous" = "No earlier estimate to compare";
+"dashboard.tiles.choose.action" = "Choose lifts";
+"dashboard.tiles.choose.title" = "Dashboard lifts";
+"dashboard.tiles.choose.empty" = "No exercises to choose from";
+"dashboard.tiles.choose.error" = "Your exercises could not be read.";
+"dashboard.tiles.choose.write-error" = "That change could not be saved.";
+
+/* FR-1.13.3's seven reasons a tile shows no number. The wording matches the exercise library's
+   equivalents key for key — the refusal is one fact carried up from E1RMCalculator, and two screens
+   explaining it differently would be two accounts of it. Only the first may say "log a set"; the
+   reason shown is the nearest miss among the sets inside the window, never the commonest one. */
+"dashboard.tiles.absence.none" = "Log a completed working set and an estimate appears here.";
+"dashboard.tiles.absence.stale %lld" = "Nothing has been logged here in the last %lld days. An estimate reads recent training only.";
+"dashboard.tiles.absence.warmups %lld" = "Only warm-up sets in the last %lld days. An estimate comes from working sets.";
+"dashboard.tiles.absence.incomplete %lld" = "No completed working set in the last %lld days. A set has to be finished before it says anything about a maximum.";
+"dashboard.tiles.absence.high-reps %lld" = "No estimate from the last %lld days: the best candidate went past ten reps, which is further than these formulas are accurate.";
+"dashboard.tiles.absence.assisted" = "Assisted sets have no estimated max: the formulas would read more assistance as a heavier lift.";
+"dashboard.tiles.absence.no-effort" = "This formula reads the RPE or RIR on a set, and the recent sets here record neither.";

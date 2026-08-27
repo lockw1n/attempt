@@ -54,6 +54,17 @@ public enum Route: Hashable, Sendable, Codable {
 public enum DashboardRoute: Hashable, Sendable, Codable {
     /// The full recent-PRs list behind the dashboard's feed (`FR-1.9.3`). T-1.42 builds it.
     case recentPersonalRecords
+
+    /// Which exercises the dashboard tiles an estimated max for (`FR-1.9.1`).
+    ///
+    /// **Pushed rather than presented**, unlike the editors elsewhere that have no case: this screen
+    /// holds no unsaved draft — every tick is written straight through — so it is a place the app can
+    /// legitimately be restored to.
+    ///
+    /// It carries no selection, for ``ExerciseLibraryRoute/exerciseDetail(exerciseID:)``'s reason: a
+    /// restored stack is decoded before any store has been read, and what is tiled is a stored row
+    /// rather than a parameter of a push.
+    case estimatedMaxExercises
 }
 
 /// Destinations pushed while logging (`FR-1.2`).

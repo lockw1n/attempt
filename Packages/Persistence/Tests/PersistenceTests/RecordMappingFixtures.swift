@@ -314,6 +314,9 @@ func mappingTargetProfile(id: UUID) -> EquipmentProfileEntity {
     return entity
 }
 
+/// The one tiled exercise the source settings fixture names (`FR-1.9.1`).
+let mappingTiledExerciseID = UUID(uuidString: "77777777-7777-7777-7777-777777777777") ?? UUID()
+
 /// The user id both settings fixtures share. `update(from:)` never writes it, so a differing one
 /// would make the round trip fail for a reason that is not a mapping defect.
 let mappingUserID = UUID(uuidString: "88888888-8888-8888-8888-888888888888") ?? UUID()
@@ -327,6 +330,9 @@ func mappingSourceSettings(id: UUID, userID: UUID = mappingUserID) -> UserSettin
         theme: .dark,
         defaultRoundingIncrementGrams: 5000,
         defaultRoundingStrategy: .down,
+        // Non-empty here and `nil` on the target, so the round trip carries a value and
+        // `update(from:)` is seen to overwrite one that was never set (`FR-1.9.1`).
+        dashboardExerciseIDs: [mappingTiledExerciseID],
         createdAt: mappingCreatedAt,
         updatedAt: mappingUpdatedAt
     )

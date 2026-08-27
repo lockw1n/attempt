@@ -45,6 +45,20 @@ public struct UserSettings: StoredRecord {
     /// The direction half of the same default.
     public let defaultRoundingStrategy: RoundingStrategy
 
+    /// Which exercises the dashboard tiles an estimated max for, in the order they appear
+    /// (`FR-1.9.1`), or `nil` where the user has never said.
+    ///
+    /// **Optional rather than empty-by-default, because "none" is a choice they can make.** A lifter
+    /// who removes every tile gets the screen's insufficient-data state; one who has never opened the
+    /// picker gets the three competition lifts. One array cannot say both, and defaulting to the
+    /// three would make the first user's removal look like a fresh install on the next launch.
+    ///
+    /// **Ordered, and duplicates are not refused here.** The order is the one the tiles are drawn in,
+    /// which is the user's arrangement rather than a set; a repeated identifier draws the same tile
+    /// twice, and refusing it is the picker's business rather than this record's — see this module's
+    /// header on validation.
+    public let dashboardExerciseIDs: [UUID]?
+
     /// Creates a settings record. No property is validated; see this module's header.
     public init(
         id: UUID,
@@ -56,7 +70,8 @@ public struct UserSettings: StoredRecord {
         e1RMFormula: E1RMFormulaID,
         theme: ThemePreference,
         defaultRoundingIncrement: Weight,
-        defaultRoundingStrategy: RoundingStrategy
+        defaultRoundingStrategy: RoundingStrategy,
+        dashboardExerciseIDs: [UUID]? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -68,6 +83,30 @@ public struct UserSettings: StoredRecord {
         self.theme = theme
         self.defaultRoundingIncrement = defaultRoundingIncrement
         self.defaultRoundingStrategy = defaultRoundingStrategy
+        self.dashboardExerciseIDs = dashboardExerciseIDs
+    }
+    /// This row with a different dashboard tile selection (`FR-1.9.1`).
+    ///
+    /// **A method here rather than a re-listing of every property at the call site.** A save
+    /// assembled from a screen's own copy is the stale-write shape: a caller that never read a
+    /// column cannot rebuild the row by hand without clearing it, and this record has gained a
+    /// column once already.
+    ///
+    /// - Parameter exerciseIDs: The exercises to tile, in the order to draw them.
+    /// - Returns: The row to save.
+    public func tiling(_ exerciseIDs: [UUID]) -> UserSettings {
+        UserSettings(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            userID: userID,
+            displayUnit: displayUnit,
+            e1RMFormula: e1RMFormula,
+            theme: theme,
+            defaultRoundingIncrement: defaultRoundingIncrement,
+            defaultRoundingStrategy: defaultRoundingStrategy,
+            dashboardExerciseIDs: exerciseIDs)
     }
 }
 
@@ -86,6 +125,7 @@ extension UserSettings {
         case theme
         case defaultRoundingIncrement
         case defaultRoundingStrategy
+        case dashboardExerciseIDs
     }
 
     /// Decodes the keyed shape on ``CodingKeys``.
@@ -111,11 +151,16 @@ extension UserSettings {
             defaultRoundingStrategy: try container.decodeVocabulary(
                 RoundingStrategy.self,
                 forKey: .defaultRoundingStrategy,
-                or: RecordVocabulary.roundingStrategy)
+                or: RecordVocabulary.roundingStrategy),
+            dashboardExerciseIDs: try container.decodeIfPresent(
+                [UUID].self, forKey: .dashboardExerciseIDs)
         )
     }
 
-    /// Writes the ten keys in declaration order.
+    /// Writes the eleven keys in declaration order. ``dashboardExerciseIDs`` is absent rather than
+    /// null where the user has never chosen, on ``Exercise``'s rule: an omitted key and a null one
+    /// decode alike, and the shorter of the two is what a settings row that has never been
+    /// configured actually is.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -128,5 +173,6 @@ extension UserSettings {
         try container.encodeVocabulary(theme, forKey: .theme)
         try container.encode(defaultRoundingIncrement, forKey: .defaultRoundingIncrement)
         try container.encodeVocabulary(defaultRoundingStrategy, forKey: .defaultRoundingStrategy)
+        try container.encodeIfPresent(dashboardExerciseIDs, forKey: .dashboardExerciseIDs)
     }
 }

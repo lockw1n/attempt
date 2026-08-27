@@ -179,7 +179,8 @@ extension UserSettingsEntity: RecordMappable {
             theme: RecordVocabulary.resolve(themeRawValue, or: RecordVocabulary.theme),
             defaultRoundingIncrement: Weight(grams: defaultRoundingIncrementGrams),
             defaultRoundingStrategy: RecordVocabulary.resolve(
-                defaultRoundingStrategyRawValue, or: RecordVocabulary.roundingStrategy)
+                defaultRoundingStrategyRawValue, or: RecordVocabulary.roundingStrategy),
+            dashboardExerciseIDs: dashboardExerciseIDs
         )
     }
 
@@ -193,6 +194,7 @@ extension UserSettingsEntity: RecordMappable {
             theme: record.theme,
             defaultRoundingIncrementGrams: record.defaultRoundingIncrement.grams,
             defaultRoundingStrategy: record.defaultRoundingStrategy,
+            dashboardExerciseIDs: record.dashboardExerciseIDs,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt
         )
@@ -219,6 +221,7 @@ extension UserSettingsEntity: RecordMappable {
             record.defaultRoundingStrategy,
             stored: defaultRoundingStrategyRawValue,
             fallback: RecordVocabulary.roundingStrategy)
+        dashboardExerciseIDs = record.dashboardExerciseIDs
     }
 }
 
