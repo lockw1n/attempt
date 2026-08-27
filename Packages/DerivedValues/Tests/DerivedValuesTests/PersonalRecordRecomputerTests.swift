@@ -447,12 +447,19 @@ actor CountingWorkouts: WorkoutRepository {
     /// How many such walks there have been.
     var exerciseWalks: Int { walkedExercises.count }
 
+    /// How many ranged session reads there have been — `FR-1.7.1`'s window, and nothing else in
+    /// this pipeline, asks for sessions by date.
+    private(set) var windowReads = 0
+
     init(wrapped: any WorkoutRepository) {
         self.wrapped = wrapped
     }
 
-    /// Forgets what has been walked so far.
-    func reset() { walkedExercises = [] }
+    /// Forgets what has been walked and read so far.
+    func reset() {
+        walkedExercises = []
+        windowReads = 0
+    }
 
     func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
         walkedExercises.append(exerciseID)
@@ -463,7 +470,8 @@ actor CountingWorkouts: WorkoutRepository {
     func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] {
-        try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
+        windowReads += 1
+        return try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
     }
     func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
         try await wrapped.session(id: id, includingDeleted: includingDeleted)

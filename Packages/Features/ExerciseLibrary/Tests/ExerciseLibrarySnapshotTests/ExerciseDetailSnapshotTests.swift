@@ -137,10 +137,12 @@
         @Test func estimateRefused() throws {
             // FR-1.13.3 at its sharpest: a lifter who HAS logged sets and still has no number. The
             // reference is over the longest of the seven sentences, which is the one that decides
-            // whether the state component wraps at `accessibility3`.
+            // whether the state component wraps at `accessibility3` — `ExerciseEstimateSectionTests`
+            // asserts that this case is still that sentence, so the reference cannot quietly become
+            // a rendering of a shorter one.
             try assertSnapshots(named: "ExerciseDetail-estimate-refused") {
                 ExerciseEstimateReading(
-                    state: .insufficient(.refused(.incomplete), days: 90),
+                    state: .insufficient(.refused(.repsOutOfRange), days: 90),
                     unit: .kilograms,
                     retry: {}
                 )

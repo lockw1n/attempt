@@ -162,6 +162,35 @@ struct ExerciseRecordsStateTests {
         #expect(state.repMaxes == recordsBefore)
     }
 
+    /// The mirror of the test above, and `ExerciseEstimateSection`'s subscription: a screen drawing
+    /// only `FR-1.7.1`'s estimate would otherwise re-read a cached list and re-resolve every
+    /// record's source link on each set logged against this exercise.
+    @Test("A subscriber that declined the records is not given them")
+    func decliningTheRecordsSkipsThem() async throws {
+        let log = TrainingLog()
+        let exerciseID = try await log.exercise()
+        let entryID = try await log.session(
+            of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
+        let recomputer = PersonalRecordRecomputer(
+            workouts: log.repositories.workouts,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
+        let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
+
+        let watching = Task { await state.observeChanges(includingRecords: false) }
+        defer { watching.cancel() }
+        await awaitSubscriber(on: recomputer)
+        await recomputer.setDidChange(inEntryID: entryID)
+
+        await settle { state.estimatedMax != nil }
+
+        // The estimate arrived, so the change was delivered — and the records did not, which is the
+        // half being declined.
+        #expect(state.estimatedMax?.weight == Weight(grams: 116_667))
+        #expect(state.repMaxes.isEmpty)
+        #expect(state.sourceSessions.isEmpty)
+    }
+
     /// **A read may not announce, and this is the loop that proves why.** A cache holding nothing
     /// is recomputed on every read — an exercise with no records writes nothing that would stop the
     /// next pass — so a read that published would be told to read again by the subscriber it had

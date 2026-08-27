@@ -54,6 +54,22 @@ struct ExerciseEstimateSectionTests {
         #expect(sentences.allSatisfy { !$0.isEmpty })
     }
 
+    /// `TR-1.12`'s wrap reference is recorded over one of the seven, and it is only a worst case
+    /// while it is over the longest — which was not true when it was first recorded. Asserted here
+    /// rather than left to the eye, since re-wording any sentence can move the answer.
+    @Test("The rep-range sentence is the longest, which is the one the snapshot renders")
+    func theSnapshottedSentenceIsTheLongest() {
+        let longest = ExerciseLibraryStrings.absences
+            .map { String(localized: ExerciseLibraryStrings.e1rmAbsence($0, days: 90)) }
+            .max(by: { $0.count < $1.count })
+
+        #expect(
+            longest
+                == String(
+                    localized: ExerciseLibraryStrings.e1rmAbsence(
+                        .refused(.repsOutOfRange), days: 90)))
+    }
+
     @Test("The window's length is named in the sentence rather than assumed")
     func theSentenceNamesTheWindow() {
         let ninety = String(localized: ExerciseLibraryStrings.e1rmAbsence(.noneInWindow, days: 90))

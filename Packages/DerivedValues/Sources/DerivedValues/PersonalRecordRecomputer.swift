@@ -39,11 +39,16 @@ public actor PersonalRecordRecomputer {
     private var formula: E1RMFormulaID
 
     /// How far back an estimate looks (`FR-1.7.1`).
-    private var lookback: E1RMLookback
+    ///
+    /// Internal rather than private, on ``workouts``' rule, so the window's own arithmetic can live
+    /// in its own file. Nothing outside this module can see it.
+    var lookback: E1RMLookback
 
     /// What "now" is when the window is measured — injectable, so a boundary can be asserted rather
     /// than waited for.
-    private let now: @Sendable () -> Date
+    ///
+    /// Internal for ``lookback``'s reason.
+    let now: @Sendable () -> Date
 
     /// The subscribers ``changes()`` handed a stream to, keyed by a token their termination carries.
     private var subscribers: [UUID: AsyncStream<RecordChange>.Continuation] = [:]
@@ -149,7 +154,7 @@ public actor PersonalRecordRecomputer {
                 $0.computationVersion == PersonalRecordCalculator.computationVersion
             }
         guard current else {
-            return try await recomputed(exerciseID, writingCache: true).repMaxes
+            return try await walked(exerciseID, writingCache: true).repMaxes
         }
         return cached.map {
             DatedRepMax(
@@ -226,7 +231,7 @@ public actor PersonalRecordRecomputer {
         guard let entry = try? await workouts.entry(id: entryID, includingDeleted: true) else {
             return
         }
-        _ = try? await recompute(forExerciseID: entry.exerciseID)
+        await refreshRecords(forExerciseID: entry.exerciseID)
     }
 
     /// The session trigger: a whole session was discarded or restored (`FR-1.6.4`, `FR-1.2.12`).
@@ -252,8 +257,24 @@ public actor PersonalRecordRecomputer {
                 forSessionID: sessionID, includingDeleted: true)
         else { return }
         for exerciseID in Set(entries.map(\.exerciseID)) {
-            _ = try? await recompute(forExerciseID: exerciseID)
+            await refreshRecords(forExerciseID: exerciseID)
         }
+    }
+
+    /// What both set-mutation triggers actually do: rewrite the cache, then announce.
+    ///
+    /// **`FR-1.7.1`'s window is not read here, and that is the point of the method existing.** An
+    /// estimate depends on a setting no cache can carry, so a trigger computing one would throw it
+    /// away — and computing it costs a ranged session read plus one entry read per session inside
+    /// the window, on the path that runs behind every logged set (`NFR-1.6`). The subscribers this
+    /// wakes re-read the estimate for themselves, which is where the window belongs.
+    ///
+    /// A failure is swallowed, for ``setDidChange(inEntryID:)``'s reason.
+    ///
+    /// - Parameter exerciseID: The exercise whose sets moved.
+    private func refreshRecords(forExerciseID exerciseID: UUID) async {
+        guard (try? await walked(exerciseID, writingCache: true)) != nil else { return }
+        publish(.exercise(exerciseID))
     }
 
     /// The settings trigger: the e1RM formula changed (`FR-1.6.4`, `FR-1.7.3`, `TR-1.6`).
@@ -288,17 +309,32 @@ public actor PersonalRecordRecomputer {
 
     // MARK: - The computation
 
-    /// One walk, both calculators, and the cache written if asked.
+    /// Both halves, from the one walk ``walked(_:writingCache:)`` performed.
+    private func recomputed(
+        _ exerciseID: UUID, writingCache: Bool
+    ) async throws -> ExerciseRecords {
+        let walk = try await walked(exerciseID, writingCache: writingCache)
+        return ExerciseRecords(
+            exerciseID: exerciseID,
+            repMaxes: walk.repMaxes,
+            estimate: try await estimate(over: walk))
+    }
+
+    /// One walk of the exercise's sets, `FR-1.6.1`'s all-time rep maxes, and the cache written if
+    /// asked.
+    ///
+    /// **The estimate is not part of this**, so that the callers which discard one do not pay for
+    /// `FR-1.7.1`'s window — see ``refreshRecords(forExerciseID:)`` and the cache-miss path of
+    /// ``repMaxes(forExerciseID:)``. What it keeps hold of is everything ``estimate(over:)`` needs
+    /// to compute one over the same sets, so asking for both still costs one walk.
     ///
     /// **A set the analytical type refuses is left out of the computation rather than failing it.**
     /// `SetEntry` stores what was logged and `SetRecord` validates, so a row carrying a value this
     /// build considers out of range — a newer version's, or a corrupt one's — would otherwise cost
-    /// the user every record for that exercise rather than the one set. Both arrays are built from
-    /// the same filtered sequence, which is what keeps `PersonalRecord`'s offsets pointing at the
-    /// set that actually holds the record.
-    private func recomputed(
-        _ exerciseID: UUID, writingCache: Bool
-    ) async throws -> ExerciseRecords {
+    /// the user every record for that exercise rather than the one set. ``Walk/analysed`` is the
+    /// one filtered sequence both halves index into, which is what keeps `PersonalRecord`'s offsets
+    /// pointing at the set that actually holds the record.
+    private func walked(_ exerciseID: UUID, writingCache: Bool) async throws -> Walk {
         // Claimed before the first `await`, and only by a call that intends to write: two reads that
         // never touch the row cannot supersede each other.
         let generation = writingCache ? claimWriteGeneration(exerciseID) : 0
@@ -313,33 +349,13 @@ public actor PersonalRecordRecomputer {
             calculator.repMax(forReps: reps, in: analysed.map(\.1))
                 .map { (reps: reps, record: $0) }
         }
-        // `FR-1.7.1`'s window, and the filter preserves the repository's order — which is what keeps
-        // "ties resolve to the earlier set" meaning the same thing over the subsequence.
-        let window = stored.isEmpty ? [] : try await entryIDsInWindow(forExerciseID: exerciseID)
-        let inWindow = analysed.filter { window.contains($0.0.entryID) }
-        let computedE1RM = calculator.bestE1RM(in: inWindow.map(\.1))
-
-        let holding =
-            computedRepMaxes.map { analysed[$0.record.setOffset].0 }
-            + (computedE1RM.map { [inWindow[$0.setOffset].0] } ?? [])
-        let dates = await sessionDates(forEntryIDs: Set(holding.map(\.entryID)))
-
+        let dates = await sessionDates(
+            forEntryIDs: Set(computedRepMaxes.map { analysed[$0.record.setOffset].0.entryID }))
         let repMaxes = computedRepMaxes.map { repMax in
             DatedRepMax(
                 reps: repMax.reps,
                 record: dated(repMax.record, over: analysed, using: dates))
         }
-        let estimate =
-            computedE1RM.map {
-                EstimatedMax(
-                    record: dated($0, over: inWindow, using: dates),
-                    formula: formula,
-                    lookback: lookback)
-            }
-            ?? EstimatedMax(
-                absence: absence(hasSets: !stored.isEmpty, inWindow: inWindow, under: estimator),
-                formula: formula,
-                lookback: lookback)
 
         // Refused rather than written where a newer recompute of this exercise has started since:
         // the value is still returned, because the caller asked for what *these* sets produce and
@@ -357,53 +373,59 @@ public actor PersonalRecordRecomputer {
                 })
         }
 
-        return ExerciseRecords(exerciseID: exerciseID, repMaxes: repMaxes, estimate: estimate)
+        return Walk(
+            exerciseID: exerciseID,
+            stored: stored,
+            analysed: analysed,
+            estimator: estimator,
+            calculator: calculator,
+            repMaxes: repMaxes)
     }
 
-    /// The entries of this exercise that fall inside the lookback window (`FR-1.7.1`).
+    /// `FR-1.7.1`'s estimate, over the sets `walk` already read.
     ///
-    /// **Read forwards from the sessions, not backwards from the sets**, and that is what bounds the
-    /// walk. Dating every set costs two reads per session the exercise was ever trained in, which is
-    /// unbounded in the history; one ranged read plus one entry read per session inside the window is
-    /// bounded by the *window*, so a ten-year history costs what a three-month one does.
-    ///
-    /// It also settles which date the window reads: the session's, the same one
-    /// ``DatedRecord/achievedAt`` reports. A filter on a set's own timestamps would pull a set
-    /// corrected today into the window on behalf of a workout performed last year.
-    ///
-    /// Deleted sessions and entries are excluded: a discarded workout is not current work.
-    private func entryIDsInWindow(forExerciseID exerciseID: UUID) async throws -> Set<UUID> {
-        let sessions = try await workouts.sessions(
-            in: lookback.range(from: now()), includingDeleted: false)
-        var entryIDs: Set<UUID> = []
-        for session in sessions {
-            let entries = try await workouts.entries(
-                forSessionID: session.id, includingDeleted: false)
-            for entry in entries where entry.exerciseID == exerciseID { entryIDs.insert(entry.id) }
+    /// The only read it adds is the window's own — the sets are the walk's, so asking for the
+    /// estimate never walks the history a second time.
+    private func estimate(over walk: Walk) async throws -> EstimatedMax {
+        // The filter preserves the repository's order, which is what keeps "ties resolve to the
+        // earlier set" meaning the same thing over the subsequence.
+        let window =
+            walk.stored.isEmpty ? [] : try await entryIDsInWindow(forExerciseID: walk.exerciseID)
+        let inWindow = walk.analysed.filter { window.contains($0.0.entryID) }
+
+        guard let computed = walk.calculator.bestE1RM(in: inWindow.map(\.1)) else {
+            return EstimatedMax(
+                absence: absence(
+                    hasSets: !walk.stored.isEmpty, inWindow: inWindow, under: walk.estimator),
+                formula: formula,
+                lookback: lookback)
         }
-        return entryIDs
+        let dates = await sessionDates(forEntryIDs: [inWindow[computed.setOffset].0.entryID])
+        return EstimatedMax(
+            record: dated(computed, over: inWindow, using: dates),
+            formula: formula,
+            lookback: lookback)
     }
 
-    /// Why there is no estimate (`FR-1.13.3`).
+    /// What one walk of an exercise's sets produced, and what an estimate over the same sets needs.
     ///
-    /// **The nearest miss, not the commonest one**: a lifter whose warmups sit beside one twelve-rep
-    /// working set is owed the sentence about the rep range. `E1RMRefusal`'s ordering is what
-    /// "nearest" means, and it lives there rather than here.
-    ///
-    /// - Parameters:
-    ///   - hasSets: Whether anything at all has been logged against the exercise.
-    ///   - inWindow: The in-window sets, none of which produced an estimate.
-    ///   - estimator: The calculator whose refusals these are — the same one that was asked.
-    private func absence(
-        hasSets: Bool, inWindow: [(SetEntry, SetRecord)], under estimator: E1RMCalculator
-    ) -> EstimateAbsence {
-        guard hasSets else { return .noSetsLogged }
-        let refusals = inWindow.compactMap { pair -> E1RMRefusal? in
-            guard case .refused(let why) = estimator.outcome(for: pair.1) else { return nil }
-            return why
-        }
-        guard let nearest = refusals.max() else { return .noneInWindow }
-        return .refused(nearest)
+    /// Carries the two calculators as well as the rows because both are built from the formula in
+    /// force at the moment of the walk: rebuilding them in ``estimate(over:)`` would let a formula
+    /// change landing between the two halves report a reason the rep maxes were not computed under.
+    private struct Walk {
+        let exerciseID: UUID
+
+        /// Every live set of this exercise, as stored.
+        let stored: [SetEntry]
+
+        /// The subset this build can analyse, paired with its analytical value.
+        let analysed: [(SetEntry, SetRecord)]
+
+        let estimator: E1RMCalculator
+        let calculator: PersonalRecordCalculator
+
+        /// `FR-1.6.1`'s all-time rep maxes, dated.
+        let repMaxes: [DatedRepMax]
     }
 
     /// The record with the set at its offset resolved to an identity and a date.

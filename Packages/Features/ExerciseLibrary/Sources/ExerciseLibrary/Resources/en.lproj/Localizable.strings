@@ -153,12 +153,18 @@
 
 /* FR-1.13.3 over E1RMCalculator's refusals. Seven sentences rather than one blank: each names the
    thing that would have to change, because every one of these is a lifter who DID log the set. The
-   first is the only one that means "nothing here yet". */
+   first is the only one that means "nothing here yet".
+
+   MIND THE QUANTIFIER. The reason reported is the NEAREST MISS among the in-window sets, not the
+   only one, so a sentence saying "every set ..." is a claim the precedence rule does not establish:
+   the rep-range case is reached with assisted and unfinished sets sitting alongside. A sentence
+   here may say what stopped the best candidate, or state a universal the ordering actually implies
+   (nothing outranks "only warm-ups", so that one is safe), and nothing in between. */
 "exerciselibrary.detail.e1rm.none" = "Log a completed working set and an estimate appears here.";
 "exerciselibrary.detail.e1rm.stale %lld" = "Nothing has been logged here in the last %lld days. An estimate reads recent training only.";
 "exerciselibrary.detail.e1rm.warmups %lld" = "Only warm-up sets in the last %lld days. An estimate comes from working sets.";
-"exerciselibrary.detail.e1rm.incomplete %lld" = "No completed set in the last %lld days. A set has to be finished before it says anything about a maximum.";
-"exerciselibrary.detail.e1rm.high-reps %lld" = "Every working set in the last %lld days went past ten reps, which is further than these formulas are accurate.";
+"exerciselibrary.detail.e1rm.incomplete %lld" = "No completed working set in the last %lld days. A set has to be finished before it says anything about a maximum.";
+"exerciselibrary.detail.e1rm.high-reps %lld" = "No estimate from the last %lld days: the best candidate went past ten reps, which is further than these formulas are accurate.";
 "exerciselibrary.detail.e1rm.assisted" = "Assisted sets have no estimated max: the formulas would read more assistance as a heavier lift.";
 "exerciselibrary.detail.e1rm.no-effort" = "This formula reads the RPE or RIR on a set, and the recent sets here record neither.";
 

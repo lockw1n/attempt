@@ -59,7 +59,10 @@ struct RecomputeScaleTests {
         #expect(elapsed < .milliseconds(500))
 
         // The measurement is worthless if it computed nothing: the last set is the heaviest, so it
-        // holds all five reachable rep maxes and the estimate.
+        // holds all five reachable rep maxes. It holds no *estimate* — every session here is at
+        // least 101 weeks old, so `FR-1.7.1`'s window is empty over this fixture and what the
+        // window itself costs is not part of this number. That read is bounded by the window rather
+        // than by the history, and is asserted off the trigger path in `EstimatedMaxTests`.
         let cached = try await log.repositories.personalRecords.personalRecords(
             forExerciseID: exerciseID, includingDeleted: false)
         #expect(cached.map(\.repCount) == [1, 2, 3, 4, 5])

@@ -181,6 +181,64 @@ struct EstimatedMaxTests {
         #expect(estimate.absence == .refused(.warmup))
     }
 
+    // MARK: - What the window costs (NFR-1.6)
+
+    /// **The trigger path must not read the window.** It runs behind every logged set, and the
+    /// estimate it would compute is discarded — the cache holds rep maxes alone. The read is a
+    /// ranged session query plus one entry read per session inside the window, so a lifter training
+    /// four times a week would pay ~50 reads per set logged for a number nothing looks at.
+    @Test("A logged set rewrites the cache without reading the lookback window")
+    func theTriggerPathDoesNotReadTheWindow() async throws {
+        let log = TrainingLog()
+        let exerciseID = try await log.exercise()
+        let entryID = try await log.session(
+            of: exerciseID, on: weeksAgo(1), sets: [working(100_000, 5)])
+        let counting = CountingWorkouts(wrapped: log.repositories.workouts)
+        let subject = PersonalRecordRecomputer(
+            workouts: counting, cache: log.repositories.personalRecords, now: { fixtureNow })
+        await counting.reset()
+
+        await subject.setDidChange(inEntryID: entryID)
+
+        #expect(await counting.exerciseWalks == 1)
+        #expect(await counting.windowReads == 0)
+    }
+
+    /// The other half: a screen that actually wants the estimate does read it, so the assertion
+    /// above is about *where* the read happens rather than about it having been dropped.
+    @Test("Reading the estimate does read the lookback window")
+    func readingTheEstimateReadsTheWindow() async throws {
+        let log = TrainingLog()
+        let exerciseID = try await log.exercise()
+        try await log.session(of: exerciseID, on: weeksAgo(1), sets: [working(100_000, 5)])
+        let counting = CountingWorkouts(wrapped: log.repositories.workouts)
+        let subject = PersonalRecordRecomputer(
+            workouts: counting, cache: log.repositories.personalRecords, now: { fixtureNow })
+        await counting.reset()
+
+        let estimate = try await subject.estimatedMax(forExerciseID: exerciseID)
+
+        #expect(estimate.record != nil)
+        #expect(await counting.windowReads == 1)
+    }
+
+    /// A cache miss on the records section is a rep-max read, and it walks for rep maxes alone.
+    @Test("A cache miss recomputes the rep maxes without reading the window")
+    func aCacheMissDoesNotReadTheWindow() async throws {
+        let log = TrainingLog()
+        let exerciseID = try await log.exercise()
+        try await log.session(of: exerciseID, on: weeksAgo(1), sets: [working(100_000, 5)])
+        let counting = CountingWorkouts(wrapped: log.repositories.workouts)
+        let subject = PersonalRecordRecomputer(
+            workouts: counting, cache: log.repositories.personalRecords, now: { fixtureNow })
+        await counting.reset()
+
+        let repMaxes = try await subject.repMaxes(forExerciseID: exerciseID)
+
+        #expect(repMaxes.map(\.reps) == [1, 2, 3, 4, 5])
+        #expect(await counting.windowReads == 0)
+    }
+
     // MARK: - The settings triggers (FR-1.7.3)
 
     @Test("A window change tells every screen to read again")
@@ -231,10 +289,17 @@ struct EstimatedMaxTests {
     }
 }
 
-/// `days` calendar days before ``fixtureNow`` — the unit `E1RMLookback` counts in, so a boundary
-/// asserted in days is asserted against the same arithmetic the window uses.
+/// The start of the day `days` before ``fixtureNow``.
+///
+/// **Deliberately not `E1RMLookback.earliest(from:)`.** A fixture that dated its sessions with the
+/// window's own arithmetic would move whenever the window did, and a boundary asserted that way
+/// cannot fail: measured, shifting `earliest` by a full day left all 71 tests green. This is
+/// instead the arithmetic the *app* dates a session with — `Calendar.startOfDay`, as
+/// `ActiveSessionStore` writes it — so the boundary here is the one a lifter can actually produce.
 func daysAgo(_ days: Int) -> Date {
-    E1RMLookback(days: days).earliest(from: fixtureNow)
+    let calendar = Calendar.autoupdatingCurrent
+    let counted = calendar.date(byAdding: .day, value: -days, to: fixtureNow) ?? fixtureNow
+    return calendar.startOfDay(for: counted)
 }
 
 /// The window itself, with no store behind it (`FR-1.7.1`).
@@ -245,13 +310,29 @@ struct E1RMLookbackTests {
         #expect(E1RMLookback.default.days == 90)
     }
 
-    @Test("The lower bound is the day the window is named for")
+    /// Asserted against ``daysAgo(_:)``'s independent arithmetic rather than against
+    /// `earliest(from:)`'s own answer, which is what makes an off-by-one in it visible here.
+    @Test("The lower bound is the start of the day the window is named for")
     func theLowerBoundIsInclusive() {
         let window = E1RMLookback(days: 90)
-        let earliest = window.earliest(from: fixtureNow)
 
-        #expect(window.range(from: fixtureNow).contains(earliest))
-        #expect(!window.range(from: fixtureNow).contains(earliest.addingTimeInterval(-1)))
+        #expect(window.earliest(from: fixtureNow) == daysAgo(90))
+        #expect(window.range(from: fixtureNow).contains(daysAgo(90)))
+        #expect(!window.range(from: fixtureNow).contains(daysAgo(91)))
+    }
+
+    /// **The regression `startOfDay` closes.** A session is stored at midnight on its training day,
+    /// so a bound carrying the hour it was measured at sits after every session on the boundary day
+    /// and drops all of it — at every hour but midnight, which is to say always.
+    @Test("The boundary day is admitted whatever hour it is now")
+    func theBoundaryDayIsAdmittedFromAnyHour() {
+        let calendar = Calendar.autoupdatingCurrent
+        let lateInTheDay =
+            calendar.date(bySettingHour: 23, minute: 30, second: 0, of: fixtureNow) ?? fixtureNow
+        let boundaryDay = calendar.startOfDay(
+            for: calendar.date(byAdding: .day, value: -90, to: lateInTheDay) ?? lateInTheDay)
+
+        #expect(E1RMLookback(days: 90).range(from: lateInTheDay).contains(boundaryDay))
     }
 
     /// A lookback is a floor on age, so nothing dated ahead of the clock falls out of it.
