@@ -125,6 +125,25 @@
             }
         }
 
+        @Test func healthImportRunning() throws {
+            // FR-1.13.1: the import in flight draws T-1.09's LoadingStateView over a log that is
+            // still there, which is the read that component's own doc comment was written for.
+            try assertSnapshots(named: "Bodyweight-health-running") {
+                BodyweightLogReading(
+                    state: .ready(Array(BodyweightFixtures.readings.prefix(1))),
+                    currentAverage: nil,
+                    unit: .kilograms,
+                    writeFailure: nil,
+                    healthImport: .importing,
+                    retry: {},
+                    add: {},
+                    importFromHealth: {}
+                )
+                .environment(\.locale, BodyweightFixtures.locale)
+                .environment(\.timeZone, .gmt)
+            }
+        }
+
         @Test func healthImportFailed() throws {
             // A failed import above a log that is still there — the write failure's rule, and the
             // command stays offered because a retry is the only way out of it.

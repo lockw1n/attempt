@@ -336,9 +336,9 @@ struct BodyweightHealthImportCard: View {
         case .idle, .failed:
             EmptyView()
         case .importing:
-            Text(SettingsStrings.bodyweightHealthRunning)
-                .font(Typography.caption.font)
-                .foregroundStyle(ColorToken.textSecondary)
+            // T-1.09's shared loading state (`FR-1.13.1`), which exists for the reads that
+            // genuinely wait — this is the one its own doc comment names.
+            LoadingStateView(message: Text(SettingsStrings.bodyweightHealthRunning))
         case .imported(let added, let daysAlreadyEntered):
             VStack(alignment: .leading, spacing: Spacing.xxs.points) {
                 Text(SettingsStrings.bodyweightHealthResultTitle)

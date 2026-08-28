@@ -149,6 +149,70 @@ struct HealthBodyweightImportTests {
         #expect(plan.entries.map(\.weight.grams) == [80_000, 82_000, 84_000])
     }
 
+    @Test("Two live imported rows on one day: one is replaced, the lowest-identified of them")
+    func aDayCarryingTwoImportedRowsReplacesOne() throws {
+        // A state this planner cannot produce — it writes one row a day — but a store it did not
+        // write may hold it (a restore, a merge), which is what the tie-break is for. Pinned so
+        // the branch has a defined answer rather than an accidental one.
+        let existing = [
+            entry(day: 4, hour: 6, kilos: 80, source: .healthKit),
+            entry(day: 4, hour: 7, kilos: 81, source: .healthKit),
+        ]
+
+        let plan = plan(samples: [sample(day: 4, hour: 9, kilos: 82.4)], existing: existing)
+
+        #expect(plan.entries.count == 1)
+        let written = try #require(plan.entries.first)
+        // The lower identifier wins, whichever order the rows arrived in.
+        #expect(written.id == existing.map(\.id).min { $0.uuidString < $1.uuidString })
+        #expect(written.weight == Weight(grams: 82_400))
+        #expect(plan.daysAlreadyEntered == 0)
+    }
+
+    @Test("A reading typed on an imported day retires that day's imported row")
+    func typedReadingSupersedesTheImport() {
+        let imported = entry(day: 4, hour: 7, kilos: 82, source: .healthKit)
+        let typed = entry(day: 4, hour: 0, kilos: 80, source: .manual)
+
+        let retired = HealthBodyweightImport.supersededImports(
+            by: typed, in: [imported, typed], calendar: .gmt)
+
+        // FR-1.8.3 averages readings and not days, so leaving both would weigh 4 Feb twice.
+        #expect(retired == [imported.id])
+    }
+
+    @Test("Superseding reaches only that day, only imports, and only live ones")
+    func supersedingIsNarrow() {
+        let typed = entry(day: 4, hour: 0, kilos: 80, source: .manual)
+        let otherDay = entry(day: 5, hour: 7, kilos: 82, source: .healthKit)
+        let alsoTyped = entry(day: 4, hour: 9, kilos: 81, source: .manual)
+        let tombstoned = BodyweightEntry(
+            id: identity(prefix: "DE", day: 4, hour: 8),
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: now,
+            date: instant(day: 4, hour: 8),
+            weight: Weight(grams: 83_000),
+            source: .healthKit)
+
+        let retired = HealthBodyweightImport.supersededImports(
+            by: typed, in: [otherDay, alsoTyped, tombstoned, typed], calendar: .gmt)
+
+        // A day the lifter typed twice is theirs to sort out; a tombstone is already retired.
+        #expect(retired.isEmpty)
+    }
+
+    @Test("An imported reading supersedes nothing — only a typed one wins the day")
+    func anImportSupersedesNothing() {
+        let first = entry(day: 4, hour: 6, kilos: 82, source: .healthKit)
+        let second = entry(day: 4, hour: 7, kilos: 83, source: .healthKit)
+
+        #expect(
+            HealthBodyweightImport.supersededImports(
+                by: second, in: [first, second], calendar: .gmt
+            ).isEmpty)
+    }
+
     @Test("Nothing to import from an empty source, over a log that stays untouched")
     func nothingToImport() {
         let plan = plan(samples: [], existing: [entry(day: 4, hour: 0, kilos: 80, source: .manual)])

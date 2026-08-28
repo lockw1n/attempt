@@ -33,7 +33,8 @@ final class BodyweightLogState {
 
     /// What `FR-1.8.2`'s import has done, as one value rather than a flag and a count.
     enum HealthImport: Equatable {
-        /// No import has run, or the last one has been retired by a new one starting.
+        /// No import has run in this screen's lifetime. Nothing moves back to it: a second
+        /// import goes straight to ``importing`` over whatever the last one reported.
         case idle
 
         /// An import is in flight — the authorization request included.
@@ -143,8 +144,32 @@ final class BodyweightLogState {
             writeFailure = String(describing: error)
             return false
         }
+        // Past here the reading is written, so a failure is reported *and the confirmation kept*:
+        // returning `false` would reopen the form over a row that already exists, and confirming
+        // it a second time would write the day twice — the duplicate this whole step removes.
+        do {
+            try await retireImports(supersededBy: entry)
+        } catch {
+            writeFailure = String(describing: error)
+        }
         await reload()
         return true
+    }
+
+    /// Retires the imported rows a typed reading has replaced (`FR-1.8.2`).
+    ///
+    /// The rule itself is ``HealthBodyweightImport/supersededImports(by:in:calendar:)`` — the
+    /// import's day rule owns both directions, so neither can drift from the other.
+    ///
+    /// - Parameter entry: The reading just written.
+    private func retireImports(supersededBy entry: BodyweightEntry) async throws {
+        let live = try await repository.entries(
+            in: Date.distantPast...Date.distantFuture, includingDeleted: false)
+        let retired = HealthBodyweightImport.supersededImports(
+            by: entry, in: live, calendar: calendar)
+        for id in retired {
+            try await repository.deleteEntry(id: id)
+        }
     }
 
     /// Retires the last failure, so a form opening does not report a failure from before it.

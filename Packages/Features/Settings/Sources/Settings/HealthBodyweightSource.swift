@@ -32,20 +32,18 @@
 
         /// Every body-mass sample, newest first.
         ///
-        /// **Kilograms into whole grams, rounded to nearest** (`G-1.1`): HealthKit answers in a unit
-        /// of the caller's choosing as a `Double`, and grams are the only representation stored. A
-        /// sample that cannot be one — a value no scale produces — is dropped rather than stored as
-        /// something else.
+        /// **The unit crossing is not here** — this asks HealthKit for kilograms and hands them to
+        /// ``BodyweightSample/fromKilograms(_:id:date:)``, which owns `G-1.1`'s rounding and the
+        /// refusal. What is left in this method is the query, which no test can reach.
         public func samples() async throws -> [BodyweightSample] {
             let descriptor = HKSampleQueryDescriptor(
                 predicates: [.quantitySample(type: Self.bodyMass)],
                 sortDescriptors: [SortDescriptor(\.startDate, order: .reverse)])
             return try await descriptor.result(for: store).compactMap { sample in
-                let kilograms = sample.quantity.doubleValue(for: .gramUnit(with: .kilo))
-                guard let weight = Weight(kilograms: kilograms, rounding: .nearest) else {
-                    return nil
-                }
-                return BodyweightSample(id: sample.uuid, date: sample.startDate, weight: weight)
+                BodyweightSample.fromKilograms(
+                    sample.quantity.doubleValue(for: .gramUnit(with: .kilo)),
+                    id: sample.uuid,
+                    date: sample.startDate)
             }
         }
     }

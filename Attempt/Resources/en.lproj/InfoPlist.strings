@@ -1,0 +1,9 @@
+/* G-3.4: the Info.plist half. `INFOPLIST_KEY_*` in the pbxproj bakes a literal into the generated
+   Info.plist, which is a user-visible string with no catalogue behind it — this file is what makes
+   it translatable. The build setting stays as the development-language value; this overrides it per
+   locale, and a new .lproj here is all another language needs.
+
+   TR-1.9 / FR-1.8.2: the sentence in the Health permission sheet. It names what is read and says
+   where it stays (G-5.4), because the system prompt names the app and the data type and nothing
+   else. */
+"NSHealthShareUsageDescription" = "Attempt reads your body mass from Health so your weigh-ins and their seven-day average are in one place. It stays on this device.";

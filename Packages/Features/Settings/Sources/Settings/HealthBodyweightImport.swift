@@ -94,6 +94,42 @@ enum HealthBodyweightImport {
             daysAlreadyEntered: alreadyEntered.count)
     }
 
+    /// The imported rows a typed reading supersedes — `FR-1.8.2`'s day rule, the other way round.
+    ///
+    /// ``plan(samples:existing:calendar:now:)`` refuses a day the log already holds, which settles
+    /// the ordering where the reading was typed first. This settles the other one. A day imported
+    /// *before* the lifter typed it would otherwise carry both rows, and `FR-1.8.3`'s window
+    /// averages readings rather than days — so that day would weigh twice and the average would
+    /// report a number neither reading says. A later import does not repair it either: by then the
+    /// day is one the log owns, and the stale row is left alone forever.
+    ///
+    /// **The imported row is retired rather than edited.** A tombstone is also what stops the next
+    /// import writing it straight back.
+    ///
+    /// - Parameters:
+    ///   - entry: The reading just written. Anything but a live manual row supersedes nothing.
+    ///   - existing: The live rows. Tombstones are already retired and need no second one.
+    ///   - calendar: Whose days the window is measured in (`G-3.4`).
+    /// - Returns: The rows to soft-delete, in a stable order.
+    static func supersededImports(
+        by entry: BodyweightEntry,
+        in existing: some Sequence<BodyweightEntry>,
+        calendar: Calendar
+    ) -> [UUID] {
+        guard entry.source == .manual, entry.deletedAt == nil else { return [] }
+        let day = calendar.startOfDay(for: entry.date)
+        // `.healthKit` rather than `!= .manual`, `plan`'s rule read the other way: this retires
+        // only a row this module can vouch for having written itself.
+        return
+            existing
+            .filter {
+                $0.id != entry.id && $0.deletedAt == nil && $0.source == .healthKit
+                    && calendar.startOfDay(for: $0.date) == day
+            }
+            .map(\.id)
+            .sorted { $0.uuidString < $1.uuidString }
+    }
+
     /// One sample as the row it becomes.
     ///
     /// **The sample's own instant, not the start of its day.** It is when the scale read, the day

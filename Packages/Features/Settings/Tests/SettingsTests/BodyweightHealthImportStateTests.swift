@@ -116,6 +116,59 @@ struct BodyweightHealthImportStateTests {
         #expect(readings(of: state).isEmpty)
     }
 
+    @Test("Typing a reading on a day already imported leaves that day one row, the typed one")
+    func typedReadingRetiresTheImportedRow() async throws {
+        let fakes = InMemoryRepositoryStack()
+        let source = StubSampleSource(samples: [healthSample(day: 4, hour: 7, kilos: 82.4)])
+        let state = logState(over: fakes, today: 4, health: source)
+        await state.load()
+        await state.importFromHealth()
+        #expect(state.healthImport == .imported(added: 1, daysAlreadyEntered: 0))
+
+        // The lifter now types 4 Feb by hand, after the import rather than before it.
+        var draft = BodyweightEntryDraft(
+            unit: .kilograms,
+            locale: Locale(identifier: "en_US_POSIX"),
+            calendar: .gmt,
+            day: instant(day: 4, hour: 12))
+        draft.weightText = "80"
+        #expect(await state.save(draft))
+
+        let live = try await fakes.bodyweight.entries(
+            in: Date.distantPast...Date.distantFuture, includingDeleted: false)
+        #expect(live.count == 1)
+        #expect(try #require(live.first).source == .manual)
+        #expect(try #require(live.first).weight == Weight(grams: 80_000))
+        // Both rows live would have averaged 81.2 kg — a number neither reading says.
+        #expect(readings(of: state).map(\.weight.grams) == [80_000])
+        #expect(state.writeFailure == nil)
+    }
+
+    @Test("The retired row is a tombstone, so the next import does not write it back")
+    func aSupersededImportIsNotReimported() async throws {
+        let fakes = InMemoryRepositoryStack()
+        let source = StubSampleSource(samples: [healthSample(day: 4, hour: 7, kilos: 82.4)])
+        let state = logState(over: fakes, today: 4, health: source)
+        await state.load()
+        await state.importFromHealth()
+        var draft = BodyweightEntryDraft(
+            unit: .kilograms,
+            locale: Locale(identifier: "en_US_POSIX"),
+            calendar: .gmt,
+            day: instant(day: 4, hour: 12))
+        draft.weightText = "80"
+        #expect(await state.save(draft))
+
+        await state.importFromHealth()
+
+        // The day is the lifter's now, on both of the day rule's halves.
+        #expect(state.healthImport == .imported(added: 0, daysAlreadyEntered: 1))
+        let live = try await fakes.bodyweight.entries(
+            in: Date.distantPast...Date.distantFuture, includingDeleted: false)
+        #expect(live.count == 1)
+        #expect(try #require(live.first).source == .manual)
+    }
+
     @Test("An import arriving while one is in flight is skipped")
     func importIsNotReentrant() async {
         // A source that suspends is the whole fixture, for the reason `loadIsNotReentrant` gives:
