@@ -18,19 +18,30 @@ import SwiftUI
 public struct SettingsLandingView: View {
     @State private var state: SettingsLandingState
 
+    /// Whether this device has a health source at all — the one thing this screen asks of it.
+    ///
+    /// A `Bool` read once at construction rather than the source itself: `FR-1.10.4`'s screen is
+    /// what reports on Health, and all the landing decides is whether a row leading there is
+    /// honest. `false` draws it away rather than dimming it, `T-1.51`'s rule for the same fact.
+    private let isHealthAvailable: Bool
+
     /// Builds the screen over the repository its state reads and writes through.
     ///
     /// - Parameters:
     ///   - repository: Where the settings row lives.
     ///   - records: The app's one recompute actor, told when the formula or the window moves
     ///     (`FR-1.7.3`, `FR-1.7.1`).
+    ///   - health: `FR-1.8.2`'s sample source, which decides only whether `FR-1.10.4`'s row is
+    ///     drawn. `nil`, or a source this device does not have, leaves it off.
     ///   - preferencesDidChange: What the app runs once a preference held elsewhere lands — the
     ///     theme (`FR-1.10.2`) and the screen-wake (`NFR-1.9`).
     public init(
         repository: any SettingsRepository,
         records: PersonalRecordRecomputer,
+        health: (any BodyweightSampleSource)? = nil,
         preferencesDidChange: @escaping (UserSettings) -> Void = { _ in }
     ) {
+        isHealthAvailable = health?.isAvailable == true
         _state = State(
             initialValue: SettingsLandingState(
                 repository: repository,
@@ -73,8 +84,8 @@ public struct SettingsLandingView: View {
     /// screen that does not depend on it.
     private var equipment: some View {
         GroupedSection(Text(SettingsStrings.equipmentTitle)) {
-            link(
-                to: .settings(.equipmentProfiles),
+            SettingsLinkRow(
+                route: .settings(.equipmentProfiles),
                 label: SettingsStrings.equipmentRow,
                 detail: SettingsStrings.equipmentDetail)
         }
@@ -87,41 +98,23 @@ public struct SettingsLandingView: View {
     /// can be shown.
     private var bodyweight: some View {
         GroupedSection(Text(SettingsStrings.bodyweightSectionTitle)) {
-            link(
-                to: .settings(.bodyweight),
-                label: SettingsStrings.bodyweightRow,
-                detail: SettingsStrings.bodyweightDetail)
-        }
-    }
-
-    /// One row that opens another screen: what is behind it, and one line on what is there.
-    ///
-    /// A `NavigationLink` over a `Route` rather than a closure — the destination is composed by the
-    /// app target (`TR-1.3`), and the route is what lets this screen name it without importing it.
-    private func link(
-        to route: Route, label: LocalizedStringResource, detail: LocalizedStringResource
-    ) -> some View {
-        NavigationLink(value: route) {
-            HStack {
-                VStack(alignment: .leading, spacing: Spacing.xxs.points) {
-                    Text(label)
-                        .font(Typography.body.font)
-                        .foregroundStyle(ColorToken.textPrimary)
-                    Text(detail)
-                        .font(Typography.caption.font)
-                        .foregroundStyle(ColorToken.textSecondary)
+            VStack(alignment: .leading, spacing: Spacing.md.points) {
+                SettingsLinkRow(
+                    route: .settings(.bodyweight),
+                    label: SettingsStrings.bodyweightRow,
+                    detail: SettingsStrings.bodyweightDetail)
+                // FR-1.10.4, beside the log it governs. Absent rather than disabled where this
+                // device has no Health — a row opening a screen that could only say "not on this
+                // device" is the dead end T-1.51 hid the import command to avoid.
+                if isHealthAvailable {
+                    SettingsLinkRow(
+                        route: .settings(.healthAccess),
+                        label: SettingsStrings.healthRow,
+                        detail: SettingsStrings.healthRowDetail)
                 }
-                Spacer(minLength: Spacing.sm.points)
-                Image(systemName: "chevron.right")
-                    .font(Typography.caption.font)
-                    .foregroundStyle(ColorToken.textTertiary)
-                    .accessibilityHidden(true)
             }
-            .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points, alignment: .leading)
-            .contentShape(.rect)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
     }
 
     /// The failed phase, and the retry out of it — `FR-1.13.1`'s shared component (`T-1.09`).

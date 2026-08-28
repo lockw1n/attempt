@@ -168,4 +168,11 @@ public enum SettingsRoute: Hashable, Sendable, Codable {
     ///
     /// **The form over one reading has no case**, for ``equipmentProfiles``' reason.
     case bodyweight
+
+    /// What Health access the app has, and the way out to where it is changed (`FR-1.10.4`).
+    ///
+    /// **A screen of its own rather than a row on the landing**, because it is mostly an
+    /// explanation: iOS discloses no read grant, so what this destination holds is the sentence
+    /// saying why the status it shows is not one — which is more than a settings row can carry.
+    case healthAccess
 }

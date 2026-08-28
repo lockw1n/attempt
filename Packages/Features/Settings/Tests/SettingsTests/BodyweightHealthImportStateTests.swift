@@ -248,6 +248,11 @@ private final class StubSampleSource: BodyweightSampleSource {
         reads += 1
         return disclosed
     }
+
+    /// Not what these tests are about — `HealthAccessStateTests` is where this answer is exercised.
+    func authorizationState() async -> BodyweightSourceAuthorization {
+        isAvailable ? .answered : .unavailable
+    }
 }
 
 /// A source whose authorization suspends until it is released, so a second import really does
@@ -270,6 +275,9 @@ private final class GatedSampleSource: BodyweightSampleSource {
     }
 
     func samples() async -> [BodyweightSample] { [] }
+
+    /// Ungated: only ``authorize()`` is what these tests hold open.
+    func authorizationState() async -> BodyweightSourceAuthorization { .answered }
 
     /// Lets every suspended request finish, and every later one through.
     func release() {

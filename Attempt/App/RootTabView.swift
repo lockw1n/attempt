@@ -110,9 +110,21 @@ struct RootTabView: View {
             equipmentProfilesRoot
         case .bodyweight:
             bodyweightRoot
+        case .healthAccess:
+            healthAccessRoot
         case .about:
             PlaceholderScreen(route: .settings(route))
         }
+    }
+
+    /// `FR-1.10.4`: what Health access the app has.
+    ///
+    /// **It needs no store**, which is why there is no `dependencies.state` switch here: the screen
+    /// reports on HealthKit alone, and a store that failed to open says nothing about whether Health
+    /// was authorized. Constructing the source prompts for nothing — `TR-1.9` still owes the prompt
+    /// to the import, and this screen reads the request's status without raising it.
+    private var healthAccessRoot: some View {
+        HealthAccessView(health: HealthBodyweightSource())
     }
 
     /// The exercise library's list, or the reason it cannot be shown.
@@ -426,6 +438,10 @@ struct RootTabView: View {
             SettingsLandingView(
                 repository: repositories.settings,
                 records: stores.records,
+                // FR-1.10.4's row is drawn only where there is a Health to talk about, which is
+                // the one thing the landing asks of the source. Constructing it prompts for
+                // nothing — TR-1.9's prompt is still the import's.
+                health: HealthBodyweightSource(),
                 // NFR-1.9 and FR-1.10.2 are held by objects the Settings module cannot import, so
                 // the composition root is what carries a landed write to them.
                 preferencesDidChange: { settings in

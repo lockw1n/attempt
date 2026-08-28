@@ -124,3 +124,37 @@
 "settings.bodyweight.form.cancel.action" = "Cancel";
 "settings.bodyweight.form.refusal.not-a-weight" = "Enter what you weighed as a number.";
 "settings.bodyweight.form.refusal.not-positive" = "A reading has to be more than zero.";
+
+/* FR-1.10.4: what Health access this app has, and the one lever over it. THE COPY NEVER SAYS
+   GRANTED OR DENIED. iOS does not disclose a read authorization to the app that asked — telling it
+   a person refused would itself be a disclosure — so the furthest any of these lines goes is that
+   the request has been made. "Requested" is that word; a status.granted key would be a sentence the
+   app cannot know is true.
+
+   THE PATH IS SPELLED OUT because Health publishes no deep link. Opening it lands on Summary and
+   the switch is several taps further in, so the taps are written beside the button rather than left
+   to be searched for. Re-check this line against the OS when the Health app is redesigned — it
+   names real labels in a real app.
+
+   IT STOPS AT THE APPS LIST AND DOES NOT PROMISE THIS APP IS IN IT. Measured on iOS 26.5: after
+   the prompt was REFUSED, Health's Apps list read "None", under a caption about apps that request
+   permission to UPDATE health data — and this app only ever reads. Whether a refused read-only app
+   is ever listed there was not settled, so the copy names the place and leaves the last step
+   unclaimed rather than sending someone to look for a row that may not exist. */
+"settings.landing.health.row" = "Health access";
+"settings.landing.health.detail" = "What Attempt reads from Health, and how to change it";
+"settings.health.title" = "Health access";
+"settings.health.status.title" = "Status";
+"settings.health.status.not-asked" = "Not requested";
+"settings.health.status.answered" = "Requested";
+"settings.health.disclosure.detail" = "Attempt only reads body mass, and only on this device. iOS does not tell an app whether a health read was allowed, so this screen can say that the request was made and no more. If an import brings back nothing, that may mean access was declined, or that Health holds no weigh-ins.";
+"settings.health.prompt.title" = "Where the prompt comes from";
+"settings.health.prompt.detail" = "Attempt asks for body mass the first time you import from Health, and never at launch.";
+"settings.health.prompt.row.detail" = "Import from Health lives here";
+"settings.health.change.title" = "Changing it";
+"settings.health.change.action" = "Open Health";
+"settings.health.change.path" = "In Health, tap your picture, then Apps under Privacy. Access cannot be asked for a second time from inside Attempt.";
+"settings.health.unavailable.headline" = "Health is not on this device";
+"settings.health.unavailable.message" = "There is no health data here to read, so there is no access to hold.";
+"settings.health.unknown.headline" = "Access unknown";
+"settings.health.unknown.message" = "Health did not say how far the request has got.";
