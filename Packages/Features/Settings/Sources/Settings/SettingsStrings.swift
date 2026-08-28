@@ -36,6 +36,10 @@ enum SettingsStrings {
     /// What a failed read means, in the user's words rather than the store's.
     static let loadErrorMessage = resource("settings.landing.load-error.message")
 
+    /// The same, for a failed write. `G-3.4`: the error's description is a diagnostic and
+    /// never the sentence the user is shown.
+    static let writeErrorMessage = resource("settings.landing.write-error.message")
+
     /// The display-step picker's label (`G-3.3`).
     static let precisionPicker = resource("settings.landing.precision.picker")
 
@@ -169,7 +173,8 @@ enum SettingsStrings {
     /// Every string this module can show, for the test that proves each one resolves.
     static var all: [LocalizedStringResource] {
         [
-            unitsTitle, unitsPicker, writeErrorTitle, loadErrorTitle, loadErrorMessage,
+            unitsTitle, unitsPicker, writeErrorTitle, writeErrorMessage,
+            loadErrorTitle, loadErrorMessage,
             loadErrorRetry, estimatorTitle, estimatorPicker, estimatorDetail,
             precisionPicker, precisionAutomatic, precisionDetail,
             lookbackPicker, lookbackDetail, lookbackDays(90),

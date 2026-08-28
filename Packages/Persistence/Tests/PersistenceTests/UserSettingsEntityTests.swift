@@ -162,6 +162,27 @@ struct UserSettingsPreferenceColumnTests {
         #expect(stored.record.theme == .light)
     }
 
+    /// "Automatic" is a choice the user can come back to, so the column has to *clear*. An update
+    /// that only ever wrote a step the user had chosen would pin the old one across every later
+    /// relaunch, and this is the one optional column this entity writes through `update(from:)`.
+    @Test("Clearing the step clears the column rather than pinning the last one")
+    func aClearedStepIsWrittenBack() throws {
+        let context = try makeSupportingContext()
+        let row = makeSettings(userID: UUID(), displayPrecisionMilliUnits: 250)
+        context.insert(row)
+        try context.saveStamped()
+        var edited = row.record
+        edited.displayPrecision = nil
+
+        row.update(from: edited)
+        try context.saveStamped()
+
+        #expect(row.displayPrecisionMilliUnits == nil)
+        #expect(row.record.displayPrecision == nil)
+        // The unit's own step is what stands once the choice is gone — pounds here, so a whole one.
+        #expect(row.record.weightDisplay.precision == .whole)
+    }
+
     /// A write that carries the row's preferences must carry every one of them: the columns are
     /// added to the record, and a store keeping its own list drops the newest silently.
     @Test("A preference-only write carries the columns added last")

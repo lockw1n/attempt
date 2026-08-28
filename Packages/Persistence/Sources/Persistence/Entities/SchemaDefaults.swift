@@ -128,7 +128,13 @@ enum SchemaDefaults {
     /// this app cannot read. Never a second constant: two would drift, invisibly.
     static let e1RMFormula = E1RMFormulaID.defaultFormula.rawValue
 
-    /// ``ThemePreference/system`` — the case that expresses no preference rather than asserting one.
+    /// ``ThemePreference/system`` — a *column* default, and deliberately not the one
+    /// ``RepositoryInterface/SettingsRepository/settings()`` gives a first-launch row.
+    ///
+    /// The two answer different questions. This one backfills a row that already exists and never
+    /// carried a theme, where the only honest answer is "no preference recorded"; that one mints
+    /// the row a lifter meets, where `G-7.1`'s dark is what the app has already adopted and
+    /// picking *System* later is a preference in its own right.
     static let theme = ThemePreference.system.rawValue
 
     /// `FR-1.7.1`'s ninety days, read from the one place that number is written.

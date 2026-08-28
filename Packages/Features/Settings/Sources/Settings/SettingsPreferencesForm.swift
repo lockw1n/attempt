@@ -13,7 +13,8 @@ struct SettingsPreferencesForm: View {
     /// The row every control reads its selection from.
     let settings: UserSettings
 
-    /// The last write that failed, as a diagnostic, or `nil`.
+    /// The last write that failed, as a diagnostic, or `nil`. Read for *whether* — the string
+    /// itself is never drawn; see ``writeFailureCard(_:)``.
     let writeFailure: String?
 
     /// Moves one field on the stored row. Takes the change rather than the row, so a control
@@ -43,15 +44,20 @@ struct SettingsPreferencesForm: View {
     /// component is a scaffold that replaces a screen whose content could not be read, where this
     /// row is still loaded and still editable — replacing it would take away the retry, which is
     /// the next tap. The failed *read* one screen up does use the shared component.
+    ///
+    /// **The diagnostic is carried and not drawn**, on the failed read's rule (`G-3.4`): an error's
+    /// description is developer output in one language, and this card is a sentence for the user.
+    /// The retry it points at is the control below it, which is why no button is offered here.
     private func writeFailureCard(_ diagnostic: String) -> some View {
         Card {
             VStack(alignment: .leading, spacing: Spacing.sm.points) {
                 Text(SettingsStrings.writeErrorTitle)
                     .font(Typography.cardTitle.font)
                     .foregroundStyle(ColorToken.textPrimary)
-                Text(verbatim: diagnostic)
+                Text(SettingsStrings.writeErrorMessage)
                     .font(Typography.caption.font)
                     .foregroundStyle(ColorToken.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

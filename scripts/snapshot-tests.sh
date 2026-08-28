@@ -66,10 +66,10 @@ cd "$(dirname "$0")/.."
 # honest setting rather than a number chosen to look like the former.
 #   DesignSystem:    27 tests, 15 reference-backed, 12 harness probes  -> 20, above the 15.
 #   ExerciseLibrary: 27 tests, all of them reference-backed, no probes -> 27, its own count.
-#   Logging:         53 tests, 52 reference-backed, one width probe    -> 53, above the 52.
+#   Logging:         52 tests, 51 reference-backed, one width probe    -> 52, above the 51.
 #   History:         19 tests, all of them reference-backed, no probes -> 19, its own count.
 #   Dashboard:       10 tests, all of them reference-backed, no probes -> 10, its own count.
-#   Settings:         9 tests, all of them reference-backed, no probes ->  9, its own count.
+#   Settings:        12 tests, all of them reference-backed, no probes -> 12, its own count.
 # A screen suite added later is the ExerciseLibrary case unless it brings probes of its own, and a
 # screen added to an existing package raises that package's floor rather than adding a row.
 SUITES=(

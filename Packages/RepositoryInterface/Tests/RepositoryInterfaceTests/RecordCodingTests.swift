@@ -252,6 +252,31 @@ struct RecordDecodingFallbackTests {
         #expect(record.displayUnit == .pounds)
     }
 
+    /// `DisplayPrecision` refuses a step below one milli-unit on the way in, and it is right to —
+    /// something downstream divides by it. Refusing it *at the record* would cost the theme, the
+    /// unit, the rounding defaults and `userID` as well, which is the one thing rule 4 forbids.
+    @Test("An unreadable display step costs that preference and nothing else")
+    func unreadableDisplayStepResolves() throws {
+        var configured = codingUserSettings()
+        configured.displayPrecision = .quarter
+
+        let zeroed = try decode(
+            UserSettings.self,
+            replacing: ("\"displayPrecision\":250", "\"displayPrecision\":0"),
+            in: configured)
+        let mistyped = try decode(
+            UserSettings.self,
+            replacing: ("\"displayPrecision\":250", "\"displayPrecision\":\"quarter\""),
+            in: configured)
+
+        #expect(zeroed.displayPrecision == nil)
+        #expect(mistyped.displayPrecision == nil)
+        // The neighbours a decoder that threw the record away could not have kept.
+        #expect(zeroed.theme == .dark)
+        #expect(zeroed.userID == configured.userID)
+        #expect(mistyped.displayUnit == .pounds)
+    }
+
     @Test("An unreadable training-max source resolves without costing the row")
     func unknownTrainingMaxSourceResolves() throws {
         let record = try decode(

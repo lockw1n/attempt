@@ -44,8 +44,9 @@ public struct SettingsLandingView: View {
             VStack(alignment: .leading, spacing: Spacing.lg.points) {
                 switch state.phase {
                 case .idle, .loading:
-                    ProgressView()
-                        .tint(ColorToken.brandAccent)
+                    // FR-1.13.1's shared component (T-1.09), not a local spinner — this screen
+                    // predates it and this is where the last of its states converges.
+                    LoadingStateView()
                 case .loaded(let settings):
                     SettingsPreferencesForm(
                         settings: settings,

@@ -208,6 +208,27 @@ extension UserSettings {
         case dashboardExerciseIDs
     }
 
+    /// ``displayPrecision``, or `nil` where the key is absent, holds something this version cannot
+    /// read, or holds a step below one milli-unit.
+    ///
+    /// **Resolves rather than throws, which the type's own `Codable` conformance does not.**
+    /// `DisplayPrecision` refuses a zero step on the way in — correctly, since something
+    /// downstream divides by it — but refusing it *here* would take the theme, the unit, the
+    /// rounding defaults and ``userID`` down with one unreadable preference. The store's mapping
+    /// layer already made this choice for the same column; the two ingest paths agree.
+    ///
+    /// - Parameter container: The keyed container being decoded.
+    /// - Returns: The step, or `nil`.
+    private static func decodedPrecision(
+        from container: KeyedDecodingContainer<CodingKeys>
+    ) -> DisplayPrecision? {
+        // `try?` flattens the optional, so an absent key and an unreadable one arrive alike — which
+        // is what this wants: both mean "no step to restore", and neither is worth a third answer.
+        guard let milliUnits = try? container.decodeIfPresent(Int.self, forKey: .displayPrecision)
+        else { return nil }
+        return DisplayPrecision(milliUnits: milliUnits)
+    }
+
     /// Decodes the keyed shape on ``CodingKeys``.
     ///
     /// All four preference vocabularies resolve rather than throw, ``e1RMFormula`` included — a
@@ -216,6 +237,7 @@ extension UserSettings {
     ///
     /// The three keys this record gained after its first wire format are absent-tolerant, on the
     /// same rule: a backup written before they existed restores every preference it does carry.
+    /// ``displayPrecision`` is *value*-tolerant too — see ``decodedPrecision(from:)``.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
@@ -235,8 +257,7 @@ extension UserSettings {
                 RoundingStrategy.self,
                 forKey: .defaultRoundingStrategy,
                 or: RecordVocabulary.roundingStrategy),
-            displayPrecision: try container.decodeIfPresent(
-                DisplayPrecision.self, forKey: .displayPrecision),
+            displayPrecision: Self.decodedPrecision(from: container),
             e1RMLookbackDays: try container.decodeIfPresent(Int.self, forKey: .e1RMLookbackDays)
                 ?? UserSettings.defaultE1RMLookbackDays,
             keepScreenAwake: try container.decodeIfPresent(Bool.self, forKey: .keepScreenAwake)

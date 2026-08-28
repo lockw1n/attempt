@@ -41,18 +41,23 @@ struct SettingsStringsTests {
     /// nothing reads was invisible in the other direction. Set equality catches both.
     @Test("The catalogue and the accessors name exactly the same keys")
     func catalogueAndAccessorsAgree() throws {
-        let url = try #require(
-            Bundle.module.url(
-                forResource: "Localizable",
-                withExtension: "strings",
-                subdirectory: nil,
-                localization: "en"
-            ))
-        // `NSDictionary` reads both forms this file takes: the text `.strings` SwiftPM copies, and
-        // the binary plist `xcodebuild` compiles it to.
-        let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
-        #expect(Set(catalogue.keys) == Set(SettingsStrings.all.map(\.key)))
-        #expect(!catalogue.isEmpty)
+        // Two files, one catalogue: `FR-1.7.1`'s lookback is a count of days and so a plural, which
+        // only the `.stringsdict` can express, and a key in one file must not also be in the other.
+        let strings = try Self.keys(inCatalogueNamed: "strings")
+        let plurals = try Self.keys(inCatalogueNamed: "stringsdict")
+        #expect(strings.isDisjoint(with: plurals))
+        #expect(strings.union(plurals) == Set(SettingsStrings.all.map(\.key)))
+        #expect(!strings.isEmpty)
+        #expect(!plurals.isEmpty)
+    }
+
+    @Test("The lookback window pluralises on the number of days")
+    func lookbackPluralises() {
+        // The picker offers whatever is in force, including a one-day window carried in by a
+        // restore, which a `.strings` format would render "1 days" (`G-3.4`).
+        #expect(String(localized: SettingsStrings.lookbackDays(1)) == "1 day")
+        #expect(String(localized: SettingsStrings.lookbackDays(90)) == "90 days")
+        #expect(String(localized: SettingsStrings.lookbackDays(0)) == "0 days")
     }
 
     @Test("Keys follow the convention: lowercase, dotted, module-prefixed")
@@ -63,5 +68,23 @@ struct SettingsStringsTests {
             #expect(key.split(separator: ".").count >= 3, "\(key) is too shallow")
             #expect(key == key.lowercased(), "\(key) is not lowercase")
         }
+    }
+
+    /// Every key in one of this module's two catalogue files.
+    ///
+    /// `NSDictionary` reads both forms each file takes: the text SwiftPM copies, and the binary
+    /// plist `xcodebuild` compiles it to.
+    ///
+    /// - Parameter ext: `strings` or `stringsdict`.
+    /// - Returns: The keys it declares.
+    private static func keys(inCatalogueNamed ext: String) throws -> Set<String> {
+        let url = try #require(
+            Bundle.module.url(
+                forResource: "Localizable",
+                withExtension: ext,
+                subdirectory: nil,
+                localization: "en"
+            ))
+        return Set(try #require(NSDictionary(contentsOf: url) as? [String: Any]).keys)
     }
 }
