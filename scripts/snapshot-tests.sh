@@ -78,7 +78,7 @@ SUITES=(
     "Packages/Features/Logging|Logging|LoggingSnapshotTests|52"
     "Packages/Features/History|History|HistorySnapshotTests|19"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|10"
-    "Packages/Features/Settings|Settings|SettingsSnapshotTests|20"
+    "Packages/Features/Settings|Settings|SettingsSnapshotTests|25"
 )
 
 # The iOS version the committed references were rendered on. See the header: bump it only when

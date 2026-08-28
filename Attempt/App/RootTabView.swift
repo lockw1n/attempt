@@ -98,35 +98,6 @@ struct RootTabView: View {
         }
     }
 
-    /// What a pushed Settings route shows.
-    ///
-    /// Split out of ``destination(for:)`` rather than listed there with the rest: that switch is one
-    /// case per screen in the app and this tab's share of it is what took it past the complexity the
-    /// lint rules allow.
-    @ViewBuilder
-    private func settingsDestination(_ route: SettingsRoute) -> some View {
-        switch route {
-        case .equipmentProfiles:
-            equipmentProfilesRoot
-        case .bodyweight:
-            bodyweightRoot
-        case .healthAccess:
-            healthAccessRoot
-        case .about:
-            AboutView()
-        }
-    }
-
-    /// `FR-1.10.4`: what Health access the app has.
-    ///
-    /// **It needs no store**, which is why there is no `dependencies.state` switch here: the screen
-    /// reports on HealthKit alone, and a store that failed to open says nothing about whether Health
-    /// was authorized. Constructing the source prompts for nothing — `TR-1.9` still owes the prompt
-    /// to the import, and this screen reads the request's status without raising it.
-    private var healthAccessRoot: some View {
-        HealthAccessView(health: HealthBodyweightSource())
-    }
-
     /// The exercise library's list, or the reason it cannot be shown.
     ///
     /// The same shape as ``settingsRoot``: a screen that reads a store cannot be built when the
@@ -190,42 +161,6 @@ struct RootTabView: View {
             ) { exercise in
                 await stores.activeSession.addExercise(id: exercise.id)
             }
-        case .failed(let diagnostic):
-            StoreUnavailableScreen(diagnostic: diagnostic)
-        }
-    }
-
-    /// The gyms (`FR-1.10.3`), or the reason they cannot be shown.
-    ///
-    /// **A `Logging` screen answering a Settings route**, which is the exercise picker's join in its
-    /// other direction: `FR-1.10.3` and `FR-1.4.2` are one screen described from two tabs, `TR-1.3`
-    /// keeps `Settings` and `Logging` from depending on each other, so this target — which already
-    /// owns both — is where the two meet. It is handed the same store the calculator loads against,
-    /// so a gym switched here is the gym the next loading uses.
-    @ViewBuilder
-    private var equipmentProfilesRoot: some View {
-        switch dependencies.state {
-        case .open(_, let stores):
-            EquipmentProfilesView(store: stores.equipment)
-        case .failed(let diagnostic):
-            StoreUnavailableScreen(diagnostic: diagnostic)
-        }
-    }
-
-    /// The bodyweight log (`FR-1.8.1`, `FR-1.8.3`), or the reason it cannot be shown.
-    ///
-    /// Two repositories, because a reading is two facts from two tables: the log itself, and the
-    /// settings row that decides which unit it reads in.
-    @ViewBuilder
-    private var bodyweightRoot: some View {
-        switch dependencies.state {
-        case .open(let repositories, _):
-            BodyweightLogView(
-                repository: repositories.bodyweight,
-                settings: repositories.settings,
-                // FR-1.8.2. Constructing it prompts for nothing — the screen's own command is what
-                // asks, which is TR-1.9's "on first use, not at launch".
-                health: HealthBodyweightSource())
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }
@@ -429,29 +364,6 @@ struct RootTabView: View {
         guard case .open(_, let stores) = dependencies.state else { return nil }
         return stores.display.weightPrecision
     }
-
-    /// The Settings tab's landing screen, or the reason it cannot be shown.
-    @ViewBuilder
-    private var settingsRoot: some View {
-        switch dependencies.state {
-        case .open(let repositories, let stores):
-            SettingsLandingView(
-                repository: repositories.settings,
-                records: stores.records,
-                // FR-1.10.4's row is drawn only where there is a Health to talk about, which is
-                // the one thing the landing asks of the source. Constructing it prompts for
-                // nothing — TR-1.9's prompt is still the import's.
-                health: HealthBodyweightSource(),
-                // NFR-1.9 and FR-1.10.2 are held by objects the Settings module cannot import, so
-                // the composition root is what carries a landed write to them.
-                preferencesDidChange: { settings in
-                    stores.display.adopt(settings)
-                    stores.screenWake.adopt(settings.keepScreenAwake)
-                })
-        case .failed(let diagnostic):
-            StoreUnavailableScreen(diagnostic: diagnostic)
-        }
-    }
 }
 
 /// What a tab shows when the store did not open — the last of the shell's scaffolding, and owned
@@ -459,7 +371,10 @@ struct RootTabView: View {
 ///
 /// Its copy is `verbatim` for the same reason: a string that is going to be deleted must not be
 /// translated first (`G-3.4`).
-private struct StoreUnavailableScreen: View {
+///
+/// **Internal rather than file-private**, because the Settings tab's destinations moved to a file
+/// of their own and every one of them can fail this way. See `RootTabSettingsDestinations.swift`.
+struct StoreUnavailableScreen: View {
     /// The error's description.
     let diagnostic: String
 

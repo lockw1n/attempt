@@ -175,4 +175,16 @@ public enum SettingsRoute: Hashable, Sendable, Codable {
     /// explanation: iOS discloses no read grant, so what this destination holds is the sentence
     /// saying why the status it shows is not one — which is more than a settings row can carry.
     case healthAccess
+
+    /// The training log as files the lifter can take away (`FR-1.11.1`, `FR-1.11.2`).
+    ///
+    /// **A screen rather than a command on the landing**, because an export is two formats and two
+    /// sentences qualifying them — which of the files loses nothing, and that what has been deleted
+    /// is not in either. A row that raised a share sheet directly would have to pick one format on
+    /// the lifter's behalf and could say neither thing.
+    ///
+    /// **`FR-1.11.3`'s backup file and its restore will land beside this**, not inside it: a restore
+    /// is destructive and a route that could mean either is a route a restored stack can land the
+    /// wrong side of.
+    case dataExport
 }

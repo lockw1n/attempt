@@ -68,6 +68,7 @@ public struct SettingsLandingView: View {
                 }
                 equipment
                 bodyweight
+                data
                 about
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -115,6 +116,21 @@ public struct SettingsLandingView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// `FR-1.11`'s way out to the lifter's own data.
+    ///
+    /// Outside the phase switch, for ``equipment``'s reason: the log lives in its own tables, so a
+    /// preferences read that failed says nothing about whether it can be exported. **Above About**,
+    /// because everything above this point is about the lifter and About is the one section that is
+    /// about the app.
+    private var data: some View {
+        GroupedSection(Text(SettingsStrings.dataSectionTitle)) {
+            SettingsLinkRow(
+                route: .settings(.dataExport),
+                label: SettingsStrings.dataExportRow,
+                detail: SettingsStrings.dataExportDetail)
         }
     }
 

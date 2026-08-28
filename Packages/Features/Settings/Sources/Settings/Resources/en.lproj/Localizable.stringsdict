@@ -21,5 +21,40 @@
 			<string>%lld days</string>
 		</dict>
 	</dict>
+	<!-- FR-1.11.1: what is in the file, said as counts. Plural because a first export is very
+	     often one workout and a handful of sets, and "1 workouts" is the reading that makes a
+	     lifter distrust the file. -->
+	<key>settings.export.summary.workouts %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@workouts@</string>
+		<key>workouts</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld workout</string>
+			<key>other</key>
+			<string>%lld workouts</string>
+		</dict>
+	</dict>
+	<key>settings.export.summary.sets %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@sets@</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld set</string>
+			<key>other</key>
+			<string>%lld sets</string>
+		</dict>
+	</dict>
 </dict>
 </plist>
