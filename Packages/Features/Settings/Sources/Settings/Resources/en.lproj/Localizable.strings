@@ -154,6 +154,7 @@
 "settings.health.change.title" = "Changing it";
 "settings.health.change.action" = "Open Health";
 "settings.health.change.path" = "In Health, tap your picture, then Apps under Privacy. Access cannot be asked for a second time from inside Attempt.";
+"settings.health.change.failed" = "Health did not open from here. Open the Health app from the Home Screen, then tap your picture and Apps under Privacy.";
 "settings.health.unavailable.headline" = "Health is not on this device";
 "settings.health.unavailable.message" = "There is no health data here to read, so there is no access to hold.";
 "settings.health.unknown.headline" = "Access unknown";

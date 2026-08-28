@@ -48,6 +48,12 @@ extension SettingsStrings {
     /// claiming this app is in it**; the catalogue entry has the measurement behind that.
     static let healthChangePath = resource("settings.health.change.path")
 
+    /// Nothing on this device accepted Health's own URL, so the command did not go anywhere.
+    ///
+    /// **It names the way in that does not depend on a URL scheme**, because the one thing it
+    /// cannot do is repeat the command that just failed.
+    static let healthOpenFailed = resource("settings.health.change.failed")
+
     /// The heading where this device has no health source at all.
     static let healthUnavailableHeadline = resource("settings.health.unavailable.headline")
 
@@ -66,6 +72,7 @@ extension SettingsStrings {
             healthRow, healthRowDetail, healthTitle, healthStatusTitle, healthStatusNotAsked,
             healthStatusAnswered, healthDisclosureDetail, healthPromptTitle, healthPromptDetail,
             healthPromptRowDetail, healthChangeTitle, healthOpenAction, healthChangePath,
+            healthOpenFailed,
             healthUnavailableHeadline, healthUnavailableMessage, healthUnknownHeadline,
             healthUnknownMessage,
         ]

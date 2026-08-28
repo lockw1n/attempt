@@ -29,7 +29,7 @@
             // and there is deliberately no Open Health button — this app is not in Health's list
             // of apps until it has asked once.
             try assertSnapshots(named: "Health-access-not-asked") {
-                HealthAccessReading(state: .notAsked, retry: {})
+                HealthAccessReading(state: .notAsked, openFailed: false, retry: {}, openHealth: {})
             }
         }
 
@@ -38,7 +38,18 @@
             // status reads "Requested", the disclaimer under it says why that is as far as it
             // goes, and the path into Health is written out because Health has no deeper link.
             try assertSnapshots(named: "Health-access-answered") {
-                HealthAccessReading(state: .answered, retry: {})
+                HealthAccessReading(state: .answered, openFailed: false, retry: {}, openHealth: {})
+            }
+        }
+
+        @Test func answeredOpenRefused() throws {
+            // Nothing on this device accepted Health's own URL. The command stays — it may work
+            // on the next tap, and taking it away would leave the screen with no way out at all —
+            // and the refusal is drawn under it rather than swallowed, which is the whole reason
+            // the open reads its completion.
+            try assertSnapshots(named: "Health-access-answered-open-refused") {
+                HealthAccessReading(
+                    state: .answered, openFailed: true, retry: {}, openHealth: {})
             }
         }
 
@@ -46,7 +57,7 @@
             // FR-1.13.1's empty state: no health data on this device, so no access to hold. Only
             // a restored route reaches this — the Settings row is drawn away.
             try assertSnapshots(named: "Health-access-unavailable") {
-                HealthAccessReading(state: .unavailable, retry: {})
+                HealthAccessReading(state: .unavailable, openFailed: false, retry: {}, openHealth: {})
             }
         }
 
@@ -54,7 +65,7 @@
             // FR-1.13.1's error state. It is a real HealthKit answer rather than a thrown error,
             // and the retry is offered because the next read may well say something.
             try assertSnapshots(named: "Health-access-unknown") {
-                HealthAccessReading(state: .unknown, retry: {})
+                HealthAccessReading(state: .unknown, openFailed: false, retry: {}, openHealth: {})
             }
         }
 
@@ -62,7 +73,7 @@
             // The one read here is out of process, so this wait is real — the case
             // LoadingStateView's own doc comment says the component exists for.
             try assertSnapshots(named: "Health-access-loading") {
-                HealthAccessReading(state: .loading, retry: {})
+                HealthAccessReading(state: .loading, openFailed: false, retry: {}, openHealth: {})
             }
         }
     }

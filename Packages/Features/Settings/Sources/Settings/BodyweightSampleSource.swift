@@ -105,6 +105,12 @@ public protocol BodyweightSampleSource {
     /// Non-throwing on purpose: a source that fails to answer has already got a case for it
     /// (``BodyweightSourceAuthorization/unknown``), so a screen over this needs no failed phase.
     ///
+    /// **A source whose ``isAvailable`` is `false` answers
+    /// ``BodyweightSourceAuthorization/unavailable`` here, and that is the conformer's obligation**:
+    /// nothing above this call checks availability a second time, so a source answering `notAsked`
+    /// on a device with no health data would put a screen on the path to a prompt that can never be
+    /// raised.
+    ///
     /// - Returns: What the source will say about the request.
     func authorizationState() async -> BodyweightSourceAuthorization
 }

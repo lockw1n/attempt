@@ -9,10 +9,23 @@ import SwiftUI
 /// surface is one that says where the request has got to and sends them to the place the switch
 /// actually lives. A "grant access" button here would do nothing, visibly.
 ///
-/// The view half of the pattern: it holds ``HealthAccessState`` in `@State`, reads it, and hands
-/// everything drawable to ``HealthAccessReading`` so a reference can be rendered without a source.
+/// The view half of the pattern: it holds ``HealthAccessState`` in `@State`, reads it, owns the way
+/// out to Health, and hands everything drawable to ``HealthAccessReading`` so a reference can be
+/// rendered without a source.
 public struct HealthAccessView: View {
     @State private var state: HealthAccessState
+
+    /// Whether the last attempt to open Health was refused.
+    ///
+    /// **A command that does nothing and says nothing is the failure this screen was written to
+    /// avoid**, so the open is not fire-and-forget — see ``openHealth()``.
+    @State private var openFailed = false
+
+    /// Whether this app is in the foreground: the switch this screen points at is thrown in another.
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// Where the switch is, when the viewer's own app can reach it.
+    @Environment(\.openURL) private var openURL
 
     /// Builds the screen over the source it reports on.
     ///
@@ -26,14 +39,49 @@ public struct HealthAccessView: View {
         ScrollView {
             HealthAccessReading(
                 state: HealthAccessScreenState.current(state.phase),
-                retry: { Task { await state.load() } }
+                openFailed: openFailed,
+                retry: { Task { await state.load() } },
+                openHealth: openHealth
             )
             .padding(Spacing.lg.points)
         }
         .background(ColorToken.background)
         .navigationTitle(Text(SettingsStrings.healthTitle))
         .task { await state.load() }
+        // THE STATUS MOVES WHILE THIS SCREEN IS ALIVE AND NOT LOOKING, and `.task` runs once per
+        // view identity. The prompt is raised by the import the not-asked state links to, which
+        // comes back by a POP; the switch is thrown in Health, which comes back by a FOREGROUND.
+        // Neither rebuilds this screen, so one trigger each — and neither draws the wait over a
+        // status that is already on screen, which is `refresh()` rather than `load()`.
+        .onAppear { Task { await state.refresh() } }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await state.refresh() }
+        }
     }
+
+    /// Opens Health, where the per-app read switch lives.
+    ///
+    /// **No fallback to this app's own page under Settings**: measured, the health switches are not
+    /// there, so landing someone on it would be the silent no-op this screen was written to avoid.
+    ///
+    /// **The refusal is read rather than assumed away.** `HKHealthStore.isHealthDataAvailable()`
+    /// says whether this device stores health data, not whether anything will handle Health's URL,
+    /// so ``HealthAccessScreenState/unavailable`` does not cover every device this can fail on.
+    /// `openURL`'s completion is what says it failed, and ``openFailed`` is what draws it.
+    private func openHealth() {
+        guard let url = Self.healthApp else {
+            openFailed = true
+            return
+        }
+        openURL(url) { accepted in
+            openFailed = !accepted
+        }
+    }
+
+    /// The Health app's own root. The switch is inside it, at the path
+    /// ``SettingsStrings/healthChangePath`` spells out — Health publishes no deeper link.
+    static let healthApp = URL(string: "x-apple-health://")
 }
 
 /// What the Health-access screen draws, with no source behind it — `TR-1.12`'s renderable half.
@@ -43,11 +91,14 @@ struct HealthAccessReading: View {
     /// Which state to draw.
     let state: HealthAccessScreenState
 
+    /// Whether the last attempt to open Health was refused, drawn beside the command.
+    let openFailed: Bool
+
     /// What the error state's retry does.
     let retry: () -> Void
 
-    /// Where the switch is, when the viewer's own app can reach it.
-    @Environment(\.openURL) private var openURL
+    /// What the Health command does.
+    let openHealth: () -> Void
 
     /// One of the five, and nothing layered over it: this screen holds no list a diagnostic could
     /// sit above, so every state here replaces the last.
@@ -89,7 +140,7 @@ struct HealthAccessReading: View {
         GroupedSection(Text(SettingsStrings.healthStatusTitle)) {
             VStack(alignment: .leading, spacing: Spacing.xs.points) {
                 Text(value)
-                    .font(Typography.numericValue.font)
+                    .font(Typography.cardTitle.font)
                     .foregroundStyle(ColorToken.textPrimary)
                 Text(SettingsStrings.healthDisclosureDetail)
                     .font(Typography.caption.font)
@@ -132,23 +183,17 @@ struct HealthAccessReading: View {
                 Text(SettingsStrings.healthChangePath)
                     .font(Typography.caption.font)
                     .foregroundStyle(ColorToken.textSecondary)
+                // A refusal in the form this module's other refusals take. The command stays: it
+                // may well work on the next tap, and removing it would leave the screen with no
+                // way out at all.
+                if openFailed {
+                    Text(SettingsStrings.healthOpenFailed)
+                        .font(Typography.caption.font)
+                        .foregroundStyle(ColorToken.negative)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
-
-    /// Opens Health, where the per-app read switch lives.
-    ///
-    /// **No fallback to this app's own page under Settings**: measured, the health switches are not
-    /// there, so landing someone on it would be the silent no-op this screen was written to avoid.
-    /// A device that cannot open Health has no Health, and draws ``HealthAccessScreenState/loading``
-    /// into `unavailable` rather than this state.
-    private func openHealth() {
-        guard let url = Self.healthApp else { return }
-        openURL(url)
-    }
-
-    /// The Health app's own root. The switch is inside it, at the path
-    /// ``SettingsStrings/healthChangePath`` spells out — Health publishes no deeper link.
-    static let healthApp = URL(string: "x-apple-health://")
 }

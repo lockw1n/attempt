@@ -77,8 +77,56 @@ struct HealthAccessStateTests {
         // one failure this screen was written to avoid. The scheme is Health's own; the app's page
         // under Settings is deliberately NOT the fallback — measured, the read switches are not on
         // it.
-        let url = try #require(HealthAccessReading.healthApp)
+        let url = try #require(HealthAccessView.healthApp)
         #expect(url.absoluteString == "x-apple-health://")
+    }
+
+    @Test("A refresh before the first read has landed does nothing")
+    func refreshWaitsForTheFirstRead() async {
+        // `onAppear` fires beside `task` on the way in, so this runs on every entry to the screen.
+        // A refresh that read here would be a second status read for nothing, racing the first.
+        let source = AuthorizationSource(answer: .notAsked)
+        let state = HealthAccessState(health: source)
+        await state.refresh()
+        #expect(source.statusReads == 0)
+        #expect(state.phase == .idle)
+    }
+
+    @Test("A status that moved while the screen was away is picked up on the way back")
+    func refreshCarriesAChangedAnswer() async {
+        // The prompt is raised by the import THIS SCREEN LINKS TO, and coming back from it is a
+        // pop rather than a rebuild — so a screen that read once would still say "not requested"
+        // after the person did exactly what it told them to.
+        let source = AuthorizationSource(answer: .notAsked)
+        let state = HealthAccessState(health: source)
+        await state.load()
+        #expect(state.phase == .loaded(.notAsked))
+        source.answer = .answered
+        await state.refresh()
+        #expect(state.phase == .loaded(.answered))
+        #expect(source.statusReads == 2)
+    }
+
+    @Test("A refresh never draws the wait over a status already on screen")
+    func refreshKeepsWhatIsDrawn() async {
+        let source = GatedAuthorizationSource()
+        let state = HealthAccessState(health: source)
+        // The first read is the one that draws the wait, so let it land before the part under test.
+        source.release()
+        await state.load()
+        #expect(HealthAccessScreenState.current(state.phase) == .answered)
+
+        source.hold()
+        async let refreshing: Void = state.refresh()
+        await Task.yield()
+        // THE COUNT IS WHAT MAKES THE ASSERTION BELOW NON-VACUOUS. A refresh that had not yet
+        // reached the source would leave the status untouched for the wrong reason, and this test
+        // would pass on a `refresh()` that cleared it the moment it ran.
+        #expect(source.statusReads == 2)
+        #expect(HealthAccessScreenState.current(state.phase) == .answered)
+        source.release()
+        await refreshing
+        #expect(state.phase == .loaded(.answered))
     }
 
     @Test("No status a source can report claims access was granted")
@@ -95,7 +143,9 @@ struct HealthAccessStateTests {
 /// A source that answers one fixed status, counting what was asked of it.
 @MainActor
 private final class AuthorizationSource: BodyweightSampleSource {
-    private let answer: BodyweightSourceAuthorization
+    /// What the source says next. A `var`, because the whole point of a refresh is that this moves
+    /// while the screen is alive.
+    var answer: BodyweightSourceAuthorization
 
     /// How many times the prompt was asked for. This screen must never move it.
     private(set) var authorizations = 0
@@ -144,6 +194,11 @@ private final class GatedAuthorizationSource: BodyweightSampleSource {
             await withCheckedContinuation { waiting.append($0) }
         }
         return .answered
+    }
+
+    /// Closes the gate again, so a later read suspends the way the first one did.
+    func hold() {
+        isReleased = false
     }
 
     /// Lets every suspended read finish, and every later one through.
