@@ -205,7 +205,11 @@ struct RootTabView: View {
         switch dependencies.state {
         case .open(let repositories, _):
             BodyweightLogView(
-                repository: repositories.bodyweight, settings: repositories.settings)
+                repository: repositories.bodyweight,
+                settings: repositories.settings,
+                // FR-1.8.2. Constructing it prompts for nothing — the screen's own command is what
+                // asks, which is TR-1.9's "on first use, not at launch".
+                health: HealthBodyweightSource())
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

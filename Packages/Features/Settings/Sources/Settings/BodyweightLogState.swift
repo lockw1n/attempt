@@ -31,8 +31,30 @@ final class BodyweightLogState {
         case failed(String)
     }
 
+    /// What `FR-1.8.2`'s import has done, as one value rather than a flag and a count.
+    enum HealthImport: Equatable {
+        /// No import has run, or the last one has been retired by a new one starting.
+        case idle
+
+        /// An import is in flight — the authorization request included.
+        case importing
+
+        /// An import finished: how many rows it wrote, and how many of its days the log already
+        /// had. **Neither number says whether access was granted** — see
+        /// ``BodyweightSampleSource/authorize()``, which is why zero and zero is reported as
+        /// nothing new rather than as a refusal.
+        case imported(added: Int, daysAlreadyEntered: Int)
+
+        /// The import failed, carrying the error's description — a **diagnostic**, not copy
+        /// (`G-3.4`).
+        case failed(String)
+    }
+
     /// The screen's read state.
     private(set) var phase: Phase = .idle
+
+    /// What the last import did, or `idle` where none has run.
+    private(set) var healthImport: HealthImport = .idle
 
     /// The seven-day average ending **today**, or `nil` when this week holds too few readings.
     ///
@@ -51,6 +73,9 @@ final class BodyweightLogState {
 
     @ObservationIgnored private let settings: any SettingsRepository
 
+    /// Where `FR-1.8.2`'s readings come from, or `nil` where this build has no source to offer.
+    @ObservationIgnored private let health: (any BodyweightSampleSource)?
+
     /// Whose days the seven-day window is measured in (`G-3.4`).
     @ObservationIgnored let calendar: Calendar
 
@@ -62,16 +87,20 @@ final class BodyweightLogState {
     /// - Parameters:
     ///   - repository: The bodyweight log.
     ///   - settings: Where the display unit comes from.
+    ///   - health: `FR-1.8.2`'s sample source. `nil` leaves the import command off the screen
+    ///     entirely, which is what a build with no health framework draws.
     ///   - calendar: Whose days the window is measured in. Defaults to the user's.
     ///   - now: What day it is. Defaults to the clock.
     init(
         repository: any BodyweightRepository,
         settings: any SettingsRepository,
+        health: (any BodyweightSampleSource)? = nil,
         calendar: Calendar = .current,
         now: @escaping () -> Date = Date.init
     ) {
         self.repository = repository
         self.settings = settings
+        self.health = health
         self.calendar = calendar
         self.now = now
     }
@@ -121,6 +150,46 @@ final class BodyweightLogState {
     /// Retires the last failure, so a form opening does not report a failure from before it.
     func clearWriteFailure() {
         writeFailure = nil
+    }
+
+    /// Whether this screen has an import to offer at all (`FR-1.8.2`).
+    ///
+    /// The command is absent rather than disabled where it is `false`: a device with no health data
+    /// on it has nothing to explain, and a dimmed button that can never be pressed is a question the
+    /// user cannot answer.
+    var isHealthImportAvailable: Bool { health?.isAvailable ?? false }
+
+    /// `FR-1.8.2`: asks for body mass, de-duplicates it against the log, and writes what is new.
+    ///
+    /// **The prompt is here and nowhere earlier** (`TR-1.9`): nothing calls this until a person asks
+    /// for an import, so launching the app asks for no health access.
+    ///
+    /// **The log is read with its tombstones**, which the screen's own read is not: a day whose
+    /// reading was deleted must not come back on the next import. See ``HealthBodyweightImport``.
+    ///
+    /// **A failure never costs the screen its list**, ``save(_:)``'s rule: the outcome lands on
+    /// ``healthImport`` and the rows are re-read only if something was actually written.
+    func importFromHealth() async {
+        guard let health, health.isAvailable, healthImport != .importing else { return }
+        healthImport = .importing
+        var written = 0
+        do {
+            try await health.authorize()
+            let samples = try await health.samples()
+            let existing = try await repository.entries(
+                in: Date.distantPast...Date.distantFuture, includingDeleted: true)
+            let plan = HealthBodyweightImport.plan(
+                samples: samples, existing: existing, calendar: calendar, now: now())
+            for entry in plan.entries {
+                try await repository.save(entry)
+                written += 1
+            }
+            healthImport = .imported(
+                added: written, daysAlreadyEntered: plan.daysAlreadyEntered)
+        } catch {
+            healthImport = .failed(String(describing: error))
+        }
+        if written > 0 { await reload() }
     }
 
     /// A read that is not skipped by the in-flight guard, for use straight after a write.

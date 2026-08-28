@@ -25,9 +25,15 @@ public struct BodyweightLogView: View {
     /// - Parameters:
     ///   - repository: The bodyweight log.
     ///   - settings: Where the display unit comes from (`G-3.1`).
-    public init(repository: any BodyweightRepository, settings: any SettingsRepository) {
+    ///   - health: `FR-1.8.2`'s sample source. `nil` draws the screen without an import command.
+    public init(
+        repository: any BodyweightRepository,
+        settings: any SettingsRepository,
+        health: (any BodyweightSampleSource)? = nil
+    ) {
         _state = State(
-            initialValue: BodyweightLogState(repository: repository, settings: settings))
+            initialValue: BodyweightLogState(
+                repository: repository, settings: settings, health: health))
     }
 
     /// The log, the command that adds to it, and the form that command raises.
@@ -38,8 +44,10 @@ public struct BodyweightLogView: View {
                 currentAverage: state.currentAverage,
                 unit: state.displayUnit,
                 writeFailure: state.writeFailure,
+                healthImport: state.isHealthImportAvailable ? state.healthImport : nil,
                 retry: { Task { await state.load() } },
-                add: addReading
+                add: addReading,
+                importFromHealth: { Task { await state.importFromHealth() } }
             )
             .padding(Spacing.lg.points)
         }
@@ -89,11 +97,18 @@ struct BodyweightLogReading: View {
     /// The last write that failed, as a diagnostic (`G-3.4`), or `nil`.
     let writeFailure: String?
 
+    /// What `FR-1.8.2`'s import last did, or `nil` where this device has no source — which draws
+    /// the command away rather than dimming it.
+    let healthImport: BodyweightLogState.HealthImport?
+
     /// What the error state's retry does.
     let retry: () -> Void
 
     /// What the empty state's action does.
     let add: () -> Void
+
+    /// What the import command does.
+    let importFromHealth: () -> Void
 
     /// Which locale the numbers and dates are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
@@ -104,6 +119,18 @@ struct BodyweightLogReading: View {
             if let writeFailure {
                 BodyweightDiagnosticCard(
                     title: Text(SettingsStrings.bodyweightWriteErrorTitle), detail: writeFailure)
+            }
+            // A failed import is a diagnostic beside the log, never in place of it — the write
+            // failure's rule, for the same reason: the readings are still there.
+            if case .failed(let detail) = healthImport {
+                BodyweightDiagnosticCard(
+                    title: Text(SettingsStrings.bodyweightHealthErrorTitle), detail: detail)
+            }
+            // Offered over a log that answered, and not over one that has not. An import
+            // de-duplicates against the rows, so a screen that could not read them has nothing to
+            // de-duplicate against and would import blind.
+            if let healthImport, state == .empty || isReady {
+                BodyweightHealthImportCard(phase: healthImport, run: importFromHealth)
             }
             switch state {
             case .loading:
@@ -127,6 +154,12 @@ struct BodyweightLogReading: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Whether the log answered with rows.
+    private var isReady: Bool {
+        if case .ready = state { return true }
+        return false
     }
 
     /// `FR-1.8.3`'s average, or what would make one showable (`FR-1.13.3`).
@@ -265,6 +298,58 @@ struct BodyweightReadingRow: View {
         }
         .font(Typography.caption.font)
         .foregroundStyle(ColorToken.textSecondary)
+    }
+}
+
+/// `FR-1.8.2`'s command, what it reads, and what the last run did.
+///
+/// **The consent context sits beside the button, not only in the system prompt** (`G-5.4`,
+/// `TR-1.9`): the prompt names the app and the data type, and this line is where the app says the
+/// readings stay on the device.
+struct BodyweightHealthImportCard: View {
+    /// What the last import did, and whether one is running.
+    let phase: BodyweightLogState.HealthImport
+
+    /// What the command does.
+    let run: () -> Void
+
+    /// The command, its detail line, and the last run's outcome under both.
+    var body: some View {
+        Card {
+            VStack(alignment: .leading, spacing: Spacing.sm.points) {
+                Button(action: run) { Text(SettingsStrings.bodyweightHealthAction) }
+                    .disabled(phase == .importing)
+                Text(SettingsStrings.bodyweightHealthDetail)
+                    .font(Typography.caption.font)
+                    .foregroundStyle(ColorToken.textSecondary)
+                outcome
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// What the last import did — nothing at all before one has run, and nothing for a failure,
+    /// which is drawn as its own diagnostic above.
+    @ViewBuilder
+    private var outcome: some View {
+        switch phase {
+        case .idle, .failed:
+            EmptyView()
+        case .importing:
+            Text(SettingsStrings.bodyweightHealthRunning)
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textSecondary)
+        case .imported(let added, let daysAlreadyEntered):
+            VStack(alignment: .leading, spacing: Spacing.xxs.points) {
+                Text(SettingsStrings.bodyweightHealthResultTitle)
+                    .font(Typography.cardTitle.font)
+                    .foregroundStyle(ColorToken.textPrimary)
+                Text(SettingsStrings.bodyweightHealthAdded(added))
+                Text(SettingsStrings.bodyweightHealthKept(daysAlreadyEntered))
+            }
+            .font(Typography.caption.font)
+            .foregroundStyle(ColorToken.textSecondary)
+        }
     }
 }
 

@@ -38,6 +38,42 @@ extension SettingsStrings {
     /// The heading over a reading that could not be written.
     static let bodyweightWriteErrorTitle = resource("settings.bodyweight.write-error.title")
 
+    /// The command that runs `FR-1.8.2`'s import.
+    static let bodyweightHealthAction = resource("settings.bodyweight.health.action")
+
+    /// What the import reads and where it goes (`G-5.4`, `TR-1.9`), said before it is granted.
+    static let bodyweightHealthDetail = resource("settings.bodyweight.health.detail")
+
+    /// The line under the command while the import — the authorization prompt included — runs.
+    static let bodyweightHealthRunning = resource("settings.bodyweight.health.running")
+
+    /// The heading over what the last import did.
+    static let bodyweightHealthResultTitle = resource("settings.bodyweight.health.result.title")
+
+    /// The heading over an import that failed.
+    static let bodyweightHealthErrorTitle = resource("settings.bodyweight.health.error.title")
+
+    /// How many readings the import wrote.
+    ///
+    /// **A labelled number rather than a plural**, this repo's pattern for a count: zero is a real
+    /// and common answer here, since a refused authorization is indistinguishable from a source
+    /// holding nothing (see ``BodyweightSampleSource/authorize()``), and a labelled zero states
+    /// that without claiming to know which it was.
+    ///
+    /// - Parameter count: Rows written.
+    /// - Returns: The line.
+    static func bodyweightHealthAdded(_ count: Int) -> LocalizedStringResource {
+        resource("settings.bodyweight.health.added \(count)")
+    }
+
+    /// How many of the import's days the log already had a reading for.
+    ///
+    /// - Parameter count: Days left alone.
+    /// - Returns: The line.
+    static func bodyweightHealthKept(_ count: Int) -> LocalizedStringResource {
+        resource("settings.bodyweight.health.kept \(count)")
+    }
+
     /// The form's own title.
     static let bodyweightFormTitle = resource("settings.bodyweight.form.title")
 
@@ -75,6 +111,9 @@ extension SettingsStrings {
             bodyweightEmptyMessage, bodyweightErrorHeadline, bodyweightErrorMessage,
             bodyweightWriteErrorTitle, bodyweightFormTitle, bodyweightWeightLabel,
             bodyweightDateLabel, bodyweightDateHint, bodyweightSaveAction, bodyweightCancelAction,
+            bodyweightHealthAction, bodyweightHealthDetail, bodyweightHealthRunning,
+            bodyweightHealthResultTitle, bodyweightHealthErrorTitle,
+            bodyweightHealthAdded(0), bodyweightHealthKept(2),
         ] + BodyweightDraftRefusal.allCases.map(bodyweightRefusal)
     }
 }

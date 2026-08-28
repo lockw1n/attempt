@@ -26,8 +26,10 @@
                     currentAverage: Weight(grams: 82_333),
                     unit: .kilograms,
                     writeFailure: nil,
+                    healthImport: nil,
                     retry: {},
-                    add: {}
+                    add: {},
+                    importFromHealth: {}
                 )
                 .environment(\.locale, BodyweightFixtures.locale)
                 .environment(\.timeZone, .gmt)
@@ -43,8 +45,10 @@
                     currentAverage: nil,
                     unit: .kilograms,
                     writeFailure: nil,
+                    healthImport: nil,
                     retry: {},
-                    add: {}
+                    add: {},
+                    importFromHealth: {}
                 )
                 .environment(\.locale, BodyweightFixtures.locale)
                 .environment(\.timeZone, .gmt)
@@ -59,8 +63,10 @@
                     currentAverage: nil,
                     unit: .kilograms,
                     writeFailure: nil,
+                    healthImport: nil,
                     retry: {},
-                    add: {}
+                    add: {},
+                    importFromHealth: {}
                 )
             }
         }
@@ -72,8 +78,10 @@
                     currentAverage: nil,
                     unit: .kilograms,
                     writeFailure: nil,
+                    healthImport: nil,
                     retry: {},
-                    add: {}
+                    add: {},
+                    importFromHealth: {}
                 )
             }
         }
@@ -87,8 +95,49 @@
                     currentAverage: Weight(grams: 83_000),
                     unit: .pounds,
                     writeFailure: "recordNotFound(id: 5A5B0000-0000-4000-8000-000000000001)",
+                    healthImport: nil,
                     retry: {},
-                    add: {}
+                    add: {},
+                    importFromHealth: {}
+                )
+                .environment(\.locale, BodyweightFixtures.locale)
+                .environment(\.timeZone, .gmt)
+            }
+        }
+
+        @Test func healthImport() throws {
+            // FR-1.8.2's command with a finished import under it: the two counts are the whole
+            // outcome, and the detail line is where G-5.4 is said to the user rather than only in
+            // the system prompt.
+            try assertSnapshots(named: "Bodyweight-health-import") {
+                BodyweightLogReading(
+                    state: .ready(Array(BodyweightFixtures.readings.prefix(2))),
+                    currentAverage: Weight(grams: 83_000),
+                    unit: .kilograms,
+                    writeFailure: nil,
+                    healthImport: .imported(added: 2, daysAlreadyEntered: 1),
+                    retry: {},
+                    add: {},
+                    importFromHealth: {}
+                )
+                .environment(\.locale, BodyweightFixtures.locale)
+                .environment(\.timeZone, .gmt)
+            }
+        }
+
+        @Test func healthImportFailed() throws {
+            // A failed import above a log that is still there — the write failure's rule, and the
+            // command stays offered because a retry is the only way out of it.
+            try assertSnapshots(named: "Bodyweight-health-error") {
+                BodyweightLogReading(
+                    state: .ready(Array(BodyweightFixtures.readings.prefix(1))),
+                    currentAverage: nil,
+                    unit: .kilograms,
+                    writeFailure: nil,
+                    healthImport: .failed("authorizationNotDetermined"),
+                    retry: {},
+                    add: {},
+                    importFromHealth: {}
                 )
                 .environment(\.locale, BodyweightFixtures.locale)
                 .environment(\.timeZone, .gmt)
