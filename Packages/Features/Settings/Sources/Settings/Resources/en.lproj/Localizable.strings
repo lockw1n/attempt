@@ -159,3 +159,36 @@
 "settings.health.unavailable.message" = "There is no health data here to read, so there is no access to hold.";
 "settings.health.unknown.headline" = "Access unknown";
 "settings.health.unknown.message" = "Health did not say how far the request has got.";
+
+/* FR-1.10.5: About. The row into it sits at the bottom of the landing, after the preferences and
+   the two logs — it is the one thing here that is about the app rather than about the lifter. */
+"settings.landing.about.title" = "About";
+"settings.landing.about.row" = "About Attempt";
+"settings.landing.about.detail" = "Version, acknowledgements and privacy.";
+
+"settings.about.title" = "About";
+
+/* The two numbers are read from the bundle at runtime and are never copy — these are their labels,
+   and the value beside each is verbatim. "Unknown" is what a bundle declaring neither says; only
+   the app target declares them, so it is reachable outside the app and nowhere in it. */
+"settings.about.version.title" = "This build";
+"settings.about.version.short" = "Version";
+"settings.about.version.build" = "Build";
+"settings.about.version.unknown" = "Unknown";
+
+/* Acknowledgements. The first line is a measurement: no manifest in this repo names a remote
+   package, so there is no licence to reproduce. The second is what is genuinely someone else's —
+   the estimators and the RPE chart are published work this app implements. */
+"settings.about.acknowledgements.title" = "Acknowledgements";
+"settings.about.acknowledgements.code" = "Attempt bundles no third-party code. Everything it runs was written for it.";
+"settings.about.acknowledgements.formulas" = "Its one-rep-max estimators and its RPE chart are their authors' published work, implemented here from the literature rather than licensed.";
+
+/* Privacy (FR-1.10.5, G-5.1 – G-5.4). Every sentence is about the build the version above names,
+   which is the whole reason this document is in the app rather than behind a link: it cannot be
+   newer or older than the binary it ships in, and it cannot go stale without the build going
+   with it. Whichever task turns on sync, telemetry or an account owns rewriting it. */
+"settings.about.privacy.title" = "Privacy";
+"settings.about.privacy.storage" = "Your training log is stored on this device. This version has no account, no sync and no server behind it, so nothing you log is sent anywhere.";
+"settings.about.privacy.health" = "Body mass is read from Health only after you allow it, and only when you ask for an import. Attempt writes nothing back to Health, and what it reads stays on this device.";
+"settings.about.privacy.tracking" = "There is no analytics, no advertising and no tracking. No third party is told anything about you or your training.";
+"settings.about.privacy.currency" = "This policy describes the build named above. It ships inside the app, so it is never newer or older than the version you are running.";

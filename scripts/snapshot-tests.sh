@@ -69,7 +69,7 @@ cd "$(dirname "$0")/.."
 #   Logging:         52 tests, 51 reference-backed, one width probe    -> 52, above the 51.
 #   History:         19 tests, all of them reference-backed, no probes -> 19, its own count.
 #   Dashboard:       10 tests, all of them reference-backed, no probes -> 10, its own count.
-#   Settings:        18 tests, all of them reference-backed, no probes -> 18, its own count.
+#   Settings:        20 tests, all of them reference-backed, no probes -> 20, its own count.
 # A screen suite added later is the ExerciseLibrary case unless it brings probes of its own, and a
 # screen added to an existing package raises that package's floor rather than adding a row.
 SUITES=(
@@ -78,7 +78,7 @@ SUITES=(
     "Packages/Features/Logging|Logging|LoggingSnapshotTests|52"
     "Packages/Features/History|History|HistorySnapshotTests|19"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|10"
-    "Packages/Features/Settings|Settings|SettingsSnapshotTests|18"
+    "Packages/Features/Settings|Settings|SettingsSnapshotTests|20"
 )
 
 # The iOS version the committed references were rendered on. See the header: bump it only when

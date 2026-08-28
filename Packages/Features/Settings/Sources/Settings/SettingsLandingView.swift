@@ -68,6 +68,7 @@ public struct SettingsLandingView: View {
                 }
                 equipment
                 bodyweight
+                about
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Spacing.lg.points)
@@ -114,6 +115,21 @@ public struct SettingsLandingView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// `FR-1.10.5`'s way into About.
+    ///
+    /// Outside the phase switch, for ``equipment``'s reason and a stronger one: the version, the
+    /// acknowledgements and the privacy policy are facts about the binary rather than rows in any
+    /// store, so nothing this screen reads can make them unavailable. **Last**, because it is the
+    /// only section here that is about the app rather than about the lifter.
+    private var about: some View {
+        GroupedSection(Text(SettingsStrings.aboutSectionTitle)) {
+            SettingsLinkRow(
+                route: .settings(.about),
+                label: SettingsStrings.aboutRow,
+                detail: SettingsStrings.aboutDetail)
         }
     }
 

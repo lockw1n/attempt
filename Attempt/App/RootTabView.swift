@@ -113,7 +113,7 @@ struct RootTabView: View {
         case .healthAccess:
             healthAccessRoot
         case .about:
-            PlaceholderScreen(route: .settings(route))
+            AboutView()
         }
     }
 
