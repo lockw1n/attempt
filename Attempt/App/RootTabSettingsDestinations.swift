@@ -38,6 +38,8 @@ extension RootTabView {
             dataExportRoot
         case .backup:
             backupRoot
+        case .restore:
+            restoreRoot
         }
     }
 
@@ -73,6 +75,27 @@ extension RootTabView {
                 bodyweight: repositories.bodyweight,
                 equipment: repositories.equipment,
                 settings: repositories.settings)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// `FR-1.11.4`: a backup file read back onto this device, or the reason it cannot be.
+    ///
+    /// Six, and the sixth is the recompute actor: the backup file carries no cached personal record
+    /// (`TR-0.3.9`, `G-1.4`), so the rows a restore writes have to be walked again before any badge
+    /// or estimated max on another tab is true.
+    @ViewBuilder
+    private var restoreRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, let stores):
+            RestoreView(
+                exercises: repositories.exercises,
+                workouts: repositories.workouts,
+                bodyweight: repositories.bodyweight,
+                equipment: repositories.equipment,
+                settings: repositories.settings,
+                records: stores.records)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

@@ -226,4 +226,47 @@ struct TrainingLogArchive: Codable, Sendable, Equatable {
     /// exist from the first tap and are the lifter's whatever they have logged — see ``BackupState``
     /// for the whole of that argument.
     var isEmpty: Bool { sessions.isEmpty && bodyweight.isEmpty }
+
+    /// Every row in the file, across every section.
+    ///
+    /// **Records the file holds, not rows a restore gives back**, and the two differ today: a
+    /// soft-deleted row is in this count and in the file, and `FR-1.11.4`'s restore reinstates it as
+    /// a live row rather than a deleted one. The completeness reading is the one a backup's count
+    /// has to mean — a number that quietly excluded rows the file contains would be the number that
+    /// makes a lifter think the backup is short.
+    ///
+    /// **On the envelope rather than on either screen**, because both screens say it: the backup
+    /// counts what it wrote and the restore counts what it is about to write, and two computations
+    /// of one number are two that can disagree about a section added later.
+    ///
+    /// The preferences row counts as the one row it is.
+    var recordCount: Int {
+        exercises.count + sessions.count + entries.count + sets.count + bodyweight.count
+            + equipment.count + trainingMaxes.count + (settings == nil ? 0 : 1)
+    }
+
+    /// How many of those rows carry a ``StoredRecord/deletedAt``.
+    ///
+    /// The half of the file an export does not have — and, read from the other direction, the number
+    /// of rows a restore hands back live rather than deleted, which is what `FR-1.11.4`'s
+    /// confirmation says out loud rather than leaving for the lifter to discover.
+    ///
+    /// **The preferences row is summed with the rest although it can never be deleted**, so that
+    /// term is structurally zero today: ``RepositoryInterface/SettingsRepository`` offers no delete.
+    /// It is summed anyway because ``recordCount`` counts that row, and a deleted total that skipped
+    /// a row the other total counts is the pair disagreeing the moment the row does become
+    /// deletable.
+    var deletedCount: Int {
+        Self.deleted(exercises) + Self.deleted(sessions) + Self.deleted(entries)
+            + Self.deleted(sets) + Self.deleted(bodyweight) + Self.deleted(equipment)
+            + Self.deleted(trainingMaxes) + Self.deleted(settings.map { [$0] } ?? [])
+    }
+
+    /// How many of one section's rows are soft-deleted.
+    ///
+    /// - Parameter rows: One section.
+    /// - Returns: The count.
+    private static func deleted(_ rows: [some StoredRecord]) -> Int {
+        rows.count { $0.deletedAt != nil }
+    }
 }

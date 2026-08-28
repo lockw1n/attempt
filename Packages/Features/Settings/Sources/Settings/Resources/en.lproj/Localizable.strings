@@ -249,3 +249,53 @@
    sentence the user is shown. There is no empty state — see BackupState.Phase. */
 "settings.backup.error.headline" = "The backup could not be prepared";
 "settings.backup.error.message" = "Your data could not be read just now. Nothing has been changed — try again.";
+
+/* FR-1.11.4: the restore. Its row sits under the same section as the export and the backup, last
+   of the three: the two above hand a file out and this one reads a file back, which is the only
+   one of them that can lose anything. */
+"settings.landing.restore.row" = "Restore from a backup";
+"settings.landing.restore.detail" = "Read a backup file back onto this device.";
+
+"settings.restore.title" = "Restore";
+
+"settings.restore.waiting.headline" = "No file chosen";
+"settings.restore.waiting.message" = "Pick the JSON file Attempt wrote when you last backed up. Choosing a file changes nothing on its own — you will see what is in it first.";
+"settings.restore.choose" = "Choose a backup file";
+"settings.restore.reading" = "Reading the file…";
+
+/* The destructive question. It says what a restore DOES and what it does not do, because the
+   second half is the part a lifter would otherwise assume: nothing is emptied first, so a record
+   this file has never heard of stays where it is. */
+"settings.restore.confirm.title" = "This writes over what is on this device";
+"settings.restore.confirm.detail" = "Every record in this file replaces the one it matches here. Records this file does not contain are left as they are. There is no undo.";
+/* G-1.3, stated rather than left silent: the file carries what was deleted, and Attempt has no way
+   to put a record back as deleted. A lifter who backed up 7 deleted records gets 7 ordinary ones. */
+"settings.restore.confirm.deleted" = "Records you had deleted before this backup was taken come back as ordinary records. Attempt cannot put a record back as deleted.";
+"settings.restore.confirm.action" = "Replace my data";
+"settings.restore.confirm.other" = "Choose a different file";
+
+"settings.restore.dialog.title" = "Write this backup over your data?";
+"settings.restore.dialog.message" = "There is no undo. Back up first if you are not sure.";
+"settings.restore.dialog.action" = "Replace my data";
+"settings.restore.dialog.cancel" = "Cancel";
+
+"settings.restore.restoring" = "Writing everything back…";
+"settings.restore.done.headline" = "Restored";
+"settings.restore.done.detail" = "Your workouts, exercises, gyms and settings are back. Estimated maxes and personal records have been worked out again from the sets in the file.";
+
+"settings.restore.taken %@" = "Taken %@";
+
+/* Three refusals rather than one message, because each asks for something different: a newer app,
+   the other file, or a different copy of this one. */
+"settings.restore.refused.export.headline" = "That is an export, not a backup";
+"settings.restore.refused.export.message" = "This file holds your training log for reading elsewhere, not everything Attempt needs to put a device back. Look for the file named Attempt-backup.";
+"settings.restore.refused.future.headline" = "That backup is from a newer Attempt";
+"settings.restore.refused.future.message" = "This file was written by a later version of the app. Update Attempt, then restore it — reading it here could only get it partly right.";
+"settings.restore.refused.unreadable.headline" = "That file cannot be read";
+"settings.restore.refused.unreadable.message" = "It is not an Attempt backup, or the copy is damaged. Nothing on this device has been changed.";
+
+/* Not a refusal: rows are already written. The retry is honest because every write is keyed on the
+   record's own identifier, so the same file run twice lands the same store. */
+"settings.restore.error.headline" = "The restore did not finish";
+"settings.restore.error.message" = "Part of the file is already on this device. Running the same file again is safe — it finishes the job.";
+"settings.restore.error.retry" = "Try again";

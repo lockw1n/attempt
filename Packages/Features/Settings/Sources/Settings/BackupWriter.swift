@@ -9,16 +9,12 @@ struct BackupFile: Equatable, Sendable {
     /// How many workouts it holds.
     let workoutCount: Int
 
-    /// How many rows it holds in total, across every section and counting the preferences row.
-    ///
-    /// **Records the store holds, not rows a restore gives back**, and the two differ today: a
-    /// soft-deleted row is in this count and in the file, and `FR-1.11.4`'s restore currently
-    /// reinstates it as a live row rather than a deleted one. The completeness reading is the one a
-    /// backup's count has to mean — a number that quietly excluded rows the file contains would be
-    /// the number that makes a lifter think the backup is short.
+    /// How many rows it holds in total — ``TrainingLogArchive/recordCount``, which is where the
+    /// reading it takes is argued.
     let recordCount: Int
 
-    /// How many of those rows are ones the lifter deleted.
+    /// How many of those rows are ones the lifter deleted —
+    /// ``TrainingLogArchive/deletedCount``.
     ///
     /// Drawn beside ``recordCount`` rather than folded into it, because it is the half of the file
     /// an export does not have and the only thing that makes "a backup is not the export" visible.
@@ -58,8 +54,8 @@ enum BackupWriter {
         return BackupFile(
             url: url,
             workoutCount: archive.sessions.count,
-            recordCount: recordCount(of: archive),
-            deletedCount: deletedCount(of: archive))
+            recordCount: archive.recordCount,
+            deletedCount: archive.deletedCount)
     }
 
     /// The file's name: the app's name, what the file is, and the day it was taken.
@@ -76,38 +72,5 @@ enum BackupWriter {
     /// - Returns: A file name with no extension.
     static func name(for takenAt: Date, timeZone: TimeZone = .current) -> String {
         "Attempt-backup-\(TrainingLogCSV.day(takenAt, in: timeZone))"
-    }
-
-    /// Every row in the file, across every section.
-    ///
-    /// - Parameter archive: The backup.
-    /// - Returns: The total, counting the preferences row as the one row it is.
-    private static func recordCount(of archive: TrainingLogArchive) -> Int {
-        archive.exercises.count + archive.sessions.count + archive.entries.count
-            + archive.sets.count + archive.bodyweight.count + archive.equipment.count
-            + archive.trainingMaxes.count + (archive.settings == nil ? 0 : 1)
-    }
-
-    /// How many of those rows carry a ``StoredRecord/deletedAt``.
-    ///
-    /// **The preferences row is summed with the rest although it can never be deleted**, so that
-    /// term is structurally zero today: ``SettingsRepository`` offers no delete. It is summed
-    /// anyway because ``recordCount(of:)`` counts that row, and a deleted total that skipped a row
-    /// the other total counts is the pair disagreeing the moment the row does become deletable.
-    ///
-    /// - Parameter archive: The backup.
-    /// - Returns: The count of soft-deleted rows.
-    private static func deletedCount(of archive: TrainingLogArchive) -> Int {
-        deleted(archive.exercises) + deleted(archive.sessions) + deleted(archive.entries)
-            + deleted(archive.sets) + deleted(archive.bodyweight) + deleted(archive.equipment)
-            + deleted(archive.trainingMaxes) + deleted(archive.settings.map { [$0] } ?? [])
-    }
-
-    /// How many of one section's rows are soft-deleted.
-    ///
-    /// - Parameter rows: One section.
-    /// - Returns: The count.
-    private static func deleted(_ rows: [some StoredRecord]) -> Int {
-        rows.count { $0.deletedAt != nil }
     }
 }

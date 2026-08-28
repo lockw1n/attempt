@@ -200,4 +200,17 @@ public enum SettingsRoute: Hashable, Sendable, Codable {
     /// backup is safe and reading one is destructive, so a route that could mean either is a route a
     /// restored stack can land the wrong side of.
     case backup
+
+    /// A backup file read back into this device (`FR-1.11.4`).
+    ///
+    /// **The third of the three rather than a command on ``backup``**, which is that case's own
+    /// argument arriving where it was aimed: writing a file is safe and reading one overwrites the
+    /// store, so a restored stack that landed on the wrong side of a shared route would put a
+    /// destructive screen in front of a lifter who asked for a file.
+    ///
+    /// **It carries no file**, which is every route's rule here and load-bearing in this one: a
+    /// stack is decoded at launch, and a route holding a picked URL would restore a lifter into a
+    /// confirmation over a file they chose in another session — possibly one they have since
+    /// replaced. A restored stack opens this screen with nothing chosen, the same as a fresh push.
+    case restore
 }

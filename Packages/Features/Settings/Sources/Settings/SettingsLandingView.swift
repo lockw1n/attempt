@@ -138,6 +138,12 @@ public struct SettingsLandingView: View {
                     route: .settings(.backup),
                     label: SettingsStrings.backupRow,
                     detail: SettingsStrings.backupDetail)
+                // FR-1.11.4, last of the three: the two rows above hand a file out, and this one
+                // reads a file back — the only one of them that can lose anything.
+                SettingsLinkRow(
+                    route: .settings(.restore),
+                    label: SettingsStrings.restoreRow,
+                    detail: SettingsStrings.restoreDetail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
