@@ -41,8 +41,27 @@ final class UserSettingsEntity: StoredEntity {
     /// invalidation trigger (`TR-1.6`), separate from any `computationVersion`.
     var e1RMFormulaRawValue: String = SchemaDefaults.e1RMFormula
 
+    /// The step displayed weights read to, in thousandths of the display unit (`G-3.3`), or `nil`
+    /// where the user has never chosen.
+    ///
+    /// **Optional rather than defaulted**, which is the second column here where the two differ in
+    /// meaning: the factory step depends on the unit — 0.5 kg but 1 lb — so a number stored on the
+    /// user's behalf would become half-pound steps the first time they switched units. The record
+    /// derives from the unit when this is absent.
+    var displayPrecisionMilliUnits: Int?
+
     /// ``ThemePreference``'s raw value (`FR-1.10.2`).
     var themeRawValue: String = SchemaDefaults.theme
+
+    /// How many days back an estimated max looks (`FR-1.7.1`).
+    var e1RMLookbackDays: Int = SchemaDefaults.e1RMLookbackDays
+
+    /// Whether the screen is held awake during a workout (`NFR-1.9`).
+    ///
+    /// A defaulted `Bool`, which `SchemaV1` warns about — but the warning is about a flag that
+    /// makes a claim on rows this app never wrote. This one is a preference about what the app
+    /// does next, and the default is the requirement read as written.
+    var keepScreenAwake: Bool = SchemaDefaults.keepScreenAwake
 
     /// The loadable step new exercises get by default, in grams (`FR-1.5.1.6`).
     ///
@@ -73,6 +92,9 @@ final class UserSettingsEntity: StoredEntity {
         theme: ThemePreference,
         defaultRoundingIncrementGrams: Int,
         defaultRoundingStrategy: RoundingStrategy,
+        displayPrecisionMilliUnits: Int? = nil,
+        e1RMLookbackDays: Int = SchemaDefaults.e1RMLookbackDays,
+        keepScreenAwake: Bool = SchemaDefaults.keepScreenAwake,
         dashboardExerciseIDs: [UUID]? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now
@@ -81,7 +103,10 @@ final class UserSettingsEntity: StoredEntity {
         self.userID = userID
         self.displayUnitRawValue = displayUnit.rawValue
         self.e1RMFormulaRawValue = e1RMFormula.rawValue
+        self.displayPrecisionMilliUnits = displayPrecisionMilliUnits
         self.themeRawValue = theme.rawValue
+        self.e1RMLookbackDays = e1RMLookbackDays
+        self.keepScreenAwake = keepScreenAwake
         self.defaultRoundingIncrementGrams = defaultRoundingIncrementGrams
         self.defaultRoundingStrategyRawValue = defaultRoundingStrategy.rawValue
         self.dashboardExerciseIDs = dashboardExerciseIDs

@@ -1,5 +1,6 @@
 import DesignSystem
 import Foundation
+import Localization
 import PowerliftingCore
 import SwiftUI
 
@@ -167,6 +168,14 @@ struct PlateCalculatorContent: View {
     /// Which locale the loads are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
+    /// `G-3.3`'s step, from the app rather than from this view — `nil` outside the app, where
+    /// the unit's own factory step stands.
+    @Environment(\.displayPrecision) private var displayPrecision
+
+    /// The pairing the two *loads* on this screen are drawn in. The plate denominations below them
+    /// are not: see ``PlateLoadingSummary/render(_:in:locale:)``.
+    private var display: WeightDisplay { WeightDisplay(unit: unit, resolving: displayPrecision) }
+
     /// The target, then whichever state the equipment read left the screen in.
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.lg.points) {
@@ -183,7 +192,7 @@ struct PlateCalculatorContent: View {
             Text(LoggingStrings.plateTargetLabel)
                 .font(Typography.metricLabel.font)
                 .foregroundStyle(ColorToken.textSecondary)
-            Text(verbatim: PlateLoadingSummary.load(target, in: unit, locale: locale))
+            Text(verbatim: PlateLoadingSummary.load(target, in: display, locale: locale))
                 .font(Typography.numericValue.font)
                 .foregroundStyle(ColorToken.textPrimary)
         }
@@ -300,7 +309,7 @@ struct PlateCalculatorContent: View {
     /// - Returns: The row.
     private func loadingRow(_ loading: PlateLoading) -> some View {
         VStack(alignment: .leading, spacing: Spacing.xs.points) {
-            Text(verbatim: PlateLoadingSummary.load(loading.totalWeight, in: unit, locale: locale))
+            Text(verbatim: PlateLoadingSummary.load(loading.totalWeight, in: display, locale: locale))
                 .font(Typography.numericValue.font)
                 .foregroundStyle(ColorToken.textPrimary)
             Text(LoggingStrings.platePerSideLabel)

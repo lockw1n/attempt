@@ -85,13 +85,24 @@ struct RecordCodingKeyTests {
             ])
     }
 
-    @Test("Settings write ten keys")
+    @Test("Settings write twelve keys")
     func settingsKeys() throws {
         #expect(
             try encodedKeys(of: codingUserSettings()) == [
                 "createdAt", "defaultRoundingIncrement", "defaultRoundingStrategy", "deletedAt",
-                "displayUnit", "e1RMFormula", "id", "theme", "updatedAt", "userID",
+                "displayUnit", "e1RMFormula", "e1RMLookbackDays", "id", "keepScreenAwake", "theme",
+                "updatedAt", "userID",
             ])
+    }
+
+    /// The two optional preferences are absent rather than null where the user never chose, and
+    /// present the moment they did — the rule that lets a never-configured row stay short.
+    @Test("A chosen display step joins the keys; an unchosen one writes nothing")
+    func settingsPrecisionKey() throws {
+        var configured = codingUserSettings()
+        configured.displayPrecision = .quarter
+        #expect(try encodedKeys(of: configured).contains("displayPrecision"))
+        #expect(try !encodedKeys(of: codingUserSettings()).contains("displayPrecision"))
     }
 
     @Test("A cached record writes ten keys")
@@ -239,6 +250,31 @@ struct RecordDecodingFallbackTests {
         #expect(record.e1RMFormula == .epley)
         #expect(record.theme == .dark)
         #expect(record.displayUnit == .pounds)
+    }
+
+    /// `DisplayPrecision` refuses a step below one milli-unit on the way in, and it is right to —
+    /// something downstream divides by it. Refusing it *at the record* would cost the theme, the
+    /// unit, the rounding defaults and `userID` as well, which is the one thing rule 4 forbids.
+    @Test("An unreadable display step costs that preference and nothing else")
+    func unreadableDisplayStepResolves() throws {
+        var configured = codingUserSettings()
+        configured.displayPrecision = .quarter
+
+        let zeroed = try decode(
+            UserSettings.self,
+            replacing: ("\"displayPrecision\":250", "\"displayPrecision\":0"),
+            in: configured)
+        let mistyped = try decode(
+            UserSettings.self,
+            replacing: ("\"displayPrecision\":250", "\"displayPrecision\":\"quarter\""),
+            in: configured)
+
+        #expect(zeroed.displayPrecision == nil)
+        #expect(mistyped.displayPrecision == nil)
+        // The neighbours a decoder that threw the record away could not have kept.
+        #expect(zeroed.theme == .dark)
+        #expect(zeroed.userID == configured.userID)
+        #expect(mistyped.displayUnit == .pounds)
     }
 
     @Test("An unreadable training-max source resolves without costing the row")

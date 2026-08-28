@@ -4,7 +4,9 @@ import DesignSystem
 import ExerciseLibrary
 import Foundation
 import History
+import Localization
 import Logging
+import PowerliftingCore
 import RepositoryInterface
 import Settings
 import SwiftUI
@@ -35,10 +37,12 @@ struct RootTabView: View {
         // does not need to know which tab it lives under (see `NavigationState.navigate(to:)`).
         .environment(navigation)
         .tint(ColorToken.brandAccent)
-        // G-7.1's dark default, from the token rather than from a literal `.dark` — the one place
-        // that says so is DesignTokens. FR-1.10.2's user preference (T-1.60) overrides this; it does
-        // not replace it.
-        .preferredColorScheme(Appearance.defaultColorScheme)
+        // FR-1.10.2's stored theme, or G-7.1's dark until the row has been read — the store holds
+        // both cases and the difference between them, so this view states neither.
+        .preferredColorScheme(appearance)
+        // G-3.3's step, ambient for locale's reason — see Localization's own note. Set once here
+        // rather than by each screen that draws a load.
+        .environment(\.displayPrecision, weightPrecision)
         // NFR-1.9. Applied over the whole shell rather than on the session screen, because the
         // workout does not stop being in progress when the user walks to the exercise library or
         // the plate calculator — the screen has to stay awake there too. What decides it is
@@ -106,9 +110,21 @@ struct RootTabView: View {
             equipmentProfilesRoot
         case .bodyweight:
             bodyweightRoot
+        case .healthAccess:
+            healthAccessRoot
         case .about:
-            PlaceholderScreen(route: .settings(route))
+            AboutView()
         }
+    }
+
+    /// `FR-1.10.4`: what Health access the app has.
+    ///
+    /// **It needs no store**, which is why there is no `dependencies.state` switch here: the screen
+    /// reports on HealthKit alone, and a store that failed to open says nothing about whether Health
+    /// was authorized. Constructing the source prompts for nothing — `TR-1.9` still owes the prompt
+    /// to the import, and this screen reads the request's status without raising it.
+    private var healthAccessRoot: some View {
+        HealthAccessView(health: HealthBodyweightSource())
     }
 
     /// The exercise library's list, or the reason it cannot be shown.
@@ -368,7 +384,7 @@ struct RootTabView: View {
     private var trainRoot: some View {
         switch dependencies.state {
         case .open(_, let stores):
-            TrainingHomeView(store: stores.activeSession, screenWake: stores.screenWake)
+            TrainingHomeView(store: stores.activeSession)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }
@@ -399,20 +415,47 @@ struct RootTabView: View {
         return stores.screenWake.keepsScreenAwake(duringSession: stores.activeSession.isActive)
     }
 
+    /// The scheme every tab is drawn in (`FR-1.10.2`). A store that did not open has no stored
+    /// theme to honour, so it gets `G-7.1`'s default — the same answer an unread row gets.
+    private var appearance: ColorScheme? {
+        guard case .open(_, let stores) = dependencies.state else {
+            return Appearance.defaultColorScheme
+        }
+        return stores.display.colorScheme
+    }
+
+    /// The step every displayed load reads to (`G-3.3`), or `nil` for the unit's own.
+    private var weightPrecision: DisplayPrecision? {
+        guard case .open(_, let stores) = dependencies.state else { return nil }
+        return stores.display.weightPrecision
+    }
+
     /// The Settings tab's landing screen, or the reason it cannot be shown.
     @ViewBuilder
     private var settingsRoot: some View {
         switch dependencies.state {
         case .open(let repositories, let stores):
-            SettingsLandingView(repository: repositories.settings, records: stores.records)
+            SettingsLandingView(
+                repository: repositories.settings,
+                records: stores.records,
+                // FR-1.10.4's row is drawn only where there is a Health to talk about, which is
+                // the one thing the landing asks of the source. Constructing it prompts for
+                // nothing — TR-1.9's prompt is still the import's.
+                health: HealthBodyweightSource(),
+                // NFR-1.9 and FR-1.10.2 are held by objects the Settings module cannot import, so
+                // the composition root is what carries a landed write to them.
+                preferencesDidChange: { settings in
+                    stores.display.adopt(settings)
+                    stores.screenWake.adopt(settings.keepScreenAwake)
+                })
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }
     }
 }
 
-/// What a tab shows when the store did not open — scaffolding, like ``PlaceholderScreen``, and
-/// owned by whichever task takes on the launch failure surface.
+/// What a tab shows when the store did not open — the last of the shell's scaffolding, and owned
+/// by whichever task takes on the launch failure surface.
 ///
 /// Its copy is `verbatim` for the same reason: a string that is going to be deleted must not be
 /// translated first (`G-3.4`).

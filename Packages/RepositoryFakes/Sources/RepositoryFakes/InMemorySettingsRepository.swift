@@ -38,9 +38,15 @@ extension InMemoryRepositoryStore {
             userID: UUID(),
             displayUnit: .kilograms,
             e1RMFormula: .defaultFormula,
-            theme: .system,
+            // G-7.1's dark is what the app adopts before the user has expressed a preference,
+            // and `.system` is a preference — a lifter who picks it is asking to follow the
+            // device. A first-launch row saying `.system` would make the two indistinguishable.
+            theme: .dark,
             defaultRoundingIncrement: Weight(grams: 2500),
-            defaultRoundingStrategy: .nearest
+            defaultRoundingStrategy: .nearest,
+            displayPrecision: nil,
+            e1RMLookbackDays: UserSettings.defaultE1RMLookbackDays,
+            keepScreenAwake: UserSettings.defaultKeepScreenAwake
         )
         settingsRow = created
         return created

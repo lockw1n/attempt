@@ -148,6 +148,10 @@ struct EstimatedMaxTileView: View {
     /// Which locale the load is rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
+    /// `G-3.3`'s step, from the app rather than from this view — `nil` outside the app, where
+    /// the unit's own factory step stands.
+    @Environment(\.displayPrecision) private var displayPrecision
+
     /// Whichever of the estimate's three contents this tile holds.
     @ViewBuilder var body: some View {
         switch tile.estimate.content {
@@ -169,7 +173,10 @@ struct EstimatedMaxTileView: View {
     ) -> some View {
         MetricTile(
             label: Text(verbatim: tile.name),
-            value: Text(weight, format: AppFormat.weight(in: unit, locale: locale)),
+            value: Text(
+                weight,
+                format: AppFormat.weight(
+                    WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale)),
             context: context
         )
     }
@@ -182,8 +189,10 @@ struct EstimatedMaxTileView: View {
         if let delta = tile.estimate.delta {
             DeltaIndicator(
                 Self.direction(of: delta),
-                value: AppFormat.weight(in: unit, locale: locale)
-                    .format(Weight(grams: abs(delta.grams))))
+                value: AppFormat.weight(
+                    WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale
+                )
+                .format(Weight(grams: abs(delta.grams))))
         } else {
             Text(DashboardStrings.tileNoPrevious)
         }

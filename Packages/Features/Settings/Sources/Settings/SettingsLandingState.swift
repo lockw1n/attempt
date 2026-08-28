@@ -53,6 +53,16 @@ public final class SettingsLandingState {
     /// another tap rather than a relaunch.
     public private(set) var writeFailure: String?
 
+    /// What the app is told after a preference lands (`FR-1.10.2`, `NFR-1.9`).
+    ///
+    /// **Told rather than asked, and by closure rather than by store.** Two of this screen's
+    /// preferences are read by objects in modules this one cannot import — the theme by the root
+    /// view's own appearance store, the screen-wake by `Logging`'s — so the composition root
+    /// supplies the one call that reaches both. Nothing re-reads this row on their behalf, so a
+    /// picker that only wrote the column would leave the app on the old theme until the next
+    /// relaunch.
+    private let preferencesDidChange: (UserSettings) -> Void
+
     private let repository: any SettingsRepository
 
     /// The recompute pipeline, told when the formula moves (`FR-1.7.3`, `TR-1.6`).
@@ -71,9 +81,15 @@ public final class SettingsLandingState {
     /// - Parameters:
     ///   - repository: Where the settings row lives.
     ///   - records: The app's one recompute actor, told when a preference it reads moves.
-    public init(repository: any SettingsRepository, records: PersonalRecordRecomputer) {
+    ///   - preferencesDidChange: What the app runs once a preference it holds elsewhere lands.
+    public init(
+        repository: any SettingsRepository,
+        records: PersonalRecordRecomputer,
+        preferencesDidChange: @escaping (UserSettings) -> Void = { _ in }
+    ) {
         self.repository = repository
         self.records = records
+        self.preferencesDidChange = preferencesDidChange
     }
 
     /// Reads the settings row, on first appearance and on every retry.
@@ -96,9 +112,17 @@ public final class SettingsLandingState {
         }
     }
 
-    /// Switches which unit weights are displayed in (`G-3.1`, `FR-1.10.1`).
+    /// Moves one preference on the stored row (`FR-1.10.1`, `FR-1.10.2`).
     ///
-    /// Display only — storage stays in grams and no stored weight is rewritten (`G-3.2`).
+    /// **One entry point for every control, and it takes the change rather than the row.** A
+    /// screen with eight preferences on it and a setter each is eight chances to rebuild the row
+    /// from a stale read; a control that handed back its own copy would be worse still, since the
+    /// copy it is drawing was published before whatever write is in flight — the second of two
+    /// rapid taps would then revert the first. A closure is applied to the row as it stands *inside*
+    /// the chain, so it can only move the field it names.
+    ///
+    /// Display-only preferences never rewrite a stored weight — storage stays grams (`G-3.1`,
+    /// `G-3.2`), and this method writes the settings row and nothing else.
     ///
     /// **Writes are serialized, and it is a correctness clause rather than a queueing nicety.**
     /// The decision below reads ``phase``, which only moves once the write it describes has landed;
@@ -107,23 +131,12 @@ public final class SettingsLandingState {
     /// and drop it. Chaining each write behind the one before it makes every decision read the
     /// result of the last.
     ///
-    /// **The chain is shared across every preference, not one per control.** Two preferences written
-    /// at once rebuild the same record from the same read, so the second would carry the first's old
-    /// value and undo it.
-    public func setDisplayUnit(_ unit: MassUnit) async {
-        await chained { [weak self] in await self?.write(displayUnit: unit) }
+    /// - Parameter change: What to move on the row.
+    public func apply(_ change: @escaping (inout UserSettings) -> Void) async {
+        await chained { [weak self] in await self?.write(change) }
     }
 
-    /// Switches which estimator every e1RM is computed with (`FR-1.7.2`, `FR-1.10.1`).
-    ///
-    /// **The write and the announcement are one operation.** `FR-1.7.3` is not the column changing,
-    /// it is every displayed estimate changing, and nothing else in the app reads this row back —
-    /// see ``records``.
-    public func setE1RMFormula(_ formula: E1RMFormulaID) async {
-        await chained { [weak self] in await self?.write(e1RMFormula: formula) }
-    }
-
-    /// Runs `operation` behind whatever write is already in flight. See ``setDisplayUnit(_:)``.
+    /// Runs `operation` behind whatever write is already in flight. See ``apply(_:)``.
     private func chained(_ operation: @escaping () async -> Void) async {
         let previous = pendingWrite
         let write = Task {
@@ -134,59 +147,46 @@ public final class SettingsLandingState {
         await write.value
     }
 
-    /// One link of the chain: decide against the row as it stands now, then write.
+    /// One link of the chain: decide against the row as it stands now, then write and announce.
     ///
-    /// **A write is skipped when the unit is already `unit`**, and that too is a correctness clause
-    /// rather than an optimisation: every save restamps `updatedAt`, which is `G-2.4`'s conflict
-    /// key, so writing the value that is already there would let a local no-op outrank a real
-    /// remote edit.
-    private func write(displayUnit unit: MassUnit) async {
-        guard case .loaded(let current) = phase, current.displayUnit != unit else { return }
-        await save(replacing: current, displayUnit: unit)
+    /// **A write is skipped when nothing moved**, and that is a correctness clause rather than an
+    /// optimisation: every save restamps `updatedAt`, which is `G-2.4`'s conflict key, so writing
+    /// the values that are already there would let a local no-op outrank a real remote edit.
+    ///
+    /// **The announcements come after the store, not before**, so a failed write leaves the app
+    /// running under the preferences that are actually persisted. Each is made only where its own
+    /// column moved: the recompute actor no-ops on a value already in force, but a `FR-1.7.3`
+    /// recompute is expensive enough that "it would no-op" is not a reason to ask for one.
+    private func write(_ change: (inout UserSettings) -> Void) async {
+        guard case .loaded(let current) = phase else { return }
+        var updated = current
+        change(&updated)
+        guard updated != current else { return }
+        guard let stored = await save(updated) else { return }
+        if stored.e1RMFormula != current.e1RMFormula {
+            await records.formulaDidChange(to: stored.e1RMFormula)
+        }
+        if stored.e1RMLookbackDays != current.e1RMLookbackDays {
+            await records.lookbackDidChange(to: E1RMLookback(days: stored.e1RMLookbackDays))
+        }
+        preferencesDidChange(stored)
     }
 
-    /// The formula's link of the same chain, on ``write(displayUnit:)``'s no-op rule.
+    /// Stores `updated`, then republishes what came back.
     ///
-    /// The pipeline is told only after the row is stored, so a failed write leaves the app showing
-    /// estimates under the formula that is actually persisted. It is told unconditionally otherwise:
-    /// the actor no-ops on a formula already in force.
-    private func write(e1RMFormula formula: E1RMFormulaID) async {
-        guard case .loaded(let current) = phase, current.e1RMFormula != formula else { return }
-        guard await save(replacing: current, e1RMFormula: formula) else { return }
-        await records.formulaDidChange(to: formula)
-    }
-
-    /// Stores `current` with the named fields replaced, then republishes what came back.
-    ///
-    /// - Returns: Whether the write landed.
-    @discardableResult
-    private func save(
-        replacing current: UserSettings,
-        displayUnit: MassUnit? = nil,
-        e1RMFormula: E1RMFormulaID? = nil
-    ) async -> Bool {
-        let updated = UserSettings(
-            id: current.id,
-            createdAt: current.createdAt,
-            updatedAt: current.updatedAt,
-            deletedAt: current.deletedAt,
-            userID: current.userID,
-            displayUnit: displayUnit ?? current.displayUnit,
-            e1RMFormula: e1RMFormula ?? current.e1RMFormula,
-            theme: current.theme,
-            defaultRoundingIncrement: current.defaultRoundingIncrement,
-            defaultRoundingStrategy: current.defaultRoundingStrategy
-        )
+    /// - Returns: The stored row, or `nil` where the write failed.
+    private func save(_ updated: UserSettings) async -> UserSettings? {
         do {
             try await repository.save(updated)
             // Re-read rather than publish `updated`: the save path stamps `updatedAt` itself, so
             // the record handed in describes the write before this one.
-            phase = .loaded(try await repository.settings())
+            let stored = try await repository.settings()
+            phase = .loaded(stored)
             writeFailure = nil
-            return true
+            return stored
         } catch {
             writeFailure = String(describing: error)
-            return false
+            return nil
         }
     }
 }

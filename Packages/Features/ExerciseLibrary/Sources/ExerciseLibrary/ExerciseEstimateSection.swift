@@ -203,6 +203,10 @@ struct ExerciseEstimateReading: View {
     /// Which locale the load is rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
+    /// `G-3.3`'s step, from the app rather than from this view — `nil` outside the app, where
+    /// the unit's own factory step stands.
+    @Environment(\.displayPrecision) private var displayPrecision
+
     /// The heading, whichever of the five states is current, and the override's own controls.
     var body: some View {
         GroupedSection(Text(ExerciseLibraryStrings.e1rmSection)) {
@@ -244,7 +248,10 @@ struct ExerciseEstimateReading: View {
     ) -> some View {
         let tile = MetricTile(
             label: Text(ExerciseLibraryStrings.e1rmValue),
-            value: Text(record.weight, format: AppFormat.weight(in: unit, locale: locale))
+            value: Text(
+                record.weight,
+                format: AppFormat.weight(
+                    WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale))
         ) {
             Text(
                 ExerciseLibraryStrings.e1rmProvenance(
@@ -273,7 +280,10 @@ struct ExerciseEstimateReading: View {
     private func manual(_ weight: Weight) -> some View {
         MetricTile(
             label: Text(ExerciseLibraryStrings.e1rmValue),
-            value: Text(weight, format: AppFormat.weight(in: unit, locale: locale))
+            value: Text(
+                weight,
+                format: AppFormat.weight(
+                    WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale))
         ) {
             Text(ExerciseLibraryStrings.e1rmManualBadge)
         }

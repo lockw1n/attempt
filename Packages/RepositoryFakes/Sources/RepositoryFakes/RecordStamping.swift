@@ -198,20 +198,14 @@ extension EquipmentProfile: AuditStamped {
 }
 
 extension UserSettings: AuditStamped {
+    /// **No list of preferences here**, unlike every other record in this file: this one gains
+    /// columns, and a stamp that enumerated them would drop the next one silently.
     func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> UserSettings {
-        UserSettings(
-            id: id,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            deletedAt: deletedAt,
-            userID: userID,
-            displayUnit: displayUnit,
-            e1RMFormula: e1RMFormula,
-            theme: theme,
-            defaultRoundingIncrement: defaultRoundingIncrement,
-            defaultRoundingStrategy: defaultRoundingStrategy,
-            dashboardExerciseIDs: dashboardExerciseIDs
-        )
+        var stamped = self
+        stamped.createdAt = createdAt
+        stamped.updatedAt = updatedAt
+        stamped.deletedAt = deletedAt
+        return stamped
     }
 
     /// `self`'s preferences written onto `row`'s identity — the settings row's own update rule.
@@ -220,19 +214,7 @@ extension UserSettings: AuditStamped {
     /// caller saving a record it assembled from defaults rather than from ``settings()`` edits the
     /// preferences of the row that is already there rather than replacing its identity (`TR-1.10`).
     func preferencesWritten(onto row: UserSettings) -> UserSettings {
-        UserSettings(
-            id: row.id,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt,
-            deletedAt: row.deletedAt,
-            userID: row.userID,
-            displayUnit: displayUnit,
-            e1RMFormula: e1RMFormula,
-            theme: theme,
-            defaultRoundingIncrement: defaultRoundingIncrement,
-            defaultRoundingStrategy: defaultRoundingStrategy,
-            dashboardExerciseIDs: dashboardExerciseIDs
-        )
+        row.carryingPreferences(of: self)
     }
 }
 

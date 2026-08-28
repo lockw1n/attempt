@@ -90,15 +90,37 @@ struct PlateLoadingSummaryTests {
         // The two sit one under the other as FR-1.4.4's pair, which is the column a fixed fraction
         // width exists for: at the denomination step they would read `100 kg` over `102.5 kg`.
         #expect(
-            PlateLoadingSummary.load(Weight(grams: 100_000), in: .kilograms, locale: Self.english)
+            PlateLoadingSummary.load(
+                Weight(grams: 100_000), in: WeightDisplay(unit: .kilograms), locale: Self.english)
                 == "100.0 kg")
         #expect(
-            PlateLoadingSummary.load(Weight(grams: 102_500), in: .kilograms, locale: Self.english)
+            PlateLoadingSummary.load(
+                Weight(grams: 102_500), in: WeightDisplay(unit: .kilograms), locale: Self.english)
                 == "102.5 kg")
         // The same weight as a plate, which is what makes the split visible.
         #expect(
             PlateLoadingSummary.render(Weight(grams: 100_000), in: .kilograms, locale: Self.english)
                 == "100 kg")
+    }
+
+    /// `G-3.3` is the user's setting and not a constant, so a load follows what they chose — the
+    /// denominations beside it deliberately do not.
+    @Test("A configured step reaches a load and leaves the denominations alone")
+    func aConfiguredStepReachesLoads() {
+        let whole = WeightDisplay(unit: .kilograms, precision: .whole)
+
+        #expect(
+            PlateLoadingSummary.load(Weight(grams: 102_500), in: whole, locale: Self.english)
+                == "103 kg")
+        #expect(
+            PlateLoadingSummary.load(
+                Weight(grams: 102_500),
+                in: WeightDisplay(unit: .kilograms, precision: .quarter),
+                locale: Self.english) == "102.50 kg")
+        // The plate is a denomination and keeps its own step whatever the reading setting says.
+        #expect(
+            PlateLoadingSummary.render(Weight(grams: 1_250), in: .kilograms, locale: Self.english)
+                == "1.25 kg")
     }
 
     @Test("The editor's row shows the plates for a target that loads")

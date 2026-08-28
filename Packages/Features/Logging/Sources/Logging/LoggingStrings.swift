@@ -47,15 +47,6 @@ enum LoggingStrings {
     /// The way into the exercise library from the session surface.
     static let trainLibraryAction = resource("logging.train.library.action")
 
-    /// The heading over `NFR-1.9`'s toggle.
-    static let trainScreenWakeSection = resource("logging.train.screen-wake.section")
-
-    /// The toggle itself (`NFR-1.9`).
-    static let trainScreenWakeLabel = resource("logging.train.screen-wake.label")
-
-    /// What the toggle does, in the one sentence the label has no room for.
-    static let trainScreenWakeHint = resource("logging.train.screen-wake.hint")
-
     /// The heading when the workouts could not be read.
     static let trainErrorHeadline = resource("logging.train.error.headline")
 
@@ -448,7 +439,7 @@ enum LoggingStrings {
             trainEmptyHeadline, trainEmptyMessage, trainStartAction, trainDateSection,
             trainDatePicker, trainDateHint, trainInProgressSection, trainInProgressDay,
             trainInProgressStarted, trainInProgressResume, trainLibraryAction,
-            trainScreenWakeSection, trainScreenWakeLabel, trainScreenWakeHint, trainErrorHeadline,
+            trainErrorHeadline,
             trainErrorMessage, trainStartErrorMessage, sessionTitle, sessionSummarySection,
             sessionDay, sessionStarted, sessionEmptyHeadline, sessionEmptyMessage,
             sessionFinishAction, sessionDiscardAction, sessionDiscardConfirmTitle,

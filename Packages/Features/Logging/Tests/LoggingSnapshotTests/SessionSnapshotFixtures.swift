@@ -422,25 +422,6 @@
             return UUID(uuidString: "0F5A1E24-9B7D-4C31-8E62-00000000\(padded)") ?? UUID()
         }
 
-        /// A preference in a named position, over storage no other test can see.
-        ///
-        /// **A fresh suite each time, removed as soon as it has been read.** A fixed name would
-        /// outlive the run and be inherited by the next one — harmless to a rendering that does not
-        /// draw the control, and exactly the kind of leftover that makes a later test lie.
-        ///
-        /// - Parameter isEnabled: Which position to build. It does not reach the rendering — see the
-        ///   note on the suite — but a preference built at random would still be the wrong subject.
-        /// - Returns: The preference.
-        static func preference(isEnabled: Bool) -> ScreenWakePreference {
-            let name = "snapshots.\(UUID().uuidString)"
-            guard let defaults = UserDefaults(suiteName: name) else {
-                return ScreenWakePreference(defaults: .standard)
-            }
-            defaults.set(isEnabled, forKey: "logging.screen-wake.enabled")
-            let preference = ScreenWakePreference(defaults: defaults)
-            defaults.removePersistentDomain(forName: name)
-            return preference
-        }
     }
 
     extension WorkoutSession {

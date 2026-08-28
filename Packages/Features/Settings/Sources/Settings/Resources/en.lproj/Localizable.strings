@@ -12,7 +12,9 @@
 "settings.landing.units.pounds" = "lb";
 
 "settings.landing.write-error.title" = "Could not save";
+"settings.landing.write-error.message" = "That preference was not stored. Try setting it again.";
 "settings.landing.load-error.title" = "Settings unavailable";
+"settings.landing.load-error.message" = "Your preferences could not be read just now.";
 "settings.landing.load-error.retry" = "Try again";
 
 /* FR-1.7.2: the e1RM formula. Five of the six names are their authors' and are not translated in
@@ -29,9 +31,45 @@
 "settings.landing.estimator.wathan" = "Wathan";
 "settings.landing.estimator.rpebased" = "RPE-based";
 
-/* Scaffolding, deleted with the read-outs it labels when the full preferences surface lands. */
-"settings.landing.scaffold.title" = "Not built yet";
-"settings.landing.scaffold.appearance" = "Appearance";
+/* G-3.3: how many decimals a weight READS as. "Automatic" is the absence of a choice, not a
+   value — the factory step depends on the unit (0.5 kg but 1 lb), so a stored number would become
+   half-pound steps the moment the unit moved. The detail line says what this is NOT, because the
+   loading increment below is the other rounding and the two are routinely confused. */
+"settings.landing.precision.picker" = "Weight precision";
+"settings.landing.precision.automatic" = "Automatic";
+"settings.landing.precision.detail" = "How precisely weights are written on screen. It does not change what you load or what is stored.";
+
+/* FR-1.7.1: how far back an estimate looks. */
+"settings.landing.lookback.picker" = "Lookback";
+"settings.landing.lookback.detail" = "Estimates come from your best qualifying set inside this window.";
+
+/* FR-1.5.1.6: the OTHER rounding — what a bar can take, not what a number reads as. New exercises
+   start from this step. The direction names describe the lift rather than the arithmetic: a lifter
+   asks for the lighter or heavier bar, not for a floor. */
+"settings.landing.rounding.title" = "Loading";
+"settings.landing.rounding.increment" = "Default increment";
+"settings.landing.rounding.strategy" = "Rounding";
+"settings.landing.rounding.detail" = "The smallest change you can make on the bar. New exercises start here; each one can differ.";
+"settings.landing.rounding.strategy.nearest" = "Nearest";
+"settings.landing.rounding.strategy.down" = "Lighter";
+"settings.landing.rounding.strategy.up" = "Heavier";
+
+/* FR-1.10.2. "System" means the device's setting, which is why a fresh install stores Dark rather
+   than System: G-7.1's dark is what the app adopts before a preference exists, and picking System
+   is a preference. The accent is a read-out and not a picker — G-7.2 says one accent. */
+"settings.landing.appearance.title" = "Appearance";
+"settings.landing.appearance.theme" = "Theme";
+"settings.landing.appearance.theme.system" = "System";
+"settings.landing.appearance.theme.light" = "Light";
+"settings.landing.appearance.theme.dark" = "Dark";
+"settings.landing.appearance.accent" = "Accent";
+"settings.landing.appearance.accent.value" = "Orange";
+"settings.landing.appearance.accent.detail" = "One accent throughout, for actions, active state and emphasis.";
+
+/* NFR-1.9. The control was on the training screen while the settings row had no column for it. */
+"settings.landing.workout.title" = "During a workout";
+"settings.landing.workout.keep-awake" = "Keep screen awake";
+"settings.landing.workout.keep-awake.hint" = "The screen stays on while a workout is in progress, and sleeps normally the rest of the time.";
 
 /* FR-1.10.3: the way into the gyms. The screen behind it is the logging module's — one screen for
    both this row and the plate calculator — so its own copy lives there and this is only the door. */
@@ -86,3 +124,71 @@
 "settings.bodyweight.form.cancel.action" = "Cancel";
 "settings.bodyweight.form.refusal.not-a-weight" = "Enter what you weighed as a number.";
 "settings.bodyweight.form.refusal.not-positive" = "A reading has to be more than zero.";
+
+/* FR-1.10.4: what Health access this app has, and the one lever over it. THE COPY NEVER SAYS
+   GRANTED OR DENIED. iOS does not disclose a read authorization to the app that asked — telling it
+   a person refused would itself be a disclosure — so the furthest any of these lines goes is that
+   the request has been made. "Requested" is that word; a status.granted key would be a sentence the
+   app cannot know is true.
+
+   THE PATH IS SPELLED OUT because Health publishes no deep link. Opening it lands on Summary and
+   the switch is several taps further in, so the taps are written beside the button rather than left
+   to be searched for. Re-check this line against the OS when the Health app is redesigned — it
+   names real labels in a real app.
+
+   IT STOPS AT THE APPS LIST AND DOES NOT PROMISE THIS APP IS IN IT. Measured on iOS 26.5: after
+   the prompt was REFUSED, Health's Apps list read "None", under a caption about apps that request
+   permission to UPDATE health data — and this app only ever reads. Whether a refused read-only app
+   is ever listed there was not settled, so the copy names the place and leaves the last step
+   unclaimed rather than sending someone to look for a row that may not exist. */
+"settings.landing.health.row" = "Health access";
+"settings.landing.health.detail" = "What Attempt reads from Health, and how to change it";
+"settings.health.title" = "Health access";
+"settings.health.status.title" = "Status";
+"settings.health.status.not-asked" = "Not requested";
+"settings.health.status.answered" = "Requested";
+"settings.health.disclosure.detail" = "Attempt only reads body mass, and only on this device. iOS does not tell an app whether a health read was allowed, so this screen can say that the request was made and no more. If an import brings back nothing, that may mean access was declined, or that Health holds no weigh-ins.";
+"settings.health.prompt.title" = "Where the prompt comes from";
+"settings.health.prompt.detail" = "Attempt asks for body mass the first time you import from Health, and never at launch.";
+"settings.health.prompt.row.detail" = "Import from Health lives here";
+"settings.health.change.title" = "Changing it";
+"settings.health.change.action" = "Open Health";
+"settings.health.change.path" = "In Health, tap your picture, then Apps under Privacy. Access cannot be asked for a second time from inside Attempt.";
+"settings.health.change.failed" = "Health did not open from here. Open the Health app from the Home Screen, then tap your picture and Apps under Privacy.";
+"settings.health.unavailable.headline" = "Health is not on this device";
+"settings.health.unavailable.message" = "There is no health data here to read, so there is no access to hold.";
+"settings.health.unknown.headline" = "Access unknown";
+"settings.health.unknown.message" = "Health did not say how far the request has got.";
+
+/* FR-1.10.5: About. The row into it sits at the bottom of the landing, after the preferences and
+   the two logs — it is the one thing here that is about the app rather than about the lifter. */
+"settings.landing.about.title" = "About";
+"settings.landing.about.row" = "About Attempt";
+"settings.landing.about.detail" = "Version, acknowledgements and privacy.";
+
+"settings.about.title" = "About";
+
+/* The two numbers are read from the bundle at runtime and are never copy — these are their labels,
+   and the value beside each is verbatim. "Unknown" is what a bundle declaring neither says; only
+   the app target declares them, so it is reachable outside the app and nowhere in it. */
+"settings.about.version.title" = "This build";
+"settings.about.version.short" = "Version";
+"settings.about.version.build" = "Build";
+"settings.about.version.unknown" = "Unknown";
+
+/* Acknowledgements. The first line is a measurement: no manifest in this repo names a remote
+   package, so there is no licence to reproduce. The second is what is genuinely someone else's —
+   the estimators and the RPE chart are published work this app implements. */
+"settings.about.acknowledgements.title" = "Acknowledgements";
+"settings.about.acknowledgements.code" = "Attempt bundles no third-party code. Everything it runs was written for it.";
+"settings.about.acknowledgements.formulas" = "Its one-rep-max estimators and its RPE chart are their authors' published work, implemented here from the literature rather than licensed.";
+
+/* Privacy (FR-1.10.5, G-5.1 – G-5.4). Every sentence is about the build the version above names,
+   which is the whole reason this document is in the app rather than behind a link: it cannot be
+   newer or older than the binary it ships in, and it cannot go stale without the build going
+   with it. Whichever task turns on sync, telemetry or an account owns rewriting it. */
+"settings.about.privacy.title" = "Privacy";
+"settings.about.privacy.storage" = "Your training log is stored on this device. This version has no account, no sync and no server behind it, so nothing you log is sent anywhere.";
+"settings.about.privacy.health" = "Body mass is read from Health only after you allow it, and only when you ask for an import. Attempt writes nothing back to Health, and what it reads stays on this device.";
+"settings.about.privacy.tracking" = "There is no analytics, no advertising and no tracking. No third party is told anything about you or your training.";
+"settings.about.privacy.currency" = "This policy describes the build named above. It ships inside the app, so it is never newer or older than the version you are running.";

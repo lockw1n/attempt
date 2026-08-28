@@ -61,7 +61,10 @@ extension DisplayPrecision {
     /// 1000 → 0 ("226"), 500 → 1 ("102.5"), 250 → 2 ("101.25"), 1 → 3. Derived rather than stored
     /// so the two cannot disagree, and chosen so the step divides the scaling factor exactly, which
     /// is what makes the rendering lossless.
-    var fractionDigits: Int {
+    ///
+    /// Public because a settings picker has to render the step itself — "0.25 kg" — and a second
+    /// derivation of this would disagree with the formatter's at exactly the steps that need it.
+    public var fractionDigits: Int {
         let remainder = milliUnits % 1000
         if remainder == 0 { return 0 }
         if remainder % 100 == 0 { return 1 }

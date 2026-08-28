@@ -52,6 +52,26 @@ public struct BodyweightSample: Hashable, Sendable {
     }
 }
 
+/// How far `FR-1.10.4`'s authorization has got, as much of it as a source will say.
+///
+/// **There is no granted case, and that is the whole shape of this type.** A health source refuses
+/// to disclose whether a *read* was allowed — telling an app that a person said no is itself a
+/// disclosure — so the furthest any source goes is "the question has been put". Copy written over
+/// this must never claim access; see ``BodyweightSampleSource/authorize()``.
+public enum BodyweightSourceAuthorization: Hashable, Sendable, CaseIterable {
+    /// This device has no source at all, so there is nothing to authorize.
+    case unavailable
+
+    /// Nobody has been asked yet. Asking would put a prompt on screen.
+    case notAsked
+
+    /// The question has been put and answered. **Which answer is not disclosed.**
+    case answered
+
+    /// The source could not say — an error, or a case this build does not know.
+    case unknown
+}
+
 /// Where `FR-1.8.2`'s readings come from — HealthKit in the app, a fake in a test.
 ///
 /// **A protocol so this module names no Apple health framework.** `TR-1.3` puts the screen here and
@@ -75,4 +95,22 @@ public protocol BodyweightSampleSource {
 
     /// Every bodyweight reading the source will disclose, in any order.
     func samples() async throws -> [BodyweightSample]
+
+    /// How far authorization has got — `FR-1.10.4`'s only readable fact.
+    ///
+    /// **It does not prompt**, which is what separates it from ``authorize()``: `TR-1.9` owes the
+    /// prompt to first use of the import, so a settings screen that reported status by asking would
+    /// move it to whenever that screen was opened.
+    ///
+    /// Non-throwing on purpose: a source that fails to answer has already got a case for it
+    /// (``BodyweightSourceAuthorization/unknown``), so a screen over this needs no failed phase.
+    ///
+    /// **A source whose ``isAvailable`` is `false` answers
+    /// ``BodyweightSourceAuthorization/unavailable`` here, and that is the conformer's obligation**:
+    /// nothing above this call checks availability a second time, so a source answering `notAsked`
+    /// on a device with no health data would put a screen on the path to a prompt that can never be
+    /// raised.
+    ///
+    /// - Returns: What the source will say about the request.
+    func authorizationState() async -> BodyweightSourceAuthorization
 }

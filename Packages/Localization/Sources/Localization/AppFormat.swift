@@ -24,6 +24,22 @@ public enum AppFormat {
         WeightStyle(unit: unit, precision: precision, locale: locale)
     }
 
+    /// A mass as the user's row says to show it — the unit and the step together (`G-3.1`,
+    /// `G-3.3`).
+    ///
+    /// **The overload every screen that renders a logged or estimated load should reach for.** The
+    /// two below take one half of the pairing and derive or hard-code the other, which is right
+    /// only where the step is the *screen's* question rather than the user's — a tonnage total, a
+    /// bodyweight reading, a plate breakdown.
+    ///
+    /// - Parameters:
+    ///   - display: The unit and step to render in.
+    ///   - locale: The locale to render for.
+    /// - Returns: The style.
+    public static func weight(_ display: WeightDisplay, locale: Locale) -> WeightStyle {
+        WeightStyle(unit: display.unit, precision: display.precision, locale: locale)
+    }
+
     /// A mass in `unit` at `G-3.3`'s default step for that unit — 0.5 kg, or 1 lb.
     ///
     /// - Parameters:
@@ -32,6 +48,32 @@ public enum AppFormat {
     /// - Returns: The style.
     public static func weight(in unit: MassUnit, locale: Locale) -> WeightStyle {
         WeightStyle(unit: unit, precision: .default(for: unit), locale: locale)
+    }
+
+    /// A display step, rendered as the mass it is — `0.25 kg`, `1 lb` (`G-3.3`).
+    ///
+    /// **Not a ``PowerliftingCore/Weight``**, and that is why it does not go through
+    /// ``weight(_:locale:)``: a step is a quantity of the *display* unit, exactly, where a weight
+    /// is grams converted into one. Rounding 0.5 lb into grams and back would render it as 0.5 lb
+    /// by luck rather than by construction.
+    ///
+    /// - Parameters:
+    ///   - precision: The step to render.
+    ///   - unit: The unit it is a step of.
+    ///   - locale: The locale to render for.
+    /// - Returns: The rendered step.
+    public static func weightStep(
+        _ precision: DisplayPrecision, in unit: MassUnit, locale: Locale
+    ) -> String {
+        Measurement(value: Double(precision.milliUnits) / 1000, unit: unit.foundationUnit)
+            .formatted(
+                .measurement(
+                    width: .abbreviated,
+                    usage: .asProvided,
+                    numberFormatStyle: .number.precision(
+                        .fractionLength(precision.fractionDigits))
+                )
+                .locale(locale))
     }
 
     /// A count — reps, sets, a plate multiplier.

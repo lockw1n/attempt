@@ -1,4 +1,5 @@
 import Foundation
+import RepositoryInterface
 
 /// How far back an estimated one-rep maximum looks (`FR-1.7.1`).
 ///
@@ -20,8 +21,10 @@ import Foundation
 /// **No upper bound.** A lookback is a floor on age, so a session dated ahead of the device clock —
 /// skew, a timezone move — stays in rather than vanishing from a screen the user just logged it on.
 public struct E1RMLookback: Sendable, Hashable {
-    /// `FR-1.7.1`'s default: ninety days.
-    public static let `default` = E1RMLookback(days: 90)
+    /// `FR-1.7.1`'s default: ninety days, read from the settings record rather than restated —
+    /// it is the window a lifter who has never configured one gets, which makes the number a
+    /// preference default rather than a property of this type.
+    public static let `default` = E1RMLookback(days: UserSettings.defaultE1RMLookbackDays)
 
     /// How many days back the window reaches. Values below one are clamped to one — a zero-day
     /// window is one that answers nothing, which is not a configuration anybody means.

@@ -3,6 +3,7 @@ import Logging
 import Persistence
 import RepositoryInterface
 import SeedImport
+import Settings
 
 /// The live objects the app is built over, opened once at launch (`TR-0.1`, `G-2.2`).
 ///
@@ -64,6 +65,10 @@ struct AppDependencies {
         /// Whether the screen is held awake during one (`NFR-1.9`).
         let screenWake: ScreenWakePreference
 
+        /// How every screen is drawn (`FR-1.10.2`, `G-3.3`) — one for the whole app, because a
+        /// theme picked in Settings has to reach the three tabs the user is not looking at.
+        let display: DisplayPreferences
+
         /// The set modifiers the editor offers (`FR-1.2.8`) — one list for the whole app, so a term
         /// added in one sheet is offered by the next.
         let modifiers: SetModifierVocabulary
@@ -117,6 +122,7 @@ struct AppDependencies {
                     ),
                     records: records,
                     screenWake: ScreenWakePreference(),
+                    display: DisplayPreferences(),
                     modifiers: SetModifierVocabulary(),
                     equipment: PlateCalculatorStore(
                         repository: stack.equipment, settings: stack.settings)
@@ -161,21 +167,53 @@ struct AppDependencies {
         _ = try? await SeedImporter(exercises: repositories.exercises).importBundledCatalogue()
     }
 
-    /// Puts the stored e1RM formula into the recompute pipeline (`FR-1.7.2`, `FR-1.7.3`).
+    /// Puts the stored preferences into the objects that hold them at runtime (`FR-1.7.1`,
+    /// `FR-1.7.2`, `FR-1.7.3`, `FR-1.10.2`, `NFR-1.9`).
     ///
-    /// **The picker writes the column and nothing reads it back.** `PersonalRecordRecomputer` holds
-    /// the formula estimates are produced under and starts every launch at
-    /// `E1RMFormulaID.defaultFormula`, so without this a formula chosen in Settings survives the
-    /// write and not the relaunch — the row would say Brzycki and every screen would show Epley.
+    /// **Each of these writes the column and nothing reads it back.** `PersonalRecordRecomputer`
+    /// holds the formula and the window estimates are produced under and starts every launch at
+    /// their defaults; the appearance and the screen-wake are the same shape one layer up. Without
+    /// this a preference chosen in Settings survives the write and not the relaunch — the row would
+    /// say Brzycki and every screen would show Epley.
     ///
     /// **A failure is swallowed, on `importSeedCatalogue()`'s rule**: the store's own read is what
     /// failed, Settings will report it on the screen that owns it, and the fallback is the default
-    /// formula rather than no estimates at all.
+    /// preference rather than no estimates at all.
     func adoptStoredPreferences() async {
         guard case .open(let repositories, let stores) = state,
             let settings = try? await repositories.settings.settings()
         else { return }
+        await adopt(await migratingLegacyScreenWake(settings, into: repositories.settings), stores)
+    }
+
+    /// Hands one row to each object that holds part of it.
+    private func adopt(_ settings: UserSettings, _ stores: Stores) async {
         await stores.records.formulaDidChange(to: settings.e1RMFormula)
+        await stores.records.lookbackDidChange(to: E1RMLookback(days: settings.e1RMLookbackDays))
+        stores.display.adopt(settings)
+        stores.screenWake.adopt(settings.keepScreenAwake)
+    }
+
+    /// Moves `NFR-1.9`'s preference out of the defaults key it lived under while the settings row
+    /// had no column for it, then forgets the key.
+    ///
+    /// **The key wins over the column, once.** A lifter who turned the screen-wake off under the
+    /// old home would otherwise find it back on, the column arriving at its own default — and the
+    /// column's default is *on*, so the loss is silent and always in the same direction. A failed
+    /// write leaves the key in place, so the next launch tries again.
+    private func migratingLegacyScreenWake(
+        _ settings: UserSettings, into repository: any SettingsRepository
+    ) async -> UserSettings {
+        guard let legacy = ScreenWakePreference.legacyStoredValue() else { return settings }
+        guard legacy != settings.keepScreenAwake else {
+            ScreenWakePreference.clearLegacyStoredValue()
+            return settings
+        }
+        var migrated = settings
+        migrated.keepScreenAwake = legacy
+        guard (try? await repository.save(migrated)) != nil else { return settings }
+        ScreenWakePreference.clearLegacyStoredValue()
+        return migrated
     }
 
     /// An empty store that is never written to disk — what a preview wants, and the reason

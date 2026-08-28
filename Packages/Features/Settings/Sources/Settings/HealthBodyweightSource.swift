@@ -30,6 +30,34 @@
             try await store.requestAuthorization(toShare: [], read: [Self.bodyMass])
         }
 
+        /// How far `FR-1.10.4`'s authorization has got — never whether it was granted.
+        ///
+        /// **`HKHealthStore.authorizationStatus(for:)` is the wrong call and answering it here would
+        /// be a lie.** Each of its three cases is about *saving* — "may save objects of the
+        /// specified type" — and this source asks to share nothing, so it would answer
+        /// `notDetermined` forever whatever the person chose. The request status is the one signal
+        /// about a read that HealthKit will part with, and all it says is whether asking again would
+        /// still prompt.
+        public func authorizationState() async -> BodyweightSourceAuthorization {
+            guard isAvailable else { return .unavailable }
+            do {
+                let status = try await store.statusForAuthorizationRequest(
+                    toShare: [], read: [Self.bodyMass])
+                switch status {
+                case .shouldRequest: return .notAsked
+                case .unnecessary: return .answered
+                case .unknown: return .unknown
+                // A case this build does not know is not a grant, so it reads as the one that
+                // claims nothing — the four-way rule's "refuse to guess" answer.
+                @unknown default: return .unknown
+                }
+            } catch {
+                // HealthKit already has a case for a request status it could not determine, so a
+                // thrown error is that case rather than a second failure mode for a screen to draw.
+                return .unknown
+            }
+        }
+
         /// Every body-mass sample, newest first.
         ///
         /// **The unit crossing is not here** — this asks HealthKit for kilograms and hands them to

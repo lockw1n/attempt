@@ -67,16 +67,6 @@
             }
         }
 
-        @Test func screenWake() throws {
-            // One position, not both: the switch is UIKit-backed and rasterises as a placeholder, so
-            // a second reference with the preference off would be the same picture. What this checks
-            // is that the label and its sentence stay legible beside a control-sized hole —
-            // `NFR-1.10`'s ceiling is where that stops being obvious.
-            try assertSnapshots(named: "Train-screen-wake") {
-                ScreenWakeSection(preference: Fixtures.preference(isEnabled: true))
-            }
-        }
-
         @Test func readFailed() throws {
             try assertSnapshots(named: "Train-error") {
                 ErrorStateView(

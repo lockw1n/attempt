@@ -107,3 +107,100 @@ struct UserSettingsEntityTests {
         #expect(stored.defaultRoundingIncrementGrams == 5_000)
     }
 }
+
+/// The three columns the preferences screen added (`G-3.3`, `FR-1.7.1`, `NFR-1.9`).
+@Suite("Settings preferences added after the first screen")
+struct UserSettingsPreferenceColumnTests {
+    @Test("All three survive a store and a read")
+    func columnsRoundTrip() throws {
+        let context = try makeSupportingContext()
+        context.insert(
+            makeSettings(
+                userID: UUID(),
+                displayPrecisionMilliUnits: 250,
+                e1RMLookbackDays: 45,
+                keepScreenAwake: false))
+        try context.saveStamped()
+
+        let stored = try #require(
+            try context.fetch(FetchDescriptor<UserSettingsEntity>.notDeleted()).first)
+
+        #expect(stored.record.displayPrecision == .quarter)
+        #expect(stored.record.e1RMLookbackDays == 45)
+        #expect(stored.record.keepScreenAwake == false)
+    }
+
+    /// `nil` is "never chosen", which the record turns into the unit's own step rather than into a
+    /// number the user was never shown — 0.5 kg but 1 lb.
+    @Test("An unchosen step is absent rather than zero, and resolves against the unit")
+    func absentStepFollowsTheUnit() throws {
+        let context = try makeSupportingContext()
+        context.insert(
+            makeSettings(userID: UUID(), displayUnit: .pounds, displayPrecisionMilliUnits: nil))
+        try context.saveStamped()
+
+        let stored = try #require(
+            try context.fetch(FetchDescriptor<UserSettingsEntity>.notDeleted()).first)
+
+        #expect(stored.record.displayPrecision == nil)
+        #expect(stored.record.weightDisplay.precision == .whole)
+    }
+
+    /// A step below one milli-unit maps to no `DisplayPrecision`, and the mapping degrades to the
+    /// absent case rather than handing a zero step to something that divides by it.
+    @Test("A stored step this app cannot map costs that preference and nothing else")
+    func anUnmappableStepDegrades() throws {
+        let context = try makeSupportingContext()
+        context.insert(
+            makeSettings(userID: UUID(), theme: .light, displayPrecisionMilliUnits: 0))
+        try context.saveStamped()
+
+        let stored = try #require(
+            try context.fetch(FetchDescriptor<UserSettingsEntity>.notDeleted()).first)
+
+        #expect(stored.record.displayPrecision == nil)
+        #expect(stored.record.theme == .light)
+    }
+
+    /// "Automatic" is a choice the user can come back to, so the column has to *clear*. An update
+    /// that only ever wrote a step the user had chosen would pin the old one across every later
+    /// relaunch, and this is the one optional column this entity writes through `update(from:)`.
+    @Test("Clearing the step clears the column rather than pinning the last one")
+    func aClearedStepIsWrittenBack() throws {
+        let context = try makeSupportingContext()
+        let row = makeSettings(userID: UUID(), displayPrecisionMilliUnits: 250)
+        context.insert(row)
+        try context.saveStamped()
+        var edited = row.record
+        edited.displayPrecision = nil
+
+        row.update(from: edited)
+        try context.saveStamped()
+
+        #expect(row.displayPrecisionMilliUnits == nil)
+        #expect(row.record.displayPrecision == nil)
+        // The unit's own step is what stands once the choice is gone — pounds here, so a whole one.
+        #expect(row.record.weightDisplay.precision == .whole)
+    }
+
+    /// A write that carries the row's preferences must carry every one of them: the columns are
+    /// added to the record, and a store keeping its own list drops the newest silently.
+    @Test("A preference-only write carries the columns added last")
+    func aPreferenceWriteCarriesEveryColumn() throws {
+        let context = try makeSupportingContext()
+        let row = makeSettings(userID: UUID())
+        context.insert(row)
+        try context.saveStamped()
+        var edited = row.record
+        edited.displayPrecision = .tenth
+        edited.e1RMLookbackDays = 180
+        edited.keepScreenAwake = true
+
+        row.update(from: edited)
+        try context.saveStamped()
+
+        #expect(row.record.displayPrecision == .tenth)
+        #expect(row.record.e1RMLookbackDays == 180)
+        #expect(row.record.keepScreenAwake)
+    }
+}

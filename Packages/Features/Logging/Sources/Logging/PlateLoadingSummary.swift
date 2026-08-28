@@ -70,22 +70,27 @@ enum PlateLoadingSummary {
             .format(weight)
     }
 
-    /// One *load* — a target, or what a loaded bar comes to — at `G-3.3`'s display step.
+    /// One *load* — a target, or what a loaded bar comes to — at the user's display step
+    /// (`G-3.1`, `G-3.3`).
     ///
     /// **Not ``render(_:in:locale:)``, and the split is the whole argument for that method read the
     /// other way.** The coarse step is right for a denomination because a plate list is a row of
     /// distinct objects; a load is the number every other surface in the app draws, and here two of
     /// them sit one under the other as `FR-1.4.4`'s pair. That is exactly the column the fixed
     /// fraction width exists for — at the coarse step the same pair comes out as `100 kg` over
-    /// `102.5 kg` — and the target is drawn at the step the field the user typed it into uses.
+    /// `102.5 kg`.
+    ///
+    /// **It takes the whole pairing rather than a unit**, which is what keeps "every other surface"
+    /// true: a lifter who configured whole-kilogram readings sees `103 kg` on their set rows, and a
+    /// calculator deriving its own step would answer `102.5 kg` beside them.
     ///
     /// - Parameters:
     ///   - weight: The load to draw.
-    ///   - unit: The unit to draw it in (`G-3.1`).
+    ///   - display: The unit and step to draw it in.
     ///   - locale: What to render it for (`G-3.4`).
     /// - Returns: The rendered load, with its unit symbol.
-    static func load(_ weight: Weight, in unit: MassUnit, locale: Locale) -> String {
-        AppFormat.weight(in: unit, locale: locale).format(weight)
+    static func load(_ weight: Weight, in display: WeightDisplay, locale: Locale) -> String {
+        AppFormat.weight(display, locale: locale).format(weight)
     }
 
     /// The coarsest step, down to a quarter unit, that leaves `weight` where it is — or, below

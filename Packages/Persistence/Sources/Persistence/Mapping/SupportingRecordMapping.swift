@@ -180,6 +180,12 @@ extension UserSettingsEntity: RecordMappable {
             defaultRoundingIncrement: Weight(grams: defaultRoundingIncrementGrams),
             defaultRoundingStrategy: RecordVocabulary.resolve(
                 defaultRoundingStrategyRawValue, or: RecordVocabulary.roundingStrategy),
+            // A stored step below one milli-unit maps to no precision, and the record's own
+            // absent case is what it degrades to: the factory step for the unit, which is a
+            // number the user has seen, rather than a division by zero downstream.
+            displayPrecision: displayPrecisionMilliUnits.flatMap(DisplayPrecision.init(milliUnits:)),
+            e1RMLookbackDays: e1RMLookbackDays,
+            keepScreenAwake: keepScreenAwake,
             dashboardExerciseIDs: dashboardExerciseIDs
         )
     }
@@ -194,6 +200,9 @@ extension UserSettingsEntity: RecordMappable {
             theme: record.theme,
             defaultRoundingIncrementGrams: record.defaultRoundingIncrement.grams,
             defaultRoundingStrategy: record.defaultRoundingStrategy,
+            displayPrecisionMilliUnits: record.displayPrecision?.milliUnits,
+            e1RMLookbackDays: record.e1RMLookbackDays,
+            keepScreenAwake: record.keepScreenAwake,
             dashboardExerciseIDs: record.dashboardExerciseIDs,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt
@@ -214,8 +223,11 @@ extension UserSettingsEntity: RecordMappable {
             record.e1RMFormula,
             stored: e1RMFormulaRawValue,
             fallback: RecordVocabulary.e1RMFormula)
+        displayPrecisionMilliUnits = record.displayPrecision?.milliUnits
         themeRawValue = preservingRawValue(
             record.theme, stored: themeRawValue, fallback: RecordVocabulary.theme)
+        e1RMLookbackDays = record.e1RMLookbackDays
+        keepScreenAwake = record.keepScreenAwake
         defaultRoundingIncrementGrams = record.defaultRoundingIncrement.grams
         defaultRoundingStrategyRawValue = preservingRawValue(
             record.defaultRoundingStrategy,
