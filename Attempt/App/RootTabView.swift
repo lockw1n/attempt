@@ -57,8 +57,13 @@ struct RootTabView: View {
         }
     }
 
-    /// What a pushed route shows. Built routes get their screen; the rest still get the placeholder,
-    /// which is deleted case by case as the owning tasks land.
+    /// What a pushed route shows.
+    ///
+    /// **Exhaustive as of `T-1.50`, which is why there is no `default` here any more**: every route
+    /// but `settings.about` now has a screen, and a `default` covering one case is a compiler
+    /// warning — and this target treats warnings as errors (`G-6.4`). Losing it is the better half
+    /// of the trade anyway: a route case added from here on fails to compile until something answers
+    /// it, where the catch-all silently gave it a placeholder.
     @ViewBuilder
     private func destination(for route: Route) -> some View {
         switch route {
@@ -76,8 +81,8 @@ struct RootTabView: View {
             exercisePickerRoot
         case .training(.activeSession):
             activeSessionRoot
-        case .settings(.equipmentProfiles):
-            equipmentProfilesRoot
+        case .settings(let route):
+            settingsDestination(route)
         case .history(.session(let sessionID)):
             pastSessionRoot(sessionID)
         case .history(.calendar):
@@ -86,8 +91,23 @@ struct RootTabView: View {
             recentRecordsRoot
         case .dashboard(.estimatedMaxExercises):
             tiledExerciseSelectionRoot
-        default:
-            PlaceholderScreen(route: route)
+        }
+    }
+
+    /// What a pushed Settings route shows.
+    ///
+    /// Split out of ``destination(for:)`` rather than listed there with the rest: that switch is one
+    /// case per screen in the app and this tab's share of it is what took it past the complexity the
+    /// lint rules allow.
+    @ViewBuilder
+    private func settingsDestination(_ route: SettingsRoute) -> some View {
+        switch route {
+        case .equipmentProfiles:
+            equipmentProfilesRoot
+        case .bodyweight:
+            bodyweightRoot
+        case .about:
+            PlaceholderScreen(route: .settings(route))
         }
     }
 
@@ -171,6 +191,25 @@ struct RootTabView: View {
         switch dependencies.state {
         case .open(_, let stores):
             EquipmentProfilesView(store: stores.equipment)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// The bodyweight log (`FR-1.8.1`, `FR-1.8.3`), or the reason it cannot be shown.
+    ///
+    /// Two repositories, because a reading is two facts from two tables: the log itself, and the
+    /// settings row that decides which unit it reads in.
+    @ViewBuilder
+    private var bodyweightRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, _):
+            BodyweightLogView(
+                repository: repositories.bodyweight,
+                settings: repositories.settings,
+                // FR-1.8.2. Constructing it prompts for nothing — the screen's own command is what
+                // asks, which is TR-1.9's "on first use, not at launch".
+                health: HealthBodyweightSource())
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

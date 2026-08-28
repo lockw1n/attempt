@@ -38,3 +38,51 @@
 "settings.landing.equipment.title" = "Equipment";
 "settings.landing.equipment.row" = "Gyms";
 "settings.landing.equipment.detail" = "Bar, collars and the plates you have";
+
+/* FR-1.8: the way into the bodyweight log. The screen behind it is this module's too, unlike the
+   gyms, but the row still only names what is there. */
+"settings.landing.bodyweight.title" = "Body";
+"settings.landing.bodyweight.row" = "Bodyweight";
+"settings.landing.bodyweight.detail" = "Weigh-ins and their seven-day average";
+
+/* FR-1.8.1 and FR-1.8.3: the log itself. The average is over the readings there are in the seven
+   days ending on a given day, not over seven days each holding one — a lifter does not weigh in
+   every morning, and the copy that says what would be enough is the average.none line below
+   (FR-1.13.3).
+
+   THE CARD AND A ROW NAME TWO DIFFERENT WINDOWS AND MUST NOT SHARE A LABEL. The card is the window
+   ending TODAY; a row's caption is the window ending on that row's OWN day. They disagree whenever
+   the last weigh-in is old — the card refuses while every row below it still carries a figure — so
+   each says which window it means: "current" above, "to this date" on the row. */
+"settings.bodyweight.title" = "Bodyweight";
+"settings.bodyweight.add.action" = "Add reading";
+"settings.bodyweight.average.title" = "Current seven-day average";
+"settings.bodyweight.average.none" = "Weigh in twice within seven days to see your current average.";
+"settings.bodyweight.reading.average" = "7-day average to this date";
+"settings.bodyweight.history.title" = "History";
+"settings.bodyweight.empty.headline" = "No readings yet";
+"settings.bodyweight.empty.message" = "Add what you weighed and the seven-day average follows from the readings.";
+"settings.bodyweight.error.headline" = "Readings unavailable";
+"settings.bodyweight.error.message" = "The bodyweight log could not be read.";
+"settings.bodyweight.write-error.title" = "Could not save";
+
+/* FR-1.8.2 / TR-1.9: the HealthKit import. The detail line is the consent context — G-5.4 says the
+   data stays on the device, and that is worth saying beside the button rather than only in the
+   system prompt. "New readings" is a labelled count and not a plural: zero is the ordinary answer
+   when access was refused, which HealthKit does not disclose. */
+"settings.bodyweight.health.action" = "Import from Health";
+"settings.bodyweight.health.detail" = "Reads body mass from Health on this device. Nothing is sent anywhere.";
+"settings.bodyweight.health.running" = "Reading from Health…";
+"settings.bodyweight.health.result.title" = "Last import";
+"settings.bodyweight.health.error.title" = "Could not import from Health";
+"settings.bodyweight.health.added %lld" = "New readings added: %lld";
+"settings.bodyweight.health.kept %lld" = "Days you had already logged: %lld";
+
+"settings.bodyweight.form.title" = "New reading";
+"settings.bodyweight.form.weight.label" = "Weight";
+"settings.bodyweight.form.date.label" = "Reading date";
+"settings.bodyweight.form.date.hint" = "Today, unless you are entering a reading from an earlier day.";
+"settings.bodyweight.form.save.action" = "Save reading";
+"settings.bodyweight.form.cancel.action" = "Cancel";
+"settings.bodyweight.form.refusal.not-a-weight" = "Enter what you weighed as a number.";
+"settings.bodyweight.form.refusal.not-positive" = "A reading has to be more than zero.";

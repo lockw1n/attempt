@@ -66,5 +66,19 @@ let package = Package(
             dependencies: ["Settings", "RepositoryFakes", "DerivedValues"],
             swiftSettings: settings
         ),
+        // TR-1.12's references for this module's screens. A separate target from the one above for
+        // the reason the other feature packages give — every file in it is `#if os(iOS)`, and
+        // `scripts/snapshot-tests.sh` runs it on a simulator. Add the suite to that script's
+        // `SUITES` list or its references are compared by nothing.
+        .testTarget(
+            name: "SettingsSnapshotTests",
+            dependencies: [
+                "Settings",
+                "RepositoryFakes",
+                .product(name: "SnapshotTesting", package: "DesignSystem"),
+            ],
+            exclude: ["__Snapshots__"],
+            swiftSettings: settings
+        ),
     ]
 )
