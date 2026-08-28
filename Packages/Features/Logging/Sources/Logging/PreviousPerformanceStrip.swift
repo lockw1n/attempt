@@ -30,6 +30,10 @@ struct PreviousPerformanceStrip: View {
     /// Which locale the loads, the counts and the date are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
+    /// `G-3.3`'s step, from the app rather than from this view — `nil` outside the app, where
+    /// the unit's own factory step stands.
+    @Environment(\.displayPrecision) private var displayPrecision
+
     /// The strip, the placeholder, or nothing at all.
     var body: some View {
         switch state {
@@ -93,7 +97,9 @@ struct PreviousPerformanceStrip: View {
             .map {
                 String(
                     localized: LoggingStrings.sessionPreviousSet(
-                        weight: AppFormat.weight(in: unit, locale: locale).format($0.weight),
+                        weight: AppFormat.weight(
+                            WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale
+                        ).format($0.weight),
                         reps: $0.reps.formatted(AppFormat.count(locale: locale))
                     ))
             }

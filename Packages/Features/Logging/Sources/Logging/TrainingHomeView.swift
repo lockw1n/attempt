@@ -22,7 +22,6 @@ import SwiftUI
 /// UIKit-backed.
 public struct TrainingHomeView: View {
     private let store: ActiveSessionStore
-    private let screenWake: ScreenWakePreference
 
     /// The shell's navigation position, for the two commands here that are not `NavigationLink`s.
     ///
@@ -44,14 +43,11 @@ public struct TrainingHomeView: View {
     /// discarded with the screen, which is the right lifetime for a choice the store never saw.
     @State private var day = Date.now
 
-    /// Builds the screen over the store it reads and the preference it toggles.
+    /// Builds the screen over the store it reads.
     ///
-    /// - Parameters:
-    ///   - store: The workout in progress. One per app, built where the repositories are.
-    ///   - screenWake: `NFR-1.9`'s preference, whose control is on this screen while it is a stub.
-    public init(store: ActiveSessionStore, screenWake: ScreenWakePreference) {
+    /// - Parameter store: The workout in progress. One per app, built where the repositories are.
+    public init(store: ActiveSessionStore) {
         self.store = store
-        self.screenWake = screenWake
     }
 
     /// Whichever of the screen's four states is current, then the two things that are true in all of
@@ -65,7 +61,6 @@ public struct TrainingHomeView: View {
             VStack(alignment: .leading, spacing: Spacing.xl.points) {
                 content
                 libraryLink
-                ScreenWakeSection(preference: screenWake)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Spacing.lg.points)
@@ -290,38 +285,6 @@ struct WorkoutDateSection: View {
             }
             .tint(ColorToken.brandAccent)
             Text(LoggingStrings.trainDateHint)
-                .font(Typography.caption.font)
-                .foregroundStyle(ColorToken.textSecondary)
-        }
-    }
-}
-
-/// `NFR-1.9`'s toggle, on the session surface rather than in Settings.
-///
-/// **A stub with a named destination**: `FR-1.10`'s preference list is T-1.60's screen and the
-/// column that would carry this one does not exist in schema v1 (see ``ScreenWakePreference``).
-/// Putting it here rather than in the Settings module also keeps `Settings` from depending on this
-/// one to reach the store the behaviour keys off. Whichever of the two tasks lands second deletes
-/// this section.
-struct ScreenWakeSection: View {
-    /// The preference this toggle sets.
-    let preference: ScreenWakePreference
-
-    /// The toggle and the sentence under it.
-    var body: some View {
-        GroupedSection(Text(LoggingStrings.trainScreenWakeSection)) {
-            Toggle(
-                isOn: Binding(
-                    get: { preference.isEnabled },
-                    set: { preference.setEnabled($0) }
-                )
-            ) {
-                Text(LoggingStrings.trainScreenWakeLabel)
-                    .font(Typography.body.font)
-                    .foregroundStyle(ColorToken.textPrimary)
-            }
-            .tint(ColorToken.brandAccent)
-            Text(LoggingStrings.trainScreenWakeHint)
                 .font(Typography.caption.font)
                 .foregroundStyle(ColorToken.textSecondary)
         }

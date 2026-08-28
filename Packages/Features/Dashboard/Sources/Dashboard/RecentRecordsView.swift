@@ -154,6 +154,10 @@ struct RecentRecordRow: View {
     /// Which locale the load and the date are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
+    /// `G-3.3`'s step, from the app rather than from this view — `nil` outside the app, where
+    /// the unit's own factory step stands.
+    @Environment(\.displayPrecision) private var displayPrecision
+
     /// How large the user reads at — what decides whether the reading is a line or a stack
     /// (`NFR-1.10`).
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -184,9 +188,13 @@ struct RecentRecordRow: View {
                     .font(Typography.metricLabel.font)
                     .foregroundStyle(ColorToken.textSecondary)
                 Spacer(minLength: Spacing.sm.points)
-                Text(record.weight, format: AppFormat.weight(in: unit, locale: locale))
-                    .font(Typography.numericValue.font)
-                    .foregroundStyle(ColorToken.textPrimary)
+                Text(
+                    record.weight,
+                    format: AppFormat.weight(
+                        WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale)
+                )
+                .font(Typography.numericValue.font)
+                .foregroundStyle(ColorToken.textPrimary)
                 Text(record.achievedAt, format: AppFormat.date(locale: locale))
                     .font(Typography.caption.font)
                     .foregroundStyle(ColorToken.textTertiary)

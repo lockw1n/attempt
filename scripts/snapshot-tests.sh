@@ -75,10 +75,10 @@ cd "$(dirname "$0")/.."
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|20"
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|27"
-    "Packages/Features/Logging|Logging|LoggingSnapshotTests|53"
+    "Packages/Features/Logging|Logging|LoggingSnapshotTests|52"
     "Packages/Features/History|History|HistorySnapshotTests|19"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|10"
-    "Packages/Features/Settings|Settings|SettingsSnapshotTests|9"
+    "Packages/Features/Settings|Settings|SettingsSnapshotTests|12"
 )
 
 # The iOS version the committed references were rendered on. See the header: bump it only when

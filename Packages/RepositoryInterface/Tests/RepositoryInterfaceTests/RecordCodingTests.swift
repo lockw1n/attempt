@@ -85,13 +85,24 @@ struct RecordCodingKeyTests {
             ])
     }
 
-    @Test("Settings write ten keys")
+    @Test("Settings write twelve keys")
     func settingsKeys() throws {
         #expect(
             try encodedKeys(of: codingUserSettings()) == [
                 "createdAt", "defaultRoundingIncrement", "defaultRoundingStrategy", "deletedAt",
-                "displayUnit", "e1RMFormula", "id", "theme", "updatedAt", "userID",
+                "displayUnit", "e1RMFormula", "e1RMLookbackDays", "id", "keepScreenAwake", "theme",
+                "updatedAt", "userID",
             ])
+    }
+
+    /// The two optional preferences are absent rather than null where the user never chose, and
+    /// present the moment they did — the rule that lets a never-configured row stay short.
+    @Test("A chosen display step joins the keys; an unchosen one writes nothing")
+    func settingsPrecisionKey() throws {
+        var configured = codingUserSettings()
+        configured.displayPrecision = .quarter
+        #expect(try encodedKeys(of: configured).contains("displayPrecision"))
+        #expect(try !encodedKeys(of: codingUserSettings()).contains("displayPrecision"))
     }
 
     @Test("A cached record writes ten keys")

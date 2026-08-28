@@ -1,4 +1,5 @@
 import Foundation
+import RepositoryInterface
 
 /// Whether the screen is held awake while a workout is being logged (`NFR-1.9`).
 ///
@@ -6,43 +7,28 @@ import Foundation
 /// and belongs to the app target; what this owns is the one boolean the user controls and the rule
 /// that combines it with whether a workout is in progress — which is the half worth a test.
 ///
-/// **Its storage is a stub, deliberately, and `UserDefaults` rather than the settings row.**
-/// `FR-1.10`'s preferences live on ``RepositoryInterface/UserSettings``, which has no column for
-/// this one: schema v1 is frozen and adding a column is a migration, not a screen's business. The
-/// real row is T-1.60's, and it takes this key's value with it — until then a preference the user
-/// set has to survive a relaunch, which an in-memory flag would not.
+/// **Told, not asked, and the stored value is the settings row's** (`UserSettings.keepScreenAwake`).
+/// The preference is set on the Settings screen, in another module that cannot reach this one, so
+/// the app target seeds this at launch and tells it again on every write. Holding a repository here
+/// instead would give one preference two writers, and the settings screen's own write chain exists
+/// precisely because two writers rebuild the same row from the same stale read.
 @Observable
 public final class ScreenWakePreference {
     /// Whether the user wants the screen kept awake during a workout.
-    ///
-    /// **Defaults to on**, which is what `NFR-1.9` describes: the requirement is that the screen
-    /// stays awake and the toggle is the way out of it, not the way into it. A lifter's hands are
-    /// chalked and the phone is on the floor between sets.
     public private(set) var isEnabled: Bool
 
-    @ObservationIgnored private let defaults: UserDefaults
-
-    /// Reads the stored preference, or the default where nothing has been stored.
+    /// Starts at `NFR-1.9`'s default until the stored row is read.
     ///
-    /// - Parameter defaults: Where the preference is kept. The standard suite in the app; a
-    ///   throwaway suite in a test, which is what keeps one test's choice out of the next one's.
-    public init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
-        // `object(forKey:)` rather than `bool(forKey:)`: the latter answers `false` for a key that
-        // has never been written, which is the opposite of this preference's default.
-        isEnabled = defaults.object(forKey: Self.key) as? Bool ?? true
+    /// - Parameter isEnabled: What to assume until the row arrives.
+    public init(isEnabled: Bool = UserSettings.defaultKeepScreenAwake) {
+        self.isEnabled = isEnabled
     }
 
-    /// Stores the user's choice.
+    /// Adopts the value the stored row carries.
     ///
-    /// A method rather than a settable property, so the write to storage cannot be forgotten by a
-    /// caller and so the `@Observable` macro has a plain stored property to work with.
-    ///
-    /// - Parameter enabled: What the user asked for.
-    public func setEnabled(_ enabled: Bool) {
-        guard enabled != isEnabled else { return }
+    /// - Parameter enabled: The stored preference.
+    public func adopt(_ enabled: Bool) {
         isEnabled = enabled
-        defaults.set(enabled, forKey: Self.key)
     }
 
     /// Whether the screen should be held awake right now.
@@ -57,6 +43,26 @@ public final class ScreenWakePreference {
         isEnabled && isActive
     }
 
-    /// The defaults key. T-1.60 migrates whatever is under it into the settings row.
-    static let key = "logging.screen-wake.enabled"
+    /// What the preference's earlier `UserDefaults` home holds, or `nil` where it was never
+    /// written.
+    ///
+    /// This preference lived under a defaults key while the settings row had no column for it. The
+    /// key is read once and cleared, so a lifter who turned the screen-wake off before the column
+    /// existed does not find it back on.
+    ///
+    /// - Parameter defaults: Where to look. The standard suite in the app.
+    /// - Returns: The stored choice, or `nil` if there is none to adopt.
+    public static func legacyStoredValue(in defaults: UserDefaults = .standard) -> Bool? {
+        defaults.object(forKey: legacyKey) as? Bool
+    }
+
+    /// Forgets the legacy key, so the adoption happens exactly once.
+    ///
+    /// - Parameter defaults: Where the key lives.
+    public static func clearLegacyStoredValue(in defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: legacyKey)
+    }
+
+    /// The retired defaults key.
+    static let legacyKey = "logging.screen-wake.enabled"
 }

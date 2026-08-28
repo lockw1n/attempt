@@ -1,5 +1,6 @@
 import Foundation
 import PowerliftingCore
+import RepositoryInterface
 
 /// This module's copy (`G-3.4`), and the only place a Settings string literal is written.
 ///
@@ -32,11 +33,91 @@ enum SettingsStrings {
     /// What changing it does — `FR-1.7.3`'s retroactivity, said before it happens.
     static let estimatorDetail = resource("settings.landing.estimator.detail")
 
-    /// The heading over the read-outs that are not preferences yet.
-    static let scaffoldTitle = resource("settings.landing.scaffold.title")
+    /// What a failed read means, in the user's words rather than the store's.
+    static let loadErrorMessage = resource("settings.landing.load-error.message")
 
-    /// The appearance read-out's label.
-    static let scaffoldAppearance = resource("settings.landing.scaffold.appearance")
+    /// The display-step picker's label (`G-3.3`).
+    static let precisionPicker = resource("settings.landing.precision.picker")
+
+    /// The case that is the absence of a choice: the step follows the unit.
+    static let precisionAutomatic = resource("settings.landing.precision.automatic")
+
+    /// What the step does, and what it deliberately does not do.
+    static let precisionDetail = resource("settings.landing.precision.detail")
+
+    /// The lookback picker's label (`FR-1.7.1`).
+    static let lookbackPicker = resource("settings.landing.lookback.picker")
+
+    /// What the window is for.
+    static let lookbackDetail = resource("settings.landing.lookback.detail")
+
+    /// The loadable-rounding section's header (`FR-1.5.1.6`).
+    static let roundingTitle = resource("settings.landing.rounding.title")
+
+    /// The increment picker's label.
+    static let roundingIncrement = resource("settings.landing.rounding.increment")
+
+    /// The direction picker's label.
+    static let roundingStrategy = resource("settings.landing.rounding.strategy")
+
+    /// What this rounding is, said against the display step above it.
+    static let roundingDetail = resource("settings.landing.rounding.detail")
+
+    /// The appearance section's header (`FR-1.10.2`).
+    static let appearanceTitle = resource("settings.landing.appearance.title")
+
+    /// The theme picker's label.
+    static let themePicker = resource("settings.landing.appearance.theme")
+
+    /// The accent read-out's label.
+    static let accentLabel = resource("settings.landing.appearance.accent")
+
+    /// The one accent there is, named.
+    static let accentValue = resource("settings.landing.appearance.accent.value")
+
+    /// Why it is a read-out and not a picker (`G-7.2`).
+    static let accentDetail = resource("settings.landing.appearance.accent.detail")
+
+    /// The section over `NFR-1.9`'s toggle.
+    static let workoutTitle = resource("settings.landing.workout.title")
+
+    /// The toggle itself.
+    static let keepAwakeLabel = resource("settings.landing.workout.keep-awake")
+
+    /// What it does, in the sentence the label has no room for.
+    static let keepAwakeHint = resource("settings.landing.workout.keep-awake.hint")
+
+    /// A lookback window, as a number of days.
+    ///
+    /// - Parameter days: How far back the window reaches.
+    /// - Returns: The label.
+    static func lookbackDays(_ days: Int) -> LocalizedStringResource {
+        resource("settings.landing.lookback.days \(days)")
+    }
+
+    /// A rounding direction, as a lifter would describe it.
+    ///
+    /// - Parameter strategy: The direction to label.
+    /// - Returns: Its name.
+    static func strategyName(for strategy: RoundingStrategy) -> LocalizedStringResource {
+        switch strategy {
+        case .nearest: resource("settings.landing.rounding.strategy.nearest")
+        case .down: resource("settings.landing.rounding.strategy.down")
+        case .up: resource("settings.landing.rounding.strategy.up")
+        }
+    }
+
+    /// A theme's name (`FR-1.10.2`).
+    ///
+    /// - Parameter theme: The theme to label.
+    /// - Returns: Its name.
+    static func themeName(for theme: ThemePreference) -> LocalizedStringResource {
+        switch theme {
+        case .system: resource("settings.landing.appearance.theme.system")
+        case .light: resource("settings.landing.appearance.theme.light")
+        case .dark: resource("settings.landing.appearance.theme.dark")
+        }
+    }
 
     /// The header over the sections that open another screen.
     static let equipmentTitle = resource("settings.landing.equipment.title")
@@ -88,12 +169,19 @@ enum SettingsStrings {
     /// Every string this module can show, for the test that proves each one resolves.
     static var all: [LocalizedStringResource] {
         [
-            unitsTitle, unitsPicker, writeErrorTitle, loadErrorTitle, loadErrorRetry,
-            estimatorTitle, estimatorPicker, estimatorDetail,
-            scaffoldTitle, scaffoldAppearance, equipmentTitle, equipmentRow,
+            unitsTitle, unitsPicker, writeErrorTitle, loadErrorTitle, loadErrorMessage,
+            loadErrorRetry, estimatorTitle, estimatorPicker, estimatorDetail,
+            precisionPicker, precisionAutomatic, precisionDetail,
+            lookbackPicker, lookbackDetail, lookbackDays(90),
+            roundingTitle, roundingIncrement, roundingStrategy, roundingDetail,
+            appearanceTitle, themePicker, accentLabel, accentValue, accentDetail,
+            workoutTitle, keepAwakeLabel, keepAwakeHint,
+            equipmentTitle, equipmentRow,
             equipmentDetail, bodyweightSectionTitle, bodyweightRow, bodyweightDetail,
         ] + allBodyweightStrings + MassUnit.allCases.map(unitSymbol(for:))
             + E1RMFormulaID.allCases.map(formulaName(for:))
+            + RoundingStrategy.allCases.map(strategyName(for:))
+            + ThemePreference.allCases.map(themeName(for:))
     }
 
     /// Binds a key to this module's catalogue.

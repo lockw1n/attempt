@@ -131,6 +131,12 @@ enum SchemaDefaults {
     /// ``ThemePreference/system`` — the case that expresses no preference rather than asserting one.
     static let theme = ThemePreference.system.rawValue
 
+    /// `FR-1.7.1`'s ninety days, read from the one place that number is written.
+    static let e1RMLookbackDays = UserSettings.defaultE1RMLookbackDays
+
+    /// `NFR-1.9` read as written — see ``RepositoryInterface/UserSettings/defaultKeepScreenAwake``.
+    static let keepScreenAwake = UserSettings.defaultKeepScreenAwake
+
     /// The distant past, for a cached personal record whose date was never written.
     ///
     /// The direction that cannot mint a badge: `FR-1.6.3` announces a record at the moment it is

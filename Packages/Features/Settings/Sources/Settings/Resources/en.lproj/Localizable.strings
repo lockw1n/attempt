@@ -13,6 +13,7 @@
 
 "settings.landing.write-error.title" = "Could not save";
 "settings.landing.load-error.title" = "Settings unavailable";
+"settings.landing.load-error.message" = "Your preferences could not be read just now.";
 "settings.landing.load-error.retry" = "Try again";
 
 /* FR-1.7.2: the e1RM formula. Five of the six names are their authors' and are not translated in
@@ -29,9 +30,46 @@
 "settings.landing.estimator.wathan" = "Wathan";
 "settings.landing.estimator.rpebased" = "RPE-based";
 
-/* Scaffolding, deleted with the read-outs it labels when the full preferences surface lands. */
-"settings.landing.scaffold.title" = "Not built yet";
-"settings.landing.scaffold.appearance" = "Appearance";
+/* G-3.3: how many decimals a weight READS as. "Automatic" is the absence of a choice, not a
+   value — the factory step depends on the unit (0.5 kg but 1 lb), so a stored number would become
+   half-pound steps the moment the unit moved. The detail line says what this is NOT, because the
+   loading increment below is the other rounding and the two are routinely confused. */
+"settings.landing.precision.picker" = "Weight precision";
+"settings.landing.precision.automatic" = "Automatic";
+"settings.landing.precision.detail" = "How precisely weights are written on screen. It does not change what you load or what is stored.";
+
+/* FR-1.7.1: how far back an estimate looks. */
+"settings.landing.lookback.picker" = "Lookback";
+"settings.landing.lookback.days %lld" = "%lld days";
+"settings.landing.lookback.detail" = "Estimates come from your best qualifying set inside this window.";
+
+/* FR-1.5.1.6: the OTHER rounding — what a bar can take, not what a number reads as. New exercises
+   start from this step. The direction names describe the lift rather than the arithmetic: a lifter
+   asks for the lighter or heavier bar, not for a floor. */
+"settings.landing.rounding.title" = "Loading";
+"settings.landing.rounding.increment" = "Default increment";
+"settings.landing.rounding.strategy" = "Rounding";
+"settings.landing.rounding.detail" = "The smallest change you can make on the bar. New exercises start here; each one can differ.";
+"settings.landing.rounding.strategy.nearest" = "Nearest";
+"settings.landing.rounding.strategy.down" = "Lighter";
+"settings.landing.rounding.strategy.up" = "Heavier";
+
+/* FR-1.10.2. "System" means the device's setting, which is why a fresh install stores Dark rather
+   than System: G-7.1's dark is what the app adopts before a preference exists, and picking System
+   is a preference. The accent is a read-out and not a picker — G-7.2 says one accent. */
+"settings.landing.appearance.title" = "Appearance";
+"settings.landing.appearance.theme" = "Theme";
+"settings.landing.appearance.theme.system" = "System";
+"settings.landing.appearance.theme.light" = "Light";
+"settings.landing.appearance.theme.dark" = "Dark";
+"settings.landing.appearance.accent" = "Accent";
+"settings.landing.appearance.accent.value" = "Orange";
+"settings.landing.appearance.accent.detail" = "One accent throughout, for actions, active state and emphasis.";
+
+/* NFR-1.9. The control was on the training screen while the settings row had no column for it. */
+"settings.landing.workout.title" = "During a workout";
+"settings.landing.workout.keep-awake" = "Keep screen awake";
+"settings.landing.workout.keep-awake.hint" = "The screen stays on while a workout is in progress, and sleeps normally the rest of the time.";
 
 /* FR-1.10.3: the way into the gyms. The screen behind it is the logging module's — one screen for
    both this row and the plate calculator — so its own copy lives there and this is only the door. */

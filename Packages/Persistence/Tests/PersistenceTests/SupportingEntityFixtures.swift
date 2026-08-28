@@ -32,7 +32,10 @@ func makeSettings(
     e1RMFormula: E1RMFormulaID = .brzycki,
     theme: ThemePreference = .dark,
     defaultRoundingIncrementGrams: Int = 5000,
-    defaultRoundingStrategy: RoundingStrategy = .down
+    defaultRoundingStrategy: RoundingStrategy = .down,
+    displayPrecisionMilliUnits: Int? = 250,
+    e1RMLookbackDays: Int = 30,
+    keepScreenAwake: Bool = false
 ) -> UserSettingsEntity {
     UserSettingsEntity(
         userID: userID,
@@ -40,7 +43,10 @@ func makeSettings(
         e1RMFormula: e1RMFormula,
         theme: theme,
         defaultRoundingIncrementGrams: defaultRoundingIncrementGrams,
-        defaultRoundingStrategy: defaultRoundingStrategy
+        defaultRoundingStrategy: defaultRoundingStrategy,
+        displayPrecisionMilliUnits: displayPrecisionMilliUnits,
+        e1RMLookbackDays: e1RMLookbackDays,
+        keepScreenAwake: keepScreenAwake
     )
 }
 

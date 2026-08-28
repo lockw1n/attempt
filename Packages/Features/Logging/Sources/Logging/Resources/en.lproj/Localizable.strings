@@ -24,12 +24,6 @@
 
 "logging.train.library.action" = "Browse exercises";
 
-/* NFR-1.9. The control is here rather than in Settings while it is a stub — see
-   ScreenWakePreference for why the settings row cannot hold it yet. */
-"logging.train.screen-wake.section" = "During a workout";
-"logging.train.screen-wake.label" = "Keep screen awake";
-"logging.train.screen-wake.hint" = "The screen stays on while a workout is in progress, and sleeps normally the rest of the time.";
-
 /* The read failed — the screen does not know whether a workout is in progress, so this one takes
    the whole screen. A sentence for the user; the diagnostic is never shown. */
 "logging.train.error.headline" = "Workouts unavailable";

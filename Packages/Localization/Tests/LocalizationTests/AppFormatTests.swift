@@ -10,6 +10,33 @@ struct AppFormatTests {
     private let english = Locale(identifier: "en_US")
     private let german = Locale(identifier: "de_DE")
 
+    /// The picker that offers a step has to draw the step itself, and it is a quantity of the
+    /// display unit rather than a stored mass — 0.5 lb is not a whole number of grams.
+    @Test("A display step renders as the mass it is, in the locale's own digits")
+    func stepRendersAsAMass() {
+        #expect(AppFormat.weightStep(.half, in: .kilograms, locale: english) == "0.5 kg")
+        #expect(AppFormat.weightStep(.half, in: .pounds, locale: english) == "0.5 lb")
+        #expect(AppFormat.weightStep(.quarter, in: .kilograms, locale: english) == "0.25 kg")
+        #expect(AppFormat.weightStep(.whole, in: .kilograms, locale: english) == "1 kg")
+        #expect(AppFormat.weightStep(.half, in: .kilograms, locale: german) == "0,5 kg")
+    }
+
+    /// The pairing renders the same as its two halves passed separately — one style, two ways in.
+    @Test("A weight display is the unit and the step it carries")
+    func displayPairingRendersLikeItsHalves() {
+        let weight = Weight(grams: 102_500)
+        #expect(
+            weight.formatted(
+                AppFormat.weight(
+                    WeightDisplay(unit: .kilograms, precision: .quarter), locale: english))
+                == weight.formatted(
+                    AppFormat.weight(in: .kilograms, precision: .quarter, locale: english)))
+        #expect(
+            weight.formatted(
+                AppFormat.weight(WeightDisplay(unit: .pounds, resolving: nil), locale: english))
+                == weight.formatted(AppFormat.weight(in: .pounds, locale: english)))
+    }
+
     @Test("A weight carries the locale's decimal separator")
     func weightSeparatorFollowsLocale() {
         let weight = Weight(grams: 102_500)

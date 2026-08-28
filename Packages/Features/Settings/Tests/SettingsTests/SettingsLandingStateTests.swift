@@ -89,7 +89,7 @@ struct SettingsLandingStateTests {
         let state = landingState(over: repository)
         await state.load()
 
-        await state.setDisplayUnit(.pounds)
+        await state.apply { $0.displayUnit = .pounds }
 
         let stored = try await repository.settings()
         #expect(stored.displayUnit == .pounds)
@@ -104,7 +104,7 @@ struct SettingsLandingStateTests {
         await state.load()
         let before = try await repository.settings()
 
-        await state.setDisplayUnit(before.displayUnit)
+        await state.apply { $0.displayUnit = before.displayUnit }
 
         // `updatedAt` rather than a call count, because the rule is about the column: a save that
         // changed nothing would still restamp G-2.4's conflict key.
@@ -118,7 +118,7 @@ struct SettingsLandingStateTests {
         let repository = ScriptedSettingsRepository(row: .fixture())
         let state = landingState(over: repository)
 
-        await state.setDisplayUnit(.pounds)
+        await state.apply { $0.displayUnit = .pounds }
 
         #expect(await repository.writes == 0)
         #expect(state.phase == .idle)
@@ -132,12 +132,12 @@ struct SettingsLandingStateTests {
         await state.load()
 
         // kg → lb, which suspends inside the save.
-        let first = Task { await state.setDisplayUnit(.pounds) }
+        let first = Task { await state.apply { $0.displayUnit = .pounds } }
         await repository.waitUntilWrites(reach: 1)
 
         // The user taps back to kg while that write is still in flight. Deciding against the row
         // the screen is still publishing would compare kg against kg and drop the tap.
-        let second = Task { await state.setDisplayUnit(.kilograms) }
+        let second = Task { await state.apply { $0.displayUnit = .kilograms } }
         for _ in 0..<50 { await Task.yield() }
 
         await repository.openWrites()
@@ -156,7 +156,7 @@ struct SettingsLandingStateTests {
         let state = landingState(over: repository)
         await state.load()
 
-        await state.setDisplayUnit(.pounds)
+        await state.apply { $0.displayUnit = .pounds }
 
         #expect(state.writeFailure == String(describing: failure))
         // The row survives the failure: the screen is still usable, which is what makes the next
@@ -171,11 +171,11 @@ struct SettingsLandingStateTests {
             writeError: .identityAlreadyEstablished(recordID: UUID()))
         let state = landingState(over: repository)
         await state.load()
-        await state.setDisplayUnit(.pounds)
+        await state.apply { $0.displayUnit = .pounds }
         #expect(state.writeFailure != nil)
 
         await repository.recoverWrites()
-        await state.setDisplayUnit(.pounds)
+        await state.apply { $0.displayUnit = .pounds }
 
         #expect(state.writeFailure == nil)
         #expect(await repository.row.displayUnit == .pounds)
@@ -314,7 +314,7 @@ struct SettingsFormulaTests {
         let state = landingState(over: repository, records: records)
         await state.load()
 
-        await state.setE1RMFormula(.brzycki)
+        await state.apply { $0.e1RMFormula = .brzycki }
 
         #expect(try await repository.settings().e1RMFormula == .brzycki)
         #expect(await records.formulaInForce() == .brzycki)
@@ -335,7 +335,7 @@ struct SettingsFormulaTests {
         await state.load()
         var changes = await records.changes().makeAsyncIterator()
 
-        await state.setE1RMFormula(.wathan)
+        await state.apply { $0.e1RMFormula = .wathan }
 
         #expect(await changes.next() == .everyExercise)
     }
@@ -349,7 +349,7 @@ struct SettingsFormulaTests {
         await state.load()
         let before = try await repository.settings()
 
-        await state.setE1RMFormula(before.e1RMFormula)
+        await state.apply { $0.e1RMFormula = before.e1RMFormula }
 
         #expect(try await repository.settings().updatedAt == before.updatedAt)
     }
@@ -367,9 +367,126 @@ struct SettingsFormulaTests {
         let state = landingState(over: repository, records: records)
         await state.load()
 
-        await state.setE1RMFormula(.lombardi)
+        await state.apply { $0.e1RMFormula = .lombardi }
 
         #expect(state.writeFailure != nil)
         #expect(await records.formulaInForce() == .defaultFormula)
     }
+}
+
+/// The preferences this screen holds for objects that live elsewhere (`FR-1.7.1`, `FR-1.10.2`,
+/// `NFR-1.9`, `G-3.3`).
+@Suite("Settings preferences reach what reads them")
+struct SettingsPreferenceReachTests {
+    /// `FR-1.7.1`'s window is configurable, and a settings row wired to nothing is this task's own
+    /// failure mode — the pipeline, not the column, is what an estimate is read through.
+    @Test("Choosing a lookback stores it and tells the recompute pipeline")
+    func lookbackReachesThePipeline() async throws {
+        let repository = InMemoryRepositoryStack().settings
+        let fakes = InMemoryRepositoryStack()
+        let records = PersonalRecordRecomputer(
+            workouts: fakes.workouts,
+            exercises: fakes.exercises,
+            cache: fakes.personalRecords)
+        let state = landingState(over: repository, records: records)
+        await state.load()
+
+        await state.apply { $0.e1RMLookbackDays = 30 }
+
+        #expect(try await repository.settings().e1RMLookbackDays == 30)
+        #expect(await records.lookbackInForce() == E1RMLookback(days: 30))
+    }
+
+    @Test("Choosing the window already in force writes nothing")
+    func anUnchangedLookbackWritesNothing() async throws {
+        let repository = InMemoryRepositoryStack().settings
+        let state = landingState(over: repository)
+        await state.load()
+        let before = try await repository.settings()
+
+        await state.apply { $0.e1RMLookbackDays = before.e1RMLookbackDays }
+
+        #expect(try await repository.settings().updatedAt == before.updatedAt)
+    }
+
+    /// The theme and the screen-wake are read by objects in modules this one cannot import, so the
+    /// announcement is the whole of the wiring — a picker that only wrote the column would leave
+    /// the app on the old theme until the next relaunch.
+    @Test("A landed write announces the row the store now holds")
+    func aLandedWriteAnnounces() async {
+        let repository = InMemoryRepositoryStack().settings
+        let announced = Announcements()
+        let state = SettingsLandingState(
+            repository: repository,
+            records: recomputer(),
+            preferencesDidChange: { announced.rows.append($0) })
+        await state.load()
+
+        await state.apply { $0.theme = .light }
+        await state.apply { $0.keepScreenAwake = false }
+
+        #expect(announced.rows.map(\.theme) == [.light, .light])
+        #expect(announced.rows.map(\.keepScreenAwake) == [true, false])
+    }
+
+    /// A screen told about a preference the store refused would run under something the row does
+    /// not agree with, and the next relaunch would silently undo it.
+    @Test("A failed write announces nothing")
+    func aFailedWriteAnnouncesNothing() async {
+        let repository = ScriptedSettingsRepository(
+            row: .fixture(), writeError: .identityAlreadyEstablished(recordID: UUID()))
+        let announced = Announcements()
+        let state = SettingsLandingState(
+            repository: repository,
+            records: recomputer(),
+            preferencesDidChange: { announced.rows.append($0) })
+        await state.load()
+
+        await state.apply { $0.theme = .light }
+
+        #expect(announced.rows.isEmpty)
+        #expect(state.writeFailure != nil)
+    }
+
+    /// `G-3.1`/`G-3.2`: the display preferences are display and nothing else.
+    @Test("A step and a unit are stored without either being resolved into the other")
+    func displayPreferencesAreStoredAsChosen() async throws {
+        let repository = InMemoryRepositoryStack().settings
+        let state = landingState(over: repository)
+        await state.load()
+
+        await state.apply { $0.displayPrecision = .quarter }
+        await state.apply { $0.displayUnit = .pounds }
+
+        let stored = try await repository.settings()
+        #expect(stored.displayPrecision == .quarter)
+        #expect(stored.weightDisplay == WeightDisplay(unit: .pounds, precision: .quarter))
+    }
+
+    /// `nil` is "never chosen", which is a value the picker can return to.
+    @Test("Clearing the step leaves the unit's own in force")
+    func clearingTheStepIsAWrite() async throws {
+        let repository = InMemoryRepositoryStack().settings
+        let state = landingState(over: repository)
+        await state.load()
+        await state.apply { $0.displayPrecision = .quarter }
+
+        await state.apply { $0.displayPrecision = nil }
+
+        #expect(try await repository.settings().displayPrecision == nil)
+        #expect(try await repository.settings().weightDisplay.precision == .half)
+    }
+}
+
+/// What the announcement closure saw, in order. A class because the closure is not `inout`.
+final class Announcements {
+    /// The rows announced, oldest first.
+    var rows: [UserSettings] = []
+}
+
+/// A recompute actor over throwaway fakes, for the tests that do not assert against it.
+func recomputer() -> PersonalRecordRecomputer {
+    let fakes = InMemoryRepositoryStack()
+    return PersonalRecordRecomputer(
+        workouts: fakes.workouts, exercises: fakes.exercises, cache: fakes.personalRecords)
 }
