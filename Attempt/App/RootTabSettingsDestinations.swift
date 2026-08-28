@@ -36,6 +36,8 @@ extension RootTabView {
             AboutView()
         case .dataExport:
             dataExportRoot
+        case .backup:
+            backupRoot
         }
     }
 
@@ -51,6 +53,25 @@ extension RootTabView {
                 exercises: repositories.exercises,
                 workouts: repositories.workouts,
                 bodyweight: repositories.bodyweight,
+                settings: repositories.settings)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// `FR-1.11.3`: the whole store as one file, or the reason it cannot be read.
+    ///
+    /// Five repositories — the export's four, plus the gyms: a backup is the configuration as well
+    /// as the log, and `TR-0.1.2` hands each protocol down on its own.
+    @ViewBuilder
+    private var backupRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, _):
+            BackupView(
+                exercises: repositories.exercises,
+                workouts: repositories.workouts,
+                bodyweight: repositories.bodyweight,
+                equipment: repositories.equipment,
                 settings: repositories.settings)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)

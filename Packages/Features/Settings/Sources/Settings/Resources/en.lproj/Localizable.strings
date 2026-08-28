@@ -223,3 +223,29 @@
    sentence the user is shown. */
 "settings.export.error.headline" = "The export could not be prepared";
 "settings.export.error.message" = "Your training log could not be read just now. Nothing has been changed — try again.";
+
+/* FR-1.11.3: the backup. Its row sits beside the export's, under the same section — both are the
+   lifter's own data leaving the device, and they differ in what they are for rather than in where
+   they live. */
+"settings.landing.backup.row" = "Back up everything";
+"settings.landing.backup.detail" = "One file with every record on this device.";
+
+"settings.backup.title" = "Backup";
+"settings.backup.intro" = "A complete copy of everything Attempt holds on this device — your workouts, your exercises, your gyms and your settings. Nothing is sent anywhere: the file is yours to keep.";
+
+"settings.backup.file.title" = "Backup file (JSON)";
+"settings.backup.file.detail" = "Every field of every row, exactly as stored. Not made for reading — it is the file that keeps everything.";
+
+"settings.backup.share" = "Share";
+"settings.backup.destinations" = "Sharing opens the usual sheet, so the file can go to Files, to iCloud Drive, to another app, or anywhere else you send things.";
+
+/* G-1.3, and deliberately the opposite sentence to the export's. A backup that quietly dropped
+   deleted rows would not be a copy of the store. */
+"settings.backup.deleted" = "Anything you have deleted is in this file too. A backup is everything the app is holding, not only what you can see.";
+
+"settings.backup.preparing" = "Reading everything on this device…";
+
+/* FR-1.13.1's error state. G-3.4: the thrown error's description is a diagnostic and never the
+   sentence the user is shown. There is no empty state — see BackupState.Phase. */
+"settings.backup.error.headline" = "The backup could not be prepared";
+"settings.backup.error.message" = "Your data could not be read just now. Nothing has been changed — try again.";

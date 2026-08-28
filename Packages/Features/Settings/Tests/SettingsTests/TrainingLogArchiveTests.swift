@@ -137,17 +137,21 @@ struct TrainingLogArchiveTests {
         let json = try #require(String(data: Self.awkwardArchive().encoded(), encoding: .utf8))
         #expect(
             Self.envelopeKeys(of: json) == [
-                "bodyweight", "entries", "exercises", "exportedAt", "formatVersion", "sessions",
-                "sets",
+                "bodyweight", "contents", "entries", "exercises", "exportedAt", "formatVersion",
+                "sessions", "sets",
             ])
     }
 
     /// The envelope's own keys, in the order the file carries them.
     ///
+    /// Internal rather than private because ``BackupArchiveTests`` asks the same question of the
+    /// backup's longer key list, and one reader of the bytes is what makes the two answers
+    /// comparable.
+    ///
     /// A pretty-printed payload indents two spaces per level, so a key of the envelope is a line
     /// carrying exactly one level of it — which is what separates `bodyweight` the section from
     /// `bodyweight` the column on a session.
-    private static func envelopeKeys(of json: String) -> [String] {
+    static func envelopeKeys(of json: String) -> [String] {
         json.split(separator: "\n")
             .filter { $0.hasPrefix("  \"") }
             .map { String($0.dropFirst(3).prefix { $0 != "\"" }) }
@@ -165,8 +169,8 @@ struct TrainingLogArchiveTests {
         let archive = Self.awkwardArchive()
         let json = try #require(String(data: archive.encoded(), encoding: .utf8))
         #expect(json.contains("\"formatVersion\""))
-        #expect(try TrainingLogArchive.decoded(from: archive.encoded()).formatVersion == 1)
-        #expect(TrainingLogArchive.currentFormatVersion == 1)
+        #expect(try TrainingLogArchive.decoded(from: archive.encoded()).formatVersion == 2)
+        #expect(TrainingLogArchive.currentFormatVersion == 2)
     }
 
     @Test("The file is written to be looked at: pretty, and its sections in a fixed order")

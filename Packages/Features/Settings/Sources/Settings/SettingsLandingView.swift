@@ -127,10 +127,19 @@ public struct SettingsLandingView: View {
     /// about the app.
     private var data: some View {
         GroupedSection(Text(SettingsStrings.dataSectionTitle)) {
-            SettingsLinkRow(
-                route: .settings(.dataExport),
-                label: SettingsStrings.dataExportRow,
-                detail: SettingsStrings.dataExportDetail)
+            VStack(alignment: .leading, spacing: Spacing.md.points) {
+                SettingsLinkRow(
+                    route: .settings(.dataExport),
+                    label: SettingsStrings.dataExportRow,
+                    detail: SettingsStrings.dataExportDetail)
+                // FR-1.11.3, below the export rather than above it: an export is the file a lifter
+                // reaches for on purpose, and a backup is the one they take because they should.
+                SettingsLinkRow(
+                    route: .settings(.backup),
+                    label: SettingsStrings.backupRow,
+                    detail: SettingsStrings.backupDetail)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

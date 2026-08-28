@@ -34,6 +34,11 @@ struct AppDependencies {
 
         /// The bodyweight log — readings on days with no training on them too (`FR-1.8`).
         let bodyweight: any BodyweightRepository
+
+        /// The gyms (`FR-1.4.2`), as rows rather than as the active-profile store beside them:
+        /// `FR-1.11.3`'s backup writes every profile out, which is a read of the table and not a
+        /// question about which one is in use.
+        let equipment: any EquipmentRepository
     }
 
     /// The app-lifetime stores (`TR-1.2`), built over the repositories beside them.
@@ -111,7 +116,8 @@ struct AppDependencies {
                     settings: stack.settings,
                     exercises: stack.exercises,
                     workouts: stack.workouts,
-                    bodyweight: stack.bodyweight
+                    bodyweight: stack.bodyweight,
+                    equipment: stack.equipment
                 ),
                 Stores(
                     activeSession: ActiveSessionStore(
