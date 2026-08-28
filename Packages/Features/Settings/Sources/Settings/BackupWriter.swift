@@ -30,9 +30,10 @@ enum BackupWriter {
     /// Writes the backup into `directory`, replacing anything already there under the same name.
     ///
     /// **One directory per backup, emptied first** — ``TrainingLogExportWriter``'s rule and its
-    /// reason: the name carries the day, so two backups taken on one day would otherwise leave the
-    /// second sharing a directory with the first and a share sheet handing on a file the lifter has
-    /// already moved past.
+    /// reason: the name carries the day, so it is the *next* day's backup that needs the sweep. Two
+    /// taken on one day share a name and the atomic write below replaces the first; taken a day
+    /// apart they do not, and the directory would keep handing a share sheet a file describing a
+    /// store the lifter has already moved past.
     ///
     /// - Parameters:
     ///   - archive: The store to write. Expected to be a ``TrainingLogArchive/Contents/fullBackup``;
@@ -88,6 +89,11 @@ enum BackupWriter {
     }
 
     /// How many of those rows carry a ``StoredRecord/deletedAt``.
+    ///
+    /// **The preferences row is summed with the rest although it can never be deleted**, so that
+    /// term is structurally zero today: ``SettingsRepository`` offers no delete. It is summed
+    /// anyway because ``recordCount(of:)`` counts that row, and a deleted total that skipped a row
+    /// the other total counts is the pair disagreeing the moment the row does become deletable.
     ///
     /// - Parameter archive: The backup.
     /// - Returns: The count of soft-deleted rows.

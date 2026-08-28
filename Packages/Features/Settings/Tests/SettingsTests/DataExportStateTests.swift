@@ -101,14 +101,14 @@ struct DataExportStateTests {
         #expect(files.setCount == 3)
     }
 
-    // The time limit is the probe's safety rather than the test's: the second `prepare()` below is
-    // awaited directly, because returning without touching the store is the whole of what the guard
-    // does and there is no race-free way to observe that from another task. So a broken guard makes
-    // this call block in the gated store rather than return, and the limit is what turns that into a
-    // failure instead of a suite that never finishes.
-    @Test(
-        "A second preparation while one is running is not a second walk of the store",
-        .timeLimit(.minutes(1)))
+    // **The second preparation is never awaited before the count is read**, and that is the whole
+    // shape of this test rather than a detail of it. A broken guard leaves that second call
+    // suspended in the gate, and a held `withCheckedContinuation` is not cancellable — so awaiting
+    // it here would hang the suite instead of failing it, and the `.timeLimit` this test used to
+    // carry cannot rescue that (measured under a probe: 54 minutes before it was killed by hand).
+    // What is asserted instead is that the store was not walked a second time while the first walk
+    // was provably still open.
+    @Test("A second preparation while one is running is not a second walk of the store")
     func prepareIsSingleFlight() async throws {
         let log = try await ExportLog.populated()
         let gated = GatedWorkoutReads()
@@ -128,13 +128,20 @@ struct DataExportStateTests {
         // the files the first one is about to hand to a share sheet.
         let running = Task { @MainActor in await state.prepare() }
         await gated.waitForARead()
-        await state.prepare()
-        // Counted here rather than at the end: the first read is provably still held open at this
-        // point, so this is the one moment the two preparations are certainly overlapping. After
-        // the release the first has finished and a second walk would be allowed on its own terms.
+
+        // A wait rather than a signal, because this proves a negative: when the guard holds there
+        // is nothing to be notified of, and the pause is only long enough for a guardless second
+        // walk to reach the gated read and be counted.
+        let second = Task { @MainActor in await state.prepare() }
+        try await Task.sleep(for: .milliseconds(200))
+        // Counted while the first read is provably still held open — the one moment the two
+        // preparations are certainly overlapping. After the release the first has finished and a
+        // second walk would be allowed on its own terms.
         #expect(await gated.reads == 1)
+
         await gated.releaseHeldReads()
         await running.value
+        await second.value
     }
 
     @Test("The CSV is written in the unit the preferences are in")
@@ -264,7 +271,10 @@ private actor FailsOnceThenReads: WorkoutRepository {
 
 /// A workout repository that holds its session read open until the test lets it go, counting how
 /// many reads actually started — which is the only way to see a single-flight guard work.
-private actor GatedWorkoutReads: WorkoutRepository {
+///
+/// Internal rather than private because ``BackupStateTests`` gates the same read to prove the same
+/// guard: both screens walk the store behind a `.task` that re-runs on every appearance.
+actor GatedWorkoutReads: WorkoutRepository {
     /// How many session reads have begun.
     private(set) var reads = 0
 

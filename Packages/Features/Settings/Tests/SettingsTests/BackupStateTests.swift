@@ -101,6 +101,75 @@ struct BackupStateTests {
         #expect(!FileManager.default.fileExists(atPath: scratch.url.path))
     }
 
+    @Test("A backup taken on a later day replaces the one before it")
+    func doesNotHandOnYesterdaysFile() async throws {
+        let log = try await ExportLog.wholeStore()
+        let scratch = ScratchDirectory()
+        let stale = try BackupWriter.write(
+            try await log.backup.archive(takenAt: ExportLog.epoch),
+            into: scratch.url,
+            timeZone: .gmt)
+
+        // A day later, and a gym lighter — the names differ, so without emptying the directory the
+        // share sheet would still be offered a file describing a store that has moved on.
+        let gym = try #require(
+            try await log.repositories.equipment.profiles(includingDeleted: false).first)
+        try await log.repositories.equipment.deleteProfile(id: gym.id)
+        let fresh = try BackupWriter.write(
+            try await log.backup.archive(takenAt: ExportLog.epoch.addingTimeInterval(86_400)),
+            into: scratch.url,
+            timeZone: .gmt)
+
+        #expect(fresh.deletedCount == stale.deletedCount + 1)
+        #expect(!FileManager.default.fileExists(atPath: stale.url.path))
+        #expect(FileManager.default.fileExists(atPath: fresh.url.path))
+        #expect(fresh.url.lastPathComponent == "Attempt-backup-2025-07-07.json")
+    }
+
+    // **The second preparation is never awaited before the count is read**, and that is the whole
+    // shape of this test rather than a detail of it. A broken guard leaves that second call
+    // suspended in the gate, and a held `withCheckedContinuation` is not cancellable — so awaiting
+    // it here would hang the suite instead of failing it, and a `.timeLimit` cannot rescue that
+    // (measured: a run in that shape sat for 54 minutes before it was killed by hand). What is
+    // asserted instead is that the store was not walked a second time while the first walk was
+    // provably still open.
+    @Test("A second preparation while one is running is not a second walk of the store")
+    func prepareIsSingleFlight() async throws {
+        let log = try await ExportLog.wholeStore()
+        let gated = GatedWorkoutReads()
+        let scratch = ScratchDirectory()
+        let stamp = ExportLog.epoch
+        let state = BackupState(
+            backup: FullBackup(
+                exercises: log.repositories.exercises,
+                workouts: gated,
+                bodyweight: log.repositories.bodyweight,
+                equipment: log.repositories.equipment,
+                settings: log.repositories.settings),
+            directory: scratch.url,
+            now: { stamp })
+
+        // The screen re-runs `prepare()` every time it appears, so two can overlap. The second has
+        // to fall straight through: a second walk empties and rewrites the directory holding the
+        // file the first one is about to hand to a share sheet.
+        let running = Task { @MainActor in await state.prepare() }
+        await gated.waitForARead()
+
+        // A wait rather than a signal, because this proves a negative: when the guard holds there
+        // is nothing to be notified of, and the pause is only long enough for a guardless second
+        // walk to reach the gated read and be counted.
+        let second = Task { @MainActor in await state.prepare() }
+        try await Task.sleep(for: .milliseconds(200))
+        // Counted while the first read is provably still held open — the one moment the two
+        // preparations are certainly overlapping. After the release the first has finished and a
+        // second walk would be allowed on its own terms.
+        #expect(await gated.reads == 1)
+
+        await gated.releaseHeldReads()
+        await running.value
+        await second.value
+    }
+
     @Test("Every phase maps to one of the three states the screen draws")
     func mapsEveryPhase() {
         let file = BackupFile(
