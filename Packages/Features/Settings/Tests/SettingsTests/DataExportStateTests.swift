@@ -57,8 +57,8 @@ struct DataExportStateTests {
         #expect(!FileManager.default.fileExists(atPath: scratch.url.path))
     }
 
-    @Test("A failed read is the error state, and the retry runs the same call")
-    func reachesFailedAndRecovers() async throws {
+    @Test("A failed read is the error state")
+    func reachesFailed() async throws {
         let log = try await ExportLog.populated()
         let scratch = ScratchDirectory()
         let stamp = ExportLog.epoch
@@ -72,13 +72,69 @@ struct DataExportStateTests {
             now: { stamp })
         await failing.prepare()
         #expect(DataExportScreenState.current(failing.phase) == .failed)
+    }
 
-        // The screen's retry is `prepare()` again, so a state that could not re-enter its own
-        // read would leave a button that does nothing. Same object, working store this time.
-        let recovering = Self.state(log, in: scratch)
-        await recovering.prepare()
-        await recovering.prepare()
-        #expect(DataExportScreenState.current(recovering.phase) != .failed)
+    @Test("The retry is the same call on the same state, and it recovers")
+    func recoversOnTheRetry() async throws {
+        let log = try await ExportLog.populated()
+        let scratch = ScratchDirectory()
+        let stamp = ExportLog.epoch
+        // The one store refuses its first read and answers the second, so the object that failed
+        // is the object that retries — which is what the screen does, `ErrorStateView`'s retry
+        // being `prepare()` on the state already on screen.
+        let state = DataExportState(
+            export: TrainingLogExport(
+                exercises: log.repositories.exercises,
+                workouts: FailsOnceThenReads(log.repositories.workouts),
+                bodyweight: log.repositories.bodyweight),
+            settings: log.repositories.settings,
+            directory: scratch.url,
+            now: { stamp })
+        await state.prepare()
+        #expect(DataExportScreenState.current(state.phase) == .failed)
+
+        await state.prepare()
+        // Anchored to `.ready` and to what is in it, rather than to "not failed": `.empty` is also
+        // not failed, and a retry that recovered into the empty state would be the wrong recovery.
+        let files = try #require(Self.files(of: state.phase))
+        #expect(files.sessionCount == 1)
+        #expect(files.setCount == 3)
+    }
+
+    // The time limit is the probe's safety rather than the test's: the second `prepare()` below is
+    // awaited directly, because returning without touching the store is the whole of what the guard
+    // does and there is no race-free way to observe that from another task. So a broken guard makes
+    // this call block in the gated store rather than return, and the limit is what turns that into a
+    // failure instead of a suite that never finishes.
+    @Test(
+        "A second preparation while one is running is not a second walk of the store",
+        .timeLimit(.minutes(1)))
+    func prepareIsSingleFlight() async throws {
+        let log = try await ExportLog.populated()
+        let gated = GatedWorkoutReads()
+        let scratch = ScratchDirectory()
+        let stamp = ExportLog.epoch
+        let state = DataExportState(
+            export: TrainingLogExport(
+                exercises: log.repositories.exercises,
+                workouts: gated,
+                bodyweight: log.repositories.bodyweight),
+            settings: log.repositories.settings,
+            directory: scratch.url,
+            now: { stamp })
+
+        // The screen re-runs `prepare()` every time it appears, so two can overlap. The second has
+        // to fall straight through: a second walk would empty and rewrite the directory holding
+        // the files the first one is about to hand to a share sheet.
+        let running = Task { @MainActor in await state.prepare() }
+        await gated.waitForARead()
+        await state.prepare()
+        // Counted here rather than at the end: the first read is provably still held open at this
+        // point, so this is the one moment the two preparations are certainly overlapping. After
+        // the release the first has finished and a second walk would be allowed on its own terms.
+        #expect(await gated.reads == 1)
+        await gated.releaseHeldReads()
+        await running.value
     }
 
     @Test("The CSV is written in the unit the preferences are in")
@@ -149,6 +205,125 @@ private struct FailingWorkoutReads: WorkoutRepository {
     func deleteSet(id: UUID) async throws {}
     func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
         throw RepositoryError.recordNotFound(id: exerciseID)
+    }
+}
+
+/// A workout repository that refuses its first session read and then answers from the real fakes —
+/// one store failing under an export and working for the retry.
+private actor FailsOnceThenReads: WorkoutRepository {
+    /// What answers once the one refusal is spent.
+    private let wrapped: any WorkoutRepository
+
+    /// Whether that refusal has been handed out.
+    private var hasRefused = false
+
+    /// Wraps the store that answers the retry.
+    ///
+    /// - Parameter wrapped: The working repository.
+    init(_ wrapped: any WorkoutRepository) {
+        self.wrapped = wrapped
+    }
+
+    func sessions(
+        in range: ClosedRange<Date>,
+        includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        guard hasRefused else {
+            hasRefused = true
+            throw RepositoryError.recordNotFound(id: UUID())
+        }
+        return try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
+    }
+    func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
+        try await wrapped.session(id: id, includingDeleted: includingDeleted)
+    }
+    func save(_ session: WorkoutSession) async throws { try await wrapped.save(session) }
+    func deleteSession(id: UUID) async throws { try await wrapped.deleteSession(id: id) }
+    func entries(
+        forSessionID sessionID: UUID,
+        includingDeleted: Bool
+    ) async throws -> [ExerciseEntry] {
+        try await wrapped.entries(forSessionID: sessionID, includingDeleted: includingDeleted)
+    }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        try await wrapped.entry(id: id, includingDeleted: includingDeleted)
+    }
+    func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
+    func deleteExerciseEntry(id: UUID) async throws {
+        try await wrapped.deleteExerciseEntry(id: id)
+    }
+    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        try await wrapped.sets(forEntryID: entryID, includingDeleted: includingDeleted)
+    }
+    func save(_ set: SetEntry) async throws { try await wrapped.save(set) }
+    func deleteSet(id: UUID) async throws { try await wrapped.deleteSet(id: id) }
+    func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        try await wrapped.sets(forExerciseID: exerciseID, includingDeleted: includingDeleted)
+    }
+}
+
+/// A workout repository that holds its session read open until the test lets it go, counting how
+/// many reads actually started — which is the only way to see a single-flight guard work.
+private actor GatedWorkoutReads: WorkoutRepository {
+    /// How many session reads have begun.
+    private(set) var reads = 0
+
+    /// Resumed when a read first arrives.
+    private var arrival: CheckedContinuation<Void, Never>?
+
+    /// Every read currently being held, resumed together.
+    ///
+    /// **All of them, not the latest one.** A gate keeping a single continuation would leak the
+    /// first read the moment a second arrived, and the leak would outlive the test that caused it.
+    private var held: [CheckedContinuation<Void, Never>] = []
+
+    /// Whether a read has arrived, so a waiter arriving after one does not wait for the next.
+    private var hasArrived = false
+
+    /// Whether the release has been given, so a read arriving after it is not held forever.
+    private var isReleased = false
+
+    /// Waits until a read has begun.
+    func waitForARead() async {
+        guard !hasArrived else { return }
+        await withCheckedContinuation { arrival = $0 }
+    }
+
+    /// Lets every held read finish.
+    func releaseHeldReads() {
+        isReleased = true
+        for continuation in held { continuation.resume() }
+        held = []
+    }
+
+    func sessions(
+        in range: ClosedRange<Date>,
+        includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        reads += 1
+        hasArrived = true
+        arrival?.resume()
+        arrival = nil
+        if !isReleased {
+            await withCheckedContinuation { held.append($0) }
+        }
+        return []
+    }
+    func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? { nil }
+    func save(_ session: WorkoutSession) async throws {}
+    func deleteSession(id: UUID) async throws {}
+    func entries(
+        forSessionID sessionID: UUID,
+        includingDeleted: Bool
+    ) async throws -> [ExerciseEntry] { [] }
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? { nil }
+    func save(_ entry: ExerciseEntry) async throws {}
+    func deleteExerciseEntry(id: UUID) async throws {}
+    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] { [] }
+    func save(_ set: SetEntry) async throws {}
+    func deleteSet(id: UUID) async throws {}
+    func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        []
     }
 }
 

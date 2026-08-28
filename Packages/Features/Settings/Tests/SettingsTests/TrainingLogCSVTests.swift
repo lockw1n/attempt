@@ -147,7 +147,7 @@ struct TrainingLogCSVTests {
     @Test("A note carrying a separator, a quote, a line break or an edge space is quoted")
     func escapesTheLiftersOwnWords() {
         let log = Self.oneEntry(sets: { entryID in
-            ["hips, then knees", "coach said \"stop\"", "first\nsecond", " trailing "]
+            ["hips, then knees", "coach said \"stop\"", "first\nsecond", " trailing ", "bare\rreturn"]
                 .enumerated()
                 .map { order, note in
                     ExportRecords.set(
@@ -166,6 +166,10 @@ struct TrainingLogCSVTests {
         let text = TrainingLogCSV.render(log, unit: .kilograms, timeZone: Self.utc)
         #expect(text.contains("\"first\nsecond\""))
         #expect(text.contains("\" trailing \""))
+        // A lone carriage return is the same problem as a line feed and a separate clause in the
+        // rule, so it is asserted separately: a reader that met an unquoted one would end the row
+        // there and read the rest of the note as the next row's first field.
+        #expect(text.contains("\"bare\rreturn\""))
     }
 
     @Test("The weight is written in the unit the heading names")
@@ -244,6 +248,49 @@ struct TrainingLogCSVTests {
                 ExportRecords.set(entryID: secondEntry, at: stamp, order: 0, reps: 3),
                 ExportRecords.set(entryID: firstEntry, at: stamp, order: 1, reps: 2),
                 ExportRecords.set(entryID: firstEntry, at: stamp, order: 0, reps: 1),
+            ])
+    }
+
+    @Test("Two workouts on one day are ordered by identifier, so two exports agree")
+    func breaksATieOnTheIdentifier() {
+        // The clause `ordersChronologically` never reaches: its sessions are three days apart, so
+        // the date alone decides them and the tiebreak could be reversed without any test noticing.
+        // A day holding two workouts is what the tiebreak exists for — without it the row order is
+        // whatever order the store happened to answer in, and two exports of one log disagree.
+        let rows = Self.rows(Self.sameDaySessions())
+        #expect(rows.count == 3)
+        #expect(rows[1].hasPrefix("2025-07-06,morning,"))
+        #expect(rows[2].hasPrefix("2025-07-06,evening,"))
+    }
+
+    /// Two workouts on one day, handed over with the later identifier first.
+    ///
+    /// `ExportRecords.id(_:)` orders by its byte under the string comparison the tiebreak uses, so
+    /// `0x11` precedes `0x22` — and the array is built the other way round, so a renderer that
+    /// trusted its input rather than sorting would write these two rows the wrong way about.
+    ///
+    /// - Returns: The archive.
+    static func sameDaySessions() -> TrainingLogArchive {
+        let exerciseID = ExportRecords.id(4)
+        let morning = ExportRecords.id(0x11)
+        let evening = ExportRecords.id(0x22)
+        let morningEntry = ExportRecords.id(7)
+        let eveningEntry = ExportRecords.id(8)
+        return archive(
+            exercises: [ExportRecords.exercise(id: exerciseID, name: "Bench", at: stamp)],
+            sessions: [
+                ExportRecords.session(id: evening, at: stamp, notes: "evening"),
+                ExportRecords.session(id: morning, at: stamp, notes: "morning"),
+            ],
+            entries: [
+                ExportRecords.entry(
+                    id: eveningEntry, sessionID: evening, exerciseID: exerciseID, at: stamp),
+                ExportRecords.entry(
+                    id: morningEntry, sessionID: morning, exerciseID: exerciseID, at: stamp),
+            ],
+            sets: [
+                ExportRecords.set(entryID: eveningEntry, at: stamp),
+                ExportRecords.set(entryID: morningEntry, at: stamp),
             ])
     }
 

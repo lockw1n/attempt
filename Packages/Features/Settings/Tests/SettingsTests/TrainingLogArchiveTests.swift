@@ -128,12 +128,29 @@ struct TrainingLogArchiveTests {
         #expect(back.timeIntervalSinceReferenceDate == 773_452_800.123_456_7)
     }
 
-    @Test("The same archive encodes to the same bytes twice")
+    @Test("The keys are written in sorted order, which is what makes two runs agree")
     func keyOrderIsStable() throws {
-        // JSONEncoder emits a keyed container in per-process hash order unless told otherwise, so
-        // this is what `.sortedKeys` buys: a backup two exports of one log can be diffed against.
-        let archive = Self.awkwardArchive()
-        #expect(try archive.encoded() == archive.encoded())
+        // Encoding twice in one process cannot see this, and an assertion that did would pass
+        // whatever the encoder is configured for: Swift fixes a dictionary's order with a
+        // per-process seed, so an unsorted encoder agrees with itself all run and disagrees with
+        // tomorrow's — which is the only case `.sortedKeys` exists for. The bytes are the witness.
+        let json = try #require(String(data: Self.awkwardArchive().encoded(), encoding: .utf8))
+        #expect(
+            Self.envelopeKeys(of: json) == [
+                "bodyweight", "entries", "exercises", "exportedAt", "formatVersion", "sessions",
+                "sets",
+            ])
+    }
+
+    /// The envelope's own keys, in the order the file carries them.
+    ///
+    /// A pretty-printed payload indents two spaces per level, so a key of the envelope is a line
+    /// carrying exactly one level of it — which is what separates `bodyweight` the section from
+    /// `bodyweight` the column on a session.
+    private static func envelopeKeys(of json: String) -> [String] {
+        json.split(separator: "\n")
+            .filter { $0.hasPrefix("  \"") }
+            .map { String($0.dropFirst(3).prefix { $0 != "\"" }) }
     }
 
     @Test("An unknown modifier is carried verbatim rather than resolved away")
@@ -172,5 +189,20 @@ struct TrainingLogArchiveTests {
             bodyweight: [])
         #expect(seeded.isEmpty)
         #expect(!Self.awkwardArchive().isEmpty)
+    }
+
+    @Test("A reading with nothing trained is still a log")
+    func emptinessCountsBodyweight() {
+        // `isEmpty`'s other half. A lifter can weigh in for a week before their first session, and
+        // an export that called that nothing would refuse to hand over rows it is holding.
+        let weighedOnly = TrainingLogArchive(
+            exportedAt: .distantPast,
+            exercises: [],
+            sessions: [],
+            entries: [],
+            sets: [],
+            bodyweight: Self.awkwardArchive().bodyweight)
+        #expect(!weighedOnly.bodyweight.isEmpty)
+        #expect(!weighedOnly.isEmpty)
     }
 }

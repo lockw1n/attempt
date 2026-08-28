@@ -130,7 +130,7 @@ enum TrainingLogCSV {
         guard text.contains(".") else { return text }
         while text.hasSuffix("0") { text.removeLast() }
         if text.hasSuffix(".") { text.removeLast() }
-        return text.isEmpty || text == "-" ? "0" : text
+        return text
     }
 
     /// The heading's unit suffix. Not `SettingsStrings`' abbreviation: that one is copy and moves
