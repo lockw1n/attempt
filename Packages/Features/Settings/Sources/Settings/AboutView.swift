@@ -15,27 +15,16 @@ import SwiftUI
 /// by the same build number the section above it prints. The App Store listing still needs a
 /// reachable URL of its own, which belongs to the task that submits.
 ///
-/// The view half of the pattern: it owns the bundle read and hands everything drawable to
-/// ``AboutReading``, so a reference can be rendered against a version supplied by the test.
+/// The view half of the pattern: it owns the bundle read, and everything drawable belongs to
+/// ``AboutReading``. There is no injecting seam here — under `swift test` `Bundle.main` is the
+/// runner and declares neither key, so a version reaches a reference through ``AboutReading`` or
+/// not at all.
 public struct AboutView: View {
-    /// What the running build says it is.
-    private let version: AppVersion
+    /// What the running build says it is, read once when the screen is constructed.
+    private let version = AppVersion.current()
 
     /// Builds the screen over the running bundle.
-    public init() {
-        self.init(version: .current())
-    }
-
-    /// The same screen over a version supplied directly.
-    ///
-    /// The seam the tests and the references use: under `swift test` `Bundle.main` is the runner,
-    /// which declares neither key, so a suite that could not name a version could only ever pin the
-    /// absent case.
-    ///
-    /// - Parameter version: What to print.
-    init(version: AppVersion) {
-        self.version = version
-    }
+    public init() {}
 
     /// The three sections, scrolling.
     public var body: some View {

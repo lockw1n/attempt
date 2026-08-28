@@ -454,8 +454,8 @@ struct RootTabView: View {
     }
 }
 
-/// What a tab shows when the store did not open — scaffolding, like ``PlaceholderScreen``, and
-/// owned by whichever task takes on the launch failure surface.
+/// What a tab shows when the store did not open — the last of the shell's scaffolding, and owned
+/// by whichever task takes on the launch failure surface.
 ///
 /// Its copy is `verbatim` for the same reason: a string that is going to be deleted must not be
 /// translated first (`G-3.4`).
