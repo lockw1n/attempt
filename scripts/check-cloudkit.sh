@@ -30,6 +30,19 @@
 #                              the list is the schema itself, would not be in the store either.
 #                              Checked by set comparison in both directions.
 #
+# T-1.71 LIFTED CHECKS 1 AND 2 IN EXACTLY TWO FILES, AND ADDED CHECK 5 TO HOLD THEM SHUT.
+# FR-1.12.1 turns sync on, which is the thing checks 1 and 2 were written to refuse. The guard's job
+# was "nobody turns this on by accident before Phase 1", not "nobody turns this on, ever" - so the
+# two spellings stay banned everywhere and exactly two paths are exempted by name:
+# SYNC_ACTIVATION_FILE for `.private(...)`, SYNC_ENTITLEMENTS_FILE for the iCloud entitlement.
+#
+#   5  FR-1.12.1      Both exempted files must STILL CARRY what they are exempted for, and the
+#                     entitlement must name the container the code opens. An allowlist entry whose
+#                     file stopped containing the construct is an exemption that has silently
+#                     become a hole, and every later reader would take the green run as proof the
+#                     ban was total. This is also why the exemption is two narrow paths rather than
+#                     a loosened regex: a ban with a hole in it reports the same green either way.
+#
 # Check 4 is a grep against the array between the markers in SchemaV1.swift, which is both the
 # audit's population and the schema's. It was a test-local array until T-0.34; the markers are what
 # is parsed, not the contents, so the swap changed one path.
@@ -60,6 +73,13 @@ done
 
 MODEL_LIST_FILE="Packages/Persistence/Sources/Persistence/SchemaV1.swift"
 ENTITY_DIR="Packages/Persistence/Sources/Persistence"
+
+# The two paths T-1.71 exempts, and the container they must agree on. Narrow on purpose: the
+# activation file exists so this list never has to name PersistenceStack.swift, the file every store
+# in the app is opened through.
+SYNC_ACTIVATION_FILE="Packages/Persistence/Sources/Persistence/Sync/SyncConfiguration.swift"
+SYNC_ENTITLEMENTS_FILE="Attempt/Attempt.entitlements"
+SYNC_CONTAINER="iCloud.lockw1n.Attempt"
 
 # Two alternatives, and each is self-tested alone. `com.apple.developer.icloud-*` is what an
 # entitlements file carries; `com.apple.iCloud` is the SystemCapabilities key Xcode writes into the
@@ -130,6 +150,29 @@ check_enabled() {
 check_custom_migration() {
     report "custom migration stage" "G-1.7: lightweight migrations only. Found:" \
         "$(grep_files "$CUSTOM_MIGRATION_RE" x "$@" | code_only)"
+}
+
+# Check 5: each exempted file still carries the construct it is exempted for, and the two agree on
+# the container. Failing here means the allowlist is now excusing nothing - which reads exactly like
+# a clean tree from checks 1 and 2, and is the whole reason this check exists.
+check_sync_activation() {
+    local activation="$1" entitlements="$2" container="$3" before=$failures
+
+    if [[ ! -f "$activation" ]]; then
+        fail "sync activation" "FR-1.12.1: $activation is gone, but checks 1-2 still exempt it."
+    elif ! grep -qE "$ENABLED_RE" "$activation"; then
+        fail "sync activation" "FR-1.12.1: $activation no longer enables mirroring - the exemption is a hole."
+    fi
+
+    if [[ ! -f "$entitlements" ]]; then
+        fail "sync activation" "FR-1.12.1: $entitlements is gone, but check 1 still exempts it."
+    elif ! grep -qiE "$ENTITLEMENT_RE" "$entitlements"; then
+        fail "sync activation" "FR-1.12.1: $entitlements carries no iCloud entitlement - sync cannot run."
+    elif ! grep -qF "$container" "$entitlements"; then
+        fail "sync activation" "FR-1.12.1: $entitlements does not name $container, the container the code opens."
+    fi
+
+    (( failures == before ))
 }
 
 # Every `final class X` on or just after an `@Model`, which is the only shape this module uses.
@@ -232,6 +275,23 @@ let models = [AlphaEntity.self]
 // audited-models:end
 EOF
 
+    # Check 5's four fixtures. `live-*` is the shape the repo is actually in; the other three are
+    # each one way the exemption goes hollow while checks 1 and 2 keep reporting green.
+    cat >"$scratch/live-activation.swift" <<'EOF'
+return ModelConfiguration(cloudKitDatabase: .private(containerIdentifier))
+EOF
+    cat >"$scratch/dead-activation.swift" <<'EOF'
+return ModelConfiguration(cloudKitDatabase: .none)
+EOF
+    cat >"$scratch/live.entitlements" <<'EOF'
+<key>com.apple.developer.icloud-container-identifiers</key>
+<array><string>iCloud.example.App</string></array>
+EOF
+    cat >"$scratch/wrong-container.entitlements" <<'EOF'
+<key>com.apple.developer.icloud-container-identifiers</key>
+<array><string>iCloud.example.SomethingElse</string></array>
+EOF
+
     expect() {
         local label="$1" want="$2"; shift 2
         local before=$failures
@@ -273,12 +333,24 @@ EOF
     # A parse that finds nothing must fail rather than agree with an empty list.
     expect "audit coverage, empty parse" 1 check_audit_covers_models "$scratch/clean" "$scratch/full-audit.swift"
 
+    # Check 5, five ways. The passing case first, so a check that fired on everything is caught.
+    expect "sync activation" 0 check_sync_activation \
+        "$scratch/live-activation.swift" "$scratch/live.entitlements" "iCloud.example.App"
+    expect "…activation gone hollow" 1 check_sync_activation \
+        "$scratch/dead-activation.swift" "$scratch/live.entitlements" "iCloud.example.App"
+    expect "…entitlement gone hollow" 1 check_sync_activation \
+        "$scratch/live-activation.swift" "$scratch/clean/App.entitlements" "iCloud.example.App"
+    expect "…container disagrees" 1 check_sync_activation \
+        "$scratch/live-activation.swift" "$scratch/wrong-container.entitlements" "iCloud.example.App"
+    expect "…exempted path deleted" 1 check_sync_activation \
+        "$scratch/no-such-file.swift" "$scratch/live.entitlements" "iCloud.example.App"
+
     echo
     if (( failures > 0 )); then
         echo "$failures self-test case(s) failed — this gate does not do what its header claims." >&2
         exit 1
     fi
-    echo "all four checks fire, and none of them fires on a clean tree."
+    echo "all five checks fire, and none of them fires on a clean tree."
     exit 0
 fi
 
@@ -287,13 +359,13 @@ if [[ ! -f "$MODEL_LIST_FILE" ]]; then
     exit 66
 fi
 
-echo "CloudKit: compatible, not enabled (OUT-0.2, G-1.7, DOD-0.4)"
+echo "CloudKit: enabled in two named files and banned everywhere else (FR-1.12.1, G-1.7, DOD-0.4)"
 
 # All four checks run. `&&`-chaining them, which the first version did across three roots, lets the
 # first violation hide the rest — and a partial report is how the second one survives the fix.
 # An empty population is a failure rather than a pass: it means the glob stopped matching, which is
 # the same green-while-enforcing-nothing failure the whole script exists to prevent.
-collect "$(git ls-files -- '*.entitlements' '*.plist' '*.pbxproj')"
+collect "$(git ls-files -- '*.entitlements' '*.plist' '*.pbxproj' | grep -vxF "$SYNC_ENTITLEMENTS_FILE")"
 entitlement_files=("${FILES[@]}")
 if (( ${#entitlement_files[@]} == 0 )); then
     fail "iCloud entitlement" "no .entitlements/.plist/.pbxproj is tracked — the population is wrong."
@@ -301,7 +373,11 @@ elif check_entitlements "${entitlement_files[@]}"; then
     ok "iCloud entitlement" "none granted across ${#entitlement_files[@]} file(s) — .automatic stays inert"
 fi
 
+# The activation file is dropped from the BAN's population only. The custom-migration check below
+# runs over the full list, because nothing exempts that one.
 collect "$(git ls-files -- '*.swift')"
+all_swift=("${FILES[@]}")
+collect "$(git ls-files -- '*.swift' | grep -vxF "$SYNC_ACTIVATION_FILE")"
 swift_files=("${FILES[@]}")
 if (( ${#swift_files[@]} == 0 )); then
     fail "cloudKitDatabase enabled" "no Swift file is tracked — the population is wrong."
@@ -309,9 +385,13 @@ else
     if check_enabled "${swift_files[@]}"; then
         ok "cloudKitDatabase enabled" "clean across ${#swift_files[@]} tracked Swift file(s)"
     fi
-    if check_custom_migration "${swift_files[@]}"; then
+    if check_custom_migration "${all_swift[@]}"; then
         ok "custom migration stage" "none — lightweight only"
     fi
+fi
+
+if check_sync_activation "$SYNC_ACTIVATION_FILE" "$SYNC_ENTITLEMENTS_FILE" "$SYNC_CONTAINER"; then
+    ok "sync activation" "both exempted paths still carry it, on $SYNC_CONTAINER"
 fi
 
 if check_audit_covers_models "$ENTITY_DIR" "$MODEL_LIST_FILE"; then

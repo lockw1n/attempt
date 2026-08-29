@@ -2,11 +2,24 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- TR-1.9 / FR-1.8.2: read body mass from Health. Read-only and on-device (G-5.4).
-	     NOTHING iCloud IS HERE, deliberately: scripts/check-cloudkit.sh bans an iCloud
-	     entitlement anywhere in the repo, because the entitlement IS the switch that turns
-	     CloudKit mirroring on (OUT-0.2). -->
+	<!-- TR-1.9 / FR-1.8.2: read body mass from Health. Read-only and on-device (G-5.4). -->
 	<key>com.apple.developer.healthkit</key>
 	<true/>
+	<!-- FR-1.12.1: THE SWITCH. ModelConfiguration.cloudKitDatabase defaults to `.automatic`,
+	     which means "mirror if the process has this entitlement" — so this key, not any line of
+	     Swift, is what makes mirroring possible at all. scripts/check-cloudkit.sh still bans it
+	     everywhere else in the repo and names this file as one of exactly two exemptions; its
+	     check 5 fails if this key or the container below ever goes missing while the exemption
+	     stays. The container string is duplicated in that script on purpose — the point is that
+	     the two must agree, and a check reading its expectation from the file it checks would
+	     agree with anything. -->
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.lockw1n.Attempt</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+	</array>
 </dict>
 </plist>

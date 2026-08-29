@@ -144,6 +144,13 @@ public struct SettingsLandingView: View {
                     route: .settings(.restore),
                     label: SettingsStrings.restoreRow,
                     detail: SettingsStrings.restoreDetail)
+                // FR-1.12.1, last of the four and outside the phase switch's concern for the same
+                // reason About is: whether this device mirrors is a fact about the container and a
+                // preference, so a failed read of the settings row says nothing about it.
+                SettingsLinkRow(
+                    route: .settings(.sync),
+                    label: SettingsStrings.syncRow,
+                    detail: SettingsStrings.syncRowDetail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

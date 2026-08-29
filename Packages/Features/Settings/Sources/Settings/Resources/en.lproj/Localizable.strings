@@ -188,7 +188,7 @@
    newer or older than the binary it ships in, and it cannot go stale without the build going
    with it. Whichever task turns on sync, telemetry or an account owns rewriting it. */
 "settings.about.privacy.title" = "Privacy";
-"settings.about.privacy.storage" = "Your training log is stored on this device. This version has no account, no sync and no server behind it, so nothing you log is sent anywhere.";
+"settings.about.privacy.storage" = "Your training log is stored on this device and, unless you turn sync off, in your own private iCloud. There is no account with us and no server of ours behind it — nothing you log is sent to Attempt or to anyone else.";
 "settings.about.privacy.health" = "Body mass is read from Health only after you allow it, and only when you ask for an import. Attempt writes nothing back to Health, and what it reads stays on this device.";
 "settings.about.privacy.tracking" = "There is no analytics, no advertising and no tracking. No third party is told anything about you or your training.";
 "settings.about.privacy.currency" = "This policy describes the build named above. It ships inside the app, so it is never newer or older than the version you are running.";
@@ -299,3 +299,38 @@
 "settings.restore.error.headline" = "The restore did not finish";
 "settings.restore.error.message" = "Part of the file is already on this device. Running the same file again is safe — it finishes the job.";
 "settings.restore.error.retry" = "Try again";
+
+/* FR-1.12.1-FR-1.12.3. The screen's copy. "iCloud" rather than "the cloud" throughout: the private
+   database is the lifter's own iCloud account, not a service this app runs, and that distinction is
+   the whole of what makes the privacy sentence on About true. */
+"settings.sync.title" = "iCloud sync";
+"settings.sync.row" = "iCloud sync";
+"settings.sync.row.detail" = "Keep your training log on every device signed in to your iCloud account.";
+"settings.sync.toggle" = "Sync with iCloud";
+"settings.sync.toggle.detail" = "Your log is kept in your own private iCloud. Only you can read it.";
+
+/* The four phases. Each says what is true now; none of them promises what happens next. */
+"settings.sync.status.title" = "Status";
+"settings.sync.status.off" = "Off";
+"settings.sync.status.idle" = "Up to date";
+"settings.sync.status.setup" = "Checking your account…";
+"settings.sync.status.download" = "Bringing changes in…";
+"settings.sync.status.upload" = "Sending changes…";
+"settings.sync.status.failed" = "Could not sync";
+
+/* G-3.4: the failure says what a lifter can do, and never shows the error. There is nothing to fix
+   here, so the sentence says the one true reassuring thing instead of inventing an action. */
+"settings.sync.status.failed.detail" = "Attempt will keep trying. Everything you log stays on this device either way.";
+
+"settings.sync.last %@" = "Last synced %@";
+"settings.sync.last.never" = "Not synced yet";
+
+/* FR-1.12.3, said before the switch is thrown rather than after: the fear a toggle like this raises
+   is that turning it off deletes something, and it does not. */
+"settings.sync.off.detail" = "Turning sync off leaves everything on this device exactly as it is. It stops new changes moving between your devices.";
+
+/* FR-1.12.3. cloudKitDatabase is fixed when the store is opened, so the switch is recorded now and
+   applied at the next start. Said plainly rather than hidden: a toggle that silently did nothing
+   until relaunch is the same kind of untrue-in-the-binary sentence G-5.3 exists to prevent. */
+"settings.sync.restart.on" = "Sync starts the next time you open Attempt.";
+"settings.sync.restart.off" = "Sync stops the next time you open Attempt. Nothing on this device is removed.";

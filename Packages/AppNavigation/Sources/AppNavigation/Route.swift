@@ -201,6 +201,20 @@ public enum SettingsRoute: Hashable, Sendable, Codable {
     /// restored stack can land the wrong side of.
     case backup
 
+    /// Whether this device mirrors to iCloud, how far it has got, and the switch (`FR-1.12.1`–
+    /// `FR-1.12.3`).
+    ///
+    /// **A screen rather than a row with a toggle on it**, because the toggle is the smallest part
+    /// of what is here: a status that moves on its own, the time it last worked, and the sentence
+    /// saying what turning it off does and does not do. A landing row could carry the switch and
+    /// none of that, which would leave the one destructive-sounding control in Settings as the only
+    /// one with nothing explaining it.
+    ///
+    /// **It carries no state**, like every case here: the status is read when the screen opens and
+    /// then streamed, so a restored stack lands on a screen that reports what is true now rather
+    /// than what was true when the stack was written.
+    case sync
+
     /// A backup file read back into this device (`FR-1.11.4`).
     ///
     /// **The third of the three rather than a command on ``backup``**, which is that case's own

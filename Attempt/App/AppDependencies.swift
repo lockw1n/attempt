@@ -1,4 +1,5 @@
 import DerivedValues
+import Foundation
 import Logging
 import Persistence
 import RepositoryInterface
@@ -101,12 +102,35 @@ struct AppDependencies {
     /// What the app got when it opened the store.
     let state: State
 
+    /// Sync, as Settings switches and reads it (`FR-1.12.1`–`FR-1.12.3`).
+    ///
+    /// **Outside ``State``**, unlike everything else here: the switch and the status are readable
+    /// whether or not the store opened, and a lifter looking at a device that will not start is
+    /// exactly who might want to know whether their log ever reached iCloud.
+    let sync: any SyncControl
+
     /// Opens the store at `location`.
     ///
     /// - Parameter location: `.applicationDefault` for the app; `.inMemory` is what a preview wants.
     init(location: StoreLocation = .applicationDefault) {
+        // THE ONE PLACE THE SWITCH IS READ. `cloudKitDatabase` is fixed when the container is
+        // built, so the choice has to be made here, before anything opens — which is the whole
+        // reason `SyncControl` reports what this launch is doing separately from what was chosen.
+        //
+        // An in-memory store never mirrors: previews and the harness open one, and
+        // `makeModelContainer(at:sync:)` refuses the pair outright rather than downgrading it.
+        let wantsSync = AppSyncControl.isEnabled()
+        let syncMode: SyncMode =
+            switch location {
+            case .applicationDefault, .file:
+                wantsSync ? .privateDatabase(containerIdentifier: Self.cloudKitContainer) : .disabled
+            case .inMemory:
+                .disabled
+            }
+        sync = AppSyncControl(isRunning: syncMode != .disabled)
+
         do {
-            let stack = try PersistenceStack(location: location)
+            let stack = try PersistenceStack(location: location, sync: syncMode)
             let records = PersonalRecordRecomputer(
                 workouts: stack.workouts,
                 exercises: stack.exercises,
@@ -225,4 +249,11 @@ struct AppDependencies {
     /// An empty store that is never written to disk — what a preview wants, and the reason
     /// ``init(location:)`` takes a location at all.
     static var preview: AppDependencies { AppDependencies(location: .inMemory) }
+
+    /// The CloudKit container the entitlement grants and the store opens.
+    ///
+    /// **Repeated in `scripts/check-cloudkit.sh` and in `Attempt.entitlements` on purpose.** The
+    /// three have to agree, and a check that read its expectation out of the file it checks would
+    /// agree with anything.
+    static let cloudKitContainer = "iCloud.lockw1n.Attempt"
 }
