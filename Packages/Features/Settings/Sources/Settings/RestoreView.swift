@@ -280,12 +280,11 @@ struct RestoreReading: View {
     /// rows do on the way in is the paragraph under this one, where it can be a sentence.
     private func contents(_ summary: BackupSummary) -> some View {
         var counts = [
-            String(localized: SettingsStrings.backupRecordCount(summary.recordCount)),
-            String(localized: SettingsStrings.backupWorkoutCount(summary.workoutCount)),
+            count(SettingsStrings.backupRecordCount(summary.recordCount)),
+            count(SettingsStrings.backupWorkoutCount(summary.workoutCount)),
         ]
         if summary.deletedCount > 0 {
-            counts.append(
-                String(localized: SettingsStrings.backupDeletedCount(summary.deletedCount)))
+            counts.append(count(SettingsStrings.backupDeletedCount(summary.deletedCount)))
         }
         return VStack(alignment: .leading, spacing: Spacing.xxs.points) {
             Text(verbatim: AppFormat.list(counts, locale: locale))
@@ -301,6 +300,24 @@ struct RestoreReading: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+    }
+
+    /// One count, resolved in the screen's locale.
+    ///
+    /// **`String(localized:)` reads the process's locale, not `@Environment(\.locale)`**, and these
+    /// three counts are the only text on this screen that has to be resolved to a `String` rather
+    /// than handed to a `Text` — because ``Localization/AppFormat/list(_:locale:)`` joins strings
+    /// and there is no value to hand a style to. Left to that default they are the one phrase here
+    /// that ignores the locale the line joining them is given (`G-3.4`), grouping separator and
+    /// plural rule included. In a snapshot that reads as the runner's locale rather than the
+    /// reference's, which is what makes it visible.
+    ///
+    /// - Parameter resource: The count's key, already carrying its number.
+    /// - Returns: The rendered phrase.
+    private func count(_ resource: LocalizedStringResource) -> String {
+        var localized = resource
+        localized.locale = locale
+        return String(localized: localized)
     }
 
     /// One sentence of the copy.

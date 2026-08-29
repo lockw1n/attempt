@@ -29,6 +29,14 @@
             recordCount: 2_418,
             deletedCount: 7)
 
+        /// The locale every state here is drawn in.
+        ///
+        /// **The counts are resolved to strings, so without this they are the runner's locale.**
+        /// Pinned alongside the calendar so that nothing ambient is left in these references: the
+        /// three states drawing a summary take their grouping separator, their plural rule and the
+        /// phrase joining them from here, and their date from ``gmt``.
+        static let locale = Locale(identifier: "en_US")
+
         /// The calendar every state here is drawn in.
         ///
         /// **Without it these references are the recorder's time zone, not the screen's.** The
@@ -54,6 +62,7 @@
                     state: state, chooseFile: {}, confirm: {}, chooseAnother: {}
                 )
                 .environment(\.calendar, gmt)
+                .environment(\.locale, locale)
             }
         }
 
