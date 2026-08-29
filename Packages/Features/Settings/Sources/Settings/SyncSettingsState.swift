@@ -22,6 +22,14 @@ final class SyncSettingsState {
     /// Where sync has got to.
     private(set) var status = SyncStatus.off
 
+    /// Whether the switch and the running store have been read yet (`FR-1.13.1`).
+    ///
+    /// **The screen draws nothing about sync until this is true**, because every field above starts
+    /// at the value a switched-off device would have: a screen rendered before the first read would
+    /// say "Off" on a device that is mirroring, and would say it in the one place `G-5.3` makes the
+    /// app's own honesty the point.
+    private(set) var isLoaded = false
+
     /// Whether the choice and the running store disagree, so a restart is owed (`FR-1.12.3`).
     var needsRestart: Bool { isEnabled != isRunning }
 
@@ -40,8 +48,15 @@ final class SyncSettingsState {
     /// **One call rather than a load and an observe**, because the stream's first element is the
     /// status in force: a separate read would either duplicate it or race it.
     func follow() async {
-        isEnabled = await control.isEnabled
-        isRunning = await control.isRunning
+        // BOTH READ BEFORE EITHER IS ASSIGNED. Each of these is a hop onto the control's actor, so
+        // assigning between them leaves a render window where the choice has landed and the running
+        // store has not — which is exactly the pair ``needsRestart`` compares, and it would draw
+        // "sync starts at the next launch" on a device where nothing was ever switched.
+        let enabled = await control.isEnabled
+        let running = await control.isRunning
+        isEnabled = enabled
+        isRunning = running
+        isLoaded = true
         for await status in control.statusUpdates() {
             self.status = status
         }
@@ -66,6 +81,12 @@ final class SyncSettingsState {
 /// The same split ``HealthAccessScreenState`` makes, and for the same reason: a snapshot reference
 /// can be rendered over one of these with no control behind it.
 enum SyncScreenState: Equatable, CaseIterable {
+    /// The switch and the running store have not been read yet (`FR-1.13.1`).
+    ///
+    /// **Not derived from a ``SyncStatus``**, unlike every other case here — it is the absence of
+    /// one, which is why ``current(_:)`` never returns it and the view decides it instead.
+    case loading
+
     /// Switched off by the lifter (`FR-1.12.3`).
     case off
 
@@ -80,7 +101,7 @@ enum SyncScreenState: Equatable, CaseIterable {
 
     /// Every state, which `CaseIterable` cannot synthesize past an associated value.
     static var allCases: [SyncScreenState] {
-        [.off, .idle, .failed] + SyncActivity.allCases.map(Self.active)
+        [.loading, .off, .idle, .failed] + SyncActivity.allCases.map(Self.active)
     }
 
     /// Which state the screen is in.

@@ -119,12 +119,17 @@ public struct SettingsLandingView: View {
         }
     }
 
-    /// `FR-1.11`'s way out to the lifter's own data.
+    /// Where the lifter's own data goes — `FR-1.11`'s three files, then `FR-1.12`'s iCloud.
+    ///
+    /// **The fourth row is not a file**, and it sits with the three because the section is about
+    /// where the log can end up rather than about the mechanism: three ways it leaves this device
+    /// on purpose, and one that keeps it on the lifter's other devices.
     ///
     /// Outside the phase switch, for ``equipment``'s reason: the log lives in its own tables, so a
-    /// preferences read that failed says nothing about whether it can be exported. **Above About**,
-    /// because everything above this point is about the lifter and About is the one section that is
-    /// about the app.
+    /// preferences read that failed says nothing about whether it can be exported — or, for the
+    /// last row, about a container and a preference it never touches. **Above About**, because
+    /// everything above this point is about the lifter and About is the one section that is about
+    /// the app.
     private var data: some View {
         GroupedSection(Text(SettingsStrings.dataSectionTitle)) {
             VStack(alignment: .leading, spacing: Spacing.md.points) {

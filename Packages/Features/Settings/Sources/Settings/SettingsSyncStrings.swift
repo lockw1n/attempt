@@ -9,6 +9,10 @@ extension SettingsStrings {
     /// The screen's own title, and the landing row that opens it.
     static let syncTitle = resource("settings.sync.title")
 
+    /// The heading over the switch. **Not the screen's title repeated**: the switch is device-local
+    /// — deliberately not a synced row — and a heading echoing the navigation bar labels nothing.
+    static let syncDeviceTitle = resource("settings.sync.device.title")
+
     /// The landing row's label.
     static let syncRow = resource("settings.sync.row")
 
@@ -70,7 +74,7 @@ extension SettingsStrings {
     /// Every string this screen draws, for the catalogue check.
     static var allSyncStrings: [LocalizedStringResource] {
         [
-            syncTitle, syncRow, syncRowDetail, syncToggle, syncToggleDetail,
+            syncTitle, syncDeviceTitle, syncRow, syncRowDetail, syncToggle, syncToggleDetail,
             syncStatusTitle, syncStatusOff, syncStatusIdle, syncStatusSetup,
             syncStatusDownload, syncStatusUpload, syncStatusFailed, syncStatusFailedDetail,
             syncLastNever, syncOffDetail, syncRestartOn, syncRestartOff,

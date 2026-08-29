@@ -36,7 +36,9 @@
 # two spellings stay banned everywhere and exactly two paths are exempted by name:
 # SYNC_ACTIVATION_FILE for `.private(...)`, SYNC_ENTITLEMENTS_FILE for the iCloud entitlement.
 #
-#   5  FR-1.12.1      Both exempted files must STILL CARRY what they are exempted for, and the
+#   5  FR-1.12.1      Both exempted files must STILL CARRY what they are exempted for — in code,
+#                     through the same `code_only` filter checks 1 and 2 use, since a file exempted
+#                     for a construct it merely documents is exempted for nothing — and the
 #                     entitlement must name the container the code opens. An allowlist entry whose
 #                     file stopped containing the construct is an exemption that has silently
 #                     become a hole, and every later reader would take the green run as proof the
@@ -160,7 +162,7 @@ check_sync_activation() {
 
     if [[ ! -f "$activation" ]]; then
         fail "sync activation" "FR-1.12.1: $activation is gone, but checks 1-2 still exempt it."
-    elif ! grep -qE "$ENABLED_RE" "$activation"; then
+    elif [[ -z "$(grep_files "$ENABLED_RE" x "$activation" | code_only)" ]]; then
         fail "sync activation" "FR-1.12.1: $activation no longer enables mirroring - the exemption is a hole."
     fi
 
@@ -283,6 +285,13 @@ EOF
     cat >"$scratch/dead-activation.swift" <<'EOF'
 return ModelConfiguration(cloudKitDatabase: .none)
 EOF
+    # The shape the raw grep this check first used would have passed: the file is exempted for a
+    # construct it documents and no longer performs. `code_only` is what tells the two apart, and
+    # this file is a heavily commented one, so the case is the likely one rather than the exotic one.
+    cat >"$scratch/documented-activation.swift" <<'EOF'
+// This file is the one allowed to write cloudKitDatabase: .private(id).
+return ModelConfiguration(cloudKitDatabase: .none)
+EOF
     cat >"$scratch/live.entitlements" <<'EOF'
 <key>com.apple.developer.icloud-container-identifiers</key>
 <array><string>iCloud.example.App</string></array>
@@ -338,6 +347,8 @@ EOF
         "$scratch/live-activation.swift" "$scratch/live.entitlements" "iCloud.example.App"
     expect "…activation gone hollow" 1 check_sync_activation \
         "$scratch/dead-activation.swift" "$scratch/live.entitlements" "iCloud.example.App"
+    expect "…hollow but documented" 1 check_sync_activation \
+        "$scratch/documented-activation.swift" "$scratch/live.entitlements" "iCloud.example.App"
     expect "…entitlement gone hollow" 1 check_sync_activation \
         "$scratch/live-activation.swift" "$scratch/clean/App.entitlements" "iCloud.example.App"
     expect "…container disagrees" 1 check_sync_activation \
@@ -370,7 +381,7 @@ entitlement_files=("${FILES[@]}")
 if (( ${#entitlement_files[@]} == 0 )); then
     fail "iCloud entitlement" "no .entitlements/.plist/.pbxproj is tracked — the population is wrong."
 elif check_entitlements "${entitlement_files[@]}"; then
-    ok "iCloud entitlement" "none granted across ${#entitlement_files[@]} file(s) — .automatic stays inert"
+    ok "iCloud entitlement" "none granted across ${#entitlement_files[@]} unexempted file(s)"
 fi
 
 # The activation file is dropped from the BAN's population only. The custom-migration check below

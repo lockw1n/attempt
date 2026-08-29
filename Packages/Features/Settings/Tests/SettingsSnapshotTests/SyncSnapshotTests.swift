@@ -70,11 +70,46 @@
         }
 
         @Test func neverSynced() throws {
-            // FR-1.13.1's empty state, in the place a time would otherwise be. "Not synced yet" is
-            // not a failure and must not read as one — a device switched on a minute ago has
-            // nothing to report.
+            // FR-1.13.1's empty state, and it is the STATUS LINE rather than a second line under
+            // one: nothing has come back from the account, so there is nothing to be up to date
+            // with, and a device that said both would contradict itself in two consecutive lines.
+            // "Not synced yet" is not a failure and must not read as one — a device switched on a
+            // minute ago has nothing to report.
             try assertSnapshots(named: "Sync-never-synced") {
                 reading(.idle, isEnabled: true, lastSucceededAt: nil)
+            }
+        }
+
+        @Test func loading() throws {
+            // FR-1.13.1's loading state, and the reason this screen has one at all: every value
+            // this view takes starts at what a switched-off device would report, so a frame drawn
+            // before the read lands says "Off" on a device that is mirroring. T-1.09's component,
+            // with no message — the wait is one hop onto an actor.
+            //
+            // WHAT THIS REFERENCE PINS IS AN ABSENCE, and it is worth saying so rather than letting
+            // a near-empty image read as a broken test. `LoadingStateView` draws a spinner, which is
+            // UIKit-backed, so `ImageRenderer` leaves the same yellow placeholder here that it
+            // leaves in the toggle's place above — the spinner itself is not pinned by anything.
+            // What IS pinned is that the switch, the status and the paragraph are all absent, which
+            // is the whole claim: this screen must not say "Off" before it has read anything.
+            try assertSnapshots(named: "Sync-loading") {
+                reading(.loading, isEnabled: false)
+            }
+        }
+
+        @Test func checkingAccount() throws {
+            // Setup is NOT a transfer: it is the account and zone check that runs once per launch,
+            // and a screen that said "syncing" here would report movement where none is happening.
+            try assertSnapshots(named: "Sync-setup") {
+                reading(.active(.setup), isEnabled: true)
+            }
+        }
+
+        @Test func uploading() throws {
+            // The other direction, pinned because the two are one enum case apart and the copy is
+            // the only thing that distinguishes them on screen.
+            try assertSnapshots(named: "Sync-uploading") {
+                reading(.active(.upload), isEnabled: true)
             }
         }
 

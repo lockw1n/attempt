@@ -30,7 +30,9 @@ public struct SyncSettingsView: View {
     public var body: some View {
         ScrollView {
             SyncSettingsReading(
-                state: SyncScreenState.current(state.status),
+                // `.loading` is the view's to decide: it is the absence of a status rather than one
+                // of them, so `current(_:)` cannot name it.
+                state: state.isLoaded ? SyncScreenState.current(state.status) : .loading,
                 isEnabled: state.isEnabled,
                 needsRestart: state.needsRestart,
                 lastSucceededAt: state.status.lastSucceededAt,
@@ -124,25 +126,48 @@ struct SyncSettingsReading: View {
     }
 
     /// The switch, then the status, then the paragraph the switch needs.
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.lg.points) {
-            toggle
-            status
-            explanation
+    ///
+    /// **Nothing is drawn until the switch has been read** (`FR-1.13.1`). Every field this view
+    /// takes starts at the value a switched-off device would have, so a first frame drawn through
+    /// them would say "Off" on a device that is mirroring — and this is the screen whose whole
+    /// subject is the app not claiming a state it is not in.
+    @ViewBuilder var body: some View {
+        if state == .loading {
+            // No message: the wait is one hop onto an actor, and `LoadingStateView`'s own contract
+            // reserves the message for a wait long enough that a bare spinner would not say.
+            LoadingStateView()
+                .frame(maxWidth: .infinity)
+        } else {
+            VStack(alignment: .leading, spacing: Spacing.lg.points) {
+                toggle
+                status
+                explanation
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// `FR-1.12.3`'s switch.
     ///
-    /// **Disabled while the store is re-opening**, because that is the one moment a second tap
-    /// would ask for the opposite of what is already in flight.
+    /// **Never disabled.** There is no window in which a second tap could contradict a first: the
+    /// call behind it writes a preference and returns, and the store it will change is not opened
+    /// again until the next launch. What the two taps leave behind is the preference the second one
+    /// wrote, which is the right answer.
+    ///
+    /// **Headed "this device" rather than by the screen's own title**, because the switch is
+    /// device-local — the choice is deliberately not a synced row — and because a section heading
+    /// repeating the navigation title above it labels nothing.
     private var toggle: some View {
-        GroupedSection(Text(SettingsStrings.syncTitle)) {
+        GroupedSection(Text(SettingsStrings.syncDeviceTitle)) {
             VStack(alignment: .leading, spacing: Spacing.sm.points) {
                 Toggle(isOn: $switchValue) {
                     Text(SettingsStrings.syncToggle)
                 }
+                // The switch is drawn for the first time only once the read has landed, so its
+                // seeded value is the one a switched-off device would have. `onChange` cannot
+                // correct that — it was not installed when `isEnabled` moved — so the control takes
+                // its value from the truth as it appears.
+                .onAppear { switchValue = isEnabled }
                 .onChange(of: switchValue) { _, chosen in
                     guard chosen != isEnabled else { return }
                     setEnabled(chosen)
@@ -177,7 +202,7 @@ struct SyncSettingsReading: View {
                 // THE LAST GOOD TIME IS DRAWN UNDER A FAILURE TOO, which is the point of keeping it:
                 // "could not sync — last synced 09:12" is a far smaller thing to read than "could
                 // not sync" alone, and it is the half a lifter can act on.
-                if state != .off {
+                if showsLastSynced {
                     Text(lastSyncedLine)
                         .font(Typography.caption.font)
                         .foregroundStyle(ColorToken.textSecondary)
@@ -206,15 +231,37 @@ struct SyncSettingsReading: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
+    /// Whether a device has ever finished a sync.
+    private var hasSynced: Bool { lastSucceededAt != nil }
+
     /// The status, in the reader's words.
+    ///
+    /// **"Up to date" is a claim about the account and is only made once something has come back
+    /// from it.** A launch that is mirroring reports nothing in flight before its first event has
+    /// arrived, which is silence rather than agreement — so a device that has never synced says so
+    /// as its status, instead of announcing it is current and then admitting underneath that it has
+    /// never been.
     private var statusLine: LocalizedStringResource {
         switch state {
-        case .off: SettingsStrings.syncStatusOff
-        case .idle: SettingsStrings.syncStatusIdle
+        // `.loading` draws no status section at all; naming it keeps this switch exhaustive.
+        case .loading, .off: SettingsStrings.syncStatusOff
+        case .idle: hasSynced ? SettingsStrings.syncStatusIdle : SettingsStrings.syncLastNever
         case .active(.setup): SettingsStrings.syncStatusSetup
         case .active(.download): SettingsStrings.syncStatusDownload
         case .active(.upload): SettingsStrings.syncStatusUpload
         case .failed: SettingsStrings.syncStatusFailed
+        }
+    }
+
+    /// Whether the line naming the last success is worth a second line of its own.
+    ///
+    /// It is not where the status line already is that sentence — an idle device that has never
+    /// synced — and not where there is no sync to report on.
+    private var showsLastSynced: Bool {
+        switch state {
+        case .loading, .off: false
+        case .idle: hasSynced
+        case .active, .failed: true
         }
     }
 

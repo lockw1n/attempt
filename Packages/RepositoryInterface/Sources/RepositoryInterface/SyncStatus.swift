@@ -113,9 +113,12 @@ public struct SyncStatus: Equatable, Sendable {
     ///   `succeeded == false` throughout an attempt that is going perfectly well.
     /// - A finished, successful attempt is what moves ``lastSucceededAt``. Nothing else does, so a
     ///   long run of failures leaves the last good time readable.
-    /// - **An event arriving while sync is off is dropped.** Turning mirroring off does not reach
-    ///   in and cancel an attempt already in flight, so its completion lands afterwards; applying
-    ///   it would put the screen back into a phase the lifter just left.
+    /// - **An event arriving while sync is off is dropped.** No launch reaches this: a store that
+    ///   is not mirroring is never told about an attempt, and the switch does not move a running
+    ///   store, so ``Phase/off`` and an event in hand do not co-occur today. It is written down
+    ///   because the alternative is a rule that only holds by accident — the day anything can turn
+    ///   mirroring off mid-launch, an attempt already in flight completes afterwards, and applying
+    ///   that would put the screen back into a phase the lifter just left.
     ///
     /// - Parameter event: The attempt CloudKit reported.
     /// - Returns: The status to show.
