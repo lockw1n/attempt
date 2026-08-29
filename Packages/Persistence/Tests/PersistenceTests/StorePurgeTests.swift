@@ -125,14 +125,21 @@ struct StorePurgeTests {
     }
 
     // A soft-deleted exercise cannot be produced by this layer, but a foreign row can arrive that
-    // way — and the catalogue is named by four different columns, three of them tested here.
-    @Test("A live training max, settings row or variant holds a deleted exercise")
+    // way — and the catalogue is named by four different columns, all four driven here. The entry
+    // is the one that carries real traffic: every logged set hangs off one, so an unheld edge there
+    // is the orphan this whole file exists to make unreachable.
+    @Test("A live entry, training max, settings row or variant holds a deleted exercise")
     func catalogueReferrersHoldAnExercise() async throws {
         for referrer in ExerciseReferrer.allCases {
             let harness = try RepositoryHarness()
             let squat = softDeleted(makeSquat(), at: longAgo)
             var rows: [any PersistentModel] = [squat]
             switch referrer {
+            case .entry:
+                let session = WorkoutSessionEntity(date: longAgo)
+                rows.append(session)
+                rows.append(
+                    ExerciseEntryEntity(sessionID: session.id, exerciseID: squat.id, order: 0))
             case .trainingMax:
                 rows.append(makeTrainingMaxConfig(exerciseID: squat.id, source: .manual))
             case .dashboard:
@@ -267,6 +274,71 @@ struct StorePurgeTests {
         #expect(left.first?.updatedAt == stamped)
     }
 
+    // G-1.4's other half, and the clause the test above cannot reach: this cache row's source set
+    // survives, so the only thing that can doom it is the exercise it names. Being a derived row it
+    // is not a referrer, so it does not hold that exercise back either — it goes, and the set it was
+    // computed from is left exactly where it was.
+    @Test("A live cache row goes with the deleted exercise it names, and its set stays")
+    func cacheGoesWithItsExercise() async throws {
+        let harness = try RepositoryHarness()
+        let squat = softDeleted(makeSquat(), at: longAgo)
+        let sourceSet = makeSet(entryID: UUID(), order: 0, isWarmup: false, isCompleted: true)
+        let cached = PersonalRecordCacheEntity(
+            exerciseID: squat.id,
+            repCount: 5,
+            weightGrams: 100_000,
+            sourceSetID: sourceSet.id,
+            achievedAt: longAgo,
+            computationVersion: 1
+        )
+        try harness.seed([squat, sourceSet, cached])
+
+        let report = try await harness.stack.purge(.deleted(onOrBefore: cutoff))
+
+        #expect(report.removed == 2)
+        #expect(report.retained == 0)
+        #expect(try count(ExerciseEntity.self, in: harness) == 0)
+        #expect(try count(PersonalRecordCacheEntity.self, in: harness) == 0)
+        #expect(try count(SetEntryEntity.self, in: harness) == 1)
+    }
+
+    // The cache is the one table whose fate is read off what it names rather than off its own id,
+    // so the duplicate-id spare has to be proved on it separately — and `retained` is the only
+    // place that shows. Neither half is doomed here: the exercise and the set both survive.
+    @Test("An eligible cache row spared by a duplicate id is reported as retained")
+    func duplicateCacheIDIsRetained() async throws {
+        let harness = try RepositoryHarness()
+        let squat = makeSquat()
+        let sourceSet = makeSet(entryID: UUID(), order: 0, isWarmup: false, isCompleted: true)
+        let shared = UUID()
+        let deleted = softDeleted(
+            PersonalRecordCacheEntity(
+                id: shared,
+                exerciseID: squat.id,
+                repCount: 5,
+                weightGrams: 100_000,
+                sourceSetID: sourceSet.id,
+                achievedAt: longAgo,
+                computationVersion: 1
+            ), at: longAgo)
+        let live = PersonalRecordCacheEntity(
+            id: shared,
+            exerciseID: squat.id,
+            repCount: 5,
+            weightGrams: 102_500,
+            sourceSetID: sourceSet.id,
+            achievedAt: longAgo,
+            computationVersion: 1
+        )
+        try harness.seed([squat, sourceSet, deleted, live])
+
+        let report = try await harness.stack.purge(.deleted(onOrBefore: cutoff))
+
+        #expect(report.removed == 0)
+        #expect(report.retained == 1)
+        #expect(try count(PersonalRecordCacheEntity.self, in: harness) == 2)
+    }
+
     @Test("A purge over an empty store removes and retains nothing")
     func emptyStoreIsNoOp() async throws {
         let harness = try RepositoryHarness()
@@ -291,8 +363,9 @@ struct StorePurgeTests {
     }
 }
 
-/// The three live columns that can name an exercise, driving one case each.
+/// The four live columns that can name an exercise, driving one case each.
 private enum ExerciseReferrer: CaseIterable {
+    case entry
     case trainingMax
     case dashboard
     case variant

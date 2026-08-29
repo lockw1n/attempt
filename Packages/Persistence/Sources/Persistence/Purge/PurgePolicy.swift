@@ -8,12 +8,15 @@
 // names the session, so an entry that survives keeps its session, and a session with no surviving
 // entry is free. Ownership and reference are the same edge read in opposite directions.
 //
-// THE RULE'S SECOND HALF IS THAT A LIVE ROW IS NEVER HARD-DELETED. It follows from the first: a
-// live row is not eligible under either scope but is still a referrer, so a live entry under a
-// soft-deleted session holds that session in the store. The pass then does less than the caller
-// asked and reports how much — which is recoverable, where hard-deleting the live entry to satisfy
-// a tidier cascade would not be. `G-1.3` reserves hard deletion to this routine precisely because
-// it is the one thing the app cannot undo.
+// THE RULE'S SECOND HALF IS THAT A CUTOFF PURGE HARD-DELETES NO LIVE ROW BUT A CACHED ONE. It
+// follows from the first: a live row is not eligible under `deleted(onOrBefore:)` but is still a
+// referrer, so a live entry under a soft-deleted session holds that session in the store. The pass
+// then does less than the caller asked and reports how much — which is recoverable, where
+// hard-deleting the live entry to satisfy a tidier cascade would not be. `G-1.3` reserves hard
+// deletion to this routine precisely because it is the one thing the app cannot undo. The cache is
+// the one exception and the next paragraph is why. `everything` is not a second exception but a
+// different question: it makes every row eligible, live ones included, and leaves nothing behind
+// that could refer to anything — under it the clause is empty rather than broken.
 //
 // A CACHED DERIVED ROW IS NOT A REFERRER, AND THAT IS `G-1.4` RATHER THAN AN EXCEPTION. Counting
 // one would let a `PersonalRecordCacheEntity` veto the removal of the set it was computed from —
