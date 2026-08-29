@@ -450,11 +450,12 @@ Two documentation gates run in the same CI job:
 Both take `--help`. `check-doc-ratio.sh --per-file` reports every file when the
 aggregate fails; `check-doc-units.sh --list` prints the declarations it checks.
 
-So does one schema gate, which keeps CloudKit compatible without enabling it —
-no iCloud entitlement, no source naming a `cloudKitDatabase`, no custom migration
-stage, and every `@Model` present in `SchemaV1.models` — which is both the store's
-schema and the list the compatibility tests audit, so an entity cannot join one
-without joining the other:
+So does one schema gate: no iCloud entitlement and no source naming a
+`cloudKitDatabase` outside two explicitly allowlisted files (the sync activation
+point and the entitlements file itself), no custom migration stage, and every
+`@Model` present in `SchemaV1.models` — which is both the store's schema and the
+list the compatibility tests audit, so an entity cannot join one without joining
+the other:
 
 ```bash
 ./scripts/check-cloudkit.sh
