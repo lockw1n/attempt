@@ -107,6 +107,16 @@ struct RestoreReading: View {
     /// The locale the counts are joined in.
     @Environment(\.locale) private var locale
 
+    /// The calendar the backup's date is named in.
+    ///
+    /// **Read from the environment rather than left implicit, and `TR-1.12` is the reason.** A
+    /// `Date.FormatStyle` renders against the device's own zone whatever is around it, so the
+    /// reference for a state drawing a date encodes the zone of the machine that recorded it — and
+    /// this screen's fixture is midnight UTC, which is the previous day, and a different weekday,
+    /// anywhere west of Greenwich. The default here *is* the device's own, so nothing about what a
+    /// lifter sees changes; what it buys is a snapshot a runner in another zone renders the same.
+    @Environment(\.calendar) private var calendar
+
     /// The state, and nothing else — every one of the seven is the whole screen.
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.lg.points) {
@@ -283,7 +293,8 @@ struct RestoreReading: View {
                 .foregroundStyle(ColorToken.textPrimary)
             Text(
                 SettingsStrings.restoreTakenOn(
-                    summary.takenAt.formatted(AppFormat.fullDate(locale: locale)))
+                    summary.takenAt.formatted(
+                        AppFormat.resolved(AppFormat.fullDate(locale: locale), in: calendar)))
             )
             .font(Typography.caption.font)
             .foregroundStyle(ColorToken.textSecondary)
