@@ -28,6 +28,12 @@
 #             The guard used to be Persistence.swift, which was worthless: that path is `excluded`
 #             from no_swiftdata_outside_persistence, so the rule could not fire on it whatever
 #             match_kinds said. A negative guard has to sit on a file the rule actually scans.
+#             no_hard_delete_outside_purge has TWO negative guards, and they fail for different
+#             reasons. SoftDelete.swift is the prose kind below. StorePurge.swift is the other:
+#             it holds a real `modelContext.delete(_:)` on the one path the rule `excluded`, so it
+#             is the only guard that can see the exemption stop working — an `excluded` entry
+#             narrowed or dropped makes the purge routine itself a build error, which the positive
+#             fixture cannot notice because it does not sit on that path.
 #             SoftDelete.swift is the same shape for no_hard_delete_outside_purge, and
 #             StoredEntity.swift for no_bare_save_in_persistence — each spells the banned call
 #             in a doc comment, in a file the rule does scan. SaveStamping.swift would NOT do
@@ -105,6 +111,7 @@ NEGATIVE=(
     "Packages/PowerliftingCore/Sources/PowerliftingCore/PowerliftingCore.swift:no_imports_in_core"
     "Packages/PowerliftingCore/Sources/PowerliftingCore/PowerliftingCore.swift:no_swiftdata_outside_persistence"
     "Packages/Persistence/Sources/Persistence/SoftDelete.swift:no_hard_delete_outside_purge"
+    "Packages/Persistence/Sources/Persistence/Purge/StorePurge.swift:no_hard_delete_outside_purge"
     "Packages/Persistence/Sources/Persistence/StoredEntity.swift:no_bare_save_in_persistence"
     "Packages/SeedImport/Sources/SeedImport/SeedImport.swift:no_networking_in_seed_import"
     "scripts/lint-fixtures/Packages/PowerliftingCore/Sources/BlockCommentImportFixture.swift:no_imports_in_core"

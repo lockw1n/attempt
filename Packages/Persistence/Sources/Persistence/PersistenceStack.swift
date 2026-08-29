@@ -17,7 +17,8 @@ public enum StoreLocation: Sendable {
     case inMemory
 }
 
-/// The repositories over one store — the only thing this module exposes (`TR-0.4.2`, `TR-0.1.2`).
+/// The repositories over one store, and `G-1.3`'s purge — the only things this module exposes
+/// (`TR-0.4.2`, `TR-0.1.2`, `TR-1.14`).
 ///
 /// **`ModelContainer` does not appear in this type's surface, and that is the point.** Every
 /// implementation is `internal`, so a consumer cannot name a SwiftData-backed type even
@@ -48,6 +49,9 @@ public struct PersistenceStack: Sendable {
     /// The cached N-rep maxes (`TR-1.6`) — derived values, never truth (`G-1.4`).
     public let personalRecords: any PersonalRecordCacheRepository
 
+    /// `G-1.3`'s hard deletes, reached through ``purge(_:)`` rather than named directly.
+    let purgeRoutine: StorePurge
+
     /// Opens the store at `location` and builds the repositories over it.
     ///
     /// - Throws: Whatever `ModelContainer` throws when the store cannot be opened or migrated.
@@ -63,6 +67,7 @@ public struct PersistenceStack: Sendable {
         bodyweight = SwiftDataBodyweightRepository(modelContainer: container)
         equipment = SwiftDataEquipmentRepository(modelContainer: container)
         personalRecords = SwiftDataPersonalRecordCacheRepository(modelContainer: container)
+        purgeRoutine = StorePurge(modelContainer: container)
     }
 }
 
