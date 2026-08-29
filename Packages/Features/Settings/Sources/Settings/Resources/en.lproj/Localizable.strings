@@ -192,3 +192,110 @@
 "settings.about.privacy.health" = "Body mass is read from Health only after you allow it, and only when you ask for an import. Attempt writes nothing back to Health, and what it reads stays on this device.";
 "settings.about.privacy.tracking" = "There is no analytics, no advertising and no tracking. No third party is told anything about you or your training.";
 "settings.about.privacy.currency" = "This policy describes the build named above. It ships inside the app, so it is never newer or older than the version you are running.";
+
+/* FR-1.11.1, FR-1.11.2: the export. Its section sits above About — it is about the lifter's own
+   data, which everything above it also is, and About is the one section that is not. */
+"settings.landing.data.title" = "Your data";
+"settings.landing.data.row" = "Export training log";
+"settings.landing.data.detail" = "A spreadsheet file, and a complete copy.";
+
+"settings.export.title" = "Export";
+"settings.export.intro" = "Two files, taken from what is on this device right now. Neither is sent anywhere — you choose where each one goes.";
+
+/* The two formats. Each name carries its extension, because the lifter has to hand the file to
+   something and the thing that opens it is chosen by that extension. */
+"settings.export.csv.title" = "Spreadsheet (CSV)";
+"settings.export.csv.detail" = "One row per set, with the date, exercise, weight, reps, RPE and your notes. Opens in Numbers, Excel or Sheets.";
+"settings.export.json.title" = "Complete copy (JSON)";
+"settings.export.json.detail" = "Every field of every row, exactly as stored. Not made for reading — it is the file that loses nothing.";
+
+"settings.export.share" = "Share";
+"settings.export.destinations" = "Sharing opens the usual sheet, so a file can go to Files, to Mail, to another app, or anywhere else you send things.";
+"settings.export.deleted" = "Anything you have deleted is left out. An export is what you have, not everything you ever logged.";
+"settings.export.preparing" = "Reading your training log…";
+
+/* FR-1.13.1's empty state. The catalogue is seeded at first launch, so a store nobody has trained
+   in is not empty by row count — it is a hundred exercises and nothing that happened. */
+"settings.export.empty.headline" = "Nothing to export yet";
+"settings.export.empty.message" = "Log a workout or a bodyweight reading, and it will be in the file.";
+
+/* FR-1.13.1's error state. G-3.4: the thrown error's description is a diagnostic and never the
+   sentence the user is shown. */
+"settings.export.error.headline" = "The export could not be prepared";
+"settings.export.error.message" = "Your training log could not be read just now. Nothing has been changed — try again.";
+
+/* FR-1.11.3: the backup. Its row sits beside the export's, under the same section — both are the
+   lifter's own data leaving the device, and they differ in what they are for rather than in where
+   they live. */
+"settings.landing.backup.row" = "Back up everything";
+"settings.landing.backup.detail" = "One file with every record on this device.";
+
+"settings.backup.title" = "Backup";
+"settings.backup.intro" = "A complete copy of everything Attempt holds on this device — your workouts, your exercises, your gyms and your settings. Nothing is sent anywhere: the file is yours to keep.";
+
+"settings.backup.file.title" = "Backup file (JSON)";
+"settings.backup.file.detail" = "Every field of every row, exactly as stored. Not made for reading — it is the file that keeps everything.";
+
+"settings.backup.share" = "Share";
+"settings.backup.destinations" = "Sharing opens the usual sheet, so the file can go to Files, to iCloud Drive, to another app, or anywhere else you send things.";
+
+/* G-1.3, and deliberately the opposite sentence to the export's. A backup that quietly dropped
+   deleted rows would not be a copy of the store. */
+"settings.backup.deleted" = "Anything you have deleted is in this file too. A backup is everything the app is holding, not only what you can see.";
+
+"settings.backup.preparing" = "Reading everything on this device…";
+
+/* FR-1.13.1's error state. G-3.4: the thrown error's description is a diagnostic and never the
+   sentence the user is shown. There is no empty state — see BackupState.Phase. */
+"settings.backup.error.headline" = "The backup could not be prepared";
+"settings.backup.error.message" = "Your data could not be read just now. Nothing has been changed — try again.";
+
+/* FR-1.11.4: the restore. Its row sits under the same section as the export and the backup, last
+   of the three: the two above hand a file out and this one reads a file back, which is the only
+   one of them that can lose anything. */
+"settings.landing.restore.row" = "Restore from a backup";
+"settings.landing.restore.detail" = "Read a backup file back onto this device.";
+
+"settings.restore.title" = "Restore";
+
+"settings.restore.waiting.headline" = "No file chosen";
+"settings.restore.waiting.message" = "Pick the JSON file Attempt wrote when you last backed up. Choosing a file changes nothing on its own — you will see what is in it first.";
+"settings.restore.choose" = "Choose a backup file";
+"settings.restore.reading" = "Reading the file…";
+
+/* The destructive question. It says what a restore DOES and what it does not do, because the
+   second half is the part a lifter would otherwise assume: nothing is emptied first, so a record
+   this file has never heard of stays where it is. */
+"settings.restore.confirm.title" = "This writes over what is on this device";
+"settings.restore.confirm.detail" = "Every record in this file replaces the one it matches here. Records this file does not contain are left as they are. There is no undo.";
+/* G-1.3, stated rather than left silent: the file carries what was deleted, and Attempt has no way
+   to put a record back as deleted. A lifter who backed up 7 deleted records gets 7 ordinary ones. */
+"settings.restore.confirm.deleted" = "Records you had deleted before this backup was taken come back as ordinary records. Attempt cannot put a record back as deleted.";
+"settings.restore.confirm.action" = "Replace my data";
+"settings.restore.confirm.other" = "Choose a different file";
+
+"settings.restore.dialog.title" = "Write this backup over your data?";
+"settings.restore.dialog.message" = "There is no undo. Back up first if you are not sure.";
+"settings.restore.dialog.action" = "Replace my data";
+"settings.restore.dialog.cancel" = "Cancel";
+
+"settings.restore.restoring" = "Writing everything back…";
+"settings.restore.done.headline" = "Restored";
+"settings.restore.done.detail" = "Your workouts, exercises, gyms and settings are back. Estimated maxes and personal records have been worked out again from the sets in the file.";
+
+"settings.restore.taken %@" = "Taken %@";
+
+/* Three refusals rather than one message, because each asks for something different: a newer app,
+   the other file, or a different copy of this one. */
+"settings.restore.refused.export.headline" = "That is an export, not a backup";
+"settings.restore.refused.export.message" = "This file holds your training log for reading elsewhere, not everything Attempt needs to put a device back. Look for the file named Attempt-backup.";
+"settings.restore.refused.future.headline" = "That backup is from a newer Attempt";
+"settings.restore.refused.future.message" = "This file was written by a later version of the app. Update Attempt, then restore it — reading it here could only get it partly right.";
+"settings.restore.refused.unreadable.headline" = "That file cannot be read";
+"settings.restore.refused.unreadable.message" = "It is not an Attempt backup, or the copy is damaged. Nothing on this device has been changed.";
+
+/* Not a refusal: rows are already written. The retry is honest because every write is keyed on the
+   record's own identifier, so the same file run twice lands the same store. */
+"settings.restore.error.headline" = "The restore did not finish";
+"settings.restore.error.message" = "Part of the file is already on this device. Running the same file again is safe — it finishes the job.";
+"settings.restore.error.retry" = "Try again";

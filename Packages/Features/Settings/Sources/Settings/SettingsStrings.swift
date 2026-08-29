@@ -183,7 +183,9 @@ enum SettingsStrings {
             workoutTitle, keepAwakeLabel, keepAwakeHint,
             equipmentTitle, equipmentRow,
             equipmentDetail, bodyweightSectionTitle, bodyweightRow, bodyweightDetail,
-        ] + allBodyweightStrings + allHealthStrings + allAboutStrings + MassUnit.allCases.map(unitSymbol(for:))
+        ] + allBodyweightStrings + allHealthStrings + allAboutStrings + allExportStrings
+            + allBackupStrings + allRestoreStrings
+            + MassUnit.allCases.map(unitSymbol(for:))
             + E1RMFormulaID.allCases.map(formulaName(for:))
             + RoundingStrategy.allCases.map(strategyName(for:))
             + ThemePreference.allCases.map(themeName(for:))

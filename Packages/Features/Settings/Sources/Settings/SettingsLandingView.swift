@@ -68,6 +68,7 @@ public struct SettingsLandingView: View {
                 }
                 equipment
                 bodyweight
+                data
                 about
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -113,6 +114,36 @@ public struct SettingsLandingView: View {
                         label: SettingsStrings.healthRow,
                         detail: SettingsStrings.healthRowDetail)
                 }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// `FR-1.11`'s way out to the lifter's own data.
+    ///
+    /// Outside the phase switch, for ``equipment``'s reason: the log lives in its own tables, so a
+    /// preferences read that failed says nothing about whether it can be exported. **Above About**,
+    /// because everything above this point is about the lifter and About is the one section that is
+    /// about the app.
+    private var data: some View {
+        GroupedSection(Text(SettingsStrings.dataSectionTitle)) {
+            VStack(alignment: .leading, spacing: Spacing.md.points) {
+                SettingsLinkRow(
+                    route: .settings(.dataExport),
+                    label: SettingsStrings.dataExportRow,
+                    detail: SettingsStrings.dataExportDetail)
+                // FR-1.11.3, below the export rather than above it: an export is the file a lifter
+                // reaches for on purpose, and a backup is the one they take because they should.
+                SettingsLinkRow(
+                    route: .settings(.backup),
+                    label: SettingsStrings.backupRow,
+                    detail: SettingsStrings.backupDetail)
+                // FR-1.11.4, last of the three: the two rows above hand a file out, and this one
+                // reads a file back — the only one of them that can lose anything.
+                SettingsLinkRow(
+                    route: .settings(.restore),
+                    label: SettingsStrings.restoreRow,
+                    detail: SettingsStrings.restoreDetail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

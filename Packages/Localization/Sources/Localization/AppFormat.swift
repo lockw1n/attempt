@@ -145,7 +145,12 @@ public enum AppFormat {
     /// last day of the month before.
     ///
     /// So a screen that owns a calendar binds its styles to it. A screen that does not — one simply
-    /// rendering a stored instant — wants the device's own and should not call this.
+    /// rendering a stored instant — wants the device's own, and reaches it by binding to
+    /// `@Environment(\.calendar)`, which *is* the device's own until something replaces it. That is
+    /// not a third behaviour: it renders identically and costs nothing, and what it buys is a screen
+    /// whose date a snapshot can pin (`TR-1.12`), since a reference rendered in the recorder's zone
+    /// is a reference that fails in every other one. Passing a calendar the dates were not computed
+    /// in remains the mistake this warns about.
     ///
     /// - Parameters:
     ///   - style: The style to bind.
