@@ -73,6 +73,14 @@ final class RestoreState {
     /// `fileImporter` is outside this app's container, and one that stayed claimed would hold a
     /// coordination scope open for as long as the screen lives.
     ///
+    /// **The read is awaited rather than run inline, and that is what makes ``Phase/reading``
+    /// drawable at all.** This module is compiled `defaultIsolation(MainActor)`, so a read that
+    /// stayed on this actor would decode the whole file between two assignments to ``phase`` with
+    /// no suspension in between — the observation would coalesce and the loading state would never
+    /// reach the screen, on top of holding the main thread for the length of a multi-megabyte
+    /// decode. ``BackupState/prepare()``, this method's model, gets the same suspension for free
+    /// from its repository reads.
+    ///
     /// Single-flight, on ``BackupState``'s rule.
     ///
     /// - Parameter url: The file the lifter chose.
@@ -83,7 +91,7 @@ final class RestoreState {
         phase = .reading
         pending = nil
         do {
-            let archive = try Self.archive(at: url)
+            let archive = try await Self.archive(at: url)
             pending = archive
             phase = .confirming(BackupSummary(archive))
         } catch let refusal as RestoreRefusal {
@@ -127,10 +135,15 @@ final class RestoreState {
 
     /// The bytes behind a picked URL, checked.
     ///
+    /// **`nonisolated` and `async`, which is the whole of the fix**: a nonisolated async function
+    /// runs on the generic executor rather than the caller's actor, so this both leaves the main
+    /// thread free for the length of the decode and gives ``read(_:)`` the suspension point its
+    /// loading state needs. It must not gain a `MainActor` annotation.
+    ///
     /// - Parameter url: The file.
     /// - Returns: The archive.
     /// - Throws: A ``RestoreRefusal``, or whatever reading the file raised.
-    private static func archive(at url: URL) throws -> TrainingLogArchive {
+    private nonisolated static func archive(at url: URL) async throws -> TrainingLogArchive {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         return try StoreRestore.archive(from: try Data(contentsOf: url))

@@ -124,10 +124,13 @@ struct StoreRestore {
     /// thing that reads `contents`, and this asks the bytes for a number only once that decoder has
     /// said no.
     ///
+    /// **`nonisolated`**, because the whole point of it is to run off the main thread: this module
+    /// is `defaultIsolation(MainActor)` and the decode below is the expensive half of a restore.
+    ///
     /// - Parameter data: The file's bytes.
     /// - Returns: The archive, known to be a backup this build can read.
     /// - Throws: A ``RestoreRefusal``.
-    static func archive(from data: Data) throws(RestoreRefusal) -> TrainingLogArchive {
+    nonisolated static func archive(from data: Data) throws(RestoreRefusal) -> TrainingLogArchive {
         let archive: TrainingLogArchive
         do {
             archive = try TrainingLogArchive.decoded(from: data)
@@ -145,7 +148,7 @@ struct StoreRestore {
     ///
     /// - Parameter data: The file's bytes.
     /// - Returns: The claimed version, or `nil` where there is none or it is one this build reads.
-    private static func claimedVersion(in data: Data) -> Int? {
+    private nonisolated static func claimedVersion(in data: Data) -> Int? {
         guard let marker = try? TrainingLogArchive.decoder.decode(VersionMarker.self, from: data),
             marker.formatVersion > TrainingLogArchive.currentFormatVersion
         else { return nil }
@@ -195,7 +198,7 @@ struct StoreRestore {
 /// A type of its own rather than a keyed container read by hand, so the decoder that reads it is
 /// ``TrainingLogArchive``'s own — a marker configuring a second one would be the second home for
 /// that fact.
-private struct VersionMarker: Decodable {
+private struct VersionMarker: nonisolated Decodable {
     /// What the file says it was written under.
     let formatVersion: Int
 }

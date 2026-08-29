@@ -31,7 +31,12 @@ extension TrainingLogArchive {
     }
 
     /// The decoder that reads one back, configured to match ``encoder`` exactly.
-    static var decoder: JSONDecoder {
+    ///
+    /// **`nonisolated`, with ``decoded(from:)``**, so that a restore can decode a chosen file off
+    /// the main thread (see ``RestoreState/archive(at:)``). Free of the usual caveat: this is a
+    /// computed property handing back a fresh decoder, so there is no shared instance for two
+    /// threads to share.
+    nonisolated static var decoder: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .deferredToDate
         return decoder
@@ -51,7 +56,7 @@ extension TrainingLogArchive {
     /// - Returns: The archive it carries.
     /// - Throws: Whatever `JSONDecoder` throws — a truncated or foreign file is corruption rather
     ///   than a newer version, which is rule 5 of `RecordCoding.swift`.
-    static func decoded(from data: Data) throws -> Self {
+    nonisolated static func decoded(from data: Data) throws -> Self {
         try decoder.decode(Self.self, from: data)
     }
 
@@ -72,7 +77,7 @@ extension TrainingLogArchive {
     /// - Parameter decoder: The decoder reading the file.
     /// - Throws: A `DecodingError` for a missing required key, a wrong type, or a
     ///   ``TrainingLogArchive/Contents`` spelling this build does not know.
-    init(from decoder: any Decoder) throws {
+    nonisolated init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
             formatVersion: try container.decode(Int.self, forKey: .formatVersion),
@@ -100,7 +105,7 @@ extension TrainingLogArchive {
     /// - Parameter container: The envelope's keyed container.
     /// - Returns: What the file says it holds.
     /// - Throws: A `DecodingError.dataCorruptedError` for a spelling this build does not know.
-    private static func decodeContents(
+    private nonisolated static func decodeContents(
         from container: KeyedDecodingContainer<CodingKeys>
     ) throws -> Contents {
         guard let raw = try container.decodeIfPresent(String.self, forKey: .contents) else {
@@ -126,7 +131,7 @@ extension TrainingLogArchive {
     ///
     /// - Parameter encoder: The encoder writing the file.
     /// - Throws: Whatever the encoder throws.
-    func encode(to encoder: any Encoder) throws {
+    nonisolated func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(formatVersion, forKey: .formatVersion)
         try container.encode(contents.rawValue, forKey: .contents)

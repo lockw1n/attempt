@@ -21,7 +21,13 @@ import RepositoryInterface
 /// **The sections a backup adds are additive keys, not a second format**: an absent section is an
 /// omitted key, rule 3 of `RecordCoding.swift`, so a file written by the export reads under the
 /// backup's reader and a file written before ``contents`` existed reads as the export it was.
-struct TrainingLogArchive: Codable, Sendable, Equatable {
+///
+/// **The `Codable` conformance is `nonisolated`, and the annotations under it are load-bearing.**
+/// This module is compiled `defaultIsolation(MainActor)`, which would otherwise isolate the
+/// conformance and confine every encode and decode of a whole store to the main thread — where
+/// `FR-1.11.4`'s restore has to read a chosen file *off* it. Nothing here is shared mutable state,
+/// so the looser isolation is the accurate one rather than a concession.
+struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
     /// Which of the two files this is — see this type's note on why the distinction cannot be
     /// inferred from the rows.
     ///
@@ -30,7 +36,7 @@ struct TrainingLogArchive: Codable, Sendable, Equatable {
     /// fail) and deliberately so. A vocabulary column's fallback costs that column; this one's would
     /// cost every row the file does not contain, silently, in whichever direction the fallback was
     /// picked. There is no safe default, so there is no default.
-    enum Contents: String, Sendable, Codable {
+    enum Contents: String, Sendable, nonisolated Codable {
         /// `FR-1.11.1`'s export: the log, live rows only, no configuration.
         case trainingLog
 
@@ -92,7 +98,7 @@ struct TrainingLogArchive: Codable, Sendable, Equatable {
 
     /// The wire keys, declared rather than synthesised — rule 1 of `RecordCoding.swift`, which this
     /// envelope follows for the reason the records do: renaming a property must not be a rename.
-    enum CodingKeys: String, CodingKey {
+    nonisolated enum CodingKeys: String, CodingKey {
         case formatVersion
         case contents
         case exportedAt
@@ -111,7 +117,7 @@ struct TrainingLogArchive: Codable, Sendable, Equatable {
     /// **2 rather than 1 because the envelope gained a discriminator**, not merely sections: a
     /// reader that did not know ``contents`` would read a backup as an export and conclude that
     /// nothing in it had ever been deleted. `FR-1.11.4`'s refusal keys off this number.
-    static let currentFormatVersion = 2
+    nonisolated static let currentFormatVersion = 2
 
     /// Builds a training-log export at the current format version.
     ///
@@ -122,7 +128,7 @@ struct TrainingLogArchive: Codable, Sendable, Equatable {
     ///   - entries: Every exercise slot.
     ///   - sets: Every set.
     ///   - bodyweight: Every reading.
-    init(
+    nonisolated init(
         exportedAt: Date,
         exercises: [Exercise],
         sessions: [WorkoutSession],
@@ -159,7 +165,7 @@ struct TrainingLogArchive: Codable, Sendable, Equatable {
     ///   - equipment: Every gym, soft-deleted rows included.
     ///   - trainingMaxes: Every training-max entry, soft-deleted rows included.
     ///   - settings: The preferences row.
-    init(
+    nonisolated init(
         takenAt: Date,
         exercises: [Exercise],
         sessions: [WorkoutSession],
@@ -190,7 +196,7 @@ struct TrainingLogArchive: Codable, Sendable, Equatable {
     /// `init(from:)` reaches the envelope through here — and it is the one caller that passes a
     /// version, since what a file says it was written under is the file's rather than this build's.
     /// Every other caller takes the default and gets ``currentFormatVersion``.
-    init(
+    nonisolated init(
         formatVersion: Int = Self.currentFormatVersion,
         contents: Contents,
         exportedAt: Date,

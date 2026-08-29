@@ -96,6 +96,12 @@ struct RestoreReading: View {
     /// **The second of the two taps `FR-1.11.4` asks for**, and it is view state rather than the
     /// screen's: nothing outside this view can raise it, which is what stops a caller from
     /// assembling a one-tap path to ``confirm``.
+    ///
+    /// **It guards both ways in, which is why the dialog hangs off the body rather than off the
+    /// confirmation.** The retry out of ``RestoreScreenState/failed`` writes the same rows over the
+    /// same store as the first attempt, so a retry that called ``confirm`` directly would be
+    /// exactly the single-tap path to a destructive write this state exists to prevent — the
+    /// failure being the second time round buys no permission the first tap did not.
     @State private var isConfirming = false
 
     /// The locale the counts are joined in.
@@ -121,10 +127,25 @@ struct RestoreReading: View {
                 ErrorStateView(
                     headline: Text(SettingsStrings.restoreErrorHeadline),
                     message: Text(SettingsStrings.restoreErrorMessage),
-                    retry: confirm)
+                    retry: { isConfirming = true })
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .confirmationDialog(
+            Text(SettingsStrings.restoreDialogTitle),
+            isPresented: $isConfirming,
+            titleVisibility: .visible
+        ) {
+            Button(role: .destructive, action: confirm) {
+                Text(SettingsStrings.restoreDialogAction)
+            }
+            Button(role: .cancel) {
+            } label: {
+                Text(SettingsStrings.restoreDialogCancel)
+            }
+        } message: {
+            Text(SettingsStrings.restoreDialogMessage)
+        }
     }
 
     /// No file chosen, and the way to choose one — `FR-1.13.1`'s empty state.
@@ -144,7 +165,8 @@ struct RestoreReading: View {
     ///
     /// **The destructive command raises a dialog rather than running**: `FR-1.11.4`'s "cannot be
     /// bypassed accidentally" is a count of deliberate taps, and this screen's count is three —
-    /// choose, replace, confirm.
+    /// choose, replace, confirm. **The retry out of a failed write is counted the same way**, which
+    /// is why the dialog is the body's and not this state's.
     ///
     /// **The way out sits above the destructive command, which is last**, on the two Logging
     /// editors' rule: put them the other way round and the two commands a thumb reaches for are one
@@ -168,21 +190,6 @@ struct RestoreReading: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-        }
-        .confirmationDialog(
-            Text(SettingsStrings.restoreDialogTitle),
-            isPresented: $isConfirming,
-            titleVisibility: .visible
-        ) {
-            Button(role: .destructive, action: confirm) {
-                Text(SettingsStrings.restoreDialogAction)
-            }
-            Button(role: .cancel) {
-            } label: {
-                Text(SettingsStrings.restoreDialogCancel)
-            }
-        } message: {
-            Text(SettingsStrings.restoreDialogMessage)
         }
     }
 

@@ -117,6 +117,12 @@ struct RestoreTests {
             settings: target.settings
         ).archive(takenAt: ExportLog.epoch)
         #expect(reread.deletedCount == 0)
+        // ANCHORED, and this line is the test. `deletedCount == 0` is also what an untouched store
+        // reads back, so on its own the assertion above is satisfied by a restore that wrote
+        // nothing at all — measured, not supposed. The row count is what says the rows arrived;
+        // only then is the zero above a statement about HOW they arrived.
+        #expect(reread.recordCount == archive.recordCount)
+        #expect(archive.recordCount > archive.deletedCount)
     }
 
     @Test func reportsWhatTheFileHeldRatherThanWhatCameBackLive() async throws {
@@ -165,11 +171,15 @@ struct RestoreTests {
         // confirmation describes rather than a shortfall it hides.
         let target = try await ExportLog.populated()
         let ours = try await target.exercise(named: "Only on this device")
+        // The file names one row of its own, so this test is about a restore that RAN. Without it
+        // the survival below is equally the story of a restore that wrote nothing — measured.
+        let theirs = ExportRecords.exercise(
+            id: UUID(), name: "Only in the file", at: ExportLog.epoch)
 
         try await Self.restore(into: target.repositories).restore(
             TrainingLogArchive(
                 takenAt: ExportLog.epoch,
-                exercises: [],
+                exercises: [theirs],
                 sessions: [],
                 entries: [],
                 sets: [],
@@ -181,6 +191,9 @@ struct RestoreTests {
         let read = try await target.repositories.exercises.exercise(
             id: ours.id, includingDeleted: true)
         #expect(read?.name == "Only on this device")
+        let landed = try await target.repositories.exercises.exercise(
+            id: theirs.id, includingDeleted: true)
+        #expect(landed?.name == "Only in the file")
     }
 
     @Test func rebuildsTheRecordCacheTheFileDeliberatelyDoesNotCarry() async throws {

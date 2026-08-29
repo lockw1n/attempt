@@ -67,6 +67,29 @@ struct RestoreStateTests {
         #expect(try await Self.catalogueSize(of: target) == 0)
     }
 
+    @Test("The reading state is one the screen can actually draw")
+    func readingIsObservable() async throws {
+        // FR-1.13.1's loading state, as a state and not just as a component reference. This module
+        // is `defaultIsolation(MainActor)`, so a read that stayed on this actor would run from
+        // `.reading` to `.confirming` inside one main-actor slice: the observation would coalesce,
+        // the loading state would never reach the screen, and the whole decode would sit on the
+        // main thread. `RestoreState.archive(at:)` is `nonisolated async` so that it does not.
+        let (archive, _) = try await RestoreTests.backupOfWholeStore()
+        let scratch = ScratchDirectory()
+        let url = try Self.file(try archive.encoded(), in: scratch)
+        let (state, _) = Self.state()
+
+        let running = Task { await state.read(url) }
+        // Deterministic rather than racy: the yield hands the main actor to the task above, which
+        // runs as far as its first suspension — the hop off this actor — and hands it back. Nothing
+        // else can touch `phase` before the check, because the check does not await.
+        await Task.yield()
+        #expect(state.phase == .reading)
+
+        await running.value
+        #expect(state.phase == .confirming(BackupSummary(archive)))
+    }
+
     @Test("Confirming writes the file that was counted")
     func confirmingWrites() async throws {
         let (archive, _) = try await RestoreTests.backupOfWholeStore()
@@ -180,7 +203,8 @@ struct RestoreStateTests {
         // A destructive button is a button a nervous thumb hits twice. Without the guard the second
         // press starts a second pass over every table while the first is still writing.
         let running = Task { @MainActor in await state.confirmRestore() }
-        await gated.waitForASave()
+        let arrived = await gated.waitForASave()
+        #expect(arrived, "the restore never wrote an exercise, so the gate never closed")
         let second = Task { @MainActor in await state.confirmRestore() }
         // A wait rather than a signal, because this proves a negative: when the guard holds there
         // is nothing to be notified of.
@@ -257,9 +281,6 @@ private actor GatedExerciseSaves: ExerciseRepository {
     /// How many saves have begun.
     private(set) var saves = 0
 
-    /// Resumed when a save first arrives.
-    private var arrival: CheckedContinuation<Void, Never>?
-
     /// Every save currently being held.
     private var held: [CheckedContinuation<Void, Never>] = []
 
@@ -269,10 +290,21 @@ private actor GatedExerciseSaves: ExerciseRepository {
     /// Whether the release has been given.
     private var isReleased = false
 
-    /// Waits until a save has begun.
-    func waitForASave() async {
-        guard !hasArrived else { return }
-        await withCheckedContinuation { arrival = $0 }
+    /// Waits until a save has begun, or gives up.
+    ///
+    /// **Bounded, and a continuation would not be.** The gate is an `ExerciseRepository`, so this
+    /// wait quietly depends on the catalogue still being the first thing `StoreRestore.restore`
+    /// writes — reorder those loops and an unbounded wait is never resumed, which hangs the suite
+    /// instead of failing it. That is the shape `T-1.66`'s review already paid for once, one
+    /// position over.
+    ///
+    /// - Returns: Whether a save arrived.
+    func waitForASave() async -> Bool {
+        for _ in 0..<200 {
+            if hasArrived { return true }
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return hasArrived
     }
 
     /// Lets every held save finish.
@@ -288,8 +320,6 @@ private actor GatedExerciseSaves: ExerciseRepository {
     func save(_ exercise: Exercise) async {
         saves += 1
         hasArrived = true
-        arrival?.resume()
-        arrival = nil
         if !isReleased {
             await withCheckedContinuation { held.append($0) }
         }
