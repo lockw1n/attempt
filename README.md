@@ -440,15 +440,17 @@ relaxed option leaves `swiftlint lint` green while enforcing nothing:
 ./scripts/verify-lint-rules.sh
 ```
 
-Two documentation gates run in the same CI job:
+Three documentation gates run in the same CI job:
 
 ```bash
 ./scripts/check-doc-ratio.sh    # `///` lines against code, Packages/*/Sources, max 1.5 aggregate
 ./scripts/check-doc-units.sh    # a public Int or Double under a dimensioned name states its unit and range
+./scripts/check-doc-links.sh    # every ``symbol`` link in a doc comment resolves (TR-1.15)
 ```
 
-Both take `--help`. `check-doc-ratio.sh --per-file` reports every file when the
-aggregate fails; `check-doc-units.sh --list` prints the declarations it checks.
+All three take `--help`. `check-doc-ratio.sh --per-file` reports every file when
+the aggregate fails; `check-doc-units.sh --list` prints the declarations it
+checks; `check-doc-links.sh --self-test` proves the gate can fail.
 
 So does one schema gate: no iCloud entitlement and no source naming a
 `cloudKitDatabase` outside two explicitly allowlisted files (the sync activation
@@ -475,7 +477,7 @@ dependency analysis".
 | **Build** | audits the app target's build settings, checks the debug harness is excluded from the app (and that the check itself fires), then builds the app |
 | **Package tests** | `PowerliftingCore` with coverage, then every package built and tested with warnings as errors (discovered by glob), the runtime gate and its proof, the warnings-gate proof, the `@unchecked Sendable` audit |
 | **Linux core build** | builds and tests `PowerliftingCore` and `RepositoryInterface` on `ubuntu-latest` in a Swift container |
-| **SwiftLint** | lint, lint-rule verification, format check, doc-ratio and doc-units gates |
+| **SwiftLint** | lint, lint-rule verification, format check, doc-ratio, doc-units and doc-links gates |
 | **Component snapshots** | renders every snapshot suite (`DesignSystem`'s components and states, plus each feature module's screens) and compares it against a committed reference, light/dark × default/`accessibility3` |
 
 The first four are **required checks on `main`**, so a red run blocks the
