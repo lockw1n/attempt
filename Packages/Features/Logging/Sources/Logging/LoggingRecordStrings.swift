@@ -14,7 +14,7 @@ extension LoggingStrings {
     /// The badge, as it is drawn on the row.
     ///
     /// **Two characters, and the row's width is the whole reason.** What the badge means in full is
-    /// ``setPersonalRecordLabel(_:)``, which VoiceOver reads and the line does not have to hold.
+    /// ``setPersonalRecordLabel(_:isSingleRep:)``, which VoiceOver reads and the line does not have to hold.
     static let setPersonalRecord = resource("logging.session.set.record")
 
     /// The same badge as VoiceOver reads it (`G-4.2`), naming the rep counts it stands at.

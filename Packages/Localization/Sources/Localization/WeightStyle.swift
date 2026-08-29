@@ -85,7 +85,7 @@ extension MassUnit {
 extension Weight {
     /// This mass, rendered by `style`.
     ///
-    /// - Parameter style: The style to render with; build it from ``AppFormat``.
+    /// - Parameter style: The style to render with; build it from ``Localization/AppFormat``.
     /// - Returns: The rendered string.
     public func formatted(_ style: WeightStyle) -> String {
         style.format(self)

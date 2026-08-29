@@ -211,8 +211,9 @@ extension UserSettings: AuditStamped {
     /// `self`'s preferences written onto `row`'s identity — the settings row's own update rule.
     ///
     /// **Neither `id` nor `userID` moves.** The mapping's `update(from:)` writes neither, so a
-    /// caller saving a record it assembled from defaults rather than from ``settings()`` edits the
-    /// preferences of the row that is already there rather than replacing its identity (`TR-1.10`).
+    /// caller saving a record it assembled from defaults rather than from
+    /// ``RepositoryInterface/SettingsRepository/settings()`` edits the preferences of the row that
+    /// is already there rather than replacing its identity (`TR-1.10`).
     func preferencesWritten(onto row: UserSettings) -> UserSettings {
         row.carryingPreferences(of: self)
     }

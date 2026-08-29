@@ -22,7 +22,7 @@ enum OptionalField<Value: Equatable>: Equatable {
 
 /// What the set editor holds while a set is being filled in, and what it refuses (`FR-1.2.3`).
 ///
-/// **Text, not numbers**, and every crossing back into one is ``LocalizedNumberField``'s — which is
+/// **Text, not numbers**, and every crossing back into one is ``Localization/LocalizedNumberField``'s — which is
 /// where that rule and the locale it is read in are argued.
 ///
 /// **The unit is the user's display preference, not a constant** (`G-3.1`, `G-3.2`): the number
@@ -142,7 +142,7 @@ struct SetDraft: Equatable, Sendable {
 
 extension SetDraft {
     /// The load, or `nil` when the field is empty, holds something that is not a number, or is
-    /// negative — see ``LocalizedNumberField/weight(_:in:locale:)`` for why each is refused.
+    /// negative — see ``Localization/LocalizedNumberField/weight(_:in:locale:)`` for why each is refused.
     var weight: Weight? {
         LocalizedNumberField.weight(weightText, in: unit, locale: locale)
     }

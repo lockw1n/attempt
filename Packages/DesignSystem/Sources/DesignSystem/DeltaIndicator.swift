@@ -9,7 +9,7 @@ import SwiftUI
 /// test holds that each of them tells the three cases apart on its own.
 public nonisolated enum DeltaDirection: Sendable, CaseIterable {
     /// The value went up, and `G-7.3` makes a positive delta green whether or not the increase is
-    /// welcome: a bodyweight gain on a cut still draws ``ColorToken/positive``. The tint follows
+    /// welcome: a bodyweight gain on a cut still draws ``DesignTokens/ColorToken/positive``. The tint follows
     /// the arithmetic rather than the sentiment, and there is deliberately no override — a
     /// component that knew which direction was *good* would be a component that knew what it was
     /// measuring.

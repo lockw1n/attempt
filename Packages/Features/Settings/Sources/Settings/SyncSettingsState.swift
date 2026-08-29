@@ -5,11 +5,11 @@ import RepositoryInterface
 ///
 /// **A screen's state rather than one of `TR-1.2`'s stores**, on ``HealthAccessState``'s rule: it is
 /// read from this screen alone and lives exactly as long as it does. The status it reports outlives
-/// the screen, but it lives in the ``SyncControl`` below rather than here.
+/// the screen, but it lives in the ``RepositoryInterface/SyncControl`` below rather than here.
 ///
 /// **The switch moves at once and the store does not.** `ModelConfiguration.cloudKitDatabase` is
 /// fixed when the container is built, so the choice is recorded now and applied at the next launch
-/// — see ``SyncControl``. ``needsRestart`` is that gap, and the screen draws it rather than
+/// — see ``RepositoryInterface/SyncControl``. ``needsRestart`` is that gap, and the screen draws it rather than
 /// pretending the switch did something it did not.
 @Observable
 final class SyncSettingsState {
@@ -64,7 +64,7 @@ final class SyncSettingsState {
 
     /// Records the lifter's choice (`FR-1.12.3`).
     ///
-    /// **It does not touch the log**, and neither does anything it calls — see ``SyncControl``.
+    /// **It does not touch the log**, and neither does anything it calls — see ``RepositoryInterface/SyncControl``.
     /// What it changes today is the preference and this screen; what changes at the next launch is
     /// whether the container mirrors.
     ///
@@ -75,15 +75,15 @@ final class SyncSettingsState {
     }
 }
 
-/// Which of the screen's states to draw — ``SyncStatus`` and ``SyncSettingsState/Phase`` folded
-/// into one axis.
+/// Which of the screen's states to draw — ``RepositoryInterface/SyncStatus`` and
+/// ``SyncSettingsState/isLoaded`` folded into one axis.
 ///
 /// The same split ``HealthAccessScreenState`` makes, and for the same reason: a snapshot reference
 /// can be rendered over one of these with no control behind it.
 enum SyncScreenState: Equatable, CaseIterable {
     /// The switch and the running store have not been read yet (`FR-1.13.1`).
     ///
-    /// **Not derived from a ``SyncStatus``**, unlike every other case here — it is the absence of
+    /// **Not derived from a ``RepositoryInterface/SyncStatus``**, unlike every other case here — it is the absence of
     /// one, which is why ``current(_:)`` never returns it and the view decides it instead.
     case loading
 

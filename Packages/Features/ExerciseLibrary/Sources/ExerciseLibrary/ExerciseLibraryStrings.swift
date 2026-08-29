@@ -235,7 +235,7 @@ enum ExerciseLibraryStrings {
 
     /// `FR-1.6.2`'s disclosure control over the 6–10RM.
     ///
-    /// **What is behind it, not "Show" plus what is behind it**, on ``LoggingStrings``' warmup
+    /// **What is behind it, not "Show" plus what is behind it**, on ``Logging/LoggingStrings``' warmup
     /// heading's rule: the control's label does not change with the fold, so a verb in it would be
     /// wrong in one of the two states.
     static let recordsMore = resource("exerciselibrary.detail.records.more")

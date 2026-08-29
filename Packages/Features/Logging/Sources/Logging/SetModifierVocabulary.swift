@@ -9,10 +9,10 @@ import PowerliftingCore
 /// consequence is the one thing a caller has to know: **renaming or removing a term here never
 /// touches a logged set.** `G-1.6` forbids rewriting logged data, so a set that recorded `chains`
 /// keeps recording `chains` after the term is renamed — the spelling simply stops being recognised,
-/// which is the case ``OpenVocabulary`` exists for and ``offered(with:)`` is how the picker still
+/// which is the case ``PowerliftingCore/OpenVocabulary`` exists for and ``offered(with:)`` is how the picker still
 /// shows it.
 ///
-/// **The nine built-ins cannot be renamed or removed.** They are what ``SetModifierTerm`` decodes,
+/// **The nine built-ins cannot be renamed or removed.** They are what ``PowerliftingCore/SetModifierTerm`` decodes,
 /// so a list that could delete one would leave stored sets naming a term the app declines to offer
 /// while still recognising it — two answers to one question.
 ///
@@ -39,7 +39,7 @@ public final class SetModifierVocabulary {
         custom = defaults.array(forKey: Self.key) as? [String] ?? []
     }
 
-    /// The nine `FR-1.2.8` names, in ``SetModifierTerm``'s declaration order.
+    /// The nine `FR-1.2.8` names, in ``PowerliftingCore/SetModifierTerm``'s declaration order.
     ///
     /// Declaration order rather than alphabetical: the enum groups the supports together and the
     /// execution styles after them, and a picker sorted by an English spelling would be sorted by

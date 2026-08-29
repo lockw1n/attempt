@@ -70,9 +70,10 @@ extension LoggingStrings {
 
     /// One built-in modifier's name, in the user's language (`G-3.4`).
     ///
-    /// **A switch over literal keys rather than a key built from ``SetModifierTerm/rawValue``.** The
-    /// raw value is the wire format — renaming a case is a storage migration — and a key
-    /// interpolated from it would make the catalogue's keys move with it silently. A term this
+    /// **A switch over literal keys rather than a key built from
+    /// ``PowerliftingCore/SetModifierTerm``'s `rawValue`.** The raw value is the wire format —
+    /// renaming a case is a storage migration — and a key interpolated from it would make the
+    /// catalogue's keys move with it silently. A term this
     /// version does not recognise has no name here at all: the picker draws its spelling.
     ///
     /// - Parameter term: The built-in term.

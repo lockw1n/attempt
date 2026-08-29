@@ -3,7 +3,7 @@ import PowerliftingCore
 /// The four fields of ``SeedExercise`` whose values come from a closed vocabulary.
 ///
 /// It exists so that every rule about vocabularies is written once and applied by walking
-/// ``allCases``. A rule spelled out per field is how three of the four end up checked — and
+/// `allCases`. A rule spelled out per field is how three of the four end up checked — and
 /// `laterality` is the only one whose own `Decodable` throws, so a validator exercised on it alone
 /// looks like it works.
 public enum SeedVocabularyField: String, CaseIterable, Sendable {

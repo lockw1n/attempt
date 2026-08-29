@@ -1,18 +1,18 @@
 import PowerliftingCore
 
 /// The `/content/v1/formulas.json` payload (`TR-0.5.2`): a versioned wrapper around the RPE/RIR
-/// chart ``RPEBased`` reads.
+/// chart ``PowerliftingCore/RPEBased`` reads.
 ///
 /// **Two version numbers, same split as `exercises.json`.** ``schemaVersion`` answers "can this
 /// reader read it" and is refused when unrecognised; ``revision`` answers "is there anything
 /// newer" and increases on every published edit, including one that leaves ``schemaVersion``
 /// alone.
 ///
-/// **``verified`` is the provenance flag `RPETableStandard.swift` promises.** ``RPETable/standard``
+/// **``verified`` is the provenance flag `RPETableStandard.swift` promises.** ``PowerliftingCore/RPETable/standard``
 /// is a transcription that has not been checked against a primary publication (`G-6.2`), and a
 /// remote table is read as more authoritative than a bundled one, not less — so a served table
 /// says whether it has been checked rather than carrying the caveat forward in silence. The prose
-/// behind the flag stays on ``RPETable/standard``'s doc comment; this is the one field, not a
+/// behind the flag stays on ``PowerliftingCore/RPETable/standard``'s doc comment; this is the one field, not a
 /// second copy of the paragraph.
 public struct RemoteFormulas: Codable, Equatable, Sendable {
     /// The only ``schemaVersion`` this version of the app can read.
@@ -26,13 +26,13 @@ public struct RemoteFormulas: Codable, Equatable, Sendable {
     public let revision: Int
 
     /// Whether ``rpeTable`` has been checked against a primary publication. `false` for the
-    /// transcription ``RPETable/standard`` ships as; a corrected table sets it `true`.
+    /// transcription ``PowerliftingCore/RPETable/standard`` ships as; a corrected table sets it `true`.
     public let verified: Bool
 
-    /// The chart itself, in ``RPETable``'s own wire shape.
+    /// The chart itself, in ``PowerliftingCore/RPETable``'s own wire shape.
     public let rpeTable: RPETable
 
-    /// Creates a document. Encoding is what the deploy script uses to turn ``RPETable/standard``
+    /// Creates a document. Encoding is what the deploy script uses to turn ``PowerliftingCore/RPETable/standard``
     /// into the published payload; nothing downstream constructs one by hand. Unlike
     /// `exercises.json`'s `SeedCatalogue`, this initialiser does not reject a non-positive
     /// ``revision`` or an unsupported ``schemaVersion`` — `RemoteFormulasValidator` is where both
@@ -62,7 +62,7 @@ extension RemoteFormulas {
     }
 
     /// Decodes the shape ``CodingKeys`` describes. Only ``rpeTable`` can fail here — its own
-    /// initialiser's guards run inside ``RPETable``'s decoding. ``schemaVersion`` and ``revision``
+    /// initialiser's guards run inside ``PowerliftingCore/RPETable``'s decoding. ``schemaVersion`` and ``revision``
     /// are not checked here — see this type's own initialiser for why that is
     /// ``RemoteFormulasValidator``'s job.
     public init(from decoder: any Decoder) throws {

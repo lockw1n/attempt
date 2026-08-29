@@ -64,7 +64,7 @@ extension RepOnlyE1RMFormula {
     /// **Unfiltered, and it is the one entry point that stays so.** A caller here has a load and a
     /// rep count rather than a logged set, so none of `TR-0.2.5`'s refusals apply — including
     /// ``E1RMCalculator``'s rule that a negative weight has no estimate. Whoever supplies a weight
-    /// this way owns the sign question; see ``estimate(for:)``.
+    /// this way owns the sign question; see ``E1RMFormula/estimate(for:)``.
     ///
     /// - Parameter weight: The load lifted, on one implement — see ``SetRecord/weight``. May be
     ///   negative.

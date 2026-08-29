@@ -8,7 +8,7 @@ import SwiftData
 /// every `save(_:)` performs can be written **once**. Five hand-written copies of "fetch by id,
 /// insert if absent, update every row if not" would be five places for the id rule and the
 /// soft-deleted-target rule to differ, and both are decisions rather than mechanics — see
-/// ``ModelContext/upsert(_:as:onInsert:)``.
+/// `ModelContext.upsert(_:as:onInsert:)`.
 protocol RecordMappable: StoredEntity {
     /// The record shape mirroring this entity's columns.
     associatedtype Record: StoredRecord

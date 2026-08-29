@@ -38,7 +38,7 @@ final class TrainingMaxConfigEntity: StoredEntity {
     /// The ``ExerciseEntity`` this configures.
     var exerciseID: UUID = SchemaDefaults.unlinkedID
 
-    /// ``TrainingMaxSourceKind``'s raw value — `TR-0.3.6`'s `source`. See the type's note.
+    /// ``RepositoryInterface/TrainingMaxSourceKind``'s raw value — `TR-0.3.6`'s `source`. See the type's note.
     var sourceRawValue: String = SchemaDefaults.trainingMaxSource
 
     /// The N of a "% of best N-rep max" source, or `nil` for the other two.

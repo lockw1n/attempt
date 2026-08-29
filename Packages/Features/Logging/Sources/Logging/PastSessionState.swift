@@ -48,7 +48,7 @@ final class PastSessionState {
     ///
     /// **A re-read answers `nil` here for as long as it is out**, ``Phase/loading`` carrying no
     /// record — which is why the note draft follows this through
-    /// ``SessionNoteDraft/follow(holding:)`` rather than through ``follow(_:)``: the gap is the
+    /// ``SessionNoteDraft/follow(holding:)`` rather than through ``SessionNoteDraft/follow(_:)``: the gap is the
     /// screen reading, not the session going away.
     var session: WorkoutSession? {
         guard case .loaded(let session) = phase else { return nil }

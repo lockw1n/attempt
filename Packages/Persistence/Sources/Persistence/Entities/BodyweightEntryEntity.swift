@@ -20,7 +20,7 @@ final class BodyweightEntryEntity: StoredEntity {
     /// The reading, in grams (`G-1.1`).
     var weightGrams: Int = 0
 
-    /// ``BodyweightSource``'s raw value — `TR-0.3.5`'s `source`, and what `FR-1.8.2`'s
+    /// ``RepositoryInterface/BodyweightSource``'s raw value — `TR-0.3.5`'s `source`, and what `FR-1.8.2`'s
     /// de-duplication of HealthKit readings against manual ones keys on.
     var sourceRawValue: String = SchemaDefaults.bodyweightSource
 

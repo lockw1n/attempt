@@ -162,7 +162,7 @@ extension RPETable {
     /// Hand-written for the reason every composite type in this module is: synthesised `Decodable`
     /// would build an `RPETable` directly from its stored properties, bypassing the ascending-key,
     /// finite-value and `0 < fraction ≤ 1` guards and hand a caller a table that divides by zero.
-    /// The bounds are checked before ``ClosedRange`` is constructed from them — `lower...upper`
+    /// The bounds are checked before `ClosedRange` is constructed from them — `lower...upper`
     /// **traps** rather than throwing when `lower > upper`, and a remote payload is exactly the
     /// input that guard exists for.
     public init(from decoder: any Decoder) throws {

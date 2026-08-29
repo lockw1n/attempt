@@ -81,7 +81,7 @@ enum SchemaDefaults {
     /// wrong in a way somebody notices at once.
     static var bodyweightDate: Date { .now }
 
-    /// ``BodyweightSource/manual``, for a reading whose provenance was never written.
+    /// ``RepositoryInterface/BodyweightSource/manual``, for a reading whose provenance was never written.
     ///
     /// Not `.healthKit`, which would make the row a de-duplication candidate (`FR-1.8.2`) and let it
     /// suppress a reading the user actually typed. A spurious manual entry is a row they can delete.
@@ -96,7 +96,7 @@ enum SchemaDefaults {
     /// applies where the user has configured nothing.
     static let effectiveFrom = Date.distantPast
 
-    /// ``TrainingMaxSourceKind/manual``, for a configuration whose source was never written.
+    /// ``RepositoryInterface/TrainingMaxSourceKind/manual``, for a configuration whose source was never written.
     ///
     /// The one case that cannot quietly produce a plausible number: `manualWeightGrams` is `nil` on
     /// such a row, so the configuration refuses to resolve and says so, where `.percentOfE1RM` would
@@ -128,7 +128,7 @@ enum SchemaDefaults {
     /// this app cannot read. Never a second constant: two would drift, invisibly.
     static let e1RMFormula = E1RMFormulaID.defaultFormula.rawValue
 
-    /// ``ThemePreference/system`` — a *column* default, and deliberately not the one
+    /// ``RepositoryInterface/ThemePreference/system`` — a *column* default, and deliberately not the one
     /// ``RepositoryInterface/SettingsRepository/settings()`` gives a first-launch row.
     ///
     /// The two answer different questions. This one backfills a row that already exists and never

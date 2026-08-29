@@ -48,7 +48,7 @@ extension RemoteFormulas {
     ///
     /// ``revision`` is a literal a human bumps when publishing a content edit — the same
     /// convention `exercises.json`'s hand-authored `revision` uses, not a counter anything tracks.
-    /// Because the deploy republishes whenever ``RPETable/standard`` changes, a test pins that
+    /// Because the deploy republishes whenever ``PowerliftingCore/RPETable/standard`` changes, a test pins that
     /// chart against this literal and fails when the chart moves without it, which is also where
     /// ``verified`` gets reconsidered.
     public static let published = RemoteFormulas(

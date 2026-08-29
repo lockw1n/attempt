@@ -44,7 +44,7 @@ public struct SeedExercise: Decodable, Equatable, Sendable {
     public var implements: Int { implementCount ?? 1 }
 
     /// The raw spelling of one vocabulary field, for a caller walking
-    /// ``SeedVocabularyField/allCases``.
+    /// ``SeedVocabularyField``'s `allCases`.
     public func rawValue(for field: SeedVocabularyField) -> String {
         switch field {
         case .movement: movementRawValue

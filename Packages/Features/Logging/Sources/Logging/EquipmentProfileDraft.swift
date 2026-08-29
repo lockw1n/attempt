@@ -40,7 +40,7 @@ struct PlateDraft: Identifiable, Equatable {
 ///
 /// The four value refusals mirror `PlateInventory`'s exactly — a denomination under a gram, a
 /// negative pair count, a repeated denomination, an inventory that overflows — because a draft that
-/// resolved past them would be refused again by ``EquipmentRepository/save(_:)``, one screen later
+/// resolved past them would be refused again by ``RepositoryInterface/EquipmentRepository/save(_:)``, one screen later
 /// and in a diagnostic the user cannot act on.
 enum EquipmentDraftRefusal: Equatable {
     /// The bar's field is empty, is not a number in this locale, or is negative.
@@ -68,7 +68,7 @@ enum EquipmentDraftRefusal: Equatable {
 /// (`FR-1.4.2`, `FR-1.4.3`).
 ///
 /// **Text, on ``SetDraft``'s argument**, and every crossing back into a number is
-/// ``LocalizedNumberField``'s.
+/// ``Localization/LocalizedNumberField``'s.
 ///
 /// **Nothing is prefilled, and that is `G-6.2` rather than an oversight.** A form that opened on a
 /// 20 kg bar and a competition plate set would be a claim about the user's gym that the user did not
@@ -235,9 +235,9 @@ extension EquipmentProfileDraft {
 
     /// This draft as a record, once ``isSavable`` holds.
     ///
-    /// **``EquipmentProfile/isDefault`` is passed through from the stored row rather than decided
+    /// **``RepositoryInterface/EquipmentProfile/isDefault`` is passed through from the stored row rather than decided
     /// here**, and a new profile's is `false`: which gym is the default is a cross-row invariant
-    /// that only ``EquipmentRepository/makeDefault(profileID:)`` can hold, and a save does not
+    /// that only ``RepositoryInterface/EquipmentRepository/makeDefault(profileID:)`` can hold, and a save does not
     /// honour the flag whatever the record carries.
     ///
     /// **Called twice, this answers with the same identity twice** — see ``newProfileID``, which is
