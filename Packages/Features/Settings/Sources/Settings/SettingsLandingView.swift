@@ -119,12 +119,17 @@ public struct SettingsLandingView: View {
         }
     }
 
-    /// `FR-1.11`'s way out to the lifter's own data.
+    /// Where the lifter's own data goes — `FR-1.11`'s three files, then `FR-1.12`'s iCloud.
+    ///
+    /// **The fourth row is not a file**, and it sits with the three because the section is about
+    /// where the log can end up rather than about the mechanism: three ways it leaves this device
+    /// on purpose, and one that keeps it on the lifter's other devices.
     ///
     /// Outside the phase switch, for ``equipment``'s reason: the log lives in its own tables, so a
-    /// preferences read that failed says nothing about whether it can be exported. **Above About**,
-    /// because everything above this point is about the lifter and About is the one section that is
-    /// about the app.
+    /// preferences read that failed says nothing about whether it can be exported — or, for the
+    /// last row, about a container and a preference it never touches. **Above About**, because
+    /// everything above this point is about the lifter and About is the one section that is about
+    /// the app.
     private var data: some View {
         GroupedSection(Text(SettingsStrings.dataSectionTitle)) {
             VStack(alignment: .leading, spacing: Spacing.md.points) {
@@ -144,6 +149,13 @@ public struct SettingsLandingView: View {
                     route: .settings(.restore),
                     label: SettingsStrings.restoreRow,
                     detail: SettingsStrings.restoreDetail)
+                // FR-1.12.1, last of the four and outside the phase switch's concern for the same
+                // reason About is: whether this device mirrors is a fact about the container and a
+                // preference, so a failed read of the settings row says nothing about it.
+                SettingsLinkRow(
+                    route: .settings(.sync),
+                    label: SettingsStrings.syncRow,
+                    detail: SettingsStrings.syncRowDetail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

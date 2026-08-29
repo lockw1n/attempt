@@ -40,6 +40,12 @@ extension RootTabView {
             backupRoot
         case .restore:
             restoreRoot
+        case .sync:
+            // NO STORE SWITCH HERE, unlike every other case in this function. The switch and the
+            // status are facts about the container and the preference rather than rows in it, so a
+            // store that did not open takes nothing away from this screen — and is arguably when a
+            // lifter most wants to know whether their log ever reached iCloud.
+            SyncSettingsView(control: dependencies.sync)
         }
     }
 
