@@ -3,7 +3,7 @@
 # DocC symbol-link validation for the local Swift packages (TR-1.15).
 #
 #   scripts/check-doc-links.sh                          # the gate: every module, every link
-#   scripts/check-doc-links.sh Packages/PowerliftingCore  # restrict, for a local iteration
+#   scripts/check-doc-links.sh Packages/Persistence     # report only that package's links
 #   scripts/check-doc-links.sh --self-test              # prove the gate can fail
 #
 # `missing_docs` gates whether a doc comment exists and check-doc-units.sh gates whether it names
@@ -16,6 +16,12 @@
 # to be added to all eighteen manifests, including the two the Linux job builds. `docc` itself
 # ships with the toolchain. Every module goes into ONE `docc convert`, which is both faster than
 # per-package runs and the only arrangement in which a cross-module link can resolve at all.
+#
+# A NAMED PACKAGE NARROWS THE REPORT, NOT THE RUN. Every package is dumped either way. Restricting
+# the set of graphs is precisely what makes a cross-module link unresolvable, so a run over one
+# package would report this tree's ~60 module-qualified links as broken — measured: 14 of them in
+# Features/Settings alone. The argument selects whose diagnostics are printed and counted, and the
+# rest are tallied as "outside the requested scope".
 #
 # ACCESS LEVEL IS `private`, deliberately. DocC can only resolve a link to a symbol that is in a
 # graph, so at the default (`public`) every link to an internal type — and every ``CodingKeys`` —
@@ -30,18 +36,32 @@
 # covers units and ranges, nothing requires a `- Parameter` per argument, and the 1.5:1 doc-ratio
 # ceiling in check-doc-ratio.sh actively argues against adding ~12 of them.
 #
-# THE TWO FIXES for what it reports, since neither is guessable from the message:
+# THE THREE FIXES for what it reports, since none is guessable from the message:
 #   - a link to a symbol in ANOTHER first-party module needs the module name in the path —
 #     ``PowerliftingCore/RPETable/standard``, not ``RPETable/standard``. DocC does not search
 #     sibling modules.
 #   - a link to a symbol this build does not contain (Swift, Foundation, SwiftUI — `Hashable`,
 #     `Calendar`, `allCases`) cannot be made to resolve, and belongs in single backticks. It was
 #     already rendering as plain text; the backticks just stop claiming otherwise.
+#   - a link to one of OUR OWN methods in an extension on someone else's type — `saveStamped(at:)`
+#     on SwiftData's `ModelContext`, `sortedDeterministically(by:descending:)` on `Sequence` — is
+#     first-party and still has no page here: these graphs carry no extension blocks, so docc drops
+#     those members and there is no path to write. Single backticks, and keep the extended type in
+#     the text so the reader can still find it. `dump-symbol-graph` can emit extension blocks;
+#     whether that earns an "Extended Modules" page per module for three links has not been argued,
+#     and no requirement asks.
 #
-# KNOWN LIMIT, so a green run is not overread: the app target is not covered. `Attempt/` is not a
-# package, so it has no symbol graph here and `xcodebuild docbuild` would be a second mechanism for
-# a target `missing_docs` already exempts. Every link in `Packages/**/Sources` is checked; a link in
-# an app-target doc comment is checked by nothing.
+# TWO KNOWN LIMITS, so a green run is not overread.
+#
+# The app target is not covered. `Attempt/` is not a package, so it has no symbol graph here and
+# `xcodebuild docbuild` would be a second mechanism for a target `missing_docs` already exempts. A
+# link in an app-target doc comment is checked by nothing.
+#
+# Platform-conditional code is not covered either. Graphs are dumped for the host, macOS, so
+# anything behind `#if os(iOS)` compiles to nothing and contributes no symbols: DesignSystem's
+# SnapshotTesting module is gated that way in full and yields an empty graph, its doc comments read
+# by nothing here. It carries no ``symbol`` links today and neither does any other gated block in
+# the tree, which is what keeps this cheap rather than a second dump per platform.
 #
 # Two globs, one per level, for the reason build-packages.sh gives: the feature modules sit at
 # Packages/Features/<Name>/ and a single `Packages/*/Package.swift` misses all five silently.
@@ -55,6 +75,8 @@ source "$REPO_ROOT/scripts/swift-strict-flags.sh"
 
 SELF_TEST=0
 PACKAGES=()
+# The packages whose diagnostics are reported. Empty means all of them; see the header.
+REPORT_SCOPE=()
 
 usage() {
     # The header block above, minus the shebang, up to the first blank/non-comment line.
@@ -109,6 +131,11 @@ check_tree() {
         [[ -f "$pkg/Package.swift" ]] || { echo "check-doc-links.sh: no package at $pkg" >&2; return 66; }
     done
 
+    local prefix
+    for prefix in "${REPORT_SCOPE[@]+"${REPORT_SCOPE[@]}"}"; do
+        [[ -f "$prefix/Package.swift" ]] || { echo "check-doc-links.sh: no package at $prefix" >&2; return 66; }
+    done
+
     local allowed
     allowed="$(first_party_modules "${packages[@]}")"
     if [[ -z "$allowed" ]]; then
@@ -159,8 +186,9 @@ check_tree() {
         return 70
     fi
 
-    local status=0
-    DIAGNOSTICS="$diagnostics" python3 - <<'PY' || status=$?
+    local status=0 scope
+    scope="$(printf '%s\n' "${REPORT_SCOPE[@]+"${REPORT_SCOPE[@]}"}")"
+    DIAGNOSTICS="$diagnostics" REPORT_UNDER="$scope" python3 - <<'PY' || status=$?
 import json
 import os
 import pathlib
@@ -173,8 +201,24 @@ IGNORED = ("is missing documentation",)
 data = json.loads(pathlib.Path(os.environ["DIAGNOSTICS"]).read_text())
 diagnostics = data.get("diagnostics", [])
 
+CWD = pathlib.Path.cwd()
+
+
+def repo_relative(path):
+    if not path:
+        return ""
+    try:
+        return str(pathlib.Path(path).resolve().relative_to(CWD))
+    except ValueError:
+        return path
+
+
+# Which packages' diagnostics to report. Every module was checked either way — narrowing the run
+# instead would break the cross-module links this gate exists to keep working.
+scope = [repo_relative(entry) for entry in os.environ.get("REPORT_UNDER", "").split("\n") if entry]
+
 failures = []
-ignored_parameters = ignored_synthesised = 0
+ignored_parameters = ignored_synthesised = out_of_scope = 0
 for item in diagnostics:
     summary = item.get("summary", "")
     if any(pattern in summary for pattern in IGNORED):
@@ -186,11 +230,10 @@ for item in diagnostics:
         # that it is empty. No file in the tree corresponds to it and no doc comment can fix it.
         ignored_synthesised += 1
         continue
-    source = source.removeprefix("file://").removeprefix("file:")
-    try:
-        source = str(pathlib.Path(source).resolve().relative_to(pathlib.Path.cwd()))
-    except ValueError:
-        source = source or "<no source>"
+    source = repo_relative(source.removeprefix("file://").removeprefix("file:")) or "<no source>"
+    if scope and not any(source == p or source.startswith(p + "/") for p in scope):
+        out_of_scope += 1
+        continue
     line = item.get("range", {}).get("start", {}).get("line", 0)
     failures.append((source, line, item.get("severity", "warning"), summary))
 
@@ -201,6 +244,7 @@ print()
 print(
     f"docc diagnostics: {len(failures)} unresolved link(s); ignored "
     f"{ignored_parameters} parameter documentation, {ignored_synthesised} synthesised page"
+    + (f", {out_of_scope} outside the requested scope" if scope else "")
 )
 
 if failures:
@@ -219,10 +263,16 @@ PY
     return "$status"
 }
 
-# Nine assertions over two fixture packages: the gate passing where it should, failing where it
-# should, and each of the two scope decisions above — a doc comment in a *test* target is out of
-# scope, a missing `- Parameter` is exempted rather than merely unreported. A gate nobody has
-# watched fail is decoration, and one that cannot pass is worse.
+# Fourteen assertions over four fixture packages: the gate passing where it should, failing where
+# it should, each of the two scope decisions above — a doc comment in a *test* target is out of
+# scope, a missing `- Parameter` is exempted rather than merely unreported — and the cross-module
+# rule that the majority of this repo's links now depend on. A gate nobody has watched fail is
+# decoration, and one that cannot pass is worse.
+#
+# CrossBase/CrossUser carry the two halves a single-module fixture cannot reach: qualifying a link
+# is what makes it resolve, and it resolves only while every module is in the one docc run. Without
+# them, running docc per package — or losing a sibling from the graph set — leaves every assertion
+# here green while sixty real links break.
 self_test() {
     local fixtures="$REPO_ROOT/scripts/lint-fixtures/doc-links"
     local work out status failed=0
@@ -258,13 +308,23 @@ self_test() {
     run_case "a path with no package is an error"       66 "no package at"          "$fixtures/NotAPackage"
     run_case "both fixtures together still fail"         1 "1 unresolved link(s)"   "$fixtures/CleanLinks" "$fixtures/BrokenLinks"
 
+    run_case "a cross-module link needs its module named" 1 "1 unresolved link(s)"  "$fixtures/CrossBase" "$fixtures/CrossUser"
+    run_case "  ... and it is the bare spelling that fails" 1 "Bare.swift"          "$fixtures/CrossBase" "$fixtures/CrossUser"
+    run_case "  ... and qualifying needs the other graph"  1 "2 unresolved link(s)" "$fixtures/CrossUser"
+
+    # The restrict mode: every module is still checked, and one package's failure is reported.
+    REPORT_SCOPE=("$fixtures/CleanLinks")
+    run_case "a report scope hides another package"      0 "0 unresolved link(s)"   "$fixtures/CleanLinks" "$fixtures/BrokenLinks"
+    run_case "  ... and says how many it hid"            0 "1 outside the requested scope" "$fixtures/CleanLinks" "$fixtures/BrokenLinks"
+    REPORT_SCOPE=()
+
     if (( failed )); then
         echo
         echo "check-doc-links.sh --self-test: FAILED" >&2
         return 1
     fi
     echo
-    echo "check-doc-links.sh --self-test: 9 assertions passed."
+    echo "check-doc-links.sh --self-test: 14 assertions passed."
 }
 
 if (( SELF_TEST )); then
@@ -274,4 +334,7 @@ fi
 
 GRAPHS="$(mktemp -d)"
 trap 'rm -rf "$GRAPHS"' EXIT
-check_tree "$GRAPHS" "${PACKAGES[@]+"${PACKAGES[@]}"}"
+# A named package narrows the report and not the run: check_tree with no packages dumps every one
+# of them, which is the only arrangement in which a cross-module link resolves at all.
+REPORT_SCOPE=("${PACKAGES[@]+"${PACKAGES[@]}"}")
+check_tree "$GRAPHS"
