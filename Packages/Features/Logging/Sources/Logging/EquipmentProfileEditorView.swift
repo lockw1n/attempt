@@ -361,7 +361,7 @@ struct EquipmentProfileEditorContent: View {
         }
     }
 
-    /// The field itself — text, never a bound number, on ``LocalizedNumberField``'s argument.
+    /// The field itself — text, never a bound number, on ``Localization/LocalizedNumberField``'s argument.
     ///
     /// The label is the row's own, announced rather than drawn: the visible one is `FieldRow`'s, and
     /// a field with none is a control VoiceOver reads as "text field" (`G-4.2`).

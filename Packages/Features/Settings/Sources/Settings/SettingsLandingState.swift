@@ -73,7 +73,7 @@ public final class SettingsLandingState {
     /// which is `FR-1.7.3`'s "retroactively" not happening.
     private let records: PersonalRecordRecomputer
 
-    /// The write chain. See ``setDisplayUnit(_:)``.
+    /// The write chain. See ``chained(_:)``.
     private var pendingWrite: Task<Void, Never>?
 
     /// Builds the state over the repository it reads and writes through.

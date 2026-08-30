@@ -154,7 +154,7 @@ struct EquipmentProfileDraft: Equatable {
     }
 
     /// One stored mass, in the field's own unit — see
-    /// ``LocalizedNumberField/render(_:in:locale:)``.
+    /// ``Localization/LocalizedNumberField/render(_:in:locale:)``.
     ///
     /// - Parameters:
     ///   - weight: The mass.

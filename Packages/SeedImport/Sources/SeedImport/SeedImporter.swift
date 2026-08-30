@@ -131,8 +131,9 @@ public struct SeedImporter: Sendable {
     /// run free of writes. Custom rows are skipped: an exercise the user authored was never in the
     /// catalogue, so its absence from one says nothing.
     ///
-    /// `deletedAt` is not consulted, and that is a decision rather than an omission: ``ExerciseRepository``
-    /// has no delete, so a guard for it would be a branch no call could reach. Two rows sharing an
+    /// `deletedAt` is not consulted, and that is a decision rather than an omission:
+    /// ``RepositoryInterface/ExerciseRepository`` has no delete, so a guard for it would be a
+    /// branch no call could reach. Two rows sharing an
     /// id are archived as two rows, because there is no reading under which one of the pair should
     /// stay in the pickers.
     private func archiveRemovals(notIn seeded: Set<UUID>, from stored: [Exercise]) async throws -> Int {

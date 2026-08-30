@@ -215,7 +215,7 @@ final class PastSessionState {
     /// repository turned down leaves every row exactly as it was and is ``writeFailure``'s whole
     /// case. A *re-read* that fails comes after a change that is already stored, so reporting it as
     /// the write's failure would send the user to make a correction that already landed; what it
-    /// actually costs is the screen's claim to be showing the session, which is ``Phase/failed``
+    /// actually costs is the screen's claim to be showing the session, which is ``Phase/failed(_:)``
     /// and carries the retry.
     ///
     /// - Parameter write: The write to perform. Its answer — whether anything was written — is

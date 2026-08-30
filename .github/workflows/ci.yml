@@ -336,10 +336,12 @@ jobs:
       - name: Check DocC symbol links
         run: ./scripts/check-doc-links.sh
 
-      # And the proof that the gate above can fail. Nine assertions over two fixture packages of its
-      # own, covering both scope decisions as well as the pass and the fail: a doc comment in a test
-      # target is out of scope, a missing `- Parameter` is exempted. A link gate that quietly checks
-      # nothing looks exactly like a link gate with nothing to report.
+      # And the proof that the gate above can fail. Fifteen assertions over five fixture packages
+      # of its own, covering both scope decisions as well as the pass and the fail — a doc comment
+      # in a test target is out of scope, a missing `- Parameter` is exempted — plus the two halves
+      # of the cross-module rule most of this repo's links now rest on: qualifying a link is what
+      # makes it resolve, and it resolves only while every module is in the one docc run. A link
+      # gate that quietly checks nothing looks exactly like a link gate with nothing to report.
       - name: Verify the DocC link gate fires
         run: ./scripts/check-doc-links.sh --self-test
 

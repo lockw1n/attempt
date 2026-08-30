@@ -100,7 +100,8 @@ public final class SetModifierVocabulary {
     /// `belt` gets `Belt` — a term the app would neither recognise nor refuse, drawn in the picker as
     /// a second row indistinguishable from the built-in one. The stored one is the half a display
     /// name cannot cover: `touchAndGo` reads as *Touch and go*, so a spelling check against the drawn
-    /// name alone admits the raw one and the list then holds two terms with one ``SetModifier`` —
+    /// name alone admits the raw one and the list then holds two terms with one
+    /// ``PowerliftingCore/SetModifier`` —
     /// which is a repeated identity in the picker's rows and a built-in that ``rename(_:to:)`` will
     /// edit. Localisation makes that the ordinary case rather than the exotic one: outside English
     /// no built-in's drawn name is its spelling (`G-3.4`).

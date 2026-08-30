@@ -17,6 +17,23 @@
 # ships with the toolchain. Every module goes into ONE `docc convert`, which is both faster than
 # per-package runs and the only arrangement in which a cross-module link can resolve at all.
 #
+# AND NOT the compiler's own `-emit-symbol-graph` under a plain `swift build`, which was tried
+# here, reads better — it never builds a test target — and is disqualified: two runs over one
+# unchanged tree reported 8 unresolved links and then 16, because a package's dependencies emit
+# graphs only when that invocation happens to compile them. `dump-symbol-graph` extracts from the
+# built module every time and gave byte-identical output across runs. A gate that reports a
+# different set of failures each time it runs is worse than a gate with a known blind spot, and
+# this one has a known blind spot: extraction reads the built module, so a link in the doc comment
+# of a `private` or `internal` member is not in the graph and is never checked, whatever
+# `--minimum-access-level` says. The compiler's own emission sees those; nothing else does.
+#
+# A TARGET THIS GATE DISCARDS MUST NOT BE ABLE TO FAIL IT. `dump-symbol-graph` extracts per target,
+# test targets included, and CI died on `AppNavigationPackageTests` after every first-party module
+# came out clean — not reproducible at the desk on the same Xcode 26.6, cold tree or warm. The
+# extraction failure is therefore tolerated and the graphs are checked instead: every module under
+# a package's Sources/ must have produced one, and a missing graph fails loudly with the extraction
+# log rather than being read as "nothing to report".
+#
 # A NAMED PACKAGE NARROWS THE REPORT, NOT THE RUN. Every package is dumped either way. Restricting
 # the set of graphs is precisely what makes a cross-module link unresolvable, so a run over one
 # package would report this tree's ~60 module-qualified links as broken — measured: 14 of them in
@@ -94,18 +111,24 @@ done
 
 cd "$REPO_ROOT"
 
-# The module directories under the given packages' Sources/ trees — the first-party set. A symbol
-# graph whose module is not in it is dropped: `swift package dump-symbol-graph` emits one per
-# *target*, so a run also produces `<Package>PackageTests` and, where a test target depends on one,
-# a third party's (SnapshotTesting). Neither is public surface this requirement is about, and a
-# broken link in a dependency is not ours to fix.
+# The given packages' own library targets — the first-party set. It is both the filter and the
+# checklist: a symbol graph whose module is not in it is dropped — a run also produces
+# `<Package>PackageTests` and, where a test target depends on one, a third party's (SnapshotTesting),
+# neither being surface this requirement is about — and a module in it that produced no graph fails
+# the run.
+#
+# Read from the manifest and not from the Sources/ directory names, because the two disagree where
+# it matters: an executable target has a directory like any other and `dump-symbol-graph` emits
+# nothing for it, so a checklist built from directories demands a graph that never exists
+# (`HarnessCommand`, measured).
 first_party_modules() {
-    local pkg dir
+    local pkg
     for pkg in "$@"; do
-        for dir in "$pkg"/Sources/*/; do
-            [[ -d "$dir" ]] || continue
-            basename "$dir"
-        done
+        swift package --package-path "$pkg" describe --type json 2>/dev/null \
+            | python3 -c 'import json, sys
+for target in json.load(sys.stdin)["targets"]:
+    if target.get("type") == "library":
+        print(target["name"])'
     done | sort -u
 }
 
@@ -144,12 +167,16 @@ check_tree() {
     fi
 
     mkdir -p "$graph_dir"
+    local dump_log module
+    dump_log="$(mktemp)"
     for pkg in "${packages[@]}"; do
         # Stale graphs from an earlier run would validate a module that no longer exists.
         rm -rf "$pkg"/.build/*/symbolgraph
         echo "==> symbol graph $pkg"
+        # Failure tolerated here and judged below — see the header. A test target's extraction
+        # failing says nothing about the modules this gate checks.
         swift package --package-path "$pkg" "${SWIFT_STRICT_FLAGS[@]}" \
-            dump-symbol-graph --minimum-access-level private >/dev/null
+            dump-symbol-graph --minimum-access-level private >"$dump_log" 2>&1 || true
 
         while IFS= read -r graph; do
             base="$(basename "$graph")"
@@ -158,7 +185,16 @@ check_tree() {
             grep -qx "$module" <<<"$allowed" || continue
             cp "$graph" "$graph_dir/$base"
         done < <(find "$pkg/.build" -path '*/symbolgraph/*.symbols.json')
+
+        for module in $(first_party_modules "$pkg"); do
+            [[ -f "$graph_dir/$module.symbols.json" ]] && continue
+            echo "check-doc-links.sh: no symbol graph for $module — $pkg produced none" >&2
+            tail -40 "$dump_log" >&2
+            rm -f "$dump_log"
+            return 70
+        done
     done
+    rm -f "$dump_log"
 
     local count
     count="$(find "$graph_dir" -name '*.symbols.json' | wc -l | tr -d ' ')"
@@ -263,9 +299,9 @@ PY
     return "$status"
 }
 
-# Fourteen assertions over four fixture packages: the gate passing where it should, failing where
+# Fifteen assertions over five fixture packages: the gate passing where it should, failing where
 # it should, each of the two scope decisions above — a doc comment in a *test* target is out of
-# scope, a missing `- Parameter` is exempted rather than merely unreported — and the cross-module
+# scope, a missing `- Parameter` is exempted rather than merely unreported — the cross-module
 # rule that the majority of this repo's links now depend on. A gate nobody has watched fail is
 # decoration, and one that cannot pass is worse.
 #
@@ -318,13 +354,17 @@ self_test() {
     run_case "  ... and says how many it hid"            0 "1 outside the requested scope" "$fixtures/CleanLinks" "$fixtures/BrokenLinks"
     REPORT_SCOPE=()
 
+    # The other half of tolerating a failed extraction: a module that produced no graph is a loud
+    # failure, not a clean run with nothing to report.
+    run_case "a module with no graph is an error"       70 "no symbol graph for BrokenBuild" "$fixtures/BrokenBuild"
+
     if (( failed )); then
         echo
         echo "check-doc-links.sh --self-test: FAILED" >&2
         return 1
     fi
     echo
-    echo "check-doc-links.sh --self-test: 14 assertions passed."
+    echo "check-doc-links.sh --self-test: 15 assertions passed."
 }
 
 if (( SELF_TEST )); then

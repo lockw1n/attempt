@@ -392,7 +392,8 @@ struct SetRow: View {
     /// width on two 44pt controls and the load — T-1.23 measured a single badge breaking `102.5 kg`
     /// into three lines — so a modifier list on the same line would come out of the number.
     ///
-    /// A spelling this build does not recognise is drawn as itself; see ``SetModifier/displayName``.
+    /// A spelling this build does not recognise is drawn as itself; see
+    /// ``PowerliftingCore/OpenVocabulary/displayName``.
     @ViewBuilder private var modifiers: some View {
         if !numbered.record.modifiers.isEmpty {
             Text(
