@@ -10,9 +10,10 @@ import RepositoryInterface
 /// immutable records cannot obey that without a way to put the four columns back.
 ///
 /// **One implementation per record type, and no shortcut.** A record's properties are `let`, so
-/// each conformance restates the whole memberwise initialiser — eight of them, mechanical and
+/// each conformance restates the whole memberwise initialiser — twelve of them, mechanical and
 /// verbose, and the alternative is a mutable mirror of every record shape, which is a second place
-/// for a column to go missing. `RecordStampingTests` proves each one changes nothing but the four.
+/// for a column to go missing. `RecordStampingTests` proves this of every conformance on its list;
+/// ``RepositoryInterface/PersonalRecordCache``'s is the one not on it.
 protocol AuditStamped: StoredRecord {
     /// `self` with the four audit columns replaced and every other column untouched.
     func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> Self

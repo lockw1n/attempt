@@ -91,9 +91,11 @@ struct PurgePlan {
     /// Puts back every id a surviving row still names, until nothing more is put back.
     ///
     /// **It iterates because retention is transitive.** Keeping a set keeps its entry, and keeping
-    /// that entry keeps its session — three levels here and a self-edge on the catalogue, so a
-    /// single pass in the wrong order would free a parent whose child had just been kept. The
-    /// fixpoint costs one extra sweep over rows already in memory and needs no ordering argument.
+    /// that entry keeps its session; keeping a target group keeps its slot, and that slot keeps
+    /// both its routine and the exercise it prescribes — two three-level chains, a self-edge on the
+    /// catalogue and a cross-chain edge into it, so a single pass in the wrong order would free a
+    /// parent whose child had just been kept. The fixpoint costs one extra sweep over rows already
+    /// in memory and needs no ordering argument.
     private mutating func retainReferenced() {
         var changed = true
         while changed {

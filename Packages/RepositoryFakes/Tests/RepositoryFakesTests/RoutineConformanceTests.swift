@@ -190,23 +190,77 @@ struct RoutineConformanceTests {
         #expect(groups.map(\.id) == tied)
     }
 
+    /// **One key withheld at a time, and that is the point of the test rather than its shape.**
+    ///
+    /// An earlier version withheld only the exercise, so the routine check was refused by nothing:
+    /// deleting it from *both* implementations left the whole suite green. Withholding both at
+    /// once would be no better — either check alone satisfies the expectation, so one could still
+    /// go missing for free.
     @Test("A slot needs both its routine and its exercise", arguments: Subject.all)
     func aSlotNeedsBothOfItsJoinKeys(_ subject: Subject) async throws {
         let repositories = try subject.make()
         let routine = routineRecord()
         let exerciseID = UUID()
-        try await repositories.routines.save(routine)
-        let orphan = routineExerciseRecord(routineID: routine.id, exerciseID: exerciseID)
+        try await repositories.exercises.save(exerciseRecord(id: exerciseID))
 
+        // The routine key alone: the exercise this slot names exists, so nothing else can refuse.
+        let unrooted = routineExerciseRecord(routineID: routine.id, exerciseID: exerciseID)
         await #expect(
-            throws: RepositoryError.danglingReference(recordID: orphan.id, referencing: exerciseID)
+            throws: RepositoryError.danglingReference(recordID: unrooted.id, referencing: routine.id)
+        ) { try await repositories.routines.save(unrooted) }
+
+        // Then the exercise key alone, the routine now in place.
+        try await repositories.routines.save(routine)
+        let missingExerciseID = UUID()
+        let orphan = routineExerciseRecord(routineID: routine.id, exerciseID: missingExerciseID)
+        await #expect(
+            throws: RepositoryError.danglingReference(
+                recordID: orphan.id, referencing: missingExerciseID)
         ) { try await repositories.routines.save(orphan) }
 
-        try await repositories.exercises.save(exerciseRecord(id: exerciseID))
-        try await repositories.routines.save(orphan)
+        // And with both present the refused write lands, so neither refusal is unconditional.
+        try await repositories.routines.save(unrooted)
         #expect(
             try await repositories.routines.exercises(forRoutineID: routine.id, includingDeleted: false)
                 .count == 1)
+    }
+
+    /// `RoutineRepository`'s only list-all read, and the only one of its members whose sort key is
+    /// a **name** — every other read orders on `order`. It had no test and no caller at all.
+    ///
+    /// Five rows tied on the name for `routineChildrenAreOrderedByOrderThenID`'s reason: a
+    /// tie-break that dropped `id.uuidString` would otherwise pass on a coin toss.
+    @Test(
+        "Routines come back by name, ties by id, and the flag hides a deleted one",
+        arguments: Subject.all
+    )
+    func routinesAreListedByNameThenID(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let tied = TiedIDs.ascending
+        let first = routineRecord(name: "Bench day")
+        let last = routineRecord(name: "Zercher day")
+
+        // Saved in an order that is neither the answer nor its reverse, so a read handing back
+        // insertion order fails either way round.
+        try await repositories.routines.save(last)
+        for id in [tied[3], tied[0], tied[4], tied[2], tied[1]] {
+            try await repositories.routines.save(routineRecord(id: id, name: "Squat day"))
+        }
+        try await repositories.routines.save(first)
+
+        #expect(
+            try await repositories.routines.routines(includingDeleted: false).map(\.id)
+                == [first.id] + tied + [last.id])
+
+        try await repositories.routines.deleteRoutine(id: tied[2])
+
+        // Both halves of the flag, so the read cannot satisfy this by answering the same list twice.
+        #expect(
+            try await repositories.routines.routines(includingDeleted: false).map(\.id)
+                == [first.id, tied[0], tied[1], tied[3], tied[4], last.id])
+        #expect(
+            try await repositories.routines.routines(includingDeleted: true).map(\.id)
+                == [first.id] + tied + [last.id])
     }
 
     @Test("A target group needs its slot", arguments: Subject.all)

@@ -313,14 +313,13 @@ func profileRecord(
 
 func routineRecord(
     id: UUID = UUID(),
-    name: String = "Push day",
-    deletedAt: Date? = nil
+    name: String = "Push day"
 ) -> Routine {
     Routine(
         id: id,
         createdAt: fixtureCreatedAt,
         updatedAt: fixtureUpdatedAt,
-        deletedAt: deletedAt,
+        deletedAt: nil,
         name: name
     )
 }
