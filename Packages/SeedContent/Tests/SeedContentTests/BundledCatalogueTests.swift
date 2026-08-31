@@ -143,12 +143,19 @@ struct BundledCatalogueTests {
 
     // The other half of "authored": a field filled with the English name, or with a transliteration
     // that never reached Cyrillic, satisfies the test above and reads as a translation to every
-    // caller. `EZ`, `SSB` and `GHD` are equipment names that stay Latin inside an otherwise Ukrainian
-    // name, so the rule is "contains Cyrillic", not "is Cyrillic throughout".
+    // caller. A bar or machine whose name is an **acronym** keeps it — `EZ`, `SSB`, `GHD` — while a
+    // descriptive one is described (`Swiss` → швейцарський, `Cambered` → вигнутий), so the rule is
+    // "contains Cyrillic", not "is Cyrillic throughout".
+    //
+    // A missing or blank field is `everyEntryIsTranslated`'s to report and is skipped here: it
+    // contains no Cyrillic either, so without the skip that test could not fail alone and its
+    // failure would always arrive as two.
     @Test("No shipped translation is the English name, or Latin throughout")
     func translationsAreUkrainian() throws {
         let suspect = try decoded().exercises.filter { entry in
-            guard let ukrainian = entry.ukrainianName else { return true }
+            let ukrainian = (entry.ukrainianName ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !ukrainian.isEmpty else { return false }
             let cyrillic = ukrainian.unicodeScalars.contains { (0x0400...0x04ff).contains($0.value) }
             return !cyrillic || ukrainian == entry.name
         }
@@ -161,12 +168,16 @@ struct BundledCatalogueTests {
     // the likeliest way to get there is a copy-paste while translating a family of variations.
     @Test("No two entries share a Ukrainian name")
     func translationsAreDistinct() throws {
-        let translations = try decoded().exercises.compactMap(\.ukrainianName)
+        let catalogue = try decoded()
+        let translations = catalogue.exercises.compactMap(\.ukrainianName)
         var seen: Set<String> = []
         let repeated = translations.filter { !seen.insert($0).inserted }
 
-        // Vacuous if the column were empty, which the count rules out.
-        #expect(translations.count == 116)
+        // Vacuous if the column were empty, which the entry count rules out — read against
+        // `everyEntryIsTranslated`, which is what forbids a blank one. Derived rather than written
+        // out so that adding an entry moves the two literals in `publishedIDsAreUnchanged` and no
+        // third one somewhere else.
+        #expect(translations.count == catalogue.exercises.count)
         #expect(repeated == [])
     }
 
