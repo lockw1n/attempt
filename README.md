@@ -115,21 +115,21 @@ places a row is refused on account of what it says are the projections in
 two are named in one file.
 
 `PersistenceStack` is how you get a store. It opens one container and hands back
-the five repositories as existentials:
+the seven repositories as existentials:
 
 ```swift
 let stack = try PersistenceStack(location: .inMemory)   // or .applicationDefault, .file(url)
 let exercises = try await stack.exercises.exercises(includingDeleted: false)
 ```
 
-It is the only public type in `Persistence`. The five implementations and the
+It is the only public type in `Persistence`. The seven implementations and the
 `ModelContainer` are `internal`, so nothing outside the module can name a
 SwiftData-backed type. Repository reads and writes live in
 `Packages/Persistence/Sources/Persistence/Repositories/`; start with
 `RowResolution.swift`, which carries the one shape every read has and the reason it
 is not a `FetchDescriptor`.
 
-`InMemoryRepositoryStack()` is the same five repositories without a store file, for
+`InMemoryRepositoryStack()` is the same seven repositories without a store file, for
 previews and for tests of code that consumes them:
 
 ```swift
