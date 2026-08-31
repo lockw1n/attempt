@@ -40,8 +40,9 @@ struct SeedUkrainianNameTests {
         #expect(entry.name == "Back Squat")
     }
 
-    // The shipped catalogue is in this state today and stays there until T-1.18: absent is the
-    // normal case, not an edge one, and it must not read as a blank translation.
+    // Absent is a normal state for a payload, not an edge one, and it must not read as a blank
+    // translation. The shipped catalogue translates every entry — `BundledCatalogueTests` is what
+    // holds it to that — but a fetched one, or a hand-written fixture, need not.
     @Test("An entry without one decodes to no Ukrainian name")
     func anUntranslatedEntryDecodes() throws {
         let data = catalogue(entryFields: "")

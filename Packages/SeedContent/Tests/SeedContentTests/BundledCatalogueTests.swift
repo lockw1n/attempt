@@ -128,6 +128,48 @@ struct BundledCatalogueTests {
         #expect(idDigest(ids) == 0x2452_4158_c12f_3ec8)
     }
 
+    // FR-1.14.2's catalogue half, over the file we actually ship. `SeedUkrainianNameTests` proves the
+    // key decodes; these prove it is authored on every entry, which nothing at runtime would report:
+    // `displayName(in:)` falls back to the English name, so a translation left out looks to a
+    // Ukrainian reader exactly like an exercise nobody has translated yet.
+    @Test("Every shipped entry carries a Ukrainian name")
+    func everyEntryIsTranslated() throws {
+        let untranslated = try decoded().exercises.filter {
+            ($0.ukrainianName ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+
+        #expect(untranslated.map(\.name) == [])
+    }
+
+    // The other half of "authored": a field filled with the English name, or with a transliteration
+    // that never reached Cyrillic, satisfies the test above and reads as a translation to every
+    // caller. `EZ`, `SSB` and `GHD` are equipment names that stay Latin inside an otherwise Ukrainian
+    // name, so the rule is "contains Cyrillic", not "is Cyrillic throughout".
+    @Test("No shipped translation is the English name, or Latin throughout")
+    func translationsAreUkrainian() throws {
+        let suspect = try decoded().exercises.filter { entry in
+            guard let ukrainian = entry.ukrainianName else { return true }
+            let cyrillic = ukrainian.unicodeScalars.contains { (0x0400...0x04ff).contains($0.value) }
+            return !cyrillic || ukrainian == entry.name
+        }
+
+        #expect(suspect.map(\.name) == [])
+    }
+
+    // English names are unique by authoring, and the Ukrainian column has to stay so for the same
+    // reason: two rows reading alike in a picker are two rows the lifter cannot choose between, and
+    // the likeliest way to get there is a copy-paste while translating a family of variations.
+    @Test("No two entries share a Ukrainian name")
+    func translationsAreDistinct() throws {
+        let translations = try decoded().exercises.compactMap(\.ukrainianName)
+        var seen: Set<String> = []
+        let repeated = translations.filter { !seen.insert($0).inserted }
+
+        // Vacuous if the column were empty, which the count rules out.
+        #expect(translations.count == 116)
+        #expect(repeated == [])
+    }
+
     @Test("Each pair-loaded entry still says so", arguments: pairLoadedExercises)
     func pairLoadedEntryCarriesTwo(_ exercise: NamedExercise) throws {
         let entryID = try id(of: exercise)
