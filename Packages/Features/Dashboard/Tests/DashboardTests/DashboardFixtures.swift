@@ -28,6 +28,7 @@ struct DashboardFixture {
     func exercise(
         id: UUID = UUID(),
         named name: String,
+        ukrainian: String? = nil,
         movement: Movement = .squat,
         equipment: Equipment = .barbell,
         parentExerciseID: UUID? = nil,
@@ -41,7 +42,7 @@ struct DashboardFixture {
                 updatedAt: .distantPast,
                 deletedAt: nil,
                 name: name,
-                ukrainianName: nil,
+                ukrainianName: ukrainian,
                 movement: movement,
                 parentExerciseID: parentExerciseID,
                 equipment: equipment,

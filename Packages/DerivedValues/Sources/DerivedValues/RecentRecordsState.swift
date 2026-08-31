@@ -42,6 +42,13 @@ public final class RecentRecordsState {
     /// An exercise missing from here is a row that names no exercise, not a row that has none.
     public private(set) var exerciseNames: [UUID: String] = [:]
 
+    /// Which of an exercise's two names the feed's rows carry (`FR-1.14.2`).
+    ///
+    /// Set by the view from `@Environment(\.locale)` before the read: ``exerciseNames`` is a lookup
+    /// this state builds, so a row cannot resolve one for itself. English until told otherwise,
+    /// which is what a caller that has no locale — a test, a preview — gets.
+    public var nameLanguage: ExerciseNameLanguage = .english
+
     /// Whether ``load()`` has ever completed. A feed with nothing in it and one nothing has looked
     /// at are both an empty ``records``, and a screen says opposite things about them.
     public private(set) var hasLoaded = false
@@ -132,7 +139,9 @@ public final class RecentRecordsState {
         exerciseNames =
             catalogued
             .filter { wanted.contains($0.id) }
-            .reduce(into: [:]) { names, exercise in names[exercise.id] = exercise.name }
+            .reduce(into: [:]) { names, exercise in
+                names[exercise.id] = exercise.displayName(in: nameLanguage)
+            }
     }
 
     /// Claims the next read's token. Taken before the first `await`.

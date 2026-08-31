@@ -32,7 +32,9 @@ struct TrainingLog {
 
     /// An exercise in the catalogue.
     @discardableResult
-    func exercise(id: UUID = UUID(), named name: String = "Back Squat") async throws -> UUID {
+    func exercise(
+        id: UUID = UUID(), named name: String = "Back Squat", ukrainian: String? = nil
+    ) async throws -> UUID {
         try await repositories.exercises.save(
             Exercise(
                 id: id,
@@ -40,7 +42,7 @@ struct TrainingLog {
                 updatedAt: .distantPast,
                 deletedAt: nil,
                 name: name,
-                ukrainianName: nil,
+                ukrainianName: ukrainian,
                 movement: .squat,
                 parentExerciseID: nil,
                 equipment: .barbell,

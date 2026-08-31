@@ -485,6 +485,6 @@ struct SessionExerciseCard: View {
         guard let exercise = item.exercise else {
             return Text(LoggingStrings.sessionExerciseMissing)
         }
-        return Text(verbatim: exercise.name)
+        return Text(verbatim: exercise.displayName(for: locale))
     }
 }

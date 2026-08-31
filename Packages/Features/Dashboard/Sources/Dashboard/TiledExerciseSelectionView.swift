@@ -43,6 +43,10 @@ public struct TiledExerciseSelectionView: View {
     /// The screen's own state.
     @State private var state: TiledExerciseSelectionState
 
+    /// The locale the exercise names in this section are resolved in (`FR-1.14.2`), handed to the
+    /// state before its read.
+    @Environment(\.locale) private var locale
+
     /// Builds the screen.
     ///
     /// - Parameters:
@@ -69,7 +73,10 @@ public struct TiledExerciseSelectionView: View {
         }
         .background(ColorToken.background)
         .navigationTitle(Text(DashboardStrings.tilesChooseTitle))
-        .task { await state.load() }
+        .task {
+            state.nameLanguage = ExerciseNameLanguage(locale)
+            await state.load()
+        }
     }
 }
 

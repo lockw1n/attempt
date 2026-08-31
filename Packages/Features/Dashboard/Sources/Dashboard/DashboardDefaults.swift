@@ -30,6 +30,12 @@ enum DashboardDefaults {
     /// alphabetical rule is a tiebreak rather than a claim — any of the three would be defensible,
     /// and what matters is that the same lifter gets the same tile on every launch.
     ///
+    /// **The name that settles it is the English one, and it is not a display decision**
+    /// (`FR-1.14.2` is about what a screen shows). This picks *which* exercise gets a tile on a
+    /// dashboard nobody has configured; resolving it per locale would hand a lifter a different
+    /// deadlift for switching their phone's language, and the tiles they see are named in their own
+    /// language either way.
+    ///
     /// - Parameter catalogue: The exercises to choose from.
     /// - Returns: One identifier per movement that had a candidate, in ``movements``' order.
     static func exerciseIDs(in catalogue: [Exercise]) -> [UUID] {

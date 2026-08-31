@@ -38,6 +38,10 @@ public struct ExerciseListView: View {
     /// The way back once a row has been chosen. Unused while ``select`` is `nil`.
     @Environment(\.dismiss) private var dismiss
 
+    /// The locale the screen is rendering in, which decides which name its rows show and its search
+    /// matches (`FR-1.14.2`, `FR-1.14.3`).
+    @Environment(\.locale) private var locale
+
     /// Builds the screen over the repository its state reads through.
     ///
     /// - Parameters:
@@ -95,7 +99,13 @@ public struct ExerciseListView: View {
         }
         // `refresh()`, not `load()`: an exercise created or edited above this screen has to be here
         // on the way back down (`FR-1.1.3`, `FR-1.1.4`). See the method's own note.
-        .task { await state.refresh() }
+        //
+        // The language is handed over before the read rather than watched for changes: iOS restarts
+        // the app when its language changes, so there is no running screen to update.
+        .task {
+            state.nameLanguage = ExerciseNameLanguage(locale)
+            await state.refresh()
+        }
     }
 
     /// The screen's four states (`FR-1.13.1`), each one of T-1.09's shared components.
@@ -253,6 +263,12 @@ struct ExerciseRow: View {
     /// The exercise this row names.
     let exercise: Exercise
 
+    /// The locale the row resolves its name in (`FR-1.14.2`).
+    ///
+    /// Read here rather than passed in, so every surface that draws a row — the list, the picker,
+    /// the detail screen's variations — resolves the same way without each of them remembering to.
+    @Environment(\.locale) private var locale
+
     /// Which trailing mark this row carries. Disclosure unless the caller says otherwise.
     var accessory: Accessory = .disclosure
 
@@ -264,7 +280,7 @@ struct ExerciseRow: View {
     var body: some View {
         HStack(spacing: Spacing.md.points) {
             VStack(alignment: .leading, spacing: Spacing.xxs.points) {
-                Text(verbatim: exercise.name)
+                Text(verbatim: exercise.displayName(for: locale))
                     .font(Typography.body.font)
                     .foregroundStyle(ColorToken.textPrimary)
                 HStack(spacing: Spacing.sm.points) {

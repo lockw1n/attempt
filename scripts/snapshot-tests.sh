@@ -65,7 +65,7 @@ cd "$(dirname "$0")/.."
 # the suite's own count where they do not — the latter is a floor that adds nothing, which is the
 # honest setting rather than a number chosen to look like the former.
 #   DesignSystem:    27 tests, 15 reference-backed, 12 harness probes  -> 20, above the 15.
-#   ExerciseLibrary: 27 tests, all of them reference-backed, no probes -> 27, its own count.
+#   ExerciseLibrary: 29 tests, all of them reference-backed, no probes -> 29, its own count.
 #   Logging:         52 tests, 51 reference-backed, one width probe    -> 52, above the 51.
 #   History:         19 tests, all of them reference-backed, no probes -> 19, its own count.
 #   Dashboard:       10 tests, all of them reference-backed, no probes -> 10, its own count.
@@ -74,7 +74,7 @@ cd "$(dirname "$0")/.."
 # screen added to an existing package raises that package's floor rather than adding a row.
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|20"
-    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|27"
+    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|29"
     "Packages/Features/Logging|Logging|LoggingSnapshotTests|52"
     "Packages/Features/History|History|HistorySnapshotTests|19"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|10"

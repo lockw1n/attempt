@@ -81,6 +81,14 @@ public final class ExerciseDetailState {
     /// The screen's read state.
     public private(set) var phase: Phase = .idle
 
+    /// Which of an exercise's two names this screen is showing (`FR-1.14.2`).
+    ///
+    /// Set by the view from `@Environment(\.locale)`, for the reason
+    /// ``ExerciseListState/nameLanguage`` gives. Here it decides only the order the variations come
+    /// in — each row draws its own name from the environment — so it is read at the end of a read
+    /// rather than kept beside the rows.
+    public var nameLanguage: ExerciseNameLanguage = .english
+
     /// The last notes write that failed, as the error's description, or `nil` once one succeeds.
     ///
     /// A **diagnostic**, not copy (`G-3.4`), and deliberately not a ``Phase`` — see the type's own
@@ -365,7 +373,11 @@ public final class ExerciseDetailState {
         }
         let catalogue = try await repository.exercises(includingDeleted: false)
         phase = .loaded(
-            Self.detail(for: exercise, in: catalogue, hasLoggedSets: await hasLoggedSets()))
+            Self.detail(
+                for: exercise,
+                in: catalogue,
+                named: nameLanguage,
+                hasLoggedSets: await hasLoggedSets()))
         // A keystroke that landed while the read was in flight is a fresh edit and survives it,
         // whichever kind of read this was. Failing that, the draft gives way to the record only if
         // the two already agreed when the read began.
@@ -390,9 +402,13 @@ public final class ExerciseDetailState {
     }
 
     /// Pairs an exercise with its parent and its variations, from the whole catalogue.
+    ///
+    /// `language` orders the variations by the name their rows show (`FR-1.14.2`), which is the one
+    /// thing about this screen that a row cannot resolve for itself.
     private static func detail(
         for exercise: Exercise,
         in catalogue: [Exercise],
+        named language: ExerciseNameLanguage,
         hasLoggedSets: Bool
     ) -> ExerciseDetail {
         ExerciseDetail(
@@ -403,7 +419,7 @@ public final class ExerciseDetailState {
             variations:
                 catalogue
                 .filter { $0.parentExerciseID == exercise.id && !$0.isArchived }
-                .sorted(by: ExerciseOrder.precedes),
+                .sorted { ExerciseOrder.precedes($0, $1, in: language) },
             hasLoggedSets: hasLoggedSets
         )
     }

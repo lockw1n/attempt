@@ -211,10 +211,11 @@ struct SessionListStateTests {
     @Test("Two catalogue rows under one identifier keep the first, rather than trapping (G-2.5)")
     func duplicateExerciseIdentifiersKeepTheFirst() {
         let id = UUID()
-        let names = SessionListState.names(in: [
-            TrainingLog.exercise(id: id, named: "Back Squat"),
-            TrainingLog.exercise(id: id, named: "Front Squat"),
-        ])
+        let names = SessionListState.names(
+            in: [
+                TrainingLog.exercise(id: id, named: "Back Squat"),
+                TrainingLog.exercise(id: id, named: "Front Squat"),
+            ], as: .english)
         #expect(names == [id: "Back Squat"])
     }
 

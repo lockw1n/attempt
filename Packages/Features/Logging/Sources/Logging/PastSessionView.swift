@@ -267,6 +267,9 @@ struct PastSessionExerciseCard: View {
     /// The exercise, its entry and its sets.
     let item: SessionExercise
 
+    /// The locale this card resolves its exercise's name in (`FR-1.14.2`).
+    @Environment(\.locale) private var locale
+
     /// The unit this card's loads are shown in (`G-3.1`).
     let unit: MassUnit
 
@@ -338,6 +341,6 @@ struct PastSessionExerciseCard: View {
         guard let exercise = item.exercise else {
             return Text(LoggingStrings.sessionExerciseMissing)
         }
-        return Text(verbatim: exercise.name)
+        return Text(verbatim: exercise.displayName(for: locale))
     }
 }

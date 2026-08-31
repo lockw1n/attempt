@@ -420,3 +420,59 @@ struct SessionSearchStateTests {
         #expect(state.results.count == 2)
     }
 }
+
+/// `FR-1.14.2`/`FR-1.14.3` on the History tab: a summary lists the name the reader's locale asks
+/// for, and the search over those summaries matches the same string.
+@MainActor
+@Suite("History exercise names, resolved for the screen's locale")
+struct HistoryLocaleNameTests {
+    @Test("A summary lists the Ukrainian name on a Ukrainian screen, and falls back where none is set")
+    func summaryListsTheResolvedName() async throws {
+        var log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat", ukrainian: "Присідання зі штангою")
+        let row = try await log.exercise(named: "Barbell Row")
+        let session = try await log.session(daysAgo: 0)
+        try await log.entry(squat, in: session, order: 0)
+        try await log.entry(row, in: session, order: 1)
+
+        let state = log.listState()
+        state.nameLanguage = .ukrainian
+        await state.load()
+        #expect(
+            try #require(state.summaries.first).exerciseNames == ["Присідання зі штангою", "Barbell Row"])
+    }
+
+    @Test("A search on a Ukrainian screen matches the Ukrainian name and not the English one")
+    func searchMatchesTheResolvedName() async throws {
+        var log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat", ukrainian: "Присідання зі штангою")
+        try await log.entry(squat, in: try await log.session(daysAgo: 0), order: 0)
+
+        let state = log.searchState()
+        state.nameLanguage = .ukrainian
+        state.query = "присідання"
+        await state.load()
+        #expect(state.results.count == 1)
+        #expect(state.results.allSatisfy { $0.match.fields == .exerciseName })
+
+        state.query = "Back Squat"
+        await state.load()
+        #expect(state.results.isEmpty)
+    }
+
+    @Test("The same query on an English screen is the mirror of that")
+    func englishScreenMatchesTheEnglishName() async throws {
+        var log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat", ukrainian: "Присідання зі штангою")
+        try await log.entry(squat, in: try await log.session(daysAgo: 0), order: 0)
+
+        let state = log.searchState()
+        state.query = "Back Squat"
+        await state.load()
+        #expect(state.results.count == 1)
+
+        state.query = "присідання"
+        await state.load()
+        #expect(state.results.isEmpty)
+    }
+}

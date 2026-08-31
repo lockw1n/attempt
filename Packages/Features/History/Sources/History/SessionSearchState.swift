@@ -49,6 +49,12 @@ final class SessionSearchState {
     /// The mode's read state.
     private(set) var phase: Phase = .idle
 
+    /// Which of an exercise's two names the indexed summaries carry (`FR-1.14.2`, `FR-1.14.3`).
+    ///
+    /// Set by the view before the walk, for the reason ``SessionListState/nameLanguage`` gives. It
+    /// is what makes an exercise-name match here a match on the name the result actually shows.
+    var nameLanguage: ExerciseNameLanguage = .english
+
     /// The unit a load is shown in (`G-3.1`, `G-3.2`).
     ///
     /// Read here rather than taken from the list's state, on `ExerciseHistoryState`'s rule: this
@@ -158,7 +164,8 @@ final class SessionSearchState {
             // only (`G-1.3`), and at most one row per identifier (`G-2.5`).
             let sessions = SessionListState.deduplicated(
                 try await workouts.sessions(in: SessionListState.everySession, includingDeleted: false))
-            let names = SessionListState.names(in: try await exercises.exercises(includingDeleted: true))
+            let names = SessionListState.names(
+                in: try await exercises.exercises(includingDeleted: true), as: nameLanguage)
             let reader = SessionSummaryReader(workouts: workouts, names: names)
 
             var indexed: [IndexedSession] = []

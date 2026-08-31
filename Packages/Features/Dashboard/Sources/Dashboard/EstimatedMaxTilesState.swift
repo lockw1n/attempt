@@ -75,6 +75,13 @@ final class EstimatedMaxTilesState {
     ///   - records: The app's one recompute actor.
     ///   - catalogue: The exercises.
     ///   - settings: The settings row (`FR-1.9.1`'s selection, `G-3.1`'s unit).
+    /// Which of an exercise's two names a tile carries (`FR-1.14.2`).
+    ///
+    /// **A tile's name is a string built by ``load()``, not a record a view can resolve for
+    /// itself**, so this has to be set before the read rather than read beside it — the view does
+    /// exactly that, from `@Environment(\.locale)`.
+    var nameLanguage: ExerciseNameLanguage = .english
+
     init(
         records: PersonalRecordRecomputer,
         catalogue: any ExerciseRepository,
@@ -95,7 +102,9 @@ final class EstimatedMaxTilesState {
             let stored = try await settings.settings()
             let exercises = try await catalogue.exercises(includingDeleted: false)
             let chosen = stored.dashboardExerciseIDs ?? DashboardDefaults.exerciseIDs(in: exercises)
-            let named = Dictionary(exercises.map { ($0.id, $0.name) }) { first, _ in first }
+            let named = Dictionary(
+                exercises.map { ($0.id, $0.displayName(in: nameLanguage)) }
+            ) { first, _ in first }
             var built: [EstimatedMaxTile] = []
             for exerciseID in chosen {
                 guard let name = named[exerciseID] else { continue }

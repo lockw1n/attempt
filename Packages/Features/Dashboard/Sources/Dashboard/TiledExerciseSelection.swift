@@ -60,6 +60,12 @@ final class TiledExerciseSelectionState {
         self.settings = settings
     }
 
+    /// Which of an exercise's two names a row shows, and orders by (`FR-1.14.2`).
+    ///
+    /// Set by the view from `@Environment(\.locale)`, for the reason
+    /// ``EstimatedMaxTilesState/nameLanguage`` gives — a row's name is a string this state builds.
+    var nameLanguage: ExerciseNameLanguage = .english
+
     /// Reads the catalogue and the selection.
     ///
     /// The selection defaults exactly as the tiles do — ``DashboardDefaults`` — so the picker opens
@@ -79,10 +85,12 @@ final class TiledExerciseSelectionState {
             choices =
                 exercises
                 .filter { !$0.isArchived || tiled.contains($0.id) }
-                .sorted { $0.name < $1.name }
+                .sorted { Self.precedes($0, $1, in: nameLanguage) }
                 .map {
                     TiledExerciseChoice(
-                        exerciseID: $0.id, name: $0.name, isTiled: tiled.contains($0.id))
+                        exerciseID: $0.id,
+                        name: $0.displayName(in: nameLanguage),
+                        isTiled: tiled.contains($0.id))
                 }
             failure = nil
         } catch {
@@ -111,5 +119,26 @@ final class TiledExerciseSelectionState {
             return
         }
         await load()
+    }
+
+    /// Whether `lhs`'s row is shown before `rhs`'s, by the name the rows carry (`FR-1.14.2`).
+    ///
+    /// `localizedStandardCompare` rather than `<`, which is the byte order and puts every Cyrillic
+    /// name after every Latin one. The identifier breaks a tie because `G-2.5` forbids a unique
+    /// constraint on the name and `Array.sorted` is not stable: two exercises reading alike would
+    /// otherwise swap places between two reads of one catalogue.
+    ///
+    /// - Parameters:
+    ///   - lhs: The candidate for the earlier row.
+    ///   - rhs: The one it is compared against.
+    ///   - language: Which name the rows are showing.
+    /// - Returns: `true` when `lhs` sorts first.
+    private static func precedes(
+        _ lhs: Exercise, _ rhs: Exercise, in language: ExerciseNameLanguage
+    ) -> Bool {
+        let byName = lhs.displayName(in: language)
+            .localizedStandardCompare(rhs.displayName(in: language))
+        if byName != .orderedSame { return byName == .orderedAscending }
+        return lhs.id.uuidString < rhs.id.uuidString
     }
 }

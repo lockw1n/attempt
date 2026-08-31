@@ -58,6 +58,11 @@ final class CalendarState {
     /// The screen's read state.
     private(set) var phase: Phase = .idle
 
+    /// Which of an exercise's two names a day's summary lists (`FR-1.14.2`).
+    ///
+    /// Set by the view before the read, for the reason ``SessionListState/nameLanguage`` gives.
+    var nameLanguage: ExerciseNameLanguage = .english
+
     /// The days training was logged on, as day starts in ``calendar``.
     private(set) var trainingDays: Set<Date> = []
 
@@ -312,7 +317,8 @@ final class CalendarState {
     ///
     /// - Returns: Each exercise's name, keyed by its identifier.
     private func exerciseNames() async throws -> [UUID: String] {
-        SessionListState.names(in: try await exercises.exercises(includingDeleted: true))
+        SessionListState.names(
+            in: try await exercises.exercises(includingDeleted: true), as: nameLanguage)
     }
 
     /// Every session there has ever been — ``SessionListState``'s range, for its reason.

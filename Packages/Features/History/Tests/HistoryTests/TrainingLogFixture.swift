@@ -26,11 +26,15 @@ struct TrainingLog {
     ///
     /// - Parameters:
     ///   - name: What it is called — the string a summary line shows.
+    ///   - ukrainian: Its Ukrainian name (`FR-1.14.2`), where the test is about which of the two a
+    ///     summary carries. Absent, the row falls back to `name` in either language.
     ///   - archived: Whether it has been retired (`FR-1.1.5`).
     /// - Returns: The record.
     @discardableResult
-    mutating func exercise(named name: String, archived: Bool = false) async throws -> Exercise {
-        let exercise = Self.exercise(named: name, archived: archived)
+    mutating func exercise(
+        named name: String, ukrainian: String? = nil, archived: Bool = false
+    ) async throws -> Exercise {
+        let exercise = Self.exercise(named: name, ukrainian: ukrainian, archived: archived)
         try await repositories.exercises.save(exercise)
         catalogue.append(exercise)
         return exercise
@@ -50,7 +54,11 @@ struct TrainingLog {
     ///     `ExerciseRepository` has no delete, so no local write produces this.
     /// - Returns: The value.
     static func exercise(
-        id: UUID = UUID(), named name: String, archived: Bool = false, deleted: Bool = false
+        id: UUID = UUID(),
+        named name: String,
+        ukrainian: String? = nil,
+        archived: Bool = false,
+        deleted: Bool = false
     ) -> Exercise {
         Exercise(
             id: id,
@@ -58,7 +66,7 @@ struct TrainingLog {
             updatedAt: epoch,
             deletedAt: deleted ? epoch : nil,
             name: name,
-            ukrainianName: nil,
+            ukrainianName: ukrainian,
             movement: .squat,
             parentExerciseID: nil,
             equipment: .barbell,

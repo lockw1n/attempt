@@ -58,6 +58,10 @@ struct RecentRecordsFeed: View {
     /// The feed's own state.
     @State private var state: RecentRecordsState
 
+    /// The locale each entry's exercise name is resolved in (`FR-1.14.2`), handed to the state
+    /// before its read.
+    @Environment(\.locale) private var locale
+
     /// The unit the loads are shown in (`G-3.1`).
     ///
     /// The screen's own read, and kilograms until it lands — a record reads no setting, which is
@@ -93,6 +97,7 @@ struct RecentRecordsFeed: View {
     var body: some View {
         content
             .task {
+                state.nameLanguage = ExerciseNameLanguage(locale)
                 await state.load()
                 if let stored = try? await settings.settings().displayUnit { unit = stored }
             }

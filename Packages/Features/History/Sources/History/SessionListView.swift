@@ -19,6 +19,10 @@ import SwiftUI
 public struct SessionListView: View {
     @State private var state: SessionListState
 
+    /// The locale the exercise names in a summary are resolved in (`FR-1.14.2`), handed to both
+    /// states before their reads.
+    @Environment(\.locale) private var locale
+
     /// `FR-1.5.4`'s search over the same history, as a mode of this screen rather than a screen of
     /// its own — the field belongs to this list, and a pushed search would be a second place the
     /// History tab's sessions are listed.
@@ -79,12 +83,18 @@ public struct SessionListView: View {
         }
         // `load()` on every appearance, not once: a workout finished in the Train tab has to be
         // here on the way back.
-        .task { await state.load() }
+        .task {
+            state.nameLanguage = ExerciseNameLanguage(locale)
+            await state.load()
+        }
         // The search's only trigger, keyed on *whether* a search is running rather than on what was
         // typed: it fires on the keystroke that starts one and on a return to a screen left
         // mid-search, and emptying the field cancels the walk rather than starting another. Every
         // keystroke in between filters the index in memory — there is no read to debounce.
-        .task(id: search.isSearching) { await search.loadIfSearching() }
+        .task(id: search.isSearching) {
+            search.nameLanguage = ExerciseNameLanguage(locale)
+            await search.loadIfSearching()
+        }
     }
 
     /// The screen's three states (`FR-1.13.1`), each one of T-1.09's shared components.

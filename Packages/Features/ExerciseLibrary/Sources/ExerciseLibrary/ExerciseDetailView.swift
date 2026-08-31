@@ -19,6 +19,10 @@ import SwiftUI
 public struct ExerciseDetailView: View {
     @State private var state: ExerciseDetailState
 
+    /// The locale the screen resolves exercise names in (`FR-1.14.2`) — its title's, and the order
+    /// its variations come in.
+    @Environment(\.locale) private var locale
+
     /// Which exercise this screen is about — handed on to the history section, which reads for
     /// itself.
     private let exerciseID: UUID
@@ -92,13 +96,16 @@ public struct ExerciseDetailView: View {
         }
         // `refresh()`, not `load()`: an edit made above this screen has to be here on the way back
         // down (`FR-1.1.4`). See the method's own note.
-        .task { await state.refresh() }
+        .task {
+            state.nameLanguage = ExerciseNameLanguage(locale)
+            await state.refresh()
+        }
     }
 
     /// The name shown in the navigation bar, or nothing while there is no exercise.
     private var title: String {
         guard case .loaded(let detail) = state.phase else { return "" }
-        return detail.exercise.name
+        return detail.exercise.displayName(for: locale)
     }
 
     /// The screen's four states (`FR-1.13.1`), each one of T-1.09's shared components.

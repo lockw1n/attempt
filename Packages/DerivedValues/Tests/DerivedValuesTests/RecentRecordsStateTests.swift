@@ -363,3 +363,33 @@ struct RetiredCatalogue: ExerciseRepository {
     ) async throws -> [TrainingMaxEntry] { [] }
     func saveTrainingMax(_ entry: TrainingMaxEntry) async throws {}
 }
+
+/// `FR-1.14.2` on the feed: its entries are named by a lookup this state builds, so which of an
+/// exercise's two names it holds is the state's answer rather than the row's.
+@Suite("Recent records, named for the screen's locale")
+@MainActor
+struct RecentRecordsLocaleNameTests {
+    @Test("The feed names an entry in the screen's language, falling back where none is set")
+    func thefeedNamesEntriesInTheScreensLanguage() async throws {
+        let log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat", ukrainian: "Присідання зі штангою")
+        let bench = try await log.exercise(named: "Bench Press")
+        try await log.session(of: squat, on: weeksAgo(4), sets: [working(140_000, 3)])
+        try await log.session(of: bench, on: weeksAgo(1), sets: [working(100_000, 5)])
+        let recomputer = PersonalRecordRecomputer(
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
+        try await recomputer.recompute(forExerciseID: squat)
+        try await recomputer.recompute(forExerciseID: bench)
+
+        let state = RecentRecordsState(
+            recomputer: recomputer, catalogue: log.repositories.exercises, limit: 10)
+        state.nameLanguage = .ukrainian
+        await state.load()
+
+        #expect(state.exerciseNames[squat] == "Присідання зі штангою")
+        #expect(state.exerciseNames[bench] == "Bench Press")
+    }
+}

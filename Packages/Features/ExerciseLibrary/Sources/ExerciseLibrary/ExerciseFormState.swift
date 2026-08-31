@@ -217,8 +217,15 @@ public final class ExerciseFormState {
                 guard !excluded.contains(candidate.id), !candidate.isArchived else { return false }
                 return offersEveryMovementAsParent || candidate.movement == movement
             }
-            .sorted(by: ExerciseOrder.precedes)
+            .sorted { ExerciseOrder.precedes($0, $1, in: nameLanguage) }
     }
+
+    /// Which of a candidate's two names the picker is showing (`FR-1.14.2`).
+    ///
+    /// Set by the view from `@Environment(\.locale)`, for the reason
+    /// ``ExerciseListState/nameLanguage`` gives. It orders ``parentCandidates`` and nothing else:
+    /// the two name fields this form edits are the record's own, and neither is resolved.
+    public var nameLanguage: ExerciseNameLanguage = .english
 
     /// The exercise currently chosen as the parent, if one is.
     public var selectedParent: Exercise? {

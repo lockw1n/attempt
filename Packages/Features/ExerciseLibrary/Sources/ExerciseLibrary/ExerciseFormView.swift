@@ -22,6 +22,10 @@ import SwiftUI
 public struct ExerciseFormView: View {
     @State private var state: ExerciseFormState
 
+    /// The locale the parent picker resolves its candidates' names in (`FR-1.14.2`). The form's own
+    /// two name fields are the record's, and are edited as stored.
+    @Environment(\.locale) private var locale
+
     /// Pops the form once a save has landed. The screen underneath re-reads for itself.
     @Environment(\.dismiss) private var dismiss
 
@@ -46,7 +50,10 @@ public struct ExerciseFormView: View {
         }
         .background(ColorToken.background)
         .navigationTitle(Text(title))
-        .task { await state.load() }
+        .task {
+            state.nameLanguage = ExerciseNameLanguage(locale)
+            await state.load()
+        }
         // The save is what ends this screen, and the state is what knows the save landed — a
         // dismissal driven from the button would fire on a write that failed.
         .onChange(of: state.didSave) { _, saved in
@@ -139,6 +146,10 @@ struct ExerciseFieldsSection: View {
     /// The form these fields are bound to.
     @Bindable var state: ExerciseFormState
 
+    /// The locale the chosen parent's name is resolved in (`FR-1.14.2`) — a fact about another
+    /// exercise, unlike the two name fields above it, which are this record's own.
+    @Environment(\.locale) private var locale
+
     /// The two name fields, then either the vocabularies or — on a built-in — the facts they would
     /// edit.
     ///
@@ -205,7 +216,7 @@ struct ExerciseFieldsSection: View {
             equipment: state.equipment,
             barType: state.barType,
             laterality: state.laterality,
-            parentName: state.selectedParent?.name
+            parentName: state.selectedParent?.displayName(for: locale)
         )
     }
 
@@ -380,6 +391,9 @@ struct ExerciseParentList: View {
     /// Which one is chosen, or `nil` for a root exercise.
     @Binding var selection: UUID?
 
+    /// The locale a candidate's name is resolved in (`FR-1.14.2`).
+    @Environment(\.locale) private var locale
+
     /// "Nothing" first — it is the default answer and the way back out of a choice — then the
     /// candidates, then the sentence that explains a picker with nothing in it.
     var body: some View {
@@ -391,7 +405,7 @@ struct ExerciseParentList: View {
         }
         ForEach(candidates) { candidate in
             ExerciseChoiceRow(
-                label: Text(verbatim: candidate.name),
+                label: Text(verbatim: candidate.displayName(for: locale)),
                 detail: ExerciseLibraryStrings.label(for: candidate.movement),
                 isSelected: selection == candidate.id
             ) {
