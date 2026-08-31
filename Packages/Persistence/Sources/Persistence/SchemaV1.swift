@@ -48,6 +48,9 @@ enum SchemaV1: VersionedSchema {
             EquipmentProfileEntity.self,
             UserSettingsEntity.self,
             PersonalRecordCacheEntity.self,
+            RoutineEntity.self,
+            RoutineExerciseEntity.self,
+            RoutineTargetGroupEntity.self,
         ]
     }
     // audited-models:end

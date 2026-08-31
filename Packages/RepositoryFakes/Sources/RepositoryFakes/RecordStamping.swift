@@ -220,6 +220,48 @@ extension UserSettings: AuditStamped {
     }
 }
 
+extension Routine: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> Routine {
+        Routine(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            name: name
+        )
+    }
+}
+
+extension RoutineExercise: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> RoutineExercise {
+        RoutineExercise(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            routineID: routineID,
+            exerciseID: exerciseID,
+            order: order
+        )
+    }
+}
+
+extension RoutineTargetGroup: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> RoutineTargetGroup {
+        RoutineTargetGroup(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            routineExerciseID: routineExerciseID,
+            order: order,
+            targetWeight: targetWeight,
+            targetReps: targetReps,
+            targetSets: targetSets
+        )
+    }
+}
+
 extension PersonalRecordCache: AuditStamped {
     func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> PersonalRecordCache {
         PersonalRecordCache(

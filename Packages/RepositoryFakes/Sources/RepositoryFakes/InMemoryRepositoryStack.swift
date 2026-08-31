@@ -29,6 +29,9 @@ public struct InMemoryRepositoryStack: Sendable {
     /// The cached N-rep maxes (`TR-1.6`).
     public let personalRecords: any PersonalRecordCacheRepository
 
+    /// Routines, their exercise slots and target groups (`FR-15.2`).
+    public let routines: any RoutineRepository
+
     /// The fakes over one empty store.
     public init() {
         let store = InMemoryRepositoryStore()
@@ -38,5 +41,6 @@ public struct InMemoryRepositoryStack: Sendable {
         bodyweight = InMemoryBodyweightRepository(store: store)
         equipment = InMemoryEquipmentRepository(store: store)
         personalRecords = InMemoryPersonalRecordCacheRepository(store: store)
+        routines = InMemoryRoutineRepository(store: store)
     }
 }

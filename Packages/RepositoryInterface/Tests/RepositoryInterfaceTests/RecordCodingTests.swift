@@ -113,6 +113,31 @@ struct RecordCodingKeyTests {
                 "repCount", "sourceSetID", "updatedAt", "weight",
             ])
     }
+
+    @Test("A routine writes five keys")
+    func routineKeys() throws {
+        #expect(
+            try encodedKeys(of: codingRoutine()) == [
+                "createdAt", "deletedAt", "id", "name", "updatedAt",
+            ])
+    }
+
+    @Test("A routine exercise slot writes seven keys")
+    func routineExerciseKeys() throws {
+        #expect(
+            try encodedKeys(of: codingRoutineExercise()) == [
+                "createdAt", "deletedAt", "exerciseID", "id", "order", "routineID", "updatedAt",
+            ])
+    }
+
+    @Test("A routine target group writes nine keys")
+    func routineTargetGroupKeys() throws {
+        #expect(
+            try encodedKeys(of: codingRoutineTargetGroup()) == [
+                "createdAt", "deletedAt", "id", "order", "routineExerciseID", "targetReps",
+                "targetSets", "targetWeight", "updatedAt",
+            ])
+    }
 }
 
 @Suite("Nested wire formats are not re-wrapped")
@@ -152,6 +177,14 @@ struct RecordNestedShapeTests {
         #expect(json.contains("\"plates\":[25000,15000]"))
         #expect(json.contains("\"platePairCounts\":[2,3]"))
     }
+
+    @Test("A routine target group's weight is a bare integer of grams")
+    func targetGroupWeightIsBare() throws {
+        let json = try jsonText(of: codingRoutineTargetGroup())
+
+        #expect(json.contains("\"targetWeight\":90000"))
+        #expect(!json.contains("\"grams\""))
+    }
 }
 
 @Suite("Records round-trip through JSON")
@@ -174,6 +207,9 @@ struct RecordJSONRoundTripTests {
         #expect(try Self.roundTrip(codingEquipmentProfile()) == codingEquipmentProfile())
         #expect(try Self.roundTrip(codingUserSettings()) == codingUserSettings())
         #expect(try Self.roundTrip(codingPersonalRecordCache()) == codingPersonalRecordCache())
+        #expect(try Self.roundTrip(codingRoutine()) == codingRoutine())
+        #expect(try Self.roundTrip(codingRoutineExercise()) == codingRoutineExercise())
+        #expect(try Self.roundTrip(codingRoutineTargetGroup()) == codingRoutineTargetGroup())
     }
 
     // A nil optional is omitted rather than written as null, and the omission decodes back to nil.

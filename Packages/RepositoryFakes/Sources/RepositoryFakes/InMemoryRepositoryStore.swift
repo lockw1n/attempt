@@ -28,6 +28,9 @@ actor InMemoryRepositoryStore {
     var profiles: [UUID: EquipmentProfile] = [:]
     var personalRecordCache: [UUID: PersonalRecordCache] = [:]
     var settingsRow: UserSettings?
+    var routines: [UUID: Routine] = [:]
+    var routineExercises: [UUID: RoutineExercise] = [:]
+    var routineTargetGroups: [UUID: RoutineTargetGroup] = [:]
 
     /// An empty store.
     init() {}

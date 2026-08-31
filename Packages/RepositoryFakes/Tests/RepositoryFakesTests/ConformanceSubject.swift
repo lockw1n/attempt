@@ -73,7 +73,8 @@ struct Subject: Sendable, CustomTestStringConvertible {
                 settings: stack.settings,
                 bodyweight: stack.bodyweight,
                 equipment: stack.equipment,
-                personalRecords: stack.personalRecords
+                personalRecords: stack.personalRecords,
+                routines: stack.routines
             )
         },
         Subject(name: "InMemoryRepositoryStack") {
@@ -84,7 +85,8 @@ struct Subject: Sendable, CustomTestStringConvertible {
                 settings: stack.settings,
                 bodyweight: stack.bodyweight,
                 equipment: stack.equipment,
-                personalRecords: stack.personalRecords
+                personalRecords: stack.personalRecords,
+                routines: stack.routines
             )
         },
     ]
@@ -98,6 +100,7 @@ struct Repositories: Sendable {
     let bodyweight: any BodyweightRepository
     let equipment: any EquipmentRepository
     let personalRecords: any PersonalRecordCacheRepository
+    let routines: any RoutineRepository
 }
 
 // MARK: - Records
@@ -294,6 +297,58 @@ func profileRecord(
         plates: plates.map(Weight.init(grams:)),
         platePairCounts: pairCounts,
         isDefault: isDefault
+    )
+}
+
+func routineRecord(
+    id: UUID = UUID(),
+    name: String = "Push day",
+    deletedAt: Date? = nil
+) -> Routine {
+    Routine(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: deletedAt,
+        name: name
+    )
+}
+
+func routineExerciseRecord(
+    id: UUID = UUID(),
+    routineID: UUID,
+    exerciseID: UUID,
+    order: Int = 0
+) -> RoutineExercise {
+    RoutineExercise(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: nil,
+        routineID: routineID,
+        exerciseID: exerciseID,
+        order: order
+    )
+}
+
+func routineTargetGroupRecord(
+    id: UUID = UUID(),
+    routineExerciseID: UUID,
+    order: Int = 0,
+    grams: Int = 100_000,
+    reps: Int = 5,
+    sets: Int = 4
+) -> RoutineTargetGroup {
+    RoutineTargetGroup(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: nil,
+        routineExerciseID: routineExerciseID,
+        order: order,
+        targetWeight: Weight(grams: grams),
+        targetReps: reps,
+        targetSets: sets
     )
 }
 

@@ -49,6 +49,9 @@ public struct PersistenceStack: Sendable {
     /// The cached N-rep maxes (`TR-1.6`) — derived values, never truth (`G-1.4`).
     public let personalRecords: any PersonalRecordCacheRepository
 
+    /// Routines, their exercise slots and target groups (`FR-15.2`).
+    public let routines: any RoutineRepository
+
     /// `G-1.3`'s hard deletes, reached through ``purge(_:)`` rather than named directly.
     let purgeRoutine: StorePurge
 
@@ -73,6 +76,7 @@ public struct PersistenceStack: Sendable {
         bodyweight = SwiftDataBodyweightRepository(modelContainer: container)
         equipment = SwiftDataEquipmentRepository(modelContainer: container)
         personalRecords = SwiftDataPersonalRecordCacheRepository(modelContainer: container)
+        routines = SwiftDataRoutineRepository(modelContainer: container)
         purgeRoutine = StorePurge(modelContainer: container)
     }
 }

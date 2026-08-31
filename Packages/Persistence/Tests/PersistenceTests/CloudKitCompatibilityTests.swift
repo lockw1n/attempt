@@ -105,12 +105,12 @@ struct CloudKitCompatibilityTests {
     // it carries the version identifier a migration keys off.
     private let schema = Schema(versionedSchema: SchemaV1.self)
 
-    @Test("All nine entities are in the audited schema")
-    func nineEntities() {
+    @Test("All twelve entities are in the audited schema")
+    func twelveEntities() {
         // Without this the audit passes vacuously on an empty or mis-built schema, which is exactly
         // how a checklist becomes a markdown table.
-        #expect(schema.entities.count == 9)
-        #expect(SchemaV1.models.count == 9)
+        #expect(schema.entities.count == 12)
+        #expect(SchemaV1.models.count == 12)
     }
 
     @Test("Every property is optional or defaulted, nothing is unique, nothing is a relationship")
@@ -152,16 +152,19 @@ struct CloudKitCompatibilityTests {
         #expect(defaultValue(of: "id", on: "ExerciseEntity", in: schema) as? UUID != SchemaDefaults.unlinkedID)
     }
 
-    @Test("The six defaulted UUID columns that are not identities default to the all-zero sentinel")
+    @Test("The nine defaulted UUID columns that are not identities default to the all-zero sentinel")
     func sentinelColumns() {
-        // Five join keys and one anonymous user id — three distinct failure modes on one type, which
-        // is why the checklist gives them a line rather than a tick. Pinned here so a later column
-        // cannot quietly take `UUID()` instead and manufacture a reference, or an account.
+        // Eight join keys and one anonymous user id — three distinct failure modes on one type,
+        // which is why the checklist gives them a line rather than a tick. Pinned here so a later
+        // column cannot quietly take `UUID()` instead and manufacture a reference, or an account.
         let expected = [
             "ExerciseEntryEntity.exerciseID",
             "ExerciseEntryEntity.sessionID",
             "PersonalRecordCacheEntity.exerciseID",
             "PersonalRecordCacheEntity.sourceSetID",
+            "RoutineExerciseEntity.exerciseID",
+            "RoutineExerciseEntity.routineID",
+            "RoutineTargetGroupEntity.routineExerciseID",
             "SetEntryEntity.entryID",
             "TrainingMaxConfigEntity.exerciseID",
             "UserSettingsEntity.userID",

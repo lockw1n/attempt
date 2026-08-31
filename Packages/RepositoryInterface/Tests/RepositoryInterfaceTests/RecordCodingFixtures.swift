@@ -171,6 +171,42 @@ func codingPersonalRecordCache() -> PersonalRecordCache {
     )
 }
 
+func codingRoutine() -> Routine {
+    Routine(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        name: "Squat day"
+    )
+}
+
+func codingRoutineExercise() -> RoutineExercise {
+    RoutineExercise(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        routineID: codingJoinID,
+        exerciseID: codingJoinID,
+        order: 2
+    )
+}
+
+func codingRoutineTargetGroup() -> RoutineTargetGroup {
+    RoutineTargetGroup(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        routineExerciseID: codingJoinID,
+        order: 1,
+        targetWeight: Weight(grams: 90_000),
+        targetReps: 4,
+        targetSets: 4
+    )
+}
+
 /// `record` encoded as JSON text.
 ///
 /// `String(bytes:encoding:)` rather than `String(decoding:as:)`, which SwiftLint bans here and is

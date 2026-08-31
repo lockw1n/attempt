@@ -373,6 +373,86 @@ func mappingSourceCache(id: UUID) -> PersonalRecordCacheEntity {
     return entity
 }
 
+// MARK: - The three routine entities
+
+func mappingSourceRoutine(id: UUID) -> RoutineEntity {
+    let entity = RoutineEntity(
+        id: id,
+        name: "Squat day",
+        createdAt: mappingCreatedAt,
+        updatedAt: mappingUpdatedAt
+    )
+    entity.deletedAt = mappingDeletedAt
+    return entity
+}
+
+func mappingTargetRoutine(id: UUID) -> RoutineEntity {
+    let entity = RoutineEntity(
+        id: id,
+        name: "",
+        createdAt: mappingCreatedAt,
+        updatedAt: mappingUpdatedAt
+    )
+    entity.deletedAt = mappingDeletedAt
+    return entity
+}
+
+func mappingSourceRoutineExercise(id: UUID) -> RoutineExerciseEntity {
+    let entity = RoutineExerciseEntity(
+        id: id,
+        routineID: UUID(uuidString: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb") ?? UUID(),
+        exerciseID: UUID(uuidString: "cccccccc-cccc-cccc-cccc-cccccccccccc") ?? UUID(),
+        order: 2,
+        createdAt: mappingCreatedAt,
+        updatedAt: mappingUpdatedAt
+    )
+    entity.deletedAt = mappingDeletedAt
+    return entity
+}
+
+func mappingTargetRoutineExercise(id: UUID) -> RoutineExerciseEntity {
+    let entity = RoutineExerciseEntity(
+        id: id,
+        routineID: SchemaDefaults.unlinkedID,
+        exerciseID: SchemaDefaults.unlinkedID,
+        order: 0,
+        createdAt: mappingCreatedAt,
+        updatedAt: mappingUpdatedAt
+    )
+    entity.deletedAt = mappingDeletedAt
+    return entity
+}
+
+func mappingSourceTargetGroup(id: UUID) -> RoutineTargetGroupEntity {
+    let entity = RoutineTargetGroupEntity(
+        id: id,
+        routineExerciseID: UUID(uuidString: "dddddddd-dddd-dddd-dddd-dddddddddddd") ?? UUID(),
+        order: 1,
+        targetWeightGrams: 90_000,
+        targetReps: 4,
+        targetSets: 4,
+        createdAt: mappingCreatedAt,
+        updatedAt: mappingUpdatedAt
+    )
+    entity.deletedAt = mappingDeletedAt
+    return entity
+}
+
+func mappingTargetTargetGroup(id: UUID) -> RoutineTargetGroupEntity {
+    let entity = RoutineTargetGroupEntity(
+        id: id,
+        routineExerciseID: SchemaDefaults.unlinkedID,
+        order: 0,
+        targetWeightGrams: 0,
+        targetReps: 0,
+        targetSets: 0,
+        createdAt: mappingCreatedAt,
+        updatedAt: mappingUpdatedAt
+    )
+    entity.deletedAt = mappingDeletedAt
+    return entity
+}
+
 func mappingTargetCache(id: UUID) -> PersonalRecordCacheEntity {
     let entity = PersonalRecordCacheEntity(
         id: id,
