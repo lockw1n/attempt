@@ -2,7 +2,7 @@ import Foundation
 
 /// One reason a `formulas.json` payload is not fit to ship.
 public enum RemoteFormulasValidationFailure: Equatable, Sendable, CustomStringConvertible {
-    /// The bytes are not a payload at all — malformed JSON, a missing key, or an ``RPETable`` whose
+    /// The bytes are not a payload at all — malformed JSON, a missing key, or an ``PowerliftingCore/RPETable`` whose
     /// entries or rep range fail its own initialiser's guards. Carries the decoder's description.
     case undecodable(String)
 
@@ -28,7 +28,7 @@ public enum RemoteFormulasValidationFailure: Equatable, Sendable, CustomStringCo
 
 /// Checks that a `formulas.json` payload is fit to ship (`TR-0.5.2`).
 ///
-/// Lighter than `SeedCatalogueValidator` because there is less to check: an ``RPETable``
+/// Lighter than `SeedCatalogueValidator` because there is less to check: an ``PowerliftingCore/RPETable``
 /// validates its own entries and rep range on decode, so a malformed chart is already a decode
 /// failure by the time this runs, the same way a malformed UUID is for `exercises.json`.
 public enum RemoteFormulasValidator {

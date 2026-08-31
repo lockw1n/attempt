@@ -143,7 +143,7 @@ extension EquipmentProfileEntity: RecordMappable {
 
     /// Overwrites this row from `record`.
     ///
-    /// **``EquipmentProfile/isDefault`` is not written, and it is not an omission** — the same
+    /// **``RepositoryInterface/EquipmentProfile/isDefault`` is not written, and it is not an omission** — the same
     /// treatment `UserSettingsEntity`'s `userID` gets, for the same reason. "Exactly one default" is
     /// a cross-row invariant that only `EquipmentRepository.makeDefault(profileID:)` can hold, and
     /// `EquipmentRepository.save(_:)` already promises not to write the flag "whatever the record

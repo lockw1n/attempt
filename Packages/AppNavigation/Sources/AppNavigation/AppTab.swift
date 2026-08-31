@@ -21,7 +21,7 @@ public enum AppTab: String, Hashable, Sendable, Codable, CaseIterable, Identifia
     /// Preferences (`FR-1.10`), data portability (`FR-1.11`) and sync (`FR-1.12`).
     case settings
 
-    /// `Identifiable` conformance, so the tab bar can be built by enumerating ``allCases``.
+    /// `Identifiable` conformance, so the tab bar can be built by enumerating `allCases`.
     public var id: String { rawValue }
 
     /// The SF Symbol the tab bar draws.

@@ -13,7 +13,7 @@ struct TiledExerciseChoice: Identifiable, Sendable, Equatable {
     /// Whether it currently has a tile.
     let isTiled: Bool
 
-    /// See ``Identifiable``.
+    /// See `Identifiable`.
     var id: UUID { exerciseID }
 }
 

@@ -9,7 +9,7 @@ import PowerliftingCore
 /// and only fail when something asks what they mean. A caller listing a user's equipment profiles
 /// never has to handle one of these; a caller loading plates onto a bar does.
 ///
-/// **Every case names ``recordID`` and the offending value**, because the caller these exist for is
+/// **Every case names `recordID` and the offending value**, because the caller these exist for is
 /// `FR-1.11.3`'s repair: an error saying only "invalid inventory" leaves the user with a profile
 /// they cannot fix and an app that will not use it. Dropping the offending denomination instead
 /// would be worse than either — `PlateCalculator` would then propose a loading the gym cannot make.
@@ -49,7 +49,7 @@ public enum RecordProjectionError: Error, Sendable, Hashable {
     case trainingMaxPercentageUnusable(recordID: UUID, percentage: ReportedNumber)
 
     /// A rounding increment below one gram, which maps to no `RoundingRule`. Raised by both the
-    /// training-max projection and the settings one; ``recordID`` says which row.
+    /// training-max projection and the settings one; `recordID` says which row.
     case roundingIncrementUnloadable(recordID: UUID, increment: Weight)
 
     /// A set's rep count is negative. Zero is legal and meaningful — a failed set records the reps
@@ -92,7 +92,7 @@ public enum RecordProjectionError: Error, Sendable, Hashable {
 /// fix instead of having to be remembered into a switch — and so the comparison is one expression
 /// rather than one arm per case.
 ///
-/// Comparing by ``Swift/Double/bitPattern`` is stricter than `Double.==` in two ways, both harmless
+/// Comparing by `Double.bitPattern` is stricter than `Double.==` in two ways, both harmless
 /// here: two NaNs with different payloads are different refusals, and `0.0` differs from `-0.0`.
 public struct ReportedNumber: Sendable, Hashable, CustomStringConvertible {
     /// The number as the row held it. Any `Double`, NaN and the infinities included.

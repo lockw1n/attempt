@@ -13,7 +13,7 @@ import RepositoryInterface
 /// **One envelope for two files, and ``contents`` is what tells them apart.** An export carries the
 /// log and live rows only (`G-1.3`); a backup carries every table and every row, soft-deleted ones
 /// included. Those differ in what is *absent*, and an absence cannot be read: an all-`nil`
-/// ``StoredRecord/deletedAt`` means "nothing was deleted" in a backup and "deleted rows were left
+/// ``RepositoryInterface/StoredRecord/deletedAt`` means "nothing was deleted" in a backup and "deleted rows were left
 /// out" in an export, and no row-level inspection separates the two. The discriminator is therefore
 /// not a label — it is the only thing that makes the file's silence interpretable, and `FR-1.11.4`'s
 /// restore reads it before it reads anything else.
@@ -251,7 +251,7 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
             + equipment.count + trainingMaxes.count + (settings == nil ? 0 : 1)
     }
 
-    /// How many of those rows carry a ``StoredRecord/deletedAt``.
+    /// How many of those rows carry a ``RepositoryInterface/StoredRecord/deletedAt``.
     ///
     /// The half of the file an export does not have — and, read from the other direction, the number
     /// of rows a restore hands back live rather than deleted, which is what `FR-1.11.4`'s

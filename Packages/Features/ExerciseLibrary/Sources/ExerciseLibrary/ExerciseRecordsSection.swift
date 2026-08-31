@@ -211,7 +211,7 @@ struct ExerciseRecordsSection: View {
 
 /// `FR-1.6.2`'s disclosure over the 6–10RM.
 ///
-/// **A button of its own rather than a `DisclosureGroup`**, on ``WarmupSectionHeader``'s shape: the
+/// **A button of its own rather than a `DisclosureGroup`**, on ``Logging/WarmupSectionHeader``'s shape: the
 /// whole line is the target rather than a chevron, and the fold is announced as a *value* because
 /// there is no expanded trait and `.isSelected` means a chosen filter everywhere else in this app.
 struct RecordDisclosureHeader: View {

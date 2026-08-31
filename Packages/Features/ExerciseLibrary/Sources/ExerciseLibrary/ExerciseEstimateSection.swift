@@ -13,7 +13,7 @@ import SwiftUI
 /// rather than branching on it: a screen that had a state per refusal would have to be changed by
 /// every guard added to `E1RMCalculator`, where this one only needs a string.
 ///
-/// **A manual override is a state and not a flag on ``ready(_:formula:days:)``.** It has no source
+/// **A manual override is a state and not a flag on ``ready(_:formula:days:sessionID:)``.** It has no source
 /// set to link to, no formula behind it and no window it was read over — three of the four things
 /// that case carries — so a Boolean would leave every one of them meaningless-but-present.
 ///

@@ -73,7 +73,7 @@ public final class SettingsLandingState {
     /// which is `FR-1.7.3`'s "retroactively" not happening.
     private let records: PersonalRecordRecomputer
 
-    /// The write chain. See ``setDisplayUnit(_:)``.
+    /// The write chain. See ``chained(_:)``.
     private var pendingWrite: Task<Void, Never>?
 
     /// Builds the state over the repository it reads and writes through.
@@ -96,7 +96,7 @@ public final class SettingsLandingState {
     ///
     /// **Re-entrant only through ``Phase/loading``, and that is the reason it is a method and not
     /// an initializer.** SwiftUI runs `.task` again whenever the view's identity is re-established,
-    /// and ``SettingsRepository``'s read is find-or-create — a second read is harmless, but a
+    /// and ``RepositoryInterface/SettingsRepository``'s read is find-or-create — a second read is harmless, but a
     /// second one *in flight* would publish whichever finished last. A read that already succeeded
     /// is not repeated; one that failed is, which is the whole of the retry.
     public func load() async {

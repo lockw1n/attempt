@@ -46,7 +46,7 @@ public struct SetRecord: Sendable, Hashable, Codable {
     /// **The 0.5 step is a convention and deliberately not enforced.** Entry is conventionally in
     /// half points, but 8.25 is accepted: the step is a UI choice, and throwing on a finer value
     /// from a newer version would cost the whole record for one field. `Double.nan` falls outside
-    /// the range and is therefore rejected, which also keeps ``Hashable`` well-behaved.
+    /// the range and is therefore rejected, which also keeps `Hashable` well-behaved.
     public let rpe: Double?
 
     /// Reps In Reserve, or `nil` when the lifter did not record one.

@@ -19,7 +19,7 @@ struct EstimatedMaxTile: Identifiable, Sendable, Equatable {
     /// The estimate, the override, or the reason there is neither.
     let estimate: EstimatedMax
 
-    /// See ``Identifiable``.
+    /// See `Identifiable`.
     var id: UUID { exerciseID }
 }
 

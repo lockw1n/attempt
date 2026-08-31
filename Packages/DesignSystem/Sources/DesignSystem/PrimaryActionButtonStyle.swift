@@ -13,7 +13,7 @@ import SwiftUI
 /// caller. The width has to be chosen inside the style, so it is: `.primaryAction` for intrinsic,
 /// `.primaryAction(.fill)` for a full-width call to action. Both keep `G-4.3`'s minimum extent.
 ///
-/// Pressed and disabled are drawn by fading (``Opacity``) rather than by a second pair of colours —
+/// Pressed and disabled are drawn by fading (``DesignTokens/Opacity``) rather than by a second pair of colours —
 /// see that type for why. A disabled control is therefore below `G-4.4`'s contrast floor and must
 /// never be the only thing telling the user why an action is unavailable.
 public struct PrimaryActionButtonStyle: ButtonStyle {
@@ -26,12 +26,12 @@ public struct PrimaryActionButtonStyle: ButtonStyle {
         self.width = width
     }
 
-    /// The fade this control draws at, from the two interaction inputs (``Opacity``).
+    /// The fade this control draws at, from the two interaction inputs (``DesignTokens/Opacity``).
     ///
     /// A `static func` rather than a computed property on the private body view, because that view
-    /// is unreachable from a test: swapping ``Opacity/disabled`` for ``Opacity/pressed`` inside it
-    /// once survived the entire suite. Disabled outranks pressed — a control the user cannot
-    /// operate does not brighten because a finger landed on it.
+    /// is unreachable from a test: swapping ``DesignTokens/Opacity/disabled`` for
+    /// ``DesignTokens/Opacity/pressed`` inside it once survived the entire suite. Disabled outranks
+    /// pressed — a control the user cannot operate does not brighten because a finger landed on it.
     static func opacity(isEnabled: Bool, isPressed: Bool) -> Opacity {
         guard isEnabled else { return .disabled }
         return isPressed ? .pressed : .opaque

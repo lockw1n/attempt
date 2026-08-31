@@ -23,7 +23,7 @@ import SwiftData
 /// `UUID` column added in a later schema version backfills every existing row from one evaluated
 /// default.
 ///
-/// **`updatedAt` is stamped by the save path**, not by callers — see ``ModelContext/saveStamped(at:)``,
+/// **`updatedAt` is stamped by the save path**, not by callers — see `ModelContext.saveStamped(at:)`,
 /// which every mutation reaches the store through. A bare `save()` writes a row whose `updatedAt`
 /// describes the write before it, and is a lint error here for that reason.
 ///

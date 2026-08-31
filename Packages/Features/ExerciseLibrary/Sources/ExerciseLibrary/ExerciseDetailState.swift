@@ -199,7 +199,7 @@ public final class ExerciseDetailState {
     /// instead makes what gets stored depend on where a keystroke fell inside the write, which is
     /// not something a user can see or control.
     ///
-    /// **Writes are serialized, for `SettingsLandingState.setDisplayUnit(_:)`'s reason**: the guard
+    /// **Writes are serialized, for `SettingsLandingState.apply(_:)`'s reason**: the guard
     /// in ``writeNotes(_:)`` decides against ``phase``, which only moves once the write it describes
     /// has landed, so two overlapping saves would both decide against the same stale record and the
     /// second would store again what the first had already stored.

@@ -13,8 +13,9 @@ import RepositoryInterface
 /// while a screen whose last write failed still has everything it needs to let the user try again.
 ///
 /// **Which profile is active is read from the repository rather than derived from the rows.** Two
-/// rows can both carry ``EquipmentProfile/isDefault`` — a store this app did not write is allowed to
-/// disagree with itself — and ``EquipmentRepository/defaultProfile()`` is where that tie is broken.
+/// rows can both carry ``RepositoryInterface/EquipmentProfile/isDefault`` — a store this app did
+/// not write is allowed to disagree with itself — and
+/// ``RepositoryInterface/EquipmentRepository/defaultProfile()`` is where that tie is broken.
 /// Deriving the badge here instead would put a second copy of that rule on a screen, and the two
 /// would be free to disagree about which gym the calculator is actually loading against.
 @Observable
@@ -84,8 +85,8 @@ final class EquipmentProfilesState {
     /// Writes a profile — `FR-1.4.2`'s create and edit in one operation.
     ///
     /// **A profile saved while no gym is active becomes the active one**, and that clause is what
-    /// makes the first one usable. ``EquipmentRepository/save(_:)`` deliberately does not honour
-    /// ``EquipmentProfile/isDefault``, so without this the very first gym a user sets up would be
+    /// makes the first one usable. ``RepositoryInterface/EquipmentRepository/save(_:)`` deliberately does not honour
+    /// ``RepositoryInterface/EquipmentProfile/isDefault``, so without this the very first gym a user sets up would be
     /// stored and then loaded against by nothing. It fires only when there is no default at all: a
     /// second profile must not quietly take over from the one in use.
     ///

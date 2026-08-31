@@ -49,7 +49,7 @@ extension PersonalRecordRecomputer {
     /// - Parameters:
     ///   - weight: The number the user entered, or `nil` to revert to the computed estimate.
     ///   - exerciseID: The exercise it belongs to.
-    /// - Throws: ``RepositoryError/recordNotFound(id:)`` if no such exercise, or
+    /// - Throws: ``RepositoryInterface/RepositoryError/recordNotFound(id:)`` if no such exercise, or
     ///   whatever the repository throws reading or writing the row.
     public func setManualEstimate(_ weight: Weight?, forExerciseID exerciseID: UUID) async throws {
         guard let exercise = try await exercises.exercise(id: exerciseID, includingDeleted: false)

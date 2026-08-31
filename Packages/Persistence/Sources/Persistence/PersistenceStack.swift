@@ -54,9 +54,15 @@ public struct PersistenceStack: Sendable {
 
     /// Opens the store at `location` and builds the repositories over it.
     ///
-    /// - Throws: Whatever `ModelContainer` throws when the store cannot be opened or migrated.
-    public init(location: StoreLocation = .applicationDefault) throws {
-        try self.init(container: makeModelContainer(at: location))
+    /// - Parameters:
+    ///   - location: Where the store lives.
+    ///   - sync: Whether it mirrors to CloudKit (`FR-1.12.1`). **Defaults to `.disabled`, and every
+    ///     caller but the app's own launch path leaves it there** — see ``SyncMode``.
+    /// - Throws: ``StoreConfigurationError/inMemoryStoreCannotSync`` where the two arguments
+    ///   contradict, otherwise whatever `ModelContainer` throws when the store cannot be opened or
+    ///   migrated.
+    public init(location: StoreLocation = .applicationDefault, sync: SyncMode = .disabled) throws {
+        try self.init(container: makeModelContainer(at: location, sync: sync))
     }
 
     /// The repositories over a container the caller already has — the seam the tests use.
@@ -85,13 +91,13 @@ let containerLock = NSLock()
 ///
 /// Three things here are deliberate and none of them is the obvious default:
 ///
-/// - **`cloudKitDatabase: .none`, said out loud.** The parameter *defaults to `.automatic`*, which
-///   means "mirror if the process has a CloudKit entitlement". Sync being off today is therefore a
-///   property of the entitlement list rather than of any decision in code, and a container left at
-///   the default is one capability away from mirroring — added for some unrelated reason, with
-///   nothing in that diff mentioning sync. `scripts/check-cloudkit.sh` bans the two enabling
-///   spellings but cannot see an omitted argument, so this is the only place the choice is
-///   recorded.
+/// - **The database is always stated, never left to the default.** The parameter *defaults to
+///   `.automatic`*, which means "mirror if the process has a CloudKit entitlement" — so a container
+///   left at the default would start mirroring the day a capability was added for some unrelated
+///   reason, with nothing in that diff mentioning sync. Passing ``SyncMode`` through means the
+///   choice is made by a caller rather than by an entitlement list, and `sync` defaults to
+///   `.disabled` so that caller has to ask. `scripts/check-cloudkit.sh` cannot see an omitted
+///   argument, which is why the argument is never omitted.
 /// - **`Schema(versionedSchema:)`, not a model array.** ``SchemaV1/models`` is the single list of
 ///   the nine and the CloudKit audit parses it; a container assembled from its own array would be a
 ///   second list, which is the drift that check exists to prevent. The versioned form also carries
@@ -100,16 +106,11 @@ let containerLock = NSLock()
 ///   and while `G-1.7` holds it never will do anything. It is passed so that the day a second
 ///   version exists the container is already reading the version history, rather than needing an
 ///   edit at the moment of the first real migration.
-func makeModelContainer(at location: StoreLocation) throws -> ModelContainer {
-    let configuration: ModelConfiguration
-    switch location {
-    case .applicationDefault:
-        configuration = ModelConfiguration(cloudKitDatabase: .none)
-    case .file(let url):
-        configuration = ModelConfiguration(url: url, cloudKitDatabase: .none)
-    case .inMemory:
-        configuration = ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+func makeModelContainer(at location: StoreLocation, sync: SyncMode = .disabled) throws -> ModelContainer {
+    if case .inMemory = location, sync != .disabled {
+        throw StoreConfigurationError.inMemoryStoreCannotSync
     }
+    let configuration = makeConfiguration(at: location, sync: sync)
 
     containerLock.lock()
     defer { containerLock.unlock() }

@@ -161,7 +161,7 @@ public struct EstimatedMax: Sendable, Hashable {
     /// estimate the current one and leaves nothing before it. A caller therefore gets a rise or
     /// nothing — never a fall, and never a zero.
     ///
-    /// **The type stays signed anyway**, because ``Weight`` is and because the sign is the honest
+    /// **The type stays signed anyway**, because ``PowerliftingCore/Weight`` is and because the sign is the honest
     /// carrier of a direction this definition happens not to produce: reading the magnitude out and
     /// asserting the direction here would put a claim in the type that only the definition above
     /// supports. Whether a declining estimate *should* be reportable is `FR-1.9.1`'s own question

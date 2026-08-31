@@ -50,7 +50,7 @@ final class UserSettingsEntity: StoredEntity {
     /// derives from the unit when this is absent.
     var displayPrecisionMilliUnits: Int?
 
-    /// ``ThemePreference``'s raw value (`FR-1.10.2`).
+    /// ``RepositoryInterface/ThemePreference``'s raw value (`FR-1.10.2`).
     var themeRawValue: String = SchemaDefaults.theme
 
     /// How many days back an estimated max looks (`FR-1.7.1`).

@@ -48,7 +48,7 @@ final class PastSessionState {
     ///
     /// **A re-read answers `nil` here for as long as it is out**, ``Phase/loading`` carrying no
     /// record — which is why the note draft follows this through
-    /// ``SessionNoteDraft/follow(holding:)`` rather than through ``follow(_:)``: the gap is the
+    /// ``SessionNoteDraft/follow(holding:)`` rather than through ``SessionNoteDraft/follow(_:)``: the gap is the
     /// screen reading, not the session going away.
     var session: WorkoutSession? {
         guard case .loaded(let session) = phase else { return nil }
@@ -215,7 +215,7 @@ final class PastSessionState {
     /// repository turned down leaves every row exactly as it was and is ``writeFailure``'s whole
     /// case. A *re-read* that fails comes after a change that is already stored, so reporting it as
     /// the write's failure would send the user to make a correction that already landed; what it
-    /// actually costs is the screen's claim to be showing the session, which is ``Phase/failed``
+    /// actually costs is the screen's claim to be showing the session, which is ``Phase/failed(_:)``
     /// and carries the retry.
     ///
     /// - Parameter write: The write to perform. Its answer — whether anything was written — is

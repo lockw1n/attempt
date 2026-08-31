@@ -10,7 +10,7 @@ import PowerliftingCore
 /// other. `Persistence` asserts the coincidence rather than sharing the constants, which is what
 /// makes a divergence a decision somebody has to write down.
 ///
-/// **Both the stored mapping and ``Codable`` read these**, so a row that arrives from a newer
+/// **Both the stored mapping and `Codable` read these**, so a row that arrives from a newer
 /// version through the store and the same row arriving through a backup file resolve identically.
 /// A second copy in either path is how those two drift.
 ///

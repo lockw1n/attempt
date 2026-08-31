@@ -183,7 +183,7 @@ struct EstimatedMaxTileView: View {
 
     /// `FR-1.9.1`'s delta, or the line that says there is nothing to compare against.
     ///
-    /// **Colour is never the only cue** — that is ``DeltaIndicator``'s guarantee (`G-4.5`), and the
+    /// **Colour is never the only cue** — that is ``DesignSystem/DeltaIndicator``'s guarantee (`G-4.5`), and the
     /// magnitude is formatted here because the indicator writes the sign itself.
     @ViewBuilder private var delta: some View {
         if let delta = tile.estimate.delta {

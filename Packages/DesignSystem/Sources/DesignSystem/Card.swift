@@ -4,12 +4,12 @@ import SwiftUI
 /// How far a surface sits above the one behind it (`G-7.1`).
 ///
 /// **Elevation is a lighter surface, never a shadow.** The palette encodes the whole progression —
-/// background → ``ColorToken/surface`` → ``ColorToken/surfaceRaised`` — so a card and a control
-/// inside it are told apart by their own colour rather than by a drop shadow that would have to
-/// change with the appearance.
+/// background → ``DesignTokens/ColorToken/surface`` → ``DesignTokens/ColorToken/surfaceRaised`` —
+/// so a card and a control inside it are told apart by their own colour rather than by a drop
+/// shadow that would have to change with the appearance.
 ///
 /// Each level also carries its own radius, and the pairing is the point: an inner surface takes the
-/// smaller curve so the two stay concentric (see ``CornerRadius``).
+/// smaller curve so the two stay concentric (see ``DesignTokens/CornerRadius``).
 public nonisolated enum CardElevation: Sendable, CaseIterable {
     /// A card or grouped section resting directly on the screen's background.
     case base

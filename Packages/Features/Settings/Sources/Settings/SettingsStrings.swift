@@ -184,7 +184,7 @@ enum SettingsStrings {
             equipmentTitle, equipmentRow,
             equipmentDetail, bodyweightSectionTitle, bodyweightRow, bodyweightDetail,
         ] + allBodyweightStrings + allHealthStrings + allAboutStrings + allExportStrings
-            + allBackupStrings + allRestoreStrings
+            + allBackupStrings + allRestoreStrings + allSyncStrings
             + MassUnit.allCases.map(unitSymbol(for:))
             + E1RMFormulaID.allCases.map(formulaName(for:))
             + RoundingStrategy.allCases.map(strategyName(for:))

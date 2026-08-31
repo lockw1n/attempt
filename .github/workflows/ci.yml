@@ -324,6 +324,27 @@ jobs:
       - name: Check documented units and ranges
         run: ./scripts/check-doc-units.sh
 
+      # TR-1.15 (T-1.80): the third doc gate. `missing_docs` gates whether a doc comment exists and
+      # check-doc-units.sh gates whether it names its unit; this gates whether the ``symbol`` links
+      # inside it resolve. An invalid link compiles clean and lints clean — two shipped that way in
+      # Phase 0 and neither was found by anything but a hand audit.
+      #
+      # THIS JOB rather than `test`, though `test` has the packages built already and this step
+      # builds them again: the two doc gates it belongs beside are here, and `lint` is otherwise the
+      # short job, so the ~4 minutes lands off the critical path rather than on the end of the
+      # longest one. It needs no simulator and no fixtures beyond its own.
+      - name: Check DocC symbol links
+        run: ./scripts/check-doc-links.sh
+
+      # And the proof that the gate above can fail. Fifteen assertions over five fixture packages
+      # of its own, covering both scope decisions as well as the pass and the fail — a doc comment
+      # in a test target is out of scope, a missing `- Parameter` is exempted — plus the two halves
+      # of the cross-module rule most of this repo's links now rest on: qualifying a link is what
+      # makes it resolve, and it resolves only while every module is in the one docc run. A link
+      # gate that quietly checks nothing looks exactly like a link gate with nothing to report.
+      - name: Verify the DocC link gate fires
+        run: ./scripts/check-doc-links.sh --self-test
+
       # OUT-0.2, G-1.7 and the half of DOD-0.4 that a test cannot see: no iCloud entitlement, no
       # source naming a CloudKit database, no custom migration stage, and every @Model actually in
       # the audited list. The schema audit itself is CloudKitCompatibilityTests in the test job.

@@ -4,7 +4,7 @@ import RepositoryInterface
 /// Where an entry sits in the timeline — the two halves of the feed's order that live on other rows.
 ///
 /// A second implementation of `Persistence`'s `FeedPosition`, not a shared one: see the note on
-/// ``Swift/Sequence/sortedDeterministically(by:descending:)``.
+/// `Sequence.sortedDeterministically(by:descending:)`.
 struct FeedPosition: Comparable {
     let sessionDate: Date
     let entryOrder: Int

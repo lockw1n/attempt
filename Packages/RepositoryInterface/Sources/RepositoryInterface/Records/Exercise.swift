@@ -73,7 +73,7 @@ public struct Exercise: StoredRecord {
     /// **No history and no date**, unlike ``TrainingMaxEntry``: `FR-1.7.5` asks for one number per
     /// exercise and a way back, where `FR-1.5.1.4` asks for every change ever made.
     ///
-    /// Signed, as every ``Weight`` here is, and unvalidated: a negative override is assisted work
+    /// Signed, as every ``PowerliftingCore/Weight`` here is, and unvalidated: a negative override is assisted work
     /// entered as a maximum, which is the entry field's refusal to make and not this record's.
     public let manualE1RM: Weight?
 
