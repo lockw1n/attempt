@@ -366,9 +366,11 @@ a refactor.
 
 **Strings.** User-facing text goes through a per-module `LocalizedStringResource` accessor enum,
 never a literal at the call site — enforced by the `no_literal_ui_strings` lint rule. Each feature
-module and `DesignSystem` owns a catalogue at `Resources/en.lproj/Localizable.strings`; the app
-target's own copy lives in `Attempt/Resources/Localizable.xcstrings`. See the `Localization`
-package's module doc for the key convention and formatting helpers.
+module and `DesignSystem` owns a catalogue at `Resources/en.lproj/Localizable.strings`, with a
+complete `uk.lproj` counterpart (and a `.stringsdict` where a string pluralizes); the app target's
+own copy lives in `Attempt/Resources/Localizable.xcstrings`. `scripts/check-translations.sh` gates
+the `en`/`uk` pair. See the `Localization` package's module doc for the key convention and
+formatting helpers.
 
 **Commits carry requirement IDs.** Lead the subject with the requirement the work
 traces to, then a colon:
