@@ -1,6 +1,7 @@
 /* Exercise library (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization
    module doc, and ExerciseLibraryStrings for why the two vocabularies below name a vocabulary
-   where a screen would go. Nothing here is translated: only `en` ships in Phase 1. */
+   where a screen would go. Every key here has a Ukrainian counterpart in uk.lproj beside this
+   file, and has to keep one: a key missing from that table renders its own identifier. */
 
 "exerciselibrary.list.title" = "Exercises";
 "exerciselibrary.list.search.prompt" = "Search exercises";

@@ -1,0 +1,12 @@
+/* DesignSystem, Ukrainian (FR-1.14.1). Every key here is in en.lproj beside this file, and so is
+   the reason each string exists — a translation carries the copy, not the argument for it.
+
+   THIS TABLE HAS TO STAY COMPLETE. Once `uk` is a bundle localisation, a key missing from it
+   renders its own raw identifier on screen rather than falling back to English. */
+
+"designsystem.error.headline" = "Щось пішло не так";
+"designsystem.state.retry" = "Спробувати ще раз";
+"designsystem.loading.accessibility-label" = "Завантаження";
+"designsystem.offline.headline" = "Немає з’єднання";
+"designsystem.offline.message" = "Для цього потрібне з’єднання. Усе, що ви записали, лишається на цьому пристрої й працює далі.";
+"designsystem.insufficient-data.headline" = "Поки що замало даних";

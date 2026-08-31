@@ -1,6 +1,7 @@
 /* Logging (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization module doc.
    The two screens are the Train root, where a workout is started or resumed, and the workout
-   itself. Nothing here is translated: only `en` ships in Phase 1. */
+   itself. Every key here has a Ukrainian counterpart in uk.lproj beside this file, and has to
+   keep one: a key missing from that table renders its own identifier. */
 
 /* Nothing is in progress. FR-1.13.2's first-launch guidance: the headline says what there is none
    of and the message names both ways to make one, since backdating is the half a new user would not

@@ -1,0 +1,238 @@
+/* Logging, Ukrainian (FR-1.14.1). The keys and the reasoning behind each string are in en.lproj
+   beside this file. The table has to stay complete: a missing key renders its own identifier. */
+
+"logging.train.empty.headline" = "Немає активного тренування";
+"logging.train.empty.message" = "Почніть сьогоднішнє тренування або виберіть попередню дату, щоб записати те, яке ви вже провели.";
+"logging.train.start.action" = "Почати тренування";
+
+"logging.train.date.section" = "Дата тренування";
+"logging.train.date.picker" = "Тренувальний день";
+"logging.train.date.hint" = "Сьогодні, якщо ви не записуєте тренування з попереднього дня.";
+
+"logging.train.in-progress.section" = "Триває";
+"logging.train.in-progress.day" = "Тренувальний день";
+"logging.train.in-progress.started" = "Початок";
+"logging.train.in-progress.resume" = "Продовжити тренування";
+
+"logging.train.library.action" = "Переглянути вправи";
+
+"logging.train.error.headline" = "Тренування недоступні";
+"logging.train.error.message" = "Не вдалося прочитати ваші тренування.";
+
+"logging.train.start-error.message" = "Не вдалося почати це тренування. Спробуйте ще раз.";
+
+"logging.session.title" = "Тренування";
+"logging.session.summary.section" = "Це тренування";
+"logging.session.day" = "Тренувальний день";
+"logging.session.started" = "Початок";
+
+"logging.session.empty.headline" = "Вправ ще немає";
+"logging.session.empty.message" = "Вправи, які ви додасте до цього тренування, з’являться тут.";
+
+"logging.session.finish.action" = "Завершити тренування";
+"logging.session.discard.action" = "Скасувати тренування";
+
+"logging.session.discard.confirm.title" = "Скасувати це тренування?";
+"logging.session.discard.confirm.message" = "Усе, що в ньому записано, буде вилучено з вашої історії.";
+"logging.session.discard.confirm.action" = "Скасувати";
+"logging.session.discard.confirm.cancel" = "Залишити тренування";
+
+"logging.session.error.headline" = "Тренування недоступне";
+"logging.session.error.message" = "Не вдалося прочитати це тренування.";
+
+"logging.session.ended.headline" = "Немає активного тренування";
+"logging.session.ended.message" = "Це тренування вже завершено або скасовано.";
+
+"logging.session.write-error.message" = "Не вдалося зберегти. Нічого не втрачено — спробуйте ще раз.";
+
+"logging.session.notes.section" = "Нотатки до тренування";
+"logging.session.notes.prompt" = "Як пройшло тренування?";
+"logging.session.notes.save" = "Зберегти нотатку";
+"logging.session.notes.discard" = "Скасувати зміни";
+"logging.session.notes.error" = "Не вдалося зберегти нотатку. Нічого не втрачено — спробуйте ще раз.";
+
+"logging.session.previous.heading" = "Минулого разу";
+"logging.session.previous.set %@ %@" = "%1$@ × %2$@";
+"logging.session.previous.empty.headline" = "Попереднього тренування немає";
+"logging.session.previous.empty.message" = "Запишіть її сьогодні — і наступного разу вона буде тут.";
+"logging.session.previous.error.message" = "Не вдалося прочитати ваші попередні тренування.";
+
+"logging.session.exercises.section" = "Вправи";
+"logging.session.add-exercise.action" = "Додати вправу";
+"logging.session.exercise.completed" = "Виконано";
+"logging.session.exercise.sets" = "Підходи";
+"logging.session.exercise.missing" = "Вправа недоступна";
+"logging.session.exercise.expanded" = "Розгорнуто";
+"logging.session.exercise.collapsed" = "Згорнуто";
+"logging.session.exercise.move-up" = "Перемістити вгору";
+"logging.session.exercise.move-down" = "Перемістити вниз";
+
+"logging.session.exercises.error.headline" = "Вправи недоступні";
+"logging.session.exercises.error.message" = "Не вдалося прочитати вправи цього тренування.";
+"logging.session.exercises.write-error.message" = "Не вдалося зберегти. Нічого не втрачено — спробуйте ще раз.";
+
+"logging.session.set.empty" = "Підходів ще не записано.";
+"logging.session.set.add.action" = "Додати підхід";
+"logging.session.set.repeat.action" = "Повторити підхід";
+"logging.session.set.editor.title" = "Записати підхід";
+"logging.session.set.weight.label" = "Вага";
+"logging.session.set.reps.label" = "Повторення";
+"logging.session.set.rpe.label" = "RPE";
+"logging.session.set.rpe.hint" = "Необов’язково, від 1 до 10";
+"logging.session.set.notes.label" = "Нотатка";
+"logging.session.set.notes.hint" = "Необов’язково";
+"logging.session.set.confirm.action" = "Записати підхід";
+"logging.session.set.cancel.action" = "Скасувати";
+"logging.session.set.weight.increase" = "Збільшити вагу";
+"logging.session.set.weight.decrease" = "Зменшити вагу";
+"logging.session.set.reps.increase" = "Додати повторення";
+"logging.session.set.reps.decrease" = "Прибрати повторення";
+"logging.session.set.invalid.message" = "Введіть вагу й повторення. RPE, якщо вказано, — від 1 до 10.";
+"logging.session.set.unit.kilograms" = "кг";
+"logging.session.set.unit.pounds" = "фнт";
+"logging.session.set.position %lld" = "Підхід %lld";
+"logging.session.set.reps %lld" = "Повторень %lld";
+"logging.session.set.rpe %@" = "RPE %@";
+
+/* «Р» for розминка, the way the English badge is «W» for warmup. */
+"logging.session.set.warmup.number %@" = "Р%@";
+"logging.session.set.warmup.position %lld" = "Розминка %lld";
+"logging.session.set.mark-warmup" = "Позначити як розминковий";
+"logging.session.set.mark-working" = "Позначити як робочий";
+
+/* «ОР» for особистий рекорд, the way the English badge is «PR».
+
+   THE TWO LABEL FORMS ARE ONE SENTENCE IN UKRAINIAN, AND THAT IS NOT AN OVERSIGHT. English splits
+   them because «rep» agrees with the count; the compound «%@-повторний максимум» is an adjective
+   and agrees with «максимум» instead, so it is correct at 1 and at 6 alike — where the literal
+   «на %@ повторень» would be wrong at 2, 3 and 4, which are the counts a lifter sets most. */
+"logging.session.set.record" = "ОР";
+"logging.session.set.record.label %@" = "Особистий рекорд: %@-повторний максимум";
+"logging.session.set.record.label.one %@" = "Особистий рекорд: %@-повторний максимум";
+"logging.session.set.warmup.section" = "Розминка";
+"logging.session.set.warmup.label" = "Розминковий підхід";
+"logging.session.set.warmup.hint" = "Нумерується окремо й не входить до ваших робочих підходів.";
+
+"logging.session.set.outcome.completed" = "Виконано";
+"logging.session.set.outcome.failed" = "Не виконано";
+"logging.session.set.mark-failed" = "Позначити як невиконаний";
+"logging.session.set.mark-completed" = "Позначити як виконаний";
+
+"logging.session.set.editor.edit-title" = "Редагувати підхід";
+"logging.session.set.save.action" = "Зберегти зміни";
+"logging.session.set.edit.action" = "Редагувати підхід";
+"logging.session.set.delete.action" = "Видалити підхід";
+"logging.session.set.delete.confirm.title" = "Видалити цей підхід?";
+"logging.session.set.delete.confirm.message" = "Він зникне з вашої історії й перестане враховуватися в рекордах.";
+"logging.session.set.delete.confirm.action" = "Видалити підхід";
+"logging.session.set.delete.confirm.cancel" = "Залишити підхід";
+
+"logging.session.set.modifier.label" = "Умови";
+"logging.session.set.modifier.hint" = "Необов’язково";
+"logging.session.set.modifier.none" = "Немає";
+"logging.session.set.modifier.picker.title" = "Умови";
+"logging.session.set.modifier.done.action" = "Готово";
+"logging.session.set.modifier.manage.action" = "Керувати списком";
+"logging.session.set.modifier.manage.title" = "Керування умовами";
+"logging.session.set.modifier.manage.hint" = "Перейменування чи вилучення умови не змінює підходів, які ви вже записали.";
+"logging.session.set.modifier.built-in.section" = "Вбудовані";
+"logging.session.set.modifier.custom.section" = "Ваші умови";
+"logging.session.set.modifier.custom.empty" = "Додайте власні — ланцюги, гумки, будь-що, що варто записати.";
+"logging.session.set.modifier.add.label" = "Нова умова";
+"logging.session.set.modifier.add.action" = "Додати";
+"logging.session.set.modifier.add.refusal" = "Введіть назву, якої ще немає в списку.";
+"logging.session.set.modifier.remove.action" = "Вилучити";
+"logging.session.set.modifier.unlisted" = "Немає у вашому списку";
+"logging.session.set.modifier.applied" = "Застосовано";
+"logging.session.set.modifier.not-applied" = "Не застосовано";
+/* The nine built-in terms. «Наколінники» are knee sleeves, which is what an unqualified «sleeves»
+   means on a powerlifting log; «Без зупинки» is touch and go, reps taken without resetting. */
+"logging.session.set.modifier.belt" = "Пояс";
+"logging.session.set.modifier.sleeves" = "Наколінники";
+"logging.session.set.modifier.wraps" = "Бинти";
+"logging.session.set.modifier.straps" = "Лямки";
+"logging.session.set.modifier.paused" = "З паузою";
+"logging.session.set.modifier.tempo" = "Темп";
+"logging.session.set.modifier.touch-and-go" = "Без зупинки";
+"logging.session.set.modifier.deficit" = "Дефіцит";
+"logging.session.set.modifier.board" = "Борд";
+
+"logging.session.plate.row.label" = "Набір дисків";
+"logging.session.plate.row.unknown" = "Торкніться, щоб перевірити ваше обладнання";
+"logging.session.plate.row.not-loadable" = "Точно не набирається";
+"logging.session.plate.title" = "Набір дисків";
+"logging.session.plate.done.action" = "Готово";
+"logging.session.plate.target.label" = "Ціль";
+"logging.session.plate.exact.section" = "Набирається точно";
+"logging.session.plate.below.section" = "Найближче менше";
+"logging.session.plate.above.section" = "Найближче більше";
+"logging.session.plate.below.none.headline" = "Нижче нічого не набирається";
+"logging.session.plate.below.none.message" = "Гриф із замками вже важчий за цю ціль.";
+"logging.session.plate.above.none.headline" = "Вище нічого не набирається";
+"logging.session.plate.above.none.message" = "Дисків цього залу не вистачає до такої ваги. Додайте важчі пари до профілю обладнання.";
+"logging.session.plate.bare-bar" = "Лише гриф і замки";
+"logging.session.plate.per-side.label" = "З кожного боку";
+"logging.session.plate.equipment.section" = "Обладнання";
+"logging.session.plate.equipment.unnamed" = "Зал без назви";
+
+"logging.session.plate.change-equipment.action" = "Змінити зал";
+"logging.session.plate.no-equipment.headline" = "Зал не налаштовано";
+"logging.session.plate.no-equipment.message" = "Додайте гриф, замки та диски, які у вас є, — і кожен набір буде розраховано з них.";
+"logging.session.plate.no-equipment.action" = "Налаштувати зал";
+"logging.session.plate.equipment.bar %@ %@" = "Гриф %1$@, замки по %2$@";
+"logging.session.plate.count %@ %@" = "%1$@ × %2$@";
+"logging.session.plate.error.headline" = "Не вдалося прочитати обладнання";
+"logging.session.plate.error.message" = "Не вдалося завантажити ваш гриф і диски, тож немає з чого розрахувати набір.";
+"logging.session.plate.unusable.headline" = "Це обладнання не можна використати";
+"logging.session.plate.unusable.message" = "Його список дисків не описує зал. Виправте профіль обладнання.";
+
+"logging.equipment.title" = "Обладнання";
+"logging.equipment.empty.headline" = "Зал ще не налаштовано";
+"logging.equipment.empty.message" = "Налаштуйте гриф, замки та диски, з якими ви тренуєтеся, — і застосунок розрахує, що набирати.";
+"logging.equipment.add.action" = "Додати зал";
+"logging.equipment.active.badge" = "Використовується";
+"logging.equipment.use.action" = "Використовувати цей зал";
+"logging.equipment.none-active" = "Жоден зал не використовується. Виберіть один — і кожен набір буде розраховано з нього.";
+"logging.equipment.edit.action" = "Редагувати";
+"logging.equipment.error.headline" = "Не вдалося прочитати обладнання";
+"logging.equipment.error.message" = "Не вдалося завантажити ваші зали. Нічого не втрачено — спробуйте ще раз.";
+"logging.equipment.write-error.title" = "Цю зміну не збережено";
+
+"logging.equipment.create.title" = "Додати зал";
+"logging.equipment.edit.title" = "Редагувати зал";
+"logging.equipment.name.label" = "Назва";
+"logging.equipment.name.hint" = "Ваше власне слово для цього місця — дім, комерційний зал, змагання. Необов’язково.";
+"logging.equipment.bar.label" = "Вага грифа";
+"logging.equipment.collar.label" = "Вага одного замка";
+"logging.equipment.collar.hint" = "Одного замка, а не пари — гриф бере два. Введіть 0, якщо тренуєтеся без них.";
+"logging.equipment.plates.section" = "Диски";
+"logging.equipment.plates.hint" = "Скільки пар кожного диска у вас є. Зал без дисків — це нормально: сам гриф теж набирається.";
+"logging.equipment.plate.label" = "Диск";
+"logging.equipment.pairs.label" = "Пар";
+"logging.equipment.add-plate.action" = "Додати диск";
+"logging.equipment.remove-plate.action" = "Вилучити диск";
+"logging.equipment.save.action" = "Зберегти зал";
+"logging.equipment.cancel.action" = "Скасувати";
+"logging.equipment.delete.action" = "Видалити зал";
+"logging.equipment.delete-confirm.title" = "Видалити цей зал?";
+"logging.equipment.delete-confirm.message" = "Його гриф і диски зникнуть разом із ним. Якщо це зал, який використовується, набори не розраховуватимуться, доки ви не виберете інший.";
+"logging.equipment.delete-confirm.action" = "Видалити";
+"logging.equipment.delete-confirm.cancel" = "Залишити";
+
+"logging.equipment.refusal.bar" = "Введіть, скільки важить сам гриф.";
+"logging.equipment.refusal.collar" = "Введіть, скільки важить один замок, або 0, якщо ви їх не використовуєте.";
+"logging.equipment.refusal.plate" = "Кожен диск має важити щонайменше один грам.";
+"logging.equipment.refusal.pairs" = "Для кожного диска потрібна ціла кількість пар.";
+"logging.equipment.refusal.repeated" = "Два рядки називають той самий диск. Зведіть пари в один рядок, а другий вилучіть.";
+"logging.equipment.refusal.overflow" = "Стільки дисків неможливо порахувати. Зменште кількість пар.";
+
+"logging.equipment.no-plates" = "Без дисків";
+
+"logging.past-session.title" = "Тренування";
+"logging.past-session.error.headline" = "Тренування недоступне";
+"logging.past-session.error.message" = "Не вдалося прочитати це тренування.";
+"logging.past-session.missing.headline" = "Тренування не знайдено";
+"logging.past-session.missing.message" = "Його видалено, або його ніколи не було на цьому пристрої.";
+"logging.past-session.empty.headline" = "Нічого не записано";
+"logging.past-session.empty.message" = "Це тренування розпочали, але не додали до нього жодної вправи.";
+"logging.past-session.write-error.message" = "Не вдалося зберегти цю зміну. Нічого не втрачено — спробуйте ще раз.";

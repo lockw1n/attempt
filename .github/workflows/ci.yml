@@ -305,6 +305,16 @@ jobs:
       - name: Check app-target strings
         run: ./scripts/check-app-strings.sh
 
+      # FR-1.14.1's guard. Once `uk` is a bundle localization a key with no Ukrainian value renders
+      # its own identifier on screen rather than the English string, so an incomplete table is
+      # worse than none — and nothing else in this job can see it: SwiftLint reads source rather
+      # than resources, and the module tests resolve keys against the test process's `en`.
+      - name: Check the Ukrainian translation is complete
+        run: ./scripts/check-translations.sh
+
+      - name: Verify the translation gate fires
+        run: ./scripts/check-translations.sh --self-test
+
       # TR-0.6.2's formatter half. `swift format` ships with the toolchain, so there is nothing to
       # install. Config is `.swift-format`: 4-space indent and a 120-column limit, matching
       # `.editorconfig` and SwiftLint's `line_length` rather than the tool's own defaults.

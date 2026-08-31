@@ -1,0 +1,44 @@
+/* History, Ukrainian (FR-1.14.1). The keys and the reasoning behind each string are in en.lproj
+   beside this file. The table has to stay complete: a missing key renders its own identifier. */
+
+"history.list.empty.headline" = "Тренувань ще не записано";
+"history.list.empty.message" = "Ваші тренування з’являться тут, найновіші вгорі.";
+"history.list.empty.action" = "Почати тренування";
+
+"history.list.error.headline" = "Історія недоступна";
+"history.list.error.message" = "Не вдалося прочитати ваші минулі тренування. Спробуйте ще раз.";
+
+"history.list.more.error" = "Не вдалося завантажити ще тренування.";
+
+"history.list.exercises.none" = "Без вправ";
+
+"history.list.search.prompt" = "Пошук за вправами й нотатками";
+
+"history.list.search.error.headline" = "Пошук недоступний";
+"history.list.search.error.message" = "Не вдалося виконати пошук в історії. Спробуйте ще раз.";
+
+"history.list.nomatches.headline" = "Тренувань не знайдено";
+"history.list.nomatches.message" = "Жодне тренування не містить цієї вправи й не згадує її в нотатці.";
+"history.list.nomatches.action" = "Очистити пошук";
+
+"history.list.match.exercise" = "Збіг за вправою";
+"history.list.match.note" = "Збіг у нотатці тренування";
+"history.list.match.setnote" = "Збіг у нотатці підходу";
+
+"history.list.calendar" = "Календар";
+"history.calendar.title" = "Календар";
+
+"history.calendar.earlier" = "Попередній місяць";
+"history.calendar.later" = "Наступний місяць";
+
+"history.calendar.empty.headline" = "Тренувань ще не записано";
+"history.calendar.empty.message" = "Дні, коли ви тренувалися, позначені тут.";
+"history.calendar.empty.action" = "Почати тренування";
+
+"history.calendar.error.headline" = "Календар недоступний";
+"history.calendar.error.message" = "Не вдалося прочитати ваші тренувальні дні. Спробуйте ще раз.";
+
+"history.calendar.day.error" = "Не вдалося завантажити тренування за цей день.";
+
+"history.calendar.day.trained %@" = "%1$@, тренування було";
+"history.calendar.day.untrained %@" = "%1$@, без тренування";

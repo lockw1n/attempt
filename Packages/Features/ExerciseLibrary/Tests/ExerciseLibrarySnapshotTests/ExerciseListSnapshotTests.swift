@@ -43,9 +43,10 @@
 
         @Test func ukrainianCatalogue() throws {
             // `FR-1.14.2` as a picture: the same rows a Ukrainian reader gets, ordered by the names
-            // they show and falling back to English on the row nothing translated. The badges and
-            // the equipment captions stay English until `T-1.15` translates the copy — this
-            // reference is of the *data*, and it will be re-recorded then.
+            // they show and falling back to English on the row nothing translated. Since
+            // `FR-1.14.1` the chrome around them is Ukrainian too — the badges and the equipment
+            // captions resolve from `uk.lproj`, so this reference is now of the whole row rather
+            // than only of its data.
             try assertSnapshots(named: "ExerciseList-groups-uk") {
                 ExerciseGroupList(groups: Fixtures.ukrainianGroups)
                     .environment(\.locale, Fixtures.ukrainianLocale)

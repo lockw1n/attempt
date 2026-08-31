@@ -1,6 +1,6 @@
 /* Settings (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization module
-   doc. Nothing here is translated: only `en` ships in Phase 1, and the point of the catalogue is
-   that no screen has to be retrofitted when a second locale does. */
+   doc. Every key here has a Ukrainian counterpart in uk.lproj beside this file, and has to keep
+   one: a key missing from that table renders its own identifier. */
 
 "settings.landing.units.title" = "Units";
 "settings.landing.units.picker" = "Display unit";

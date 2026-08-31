@@ -1,0 +1,241 @@
+/* Settings, Ukrainian (FR-1.14.1). The keys and the reasoning behind each string are in en.lproj
+   beside this file. The table has to stay complete: a missing key renders its own identifier.
+
+   THE HEALTH SCREEN NAMES REAL LABELS IN A REAL APP, in Ukrainian: «Здоров’я» is the Health app,
+   «Програми» its Apps list and «Конфіденційність» the section that holds it. Re-check them against
+   the OS on the same occasion the English ones are re-checked. */
+
+"settings.landing.units.title" = "Одиниці";
+"settings.landing.units.picker" = "Одиниця відображення";
+
+"settings.landing.units.kilograms" = "кг";
+"settings.landing.units.pounds" = "фнт";
+
+"settings.landing.write-error.title" = "Не вдалося зберегти";
+"settings.landing.write-error.message" = "Цей параметр не збережено. Спробуйте задати його ще раз.";
+"settings.landing.load-error.title" = "Налаштування недоступні";
+"settings.landing.load-error.message" = "Не вдалося прочитати ваші налаштування.";
+"settings.landing.load-error.retry" = "Спробувати ще раз";
+
+/* Five surnames, kept in the Latin alphabet the literature spells them in — the English catalogue
+   says they are not translated in any locale, and the exercise library's copy of this list agrees
+   with it key for key. */
+"settings.landing.estimator.title" = "Орієнтовний 1ПМ";
+"settings.landing.estimator.picker" = "Формула";
+"settings.landing.estimator.detail" = "Зміна формули перераховує кожну оцінку, зокрема й минулі.";
+"settings.landing.estimator.epley" = "Epley";
+"settings.landing.estimator.brzycki" = "Brzycki";
+"settings.landing.estimator.lombardi" = "Lombardi";
+"settings.landing.estimator.oconner" = "O'Conner";
+"settings.landing.estimator.wathan" = "Wathan";
+"settings.landing.estimator.rpebased" = "На основі RPE";
+
+"settings.landing.precision.picker" = "Точність ваги";
+"settings.landing.precision.automatic" = "Автоматично";
+"settings.landing.precision.detail" = "Наскільки точно вага пишеться на екрані. Це не змінює ні того, що ви набираєте, ні того, що зберігається.";
+
+"settings.landing.lookback.picker" = "Період огляду";
+"settings.landing.lookback.detail" = "Оцінки беруться з вашого найкращого придатного підходу в межах цього періоду.";
+
+"settings.landing.rounding.title" = "Набір ваги";
+"settings.landing.rounding.increment" = "Типовий крок";
+"settings.landing.rounding.strategy" = "Округлення";
+"settings.landing.rounding.detail" = "Найменша зміна, яку можна зробити на штанзі. Нові вправи починають звідси; кожна може відрізнятися.";
+"settings.landing.rounding.strategy.nearest" = "Найближче";
+"settings.landing.rounding.strategy.down" = "Легше";
+"settings.landing.rounding.strategy.up" = "Важче";
+
+"settings.landing.appearance.title" = "Вигляд";
+"settings.landing.appearance.theme" = "Тема";
+"settings.landing.appearance.theme.system" = "Системна";
+"settings.landing.appearance.theme.light" = "Світла";
+"settings.landing.appearance.theme.dark" = "Темна";
+"settings.landing.appearance.accent" = "Акцент";
+"settings.landing.appearance.accent.value" = "Помаранчевий";
+"settings.landing.appearance.accent.detail" = "Один акцент усюди — для дій, активного стану й виділення.";
+
+"settings.landing.workout.title" = "Під час тренування";
+"settings.landing.workout.keep-awake" = "Не вимикати екран";
+"settings.landing.workout.keep-awake.hint" = "Екран лишається увімкненим, доки триває тренування, і засинає як звичайно решту часу.";
+
+"settings.landing.equipment.title" = "Обладнання";
+"settings.landing.equipment.row" = "Зали";
+"settings.landing.equipment.detail" = "Гриф, замки й диски, які у вас є";
+
+"settings.landing.bodyweight.title" = "Тіло";
+"settings.landing.bodyweight.row" = "Власна вага";
+"settings.landing.bodyweight.detail" = "Зважування та їхнє середнє за сім днів";
+
+"settings.bodyweight.title" = "Власна вага";
+"settings.bodyweight.add.action" = "Додати зважування";
+"settings.bodyweight.average.title" = "Поточне середнє за сім днів";
+"settings.bodyweight.average.none" = "Зважтеся двічі протягом семи днів, щоб побачити поточне середнє.";
+"settings.bodyweight.reading.average" = "Середнє за 7 днів до цієї дати";
+"settings.bodyweight.history.title" = "Історія";
+"settings.bodyweight.empty.headline" = "Зважувань ще немає";
+"settings.bodyweight.empty.message" = "Додайте, скільки ви важили, — і середнє за сім днів обчислиться зі зважувань.";
+"settings.bodyweight.error.headline" = "Зважування недоступні";
+"settings.bodyweight.error.message" = "Не вдалося прочитати журнал власної ваги.";
+"settings.bodyweight.write-error.title" = "Не вдалося зберегти";
+
+"settings.bodyweight.health.action" = "Імпортувати зі «Здоров’я»";
+"settings.bodyweight.health.detail" = "Читає масу тіла зі «Здоров’я» на цьому пристрої. Нічого нікуди не надсилається.";
+"settings.bodyweight.health.running" = "Читання зі «Здоров’я»…";
+"settings.bodyweight.health.result.title" = "Останній імпорт";
+"settings.bodyweight.health.error.title" = "Не вдалося імпортувати зі «Здоров’я»";
+"settings.bodyweight.health.added %lld" = "Додано нових зважувань: %lld";
+"settings.bodyweight.health.kept %lld" = "Днів, які ви вже записали: %lld";
+
+"settings.bodyweight.form.title" = "Нове зважування";
+"settings.bodyweight.form.weight.label" = "Вага";
+"settings.bodyweight.form.date.label" = "Дата зважування";
+"settings.bodyweight.form.date.hint" = "Сьогодні, якщо ви не вводите зважування з попереднього дня.";
+"settings.bodyweight.form.save.action" = "Зберегти зважування";
+"settings.bodyweight.form.cancel.action" = "Скасувати";
+"settings.bodyweight.form.refusal.not-a-weight" = "Введіть числом, скільки ви важили.";
+"settings.bodyweight.form.refusal.not-positive" = "Зважування має бути більшим за нуль.";
+
+"settings.landing.health.row" = "Доступ до «Здоров’я»";
+"settings.landing.health.detail" = "Що Attempt читає зі «Здоров’я» і як це змінити";
+"settings.health.title" = "Доступ до «Здоров’я»";
+"settings.health.status.title" = "Стан";
+"settings.health.status.not-asked" = "Не запитано";
+"settings.health.status.answered" = "Запитано";
+"settings.health.disclosure.detail" = "Attempt читає лише масу тіла й лише на цьому пристрої. iOS не повідомляє застосунку, чи було дозволено читання даних здоров’я, тож цей екран може сказати тільки те, що запит було зроблено. Якщо імпорт нічого не приносить, це може означати, що доступ відхилено або що у «Здоров’ї» немає зважувань.";
+"settings.health.prompt.title" = "Звідки береться запит";
+"settings.health.prompt.detail" = "Attempt запитує масу тіла під час першого імпорту зі «Здоров’я» і ніколи під час запуску.";
+"settings.health.prompt.row.detail" = "Кнопка імпорту зі «Здоров’я» міститься тут";
+"settings.health.change.title" = "Як це змінити";
+"settings.health.change.action" = "Відкрити «Здоров’я»";
+"settings.health.change.path" = "У «Здоров’ї» торкніться свого зображення, потім «Програми» в розділі «Конфіденційність». Запитати доступ удруге з Attempt неможливо.";
+"settings.health.change.failed" = "«Здоров’я» не відкрилося звідси. Відкрийте програму «Здоров’я» з початкового екрана, потім торкніться свого зображення та «Програми» в розділі «Конфіденційність».";
+"settings.health.unavailable.headline" = "«Здоров’я» немає на цьому пристрої";
+"settings.health.unavailable.message" = "Тут немає даних здоров’я, які можна прочитати, тож немає й доступу, який можна тримати.";
+"settings.health.unknown.headline" = "Стан доступу невідомий";
+"settings.health.unknown.message" = "«Здоров’я» не повідомило, як просунувся запит.";
+
+"settings.landing.about.title" = "Про застосунок";
+"settings.landing.about.row" = "Про Attempt";
+"settings.landing.about.detail" = "Версія, подяки та конфіденційність.";
+
+"settings.about.title" = "Про застосунок";
+
+"settings.about.version.title" = "Ця збірка";
+"settings.about.version.short" = "Версія";
+"settings.about.version.build" = "Збірка";
+"settings.about.version.unknown" = "Невідомо";
+
+"settings.about.acknowledgements.title" = "Подяки";
+"settings.about.acknowledgements.code" = "Attempt не містить стороннього коду. Усе, що він виконує, написано для нього.";
+"settings.about.acknowledgements.formulas" = "Його формули одноповторного максимуму та шкала RPE — опублікована праця їхніх авторів, реалізована тут із літератури, а не ліцензована.";
+
+"settings.about.privacy.title" = "Конфіденційність";
+"settings.about.privacy.storage" = "Ваш щоденник тренувань зберігається на цьому пристрої. Якщо ви ввімкнете синхронізацію з iCloud, копія зберігатиметься також у вашому власному приватному iCloud, де прочитати її можете лише ви. Ані облікового запису в нас, ані нашого сервера за цим немає — нічого із записаного вами не надсилається до Attempt.";
+"settings.about.privacy.health" = "Маса тіла читається зі «Здоров’я» лише після вашого дозволу й лише тоді, коли ви просите про імпорт. Attempt нічого не записує назад до «Здоров’я», а прочитане лишається на цьому пристрої.";
+"settings.about.privacy.tracking" = "Тут немає ні аналітики, ні реклами, ні стеження. Жодній третій стороні нічого не повідомляється ні про вас, ні про ваші тренування.";
+"settings.about.privacy.currency" = "Ця політика описує збірку, названу вище. Вона постачається всередині застосунку, тож ніколи не буває новішою чи старішою за версію, якою ви користуєтеся.";
+
+"settings.landing.data.title" = "Ваші дані";
+"settings.landing.data.row" = "Експортувати щоденник тренувань";
+"settings.landing.data.detail" = "Файл таблиці та повна копія.";
+
+"settings.export.title" = "Експорт";
+"settings.export.intro" = "Два файли, зняті з того, що є на цьому пристрої зараз. Жоден нікуди не надсилається — ви самі обираєте, куди піде кожен.";
+
+"settings.export.csv.title" = "Таблиця (CSV)";
+"settings.export.csv.detail" = "Один рядок на підхід, із датою, вправою, вагою, повтореннями, RPE та вашими нотатками. Відкривається в Numbers, Excel чи Sheets.";
+"settings.export.json.title" = "Повна копія (JSON)";
+"settings.export.json.detail" = "Кожне поле кожного рядка, точно як зберігається. Не для читання — це файл, який нічого не втрачає.";
+
+"settings.export.share" = "Поділитися";
+"settings.export.destinations" = "Кнопка «Поділитися» відкриває звичайне вікно спільного доступу, тож файл може піти у «Файли», у пошту, до іншої програми або куди завгодно, куди ви надсилаєте речі.";
+"settings.export.deleted" = "Усе, що ви видалили, до файлу не входить. Експорт — це те, що у вас є, а не все, що ви коли-небудь записували.";
+"settings.export.preparing" = "Читання вашого щоденника тренувань…";
+
+"settings.export.empty.headline" = "Поки що нема чого експортувати";
+"settings.export.empty.message" = "Запишіть тренування або зважування — і воно буде у файлі.";
+
+"settings.export.error.headline" = "Не вдалося підготувати експорт";
+"settings.export.error.message" = "Не вдалося прочитати ваш щоденник тренувань. Нічого не змінено — спробуйте ще раз.";
+
+"settings.landing.backup.row" = "Створити резервну копію";
+"settings.landing.backup.detail" = "Один файл з усіма записами на цьому пристрої.";
+
+"settings.backup.title" = "Резервна копія";
+"settings.backup.intro" = "Повна копія всього, що Attempt тримає на цьому пристрої, — ваших тренувань, вправ, залів і налаштувань. Нічого нікуди не надсилається: файл ваш.";
+
+"settings.backup.file.title" = "Файл резервної копії (JSON)";
+"settings.backup.file.detail" = "Кожне поле кожного рядка, точно як зберігається. Не для читання — це файл, який зберігає все.";
+
+"settings.backup.share" = "Поділитися";
+"settings.backup.destinations" = "Кнопка «Поділитися» відкриває звичайне вікно спільного доступу, тож файл може піти у «Файли», в iCloud Drive, до іншої програми або куди завгодно, куди ви надсилаєте речі.";
+
+"settings.backup.deleted" = "Усе, що ви видалили, теж є в цьому файлі. Резервна копія — це все, що тримає застосунок, а не лише те, що ви бачите.";
+
+"settings.backup.preparing" = "Читання всього, що є на цьому пристрої…";
+
+"settings.backup.error.headline" = "Не вдалося підготувати резервну копію";
+"settings.backup.error.message" = "Не вдалося прочитати ваші дані. Нічого не змінено — спробуйте ще раз.";
+
+"settings.landing.restore.row" = "Відновити з резервної копії";
+"settings.landing.restore.detail" = "Прочитати файл резервної копії назад на цей пристрій.";
+
+"settings.restore.title" = "Відновлення";
+
+"settings.restore.waiting.headline" = "Файл не вибрано";
+"settings.restore.waiting.message" = "Виберіть файл JSON, який Attempt записав під час останнього резервного копіювання. Вибір файлу сам собою нічого не змінює — спершу ви побачите, що в ньому.";
+"settings.restore.choose" = "Вибрати файл резервної копії";
+"settings.restore.reading" = "Читання файлу…";
+
+"settings.restore.confirm.title" = "Це перезапише те, що є на цьому пристрої";
+"settings.restore.confirm.detail" = "Кожен запис із цього файлу замінить той, якому він відповідає тут. Записи, яких у файлі немає, залишаться як є. Скасувати це неможливо.";
+"settings.restore.confirm.deleted" = "Записи, які ви видалили до створення цієї резервної копії, повернуться як звичайні. Attempt не може повернути запис назад у стан видаленого.";
+"settings.restore.confirm.action" = "Замінити мої дані";
+"settings.restore.confirm.other" = "Вибрати інший файл";
+
+"settings.restore.dialog.title" = "Записати цю резервну копію поверх ваших даних?";
+"settings.restore.dialog.message" = "Скасувати це неможливо. Якщо ви не впевнені, спершу створіть резервну копію.";
+"settings.restore.dialog.action" = "Замінити мої дані";
+"settings.restore.dialog.cancel" = "Скасувати";
+
+"settings.restore.restoring" = "Запис усього назад…";
+"settings.restore.done.headline" = "Відновлено";
+"settings.restore.done.detail" = "Ваші тренування, вправи, зали й налаштування повернулися. Орієнтовні максимуми та особисті рекорди обчислено заново з підходів у файлі.";
+
+"settings.restore.taken %@" = "Знято %@";
+
+"settings.restore.refused.export.headline" = "Це експорт, а не резервна копія";
+"settings.restore.refused.export.message" = "Цей файл містить ваш щоденник тренувань для читання деінде, а не все, що потрібно Attempt, щоб повернути пристрій до ладу. Шукайте файл із назвою Attempt-backup.";
+"settings.restore.refused.future.headline" = "Ця резервна копія — з новішого Attempt";
+"settings.restore.refused.future.message" = "Цей файл записала пізніша версія застосунку. Оновіть Attempt, а тоді відновлюйте — прочитати його тут вдалося б лише частково.";
+"settings.restore.refused.unreadable.headline" = "Цей файл не вдається прочитати";
+"settings.restore.refused.unreadable.message" = "Це не резервна копія Attempt, або копія пошкоджена. Нічого на цьому пристрої не змінено.";
+
+"settings.restore.error.headline" = "Відновлення не завершилося";
+"settings.restore.error.message" = "Частина файлу вже на цьому пристрої. Запустити той самий файл ще раз безпечно — це доведе справу до кінця.";
+"settings.restore.error.retry" = "Спробувати ще раз";
+
+"settings.sync.title" = "Синхронізація з iCloud";
+"settings.sync.device.title" = "Цей пристрій";
+"settings.sync.row" = "Синхронізація з iCloud";
+"settings.sync.row.detail" = "Тримайте ваш щоденник тренувань на кожному пристрої, де ви ввійшли у свій обліковий запис iCloud.";
+"settings.sync.toggle" = "Синхронізувати з iCloud";
+"settings.sync.toggle.detail" = "Ваш щоденник зберігається у вашому власному приватному iCloud. Прочитати його можете лише ви.";
+
+"settings.sync.status.title" = "Стан";
+"settings.sync.status.off" = "Вимкнено";
+"settings.sync.status.idle" = "Актуально";
+"settings.sync.status.setup" = "Перевірка облікового запису…";
+"settings.sync.status.download" = "Отримання змін…";
+"settings.sync.status.upload" = "Надсилання змін…";
+"settings.sync.status.failed" = "Не вдалося синхронізувати";
+
+"settings.sync.status.failed.detail" = "Attempt продовжуватиме спроби. Усе, що ви записуєте, у будь-якому разі лишається на цьому пристрої.";
+
+"settings.sync.last %@" = "Останнє синхронізування: %@";
+"settings.sync.last.never" = "Ще не синхронізовано";
+
+"settings.sync.off.detail" = "Вимкнення синхронізації залишає все на цьому пристрої точно як є. Воно лише припиняє переміщення нових змін між вашими пристроями.";
+
+"settings.sync.restart.on" = "Синхронізація почнеться під час наступного відкриття Attempt.";
+"settings.sync.restart.off" = "Синхронізація зупиниться під час наступного відкриття Attempt. Нічого з цього пристрою не буде вилучено.";

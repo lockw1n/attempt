@@ -1,6 +1,7 @@
 /* History (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization module doc.
    The screens here are the session list (the History tab's root, with `FR-1.5.4`'s search as a mode
-   of it) and the calendar. Nothing is translated: only `en` ships in Phase 1. */
+   of it) and the calendar. Every key here has a Ukrainian counterpart in uk.lproj beside this
+   file, and has to keep one: a key missing from that table renders its own identifier. */
 
 /* FR-1.13.2's first launch. The headline says what there is none of; the message says the one thing
    that makes one, and the action is that thing — a tab away, which is why it is worth a button
