@@ -75,6 +75,26 @@
             }
         }
 
+        // The same section over a BUILT-IN, and not a redundant reference: the Ukrainian name's
+        // caption branches on `catalogueOwnsFields`, and this is the branch that says the catalogue
+        // supplies the second name rather than the English one falling through (`FR-1.14.2`). The
+        // other branch is what `ExerciseForm-fields` above photographs, `.create` always authoring a
+        // custom row. The chip rows are replaced by the five catalogue-owned facts here, so this is
+        // also the accessibility3 layout with the most copy stacked in it.
+        @Test func fieldsSectionOnABuiltIn() async throws {
+            let state = ExerciseFormState(
+                mode: .edit(exerciseID: DetailFixtures.backSquat.id),
+                repository: SilentExerciseRepository(stored: [DetailFixtures.backSquat]))
+            await state.load()
+            #expect(state.catalogueOwnsFields, "the fixture is not a built-in")
+
+            try assertSnapshots(named: "ExerciseForm-fields-built-in") {
+                VStack(alignment: .leading) {
+                    ExerciseFieldsSection(state: state)
+                }
+            }
+        }
+
         @Test func parentPickerWithNothingToOffer() throws {
             try assertSnapshots(named: "ExerciseForm-parent-empty") {
                 VStack(alignment: .leading) {
@@ -84,16 +104,22 @@
         }
     }
 
-    /// An `ExerciseRepository` that is never asked anything.
+    /// An `ExerciseRepository` that answers from a fixed catalogue and is asked nothing else.
     ///
-    /// The fields section reads the state's own properties and nothing else, and this reference does
-    /// not call `load()` — so a repository is a constructor requirement here rather than a
-    /// collaborator, and the empty answers say so. `RepositoryFakes`' in-memory stack would be the
-    /// alternative and would be a dependency edge bought for a value nothing reads.
+    /// The fields section reads the state's own properties, so for a `.create` reference the empty
+    /// default is the whole collaborator. A `.edit` reference needs one thing more — `load()` reads
+    /// its record back, and `catalogueOwnsFields` is false until it has — which is what ``stored``
+    /// supplies. `RepositoryFakes`' in-memory stack would be the alternative and would be a
+    /// dependency edge bought for the two answers below.
     private struct SilentExerciseRepository: ExerciseRepository {
-        func exercises(includingDeleted: Bool) async throws -> [Exercise] { [] }
+        /// The catalogue `load()` reads from. Empty for a form that creates.
+        var stored: [Exercise] = []
 
-        func exercise(id: UUID, includingDeleted: Bool) async throws -> Exercise? { nil }
+        func exercises(includingDeleted: Bool) async throws -> [Exercise] { stored }
+
+        func exercise(id: UUID, includingDeleted: Bool) async throws -> Exercise? {
+            stored.first { $0.id == id }
+        }
 
         func save(_ exercise: Exercise) async throws {}
 

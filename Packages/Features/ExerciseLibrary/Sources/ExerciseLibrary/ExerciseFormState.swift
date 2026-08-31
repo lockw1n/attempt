@@ -90,8 +90,9 @@ public final class ExerciseFormState {
     /// **Optional, and offered on a built-in exercise too** — unlike the five fields
     /// ``catalogueOwnsFields`` withholds. The seed merge *fills* this column rather than re-supplying
     /// it, so a value typed here survives the next import the way `FR-1.1.4`'s rename does; the one
-    /// asymmetry is that clearing it lets a later catalogue revision fill it again, since nothing
-    /// stored tells an emptied column from one never written.
+    /// asymmetry is that clearing it lets the next import fill it again, since nothing stored tells
+    /// an emptied column from one never written — and that import runs at **every launch**, not only
+    /// when a new catalogue revision lands.
     ///
     /// A `String` rather than `String?`, because a text field's empty state is `""` and the two
     /// would have to be reconciled somewhere — ``trimmedUkrainianName`` is that somewhere.

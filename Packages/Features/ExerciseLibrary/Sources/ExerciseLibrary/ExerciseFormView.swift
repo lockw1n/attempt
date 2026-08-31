@@ -158,26 +158,15 @@ struct ExerciseFieldsSection: View {
     }
 
     /// The one field every exercise has in common, and the sentence saying it is required.
+    ///
+    /// The sentence appears only while the name is missing: it reports a problem rather than
+    /// describing a choice, which is the one way this field differs from the one below it.
     @ViewBuilder private var nameField: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs.points) {
-            Text(ExerciseLibraryStrings.formName)
-                .font(Typography.metricLabel.font)
-                .foregroundStyle(ColorToken.textSecondary)
-            TextField(
-                text: $state.name,
-                prompt: Text(ExerciseLibraryStrings.formNamePrompt)
-            ) {
-                Text(ExerciseLibraryStrings.formName)
-            }
-            .labelsHidden()
-            .font(Typography.body.font)
-            .foregroundStyle(ColorToken.textPrimary)
-            .textFieldStyle(.plain)
-            .padding(Spacing.md.points)
-            .background(
-                ColorToken.surfaceRaised,
-                in: .rect(cornerRadius: CornerRadius.control.points)
-            )
+        LabelledTextField(
+            label: ExerciseLibraryStrings.formName,
+            prompt: ExerciseLibraryStrings.formNamePrompt,
+            text: $state.name
+        ) {
             if !state.isNameValid {
                 Text(ExerciseLibraryStrings.formNameRequired)
                     .font(Typography.caption.font)
@@ -188,31 +177,24 @@ struct ExerciseFieldsSection: View {
 
     /// The second name (`FR-1.14.2`), and the sentence saying what leaving it blank does.
     ///
-    /// The sentence is always there, unlike the name field's, which appears only while the name is
-    /// missing: this one describes a choice rather than reporting a problem.
+    /// **The sentence is a different one on a built-in, because the answer is.** On a custom
+    /// exercise a blank field means the name above is shown in Ukrainian too. On a built-in the seed
+    /// merge fills the column from the catalogue where the row holds nothing, so a blank field there
+    /// means the catalogue's own Ukrainian name — where it has one — and saying otherwise would
+    /// promise a fallback the next launch's import does not honour.
     @ViewBuilder private var ukrainianNameField: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs.points) {
-            Text(ExerciseLibraryStrings.formUkrainianName)
-                .font(Typography.metricLabel.font)
-                .foregroundStyle(ColorToken.textSecondary)
-            TextField(
-                text: $state.ukrainianName,
-                prompt: Text(ExerciseLibraryStrings.formUkrainianNamePrompt)
-            ) {
-                Text(ExerciseLibraryStrings.formUkrainianName)
-            }
-            .labelsHidden()
-            .font(Typography.body.font)
-            .foregroundStyle(ColorToken.textPrimary)
-            .textFieldStyle(.plain)
-            .padding(Spacing.md.points)
-            .background(
-                ColorToken.surfaceRaised,
-                in: .rect(cornerRadius: CornerRadius.control.points)
+        LabelledTextField(
+            label: ExerciseLibraryStrings.formUkrainianName,
+            prompt: ExerciseLibraryStrings.formUkrainianNamePrompt,
+            text: $state.ukrainianName
+        ) {
+            Text(
+                state.catalogueOwnsFields
+                    ? ExerciseLibraryStrings.formUkrainianNameOptionalCatalogue
+                    : ExerciseLibraryStrings.formUkrainianNameOptional
             )
-            Text(ExerciseLibraryStrings.formUkrainianNameOptional)
-                .font(Typography.caption.font)
-                .foregroundStyle(ColorToken.textSecondary)
+            .font(Typography.caption.font)
+            .foregroundStyle(ColorToken.textSecondary)
         }
     }
 

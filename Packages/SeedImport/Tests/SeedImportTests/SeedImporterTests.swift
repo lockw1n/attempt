@@ -249,6 +249,25 @@ struct SeedImporterTests {
         #expect(summary.writeCount == 0)
     }
 
+    // The cost `reseeded(from:)` accepts, and the one branch of it the three tests above cannot
+    // reach: nothing stored tells an emptied column from one never written, so a user who clears a
+    // built-in's Ukrainian name is handed the catalogue's back. At the NEXT LAUNCH, not at the next
+    // catalogue revision — this import runs on every one.
+    @Test("A Ukrainian name the user cleared is filled again by the next import")
+    func aClearedTranslationComesBack() async throws {
+        let subject = Subject()
+        let entry = AuthoredEntry(squatID, "Back Squat").translated("Присідання")
+        try await subject.importing(payload([entry]))
+        try await subject.exercises.save(
+            try #require(await subject.stored(squatID)).edited(clearingUkrainianName: true))
+        #expect(try #require(await subject.stored(squatID)).ukrainianName == nil, "the clear landed")
+
+        let summary = try await subject.importing(payload(revision: 2, [entry]))
+
+        #expect(try #require(await subject.stored(squatID)).ukrainianName == "Присідання")
+        #expect(summary.writeCount == 1, "the refill is a write")
+    }
+
     @Test("An exercise the user authored is never written")
     func aUserAuthoredRowIsNeverWritten() async throws {
         let subject = Subject()
