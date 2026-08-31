@@ -181,6 +181,7 @@ private struct FlaggedExerciseReads: ExerciseRepository {
             updatedAt: gone.updatedAt,
             deletedAt: stamp,
             name: gone.name,
+            ukrainianName: nil,
             movement: gone.movement,
             parentExerciseID: gone.parentExerciseID,
             equipment: gone.equipment,

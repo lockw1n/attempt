@@ -74,6 +74,7 @@ func mappingSourceExercise(id: UUID) -> ExerciseEntity {
     let entity = ExerciseEntity(
         id: id,
         name: "Low-bar back squat",
+        ukrainianName: "Присідання зі штангою на низькій позиції",
         movement: .squat,
         equipment: .barbell,
         laterality: .unilateral,

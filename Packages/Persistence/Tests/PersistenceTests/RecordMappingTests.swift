@@ -346,6 +346,7 @@ struct RecordVocabularyMappingTests {
             updatedAt: record.updatedAt,
             deletedAt: record.deletedAt,
             name: record.name,
+            ukrainianName: nil,
             movement: .deadlift,
             parentExerciseID: record.parentExerciseID,
             equipment: record.equipment,

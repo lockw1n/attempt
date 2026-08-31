@@ -57,6 +57,7 @@ func exerciseRecord(
         updatedAt: updatedAt,
         deletedAt: deletedAt,
         name: name,
+        ukrainianName: nil,
         movement: .squat,
         parentExerciseID: nil,
         equipment: .barbell,

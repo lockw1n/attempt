@@ -209,6 +209,7 @@ enum Builder {
             updatedAt: stamp,
             deletedAt: nil,
             name: name,
+            ukrainianName: nil,
             movement: .squat,
             parentExerciseID: nil,
             equipment: .barbell,

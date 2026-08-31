@@ -17,6 +17,18 @@ final class ExerciseEntity: StoredEntity {
 
     var name: String = ""
 
+    /// The Ukrainian name (`FR-1.14.2`), or `nil` for an exercise that has only ``name``.
+    ///
+    /// **The first column added after schema v1**, so it is the first one a lightweight migration
+    /// backfills across rows that already exist. Optional and therefore backfilled with *nothing* —
+    /// the one shape that arrives absent rather than arriving wrong, which is what a name nobody has
+    /// written has to be. See ``SchemaV1``'s three rules; this column is the case they were written
+    /// for.
+    ///
+    /// Named for the language and not for `UK`, which is a region. `RepositoryInterface`'s record
+    /// carries the reasoning and the resolution rule.
+    var ukrainianName: String?
+
     /// ``PowerliftingCore/Movement``'s raw value — `TR-0.3.1`'s `movement`.
     var movementRawValue: String = SchemaDefaults.movement
 
@@ -63,6 +75,7 @@ final class ExerciseEntity: StoredEntity {
     init(
         id: UUID = UUID(),
         name: String,
+        ukrainianName: String? = nil,
         movement: Movement,
         equipment: Equipment,
         laterality: Laterality,
@@ -78,6 +91,7 @@ final class ExerciseEntity: StoredEntity {
     ) {
         self.id = id
         self.name = name
+        self.ukrainianName = ukrainianName
         self.movementRawValue = movement.rawValue
         self.equipmentRawValue = equipment.rawValue
         self.lateralityRawValue = laterality.rawValue

@@ -382,6 +382,7 @@
                     updatedAt: startedAt,
                     deletedAt: nil,
                     name: name,
+                    ukrainianName: nil,
                     movement: .squat,
                     parentExerciseID: nil,
                     equipment: .barbell,

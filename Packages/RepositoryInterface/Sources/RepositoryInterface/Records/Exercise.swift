@@ -25,6 +25,20 @@ public struct Exercise: StoredRecord {
     /// The user-facing name. Renaming a built-in exercise does not break history (`FR-1.1.4`).
     public let name: String
 
+    /// The Ukrainian name (`FR-1.14.2`), or `nil` for an exercise that has only ``name``.
+    ///
+    /// **Not `nameUK`**, which reads as the United Kingdom: `uk` is Ukrainian's language code and
+    /// `UK`'s is `en-GB`, and a column nobody can tell apart from a region is a column that gets
+    /// filled with the wrong thing.
+    ///
+    /// **A second name, not a translation table.** One language is what `FR-1.14.2` asks for; a
+    /// map of language to name would have to cross `G-2.5` as an encoded blob, where a column is a
+    /// column CloudKit already mirrors and a later language is another one.
+    ///
+    /// Blank and absent mean the same thing to ``displayName(in:)``, which is what makes an emptied
+    /// form field and an unfilled one behave alike.
+    public let ukrainianName: String?
+
     /// Which lift this is a form of.
     public let movement: Movement
 
@@ -84,6 +98,7 @@ public struct Exercise: StoredRecord {
         updatedAt: Date,
         deletedAt: Date?,
         name: String,
+        ukrainianName: String?,
         movement: Movement,
         parentExerciseID: UUID?,
         equipment: Equipment,
@@ -100,6 +115,7 @@ public struct Exercise: StoredRecord {
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
         self.name = name
+        self.ukrainianName = ukrainianName
         self.movement = movement
         self.parentExerciseID = parentExerciseID
         self.equipment = equipment
@@ -123,6 +139,7 @@ extension Exercise {
         case updatedAt
         case deletedAt
         case name
+        case ukrainianName
         case movement
         case parentExerciseID
         case equipment
@@ -140,6 +157,11 @@ extension Exercise {
     /// All four vocabularies resolve rather than throw, ``laterality`` included — the domain type
     /// throws on an unrecognised spelling, and letting that reach here would cost the exercise, and
     /// with it every set logged against the row.
+    ///
+    /// **A payload written before ``ukrainianName`` existed decodes to `nil`, not to a failure**
+    /// (`FR-1.11.4`). `decodeIfPresent` is the same idiom every optional here already uses, and it
+    /// is what makes an older backup restorable: the alternative refuses a file whose only defect is
+    /// being older than one column.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
@@ -148,6 +170,7 @@ extension Exercise {
             updatedAt: try container.decode(Date.self, forKey: .updatedAt),
             deletedAt: try container.decodeIfPresent(Date.self, forKey: .deletedAt),
             name: try container.decode(String.self, forKey: .name),
+            ukrainianName: try container.decodeIfPresent(String.self, forKey: .ukrainianName),
             movement: try container.decodeVocabulary(
                 Movement.self, forKey: .movement, or: RecordVocabulary.movement),
             parentExerciseID: try container.decodeIfPresent(UUID.self, forKey: .parentExerciseID),
@@ -165,8 +188,8 @@ extension Exercise {
         )
     }
 
-    /// Writes the fifteen keys in declaration order. ``manualE1RM`` is absent rather than null when
-    /// there is no override — `encodeIfPresent`, as every optional here is written.
+    /// Writes the sixteen keys in declaration order. ``manualE1RM`` and ``ukrainianName`` are absent
+    /// rather than null when unset — `encodeIfPresent`, as every optional here is written.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -174,6 +197,7 @@ extension Exercise {
         try container.encode(updatedAt, forKey: .updatedAt)
         try container.encodeIfPresent(deletedAt, forKey: .deletedAt)
         try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(ukrainianName, forKey: .ukrainianName)
         try container.encodeVocabulary(movement, forKey: .movement)
         try container.encodeIfPresent(parentExerciseID, forKey: .parentExerciseID)
         try container.encodeVocabulary(equipment, forKey: .equipment)

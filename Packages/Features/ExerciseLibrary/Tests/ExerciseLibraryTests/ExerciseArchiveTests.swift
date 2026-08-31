@@ -310,6 +310,7 @@ extension DetailFixtures {
             updatedAt: exercise.updatedAt,
             deletedAt: exercise.deletedAt,
             name: exercise.name,
+            ukrainianName: nil,
             movement: exercise.movement,
             parentExerciseID: exercise.parentExerciseID,
             equipment: exercise.equipment,

@@ -24,6 +24,7 @@ func codingExercise() -> Exercise {
         updatedAt: codingUpdatedAt,
         deletedAt: codingDeletedAt,
         name: "Low-bar back squat",
+        ukrainianName: "Присідання зі штангою на низькій позиції",
         movement: .squat,
         parentExerciseID: codingJoinID,
         equipment: .barbell,

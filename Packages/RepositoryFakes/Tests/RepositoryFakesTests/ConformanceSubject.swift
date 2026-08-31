@@ -122,6 +122,7 @@ func exerciseRecord(
         updatedAt: fixtureUpdatedAt,
         deletedAt: deletedAt,
         name: name,
+        ukrainianName: nil,
         movement: .squat,
         parentExerciseID: parentExerciseID,
         equipment: .barbell,

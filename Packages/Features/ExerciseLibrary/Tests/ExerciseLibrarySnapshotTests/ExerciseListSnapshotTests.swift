@@ -224,6 +224,7 @@
                 updatedAt: Date(timeIntervalSince1970: 0),
                 deletedAt: nil,
                 name: name,
+                ukrainianName: nil,
                 movement: movement,
                 parentExerciseID: nil,
                 equipment: equipment,

@@ -334,6 +334,7 @@ extension Exercise {
             updatedAt: stamp,
             deletedAt: nil,
             name: name,
+            ukrainianName: nil,
             movement: movement,
             parentExerciseID: nil,
             equipment: .barbell,

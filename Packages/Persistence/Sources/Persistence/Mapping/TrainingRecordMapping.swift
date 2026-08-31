@@ -15,6 +15,7 @@ extension ExerciseEntity: RecordMappable {
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             name: name,
+            ukrainianName: ukrainianName,
             movement: RecordVocabulary.resolve(movementRawValue, or: RecordVocabulary.movement),
             parentExerciseID: parentExerciseID,
             equipment: RecordVocabulary.resolve(equipmentRawValue, or: RecordVocabulary.equipment),
@@ -32,6 +33,7 @@ extension ExerciseEntity: RecordMappable {
         self.init(
             id: record.id,
             name: record.name,
+            ukrainianName: record.ukrainianName,
             movement: record.movement,
             equipment: record.equipment,
             laterality: record.laterality,
@@ -50,6 +52,7 @@ extension ExerciseEntity: RecordMappable {
     /// Overwrites this row from `record`, preserving an unmappable stored spelling.
     func update(from record: Exercise) {
         name = record.name
+        ukrainianName = record.ukrainianName
         movementRawValue = preservingRawValue(
             record.movement, stored: movementRawValue, fallback: RecordVocabulary.movement)
         parentExerciseID = record.parentExerciseID

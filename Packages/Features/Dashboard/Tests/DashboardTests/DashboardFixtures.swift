@@ -41,6 +41,7 @@ struct DashboardFixture {
                 updatedAt: .distantPast,
                 deletedAt: nil,
                 name: name,
+                ukrainianName: nil,
                 movement: movement,
                 parentExerciseID: parentExerciseID,
                 equipment: equipment,

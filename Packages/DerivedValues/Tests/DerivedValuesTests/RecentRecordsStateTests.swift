@@ -335,6 +335,7 @@ struct RetiredCatalogue: ExerciseRepository {
             updatedAt: .distantPast,
             deletedAt: .distantPast,
             name: name,
+            ukrainianName: nil,
             movement: .bench,
             parentExerciseID: nil,
             equipment: .barbell,

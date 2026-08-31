@@ -20,13 +20,13 @@ struct RecordCodingKeyTests {
     // Every fixture has all of its optionals populated, because an omitted key is not a missing
     // one: the omit-when-nil rule has its own test.
 
-    @Test("An exercise writes fifteen keys")
+    @Test("An exercise writes sixteen keys")
     func exerciseKeys() throws {
         #expect(
             try encodedKeys(of: codingExercise()) == [
                 "barType", "createdAt", "deletedAt", "equipment", "id", "implementCount",
                 "isArchived", "isCustom", "laterality", "manualE1RM", "movement", "name", "notes",
-                "parentExerciseID", "updatedAt",
+                "parentExerciseID", "ukrainianName", "updatedAt",
             ])
     }
 
@@ -201,6 +201,36 @@ struct RecordJSONRoundTripTests {
 
         #expect(record.deletedAt == nil)
         #expect(record.isSoftDeleted == false)
+    }
+
+    // `FR-1.14.2` added a column to a wire format that already has backups written against it
+    // (`FR-1.11.4`), so this is the shape of every payload a user restores from today. Anchored on a
+    // neighbouring field as well: a decoder that threw the record away and rebuilt an empty one
+    // would satisfy the `nil` on its own.
+    @Test("A payload written before the Ukrainian name existed decodes without one")
+    func absentUkrainianNameDecodes() throws {
+        // Rebuilt through `JSONSerialization` rather than by deleting a substring: `JSONEncoder`
+        // emits keys in per-process hash order, so whether this key carries a trailing comma varies
+        // between runs and a textual removal would be flaky rather than strict.
+        let encoded = try JSONEncoder().encode(codingExercise())
+        var object = try #require(
+            try JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        #expect(object.removeValue(forKey: "ukrainianName") != nil, "the fixture has no key to drop")
+
+        let older = try JSONSerialization.data(withJSONObject: object)
+        let record = try JSONDecoder().decode(Exercise.self, from: older)
+
+        #expect(record.ukrainianName == nil)
+        #expect(record.name == "Low-bar back squat")
+    }
+
+    @Test("An exercise with no Ukrainian name omits the key rather than writing null")
+    func absentUkrainianNameIsOmitted() throws {
+        let record = makeExercise()
+        let json = try jsonText(of: record)
+
+        #expect(!json.contains("ukrainianName"))
+        #expect(try Self.roundTrip(record).ukrainianName == nil)
     }
 }
 

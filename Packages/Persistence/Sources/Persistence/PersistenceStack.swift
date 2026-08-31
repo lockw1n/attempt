@@ -102,10 +102,9 @@ let containerLock = NSLock()
 ///   the nine and the CloudKit audit parses it; a container assembled from its own array would be a
 ///   second list, which is the drift that check exists to prevent. The versioned form also carries
 ///   the version identifier a migration keys off.
-/// - **The migration plan, even though it is measurably inert.** ``AppMigrationPlan`` has no stages
-///   and while `G-1.7` holds it never will do anything. It is passed so that the day a second
-///   version exists the container is already reading the version history, rather than needing an
-///   edit at the moment of the first real migration.
+/// - **The migration plan, even though it is measurably inert.** ``AppMigrationPlan`` has no stages,
+///   and adding one is not the edit it looks like — that type carries the measured reason, and the
+///   crash it produces.
 func makeModelContainer(at location: StoreLocation, sync: SyncMode = .disabled) throws -> ModelContainer {
     if case .inMemory = location, sync != .disabled {
         throw StoreConfigurationError.inMemoryStoreCannotSync

@@ -183,6 +183,72 @@ struct SeedImporterTests {
         #expect(edited.reseeded(from: decodedEntry) == edited)
     }
 
+    // MARK: - The Ukrainian name is filled, not re-supplied (FR-1.14.2)
+
+    // The column that breaks the merge's two-way split, and the three tests below are the three
+    // cases that split cannot express. `reseeded(from:)` carries the argument; these pin it.
+
+    @Test("A newly seeded row carries the catalogue's Ukrainian name")
+    func aNewRowTakesTheCatalogueTranslation() async throws {
+        let subject = Subject()
+        let entry = AuthoredEntry(squatID, "Back Squat").translated("Присідання")
+
+        try await subject.importing(payload([entry]))
+
+        let stored = try #require(await subject.stored(squatID))
+        #expect(stored.ukrainianName == "Присідання")
+        #expect(stored.name == "Back Squat")
+    }
+
+    // T-1.18's whole delivery mechanism: every built-in already exists on an installed app, so a
+    // translation shipped in a later revision reaches nobody unless the merge fills the column.
+    // A *kept* column, which is what `name` is, would leave this row untranslated forever.
+    @Test("A later revision fills a Ukrainian name onto a row that has none")
+    func alaterRevisionFillsTheTranslation() async throws {
+        let subject = Subject()
+        let untranslated = AuthoredEntry(squatID, "Back Squat")
+        try await subject.importing(payload([untranslated]))
+        #expect(try #require(await subject.stored(squatID)).ukrainianName == nil)
+
+        let summary = try await subject.importing(
+            payload(revision: 2, [untranslated.translated("Присідання")]))
+
+        #expect(try #require(await subject.stored(squatID)).ukrainianName == "Присідання")
+        #expect(summary.writeCount == 1, "the fill is a write, not a silent no-op")
+    }
+
+    // The other half, and the reason the column is not simply seed-owned: a Ukrainian name the user
+    // typed is an edit the payload cannot express, exactly like `FR-1.1.4`'s rename.
+    @Test("A Ukrainian name the user typed outranks the catalogue's")
+    func aUserTranslationSurvives() async throws {
+        let subject = Subject()
+        let entry = AuthoredEntry(squatID, "Back Squat").translated("Присідання")
+        try await subject.importing(payload([entry]))
+        try await subject.exercises.save(
+            try #require(await subject.stored(squatID)).edited(ukrainianName: "Присід"))
+
+        let summary = try await subject.importing(
+            payload(revision: 2, [entry.translated("Присідання зі штангою")]))
+
+        #expect(try #require(await subject.stored(squatID)).ukrainianName == "Присід")
+        #expect(summary.writeCount == 0)
+    }
+
+    // And an entry that carries no translation never blanks one the row already holds — the case a
+    // straight `entry.ukrainianName` assignment would get wrong while passing every test above.
+    @Test("An untranslated catalogue entry does not clear a stored Ukrainian name")
+    func anUntranslatedEntryClearsNothing() async throws {
+        let subject = Subject()
+        let entry = AuthoredEntry(squatID, "Back Squat").translated("Присідання")
+        try await subject.importing(payload([entry]))
+
+        let summary = try await subject.importing(
+            payload(revision: 2, [entry.translated(nil)]))
+
+        #expect(try #require(await subject.stored(squatID)).ukrainianName == "Присідання")
+        #expect(summary.writeCount == 0)
+    }
+
     @Test("An exercise the user authored is never written")
     func aUserAuthoredRowIsNeverWritten() async throws {
         let subject = Subject()

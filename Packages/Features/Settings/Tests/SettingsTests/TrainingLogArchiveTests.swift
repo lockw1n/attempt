@@ -54,6 +54,7 @@ struct TrainingLogArchiveTests {
             updatedAt: stamp,
             deletedAt: nil,
             name: "Chin-up \"wide\"",
+            ukrainianName: "Підтягування \"широким хватом\"",
             movement: .other,
             parentExerciseID: parent,
             equipment: .machine,
@@ -116,6 +117,46 @@ struct TrainingLogArchiveTests {
         // date is asserted separately: it is the field the strategy was chosen for.
         #expect(restored.sets.first?.createdAt == Self.stamp)
         #expect(restored == archive)
+    }
+
+    // `FR-1.11.3`/`FR-1.11.4`. A backup is the one artefact both name fields have to survive in,
+    // and the interesting case is a catalogue that holds some of each — an archive whose exercises
+    // are all translated would pass for a writer that filled the column in on restore.
+    @Test("Both name fields survive a backup, set and unset alike")
+    func bothNamesSurviveTheArchive() throws {
+        let translated = Self.awkwardExercise(ExportRecords.id(0x71), parent: ExportRecords.id(0x72))
+        let untranslated = Exercise(
+            id: ExportRecords.id(0x72),
+            createdAt: Self.stamp,
+            updatedAt: Self.stamp,
+            deletedAt: nil,
+            name: "Back Squat",
+            ukrainianName: nil,
+            movement: .squat,
+            parentExerciseID: nil,
+            equipment: .barbell,
+            laterality: .bilateral,
+            barType: .standard,
+            implementCount: 1,
+            isCustom: false,
+            isArchived: false,
+            notes: "",
+            manualE1RM: nil)
+        let archive = TrainingLogArchive(
+            exportedAt: Self.stamp,
+            exercises: [translated, untranslated],
+            sessions: [],
+            entries: [],
+            sets: [],
+            bodyweight: [])
+
+        let restored = try TrainingLogArchive.decoded(from: archive.encoded())
+
+        // Anchored to the literals rather than to the fixture, so two empty catalogues cannot agree.
+        #expect(
+            restored.exercises.map(\.ukrainianName)
+                == ["Підтягування \"широким хватом\"", nil])
+        #expect(restored.exercises.map(\.name) == ["Chin-up \"wide\"", "Back Squat"])
     }
 
     @Test("A timestamp survives to the sub-second, which is what picked the strategy")

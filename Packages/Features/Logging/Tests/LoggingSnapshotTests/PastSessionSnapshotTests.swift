@@ -129,6 +129,7 @@
                 updatedAt: stamp,
                 deletedAt: nil,
                 name: "Back Squat",
+                ukrainianName: nil,
                 movement: .squat,
                 parentExerciseID: nil,
                 equipment: .barbell,

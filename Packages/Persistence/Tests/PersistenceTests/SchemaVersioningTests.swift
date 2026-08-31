@@ -78,6 +78,16 @@ struct SchemaVersioningTests {
         #expect(nonConformingModels(in: SchemaV1.models) == [])
     }
 
+    // **This test is a gate, not bookkeeping, and what makes it one was measured.** A second
+    // version whose `models` names the same live classes computes the same CoreData checksum as the
+    // first, and `NSLightweightMigrationStage`'s initialiser throws `NSInvalidArgumentException`,
+    // "Duplicate version checksums detected." — uncatchable, inside `addPersistentStore`, so the app
+    // aborts at launch on every store. Found by running the app, after the type-level assertions
+    // here had been rewritten to expect two versions and passed. ``AppMigrationPlan`` carries the
+    // full account; the point for a reader here is that appending to `schemas` turns this red first.
+    //
+    // Nothing in this process can assert the crash — it is an ObjC exception raised on CoreData's
+    // own queue — so what stands in for it is the count.
     @Test("V1 is version 1.0.0 and the plan names it as the only version")
     func planNamesOneVersion() {
         #expect(SchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
@@ -268,6 +278,10 @@ enum AddedSchemaV2: VersionedSchema {
         /// `G-2.5`'s other branch, for contrast.
         var addedOptionalID: UUID?
 
+        /// `ExerciseEntity.ukrainianName`'s own shape — the column `FR-1.14.2` added after v1, and
+        /// the reason this suite is read again rather than merely kept green.
+        var addedOptionalString: String?
+
         init(label: String) { self.label = label }
     }
 }
@@ -364,8 +378,11 @@ struct AddedColumnBackfillTests {
             // and wrongly, rather than refusing to map. The worse of the two failures.
             #expect(row.addedRatio == 0.9)
 
-            // The one shape that arrives with nothing rather than with something wrong.
+            // The two shapes that arrive with nothing rather than with something wrong. The second
+            // is what `ExerciseEntity.ukrainianName` is: a row seeded before the column existed
+            // reads back with no Ukrainian name, not with a blank one and not with another row's.
             #expect(row.addedOptionalID == nil)
+            #expect(row.addedOptionalString == nil)
         }
     }
 
@@ -403,7 +420,8 @@ struct AddedColumnBackfillTests {
                     rows.map {
                         """
                         \($0.label)|\($0.addedMintedID)|\($0.addedSentinelID)|\($0.addedFlag)\
-                        |\($0.addedRawValue)|\($0.addedInts)|\($0.addedRatio)|\($0.addedOptionalID as Any)
+                        |\($0.addedRawValue)|\($0.addedInts)|\($0.addedRatio)\
+                        |\($0.addedOptionalID as Any)|\($0.addedOptionalString as Any)
                         """
                     }.joined(separator: ";"))
             }
@@ -412,7 +430,7 @@ struct AddedColumnBackfillTests {
         // Anchored to a literal, not only to each other: two empty fetches agree with each other.
         let expected =
             "alpha|\(frozenMintedDefault().map(String.init(describing:)) ?? "?")"
-            + "|\(SchemaDefaults.unlinkedID)|true|other|[7, 8]|0.9|nil"
+            + "|\(SchemaDefaults.unlinkedID)|true|other|[7, 8]|0.9|nil|nil"
         #expect(results == [expected, expected])
     }
 }

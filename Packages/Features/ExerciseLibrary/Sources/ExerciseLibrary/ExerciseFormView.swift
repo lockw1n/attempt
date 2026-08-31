@@ -134,15 +134,21 @@ public struct ExerciseFormView: View {
     }
 }
 
-/// The exercise's own fields (`FR-1.1.3`): the name, then the four vocabularies.
+/// The exercise's own fields (`FR-1.1.3`, `FR-1.14.2`): the two names, then the four vocabularies.
 struct ExerciseFieldsSection: View {
     /// The form these fields are bound to.
     @Bindable var state: ExerciseFormState
 
-    /// The name field, then either the vocabularies or — on a built-in — the facts they would edit.
+    /// The two name fields, then either the vocabularies or — on a built-in — the facts they would
+    /// edit.
+    ///
+    /// **The Ukrainian name is above the catalogue-owned split, with the name**, because it is
+    /// editable on a built-in for the same reason the name is: the seed merge fills that column and
+    /// never re-supplies it, so an edit here is not undone by the next import (`FR-1.14.2`).
     var body: some View {
         GroupedSection(Text(ExerciseLibraryStrings.formSection)) {
             nameField
+            ukrainianNameField
             if state.catalogueOwnsFields {
                 catalogueOwnedFacts
             } else {
@@ -177,6 +183,36 @@ struct ExerciseFieldsSection: View {
                     .font(Typography.caption.font)
                     .foregroundStyle(ColorToken.textSecondary)
             }
+        }
+    }
+
+    /// The second name (`FR-1.14.2`), and the sentence saying what leaving it blank does.
+    ///
+    /// The sentence is always there, unlike the name field's, which appears only while the name is
+    /// missing: this one describes a choice rather than reporting a problem.
+    @ViewBuilder private var ukrainianNameField: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs.points) {
+            Text(ExerciseLibraryStrings.formUkrainianName)
+                .font(Typography.metricLabel.font)
+                .foregroundStyle(ColorToken.textSecondary)
+            TextField(
+                text: $state.ukrainianName,
+                prompt: Text(ExerciseLibraryStrings.formUkrainianNamePrompt)
+            ) {
+                Text(ExerciseLibraryStrings.formUkrainianName)
+            }
+            .labelsHidden()
+            .font(Typography.body.font)
+            .foregroundStyle(ColorToken.textPrimary)
+            .textFieldStyle(.plain)
+            .padding(Spacing.md.points)
+            .background(
+                ColorToken.surfaceRaised,
+                in: .rect(cornerRadius: CornerRadius.control.points)
+            )
+            Text(ExerciseLibraryStrings.formUkrainianNameOptional)
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textSecondary)
         }
     }
 

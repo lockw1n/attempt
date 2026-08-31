@@ -35,6 +35,8 @@ extension Exercise {
     ///
     /// The six columns the payload has no opinion on are decided here: a seeded exercise is not
     /// custom, is not archived, carries no notes, holds no manual estimate, and is live.
+    /// ``Exercise/ukrainianName`` is the payload's, absent included — see ``Exercise/reseeded(from:)``
+    /// for what a *later* revision may do to it.
     /// `createdAt` is honoured because the row is new; `updatedAt` is the repository's whatever
     /// this says.
     static func seeded(from entry: SeedExercise, at now: Date) -> Exercise {
@@ -44,6 +46,7 @@ extension Exercise {
             updatedAt: now,
             deletedAt: nil,
             name: entry.name,
+            ukrainianName: entry.ukrainianName,
             movement: entry.movement,
             parentExerciseID: entry.parentExerciseID,
             equipment: entry.equipment,
@@ -72,6 +75,20 @@ extension Exercise {
     /// with no such column a later revision cannot tell a rename it must preserve from a name it
     /// should fix. Renaming an entry in a published catalogue therefore reaches no installed app.
     /// Distinguishing the two needs a column, and columns are cheap only before rows exist.
+    ///
+    /// **``Exercise/ukrainianName`` is neither, and it is the only column that is not.** It is
+    /// *filled* — taken from the entry where the row holds nothing, kept where the row holds
+    /// something. Both of the other two rules break on it: re-supplied, it would undo a Ukrainian
+    /// name the user typed, the way an unconditionally re-supplied ``Exercise/name`` would undo
+    /// `FR-1.1.4`'s rename; kept, it would never reach a single row on an installed app, since every
+    /// built-in already exists there and the catalogue's translations arrive in a later revision by
+    /// definition (`FR-1.14.2`).
+    ///
+    /// **What that costs is the same thing every kept column costs, one step later.** A user who
+    /// clears the field puts the column back to nothing, and the next import fills it again from the
+    /// catalogue — because "never set" and "deliberately emptied" are the same stored value. That is
+    /// the recoverable direction: it hands back the name the catalogue ships, which is what an
+    /// exercise with no Ukrainian name of its own would have shown anyway.
     func reseeded(from entry: SeedExercise) -> Exercise {
         Exercise(
             id: id,
@@ -79,6 +96,7 @@ extension Exercise {
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             name: name,
+            ukrainianName: ukrainianName ?? entry.ukrainianName,
             movement: entry.movement,
             parentExerciseID: entry.parentExerciseID,
             equipment: entry.equipment,
@@ -109,6 +127,7 @@ extension Exercise {
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             name: name,
+            ukrainianName: ukrainianName,
             movement: movement,
             parentExerciseID: parentExerciseID,
             equipment: equipment,

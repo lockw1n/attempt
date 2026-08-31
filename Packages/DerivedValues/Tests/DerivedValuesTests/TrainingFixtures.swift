@@ -40,6 +40,7 @@ struct TrainingLog {
                 updatedAt: .distantPast,
                 deletedAt: nil,
                 name: name,
+                ukrainianName: nil,
                 movement: .squat,
                 parentExerciseID: nil,
                 equipment: .barbell,
