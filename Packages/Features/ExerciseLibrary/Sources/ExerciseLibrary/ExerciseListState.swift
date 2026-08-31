@@ -38,7 +38,7 @@ public struct ExerciseGroup: Sendable, Hashable, Identifiable {
 /// rendering anything.
 ///
 /// **The catalogue is read once.** `G-2.2`/`G-2.3` make the local store's read synchronous under an
-/// `async` signature, and 116 rows filter and group faster than a keystroke — so search does not
+/// `async` signature, and 132 rows filter and group faster than a keystroke — so search does not
 /// return to the repository, and there is no debounce to get wrong (`NFR-1.1`).
 @Observable
 public final class ExerciseListState {
@@ -177,7 +177,7 @@ public final class ExerciseListState {
     ///
     /// **No ``Phase/loading`` in between.** A spinner over content that is already correct is a
     /// flash on every back-swipe; the rows are replaced when the read lands or the screen becomes
-    /// its error state, and 116 local rows do not take long enough for a third state to be visible
+    /// its error state, and 132 local rows do not take long enough for a third state to be visible
     /// (`G-2.2`, `NFR-1.1`).
     ///
     /// A read that fails here **does** cost the list its rows, deliberately: the screen can no

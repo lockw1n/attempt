@@ -68,7 +68,7 @@ public protocol PersonalRecordCacheRepository: Sendable {
     /// **No exercise, and no limit either.** The table holds at most ten rows per exercise, so the
     /// whole of it is one fetch of a few thousand small rows; the alternative — the caller walking
     /// the catalogue and asking ``personalRecords(forExerciseID:includingDeleted:)`` once per row —
-    /// is one store round trip per exercise, and the seeded catalogue alone is 116 of them. A
+    /// is one store round trip per exercise, and the seeded catalogue alone is 132 of them. A
     /// `limit:` is not offered because it could not be honoured deterministically: several
     /// exercises' records share a session's date, so a cut taken at the store would fall inside a
     /// group of ties. **How much of this is a feed is the caller's**, and it takes the prefix.

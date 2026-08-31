@@ -155,7 +155,7 @@ public final class ExerciseDetailState {
     ///
     /// **Two reads, not one.** The exercise itself answers `FR-1.1.6`; the catalogue answers
     /// `FR-1.1.7`, whose variation list is every row naming this one as its parent and which no
-    /// repository method asks for directly. 116 rows filtered in memory is well inside `NFR-1.1`,
+    /// repository method asks for directly. 132 rows filtered in memory is well inside `NFR-1.1`,
     /// and the alternative is a query the repository protocol does not have.
     public func load() async {
         switch phase {

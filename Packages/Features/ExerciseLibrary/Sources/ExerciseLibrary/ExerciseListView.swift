@@ -215,7 +215,7 @@ struct ExerciseGroupList: View {
     /// the chooser as a link would promise a screen the tap does not open.
     var select: ((Exercise) -> Void)?
 
-    /// A lazy stack: 116 rows is the seeded catalogue and a custom one only grows it (`NFR-1.1`).
+    /// A lazy stack: 132 rows is the seeded catalogue and a custom one only grows it (`NFR-1.1`).
     var body: some View {
         LazyVStack(alignment: .leading, spacing: Spacing.xl.points) {
             ForEach(groups) { group in
@@ -278,7 +278,7 @@ struct ExerciseRow: View {
     /// Name, then what it is performed with, and a badge when the user wrote it or archived it.
     ///
     /// The whole row is one VoiceOver element (`G-4.2`): name, equipment and badge are one thing to
-    /// say about one exercise, and three stops per row over 116 rows is the failure mode. The
+    /// say about one exercise, and three stops per row over 132 rows is the failure mode. The
     /// chevron is hidden — it says "this pushes", which the button trait already says.
     var body: some View {
         HStack(spacing: Spacing.md.points) {

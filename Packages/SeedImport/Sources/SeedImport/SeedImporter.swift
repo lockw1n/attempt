@@ -60,7 +60,7 @@ public struct SeedImporter: Sendable {
 
         // Decoded a second time on purpose: the validator decodes in order to check and hands back
         // failures rather than a value, and its `Data` entry point is the only one that can report
-        // the three faults a value built in Swift cannot express. A decode of 116 entries is nothing
+        // the three faults a value built in Swift cannot express. A decode of 132 entries is nothing
         // beside the writes that follow.
         let catalogue = try JSONDecoder().decode(SeedCatalogue.self, from: data)
         return try await apply(catalogue, at: now)
@@ -69,7 +69,7 @@ public struct SeedImporter: Sendable {
     /// Merges a validated catalogue into the store.
     private func apply(_ catalogue: SeedCatalogue, at now: Date) async throws -> SeedImportSummary {
         // ONE READ, NOT ONE PER ENTRY. This runs on first launch, which `NFR-1.1` gives 1.5 s in
-        // total, and the catalogue is 116 entries — a lookup per entry is 116 round trips for rows
+        // total, and the catalogue is 132 entries — a lookup per entry is 132 round trips for rows
         // this list already holds. Read before the writes, so the sweep below is over the rows this
         // import did not put there. `includingDeleted:` is `true` because it is the widest read the
         // protocol offers and a merge that missed a row would insert a second copy of it;

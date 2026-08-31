@@ -119,7 +119,7 @@ public final class ExerciseFormState {
     /// Whether the parent picker offers every movement's exercises rather than only ``movement``'s.
     ///
     /// **Off by default, and it narrows rather than restricts.** A variation almost always trains
-    /// the same lift as what it varies, and 116 candidates is a picker nobody reads; but nothing in
+    /// the same lift as what it varies, and 132 candidates is a picker nobody reads; but nothing in
     /// `FR-1.1.7` says a variation may not cross movements, so the wider set is one tap away rather
     /// than unreachable.
     public var offersEveryMovementAsParent = false

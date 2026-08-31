@@ -58,7 +58,41 @@ let pairLoadedExercises: [NamedExercise] = [
     NamedExercise("Rear Delt Fly", "9c36b585-d4d5-4cce-b144-41a64f93d26d"),
     NamedExercise("Dumbbell Chest Fly", "6782cc86-b33c-484a-89db-fbc08a58c5ed"),
     NamedExercise("Dumbbell Shrug", "a0b3b8a9-102d-443a-b1aa-5ba52647edf9"),
+    NamedExercise("Seated Dumbbell Shrug", "5b5c3401-16da-40b0-9335-f6d446182204"),
     NamedExercise("Farmer's Walk", "ea9ee911-8db3-42be-b6fe-754dad6f5ed3"),
+]
+
+/// A variation and the exercise it varies (`FR-1.1.7`).
+///
+/// Named rather than keyed on ids: the validator refuses a parent no entry carries, so what is left
+/// to get wrong is a parent that resolves — to the wrong exercise. These are the edges where the
+/// family an entry belongs to is a judgement rather than a spelling.
+struct VariationEdge: Sendable, CustomTestStringConvertible {
+    let child: String
+    let parent: String
+
+    var testDescription: String { "\(child) varies \(parent)" }
+
+    init(_ child: String, _ parent: String) {
+        self.child = child
+        self.parent = parent
+    }
+}
+
+let variationEdges: [VariationEdge] = [
+    VariationEdge("Lever Chest Press", "Machine Chest Press"),
+    VariationEdge("Incline Lever Chest Press", "Lever Chest Press"),
+    VariationEdge("Machine Dumbbell Press", "Machine Chest Press"),
+    VariationEdge("Lever Shoulder Press", "Machine Shoulder Press"),
+    VariationEdge("Lever High Row", "Chest-Supported Machine Row"),
+    VariationEdge("Close-Grip Lat Pulldown", "Lat Pulldown"),
+    VariationEdge("Wide-Grip Lat Pulldown", "Lat Pulldown"),
+    VariationEdge("Rope Triceps Pushdown", "Triceps Pushdown"),
+    VariationEdge("Machine Lateral Raise", "Lateral Raise"),
+    VariationEdge("Machine Rear Delt Fly", "Rear Delt Fly"),
+    VariationEdge("Seated Dumbbell Shrug", "Dumbbell Shrug"),
+    VariationEdge("Seated Leg Curl", "Leg Curl"),
+    VariationEdge("Lying Leg Curl", "Leg Curl"),
 ]
 
 /// FNV-1a over every id in sorted order, which is what lets one literal stand for a hundred-odd
@@ -124,8 +158,8 @@ struct BundledCatalogueTests {
     func publishedIDsAreUnchanged() throws {
         let ids = try decoded().exercises.map(\.id)
 
-        #expect(ids.count == 116)
-        #expect(idDigest(ids) == 0x2452_4158_c12f_3ec8)
+        #expect(ids.count == 132)
+        #expect(idDigest(ids) == 0xb689_c4aa_cc95_2774)
     }
 
     // FR-1.14.2's catalogue half, over the file we actually ship. `SeedUkrainianNameTests` proves the
@@ -181,6 +215,26 @@ struct BundledCatalogueTests {
         #expect(repeated == [])
     }
 
+    /// The one entry with that name, refusing both none and several.
+    ///
+    /// English names are unique by authoring and nothing else checks it, so a duplicate fails here
+    /// as a lookup rather than silently picking a winner.
+    private func entry(named name: String, in catalogue: SeedCatalogue) throws -> SeedExercise {
+        let found = catalogue.exercises.filter { $0.name == name }
+        return try #require(found.count == 1 ? found.first : nil, "\(name) is not exactly one entry")
+    }
+
+    // The failure this catches is a parent copied from the entry above the intended one: well
+    // formed, unique, resolving, and wrong. Both ends are looked up by the name a reader sees.
+    @Test("Each variation hangs on the exercise it varies", arguments: variationEdges)
+    func variationHangsOnItsParent(_ edge: VariationEdge) throws {
+        let catalogue = try decoded()
+        let child = try entry(named: edge.child, in: catalogue)
+        let parent = try entry(named: edge.parent, in: catalogue)
+
+        #expect(child.parentExerciseID == parent.id)
+    }
+
     @Test("Each pair-loaded entry still says so", arguments: pairLoadedExercises)
     func pairLoadedEntryCarriesTwo(_ exercise: NamedExercise) throws {
         let entryID = try id(of: exercise)
@@ -200,7 +254,7 @@ struct BundledCatalogueTests {
             .filter { !listed.contains($0.id) && $0.implementCount != nil }
 
         // A literal that failed to parse would drop out of `listed` and make this pass vacuously.
-        #expect(listed.count == 19)
+        #expect(listed.count == 20)
         #expect(unexpected.map(\.name) == [])
     }
 }
