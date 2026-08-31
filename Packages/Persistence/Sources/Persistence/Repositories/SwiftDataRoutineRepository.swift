@@ -109,11 +109,11 @@ actor SwiftDataRoutineRepository: RoutineRepository {
 
     /// Soft-deletes `exercises` and every target group hanging off them, without saving.
     ///
-    /// Shared by the two cascading deletes, the same reason
-    /// ``SwiftDataWorkoutRepository/cascade(into:at:)`` is: "a deleted slot never leaves a live
-    /// group" is one piece of code rather than an obligation on two. A slot already deleted keeps
-    /// the date it was deleted on — re-stamping it would relabel when it left the lifter's routine —
-    /// while its live groups are swept like any other.
+    /// Shared by the two cascading deletes, for the reason `SwiftDataWorkoutRepository`'s own
+    /// cascade is: "a deleted slot never leaves a live group" is one piece of code rather than an
+    /// obligation on two. A slot already deleted keeps the date it was deleted on — re-stamping it
+    /// would relabel when it left the lifter's routine — while its live groups are swept like any
+    /// other.
     private func cascade(into exercises: [RoutineExerciseEntity], at now: Date) throws {
         for exercise in exercises where !exercise.isSoftDeleted { exercise.markDeleted(at: now) }
 

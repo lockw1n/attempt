@@ -93,6 +93,12 @@ struct AuditColumnConformanceTests {
         try await repositories.equipment.save(profileRecord())
         try await repositories.exercises.saveTrainingMax(
             trainingMaxRecord(exerciseID: timeline.exerciseID, effectiveFrom: fixtureCreatedAt))
+        let routine = routineRecord()
+        try await repositories.routines.save(routine)
+        let slot = routineExerciseRecord(
+            routineID: routine.id, exerciseID: timeline.exerciseID)
+        try await repositories.routines.save(slot)
+        try await repositories.routines.save(routineTargetGroupRecord(routineExerciseID: slot.id))
 
         let session = try #require(
             try await repositories.workouts.session(
@@ -114,10 +120,21 @@ struct AuditColumnConformanceTests {
         let trainingMax = try #require(
             try await repositories.exercises.trainingMax(
                 forExerciseID: timeline.exerciseID, on: fixtureCreatedAt))
+        let storedRoutine = try #require(
+            try await repositories.routines.routine(id: routine.id, includingDeleted: false))
+        let storedSlot = try #require(
+            try await repositories.routines.exercises(
+                forRoutineID: routine.id, includingDeleted: false
+            ).first)
+        let storedGroup = try #require(
+            try await repositories.routines.targetGroups(
+                forRoutineExerciseID: slot.id, includingDeleted: false
+            ).first)
 
         for stamped in [
             session.updatedAt, entry.updatedAt, set.updatedAt,
             weight.updatedAt, profile.updatedAt, trainingMax.updatedAt,
+            storedRoutine.updatedAt, storedSlot.updatedAt, storedGroup.updatedAt,
         ] {
             #expect(stamped > fixtureUpdatedAt)
         }

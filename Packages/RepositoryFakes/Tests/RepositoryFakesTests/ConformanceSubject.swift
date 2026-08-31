@@ -45,9 +45,20 @@ import Testing
 //      deletes either, so only the `includingDeleted:` flag's *live* half is reachable, and that
 //      half is asserted.
 //
-// Every other behaviour of all thirty-one methods is here. `PersonalRecordCacheRepository` (TR-1.6)
-// joined a phase after the rest and brought two of those three: its reconciliation is cross-row and
-// is written twice, once per subject, which is exactly the drift this suite exists to catch.
+// Every other behaviour of every method on every protocol is here.
+// `PersonalRecordCacheRepository` (TR-1.6) joined a phase after the rest and brought two of those
+// three: its reconciliation is cross-row and is written twice, once per subject, which is exactly
+// the drift this suite exists to catch. `RoutineRepository` (FR-15.2) joined later still, with the
+// same shape of hand-written-twice cascade.
+//
+// **THE METHOD COUNT USED TO BE SPELLED OUT HERE AND IT WAS WRONG.** This line read "all
+// thirty-one methods" while the protocols carried thirty-three — the cache repository had grown
+// from one method to three and the prose did not move — and it then survived a whole new protocol
+// being added beside it. A total in a comment is a claim about a set that nothing walks, so it is
+// stale from the first member added after it is written, and it reads as authoritative the whole
+// time. What holds the claim now is the tests below naming their own populations ("on all eight
+// deletes") plus `Repositories` failing to compile when a protocol is added and not threaded
+// through both subjects.
 
 /// One implementation of the protocols, as the suite sees it.
 struct Subject: Sendable, CustomTestStringConvertible {
@@ -366,6 +377,22 @@ enum SortedIDs {
     static let second = UUID(uuidString: "00000000-0000-4000-8000-00000000000A")!
     static let third = UUID(uuidString: "00000000-0000-4000-8000-00000000000B")!
     // swiftlint:enable force_unwrapping
+}
+
+/// Five ids whose `uuidString`s sort ascending — enough ties to score a tie-break probe.
+///
+/// Three would not be: a dropped `id.uuidString` clause leaves a permutation of however many rows
+/// tie, so two rows let a wrong implementation pass half the time and three let it pass one time in
+/// six. See `RoutineConformanceTests.routineChildrenAreOrderedByOrderThenID`.
+enum TiedIDs {
+    /// The five, already in the order a correct read returns them.
+    static let ascending: [UUID] = [
+        "00000000-0000-4000-8000-000000000001",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-00000000000A",
+        "00000000-0000-4000-8000-00000000000B",
+    ].compactMap(UUID.init(uuidString:))
 }
 
 // MARK: - Building a small history through the front door

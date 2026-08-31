@@ -4,10 +4,11 @@ import PowerliftingCore
 /// One target weight/rep/set group within a routine's exercise slot (`FR-15.2.1`'s amendment) — a
 /// slot may carry more than one, e.g. `80×5×4` then `90×4×4` as a top set and a backoff.
 ///
-/// **``targetWeight`` mirrors the stored column, not ``Prescription``.** This slice writes only
-/// `Prescription`'s `.fixedWeight` payload, so the column *is* that payload; see ``prescription``
-/// for the projection that hands it back as the domain type. A second `Prescription` case reaching
-/// this slot is a schema change and a new record property, not a change to this one.
+/// **``targetWeight`` mirrors the stored column, not ``PowerliftingCore/Prescription``.** This
+/// slice writes only `Prescription`'s `.fixedWeight` payload, so the column *is* that payload; see
+/// ``prescription`` for the projection that hands it back as the domain type. A second
+/// `Prescription` case reaching this slot is a schema change and a new record property, not a
+/// change to this one.
 public struct RoutineTargetGroup: StoredRecord {
     /// See ``StoredRecord/id``.
     public let id: UUID
@@ -63,10 +64,12 @@ public struct RoutineTargetGroup: StoredRecord {
 // MARK: - Projection
 
 extension RoutineTargetGroup {
-    /// This group's load as `TR-0.2.10`'s domain type, ready for ``PrescriptionResolver``.
+    /// This group's load as `TR-0.2.10`'s domain type, ready for
+    /// ``PowerliftingCore/PrescriptionResolver``.
     ///
-    /// Never fails: `.fixedWeight` accepts any ``Weight``, including a negative one (assisted work).
-    /// The one case this slice can store is the one case this returns — see this type's note.
+    /// Never fails: `.fixedWeight` accepts any ``PowerliftingCore/Weight``, including a negative
+    /// one (assisted work). The one case this slice can store is the one case this returns — see
+    /// this type's note.
     public var prescription: Prescription {
         .fixedWeight(targetWeight)
     }

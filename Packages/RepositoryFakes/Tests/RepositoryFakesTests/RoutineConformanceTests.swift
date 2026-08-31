@@ -84,6 +84,112 @@ struct RoutineConformanceTests {
             ).count == 1)
     }
 
+    @Test("Deleting a slot takes its target groups and leaves the routine alone", arguments: Subject.all)
+    func deletingASlotCascadesDownwardsOnly(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let exerciseID = UUID()
+        try await repositories.exercises.save(exerciseRecord(id: exerciseID))
+        let routine = routineRecord()
+        try await repositories.routines.save(routine)
+        let slot = routineExerciseRecord(routineID: routine.id, exerciseID: exerciseID)
+        try await repositories.routines.save(slot)
+        try await repositories.routines.save(routineTargetGroupRecord(routineExerciseID: slot.id))
+
+        try await repositories.routines.deleteRoutineExercise(id: slot.id)
+
+        #expect(
+            try await repositories.routines.targetGroups(
+                forRoutineExerciseID: slot.id, includingDeleted: false
+            ).isEmpty)
+        // Upwards is what must not move — a cascade written in the wrong direction would take the
+        // routine with the slot, and every assertion above would still pass.
+        #expect(try await repositories.routines.routine(id: routine.id, includingDeleted: false) != nil)
+    }
+
+    /// A live target group under an already-deleted slot is still swept with the routine.
+    ///
+    /// Only a sync or an import produces this state, and both implementations sweep deleted slots
+    /// for their *groups* rather than for themselves — so the guard that skips re-stamping the slot
+    /// is invisible to any assertion about the groups alone, and `updatedAt` is asserted too.
+    @Test("The routine cascade reaches through a slot that was already deleted", arguments: Subject.all)
+    func theCascadeReachesThroughADeletedSlot(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let exerciseID = UUID()
+        try await repositories.exercises.save(exerciseRecord(id: exerciseID))
+        let routine = routineRecord()
+        try await repositories.routines.save(routine)
+        let slot = routineExerciseRecord(routineID: routine.id, exerciseID: exerciseID)
+        try await repositories.routines.save(slot)
+        try await repositories.routines.save(routineTargetGroupRecord(routineExerciseID: slot.id))
+        try await repositories.routines.deleteRoutineExercise(id: slot.id)
+
+        let deletedSlot = try #require(
+            try await repositories.routines.routineExercise(id: slot.id, includingDeleted: true))
+
+        try await repositories.routines.deleteRoutine(id: routine.id)
+
+        #expect(
+            try await repositories.routines.targetGroups(
+                forRoutineExerciseID: slot.id, includingDeleted: false
+            ).isEmpty)
+        // The slot is not written again: it keeps the moment it actually left the routine AND the
+        // `updatedAt` of the write that put it there. `deletedAt` alone does not say that — the
+        // soft delete is idempotent in that column — so both are asserted, which is what makes the
+        // cascade's already-deleted guard load-bearing rather than decorative.
+        let afterwards = try #require(
+            try await repositories.routines.routineExercise(id: slot.id, includingDeleted: true))
+        #expect(afterwards.deletedAt == deletedSlot.deletedAt)
+        #expect(afterwards.updatedAt == deletedSlot.updatedAt)
+    }
+
+    /// Five rows tied on `order`, not two, and that is about the probe rather than the code.
+    ///
+    /// The mutation worth catching is a tie-break that drops the `id.uuidString` clause. Neither
+    /// subject's residual order is then meaningful — a dictionary's values have no order at all and
+    /// `sorted` is not stable — so the answer is a permutation, and **with two tied rows a wrong
+    /// implementation passes about half the time**. Measured: a two-row version of this test
+    /// survived exactly that mutation on the fakes. Five ties make it 1 in 120, which is the
+    /// difference between a probe that measures something and a coin. Same reasoning, and the same
+    /// count, as `RecordTests.modifiersAreCanonicalised`.
+    @Test("Slots and target groups come back by order, and ties by id", arguments: Subject.all)
+    func routineChildrenAreOrderedByOrderThenID(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let exerciseID = UUID()
+        try await repositories.exercises.save(exerciseRecord(id: exerciseID))
+        let routine = routineRecord()
+        try await repositories.routines.save(routine)
+
+        let tied = TiedIDs.ascending
+        #expect(tied.count == 5, "the tie-break probe needs five ids to be worth running")
+        // Saved in a scrambled order that is not the answer, so a read returning insertion order
+        // fails as surely as one returning nothing.
+        for id in [tied[3], tied[0], tied[4], tied[2], tied[1]] {
+            try await repositories.routines.save(
+                routineExerciseRecord(
+                    id: id, routineID: routine.id, exerciseID: exerciseID, order: 0))
+        }
+        // One slot at a later `order`, so the primary key is exercised too — a read sorting on id
+        // alone would put this one first and fail.
+        let last = try #require(UUID(uuidString: "00000000-0000-4000-8000-0000000000FF"))
+        try await repositories.routines.save(
+            routineExerciseRecord(
+                id: last, routineID: routine.id, exerciseID: exerciseID, order: 1))
+
+        for id in [tied[2], tied[4], tied[1], tied[3], tied[0]] {
+            try await repositories.routines.save(
+                routineTargetGroupRecord(id: id, routineExerciseID: tied[0], order: 0))
+        }
+
+        let slots = try await repositories.routines.exercises(
+            forRoutineID: routine.id, includingDeleted: false)
+        let groups = try await repositories.routines.targetGroups(
+            forRoutineExerciseID: tied[0], includingDeleted: false)
+
+        #expect(slots.map(\.id) == tied + [last])
+        #expect(slots.map(\.order) == [0, 0, 0, 0, 0, 1])
+        #expect(groups.map(\.id) == tied)
+    }
+
     @Test("A slot needs both its routine and its exercise", arguments: Subject.all)
     func aSlotNeedsBothOfItsJoinKeys(_ subject: Subject) async throws {
         let repositories = try subject.make()

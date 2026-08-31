@@ -19,7 +19,7 @@ public protocol RoutineRepository: Sendable {
 
     /// Soft-deletes the routine and, with it, its exercise slots and their target groups.
     ///
-    /// The cascade is deliberate, matching ``deleteSession(id:)``'s: nothing in the store performs
+    /// The cascade is deliberate, matching ``WorkoutRepository/deleteSession(id:)``'s: nothing in the store performs
     /// it, so a routine deleted alone would leave its slots live and readable under a plan that no
     /// longer exists.
     ///

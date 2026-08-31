@@ -21,6 +21,9 @@ struct PurgePlan {
     private let equipment: [EquipmentProfileEntity]
     private let settings: [UserSettingsEntity]
     private let records: [PersonalRecordCacheEntity]
+    private let routines: [RoutineEntity]
+    private let routineExercises: [RoutineExerciseEntity]
+    private let targetGroups: [RoutineTargetGroupEntity]
 
     private let scope: PurgeScope
 
@@ -34,6 +37,9 @@ struct PurgePlan {
     private var freedEquipment: Set<UUID> = []
     private var freedSettings: Set<UUID> = []
     private var freedRecords: Set<UUID> = []
+    private var freedRoutines: Set<UUID> = []
+    private var freedRoutineExercises: Set<UUID> = []
+    private var freedTargetGroups: Set<UUID> = []
 
     /// Reads the whole store and resolves the plan.
     ///
@@ -52,6 +58,9 @@ struct PurgePlan {
         equipment = try context.rows(EquipmentProfileEntity.self, includingDeleted: true)
         settings = try context.rows(UserSettingsEntity.self, includingDeleted: true)
         records = try context.rows(PersonalRecordCacheEntity.self, includingDeleted: true)
+        routines = try context.rows(RoutineEntity.self, includingDeleted: true)
+        routineExercises = try context.rows(RoutineExerciseEntity.self, includingDeleted: true)
+        targetGroups = try context.rows(RoutineTargetGroupEntity.self, includingDeleted: true)
 
         freedExercises = eligibleIDs(in: exercises)
         freedSessions = eligibleIDs(in: sessions)
@@ -62,6 +71,9 @@ struct PurgePlan {
         freedEquipment = eligibleIDs(in: equipment)
         freedSettings = eligibleIDs(in: settings)
         freedRecords = eligibleIDs(in: records)
+        freedRoutines = eligibleIDs(in: routines)
+        freedRoutineExercises = eligibleIDs(in: routineExercises)
+        freedTargetGroups = eligibleIDs(in: targetGroups)
 
         retainReferenced()
     }
@@ -105,6 +117,16 @@ struct PurgePlan {
                 guard let parent = exercise.parentExerciseID else { continue }
                 changed = retain(parent, in: &freedExercises) || changed
             }
+            // A surviving routine slot holds its routine AND the exercise it prescribes. The
+            // second edge is the one with teeth: without it a purge frees an exercise a live
+            // routine still names, and `G-2.5` declares no relationship that would notice.
+            for slot in routineExercises where !freedRoutineExercises.contains(slot.id) {
+                changed = retain(slot.routineID, in: &freedRoutines) || changed
+                changed = retain(slot.exerciseID, in: &freedExercises) || changed
+            }
+            for group in targetGroups where !freedTargetGroups.contains(group.id) {
+                changed = retain(group.routineExerciseID, in: &freedRoutineExercises) || changed
+            }
         }
     }
 
@@ -121,6 +143,9 @@ struct PurgePlan {
             + held(in: bodyweight, freed: freedBodyweight)
             + held(in: equipment, freed: freedEquipment)
             + held(in: settings, freed: freedSettings)
+            + held(in: routines, freed: freedRoutines)
+            + held(in: routineExercises, freed: freedRoutineExercises)
+            + held(in: targetGroups, freed: freedTargetGroups)
             + records.filter { scope.covers($0) && !isDoomed($0) }.count
     }
 
@@ -150,6 +175,10 @@ struct PurgePlan {
         doomed.append(contentsOf: bodyweight.filter { freedBodyweight.contains($0.id) })
         doomed.append(contentsOf: equipment.filter { freedEquipment.contains($0.id) })
         doomed.append(contentsOf: settings.filter { freedSettings.contains($0.id) })
+        doomed.append(contentsOf: routines.filter { freedRoutines.contains($0.id) })
+        doomed.append(
+            contentsOf: routineExercises.filter { freedRoutineExercises.contains($0.id) })
+        doomed.append(contentsOf: targetGroups.filter { freedTargetGroups.contains($0.id) })
         doomed.append(contentsOf: records.filter(isDoomed))
         return doomed
     }

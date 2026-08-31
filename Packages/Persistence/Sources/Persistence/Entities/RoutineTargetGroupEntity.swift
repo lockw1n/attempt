@@ -22,8 +22,8 @@ final class RoutineTargetGroupEntity: StoredEntity {
     /// Position within the slot, ascending — the top set before the backoff, for instance.
     var order: Int = 0
 
-    /// The load on **one** implement, in grams (`G-1.1`) — ``Prescription/fixedWeight(_:)``'s
-    /// payload.
+    /// The load on **one** implement, in grams (`G-1.1`) —
+    /// ``PowerliftingCore/Prescription/fixedWeight(_:)``'s payload.
     var targetWeightGrams: Int = 0
 
     /// Reps prescribed per set in this group.

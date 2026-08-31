@@ -165,10 +165,9 @@ extension InMemoryRepositoryStore {
     /// Soft-deletes the named slots and every live group hanging off them, without a save of its
     /// own.
     ///
-    /// Shared by the two cascading deletes, the same reason
-    /// ``InMemoryWorkoutRepository/cascade(intoEntryIDs:at:)`` is. A slot already deleted keeps the
-    /// date it left the lifter's routine *and* its `updatedAt`, while its live groups are swept like
-    /// any other.
+    /// Shared by the two cascading deletes, for the reason the workout side's own cascade is. A
+    /// slot already deleted keeps the date it left the lifter's routine *and* its `updatedAt`,
+    /// while its live groups are swept like any other.
     private func cascade(intoRoutineExerciseIDs exerciseIDs: [UUID], at now: Date) {
         for id in exerciseIDs {
             guard let exercise = routineExercises[id] else { continue }
