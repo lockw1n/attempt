@@ -81,8 +81,8 @@ struct VariationEdge: Sendable, CustomTestStringConvertible {
 
 let variationEdges: [VariationEdge] = [
     VariationEdge("Lever Chest Press", "Machine Chest Press"),
-    VariationEdge("Incline Lever Chest Press", "Lever Chest Press"),
-    VariationEdge("Machine Dumbbell Press", "Machine Chest Press"),
+    VariationEdge("Incline Lever Chest Press", "Machine Chest Press"),
+    VariationEdge("Independent-Arm Machine Chest Press", "Machine Chest Press"),
     VariationEdge("Lever Shoulder Press", "Machine Shoulder Press"),
     VariationEdge("Lever High Row", "Chest-Supported Machine Row"),
     VariationEdge("Close-Grip Lat Pulldown", "Lat Pulldown"),
@@ -233,6 +233,23 @@ struct BundledCatalogueTests {
         let parent = try entry(named: edge.parent, in: catalogue)
 
         #expect(child.parentExerciseID == parent.id)
+    }
+
+    // `FR-1.1.7`'s list is every row naming this one as its parent, and it stops there: the
+    // detail screen filters on one level. A grandchild would be reachable from nowhere but its own
+    // parent's screen, so the catalogue is one level deep and this is what holds it there.
+    @Test("No variation hangs on another variation")
+    func variationsAreOneLevelDeep() throws {
+        let catalogue = try decoded()
+        let byID = Dictionary(catalogue.exercises.map { ($0.id, $0) }) { first, _ in first }
+        let nested = catalogue.exercises.filter { entry in
+            guard let parent = entry.parentExerciseID else { return false }
+            return byID[parent]?.parentExerciseID != nil
+        }
+
+        // A catalogue of roots would satisfy the filter without exercising it.
+        #expect(catalogue.exercises.contains { $0.parentExerciseID != nil })
+        #expect(nested.map(\.name) == [])
     }
 
     @Test("Each pair-loaded entry still says so", arguments: pairLoadedExercises)

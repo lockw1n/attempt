@@ -280,6 +280,10 @@ struct ExerciseRow: View {
     /// The whole row is one VoiceOver element (`G-4.2`): name, equipment and badge are one thing to
     /// say about one exercise, and three stops per row over 132 rows is the failure mode. The
     /// chevron is hidden — it says "this pushes", which the button trait already says.
+    ///
+    /// **The name takes no `lineLimit`, and the row is given a minimum height rather than a fixed
+    /// one**, so a long name wraps and the row grows instead of clipping. The catalogue's longest
+    /// is 42 characters, in Ukrainian (`FR-1.14.2`), and a larger Dynamic Type size is a longer one.
     var body: some View {
         HStack(spacing: Spacing.md.points) {
             VStack(alignment: .leading, spacing: Spacing.xxs.points) {
