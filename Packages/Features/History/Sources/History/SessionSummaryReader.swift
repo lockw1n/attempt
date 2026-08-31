@@ -25,7 +25,7 @@ struct SessionSummaryReader {
     ///
     /// - Parameters:
     ///   - workouts: The sessions' entries and sets.
-    ///   - names: The name lookup, as ``SessionListState/names(in:)`` builds it.
+    ///   - names: The name lookup, as ``SessionListState/names(in:as:)`` builds it.
     init(workouts: any WorkoutRepository, names: [UUID: String]) {
         self.workouts = workouts
         self.names = names

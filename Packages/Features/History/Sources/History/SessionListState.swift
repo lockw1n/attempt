@@ -241,7 +241,7 @@ final class SessionListState {
 
     /// `sessions` with at most one row per identifier, the first — the newest — kept.
     ///
-    /// The same `G-2.5` argument as ``names(in:)``, one level up and with a sharper consequence: the
+    /// The same `G-2.5` argument as ``names(in:as:)``, one level up and with a sharper consequence: the
     /// list is a `ForEach` keyed on this identifier, which renders neither of a duplicated pair
     /// correctly, and the paging trigger compares against the last row's.
     ///

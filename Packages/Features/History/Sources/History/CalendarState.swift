@@ -314,7 +314,7 @@ final class CalendarState {
     /// The catalogue as a name lookup.
     ///
     /// Deleted and archived rows included, and duplicate identifiers resolved, for the reasons
-    /// ``SessionListState/names(in:)`` gives — it is that same lookup, over the same catalogue.
+    /// ``SessionListState/names(in:as:)`` gives — it is that same lookup, over the same catalogue.
     ///
     /// - Returns: Each exercise's name, keyed by its identifier.
     private func exerciseNames() async throws -> [UUID: String] {
