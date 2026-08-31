@@ -69,19 +69,18 @@ final class EstimatedMaxTilesState {
     /// The settings row, which carries both the selection and the display unit.
     private let settings: any SettingsRepository
 
+    /// Which of an exercise's two names a tile carries (`FR-1.14.2`).
+    ///
+    /// A tile's name is a string built by ``load()``, not a record a view can resolve for itself —
+    /// the view sets this, on ``RepositoryInterface/ExerciseNameLanguage``'s rule.
+    var nameLanguage: ExerciseNameLanguage = .english
+
     /// Builds the state over the three things a tile is made of.
     ///
     /// - Parameters:
     ///   - records: The app's one recompute actor.
     ///   - catalogue: The exercises.
     ///   - settings: The settings row (`FR-1.9.1`'s selection, `G-3.1`'s unit).
-    /// Which of an exercise's two names a tile carries (`FR-1.14.2`).
-    ///
-    /// **A tile's name is a string built by ``load()``, not a record a view can resolve for
-    /// itself**, so this has to be set before the read rather than read beside it — the view does
-    /// exactly that, from `@Environment(\.locale)`.
-    var nameLanguage: ExerciseNameLanguage = .english
-
     init(
         records: PersonalRecordRecomputer,
         catalogue: any ExerciseRepository,

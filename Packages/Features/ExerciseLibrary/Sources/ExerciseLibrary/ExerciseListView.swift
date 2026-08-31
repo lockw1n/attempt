@@ -135,6 +135,9 @@ public struct ExerciseListView: View {
     /// that unhides it (`FR-1.1.5`), and a search that matched nothing has the filters that caused
     /// it and one tap out.
     @ViewBuilder private var loaded: some View {
+        // One read, because ``ExerciseListState/groups`` sorts on every one of them: the empty
+        // check below and the list it guards are the same value.
+        let groups = state.groups
         if state.isCatalogueEmpty {
             EmptyStateView(
                 symbolName: "figure.strengthtraining.traditional",
@@ -164,7 +167,7 @@ public struct ExerciseListView: View {
                         state.showsArchived = true
                     }
             )
-        } else if state.groups.isEmpty {
+        } else if groups.isEmpty {
             EmptyStateView(
                 symbolName: "magnifyingglass",
                 headline: Text(ExerciseLibraryStrings.noMatchesHeadline),
@@ -174,7 +177,7 @@ public struct ExerciseListView: View {
                 }
             )
         } else {
-            ExerciseGroupList(groups: state.groups, select: rowAction)
+            ExerciseGroupList(groups: groups, select: rowAction)
         }
     }
 

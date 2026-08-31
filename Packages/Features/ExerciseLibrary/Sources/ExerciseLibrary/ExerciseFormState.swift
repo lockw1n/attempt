@@ -194,7 +194,8 @@ public final class ExerciseFormState {
 
     // MARK: - The parent picker (FR-1.1.7)
 
-    /// The exercises this one may be made a variation of, in ``ExerciseOrder``.
+    /// The exercises this one may be made a variation of, in
+    /// ``RepositoryInterface/ExerciseDisplayOrder``.
     ///
     /// Four exclusions, and each one is a save the repository or the data model would otherwise
     /// have to refuse:
@@ -210,21 +211,19 @@ public final class ExerciseFormState {
     /// always on another movement, must not lose it because the form could not offer it back.
     public var parentCandidates: [Exercise] {
         let excluded = closure(from: editedRecord?.id)
-        return
-            catalogue
-            .filter { candidate in
-                if candidate.id == parentExerciseID { return true }
-                guard !excluded.contains(candidate.id), !candidate.isArchived else { return false }
-                return offersEveryMovementAsParent || candidate.movement == movement
-            }
-            .sorted { ExerciseOrder.precedes($0, $1, in: nameLanguage) }
+        let candidates = catalogue.filter { candidate in
+            if candidate.id == parentExerciseID { return true }
+            guard !excluded.contains(candidate.id), !candidate.isArchived else { return false }
+            return offersEveryMovementAsParent || candidate.movement == movement
+        }
+        return ExerciseDisplayOrder.sorted(candidates, in: nameLanguage)
     }
 
     /// Which of a candidate's two names the picker is showing (`FR-1.14.2`).
     ///
-    /// Set by the view from `@Environment(\.locale)`, for the reason
-    /// ``ExerciseListState/nameLanguage`` gives. It orders ``parentCandidates`` and nothing else:
-    /// the two name fields this form edits are the record's own, and neither is resolved.
+    /// It orders ``parentCandidates`` and nothing else: the two name fields this form edits are the
+    /// record's own, and neither is resolved. Set by the view, on
+    /// ``RepositoryInterface/ExerciseNameLanguage``'s rule.
     public var nameLanguage: ExerciseNameLanguage = .english
 
     /// The exercise currently chosen as the parent, if one is.

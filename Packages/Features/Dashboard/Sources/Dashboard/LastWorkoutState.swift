@@ -45,9 +45,8 @@ final class LastWorkoutState {
 
     /// Which of an exercise's two names the card lists (`FR-1.14.2`).
     ///
-    /// Set by the view from `@Environment(\.locale)` before the read, for the reason
-    /// ``EstimatedMaxTilesState/nameLanguage`` gives — the card's names are strings this state
-    /// builds, and it also de-duplicates on them.
+    /// The card's names are strings this state builds, and it de-duplicates on them — the view sets
+    /// this, on ``RepositoryInterface/ExerciseNameLanguage``'s rule.
     var nameLanguage: ExerciseNameLanguage = .english
 
     /// The sessions, their entries and their sets.

@@ -73,14 +73,8 @@ public final class ExerciseListState {
 
     /// Which of an exercise's two names this screen is showing (`FR-1.14.2`).
     ///
-    /// **Set by the view from `@Environment(\.locale)`, not read from `Locale.current` here.** A
-    /// state that resolved the locale itself would answer differently from the rows above it in a
-    /// snapshot or a preview, where the environment is the only locale there is — and a test could
-    /// only reach it by changing the process. English until told otherwise, which is the same
-    /// fallback ``RepositoryInterface/Exercise/displayName(in:)`` makes.
-    ///
     /// It reaches ``groups`` twice over: the order rows come in, and which of them a search matches
-    /// (`FR-1.14.3`).
+    /// (`FR-1.14.3`). Set by the view, on ``RepositoryInterface/ExerciseNameLanguage``'s rule.
     public var nameLanguage: ExerciseNameLanguage = .english
 
     /// Show only this movement, or every movement (`FR-1.1.2`).
@@ -264,17 +258,16 @@ public final class ExerciseListState {
     /// and `other` trails — a list ordered by however many exercises happen to sit under each
     /// heading would reorder itself as the user adds their own. A movement with nothing left in it
     /// is dropped: an empty heading says a filter matched when it did not.
-    /// **Ordered here rather than at the read**, because ``nameLanguage`` decides the order and the
-    /// read does not know it: a screen that sorted its rows when they arrived would keep an English
-    /// order under Ukrainian names (`FR-1.14.2`). Sorting the survivors of a filter is also less
-    /// work than sorting the catalogue was.
+    ///
+    /// **Ordered here rather than at the read**, because ``nameLanguage`` decides the order and may
+    /// be set after one: a screen that sorted its rows when they arrived would keep an English order
+    /// under Ukrainian names (`FR-1.14.2`). The sort runs on every read of this property, so a
+    /// caller that needs it twice reads it once into a local.
     public var groups: [ExerciseGroup] {
         let matches = filtered
         return Movement.allCases.compactMap { movement in
-            let exercises =
-                matches
-                .filter { $0.movement == movement }
-                .sorted { ExerciseOrder.precedes($0, $1, in: nameLanguage) }
+            let exercises = ExerciseDisplayOrder.sorted(
+                matches.filter { $0.movement == movement }, in: nameLanguage)
             return exercises.isEmpty ? nil : ExerciseGroup(movement: movement, exercises: exercises)
         }
     }

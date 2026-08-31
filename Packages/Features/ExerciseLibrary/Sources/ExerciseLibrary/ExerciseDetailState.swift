@@ -16,7 +16,8 @@ public struct ExerciseDetail: Sendable, Equatable {
     /// would assert that this exercise is a root when it is not.
     public let parent: Exercise?
 
-    /// The exercises that name this one as their parent, in ``ExerciseOrder`` (`FR-1.1.7`).
+    /// The exercises that name this one as their parent, in
+    /// ``RepositoryInterface/ExerciseDisplayOrder`` (`FR-1.1.7`).
     ///
     /// Archived ones are excluded, on the same rule the list applies: this is a browsable surface
     /// into other detail screens, and `FR-1.1.5` is what takes an exercise out of those.
@@ -83,10 +84,9 @@ public final class ExerciseDetailState {
 
     /// Which of an exercise's two names this screen is showing (`FR-1.14.2`).
     ///
-    /// Set by the view from `@Environment(\.locale)`, for the reason
-    /// ``ExerciseListState/nameLanguage`` gives. Here it decides only the order the variations come
-    /// in — each row draws its own name from the environment — so it is read at the end of a read
-    /// rather than kept beside the rows.
+    /// Here it decides only the order the variations come in — each row draws its own name from the
+    /// environment — so it is read at the end of a read rather than kept beside the rows. Set by the
+    /// view, on ``RepositoryInterface/ExerciseNameLanguage``'s rule.
     public var nameLanguage: ExerciseNameLanguage = .english
 
     /// The last notes write that failed, as the error's description, or `nil` once one succeeds.
@@ -416,10 +416,9 @@ public final class ExerciseDetailState {
             parent: exercise.parentExerciseID.flatMap { parentID in
                 catalogue.first { $0.id == parentID }
             },
-            variations:
-                catalogue
-                .filter { $0.parentExerciseID == exercise.id && !$0.isArchived }
-                .sorted { ExerciseOrder.precedes($0, $1, in: language) },
+            variations: ExerciseDisplayOrder.sorted(
+                catalogue.filter { $0.parentExerciseID == exercise.id && !$0.isArchived },
+                in: language),
             hasLoggedSets: hasLoggedSets
         )
     }

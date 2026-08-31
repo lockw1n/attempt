@@ -44,9 +44,8 @@ public final class RecentRecordsState {
 
     /// Which of an exercise's two names the feed's rows carry (`FR-1.14.2`).
     ///
-    /// Set by the view from `@Environment(\.locale)` before the read: ``exerciseNames`` is a lookup
-    /// this state builds, so a row cannot resolve one for itself. English until told otherwise,
-    /// which is what a caller that has no locale — a test, a preview — gets.
+    /// ``exerciseNames`` is a lookup this state builds, so a row cannot resolve one for itself —
+    /// the view sets this, on ``RepositoryInterface/ExerciseNameLanguage``'s rule.
     public var nameLanguage: ExerciseNameLanguage = .english
 
     /// Whether ``load()`` has ever completed. A feed with nothing in it and one nothing has looked

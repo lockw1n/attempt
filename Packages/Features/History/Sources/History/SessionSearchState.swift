@@ -51,8 +51,8 @@ final class SessionSearchState {
 
     /// Which of an exercise's two names the indexed summaries carry (`FR-1.14.2`, `FR-1.14.3`).
     ///
-    /// Set by the view before the walk, for the reason ``SessionListState/nameLanguage`` gives. It
-    /// is what makes an exercise-name match here a match on the name the result actually shows.
+    /// What makes an exercise-name match here a match on the name the result actually shows. Set by
+    /// the view before the walk, on ``RepositoryInterface/ExerciseNameLanguage``'s rule.
     var nameLanguage: ExerciseNameLanguage = .english
 
     /// The unit a load is shown in (`G-3.1`, `G-3.2`).

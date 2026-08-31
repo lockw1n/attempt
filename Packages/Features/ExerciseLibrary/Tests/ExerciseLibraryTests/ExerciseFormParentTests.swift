@@ -93,7 +93,8 @@ struct ExerciseFormParentTests {
     func candidatesAreOrdered() async {
         let state = await FormFixtures.creating()
         state.movement = .squat
-        // The catalogue is handed over shuffled; `ExerciseOrder` is what puts these in this order.
+        // The catalogue is handed over shuffled; `ExerciseDisplayOrder` is what puts these in this
+        // order.
         #expect(state.parentCandidates.map(\.name) == ["Back Squat", "Front Squat", "Pause Squat"])
     }
 

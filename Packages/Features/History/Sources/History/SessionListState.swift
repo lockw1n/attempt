@@ -53,9 +53,9 @@ final class SessionListState {
 
     /// Which of an exercise's two names a summary lists (`FR-1.14.2`).
     ///
-    /// Set by the view from `@Environment(\.locale)` before the read: a summary's names are strings
-    /// ``SessionSummaryReader`` bakes in, so a row cannot resolve one for itself — and `FR-1.14.3`'s
-    /// search over this screen matches exactly those strings.
+    /// A summary's names are strings ``SessionSummaryReader`` bakes in, so a row cannot resolve one
+    /// for itself, and `FR-1.14.3`'s search over this screen matches exactly those strings. Set by
+    /// the view, on ``RepositoryInterface/ExerciseNameLanguage``'s rule.
     var nameLanguage: ExerciseNameLanguage = .english
 
     /// The last extension that failed, as the error's description, or `nil`. A **diagnostic**, not

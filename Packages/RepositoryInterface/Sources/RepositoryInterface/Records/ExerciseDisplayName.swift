@@ -6,6 +6,14 @@ import Foundation
 /// ``Exercise/ukrainianName`` is one column, so "which name" has exactly two answers and a code
 /// carried around as a `String` would invite a third that resolves to nothing. A later language is
 /// a column and a case, together.
+///
+/// **A state that bakes a name into a value its rows draw takes this as a settable property, which
+/// its view sets from `@Environment(\.locale)` before the read.** A state that resolved the locale
+/// itself would answer differently from the rows above it in a snapshot or a preview, where the
+/// environment is the only locale there is, and a test could reach it only by changing the process.
+/// Every such property defaults to ``english``, so a view that forgets the line shows English rather
+/// than nothing — a row that can reach the environment itself should read it there and need no
+/// property at all.
 public enum ExerciseNameLanguage: CaseIterable, Sendable {
     /// ``Exercise/name`` — the name every exercise has.
     case english

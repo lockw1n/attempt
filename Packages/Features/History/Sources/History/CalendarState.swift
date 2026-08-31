@@ -60,7 +60,8 @@ final class CalendarState {
 
     /// Which of an exercise's two names a day's summary lists (`FR-1.14.2`).
     ///
-    /// Set by the view before the read, for the reason ``SessionListState/nameLanguage`` gives.
+    /// A day's names are strings ``SessionSummaryReader`` bakes in — the view sets this, on
+    /// ``RepositoryInterface/ExerciseNameLanguage``'s rule.
     var nameLanguage: ExerciseNameLanguage = .english
 
     /// The days training was logged on, as day starts in ``calendar``.
