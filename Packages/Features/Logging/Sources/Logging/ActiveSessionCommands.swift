@@ -358,7 +358,7 @@ extension ActiveSessionStore {
     /// It shares the chain with the exercise commands rather than having one of its own: a set is
     /// written against an entry, and an entry can be moved or added by the same thumb between two
     /// taps of **Log set**.
-    fileprivate func writeAddedSet(toEntryID entryID: UUID, values: SetEntryValues) async {
+    func writeAddedSet(toEntryID entryID: UUID, values: SetEntryValues) async {
         guard session != nil else { return }
         do {
             let stored = try await repository.sets(forEntryID: entryID, includingDeleted: false)

@@ -262,7 +262,7 @@
         }
 
         /// One logged set, with every identifier and timestamp fixed.
-        private static func loggedSet(
+        static func loggedSet(
             index: Int,
             weight: Weight,
             reps: Int,
@@ -418,7 +418,7 @@
         }
 
         /// A fixed identifier, so nothing in these renderings depends on a fresh `UUID`.
-        private static func identifier(_ suffix: String) -> UUID {
+        static func identifier(_ suffix: String) -> UUID {
             let padded = String(suffix.prefix(4)).padding(toLength: 4, withPad: "0", startingAt: 0)
             return UUID(uuidString: "0F5A1E24-9B7D-4C31-8E62-00000000\(padded)") ?? UUID()
         }

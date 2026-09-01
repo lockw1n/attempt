@@ -298,7 +298,13 @@ public struct ActiveSessionView: View {
                     logSet: { editing = $0 },
                     mark: { markSet($0, asWarmup: $1) },
                     markCompleted: { markSet($0, asCompleted: $1) },
-                    edit: { editing = Self.target(editing: $0) }
+                    edit: { editing = Self.target(editing: $0) },
+                    markDone: { id, isDone in
+                        Task { await store.markExercise(id: id, isDone: isDone) }
+                    },
+                    logPlanned: { id in
+                        Task { await store.logPlannedSet(inEntryID: id) }
+                    }
                 )
                 writeFailure(writeFailed)
                 previousFailure

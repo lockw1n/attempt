@@ -89,7 +89,8 @@ extension ExerciseEntry: AuditStamped {
             sessionID: sessionID,
             exerciseID: exerciseID,
             order: order,
-            notes: notes
+            notes: notes,
+            isMarkedDone: isMarkedDone
         )
     }
 }

@@ -112,6 +112,15 @@ struct SetRow: View {
     /// Opens `FR-1.2.7`'s editor over this set.
     let edit: (SetEntry) -> Void
 
+    /// What a routine planned for this set, or `nil` (`FR-15.3.1`).
+    ///
+    /// **`nil` covers three different cases and the row draws none of them**: an exercise nobody
+    /// planned, a warmup — which consumes no planned set — and a set logged past the end of the
+    /// plan, which is `FR-15.2.4`'s independence rather than an error. What they have in common is
+    /// that there is no target to measure against, and a row that said so would say it on most
+    /// rows in most workouts.
+    let target: PlannedTargetGroup?
+
     /// Which locale the numbers are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
@@ -204,6 +213,7 @@ struct SetRow: View {
                 }
                 recordMark
                 modifiers
+                plannedTarget
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(minHeight: TouchTarget.standard.points)
@@ -404,6 +414,22 @@ struct SetRow: View {
             .foregroundStyle(ColorToken.textTertiary)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// `FR-15.3.1`'s target and `FR-15.3.2`'s deviation, where a routine planned this set.
+    ///
+    /// **Inside the values button and below them**, on ``modifiers``' measured rule: the line is
+    /// already spending its width on two 44pt controls and the load. Inside, because the plan and
+    /// what was done against it are one fact about one set — so VoiceOver reads "102.5 kg, Reps 5,
+    /// Target 100 kg by 5, plus 2.5 kg" as a single element rather than as two.
+    @ViewBuilder private var plannedTarget: some View {
+        if let target {
+            PlannedTargetLine(
+                target: target,
+                comparison: PlannedTargetComparison(set: numbered.record, target: target),
+                unit: unit
+            )
         }
     }
 

@@ -469,7 +469,7 @@ enum LoggingStrings {
             setWarmupNumber("1"), setWarmupPosition(1), setWarmupSection, setWarmupLabel,
             setWarmupHint,
         ] + allModifierStrings + allPlateStrings + allEquipmentStrings + allPastSessionStrings
-            + allRecordStrings
+            + allRecordStrings + allPlanStrings
             + MassUnit.allCases.map(setUnitSymbol(for:))
             + [true, false].map(setMarkAction(isWarmup:))
             + [true, false].map(setOutcome(isCompleted:))

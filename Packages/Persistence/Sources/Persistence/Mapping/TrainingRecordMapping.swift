@@ -127,7 +127,8 @@ extension ExerciseEntryEntity: RecordMappable {
             sessionID: sessionID,
             exerciseID: exerciseID,
             order: order,
-            notes: notes
+            notes: notes,
+            isMarkedDone: isMarkedDone
         )
     }
 
@@ -139,6 +140,7 @@ extension ExerciseEntryEntity: RecordMappable {
             exerciseID: record.exerciseID,
             order: record.order,
             notes: record.notes,
+            isMarkedDone: record.isMarkedDone,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt
         )
@@ -150,6 +152,7 @@ extension ExerciseEntryEntity: RecordMappable {
         exerciseID = record.exerciseID
         order = record.order
         notes = record.notes
+        isMarkedDone = record.isMarkedDone
     }
 }
 

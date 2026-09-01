@@ -81,6 +81,30 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
         sets.contains { !$0.isWarmup }
     }
 
+    /// Whether the exercise is finished, by either route (`FR-1.2.13`, `FR-15.3.4`).
+    ///
+    /// **The lifter's verdict or the sets', whichever arrives** — a disjunction rather than a
+    /// replacement, because the two answer different questions and Phase 1's answer is still true.
+    /// ``isComplete`` reads the work: every working set logged and completed. ``RepositoryInterface/ExerciseEntry``'s
+    /// `isMarkedDone` reads the lifter: three of five sets can be enough for the day, and an
+    /// exercise nobody performed can still be dealt with. Neither can stand in for the other, so a
+    /// card folds and the progress bar advances on either.
+    public var isDone: Bool {
+        entry.isMarkedDone || isComplete
+    }
+
+    /// Whether the exercise was checked off with none of the work behind it (`FR-15.3.4`).
+    ///
+    /// **A skip is an outcome, not an error.** A routine named this exercise and the lifter
+    /// decided against it — which the check-off has to be able to say, or the only way to record
+    /// "not today" would be to leave the card looking untouched.
+    ///
+    /// **Working sets, on this type's own rule.** Warming up to a lift and then skipping it is
+    /// still a skip: warmups are not the work anywhere else here either.
+    public var isSkipped: Bool {
+        entry.isMarkedDone && !hasWorkingSets
+    }
+
     /// The planned group the next working set falls in, or `nil` (`FR-15.2.3`).
     ///
     /// **Working sets only, and it walks the groups rather than indexing them.** A plan of
@@ -97,12 +121,58 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
     /// independence, not an error, and the form opens blank for it exactly as an unplanned
     /// exercise's does.
     public var nextPlannedGroup: PlannedTargetGroup? {
-        var remaining = sets.count { !$0.isWarmup }
+        Self.plannedGroup(in: planned, afterWorkingSets: sets.count { !$0.isWarmup })
+    }
+
+    /// The planned group the working set at `consumed` working sets in falls in, or `nil`.
+    ///
+    /// **One rule, asked at three positions.** ``nextPlannedGroup`` asks it at the end of what has
+    /// been logged, `FR-15.3.1` asks it at each logged set, and `NFR-15.3`'s one-tap command asks
+    /// it again after re-reading the store; expressing any of those as a second walk is how the
+    /// pre-filled editor and the target on the row start disagreeing about which group a set
+    /// belongs to.
+    ///
+    /// **Static, and taking the groups rather than reading them off an instance**, because the
+    /// third asker has no instance: it runs at the back of the store's write chain, where the held
+    /// list is the one from before whatever is queued ahead of it.
+    ///
+    /// - Parameters:
+    ///   - planned: The groups, in order.
+    ///   - consumed: How many working sets precede the one being placed.
+    /// - Returns: The group it falls in, or `nil` past the end of the plan.
+    static func plannedGroup(
+        in planned: [PlannedTargetGroup], afterWorkingSets consumed: Int
+    ) -> PlannedTargetGroup? {
+        var remaining = consumed
         for group in planned {
             if remaining < group.targetSets { return group }
             remaining -= group.targetSets
         }
         return nil
+    }
+
+    /// What each logged set was planned against, keyed on the set (`FR-15.3.1`, `FR-15.3.2`).
+    ///
+    /// **Warmups are absent rather than mapped to the first group.** They do not consume a planned
+    /// set — ``nextPlannedGroup``'s rule — so they have no target to deviate from, and a warmup
+    /// drawn as 40 kg short of the top set would report a deviation the lifter did not make.
+    ///
+    /// **A set past the end of the plan is absent too**, which is `FR-15.2.4`'s independence: an
+    /// extra set is not an error and has nothing to be measured against.
+    ///
+    /// Empty for an exercise nobody planned, which costs the card nothing — there is simply no
+    /// target on any row.
+    public var plannedTargets: [UUID: PlannedTargetGroup] {
+        guard !planned.isEmpty else { return [:] }
+        var targets: [UUID: PlannedTargetGroup] = [:]
+        var position = 0
+        for set in sets where !set.isWarmup {
+            if let group = Self.plannedGroup(in: planned, afterWorkingSets: position) {
+                targets[set.id] = group
+            }
+            position += 1
+        }
+        return targets
     }
 
     /// What the set editor opens filled in with for the next set, or `nil` where nothing was
@@ -160,10 +230,14 @@ public struct SessionProgress: Equatable, Sendable {
 
     /// Reads the progress off the workout's exercises.
     ///
+    /// **Counting ``SessionExercise/isDone``, so a checked-off exercise advances the bar**
+    /// (`FR-15.3.4`). A mark that changed nothing above the card would be a mark the lifter has to
+    /// take on trust.
+    ///
     /// - Parameter exercises: The workout's exercises, in order.
     public init(_ exercises: [SessionExercise]) {
         total = exercises.count
-        completed = exercises.count(where: \.isComplete)
+        completed = exercises.count(where: \.isDone)
     }
 
     /// The proportion complete, `0` through `1`.

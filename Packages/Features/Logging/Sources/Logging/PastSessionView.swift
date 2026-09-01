@@ -323,8 +323,18 @@ struct PastSessionExerciseCard: View {
         // the workout in progress; a past session would need the workout's map read for a screen that
         // is not logging, and marking an old set as a record it may since have lost is worse than not
         // marking it. Whichever task first wants records on this screen owns that read.
+        // No target: `FR-15.3.1`'s line belongs to the workout in progress, and this screen has no
+        // planned-target read wired up. Drawing one would need that read; drawing nothing is what a
+        // past session has always shown.
         SetRow(
-            numbered: numbered, unit: unit, recordReps: [], mark: nil, markCompleted: nil, edit: edit)
+            numbered: numbered,
+            unit: unit,
+            recordReps: [],
+            mark: nil,
+            markCompleted: nil,
+            edit: edit,
+            target: nil
+        )
     }
 
     /// This card's sets, each carrying its number within its own sequence (`FR-1.2.14`).

@@ -169,7 +169,9 @@
                         logSet: { _ in },
                         mark: { _, _ in },
                         markCompleted: { _, _ in },
-                        edit: { _ in }
+                        edit: { _ in },
+                        markDone: { _, _ in },
+                        logPlanned: { _ in }
                     )
                 }
             }
@@ -435,7 +437,8 @@
                         recordReps: records.repCounts(forSetID: numbered.id),
                         mark: { _, _ in },
                         markCompleted: { _, _ in },
-                        edit: { _ in }
+                        edit: { _ in },
+                        target: nil
                     )
                 }
             }

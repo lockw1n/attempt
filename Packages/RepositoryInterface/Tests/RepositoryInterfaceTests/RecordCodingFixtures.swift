@@ -62,7 +62,10 @@ func codingExerciseEntry() -> ExerciseEntry {
         sessionID: codingJoinID,
         exerciseID: codingJoinID,
         order: 3,
-        notes: "wide stance"
+        notes: "wide stance",
+        // Not the default: a round trip through `false` would pass on a coder that dropped the
+        // key entirely.
+        isMarkedDone: true
     )
 }
 

@@ -39,12 +39,12 @@ struct RecordCodingKeyTests {
             ])
     }
 
-    @Test("An exercise entry writes eight keys")
+    @Test("An exercise entry writes nine keys")
     func exerciseEntryKeys() throws {
         #expect(
             try encodedKeys(of: codingExerciseEntry()) == [
-                "createdAt", "deletedAt", "exerciseID", "id", "notes", "order", "sessionID",
-                "updatedAt",
+                "createdAt", "deletedAt", "exerciseID", "id", "isMarkedDone", "notes", "order",
+                "sessionID", "updatedAt",
             ])
     }
 

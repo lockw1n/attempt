@@ -31,7 +31,23 @@ public struct ExerciseEntry: StoredRecord {
     /// Free-text notes.
     public let notes: String
 
+    /// Whether the lifter has said they are finished with this exercise (`FR-15.3.4`).
+    ///
+    /// **Stored rather than derived, and that is the requirement rather than a shortcut.** Whether
+    /// every logged set is completed is a different question, already answered by counting them;
+    /// this one is the lifter's own verdict, and the two disagree in both directions — three sets
+    /// of a planned five can be enough for the day, and five completed sets need not end the
+    /// exercise.
+    ///
+    /// **`true` with no working sets under it is an explicit skip**, which is a real outcome rather
+    /// than an error state: the plan named an exercise and the lifter decided against it.
+    public let isMarkedDone: Bool
+
     /// Creates an entry record. No property is validated; see this module's header.
+    ///
+    /// ``isMarkedDone`` is the one parameter with a default, because it is the one column added
+    /// after the record existed: `false` is what every row that predates it holds, and it is what
+    /// every construction other than the check-off itself wants.
     public init(
         id: UUID,
         createdAt: Date,
@@ -40,7 +56,8 @@ public struct ExerciseEntry: StoredRecord {
         sessionID: UUID,
         exerciseID: UUID,
         order: Int,
-        notes: String
+        notes: String,
+        isMarkedDone: Bool = false
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -50,6 +67,7 @@ public struct ExerciseEntry: StoredRecord {
         self.exerciseID = exerciseID
         self.order = order
         self.notes = notes
+        self.isMarkedDone = isMarkedDone
     }
 }
 
@@ -66,6 +84,7 @@ extension ExerciseEntry {
         case exerciseID
         case order
         case notes
+        case isMarkedDone
     }
 
     /// Decodes the keyed shape on ``CodingKeys``. Nothing is validated.
@@ -79,11 +98,12 @@ extension ExerciseEntry {
             sessionID: try container.decode(UUID.self, forKey: .sessionID),
             exerciseID: try container.decode(UUID.self, forKey: .exerciseID),
             order: try container.decode(Int.self, forKey: .order),
-            notes: try container.decode(String.self, forKey: .notes)
+            notes: try container.decode(String.self, forKey: .notes),
+            isMarkedDone: try container.decode(Bool.self, forKey: .isMarkedDone)
         )
     }
 
-    /// Writes the eight keys in declaration order.
+    /// Writes the nine keys in declaration order.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -94,5 +114,6 @@ extension ExerciseEntry {
         try container.encode(exerciseID, forKey: .exerciseID)
         try container.encode(order, forKey: .order)
         try container.encode(notes, forKey: .notes)
+        try container.encode(isMarkedDone, forKey: .isMarkedDone)
     }
 }

@@ -237,3 +237,15 @@
 "logging.past-session.empty.headline" = "Нічого не записано";
 "logging.past-session.empty.message" = "Це тренування розпочали, але не додали до нього жодної вправи.";
 "logging.past-session.write-error.message" = "Не вдалося зберегти цю зміну. Нічого не втрачено — спробуйте ще раз.";
+
+/* FR-15.3 — план проти факту, у тренуванні, що триває */
+"logging.session.exercise.marked-done" = "Позначено виконаним";
+"logging.session.exercise.skipped" = "Пропущено";
+"logging.session.exercise.done.action" = "Позначити виконаним";
+"logging.session.exercise.done.undo" = "Зняти позначку";
+"logging.session.plan.next.heading" = "Заплановано далі";
+"logging.session.plan.log.action" = "Записати запланований підхід";
+"logging.session.plan.target %@ %@" = "Ціль %1$@ × %2$@";
+"logging.session.plan.target-open %@" = "Ціль %@ повторень, вага на ваш розсуд";
+"logging.session.plan.on-target" = "У ціль";
+"logging.session.plan.reps-delta %@" = "%@ повторень";
