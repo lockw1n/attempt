@@ -14,7 +14,7 @@ struct RoutineEditorStateTests {
         let squat = routineExerciseFixture(name: "Back Squat")
         let stack = try await seededStack([squat])
         let author = editor(over: stack)
-        await author.open(.create)
+        await author.open(.create, screen: UUID())
         author.name = "Heavy squat day"
         await author.addExercise(id: squat.id)
         author.updateGroup(at: 0, inSlotAt: 0) { group in
@@ -39,7 +39,7 @@ struct RoutineEditorStateTests {
         #expect(stored.first?.name == "Heavy squat day")
 
         let reader = editor(over: stack)
-        await reader.open(.edit(routineID: routineID))
+        await reader.open(.edit(routineID: routineID), screen: UUID())
         #expect(reader.phase == .ready)
         #expect(reader.name == "Heavy squat day")
         #expect(reader.slots.count == 1)
@@ -58,7 +58,7 @@ struct RoutineEditorStateTests {
         let squat = routineExerciseFixture(name: "Back Squat")
         let stack = try await seededStack([squat])
         let author = editor(over: stack)
-        await author.open(.create)
+        await author.open(.create, screen: UUID())
         author.name = "Squat day"
         await author.addExercise(id: squat.id)
         author.updateGroup(at: 0, inSlotAt: 0) { group in
@@ -82,7 +82,7 @@ struct RoutineEditorStateTests {
         #expect(groups.first?.targetSets == 5)
 
         let reader = editor(over: stack)
-        await reader.open(.edit(routineID: routineID))
+        await reader.open(.edit(routineID: routineID), screen: UUID())
         #expect(reader.slots.first?.groups.first?.weightText.isEmpty == true)
         #expect(reader.slots.first?.groups.first?.isBlankWeight == true)
     }
@@ -94,7 +94,7 @@ struct RoutineEditorStateTests {
         let squat = routineExerciseFixture(name: "Back Squat")
         let stack = try await seededStack([squat])
         let author = editor(over: stack)
-        await author.open(.create)
+        await author.open(.create, screen: UUID())
         author.name = "Bar work"
         await author.addExercise(id: squat.id)
         author.updateGroup(at: 0, inSlotAt: 0) { group in
@@ -117,7 +117,7 @@ struct RoutineEditorStateTests {
         #expect(group.prescription == .fixedWeight(Weight(grams: 0)))
 
         let reader = editor(over: stack)
-        await reader.open(.edit(routineID: routineID))
+        await reader.open(.edit(routineID: routineID), screen: UUID())
         #expect(reader.slots.first?.groups.first?.isBlankWeight == false)
         #expect(reader.slots.first?.groups.first?.weightText == "0")
     }
@@ -128,12 +128,12 @@ struct RoutineEditorStateTests {
         let press = routineExerciseFixture(name: "Bench Press")
         let stack = try await seededStack([squat, press])
         let author = editor(over: stack)
-        await author.open(.create)
+        await author.open(.create, screen: UUID())
         author.name = "Two lifts"
         await author.addExercise(id: squat.id)
         await author.addExercise(id: press.id)
-        fill(author, slot: 0)
-        fill(author, slot: 1)
+        fillFirstGroup(author, slot: 0)
+        fillFirstGroup(author, slot: 1)
         author.moveSlotDown(0)
         #expect(author.slots.map(\.exerciseID) == [press.id, squat.id])
         await author.save()
@@ -152,18 +152,18 @@ struct RoutineEditorStateTests {
         let press = routineExerciseFixture(name: "Bench Press")
         let stack = try await seededStack([squat, press])
         let author = editor(over: stack)
-        await author.open(.create)
+        await author.open(.create, screen: UUID())
         author.name = "Two lifts"
         await author.addExercise(id: squat.id)
         await author.addExercise(id: press.id)
-        fill(author, slot: 0)
-        fill(author, slot: 1)
+        fillFirstGroup(author, slot: 0)
+        fillFirstGroup(author, slot: 1)
         await author.save()
 
         let routineID = try #require(
             try await stack.routines.routines(includingDeleted: false).first?.id)
         let editing = editor(over: stack)
-        await editing.open(.edit(routineID: routineID))
+        await editing.open(.edit(routineID: routineID), screen: UUID())
         let removedSlotID = try #require(editing.slots.first?.id)
         editing.removeSlot(at: 0)
         await editing.save()
@@ -185,7 +185,7 @@ struct RoutineEditorStateTests {
         let squat = routineExerciseFixture(name: "Back Squat")
         let stack = try await seededStack([squat])
         let author = editor(over: stack)
-        await author.open(.create)
+        await author.open(.create, screen: UUID())
         author.name = "Empty plan"
         await author.addExercise(id: squat.id)
         author.removeSlot(at: 0)
@@ -201,7 +201,7 @@ struct RoutineEditorStateTests {
         let squat = routineExerciseFixture(name: "Back Squat")
         let stack = try await seededStack([squat])
         let author = editor(over: stack)
-        await author.open(.create)
+        await author.open(.create, screen: UUID())
         author.name = "Squat day"
         await author.addExercise(id: squat.id)
         author.updateGroup(at: 0, inSlotAt: 0) { $0.repsText = "5" }
@@ -218,7 +218,7 @@ struct RoutineEditorStateTests {
         let squat = routineExerciseFixture(name: "Back Squat")
         let stack = try await seededStack([squat])
         let author = editor(over: stack)
-        await author.open(.create)
+        await author.open(.create, screen: UUID())
         author.name = "Squat day"
         await author.addExercise(id: squat.id)
         author.updateGroup(at: 0, inSlotAt: 0) { group in
@@ -236,7 +236,7 @@ struct RoutineEditorStateTests {
     func nameIsRequired() async throws {
         let stack = InMemoryRepositoryStack()
         let author = editor(over: stack)
-        await author.open(.create)
+        await author.open(.create, screen: UUID())
         #expect(!author.canSave)
         author.name = "   "
         #expect(!author.canSave, "whitespace is not a name")
@@ -248,37 +248,107 @@ struct RoutineEditorStateTests {
     func missingRoutine() async throws {
         let stack = InMemoryRepositoryStack()
         let author = editor(over: stack)
-        await author.open(.edit(routineID: UUID()))
+        await author.open(.edit(routineID: UUID()), screen: UUID())
         #expect(author.phase == .missing)
     }
 
-    // The store outlives the screen, so opening the same routine after a save has to read again
-    // rather than hand back a draft that would dismiss the screen on sight.
+    // The store outlives the screen, so a second push after a save has to read again rather than
+    // hand back a draft that would dismiss the screen on sight. A second push is a second screen,
+    // which is what the token says.
     @Test("Re-opening a saved routine reads it again")
     func reopeningAfterASaveReads() async throws {
         let squat = routineExerciseFixture(name: "Back Squat")
         let stack = try await seededStack([squat])
         let author = editor(over: stack)
-        await author.open(.create)
+        await author.open(.create, screen: UUID())
         author.name = "Squat day"
         await author.addExercise(id: squat.id)
-        fill(author, slot: 0)
+        fillFirstGroup(author, slot: 0)
         await author.save()
         #expect(author.didSave)
 
-        await author.open(.create)
+        await author.open(.create, screen: UUID())
         #expect(!author.didSave)
         #expect(author.name.isEmpty)
         #expect(author.slots.isEmpty)
     }
 
-    /// Fills a slot's first group with something storable, for the tests that are about the slots
-    /// rather than about the numbers in them.
-    private func fill(_ state: RoutineEditorState, slot index: Int) {
-        state.updateGroup(at: 0, inSlotAt: index) { group in
-            group.weightText = "100"
-            group.repsText = "5"
-            group.setsText = "3"
+    @Test("Removing a target group soft-deletes it and leaves its slot alone")
+    func removingATargetGroupDeletesIt() async throws {
+        let squat = routineExerciseFixture(name: "Back Squat")
+        let stack = try await seededStack([squat])
+        let author = editor(over: stack)
+        await author.open(.create, screen: UUID())
+        author.name = "Squat day"
+        await author.addExercise(id: squat.id)
+        fillFirstGroup(author, slot: 0)
+        author.addGroup(toSlotAt: 0)
+        author.updateGroup(at: 1, inSlotAt: 0) { group in
+            group.weightText = "90"
+            group.repsText = "8"
+            group.setsText = "2"
         }
+        await author.save()
+
+        let routineID = try #require(
+            try await stack.routines.routines(includingDeleted: false).first?.id)
+        let editing = editor(over: stack)
+        await editing.open(.edit(routineID: routineID), screen: UUID())
+        #expect(editing.slots.first?.groups.count == 2)
+        let removedGroupID = try #require(editing.slots.first?.groups.last?.id)
+        editing.removeGroup(at: 1, fromSlotAt: 0)
+        #expect(editing.slots.first?.groups.count == 1)
+        await editing.save()
+        #expect(editing.writeFailure == nil)
+
+        let slotID = try #require(
+            try await stack.routines.exercises(forRoutineID: routineID, includingDeleted: false)
+                .first?.id)
+        let live = try await stack.routines.targetGroups(
+            forRoutineExerciseID: slotID, includingDeleted: false)
+        #expect(live.map(\.targetWeight) == [Weight(grams: 100_000)])
+        #expect(!live.map(\.id).contains(removedGroupID))
     }
+
+    // The group-level half of `reorderingRewritesOrder`: a backoff promoted over the top set is
+    // `order` rewritten on both rows, and it has to survive the round trip in that order.
+    @Test("Reordering target groups rewrites their stored order")
+    func reorderingGroupsRewritesOrder() async throws {
+        let squat = routineExerciseFixture(name: "Back Squat")
+        let stack = try await seededStack([squat])
+        let author = editor(over: stack)
+        await author.open(.create, screen: UUID())
+        author.name = "Squat day"
+        await author.addExercise(id: squat.id)
+        fillFirstGroup(author, slot: 0)
+        author.addGroup(toSlotAt: 0)
+        author.updateGroup(at: 1, inSlotAt: 0) { group in
+            group.weightText = "90"
+            group.repsText = "8"
+            group.setsText = "2"
+        }
+        author.moveGroupDown(0, inSlotAt: 0)
+        #expect(author.slots.first?.groups.map(\.weightText) == ["90", "100"])
+        await author.save()
+
+        let routineID = try #require(
+            try await stack.routines.routines(includingDeleted: false).first?.id)
+        let slotID = try #require(
+            try await stack.routines.exercises(forRoutineID: routineID, includingDeleted: false)
+                .first?.id)
+        let stored = try await stack.routines.targetGroups(
+            forRoutineExerciseID: slotID, includingDeleted: false)
+        #expect(stored.map(\.order) == [0, 1])
+        #expect(stored.map(\.targetWeight) == [Weight(grams: 90_000), Weight(grams: 100_000)])
+
+        let reader = editor(over: stack)
+        await reader.open(.edit(routineID: routineID), screen: UUID())
+        #expect(reader.slots.first?.groups.map(\.weightText) == ["90", "100"])
+
+        // And the move refuses at the ends rather than wrapping.
+        reader.moveGroupUp(0, inSlotAt: 0)
+        reader.moveGroupDown(1, inSlotAt: 0)
+        #expect(reader.slots.first?.groups.map(\.weightText) == ["90", "100"])
+    }
+
 }

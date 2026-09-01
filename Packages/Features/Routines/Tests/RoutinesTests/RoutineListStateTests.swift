@@ -23,7 +23,7 @@ struct RoutineListStateTests {
         let press = routineExerciseFixture(name: "Bench Press")
         let stack = try await seededStack([squat, press])
         let author = editor(over: stack)
-        await author.open(.create)
+        await author.open(.create, screen: UUID())
         author.name = "Two lifts"
         await author.addExercise(id: squat.id)
         await author.addExercise(id: press.id)

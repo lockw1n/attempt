@@ -189,6 +189,10 @@ jobs:
             Packages/DesignSystem/.build/snapshot-failures/
             Packages/Features/ExerciseLibrary/.build/snapshot-failures/
             Packages/Features/Logging/.build/snapshot-failures/
+            Packages/Features/History/.build/snapshot-failures/
+            Packages/Features/Dashboard/.build/snapshot-failures/
+            Packages/Features/Settings/.build/snapshot-failures/
+            Packages/Features/Routines/.build/snapshot-failures/
           if-no-files-found: ignore
 
   # TR-0.1.1 / NFR-0.2 / DOD-0.2: the mechanical proof that no *Apple-platform* framework leaked

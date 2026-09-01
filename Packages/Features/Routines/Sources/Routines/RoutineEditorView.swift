@@ -25,6 +25,13 @@ public struct RoutineEditorView: View {
     /// Pops the editor once a save has landed. The list underneath re-reads for itself.
     @Environment(\.dismiss) private var dismiss
 
+    /// This screen's own identity, which tells a re-run of `.task` from a fresh push of the editor.
+    ///
+    /// `@State` is created once per view identity: it survives the exercise chooser being pushed
+    /// over this screen and does not survive the screen being popped. That is exactly the
+    /// distinction ``RoutineEditorState/open(_:screen:)`` needs.
+    @State private var screen = UUID()
+
     /// Builds the screen over the app's editor store.
     ///
     /// - Parameters:
@@ -48,7 +55,7 @@ public struct RoutineEditorView: View {
         .navigationTitle(Text(title))
         .task {
             store.locale = locale
-            await store.open(mode)
+            await store.open(mode, screen: screen)
         }
         // The save is what ends this screen, and the store is what knows the save landed — a
         // dismissal driven from the button would fire on a write that failed.

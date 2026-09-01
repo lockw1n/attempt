@@ -85,9 +85,12 @@ public final class RoutineEditorState {
     /// The locale every field is parsed and rendered against.
     public var locale: Locale = .autoupdatingCurrent
 
-    /// The identifier a created routine gets, minted once per ``open(_:)``. See
+    /// The identifier a created routine gets, minted once per ``open(_:screen:)``. See
     /// ``RoutineGroupDraft/id`` for why it is not minted per save.
     private var newRoutineID = UUID()
+
+    /// The screen the draft in hand belongs to. See ``open(_:screen:)``.
+    private var openedScreen: UUID?
 
     /// The routine as it was read, so a save carries the columns the editor does not expose.
     private var editedRecord: Routine?
@@ -122,21 +125,28 @@ public final class RoutineEditorState {
 
     // MARK: - Opening
 
-    /// Points the editor at a routine and reads it, unless it is already on that one.
+    /// Points the editor at a routine and reads it, unless the same screen already has it open.
     ///
-    /// **The guard is what makes an app-lifetime store safe behind a screen-lifetime `.task`.**
-    /// SwiftUI re-runs `.task` whenever the view's identity is re-established, and a second read
-    /// would throw away everything typed since the first — `ExerciseFormState.load()`'s rule, and
-    /// it matters more here because this store outlives the screen.
+    /// **The screen token is what makes an app-lifetime store safe behind a screen-lifetime
+    /// `.task`.** SwiftUI re-runs `.task` whenever the view's identity is re-established — while
+    /// the exercise chooser is pushed over this screen, for one — and a second read there would
+    /// throw away everything typed since the first, which is `ExerciseFormState.load()`'s rule and
+    /// matters more here because this store outlives the screen.
     ///
-    /// - Parameter mode: Which routine to edit, or that a new one is being authored.
-    public func open(_ mode: RoutineEditorMode) async {
-        // `!didSave` is what lets the same routine be opened a second time: this store outlives
-        // the screen, so a saved draft would otherwise still be here, and the screen dismisses
-        // itself on `didSave`.
-        if self.mode == mode, phase != .idle, !didSave { return }
+    /// **A new push is a new token, and reads again**, which is the half a bare "same mode" guard
+    /// gets wrong: nothing writes on the way out of this screen, so a draft the lifter backed out
+    /// of is still in the store. Handing it back the next time they open that routine would show
+    /// them edits they had abandoned, over a list still showing the stored version, with the save
+    /// command armed.
+    ///
+    /// - Parameters:
+    ///   - mode: Which routine to edit, or that a new one is being authored.
+    ///   - screen: The asking screen's own identity, stable for as long as that screen is alive.
+    public func open(_ mode: RoutineEditorMode, screen: UUID) async {
+        if self.mode == mode, openedScreen == screen, phase != .idle { return }
         self.mode = mode
         reset()
+        openedScreen = screen
         await read()
     }
 
@@ -349,8 +359,9 @@ public final class RoutineEditorState {
     /// take its groups with it and a group re-saved after that would be re-saved onto a dead slot.
     ///
     /// A failure part-way leaves the store **partially written** and says so through
-    /// ``writeFailure``; the retry is the same command, and every write is an upsert on an
-    /// identifier minted once, so running it again finishes the job rather than forking it.
+    /// ``writeFailure``; the retry is the same command, and every write here is an upsert on an
+    /// identifier minted once, so running it again finishes the job rather than forking it. The
+    /// deletes are the exception and ``deleteRemoved()`` is where that is handled.
     public func save() async {
         guard canSave else { return }
         isSaving = true
@@ -419,14 +430,21 @@ public final class RoutineEditorState {
     /// A slot added and removed inside one editing session was never written, and
     /// `deleteRoutineExercise(id:)` throws `recordNotFound` on one — which would turn a tidy-up
     /// into a failed save.
+    ///
+    /// **Each success is recorded as it lands**, because a delete is the one write in a save that
+    /// is not an upsert: the repository refuses a second delete of a row it has already reclaimed.
+    /// A retry after a failure part-way through here would otherwise throw on the rows the first
+    /// attempt had already taken, and the routine could never be saved again.
     private func deleteRemoved() async throws {
         let liveGroups = Set(slots.flatMap { $0.groups.map(\.id) })
         for id in persistedGroupIDs.subtracting(liveGroups) {
             try await repository.deleteTargetGroup(id: id)
+            persistedGroupIDs.remove(id)
         }
         let liveSlots = Set(slots.map(\.id))
         for id in persistedSlotIDs.subtracting(liveSlots) {
             try await repository.deleteRoutineExercise(id: id)
+            persistedSlotIDs.remove(id)
         }
         persistedSlotIDs = liveSlots
         persistedGroupIDs = liveGroups

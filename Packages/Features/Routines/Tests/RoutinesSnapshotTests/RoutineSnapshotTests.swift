@@ -83,7 +83,7 @@
                 catalogue: SilentExerciseRepository(),
                 settings: SilentSettingsRepository())
             store.locale = Locale(identifier: "en_US_POSIX")
-            await store.open(.create)
+            await store.open(.create, screen: UUID())
             return store
         }
 
