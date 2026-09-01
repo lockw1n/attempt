@@ -108,6 +108,26 @@ struct PastSessionSaveAsRoutineTests {
         #expect(try await past.repositories.routines.routines(includingDeleted: true).isEmpty)
     }
 
+    @Test("A routine that cannot be finished is taken back out, not left empty in the library")
+    func partialWriteLeavesNothing() async throws {
+        let past = try await PastSession.logged(names: ["Back Squat"])
+        try await past.logSet(at: 0, order: 0)
+        // The routine row lands and the first slot under it does not — the one failure that can
+        // leave a half-written routine behind.
+        let state = PastSession.state(
+            sessionID: past.sessionID,
+            over: past.repositories,
+            routines: SlotRefusingRoutineRepository(past.repositories.routines))
+        await state.load()
+
+        await state.saveAsRoutine(named: "Tuesday")
+
+        #expect(state.saveAsRoutineOutcome == .writeFailed)
+        // What `writeFailed` claims: nothing was written. This screen never re-reads, so without
+        // the rollback the empty routine is reported as a failure here and visible in another tab.
+        #expect(try await past.repositories.routines.routines(includingDeleted: false).isEmpty)
+    }
+
     @Test("A fresh read retires the outcome, as it retires this screen's other three")
     func readRetiresTheOutcome() async throws {
         let past = try await PastSession.logged(names: ["Back Squat"])
@@ -152,4 +172,60 @@ private struct RefusingRoutineRepository: RoutineRepository {
     func save(_ group: RoutineTargetGroup) async throws { throw Refusal() }
 
     func deleteTargetGroup(id: UUID) async throws { throw Refusal() }
+}
+
+/// A routine store that writes the routine row and then refuses everything under it.
+///
+/// The partial write the in-memory stack cannot produce on its own, and the only failure shape
+/// that can leave a routine in the library with nothing in it.
+private struct SlotRefusingRoutineRepository: RoutineRepository {
+    /// What a refused write throws.
+    struct Refusal: Error {}
+
+    /// The store the calls that are not refused go to.
+    let base: any RoutineRepository
+
+    /// Wraps `base`.
+    ///
+    /// - Parameter base: Where the routine row and the rollback land.
+    init(_ base: any RoutineRepository) { self.base = base }
+
+    func routines(includingDeleted: Bool) async throws -> [Routine] {
+        try await base.routines(includingDeleted: includingDeleted)
+    }
+
+    func routine(id: UUID, includingDeleted: Bool) async throws -> Routine? {
+        try await base.routine(id: id, includingDeleted: includingDeleted)
+    }
+
+    func save(_ routine: Routine) async throws { try await base.save(routine) }
+
+    func deleteRoutine(id: UUID) async throws { try await base.deleteRoutine(id: id) }
+
+    func exercises(
+        forRoutineID routineID: UUID, includingDeleted: Bool
+    ) async throws -> [RoutineExercise] {
+        try await base.exercises(forRoutineID: routineID, includingDeleted: includingDeleted)
+    }
+
+    func routineExercise(id: UUID, includingDeleted: Bool) async throws -> RoutineExercise? {
+        try await base.routineExercise(id: id, includingDeleted: includingDeleted)
+    }
+
+    func save(_ exercise: RoutineExercise) async throws { throw Refusal() }
+
+    func deleteRoutineExercise(id: UUID) async throws {
+        try await base.deleteRoutineExercise(id: id)
+    }
+
+    func targetGroups(
+        forRoutineExerciseID routineExerciseID: UUID, includingDeleted: Bool
+    ) async throws -> [RoutineTargetGroup] {
+        try await base.targetGroups(
+            forRoutineExerciseID: routineExerciseID, includingDeleted: includingDeleted)
+    }
+
+    func save(_ group: RoutineTargetGroup) async throws { try await base.save(group) }
+
+    func deleteTargetGroup(id: UUID) async throws { try await base.deleteTargetGroup(id: id) }
 }

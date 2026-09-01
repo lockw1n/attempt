@@ -98,6 +98,12 @@ final class FlakyRoutineRepository: RoutineRepository {
     /// Whether `deleteRoutine(id:)` refuses (`FR-15.2.5`).
     private let refusesRoutineDeletes: Bool
 
+    /// Whether `save(_ exercise:)` refuses (`FR-15.2.5`).
+    ///
+    /// The seam a *partial* duplicate is built at: the routine row lands and the first slot under
+    /// it does not, which is the one failure that can leave a copy half-written.
+    private let refusesSlotSaves: Bool
+
     /// Wraps `base`.
     ///
     /// - Parameters:
@@ -106,18 +112,21 @@ final class FlakyRoutineRepository: RoutineRepository {
     ///   - refusingSlotDelete: Which slot delete to refuse, counting from one.
     ///   - refusingRoutineSaves: Whether every routine write is refused.
     ///   - refusingRoutineDeletes: Whether every routine delete is refused.
+    ///   - refusingSlotSaves: Whether every slot write is refused.
     init(
         _ base: any RoutineRepository,
         refusingReads: Int = 0,
         refusingSlotDelete: Int? = nil,
         refusingRoutineSaves: Bool = false,
-        refusingRoutineDeletes: Bool = false
+        refusingRoutineDeletes: Bool = false,
+        refusingSlotSaves: Bool = false
     ) {
         self.base = base
         readsToRefuse = refusingReads
         slotDeleteToRefuse = refusingSlotDelete
         refusesRoutineSaves = refusingRoutineSaves
         refusesRoutineDeletes = refusingRoutineDeletes
+        refusesSlotSaves = refusingSlotSaves
     }
 
     func routines(includingDeleted: Bool) async throws -> [Routine] {
@@ -152,7 +161,10 @@ final class FlakyRoutineRepository: RoutineRepository {
         try await base.routineExercise(id: id, includingDeleted: includingDeleted)
     }
 
-    func save(_ exercise: RoutineExercise) async throws { try await base.save(exercise) }
+    func save(_ exercise: RoutineExercise) async throws {
+        if refusesSlotSaves { throw Refusal() }
+        try await base.save(exercise)
+    }
 
     func deleteRoutineExercise(id: UUID) async throws {
         slotDeletes += 1

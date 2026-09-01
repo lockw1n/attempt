@@ -80,8 +80,11 @@ extension RoutineListState {
                 await load()
                 return
             }
-            // Every column but the name is carried across, `RoutineEditorState.routineRecord(at:)`'s
-            // rule: this screen edits one field and must not decide the others.
+            // The record is rebuilt whole because `Routine` is immutable, and every column but
+            // the name is the original's: this screen edits one field and must not decide the
+            // others. `createdAt` and `deletedAt` are pinned by the upsert regardless, and
+            // `updatedAt` is restamped by it — passing the original's values is the honest no-op,
+            // not a rule this layer enforces.
             try await repository.save(
                 Routine(
                     id: original.id,
@@ -109,10 +112,19 @@ extension RoutineListState {
     /// restores only the row it is given — or an `isArchived` column of the kind the exercise
     /// catalogue has. The screen asks for confirmation instead.
     ///
+    /// A routine that is no longer there is not a failure, ``duplicate(_:)``'s reading: the read
+    /// that follows sweeps its row off the screen, which is the answer to what happened to it.
+    /// Asking again for a routine already archived is the one way the store says `recordNotFound`
+    /// here, and telling the lifter their archive could not be saved would ask them to retry
+    /// something that has already happened.
+    ///
     /// - Parameter routineID: The routine to archive.
     public func archive(_ routineID: UUID) async {
         do {
             try await repository.deleteRoutine(id: routineID)
+        } catch RepositoryError.recordNotFound {
+            await load()
+            return
         } catch {
             managementFailure = .writeFailed
             return
@@ -121,6 +133,13 @@ extension RoutineListState {
     }
 
     /// Writes the copy: the routine, then each slot, then each slot's targets.
+    ///
+    /// **A write that fails part-way takes the copy back out**, which is what makes
+    /// ``RoutineManagementFailure/writeFailed`` mean what it says. The routine row lands first by
+    /// necessity, so a store that refuses a slot leaves a routine in the library the lifter did not
+    /// ask for — and a retry cannot finish it, every attempt minting fresh identifiers rather than
+    /// completing the last one. That is the difference from `RoutineEditorState.save()`, whose
+    /// partial write is finishable because it rewrites the same rows.
     ///
     /// - Parameter original: The routine being copied.
     private func write(copyOf original: Routine) async throws {
@@ -142,6 +161,26 @@ extension RoutineListState {
                 updatedAt: now,
                 deletedAt: nil,
                 name: String(localized: RoutinesStrings.listDuplicateName(original.name))))
+        do {
+            try await write(slots, targets, under: copyID)
+        } catch {
+            // The cascade takes the slots and groups that did land with it (`G-1.3`). A cleanup
+            // that fails too leaves what the caller is about to report anyway.
+            try? await repository.deleteRoutine(id: copyID)
+            throw error
+        }
+    }
+
+    /// Writes a copy's slots and their targets under the routine row that already landed.
+    ///
+    /// - Parameters:
+    ///   - slots: The original's slots, in order.
+    ///   - targets: Each slot's targets, in the same order.
+    ///   - copyID: The routine they hang off.
+    private func write(
+        _ slots: [RoutineExercise], _ targets: [[RoutineTargetGroup]], under copyID: UUID
+    ) async throws {
+        let now = Date.now
         for (position, slot) in slots.enumerated() {
             let slotID = UUID()
             try await repository.save(

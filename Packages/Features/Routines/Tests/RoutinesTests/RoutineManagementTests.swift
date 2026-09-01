@@ -95,6 +95,41 @@ struct RoutineManagementTests {
         #expect(list.routines.count == 1)
     }
 
+    @Test("Positions are renumbered from zero, whatever gaps the original carries")
+    func duplicateRenumbersPositions() async throws {
+        let library = try await Library.authored()
+        // A third slot at an order the editor would never write, which is what a soft delete
+        // leaves behind: the original's positions are 0, 1, 7.
+        try await library.addSlot(to: library.routineID, at: 7)
+        let list = RoutineListState(repository: library.stack.routines)
+        await list.load()
+
+        await list.duplicate(library.routineID)
+
+        let copy = try #require(list.routines.first { $0.id != library.routineID })
+        #expect(try await library.slots(of: library.routineID).map(\.order) == [0, 1, 7])
+        #expect(try await library.slots(of: copy.id).map(\.order) == [0, 1, 2])
+    }
+
+    @Test("A copy that cannot be finished is taken back out, and none of it is listed")
+    func duplicateThatFailsPartWay() async throws {
+        let library = try await Library.authored()
+        // The routine row lands and the first slot under it does not — the one failure that can
+        // leave a half-written copy behind.
+        let store = FlakyRoutineRepository(library.stack.routines, refusingSlotSaves: true)
+        let list = RoutineListState(repository: store)
+        await list.load()
+
+        await list.duplicate(library.routineID)
+
+        #expect(list.managementFailure == .writeFailed)
+        // What `writeFailed` claims: nothing was written. Without the rollback the library holds a
+        // routine named "Push (copy)" with no exercises under it.
+        let live = try await library.stack.routines.routines(includingDeleted: false)
+        #expect(live.map(\.name) == ["Push"])
+        #expect(list.routines.count == 1)
+    }
+
     // MARK: - Renaming (FR-15.2.5)
 
     @Test("A rename retitles the routine and moves nothing under it")
@@ -108,10 +143,9 @@ struct RoutineManagementTests {
         #expect(list.routines.map(\.name) == ["Upper body"])
         #expect(list.routines.map(\.id) == [library.routineID])
         #expect(try await library.slots(of: library.routineID).count == 2)
-        let stored = try #require(
-            try await library.stack.routines.routine(
-                id: library.routineID, includingDeleted: false))
-        #expect(stored.createdAt == library.createdAt)
+        // A rename retitles rather than forks: `createdAt` is pinned by the upsert whatever this
+        // command passes, so what is worth asserting is that no second row was authored.
+        #expect(try await library.stack.routines.routines(includingDeleted: true).count == 1)
     }
 
     @Test("A rename is trimmed, exactly as the editor trims what it saves")
@@ -148,6 +182,19 @@ struct RoutineManagementTests {
 
         #expect(list.managementFailure == .writeFailed)
         #expect(list.routines.map(\.name) == ["Push"])
+    }
+
+    @Test("A routine that is already gone is not a failure, as it is not one for a duplicate")
+    func renameOfAMissingRoutine() async throws {
+        let library = try await Library.authored()
+        let list = RoutineListState(repository: library.stack.routines)
+        await list.load()
+        try await library.stack.routines.deleteRoutine(id: library.routineID)
+
+        await list.rename(library.routineID, to: "Upper body")
+
+        #expect(list.managementFailure == nil)
+        #expect(list.routines.isEmpty)
     }
 
     // MARK: - Archiving (FR-15.2.5)
@@ -197,6 +244,22 @@ struct RoutineManagementTests {
         #expect(list.routines.count == 1)
     }
 
+    @Test("Archiving a routine that is already archived is not a failure either")
+    func archiveOfARoutineAlreadyGone() async throws {
+        let library = try await Library.authored()
+        let list = RoutineListState(repository: library.stack.routines)
+        await list.load()
+        try await library.stack.routines.deleteRoutine(id: library.routineID)
+
+        await list.archive(library.routineID)
+
+        // `deleteRoutine` says `recordNotFound` for a row that is gone, and that is the answer the
+        // list already gives for a duplicate and a rename: sweep the row, say nothing. Reported as
+        // a refusal it would ask the lifter to retry something that has already happened.
+        #expect(list.managementFailure == nil)
+        #expect(list.routines.isEmpty)
+    }
+
     // MARK: - What a read retires
 
     @Test("A fresh read retires a management refusal, as it retires a start refusal")
@@ -224,9 +287,6 @@ private struct Library {
 
     /// The routine under test.
     let routineID: UUID
-
-    /// When it was written, for the rename that must not move it.
-    let createdAt: Date
 
     /// Its two exercises, in slot order.
     let exercises: [Exercise]
@@ -261,8 +321,28 @@ private struct Library {
         return Library(
             stack: stack,
             routineID: routine.id,
-            createdAt: routine.createdAt,
             exercises: [bench, dip])
+    }
+
+    /// Writes one more slot under a routine, at a position of the caller's choosing.
+    ///
+    /// **Written straight through the repository rather than through the editor**, which renumbers
+    /// what it saves — a gap is exactly what it will not author.
+    ///
+    /// - Parameters:
+    ///   - routineID: The routine to extend.
+    ///   - order: The position to write it at.
+    func addSlot(to routineID: UUID, at order: Int) async throws {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        try await stack.routines.save(
+            RoutineExercise(
+                id: UUID(),
+                createdAt: now,
+                updatedAt: now,
+                deletedAt: nil,
+                routineID: routineID,
+                exerciseID: exercises[0].id,
+                order: order))
     }
 
     /// The live slots of one routine, in order.
