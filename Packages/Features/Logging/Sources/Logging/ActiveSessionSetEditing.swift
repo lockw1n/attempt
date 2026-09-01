@@ -38,7 +38,24 @@ extension ActiveSessionView {
     /// - Parameter set: The set the editor is opening over.
     /// - Returns: The group it was planned against, where one planned it.
     func prescription(for set: SetEntry) -> PlannedTargetGroup? {
-        store.exercises.first { $0.id == set.entryID }?.plannedTargets[set.id]
+        Self.prescription(for: set, in: store.exercises)
+    }
+
+    /// ``prescription(for:)`` with the cards passed rather than read off the screen.
+    ///
+    /// **The lookup is two hops and both can be wrong the same way** — the wrong card, or the right
+    /// card keyed by the wrong id — and neither shows up as a crash: the editor simply opens with no
+    /// target over a set a routine planned, which is `FR-15.3.1` silently not happening. Static so
+    /// that can be answered without a screen, on ``draft(for:unit:locale:)``'s reason.
+    ///
+    /// - Parameters:
+    ///   - set: The set the editor is opening over.
+    ///   - exercises: The cards the screen is holding.
+    /// - Returns: The group it was planned against, where one planned it.
+    static func prescription(
+        for set: SetEntry, in exercises: [SessionExercise]
+    ) -> PlannedTargetGroup? {
+        exercises.first { $0.id == set.entryID }?.plannedTargets[set.id]
     }
 
     /// ``draft(for:)`` with the unit and the locale passed rather than read off the screen.

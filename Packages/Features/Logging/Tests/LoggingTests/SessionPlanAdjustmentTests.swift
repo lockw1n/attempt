@@ -10,8 +10,11 @@ import Testing
 /// `FR-15.3.5`: an adjustment reaches the set it was made on, and nothing else.
 ///
 /// **Every test here goes through the screen's own edit path rather than calling the store
-/// directly** — ``ActiveSessionView/target(editing:prescribed:)`` for what the sheet opens over and
-/// ``ActiveSessionView/write(_:over:)`` for what a confirmed one resolves to. The requirement is
+/// directly** — ``ActiveSessionView/prescription(for:in:)`` for the target the sheet is handed,
+/// ``ActiveSessionView/target(editing:prescribed:)`` for what it opens over, and
+/// ``ActiveSessionView/write(_:over:)`` for what a confirmed one resolves to. **The lookup is in
+/// that list because it was once not**: written out inline here instead, it left the production one
+/// returning `nil` for every set with the whole suite still green. The requirement is
 /// about the *blast radius* of an edit, and a test that issued `.rewrite` itself would be asserting
 /// the radius of a write nobody makes: the one defect the store cannot catch is the branch above it
 /// taken the wrong way, which appends a set where the user asked for a correction.
@@ -180,7 +183,7 @@ extension ActiveSessionStore {
     fileprivate func adjust(_ set: SetEntry, to values: SetEntryValues) async throws {
         let target = ActiveSessionView.target(
             editing: set,
-            prescribed: exercises.first { $0.id == set.entryID }?.plannedTargets[set.id])
+            prescribed: ActiveSessionView.prescription(for: set, in: exercises))
         // The prescription is carried by an edit and seeds nothing — the form opens holding the set
         // as it was logged. Asserted here rather than in a test of its own because every adjustment
         // below depends on it: a target that seeded would overwrite the correction being made.

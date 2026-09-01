@@ -96,19 +96,27 @@
 
         /// The editor as an adjustment opens it: the target line, then the form.
         ///
-        /// **Composed rather than rendered as ``SetEditorSheet``**, for the reason
+        /// **Composed rather than rendered as ``SetEditorView``**, for the reason
         /// `SessionSnapshotTests`' own editor helper is composed — `ImageRenderer` lays a
         /// `ScrollView`'s content out and draws none of it, so a picture of the sheet is a picture
-        /// of the target line and the two commands with the whole form missing. The order here is
-        /// the sheet's own.
+        /// of the target line and the two commands with the whole form missing.
+        ///
+        /// **The order, the spacing and both of the target line's paddings are the sheet's own**,
+        /// copied from ``SetEditorView`` rather than chosen here: this reference exists to make a
+        /// claim about where that line sits, so a composition that spaced it differently would
+        /// picture a screen nobody ships. The commands read their state off the draft for the same
+        /// reason — hardcoded, they would keep drawing a loggable form over one that stopped being
+        /// loggable.
         private var adjustingEditor: some View {
-            VStack(spacing: Spacing.sm.points) {
+            let draft = Fixtures.editedDraft
+            return VStack(spacing: Spacing.sm.points) {
                 PlannedTargetLine(
                     target: PlanFixtures.prescription, comparison: nil, unit: .kilograms
                 )
                 .padding(.horizontal, Spacing.lg.points)
+                .padding(.top, Spacing.lg.points)
                 SetEditorFields(
-                    draft: .constant(Fixtures.editedDraft),
+                    draft: .constant(draft),
                     hasInput: .constant(true),
                     isEditing: true,
                     vocabulary: Fixtures.vocabulary,
@@ -116,8 +124,8 @@
                 )
                 .padding(Spacing.lg.points)
                 SetEditorCommands(
-                    isLoggable: true,
-                    showsRefusal: false,
+                    isLoggable: draft.isLoggable,
+                    showsRefusal: !draft.isLoggable && !draft.isBlank,
                     isEditing: true,
                     log: {},
                     cancel: {},

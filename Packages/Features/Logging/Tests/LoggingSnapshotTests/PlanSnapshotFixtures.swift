@@ -121,18 +121,10 @@
         /// The group the set editor's target line is drawn from (`FR-15.3.1`, `FR-15.3.5`).
         ///
         /// ``deviations``' backoff, so the sheet's line reads as the one behind the squat card's
-        /// second set — which is the set an adjustment is made on.
-        static let prescription = PlannedTargetGroup(
-            id: Fixtures.identifier("F51"),
-            createdAt: Fixtures.startedAt,
-            updatedAt: Fixtures.startedAt,
-            deletedAt: nil,
-            exerciseEntryID: Fixtures.identifier("B5"),
-            order: 1,
-            targetWeight: Weight(grams: 85_000),
-            targetReps: 8,
-            targetSets: 3
-        )
+        /// second set — which is the set an adjustment is made on. **Taken from that card rather
+        /// than rebuilt to match it**: written out a second time, the two agree until somebody
+        /// edits the squat's plan, and the sentence above quietly stops being true.
+        static var prescription: PlannedTargetGroup { deviations[0].planned[1] }
 
         /// One planned card: the exercise, what was prescribed for it and what was logged against
         /// it. Every identifier and timestamp is fixed so a rendering never moves.
