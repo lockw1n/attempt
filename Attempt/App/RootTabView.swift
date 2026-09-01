@@ -220,11 +220,22 @@ struct RootTabView: View {
     }
 
     /// The routines the lifter has authored (`FR-15.2.1`), or the reason they cannot be shown.
+    ///
+    /// **The fifth of this file's cross-module joins, and the second that hands over a command**
+    /// (`FR-15.2.3`). Starting a workout is `Logging`'s to write and `TR-1.3` keeps `Routines` from
+    /// importing it, so the screen takes a closure and this target — which owns both — supplies the
+    /// store's own method. ``ActiveSessionStore/resume()`` runs first for
+    /// ``dashboardRoot``'s reason: the store may never have looked, and starting without it would
+    /// start a second workout on top of one already open.
     @ViewBuilder
     private var routineListRoot: some View {
         switch dependencies.state {
-        case .open(let repositories, _):
-            RoutineListView(repository: repositories.routines)
+        case .open(let repositories, let stores):
+            RoutineListView(repository: repositories.routines) { routineID in
+                await stores.activeSession.resume()
+                return await stores.activeSession.start(
+                    on: .now, fromRoutineID: routineID, in: repositories.routines)
+            }
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

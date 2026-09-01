@@ -23,13 +23,6 @@ struct StorePurgeTests {
         return row
     }
 
-    private func count<T: StoredEntity>(
-        _ type: T.Type,
-        in harness: RepositoryHarness
-    ) throws -> Int {
-        try harness.store().rows(type, includingDeleted: true).count
-    }
-
     // A branch nothing outside it names: the whole thing is free, and the count is spelled out so a
     // routine that removed the session and orphaned its sets could not pass.
     @Test("A soft-deleted session takes its entries and their sets")
@@ -258,6 +251,13 @@ struct StorePurgeTests {
                 targetReps: 4,
                 targetSets: 4
             ),
+            PlannedTargetGroupEntity(
+                exerciseEntryID: entry.id,
+                order: 0,
+                targetWeightGrams: 90_000,
+                targetReps: 4,
+                targetSets: 4
+            ),
         ])
 
         let report = try await harness.stack.purge(.everything)
@@ -371,23 +371,35 @@ struct StorePurgeTests {
 
         #expect(report == PurgeReport(removed: 0, retained: 0))
     }
+}
 
-    private func remainingCounts(in harness: RepositoryHarness) throws -> [String: Int] {
-        [
-            "exercises": try count(ExerciseEntity.self, in: harness),
-            "sessions": try count(WorkoutSessionEntity.self, in: harness),
-            "entries": try count(ExerciseEntryEntity.self, in: harness),
-            "sets": try count(SetEntryEntity.self, in: harness),
-            "trainingMaxes": try count(TrainingMaxConfigEntity.self, in: harness),
-            "bodyweight": try count(BodyweightEntryEntity.self, in: harness),
-            "equipment": try count(EquipmentProfileEntity.self, in: harness),
-            "settings": try count(UserSettingsEntity.self, in: harness),
-            "records": try count(PersonalRecordCacheEntity.self, in: harness),
-            "routines": try count(RoutineEntity.self, in: harness),
-            "routineExercises": try count(RoutineExerciseEntity.self, in: harness),
-            "targetGroups": try count(RoutineTargetGroupEntity.self, in: harness),
-        ]
-    }
+// The two helpers the suite's assertions are built from, at file scope rather than inside the
+// struct: they are about the store rather than about any one test, and a suite this long has a
+// body-length ceiling to stay under.
+
+private func count<T: StoredEntity>(
+    _ type: T.Type,
+    in harness: RepositoryHarness
+) throws -> Int {
+    try harness.store().rows(type, includingDeleted: true).count
+}
+
+private func remainingCounts(in harness: RepositoryHarness) throws -> [String: Int] {
+    [
+        "exercises": try count(ExerciseEntity.self, in: harness),
+        "sessions": try count(WorkoutSessionEntity.self, in: harness),
+        "entries": try count(ExerciseEntryEntity.self, in: harness),
+        "sets": try count(SetEntryEntity.self, in: harness),
+        "trainingMaxes": try count(TrainingMaxConfigEntity.self, in: harness),
+        "bodyweight": try count(BodyweightEntryEntity.self, in: harness),
+        "equipment": try count(EquipmentProfileEntity.self, in: harness),
+        "settings": try count(UserSettingsEntity.self, in: harness),
+        "records": try count(PersonalRecordCacheEntity.self, in: harness),
+        "routines": try count(RoutineEntity.self, in: harness),
+        "routineExercises": try count(RoutineExerciseEntity.self, in: harness),
+        "targetGroups": try count(RoutineTargetGroupEntity.self, in: harness),
+        "plannedTargets": try count(PlannedTargetGroupEntity.self, in: harness),
+    ]
 }
 
 /// The five live columns that can name an exercise, driving one case each.

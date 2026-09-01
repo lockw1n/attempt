@@ -24,6 +24,7 @@ struct PurgePlan {
     private let routines: [RoutineEntity]
     private let routineExercises: [RoutineExerciseEntity]
     private let targetGroups: [RoutineTargetGroupEntity]
+    private let plannedTargets: [PlannedTargetGroupEntity]
 
     private let scope: PurgeScope
 
@@ -40,6 +41,7 @@ struct PurgePlan {
     private var freedRoutines: Set<UUID> = []
     private var freedRoutineExercises: Set<UUID> = []
     private var freedTargetGroups: Set<UUID> = []
+    private var freedPlannedTargets: Set<UUID> = []
 
     /// Reads the whole store and resolves the plan.
     ///
@@ -61,6 +63,7 @@ struct PurgePlan {
         routines = try context.rows(RoutineEntity.self, includingDeleted: true)
         routineExercises = try context.rows(RoutineExerciseEntity.self, includingDeleted: true)
         targetGroups = try context.rows(RoutineTargetGroupEntity.self, includingDeleted: true)
+        plannedTargets = try context.rows(PlannedTargetGroupEntity.self, includingDeleted: true)
 
         freedExercises = eligibleIDs(in: exercises)
         freedSessions = eligibleIDs(in: sessions)
@@ -74,6 +77,7 @@ struct PurgePlan {
         freedRoutines = eligibleIDs(in: routines)
         freedRoutineExercises = eligibleIDs(in: routineExercises)
         freedTargetGroups = eligibleIDs(in: targetGroups)
+        freedPlannedTargets = eligibleIDs(in: plannedTargets)
 
         retainReferenced()
     }
@@ -129,6 +133,12 @@ struct PurgePlan {
             for group in targetGroups where !freedTargetGroups.contains(group.id) {
                 changed = retain(group.routineExerciseID, in: &freedRoutineExercises) || changed
             }
+            // A surviving planned target holds the entry it was planned for, exactly as a
+            // surviving set does — the snapshot is the session's own row and outlives the routine
+            // it was copied from (`TR-15.3`).
+            for group in plannedTargets where !freedPlannedTargets.contains(group.id) {
+                changed = retain(group.exerciseEntryID, in: &freedEntries) || changed
+            }
         }
     }
 
@@ -148,6 +158,7 @@ struct PurgePlan {
             + held(in: routines, freed: freedRoutines)
             + held(in: routineExercises, freed: freedRoutineExercises)
             + held(in: targetGroups, freed: freedTargetGroups)
+            + held(in: plannedTargets, freed: freedPlannedTargets)
             + records.filter { scope.covers($0) && !isDoomed($0) }.count
     }
 
@@ -181,6 +192,7 @@ struct PurgePlan {
         doomed.append(
             contentsOf: routineExercises.filter { freedRoutineExercises.contains($0.id) })
         doomed.append(contentsOf: targetGroups.filter { freedTargetGroups.contains($0.id) })
+        doomed.append(contentsOf: plannedTargets.filter { freedPlannedTargets.contains($0.id) })
         doomed.append(contentsOf: records.filter(isDoomed))
         return doomed
     }

@@ -36,7 +36,7 @@ public enum RoutineEditorMode: Sendable, Equatable {
 public final class RoutineEditorState {
     /// What the screen has to show, as one value rather than four flags.
     public enum Phase: Sendable, Equatable {
-        /// Nothing has been read yet. ``RoutineEditorState/open(_:)`` moves out of this.
+        /// Nothing has been read yet. ``RoutineEditorState/open(_:screen:)`` moves out of this.
         case idle
 
         /// A read is in flight.
@@ -75,7 +75,7 @@ public final class RoutineEditorState {
     /// The exercise slots, in the order they are drawn and stored.
     private(set) var slots: [RoutineSlotDraft] = []
 
-    /// Which routine this is about. Set by ``open(_:)``, so the screen and the chooser pushed over
+    /// Which routine this is about. Set by ``open(_:screen:)``, so the screen and the chooser pushed over
     /// it agree on one answer.
     public private(set) var mode: RoutineEditorMode = .create
 

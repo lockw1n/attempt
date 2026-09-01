@@ -105,12 +105,12 @@ struct CloudKitCompatibilityTests {
     // it carries the version identifier a migration keys off.
     private let schema = Schema(versionedSchema: SchemaV1.self)
 
-    @Test("All twelve entities are in the audited schema")
-    func twelveEntities() {
+    @Test("All thirteen entities are in the audited schema")
+    func thirteenEntities() {
         // Without this the audit passes vacuously on an empty or mis-built schema, which is exactly
         // how a checklist becomes a markdown table.
-        #expect(schema.entities.count == 12)
-        #expect(SchemaV1.models.count == 12)
+        #expect(schema.entities.count == 13)
+        #expect(SchemaV1.models.count == 13)
     }
 
     @Test("Every property is optional or defaulted, nothing is unique, nothing is a relationship")
@@ -152,9 +152,9 @@ struct CloudKitCompatibilityTests {
         #expect(defaultValue(of: "id", on: "ExerciseEntity", in: schema) as? UUID != SchemaDefaults.unlinkedID)
     }
 
-    @Test("The nine defaulted UUID columns that are not identities default to the all-zero sentinel")
+    @Test("The eleven defaulted UUID columns that are not identities default to the all-zero sentinel")
     func sentinelColumns() {
-        // Eight join keys and one anonymous user id — three distinct failure modes on one type,
+        // Ten join keys and one anonymous user id — three distinct failure modes on one type,
         // which is why the checklist gives them a line rather than a tick. Pinned here so a later
         // column cannot quietly take `UUID()` instead and manufacture a reference, or an account.
         let expected = [
@@ -162,6 +162,7 @@ struct CloudKitCompatibilityTests {
             "ExerciseEntryEntity.sessionID",
             "PersonalRecordCacheEntity.exerciseID",
             "PersonalRecordCacheEntity.sourceSetID",
+            "PlannedTargetGroupEntity.exerciseEntryID",
             "RoutineExerciseEntity.exerciseID",
             "RoutineExerciseEntity.routineID",
             "RoutineTargetGroupEntity.routineExerciseID",

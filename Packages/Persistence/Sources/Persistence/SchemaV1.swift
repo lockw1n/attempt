@@ -51,6 +51,7 @@ enum SchemaV1: VersionedSchema {
             RoutineEntity.self,
             RoutineExerciseEntity.self,
             RoutineTargetGroupEntity.self,
+            PlannedTargetGroupEntity.self,
         ]
     }
     // audited-models:end

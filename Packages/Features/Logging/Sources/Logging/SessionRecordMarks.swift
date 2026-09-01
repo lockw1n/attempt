@@ -35,3 +35,38 @@ struct SessionRecordMarks: Equatable, Sendable {
         return bySetID[setID] ?? []
     }
 }
+
+/// Where the marks come from.
+///
+/// **Beside the type rather than on the store**, which is also what keeps
+/// `ActiveSessionStore.swift` under SwiftLint's file ceiling: this reads the cache and writes
+/// nothing, so unlike every other member of that store it does not need the file scope its
+/// `private(set)` properties are protected by.
+extension ActiveSessionStore {
+    /// Which of `exercises`' sets hold a record, and at which rep counts (`FR-1.6.3`).
+    ///
+    /// **One cache read per distinct exercise, not per card and not per set.** A workout names a
+    /// handful of exercises and two entries can name the same one; the read is `G-1.5`'s cached
+    /// answer, so a workout of six exercises costs six table reads and no walk of anything.
+    ///
+    /// **A refusal costs that exercise its badges and nothing else.** The sets are stored and drawn
+    /// either way, and a derived value that could not be read is not something to fail a workout
+    /// over (`G-1.4`) — the same swallow the recompute triggers make, for the same reason.
+    ///
+    /// - Parameter exercises: The workout's exercises, already read.
+    /// - Returns: The marks, ready to hand to the cards.
+    func recordMarks(over exercises: [SessionExercise]) async -> SessionRecordMarks {
+        var marks = SessionRecordMarks()
+        for exerciseID in Set(exercises.map(\.entry.exerciseID)) {
+            guard let repMaxes = try? await records.repMaxes(forExerciseID: exerciseID) else {
+                continue
+            }
+            for repMax in repMaxes {
+                marks.bySetID[repMax.record.sourceSetID, default: []].append(repMax.reps)
+            }
+        }
+        for setID in marks.bySetID.keys { marks.bySetID[setID]?.sort() }
+        marks.hasLoaded = true
+        return marks
+    }
+}

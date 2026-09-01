@@ -118,11 +118,17 @@ public final class ActiveSessionStore {
     /// screen has nothing useful to say about it that "kg" does not already say.
     public private(set) var displayUnit: MassUnit = .kilograms
 
-    /// Sessions, their entries and their sets.
+    /// Sessions, their entries, their sets — and the targets a routine planned for them
+    /// (`TR-15.3`).
+    ///
+    /// **Two protocols on one value rather than two properties**, which states the invariant
+    /// instead of hoping for it: a planned target hangs off an entry, so a store that could hold
+    /// one repository for the entries and another for their plans could be handed two different
+    /// stores and would write half a session into each.
     ///
     /// Internal rather than private because the write commands live in `ActiveSessionCommands.swift`
-    /// — `private` is file-scoped, and this type is two files.
-    let repository: any WorkoutRepository
+    /// — `private` is file-scoped, and this type is three files.
+    let repository: any WorkoutRepository & PlannedTargetRepository
 
     /// The exercises those entries name. See ``repository``.
     let catalogue: any ExerciseRepository
@@ -160,7 +166,8 @@ public final class ActiveSessionStore {
     /// Builds the store over the three repositories the workout is assembled from.
     ///
     /// - Parameters:
-    ///   - repository: Sessions, their entries and their sets.
+    ///   - repository: Sessions, their entries, their sets and their planned targets — one value
+    ///     answering two protocols, for the reason ``repository`` gives.
     ///   - catalogue: The exercises those entries name. A second protocol rather than a join,
     ///     because the schema declares no relationships (`G-2.5`) — see ``SessionExercise``.
     ///   - settings: The single settings row, for the unit a load is entered in. A third protocol
@@ -170,7 +177,7 @@ public final class ActiveSessionStore {
     ///     owes is a recomputation, and handing this store the cache instead would make it the
     ///     second thing in the app that knows how a personal record is derived.
     public init(
-        repository: any WorkoutRepository,
+        repository: any WorkoutRepository & PlannedTargetRepository,
         catalogue: any ExerciseRepository,
         settings: any SettingsRepository,
         records: PersonalRecordRecomputer
@@ -356,8 +363,9 @@ public final class ActiveSessionStore {
 
     /// Reads the workout's exercises, their sets and the catalogue rows they name (`FR-1.2.2`).
     ///
-    /// **Three reads per call and one per exercise**, which is what a schema with no relationships
-    /// costs (`G-2.5`). It is a small cost at this size: a workout is a handful of exercises, the
+    /// **Three reads per call and two per exercise**, which is what a schema with no relationships
+    /// costs (`G-2.5`) — the second of the two is the plan a routine left on the entry (`TR-15.3`),
+    /// read here rather than once at start so that a card rebuilt after any write still has it. It is a small cost at this size: a workout is a handful of exercises, the
     /// store is local and synchronous under the `async` signature (`G-2.2`, `G-2.3`), and the
     /// alternative — caching a join across a screen boundary — is a second source of truth for rows
     /// the picker above is writing (`G-1.4`).
@@ -382,7 +390,9 @@ public final class ActiveSessionStore {
                     SessionExercise(
                         entry: entry,
                         exercise: try await catalogue.exercise(id: entry.exerciseID, includingDeleted: false),
-                        sets: try await repository.sets(forEntryID: entry.id, includingDeleted: false)
+                        sets: try await repository.sets(forEntryID: entry.id, includingDeleted: false),
+                        planned: try await repository.plannedTargets(
+                            forEntryID: entry.id, includingDeleted: false)
                     )
                 )
             }
@@ -395,33 +405,6 @@ public final class ActiveSessionStore {
             exercisesReadFailure = String(describing: error)
         }
         hasLoadedExercises = true
-    }
-
-    /// Which of `exercises`' sets hold a record, and at which rep counts (`FR-1.6.3`).
-    ///
-    /// **One cache read per distinct exercise, not per card and not per set.** A workout names a
-    /// handful of exercises and two entries can name the same one; the read is `G-1.5`'s cached
-    /// answer, so a workout of six exercises costs six table reads and no walk of anything.
-    ///
-    /// **A refusal costs that exercise its badges and nothing else.** The sets are stored and drawn
-    /// either way, and a derived value that could not be read is not something to fail a workout
-    /// over (`G-1.4`) — the same swallow the recompute triggers make, for the same reason.
-    ///
-    /// - Parameter exercises: The workout's exercises, already read.
-    /// - Returns: The marks, ready to hand to the cards.
-    private func recordMarks(over exercises: [SessionExercise]) async -> SessionRecordMarks {
-        var marks = SessionRecordMarks()
-        for exerciseID in Set(exercises.map(\.entry.exerciseID)) {
-            guard let repMaxes = try? await records.repMaxes(forExerciseID: exerciseID) else {
-                continue
-            }
-            for repMax in repMaxes {
-                marks.bySetID[repMax.record.sourceSetID, default: []].append(repMax.reps)
-            }
-        }
-        for setID in marks.bySetID.keys { marks.bySetID[setID]?.sort() }
-        marks.hasLoaded = true
-        return marks
     }
 
     /// Whether a workout is in progress — what the screen-wake policy and every entry point read.

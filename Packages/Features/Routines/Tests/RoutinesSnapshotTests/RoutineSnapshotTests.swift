@@ -37,6 +37,21 @@
             }
         }
 
+        // FR-15.2.3's command, which is what the list is FOR now: the plan is pushed by the row
+        // and the workout is started by the button under it. Stacked rather than side by side, so
+        // accessibility3 is the configuration worth reading here.
+        @Test func cardCarriesTheStartCommand() throws {
+            try assertSnapshots(named: "RoutineList-card") {
+                VStack(alignment: .leading) {
+                    RoutineCard(
+                        routine: RoutineSummary(
+                            id: UUID(), name: "Heavy squat day", exerciseCount: 4),
+                        start: {}
+                    )
+                }
+            }
+        }
+
         // The row a store this app did not write can still produce: the editor refuses an empty
         // name, so this is the stand-in rather than a state the app can author.
         @Test func listRowWithNoName() throws {

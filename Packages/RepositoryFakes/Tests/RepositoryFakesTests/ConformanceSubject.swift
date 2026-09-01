@@ -85,7 +85,8 @@ struct Subject: Sendable, CustomTestStringConvertible {
                 bodyweight: stack.bodyweight,
                 equipment: stack.equipment,
                 personalRecords: stack.personalRecords,
-                routines: stack.routines
+                routines: stack.routines,
+                plannedTargets: stack.workouts
             )
         },
         Subject(name: "InMemoryRepositoryStack") {
@@ -97,7 +98,8 @@ struct Subject: Sendable, CustomTestStringConvertible {
                 bodyweight: stack.bodyweight,
                 equipment: stack.equipment,
                 personalRecords: stack.personalRecords,
-                routines: stack.routines
+                routines: stack.routines,
+                plannedTargets: stack.workouts
             )
         },
     ]
@@ -112,6 +114,7 @@ struct Repositories: Sendable {
     let equipment: any EquipmentRepository
     let personalRecords: any PersonalRecordCacheRepository
     let routines: any RoutineRepository
+    let plannedTargets: any PlannedTargetRepository
 }
 
 // MARK: - Records
@@ -357,6 +360,27 @@ func routineTargetGroupRecord(
         routineExerciseID: routineExerciseID,
         order: order,
         targetWeight: Weight(grams: grams),
+        targetReps: reps,
+        targetSets: sets
+    )
+}
+
+func plannedTargetGroupRecord(
+    id: UUID = UUID(),
+    exerciseEntryID: UUID,
+    order: Int = 0,
+    grams: Int? = 100_000,
+    reps: Int = 5,
+    sets: Int = 4
+) -> PlannedTargetGroup {
+    PlannedTargetGroup(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: nil,
+        exerciseEntryID: exerciseEntryID,
+        order: order,
+        targetWeight: grams.map(Weight.init(grams:)),
         targetReps: reps,
         targetSets: sets
     )

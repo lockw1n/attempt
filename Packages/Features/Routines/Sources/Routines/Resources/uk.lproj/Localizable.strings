@@ -10,6 +10,9 @@
 "routines.list.error.headline" = "Не вдалося завантажити програми";
 "routines.list.error.message" = "Читання не вдалося. Спробуйте ще раз.";
 
+"routines.list.start" = "Почати тренування";
+"routines.list.start.error.message" = "Завершіть або скасуйте поточне тренування, перш ніж починати нове.";
+
 "routines.list.row.unnamed" = "Програма без назви";
 
 "routines.editor.create.title" = "Нова програма";

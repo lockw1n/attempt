@@ -44,6 +44,23 @@ struct RoutineListStateTests {
         #expect(list.routines.map(\.exerciseCount) == [2])
     }
 
+    /// `FR-15.2.3`: the one refusal the start command has is a workout already in progress, and
+    /// the screen is what knows it asked.
+    @Test("A start that did not start a workout is reported, and a fresh read retires it")
+    func afailedStartIsReportedThenRetired() async {
+        let state = RoutineListState(repository: InMemoryRepositoryStack().routines)
+
+        state.startDidFinish(started: false)
+        #expect(state.startDidFail)
+
+        state.startDidFinish(started: true)
+        #expect(!state.startDidFail)
+
+        state.startDidFinish(started: false)
+        await state.load()
+        #expect(!state.startDidFail)
+    }
+
     @Test("A failed read is a phase carrying the diagnostic, not an empty list")
     func failedRead() async {
         let state = RoutineListState(repository: RefusingRoutineRepository())

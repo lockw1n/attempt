@@ -34,7 +34,10 @@ struct FeedSortKey: Comparable {
 ///
 /// The three levels join by `UUID` here exactly as they do in the store, so the cascade and the
 /// personal-record ordering are written rather than inherited.
-struct InMemoryWorkoutRepository: WorkoutRepository, Sendable {
+///
+/// **It answers `PlannedTargetRepository` too**, for the reason `Persistence`'s implementation
+/// does: a planned target hangs off an entry like a set does, so its cascade is this type's.
+struct InMemoryWorkoutRepository: WorkoutRepository, PlannedTargetRepository, Sendable {
     let store: InMemoryRepositoryStore
 
     /// Sessions dated within `range`, newest first.
@@ -107,6 +110,19 @@ struct InMemoryWorkoutRepository: WorkoutRepository, Sendable {
         includingDeleted: Bool
     ) async throws -> [SetEntry] {
         await store.allSets(forExerciseID: exerciseID, includingDeleted: includingDeleted)
+    }
+
+    /// The groups planned for one entry, by order then id (`TR-15.3`).
+    func plannedTargets(
+        forEntryID entryID: UUID,
+        includingDeleted: Bool
+    ) async throws -> [PlannedTargetGroup] {
+        await store.allPlannedTargets(forEntryID: entryID, includingDeleted: includingDeleted)
+    }
+
+    /// Inserts or replaces the group, refusing an entry that does not exist.
+    func save(_ group: PlannedTargetGroup) async throws {
+        try await store.savePlannedTarget(group)
     }
 }
 
@@ -242,8 +258,25 @@ extension InMemoryRepositoryStore {
             }
     }
 
-    /// Soft-deletes the named entries and every live set hanging off them, without a save of its
-    /// own.
+    /// The entry's planned targets, by order then id.
+    func allPlannedTargets(forEntryID entryID: UUID, includingDeleted: Bool) -> [PlannedTargetGroup] {
+        plannedTargetGroups.values
+            .filter { $0.exerciseEntryID == entryID }
+            .live(includingDeleted: includingDeleted)
+            .sortedDeterministically { ($0.order, $0.id.uuidString) }
+    }
+
+    /// Inserts or replaces `group`, checking its join key.
+    ///
+    /// - Throws: ``RepositoryInterface/RepositoryError/danglingReference(recordID:referencing:)``
+    ///   when `exerciseEntryID` names no row.
+    func savePlannedTarget(_ group: PlannedTargetGroup) throws {
+        try requireReferenced(entries, id: group.exerciseEntryID, from: group.id)
+        upserted(group, into: &plannedTargetGroups, at: .now)
+    }
+
+    /// Soft-deletes the named entries, every live set hanging off them and every live target
+    /// planned for them, without a save of its own.
     ///
     /// Shared by the two cascading deletes so that "a deleted entry never leaves a live set" is one
     /// piece of code rather than an obligation on two. An entry already deleted keeps the date it
@@ -257,6 +290,11 @@ extension InMemoryRepositoryStore {
         let swept = Set(entryIDs)
         for (id, set) in sets where swept.contains(set.entryID) {
             sets[id] = sweeping(set, at: now)
+        }
+
+        // The plan goes with the exercise it was planned for (`TR-15.3`).
+        for (id, group) in plannedTargetGroups where swept.contains(group.exerciseEntryID) {
+            plannedTargetGroups[id] = sweeping(group, at: now)
         }
     }
 }

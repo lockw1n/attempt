@@ -27,6 +27,12 @@ enum RoutinesStrings {
     /// What to do about a failed read.
     static let listErrorMessage = resource("routines.list.error.message")
 
+    /// The command that starts a workout from a routine (`FR-15.2.3`).
+    static let listStartAction = resource("routines.list.start")
+
+    /// Why no workout was started — there is already one in progress.
+    static let listStartErrorMessage = resource("routines.list.start.error.message")
+
     /// A routine with no name, which the editor cannot save and a foreign row can still hold.
     static let listUnnamed = resource("routines.list.row.unnamed")
 

@@ -34,8 +34,13 @@ public struct PersistenceStack: Sendable {
     /// The exercise catalogue and each exercise's training-max history.
     public let exercises: any ExerciseRepository
 
-    /// Sessions, entries and sets.
-    public let workouts: any WorkoutRepository
+    /// Sessions, entries, sets — and the targets a routine planned for them (`TR-15.3`).
+    ///
+    /// **One property answering two protocols**, because it is one actor over one container: a
+    /// planned target hangs off an exercise entry, so the delete that cascades into it has to be
+    /// the same object's. Two properties would let a caller be handed two stores and write half a
+    /// session into each.
+    public let workouts: any WorkoutRepository & PlannedTargetRepository
 
     /// The single settings row (`TR-1.10`).
     public let settings: any SettingsRepository

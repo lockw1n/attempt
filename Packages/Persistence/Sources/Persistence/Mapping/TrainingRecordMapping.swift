@@ -3,7 +3,7 @@ import PowerliftingCore
 import RepositoryInterface
 import SwiftData
 
-// The four training entities. See `RecordMapping.swift` for the three members' contract and for why
+// The five training entities. See `RecordMapping.swift` for the three members' contract and for why
 // `update(from:)` leaves the audit columns alone.
 
 extension ExerciseEntity: RecordMappable {
@@ -221,5 +221,45 @@ extension SetEntryEntity: RecordMappable {
         replaceModifiers(with: record.modifiers.map(\.rawValue))
         notes = record.notes
         completedAt = record.completedAt
+    }
+}
+
+extension PlannedTargetGroupEntity: RecordMappable {
+    /// This row as a record.
+    var record: PlannedTargetGroup {
+        PlannedTargetGroup(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            exerciseEntryID: exerciseEntryID,
+            order: order,
+            targetWeight: targetWeightGrams.map(Weight.init(grams:)),
+            targetReps: targetReps,
+            targetSets: targetSets
+        )
+    }
+
+    /// A new row carrying `record`.
+    convenience init(record: PlannedTargetGroup) {
+        self.init(
+            id: record.id,
+            exerciseEntryID: record.exerciseEntryID,
+            order: record.order,
+            targetWeightGrams: record.targetWeight?.grams,
+            targetReps: record.targetReps,
+            targetSets: record.targetSets,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt
+        )
+    }
+
+    /// Overwrites this row from `record`.
+    func update(from record: PlannedTargetGroup) {
+        exerciseEntryID = record.exerciseEntryID
+        order = record.order
+        targetWeightGrams = record.targetWeight?.grams
+        targetReps = record.targetReps
+        targetSets = record.targetSets
     }
 }

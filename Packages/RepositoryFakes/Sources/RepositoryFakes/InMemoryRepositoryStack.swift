@@ -14,8 +14,9 @@ public struct InMemoryRepositoryStack: Sendable {
     /// The exercise catalogue and each exercise's training-max history.
     public let exercises: any ExerciseRepository
 
-    /// Sessions, entries and sets.
-    public let workouts: any WorkoutRepository
+    /// Sessions, entries, sets and their planned targets — one property answering two protocols,
+    /// for `PersistenceStack`'s reason.
+    public let workouts: any WorkoutRepository & PlannedTargetRepository
 
     /// The single settings row (`TR-1.10`).
     public let settings: any SettingsRepository

@@ -75,7 +75,7 @@ struct RoutineSlotDraft: Identifiable, Equatable {
 
 extension RoutineGroupDraft {
     /// The load, `nil` for a blank target — and there is no third answer here, which is why
-    /// ``isResolvable`` reads ``weightText`` separately.
+    /// ``isResolvable(unit:locale:)`` reads ``weightText`` separately.
     func weight(unit: MassUnit, locale: Locale) -> Weight? {
         LocalizedNumberField.weight(weightText, in: unit, locale: locale)
     }

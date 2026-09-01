@@ -14,6 +14,13 @@
 "routines.list.error.headline" = "Could not load your routines";
 "routines.list.error.message" = "Something went wrong reading them. Try again.";
 
+/* FR-15.2.3's primary command, and NFR-15.3's first of two taps. */
+"routines.list.start" = "Start workout";
+
+/* The one refusal this command has: there is one workout in progress by construction, so a routine
+   started on top of an unfinished session is refused rather than queued. It names the way out. */
+"routines.list.start.error.message" = "Finish or discard the workout in progress before starting another.";
+
 /* A name the editor will not save, and a row a store this app did not write may still hold. */
 "routines.list.row.unnamed" = "Unnamed routine";
 

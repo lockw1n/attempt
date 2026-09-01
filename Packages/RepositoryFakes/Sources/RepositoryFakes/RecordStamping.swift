@@ -10,7 +10,7 @@ import RepositoryInterface
 /// immutable records cannot obey that without a way to put the four columns back.
 ///
 /// **One implementation per record type, and no shortcut.** A record's properties are `let`, so
-/// each conformance restates the whole memberwise initialiser — twelve of them, mechanical and
+/// each conformance restates the whole memberwise initialiser — thirteen of them, mechanical and
 /// verbose, and the alternative is a mutable mirror of every record shape, which is a second place
 /// for a column to go missing. `RecordStampingTests` proves this of every conformance on its list;
 /// ``RepositoryInterface/PersonalRecordCache``'s is the one not on it.
@@ -255,6 +255,22 @@ extension RoutineTargetGroup: AuditStamped {
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             routineExerciseID: routineExerciseID,
+            order: order,
+            targetWeight: targetWeight,
+            targetReps: targetReps,
+            targetSets: targetSets
+        )
+    }
+}
+
+extension PlannedTargetGroup: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> PlannedTargetGroup {
+        PlannedTargetGroup(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            exerciseEntryID: exerciseEntryID,
             order: order,
             targetWeight: targetWeight,
             targetReps: targetReps,

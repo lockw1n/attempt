@@ -31,6 +31,22 @@ public struct RoundingRule: Sendable, Hashable, Codable {
     /// - Returns: `nil` if `increment` is zero or negative.
     public init?(increment: Weight, strategy: RoundingStrategy) {
         guard increment.grams >= 1 else { return nil }
+        self.init(unchecked: increment, strategy: strategy)
+    }
+
+    /// The rule that changes nothing: a one-gram step, which every weight already lands on.
+    ///
+    /// **How a caller asks for no rounding**, ``PrescriptionContext/rounding`` being required — see
+    /// that property for why the alternative is not an optional. A constant rather than each caller
+    /// spelling out a one-gram increment, because ``init(increment:strategy:)`` is failable and a
+    /// value that cannot fail should not make every call site carry a branch that cannot be taken.
+    public static let unrounded = RoundingRule(unchecked: Weight(grams: 1), strategy: .nearest)
+
+    /// The initialiser ``unrounded`` is built with, which is why it is not the failable one.
+    ///
+    /// Private, and reached by exactly one caller with a literal that meets the floor — so the
+    /// invariant is still checked everywhere it can be violated.
+    private init(unchecked increment: Weight, strategy: RoundingStrategy) {
         self.increment = increment
         self.strategy = strategy
     }
