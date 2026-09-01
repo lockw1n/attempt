@@ -34,7 +34,7 @@
                 fixedEnvironment {
                     SessionExerciseList(
                         exercises: PlanFixtures.exercises,
-                        expansion: .constant([:]),
+                        expansion: .constant(PlanFixtures.expansion),
                         warmupExpansion: .constant([:]),
                         move: { _, _ in },
                         unit: .kilograms,

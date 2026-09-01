@@ -114,6 +114,9 @@ public struct PastSessionView: View {
             SetEditorSheet(
                 draft: draft(for: target),
                 isEditing: true,
+                // No target: this screen has no planned-target read wired up, for the reason its
+                // set rows draw none.
+                unit: state.displayUnit,
                 vocabulary: vocabulary,
                 equipment: equipment,
                 log: { write($0, target) },

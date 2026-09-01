@@ -68,6 +68,27 @@ struct LoggingStringsTests {
                 == "0 of 0 exercises complete")
     }
 
+    @Test("The plan's three rep counts pluralise, one rep included")
+    func planLinesPluraliseOnTheRepCount() {
+        // `FR-15.3.2`'s deviation is off by one more often than by anything else, so "1 reps" is
+        // the reading this would otherwise carry most of the time — the same argument the progress
+        // line's plural is made on, one requirement later.
+        #expect(String(localized: LoggingStrings.sessionPlanRepsDelta(1)) == "1 rep")
+        #expect(String(localized: LoggingStrings.sessionPlanRepsDelta(2)) == "2 reps")
+        #expect(
+            String(localized: LoggingStrings.sessionPlanTarget(weight: "100 kg", reps: 1))
+                == "Target 100 kg × 1 rep")
+        #expect(
+            String(localized: LoggingStrings.sessionPlanTarget(weight: "85 kg", reps: 8))
+                == "Target 85 kg × 8 reps")
+        #expect(
+            String(localized: LoggingStrings.sessionPlanTargetOpenLoad(reps: 1))
+                == "Target 1 rep, load your own")
+        #expect(
+            String(localized: LoggingStrings.sessionPlanTargetOpenLoad(reps: 5))
+                == "Target 5 reps, load your own")
+    }
+
     @Test("Keys follow the convention: lowercase, dotted, module-prefixed")
     func keysFollowTheConvention() {
         for resource in LoggingStrings.all {

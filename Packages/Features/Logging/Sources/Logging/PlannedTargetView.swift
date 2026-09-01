@@ -86,9 +86,7 @@ struct PlannedTargetLine: View {
                             comparison.reps,
                             value: String(
                                 localized: LoggingStrings.sessionPlanRepsDelta(
-                                    comparison.repsDifference.formatted(AppFormat.count(locale: locale))
-                                )
-                            )
+                                    comparison.repsDifference))
                         )
                     }
                 }
@@ -111,11 +109,11 @@ struct PlannedTargetLine: View {
 
     /// The prescription in words — with the load, or saying it named none.
     private var targetText: LocalizedStringResource {
-        let reps = target.targetReps.formatted(AppFormat.count(locale: locale))
         guard let weight = target.targetWeight else {
-            return LoggingStrings.sessionPlanTargetOpenLoad(reps: reps)
+            return LoggingStrings.sessionPlanTargetOpenLoad(reps: target.targetReps)
         }
-        return LoggingStrings.sessionPlanTarget(weight: rendered(weight), reps: reps)
+        return LoggingStrings.sessionPlanTarget(
+            weight: rendered(weight), reps: target.targetReps)
     }
 
     /// One load, in the display unit and at the app's precision.

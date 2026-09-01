@@ -95,6 +95,15 @@
             ),
         ]
 
+        /// Which of the four cards the reference draws open.
+        ///
+        /// **The checked-off card is pinned open, and that is what the reference is for.** A card
+        /// folds once it is done, so left to itself the fixture would picture
+        /// ``ExerciseDoneToggle`` in one of its two states only — and the checked one is where
+        /// `G-4.5` has something to prove: a filled glyph and a different word, neither of them
+        /// tint. The skipped card is left folded, which is the other half of the same claim.
+        static let expansion: [UUID: Bool] = [Fixtures.identifier("B7"): true]
+
         /// One planned card: the exercise, what was prescribed for it and what was logged against
         /// it. Every identifier and timestamp is fixed so a rendering never moves.
         private static func card(

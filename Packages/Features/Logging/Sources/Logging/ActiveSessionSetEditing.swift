@@ -28,6 +28,19 @@ extension ActiveSessionView {
         Self.draft(for: target, unit: store.displayUnit, locale: locale)
     }
 
+    /// What a routine planned for one already-logged set, or `nil` (`FR-15.3.1`).
+    ///
+    /// **Resolved here rather than handed up from the row**, which keeps the card's `edit` closure
+    /// the one-argument thing every caller of it already passes — `PastSessionView` included, where
+    /// there is no plan to resolve. The card knows the answer too; asking the held list for it
+    /// again costs one walk of one exercise's sets, against a signature change through four types.
+    ///
+    /// - Parameter set: The set the editor is opening over.
+    /// - Returns: The group it was planned against, where one planned it.
+    func prescription(for set: SetEntry) -> PlannedTargetGroup? {
+        store.exercises.first { $0.id == set.entryID }?.plannedTargets[set.id]
+    }
+
     /// ``draft(for:)`` with the unit and the locale passed rather than read off the screen.
     ///
     /// **The choice between the three initialisers is this function's whole content.** A plan comes
@@ -57,9 +70,18 @@ extension ActiveSessionView {
     /// included — see ``draft(for:)``. The outcome and the position do not: neither is on this form,
     /// and both are carried across by the write.
     ///
-    /// - Parameter set: The set to edit.
+    /// **The prescription is carried but seeds nothing** (`FR-15.3.1`). An edit opens holding the
+    /// set as it was logged, plan or no plan — what the group adds is the line above the fields
+    /// saying what was asked for, which is the whole of the requirement on a form the sheet covers
+    /// the card with.
+    ///
+    /// - Parameters:
+    ///   - set: The set to edit.
+    ///   - prescribed: The group that set was planned against, where a routine planned it.
     /// - Returns: The target the sheet presents over.
-    static func target(editing set: SetEntry) -> SetEditorTarget {
+    static func target(
+        editing set: SetEntry, prescribed: PlannedTargetGroup? = nil
+    ) -> SetEditorTarget {
         SetEditorTarget(
             entryID: set.entryID,
             values: SetEntryValues(
@@ -70,7 +92,8 @@ extension ActiveSessionView {
                 modifiers: set.modifiers,
                 notes: set.notes
             ),
-            editing: set.id
+            editing: set.id,
+            prescribed: prescribed
         )
     }
 

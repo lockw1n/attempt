@@ -93,6 +93,52 @@ struct SetEditorWriteTests {
         #expect(planned.notes.isEmpty)
     }
 
+    /// `FR-15.3.1` on the form the sheet covers the card with: the prescription is carried so the
+    /// editor can draw it, and it seeds nothing — an edit opens holding the set as it was logged.
+    @Test("An edited set carries its prescription without the plan seeding the form")
+    func anEditCarriesItsPrescription() {
+        let group = PlannedTargetGroup(
+            id: UUID(),
+            createdAt: .distantPast,
+            updatedAt: .distantPast,
+            deletedAt: nil,
+            exerciseEntryID: UUID(),
+            order: 0,
+            targetWeight: Weight(grams: 100_000),
+            targetReps: 5,
+            targetSets: 3
+        )
+        let set = SetEntry(
+            id: UUID(),
+            createdAt: .distantPast,
+            updatedAt: .distantPast,
+            deletedAt: nil,
+            entryID: UUID(),
+            order: 0,
+            weight: Weight(grams: 97_500),
+            reps: 4,
+            rpe: nil,
+            rir: nil,
+            isWarmup: false,
+            isCompleted: true,
+            targetWeight: nil,
+            targetReps: nil,
+            modifiers: [],
+            notes: "",
+            completedAt: nil
+        )
+
+        let target = ActiveSessionView.target(editing: set, prescribed: group)
+        let draft = ActiveSessionView.draft(for: target, unit: .kilograms, locale: .posix)
+
+        #expect(target.prescribed == group)
+        #expect(target.planned == nil)
+        // What the lifter did, not what was asked for: a plan that seeded here would overwrite the
+        // set being corrected with the prescription it deviated from.
+        #expect(draft.weightText == "97.5")
+        #expect(draft.repsText == "4")
+    }
+
     @Test("A target carrying a set rewrites that set, and one without logs a new one")
     func aTargetDecidesWhichWriteConfirmingIt() {
         let entryID = UUID()

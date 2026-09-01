@@ -245,7 +245,4 @@
 "logging.session.exercise.done.undo" = "Зняти позначку";
 "logging.session.plan.next.heading" = "Заплановано далі";
 "logging.session.plan.log.action" = "Записати запланований підхід";
-"logging.session.plan.target %@ %@" = "Ціль %1$@ × %2$@";
-"logging.session.plan.target-open %@" = "Ціль %@ повторень, вага на ваш розсуд";
 "logging.session.plan.on-target" = "У ціль";
-"logging.session.plan.reps-delta %@" = "%@ повторень";

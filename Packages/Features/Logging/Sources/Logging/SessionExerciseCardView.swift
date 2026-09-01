@@ -193,7 +193,11 @@ struct SessionExerciseCard: View {
     /// is a count the same way three is, and a state placeholder per card would be five of them down
     /// a workout.
     private var contents: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm.points) {
+        // Bound once here rather than read inside the loop: `plannedTargets` walks the working sets
+        // to place each one, so a computed property touched per row is that walk restarted on every
+        // line.
+        let targets = item.plannedTargets
+        return VStack(alignment: .leading, spacing: Spacing.sm.points) {
             PreviousPerformanceStrip(state: previous, unit: unit)
             if item.sets.isEmpty {
                 Text(LoggingStrings.setListEmpty)
@@ -201,7 +205,7 @@ struct SessionExerciseCard: View {
                     .foregroundStyle(ColorToken.textSecondary)
             } else {
                 warmupGroup
-                ForEach(workingSets) { row(for: $0) }
+                ForEach(workingSets) { row(for: $0, target: targets[$0.id]) }
             }
             plannedNext
             setCommands
@@ -254,16 +258,20 @@ struct SessionExerciseCard: View {
             WarmupSectionHeader(
                 count: warmups.count, isExpanded: areWarmupsExpanded, toggle: toggleWarmups)
             if areWarmupsExpanded {
-                ForEach(warmups) { row(for: $0) }
+                // No target, and by construction rather than by lookup: a warmup consumes no
+                // planned set, so ``SessionExercise/plannedTargets`` never holds one.
+                ForEach(warmups) { row(for: $0, target: nil) }
             }
         }
     }
 
     /// One set's row, wherever on the card it is drawn.
     ///
-    /// - Parameter numbered: The set and its number.
+    /// - Parameters:
+    ///   - numbered: The set and its number.
+    ///   - target: What a routine planned for it, or `nil` (`FR-15.3.1`).
     /// - Returns: The row.
-    private func row(for numbered: NumberedSet) -> some View {
+    private func row(for numbered: NumberedSet, target: PlannedTargetGroup?) -> some View {
         SetRow(
             numbered: numbered,
             unit: unit,
@@ -271,19 +279,12 @@ struct SessionExerciseCard: View {
             mark: mark,
             markCompleted: markCompleted,
             edit: edit,
-            target: targets[numbered.id]
+            target: target
         )
     }
 
     /// This card's sets, each carrying its number within its own sequence (`FR-1.2.14`).
     private var numberedSets: [NumberedSet] { SetNumbering.numbered(item.sets) }
-
-    /// What each of them was planned against, keyed on the set (`FR-15.3.1`).
-    ///
-    /// Read once for the card rather than per row: the walk that places a set in its group counts
-    /// the working sets before it, so asking it row by row would be the same walk restarted on
-    /// every line.
-    private var targets: [UUID: PlannedTargetGroup] { item.plannedTargets }
 
     /// The warmups among them, in the order they were logged.
     private var warmups: [NumberedSet] { numberedSets.filter(\.isWarmup) }
@@ -295,6 +296,10 @@ struct SessionExerciseCard: View {
     ///
     /// **Stacked rather than side by side**, which is `NFR-1.10` rather than taste: two commands
     /// sharing a row at `accessibility3` are two commands with three characters each.
+    ///
+    /// **Both carry the prescription for the next planned set**, which is what the sheet draws
+    /// above the fields (`FR-15.3.1`): the seed is the plan applied, and the line is the plan still
+    /// legible after the lifter has typed over it.
     ///
     /// **Repeat is the filled one and comes first.** It is the dominant logging action — the whole
     /// of `NFR-1.3`'s three taps is spent here — and it appears only once there is a set to repeat,
@@ -311,7 +316,8 @@ struct SessionExerciseCard: View {
                                 reps: last.reps,
                                 rpe: last.rpe,
                                 isWarmup: last.isWarmup
-                            )
+                            ),
+                            prescribed: item.nextPlannedGroup
                         )
                     )
                 } label: {
@@ -322,7 +328,13 @@ struct SessionExerciseCard: View {
             // The blank form opens filled in where a routine planned this set — `FR-15.2.3`, and
             // what makes `NFR-15.3`'s two taps reachable at all.
             Button {
-                logSet(SetEditorTarget(entryID: item.id, planned: item.plannedSeed))
+                logSet(
+                    SetEditorTarget(
+                        entryID: item.id,
+                        planned: item.plannedSeed,
+                        prescribed: item.nextPlannedGroup
+                    )
+                )
             } label: {
                 Text(LoggingStrings.setAddAction)
                     .font(Typography.actionLabel.font)

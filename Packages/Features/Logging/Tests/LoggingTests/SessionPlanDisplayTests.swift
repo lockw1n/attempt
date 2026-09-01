@@ -103,6 +103,38 @@ struct PlannedTargetComparisonTests {
         #expect(comparison.repsDifference == 0)
     }
 
+    /// The half of `FR-15.3.2` that a reps-only reading of ``isOnTarget`` would swallow: the load
+    /// deviated and the reps did not, so the row owes the lifter a mark rather than "On target".
+    @Test("A set that hit its reps and missed its load is not on target")
+    func matchingRepsAloneIsNotOnTarget() {
+        let comparison = PlannedTargetComparison(
+            set: PlanFixture.workingSet(order: 0, grams: 87_500, reps: 8),
+            target: PlanFixture.group(order: 0, grams: 85_000, reps: 8, sets: 3)
+        )
+
+        #expect(comparison.isOnTarget == false)
+        #expect(comparison.reps == .unchanged)
+        #expect(comparison.movedWeight?.direction == .increase)
+        #expect(comparison.movedWeight?.difference == Weight(grams: 2_500))
+    }
+
+    /// And the mirror, so the pair pins both clauses rather than one: the reps moved and the load
+    /// did not.
+    @Test("A set that hit its load and missed its reps is not on target either")
+    func matchingLoadAloneIsNotOnTarget() {
+        let comparison = PlannedTargetComparison(
+            set: PlanFixture.workingSet(order: 0, grams: 85_000, reps: 7),
+            target: PlanFixture.group(order: 0, grams: 85_000, reps: 8, sets: 3)
+        )
+
+        #expect(comparison.isOnTarget == false)
+        // `nil` rather than a signed zero: the load matched, so the row draws no load indicator.
+        // Asked through a member, a tuple having no `Equatable` conformance to compare against.
+        #expect(comparison.movedWeight?.direction == nil)
+        #expect(comparison.weight == .unchanged)
+        #expect(comparison.reps == .decrease)
+    }
+
     /// `FR-15.2.2`: a blank target is not a target of zero. The load has no direction at all —
     /// anchored to `nil` on one side, because two optionals compared to each other would pass on a
     /// comparison that reported nothing.

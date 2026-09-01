@@ -431,3 +431,38 @@ struct RecordDecodingFallbackTests {
         }
     }
 }
+
+@Suite("A column added later reads from a file that predates it")
+struct RecordLaterColumnTests {
+    // Rule 7, and the reason it is a rule rather than a convenience: `FR-1.11.3`'s restore reads
+    // records straight out of an archive whose `formatVersion` does not move when one of them gains
+    // a column, so a decoder that insisted on the new key would refuse the app's own backups and
+    // report them as damaged. Hand-written rather than produced by this build, for
+    // `readsAVersionOneFile`'s reason: no encoder here can leave the key out any more.
+    @Test("An entry written before the check-off column decodes as not checked off")
+    func entryWithoutTheCheckOffColumn() throws {
+        let json = """
+            {"id":"0F5A1E24-9B7D-4C31-8E62-000000000001",
+             "createdAt":0,"updatedAt":0,
+             "sessionID":"0F5A1E24-9B7D-4C31-8E62-000000000002",
+             "exerciseID":"0F5A1E24-9B7D-4C31-8E62-000000000003",
+             "order":3,"notes":"wide stance"}
+            """
+        let entry = try JSONDecoder().decode(ExerciseEntry.self, from: Data(json.utf8))
+
+        #expect(entry.isMarkedDone == false)
+        // The neighbouring fields too: a decoder that threw the record away and rebuilt an empty
+        // one would satisfy the assertion above on its own.
+        #expect(entry.notes == "wide stance")
+        #expect(entry.order == 3)
+    }
+
+    // The other half — the key is still required of *this* build's own output, so dropping it from
+    // the encoder is a change this suite notices rather than one the tolerance above absorbs.
+    @Test("This build still writes the column, whatever it holds")
+    func theColumnIsStillWritten() throws {
+        #expect(try encodedKeys(of: codingExerciseEntry()).contains("isMarkedDone"))
+        let json = try jsonText(of: codingExerciseEntry())
+        #expect(json.contains("\"isMarkedDone\":true"))
+    }
+}

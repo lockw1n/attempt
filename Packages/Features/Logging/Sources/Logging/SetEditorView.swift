@@ -1,6 +1,7 @@
 import DesignSystem
 import Localization
 import PowerliftingCore
+import RepositoryInterface
 import SwiftUI
 
 /// What confirming the set editor writes — a set that does not exist yet, or a rewrite of one that
@@ -57,6 +58,12 @@ struct SetEditorSheet: View {
     /// Whether the form is editing a logged set rather than adding one (`FR-1.2.7`).
     let isEditing: Bool
 
+    /// What a routine prescribed for the set being logged or edited, or `nil` (`FR-15.3.1`).
+    let prescribed: PlannedTargetGroup?
+
+    /// The unit that prescription is shown in (`G-3.1`). Unused where there is none.
+    let unit: MassUnit
+
     /// The modifier terms on offer (`FR-1.2.8`), handed down to the row that picks from them.
     let vocabulary: SetModifierVocabulary
 
@@ -78,6 +85,8 @@ struct SetEditorSheet: View {
     ///   - draft: What the form opens holding — blank, `FR-1.2.6`'s copy of the last set, or the
     ///     set being edited.
     ///   - isEditing: Whether that set already exists.
+    ///   - prescribed: What a routine planned for it, where one did (`FR-15.3.1`).
+    ///   - unit: The unit that prescription is shown in.
     ///   - vocabulary: The modifier terms on offer (`FR-1.2.8`).
     ///   - equipment: The gym `FR-1.4.1`'s loading is worked out on.
     ///   - log: Logs the set, or saves the edit.
@@ -86,6 +95,8 @@ struct SetEditorSheet: View {
     init(
         draft: SetDraft,
         isEditing: Bool = false,
+        prescribed: PlannedTargetGroup? = nil,
+        unit: MassUnit,
         vocabulary: SetModifierVocabulary,
         equipment: PlateCalculatorStore,
         log: @escaping (SetDraft) -> Void,
@@ -95,6 +106,8 @@ struct SetEditorSheet: View {
         _draft = State(initialValue: draft)
         _hasInput = State(initialValue: !draft.isBlank)
         self.isEditing = isEditing
+        self.prescribed = prescribed
+        self.unit = unit
         self.vocabulary = vocabulary
         self.equipment = equipment
         self.log = log
@@ -111,6 +124,7 @@ struct SetEditorSheet: View {
     /// what `NFR-1.4` asks for: the control the thumb reaches for does not move.
     var body: some View {
         VStack(spacing: Spacing.sm.points) {
+            plannedTarget
             ScrollView {
                 SetEditorFields(
                     draft: $draft,
@@ -131,6 +145,22 @@ struct SetEditorSheet: View {
             )
         }
         .background(ColorToken.background)
+    }
+
+    /// `FR-15.3.1`'s target, where a routine planned this set.
+    ///
+    /// **Above the scroll view rather than in the fields, and pinned for the commands' reason.**
+    /// This sheet covers the card the target is drawn on, so without it the one moment the lifter
+    /// is actually entering a number is the one moment the plan is not on screen. Inside the
+    /// fields it would push the load and the repetitions below the fold at the medium detent,
+    /// which is the measurement ``SetEditorFields`` is ordered around; pinned, it costs the form
+    /// one line and moves nothing.
+    @ViewBuilder private var plannedTarget: some View {
+        if let prescribed {
+            PlannedTargetLine(target: prescribed, comparison: nil, unit: unit)
+                .padding(.horizontal, Spacing.lg.points)
+                .padding(.top, Spacing.lg.points)
+        }
     }
 }
 

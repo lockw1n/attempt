@@ -39,16 +39,18 @@ extension LoggingStrings {
     /// The one-tap command that logs the next planned set exactly as prescribed (`NFR-15.3`).
     static let sessionPlanLogAction = resource("logging.session.plan.log.action")
 
-    /// A target as it is drawn beside a set — a load and a repetition count, already rendered.
+    /// A target as it is drawn beside a set — a rendered load and a repetition count.
     ///
-    /// **A format string rather than an interpolation** (`G-3.4`): both numbers are formatted by
-    /// the caller and the separator between them belongs to the translation.
+    /// **The load arrives rendered and the reps arrive as a number**, which is
+    /// ``LoggingStrings/equipmentPlatePairs(plate:pairs:)``' split for the same reason: `AppFormat`
+    /// is what decides how a weight reads and a catalogue cannot, while the rep count has to reach
+    /// the catalogue as a number for the plural rule to see it (`G-3.4`).
     ///
     /// - Parameters:
     ///   - weight: The prescribed load, rendered.
-    ///   - reps: The prescribed repetitions, rendered.
+    ///   - reps: The prescribed repetitions.
     /// - Returns: The target line.
-    static func sessionPlanTarget(weight: String, reps: String) -> LocalizedStringResource {
+    static func sessionPlanTarget(weight: String, reps: Int) -> LocalizedStringResource {
         resource("logging.session.plan.target \(weight) \(reps)")
     }
 
@@ -58,9 +60,9 @@ extension LoggingStrings {
     /// missing target — it prescribes the reps and leaves the load to the lifter, and a line that
     /// simply dropped the weight would read as a plan that forgot it.
     ///
-    /// - Parameter reps: The prescribed repetitions, rendered.
+    /// - Parameter reps: The prescribed repetitions.
     /// - Returns: The target line.
-    static func sessionPlanTargetOpenLoad(reps: String) -> LocalizedStringResource {
+    static func sessionPlanTargetOpenLoad(reps: Int) -> LocalizedStringResource {
         resource("logging.session.plan.target-open \(reps)")
     }
 
@@ -73,11 +75,11 @@ extension LoggingStrings {
     ///
     /// **Rendered as "2 reps" rather than as a bare numeral**, because it is drawn beside a load
     /// deviation that carries its own unit — and read aloud, two signed numerals in a row are two
-    /// facts nothing tells apart.
+    /// facts nothing tells apart. Plural, because one is the commonest miss there is.
     ///
-    /// - Parameter reps: How many, unsigned and rendered.
+    /// - Parameter reps: How many, unsigned.
     /// - Returns: The magnitude.
-    static func sessionPlanRepsDelta(_ reps: String) -> LocalizedStringResource {
+    static func sessionPlanRepsDelta(_ reps: Int) -> LocalizedStringResource {
         resource("logging.session.plan.reps-delta \(reps)")
     }
 
@@ -86,9 +88,9 @@ extension LoggingStrings {
         [
             sessionExerciseMarkedDone, sessionExerciseSkipped,
             sessionPlanNextHeading, sessionPlanLogAction, sessionPlanOnTarget,
-            sessionPlanTarget(weight: "", reps: ""),
-            sessionPlanTargetOpenLoad(reps: ""),
-            sessionPlanRepsDelta(""),
+            sessionPlanTarget(weight: "", reps: 0),
+            sessionPlanTargetOpenLoad(reps: 0),
+            sessionPlanRepsDelta(0),
         ] + [true, false].map(sessionExerciseDoneAction(isDone:))
     }
 }

@@ -41,6 +41,9 @@ public struct ExerciseEntry: StoredRecord {
     ///
     /// **`true` with no working sets under it is an explicit skip**, which is a real outcome rather
     /// than an error state: the plan named an exercise and the lifter decided against it.
+    ///
+    /// **On the wire it is rule 7's**: a file written before the column existed reads `false` here
+    /// rather than throwing, which is the same value the stored column backfills from.
     public let isMarkedDone: Bool
 
     /// Creates an entry record. No property is validated; see this module's header.
@@ -99,11 +102,12 @@ extension ExerciseEntry {
             exerciseID: try container.decode(UUID.self, forKey: .exerciseID),
             order: try container.decode(Int.self, forKey: .order),
             notes: try container.decode(String.self, forKey: .notes),
-            isMarkedDone: try container.decode(Bool.self, forKey: .isMarkedDone)
+            isMarkedDone: try container.decodeIfPresent(Bool.self, forKey: .isMarkedDone) ?? false
         )
     }
 
-    /// Writes the nine keys in declaration order.
+    /// Writes the nine keys in declaration order. ``isMarkedDone`` is written whatever it holds;
+    /// only the *reading* of it tolerates absence, which is rule 7.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)

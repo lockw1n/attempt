@@ -41,5 +41,60 @@
 			<string>%lld pairs</string>
 		</dict>
 	</dict>
+	<!-- FR-15.3.1's target beside a set. Plural on the rep count, which is the noun's number:
+	     a single at the top of a plan reads "Target 100 kg × 1 rep". The load is already
+	     rendered — AppFormat decides how a weight reads, and a catalogue cannot. -->
+	<key>logging.session.plan.target %@ %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Target %1$@ × %2$#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
+	<!-- FR-15.2.2's blank target: the reps are prescribed and the load is not, which is a third
+	     state rather than a missing weight. -->
+	<key>logging.session.plan.target-open %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Target %#@reps@, load your own</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
+	<!-- FR-15.3.2's deviation, unsigned — the indicator beside it carries the direction. One is
+	     the commonest miss there is, so "1 reps" would be the string's usual reading. -->
+	<key>logging.session.plan.reps-delta %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

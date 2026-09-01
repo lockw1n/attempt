@@ -414,7 +414,4 @@
 "logging.session.exercise.done.undo" = "Mark not done";
 "logging.session.plan.next.heading" = "Planned next";
 "logging.session.plan.log.action" = "Log planned set";
-"logging.session.plan.target %@ %@" = "Target %1$@ × %2$@";
-"logging.session.plan.target-open %@" = "Target %@ reps, load your own";
 "logging.session.plan.on-target" = "On target";
-"logging.session.plan.reps-delta %@" = "%@ reps";

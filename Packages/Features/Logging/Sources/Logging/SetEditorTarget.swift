@@ -1,5 +1,6 @@
 import Foundation
 import PowerliftingCore
+import RepositoryInterface
 
 // A file of its own rather than the top of `SetEditorView.swift`, which had reached
 // SwiftLint's file ceiling: this is what the sheet is presented over, not the sheet.
@@ -30,6 +31,16 @@ struct SetEditorTarget: Identifiable, Equatable {
     /// may be blank. See ``PlannedSetSeed``.
     let planned: PlannedSetSeed?
 
+    /// What a routine prescribed for the set this form is over, drawn above the fields
+    /// (`FR-15.3.1`), or `nil` where nothing planned it.
+    ///
+    /// **A second field beside ``planned`` because the two have different jobs on different
+    /// paths.** That one seeds the fields and is applied only where the form opens blank; this one
+    /// is *shown*, whatever the form opened holding — so an edit of a logged set carries it while
+    /// carrying no seed at all, and a duplicate carries both. Where both are set they come from one
+    /// group, ``SessionExercise/plannedSeed`` being that group's two numbers.
+    let prescribed: PlannedTargetGroup?
+
     /// The set being edited, or the entry: see the type's note.
     var id: UUID { editing ?? entryID }
 
@@ -40,15 +51,18 @@ struct SetEditorTarget: Identifiable, Equatable {
     ///   - values: What the form opens filled in with, where it opens filled in.
     ///   - editing: The set being edited, where one is.
     ///   - planned: What a routine planned for the next set, where one did.
+    ///   - prescribed: The group that plan came from, where the form has one to show.
     init(
         entryID: UUID,
         values: SetEntryValues? = nil,
         editing: UUID? = nil,
-        planned: PlannedSetSeed? = nil
+        planned: PlannedSetSeed? = nil,
+        prescribed: PlannedTargetGroup? = nil
     ) {
         self.entryID = entryID
         self.values = values
         self.editing = editing
         self.planned = planned
+        self.prescribed = prescribed
     }
 }

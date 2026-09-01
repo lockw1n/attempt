@@ -145,6 +145,8 @@ public struct ActiveSessionView: View {
             SetEditorSheet(
                 draft: draft(for: target),
                 isEditing: target.editing != nil,
+                prescribed: target.prescribed,
+                unit: store.displayUnit,
                 vocabulary: vocabulary,
                 equipment: equipment,
                 log: { write($0, target) },
@@ -298,7 +300,7 @@ public struct ActiveSessionView: View {
                     logSet: { editing = $0 },
                     mark: { markSet($0, asWarmup: $1) },
                     markCompleted: { markSet($0, asCompleted: $1) },
-                    edit: { editing = Self.target(editing: $0) },
+                    edit: { editing = Self.target(editing: $0, prescribed: prescription(for: $0)) },
                     markDone: { id, isDone in
                         Task { await store.markExercise(id: id, isDone: isDone) }
                     },

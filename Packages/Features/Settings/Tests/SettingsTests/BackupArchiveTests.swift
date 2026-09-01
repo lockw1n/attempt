@@ -147,6 +147,41 @@ struct BackupArchiveTests {
         #expect(restored.settings == nil)
     }
 
+    @Test("A file written before a record gained a column still restores its rows")
+    func readsEntriesFromBeforeTheCheckOffColumn() throws {
+        // The version does not move when a record gains a column, so this file claims a version
+        // this build reads and then hands it an entry with eight keys where the decoder now knows
+        // nine. Refusing it would report the app's own backup as damaged — rule 7 of
+        // `RecordCoding.swift`, tested here because this is the path that made it a rule.
+        let json = """
+            {
+              "formatVersion" : 2,
+              "contents" : "trainingLog",
+              "exportedAt" : 773452800.1234567,
+              "exercises" : [],
+              "sessions" : [],
+              "entries" : [
+                {
+                  "id" : "0F5A1E24-9B7D-4C31-8E62-000000000001",
+                  "createdAt" : 0,
+                  "updatedAt" : 0,
+                  "sessionID" : "0F5A1E24-9B7D-4C31-8E62-000000000002",
+                  "exerciseID" : "0F5A1E24-9B7D-4C31-8E62-000000000003",
+                  "order" : 0,
+                  "notes" : "wide stance"
+                }
+              ],
+              "sets" : [],
+              "bodyweight" : []
+            }
+            """
+        let restored = try TrainingLogArchive.decoded(from: Data(json.utf8))
+
+        #expect(restored.entries.count == 1)
+        #expect(restored.entries.first?.isMarkedDone == false)
+        #expect(restored.entries.first?.notes == "wide stance")
+    }
+
     @Test("A contents word this build does not know is refused rather than guessed at")
     func refusesAnUnknownContents() throws {
         // The one vocabulary in this module that throws. Resolving it to either known value would
