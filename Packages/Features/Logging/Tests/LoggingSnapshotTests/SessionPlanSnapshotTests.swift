@@ -56,7 +56,12 @@
             // and the start time, not as a verdict beside the button that ends it. The count is the
             // requirement's own wording rather than a percentage, and `accessibility3` is where a
             // `SessionFactRow` stops fitting on one line and wraps — the state that decides whether
-            // "2 of 7 sets" stays readable at all.
+            // the reading stays legible at all.
+            //
+            // The four cards prescribe 4 + 3 + 3 + 3 and match three of them — the squat's top set,
+            // the bench's first, and the press's only one — so the row reads "3 of 13 sets". Two of
+            // the ten misses are sets that hit their numbers and were left uncompleted, which is
+            // the half of "completed as prescribed" a comparison alone cannot see.
             try assertSnapshots(named: "Session-adherence") {
                 fixedEnvironment {
                     SessionSummarySection(

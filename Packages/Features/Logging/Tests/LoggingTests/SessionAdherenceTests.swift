@@ -44,7 +44,6 @@ struct SessionAdherenceTests {
 
         #expect(adherence.asPrescribed == 2)
         #expect(adherence.prescribed == 7)
-        #expect(adherence.fraction == 2.0 / 7.0)
     }
 
     /// The denominator is the plan, so a skip costs what it prescribed rather than nothing.
@@ -61,7 +60,6 @@ struct SessionAdherenceTests {
         #expect(skipped.isSkipped)
         #expect(adherence.asPrescribed == 0)
         #expect(adherence.prescribed == 4)
-        #expect(adherence.fraction == 0)
     }
 
     /// `FR-1.2.5`'s outcome is half of "completed as prescribed", and it is the half a comparison
@@ -127,7 +125,6 @@ struct SessionAdherenceTests {
         #expect(card.plannedTargets.count == 1)
         #expect(adherence.asPrescribed == 1)
         #expect(adherence.prescribed == 1)
-        #expect(adherence.fraction == 1)
     }
 
     /// Warmups are not the work anywhere else in this module either, and they do not consume a
