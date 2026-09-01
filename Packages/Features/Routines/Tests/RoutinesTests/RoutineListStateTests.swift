@@ -44,21 +44,33 @@ struct RoutineListStateTests {
         #expect(list.routines.map(\.exerciseCount) == [2])
     }
 
-    /// `FR-15.2.3`: the one refusal the start command has is a workout already in progress, and
-    /// the screen is what knows it asked.
+    /// `FR-15.2.3`: a start that started nothing is reported, and the next one retires it.
     @Test("A start that did not start a workout is reported, and a fresh read retires it")
-    func afailedStartIsReportedThenRetired() async {
+    func failedStartIsReportedThenRetired() async {
         let state = RoutineListState(repository: InMemoryRepositoryStack().routines)
 
-        state.startDidFinish(started: false)
-        #expect(state.startDidFail)
+        state.startDidFinish(.workoutInProgress)
+        // Anchored to the case rather than to "is not nil": the two failures draw different
+        // sentences, so a report that lost which one it was would still pass a nil check.
+        #expect(state.startFailure == .workoutInProgress)
 
-        state.startDidFinish(started: true)
-        #expect(!state.startDidFail)
+        state.startDidFinish(.started)
+        #expect(state.startFailure == nil)
 
-        state.startDidFinish(started: false)
+        state.startDidFinish(.workoutInProgress)
         await state.load()
-        #expect(!state.startDidFail)
+        #expect(state.startFailure == nil)
+    }
+
+    /// The two failures are kept apart, which is the whole reason the outcome is not a `Bool`: a
+    /// failed write names nothing the lifter can finish or discard.
+    @Test("A failed write is reported as itself, not as a workout in progress")
+    func failedStartWriteIsItsOwnFailure() {
+        let state = RoutineListState(repository: InMemoryRepositoryStack().routines)
+
+        state.startDidFinish(.writeFailed)
+
+        #expect(state.startFailure == .writeFailed)
     }
 
     @Test("A failed read is a phase carrying the diagnostic, not an empty list")

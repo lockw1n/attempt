@@ -227,14 +227,19 @@ struct RootTabView: View {
     /// store's own method. ``ActiveSessionStore/resume()`` runs first for
     /// ``dashboardRoot``'s reason: the store may never have looked, and starting without it would
     /// start a second workout on top of one already open.
+    /// The store answers both a refusal and a failed write with `false` and the screen says
+    /// different things about them, so the discrimination is made here — the one place with both.
     @ViewBuilder
     private var routineListRoot: some View {
         switch dependencies.state {
         case .open(let repositories, let stores):
             RoutineListView(repository: repositories.routines) { routineID in
                 await stores.activeSession.resume()
-                return await stores.activeSession.start(
+                let started = await stores.activeSession.start(
                     on: .now, fromRoutineID: routineID, in: repositories.routines)
+                // A refusal leaves the workout it would not replace held; a failed write does not.
+                if started { return .started }
+                return stores.activeSession.isActive ? .workoutInProgress : .writeFailed
             }
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)

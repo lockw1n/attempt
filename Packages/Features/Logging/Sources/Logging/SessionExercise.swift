@@ -1,4 +1,5 @@
 import Foundation
+import PowerliftingCore
 import RepositoryInterface
 
 /// One exercise as it sits in the workout being logged — the entry, the exercise it names, and the
@@ -104,17 +105,45 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
         return nil
     }
 
-    /// What the set editor opens filled in with for the next set, or `nil` (`FR-15.2.3`).
+    /// What the set editor opens filled in with for the next set, or `nil` where nothing was
+    /// planned for it (`FR-15.2.3`).
     ///
-    /// **A blank-weight group fills in nothing at all** (`FR-15.2.2`). There is no weight to put in
-    /// the field, and a zero there would assert a load the lifter has not chosen — which is the one
-    /// distinction that requirement exists for.
+    /// **A blank-weight group still fills the reps in** (`FR-15.2.2`). The load is the one thing
+    /// that plan left to the lifter, and it is left empty rather than zeroed — a zero would assert
+    /// a load nobody chose, which is the distinction that requirement exists for — but the reps and
+    /// the sets are prescribed either way, and dropping them would make a blank-weight group
+    /// pre-populate nothing at all.
+    public var plannedSeed: PlannedSetSeed? {
+        guard let group = nextPlannedGroup else { return nil }
+        return PlannedSetSeed(weight: group.targetWeight, reps: group.targetReps)
+    }
+}
+
+/// What a planned group puts into the set editor when it opens (`FR-15.2.3`).
+///
+/// **Not ``SetEntryValues``, because the load is optional here and is not there.** That type
+/// describes a set that was performed — `FR-1.2.6`'s duplicate and `FR-1.2.7`'s edit both start from
+/// one — and every set that was performed has a weight. A plan need not: `FR-15.2.2`'s blank target
+/// prescribes the reps and leaves the load open, and widening the performed-set type to carry that
+/// would put an unreachable `nil` in front of every existing caller.
+///
+/// Warmup is not a field: a routine prescribes the work, and `FR-1.2.4`'s warmup is a mark the
+/// lifter puts on a set rather than something a plan can predict.
+public struct PlannedSetSeed: Equatable, Sendable {
+    /// The load prescribed, or `nil` where the plan named none (`FR-15.2.2`).
+    public let weight: Weight?
+
+    /// The reps prescribed per set in the group the next set falls in.
+    public let reps: Int
+
+    /// Builds the seed.
     ///
-    /// Warmup is `false`: a routine prescribes the work, and `FR-1.2.4`'s warmup is a mark the
-    /// lifter puts on a set rather than something a plan can predict.
-    public var plannedValues: SetEntryValues? {
-        guard let group = nextPlannedGroup, let weight = group.targetWeight else { return nil }
-        return SetEntryValues(weight: weight, reps: group.targetReps, rpe: nil, isWarmup: false)
+    /// - Parameters:
+    ///   - weight: The load prescribed, or `nil`.
+    ///   - reps: The reps prescribed.
+    public init(weight: Weight?, reps: Int) {
+        self.weight = weight
+        self.reps = reps
     }
 }
 

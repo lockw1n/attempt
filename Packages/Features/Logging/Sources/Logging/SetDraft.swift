@@ -136,6 +136,27 @@ struct SetDraft: Equatable, Sendable {
         self.init(repeating: set, unit: unit, locale: locale)
         notes = set.notes
     }
+
+    /// A draft carrying what a routine prescribed for the next set — `FR-15.2.3`'s pre-fill.
+    ///
+    /// **The load field is left empty where the plan named none** (`FR-15.2.2`), and the reps are
+    /// filled in either way: blank is a load the lifter has still to choose, not a set with no
+    /// prescription. Rendering a zero there would be the one reading that requirement rules out.
+    ///
+    /// No RPE, no note and no modifiers: a plan prescribes the work, and all three describe how a
+    /// set was actually performed.
+    ///
+    /// - Parameters:
+    ///   - plan: What was planned for the next set.
+    ///   - unit: The unit to render the load in.
+    ///   - locale: The locale to render the numbers in.
+    init(planning plan: PlannedSetSeed, unit: MassUnit, locale: Locale) {
+        self.init(unit: unit, locale: locale)
+        if let weight = plan.weight {
+            weightText = LocalizedNumberField.render(weight, in: unit, locale: locale)
+        }
+        repsText = LocalizedNumberField.render(Double(plan.reps), locale: locale)
+    }
 }
 
 // MARK: - What the draft resolves to

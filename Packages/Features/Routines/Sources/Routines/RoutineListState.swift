@@ -44,14 +44,14 @@ public final class RoutineListState {
     /// module sorted on a name rather than on a position.
     public private(set) var routines: [RoutineSummary] = []
 
-    /// Whether the last attempt to start a workout from a routine did not start one
-    /// (`FR-15.2.3`).
+    /// Why the last attempt to start a workout from a routine started none (`FR-15.2.3`), or `nil`
+    /// where the last one started a workout or none has been made.
     ///
     /// **A screen fact rather than a store one**, on `LastWorkoutState`'s precedent for the same
     /// command: starting the workout is `Logging`'s and happens behind a closure, so what this
-    /// screen knows is whether the one it asked for happened. Cleared by the next attempt, and by
+    /// screen knows is what it asked for and what came back. Cleared by the next attempt, and by
     /// every fresh read — a read that succeeds retires a claim about a write that failed.
-    public private(set) var startDidFail = false
+    public private(set) var startFailure: RoutineStartOutcome?
 
     private let repository: any RoutineRepository
 
@@ -68,7 +68,7 @@ public final class RoutineListState {
     public func load() async {
         if phase == .loading { return }
         phase = .loading
-        startDidFail = false
+        startFailure = nil
         do {
             let stored = try await repository.routines(includingDeleted: false)
             var summaries: [RoutineSummary] = []
@@ -90,12 +90,33 @@ public final class RoutineListState {
 
     /// Records what starting a workout from a routine did (`FR-15.2.3`).
     ///
-    /// **A workout that did not start is the only outcome worth reporting**, and the reason it can
-    /// happen is one the lifter can act on: there is one workout in progress by construction, so a
-    /// routine started on top of an unfinished session is refused rather than queued.
+    /// **A workout that did not start is the only outcome worth keeping**, and which of the two
+    /// ways it can fail is kept with it: they are different facts and the screen says different
+    /// things about them. See ``RoutineStartOutcome``.
     ///
-    /// - Parameter started: Whether a workout is now in progress.
-    public func startDidFinish(started: Bool) {
-        startDidFail = !started
+    /// - Parameter outcome: What the start command did.
+    public func startDidFinish(_ outcome: RoutineStartOutcome) {
+        startFailure = outcome == .started ? nil : outcome
     }
+}
+
+/// What starting a workout from a routine did (`FR-15.2.3`).
+///
+/// **Three answers rather than a `Bool`, because the two failures are different facts.** A refusal
+/// names something the lifter can act on — there is one workout in progress by construction, so a
+/// routine started on top of an unfinished session is refused rather than queued. A failed write is
+/// the store, names nothing the lifter did, and asking them to finish a workout that is not there is
+/// advice they cannot take. Collapsed into one boolean the second arrives wearing the first's words.
+public enum RoutineStartOutcome: Sendable, Equatable {
+    /// A workout is now in progress, carrying the routine's exercises and their targets.
+    case started
+
+    /// Nothing was started: a workout was already in progress.
+    case workoutInProgress
+
+    /// Nothing was started: the session could not be written.
+    ///
+    /// The diagnostic itself stays with the store that produced it (`G-3.4`) — what this screen
+    /// needs is which sentence to draw.
+    case writeFailed
 }

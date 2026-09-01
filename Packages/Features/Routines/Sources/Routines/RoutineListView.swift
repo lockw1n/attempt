@@ -13,15 +13,14 @@ import SwiftUI
 public struct RoutineListView: View {
     @State private var state: RoutineListState
 
-    /// Starts a workout from one routine, reporting whether a workout is now in progress
-    /// (`FR-15.2.3`).
+    /// Starts a workout from one routine, reporting what that did (`FR-15.2.3`).
     ///
     /// **A closure the app target supplies**, on `LastWorkoutSection`'s precedent: writing a
     /// session is `Logging`'s and `TR-1.3` keeps the feature packages off each other, so the target
     /// that owns both composes them. Required rather than optional — this screen's primary command
     /// is starting a workout, and a default that did nothing would be a button that silently is not
     /// one.
-    private let startWorkout: @MainActor (UUID) async -> Bool
+    private let startWorkout: @MainActor (UUID) async -> RoutineStartOutcome
 
     /// The shell's navigation position: starting a workout lands on Train's session screen, which
     /// is not a push from here.
@@ -35,7 +34,7 @@ public struct RoutineListView: View {
     ///   - startWorkout: Starts a workout from the routine it is given (`FR-15.2.3`).
     public init(
         repository: any RoutineRepository,
-        startWorkout: @escaping @MainActor (UUID) async -> Bool
+        startWorkout: @escaping @MainActor (UUID) async -> RoutineStartOutcome
     ) {
         _state = State(initialValue: RoutineListState(repository: repository))
         self.startWorkout = startWorkout
@@ -92,8 +91,15 @@ public struct RoutineListView: View {
             }
             .buttonStyle(.primaryAction(.fill))
         case .ready:
-            if state.startDidFail {
-                ErrorStateView(message: Text(RoutinesStrings.listStartErrorMessage))
+            // The start's own refusal, drawn above the routines rather than over them: the list is
+            // still what the lifter came for, and the two failures say different things.
+            switch state.startFailure {
+            case .workoutInProgress:
+                ErrorStateView(message: Text(RoutinesStrings.listStartInProgressMessage))
+            case .writeFailed:
+                ErrorStateView(message: Text(RoutinesStrings.listStartWriteErrorMessage))
+            case .started, nil:
+                EmptyView()
             }
             LazyVStack(spacing: Spacing.md.points) {
                 ForEach(state.routines) { routine in
@@ -112,9 +118,9 @@ public struct RoutineListView: View {
     /// - Parameter routineID: The routine to start from.
     private func start(_ routineID: UUID) {
         Task {
-            let started = await startWorkout(routineID)
-            state.startDidFinish(started: started)
-            guard started else { return }
+            let outcome = await startWorkout(routineID)
+            state.startDidFinish(outcome)
+            guard outcome == .started else { return }
             navigation?.navigate(to: .training(.activeSession))
         }
     }

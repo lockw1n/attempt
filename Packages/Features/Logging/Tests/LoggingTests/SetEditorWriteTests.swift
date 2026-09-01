@@ -64,6 +64,35 @@ struct SetEditorWriteTests {
         #expect(edited.repsText == repeated.repsText)
     }
 
+    /// `FR-15.2.3`'s pre-fill, and `FR-15.2.2`'s blank target inside it: the plan is the third way
+    /// a form opens filled in, and the only one whose load can be missing.
+    @Test("A planned target opens the form filled in, and a blank-weight one still fills the reps")
+    func aPlannedTargetOpensTheFormFilledIn() {
+        let entryID = UUID()
+
+        let planned = ActiveSessionView.draft(
+            for: SetEditorTarget(
+                entryID: entryID, planned: PlannedSetSeed(weight: Weight(grams: 100_000), reps: 5)),
+            unit: .kilograms,
+            locale: .posix
+        )
+        let blankWeight = ActiveSessionView.draft(
+            for: SetEditorTarget(entryID: entryID, planned: PlannedSetSeed(weight: nil, reps: 8)),
+            unit: .kilograms,
+            locale: .posix
+        )
+
+        #expect(planned.weightText == "100")
+        #expect(planned.repsText == "5")
+        // The load is the one thing the blank plan left open. The reps are not: a form that opened
+        // wholly blank here would be `NFR-15.3`'s two taps plus a keyboard.
+        #expect(blankWeight.weightText.isEmpty)
+        #expect(blankWeight.repsText == "8")
+        // A plan prescribes the work, so neither seeds a warmup or a note.
+        #expect(planned.isWarmup == false)
+        #expect(planned.notes.isEmpty)
+    }
+
     @Test("A target carrying a set rewrites that set, and one without logs a new one")
     func aTargetDecidesWhichWriteConfirmingIt() {
         let entryID = UUID()

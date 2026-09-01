@@ -365,7 +365,8 @@ public final class ActiveSessionStore {
     ///
     /// **Three reads per call and two per exercise**, which is what a schema with no relationships
     /// costs (`G-2.5`) — the second of the two is the plan a routine left on the entry (`TR-15.3`),
-    /// read here rather than once at start so that a card rebuilt after any write still has it. It is a small cost at this size: a workout is a handful of exercises, the
+    /// read here rather than once at start so that a card rebuilt after any write still has it. It
+    /// is a small cost at this size: a workout is a handful of exercises, the
     /// store is local and synchronous under the `async` signature (`G-2.2`, `G-2.3`), and the
     /// alternative — caching a join across a screen boundary — is a second source of truth for rows
     /// the picker above is writing (`G-1.4`).

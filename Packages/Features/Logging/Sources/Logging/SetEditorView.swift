@@ -3,41 +3,6 @@ import Localization
 import PowerliftingCore
 import SwiftUI
 
-/// Which exercise the set editor is open over, what it opened filled in with, and whether it is
-/// editing a set that already exists (`FR-1.2.7`).
-///
-/// **Identified by the entry while a set is being added**, because that is what makes the sheet
-/// re-present when the user closes it and taps another card: two drafts against one exercise are the
-/// same sheet, two exercises are two. **An edit is identified by the set instead**, and it has to
-/// be: two sets on one card are two different edits, and keyed on the entry the second would
-/// re-present the first one's form.
-struct SetEditorTarget: Identifiable, Equatable {
-    /// The exercise the set belongs to, or is being logged against.
-    let entryID: UUID
-
-    /// What the form opens filled in with — `FR-1.2.6`'s duplicate, or the set being edited.
-    /// `nil` for a blank one.
-    let values: SetEntryValues?
-
-    /// The set being edited (`FR-1.2.7`), or `nil` while one is being added.
-    let editing: UUID?
-
-    /// The set being edited, or the entry: see the type's note.
-    var id: UUID { editing ?? entryID }
-
-    /// Builds the target.
-    ///
-    /// - Parameters:
-    ///   - entryID: The exercise the set belongs to.
-    ///   - values: What the form opens filled in with, where it opens filled in.
-    ///   - editing: The set being edited, where one is.
-    init(entryID: UUID, values: SetEntryValues? = nil, editing: UUID? = nil) {
-        self.entryID = entryID
-        self.values = values
-        self.editing = editing
-    }
-}
-
 /// What confirming the set editor writes — a set that does not exist yet, or a rewrite of one that
 /// does (`FR-1.2.3`, `FR-1.2.7`).
 ///

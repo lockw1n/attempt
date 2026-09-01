@@ -65,6 +65,9 @@ let package = Package(
             name: "RoutinesSnapshotTests",
             dependencies: [
                 "Routines",
+                // Named rather than leaned on through `Routines`: the refusal references draw
+                // T-1.09's `ErrorStateView` directly.
+                "DesignSystem",
                 .product(name: "SnapshotTesting", package: "DesignSystem"),
             ],
             exclude: ["__Snapshots__"],

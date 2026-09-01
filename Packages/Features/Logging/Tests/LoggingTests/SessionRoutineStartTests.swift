@@ -50,7 +50,7 @@ struct SessionRoutineStartTests {
     /// `FR-15.2.2`'s blank target: the load is the lifter's to decide in the session, and the reps
     /// and sets are prescribed all the same.
     @Test("A blank target arrives blank, with its reps and sets intact")
-    func ablankTargetArrivesBlank() async throws {
+    func blankTargetArrivesBlank() async throws {
         let fixture = try await RoutineFixture()
         let store = ActiveSessionStore.over(fixture.stack)
 
@@ -103,7 +103,7 @@ struct SessionRoutineStartTests {
 
     /// ``ActiveSessionStore/start(on:)``'s invariant, not a new one.
     @Test("A routine start is refused while a workout is in progress")
-    func aroutineStartIsRefusedWhileAWorkoutIsInProgress() async throws {
+    func routineStartIsRefusedWhileAWorkoutIsInProgress() async throws {
         let fixture = try await RoutineFixture()
         let store = ActiveSessionStore.over(fixture.stack)
         await store.start(on: fixture.today)
@@ -122,7 +122,7 @@ struct SessionRoutineStartTests {
     /// A routine that is not there is a read that returns nothing, not a failure — but the workout
     /// is kept either way, which is the half worth pinning.
     @Test("A routine with no slots still leaves a workout to log into")
-    func anemptyRoutineStillLeavesAWorkout() async throws {
+    func emptyRoutineStillLeavesAWorkout() async throws {
         let fixture = try await RoutineFixture()
         let store = ActiveSessionStore.over(fixture.stack)
 
@@ -142,7 +142,7 @@ struct PlannedTargetResolutionTests {
     /// deliberately coarse rule is what makes the claim falsifiable — under a 5 kg rule a rounded
     /// 102 483 g would come back as 100 000 or 105 000 g.
     @Test("A fixed weight is not rounded, however coarse the context's rule")
-    func afixedWeightIsNotRounded() throws {
+    func fixedWeightIsNotRounded() throws {
         let coarse = try #require(RoundingRule(increment: Weight(grams: 5_000), strategy: .nearest))
         let group = group(grams: 102_483)
 
@@ -155,7 +155,7 @@ struct PlannedTargetResolutionTests {
     }
 
     @Test("A blank target resolves to no weight rather than to zero")
-    func ablankTargetResolvesToNoWeight() {
+    func blankTargetResolvesToNoWeight() {
         let resolved = ActiveSessionStore.resolvedTarget(
             for: group(grams: nil),
             using: PrescriptionResolver(),
@@ -167,7 +167,7 @@ struct PlannedTargetResolutionTests {
     /// Assisted work is a negative load, and `.fixedWeight` accepts one — the resolver's sign guard
     /// belongs to the cases that scale a basis, not to a weight the lifter typed.
     @Test("A negative target survives, being assisted work rather than an error")
-    func anegativeTargetSurvives() {
+    func negativeTargetSurvives() {
         let resolved = ActiveSessionStore.resolvedTarget(
             for: group(grams: -20_000),
             using: PrescriptionResolver(),

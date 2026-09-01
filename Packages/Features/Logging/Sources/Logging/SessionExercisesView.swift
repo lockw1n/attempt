@@ -464,7 +464,7 @@ struct SessionExerciseCard: View {
             // The blank form opens filled in where a routine planned this set — `FR-15.2.3`, and
             // what makes `NFR-15.3`'s two taps reachable at all.
             Button {
-                logSet(SetEditorTarget(entryID: item.id, values: item.plannedValues))
+                logSet(SetEditorTarget(entryID: item.id, planned: item.plannedSeed))
             } label: {
                 Text(LoggingStrings.setAddAction)
                     .font(Typography.actionLabel.font)

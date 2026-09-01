@@ -138,6 +138,15 @@ struct RecordCodingKeyTests {
                 "targetSets", "targetWeight", "updatedAt",
             ])
     }
+
+    @Test("A planned target group writes nine keys")
+    func plannedTargetGroupKeys() throws {
+        #expect(
+            try encodedKeys(of: codingPlannedTargetGroup()) == [
+                "createdAt", "deletedAt", "exerciseEntryID", "id", "order", "targetReps",
+                "targetSets", "targetWeight", "updatedAt",
+            ])
+    }
 }
 
 @Suite("Nested wire formats are not re-wrapped")
@@ -210,6 +219,22 @@ struct RecordJSONRoundTripTests {
         #expect(try Self.roundTrip(codingRoutine()) == codingRoutine())
         #expect(try Self.roundTrip(codingRoutineExercise()) == codingRoutineExercise())
         #expect(try Self.roundTrip(codingRoutineTargetGroup()) == codingRoutineTargetGroup())
+        #expect(try Self.roundTrip(codingPlannedTargetGroup()) == codingPlannedTargetGroup())
+    }
+
+    // FR-15.2.2 on the wire: a blank target is an absent key that decodes back to `nil`, not a
+    // zero and not a null. This is the one optional in the layer whose two readings are different
+    // *training* facts rather than a present-or-absent field, so it is pinned separately from the
+    // generic omit rule above.
+    @Test("A blank planned weight is omitted, and comes back blank rather than as zero")
+    func aBlankPlannedWeightIsOmitted() throws {
+        let record = codingPlannedTargetGroup(grams: nil)
+        let json = try jsonText(of: record)
+
+        #expect(!json.contains("targetWeight"))
+        #expect(try Self.roundTrip(record).targetWeight == nil)
+        // The rest of the group is prescribed either way — a blank weight is not a blank plan.
+        #expect(try Self.roundTrip(record).targetReps == 4)
     }
 
     // A nil optional is omitted rather than written as null, and the omission decodes back to nil.

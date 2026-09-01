@@ -17,9 +17,14 @@
 /* FR-15.2.3's primary command, and NFR-15.3's first of two taps. */
 "routines.list.start" = "Start workout";
 
-/* The one refusal this command has: there is one workout in progress by construction, so a routine
+/* The refusal this command has: there is one workout in progress by construction, so a routine
    started on top of an unfinished session is refused rather than queued. It names the way out. */
-"routines.list.start.error.message" = "Finish or discard the workout in progress before starting another.";
+"routines.list.start.in-progress.message" = "Finish or discard the workout in progress before starting another.";
+
+/* The other way nothing starts, and a different fact: the session could not be written. It names
+   nothing the lifter did, so it asks for the one thing that can help — Logging's own wording for
+   the same failure on the same command. */
+"routines.list.start.write-error.message" = "That workout could not be started. Try again.";
 
 /* A name the editor will not save, and a row a store this app did not write may still hold. */
 "routines.list.row.unnamed" = "Unnamed routine";

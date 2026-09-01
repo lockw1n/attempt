@@ -31,7 +31,10 @@ enum RoutinesStrings {
     static let listStartAction = resource("routines.list.start")
 
     /// Why no workout was started — there is already one in progress.
-    static let listStartErrorMessage = resource("routines.list.start.error.message")
+    static let listStartInProgressMessage = resource("routines.list.start.in-progress.message")
+
+    /// Why no workout was started — the session could not be written.
+    static let listStartWriteErrorMessage = resource("routines.list.start.write-error.message")
 
     /// A routine with no name, which the editor cannot save and a foreign row can still hold.
     static let listUnnamed = resource("routines.list.row.unnamed")

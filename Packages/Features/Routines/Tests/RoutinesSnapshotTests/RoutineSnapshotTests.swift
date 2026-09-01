@@ -1,5 +1,7 @@
 #if os(iOS)
 
+    import DesignSystem
+    import DesignTokens
     import Foundation
     import PowerliftingCore
     import RepositoryInterface
@@ -48,6 +50,18 @@
                             id: UUID(), name: "Heavy squat day", exerciseCount: 4),
                         start: {}
                     )
+                }
+            }
+        }
+
+        // FR-15.2.3's two refusals, drawn together because the whole point of splitting them is
+        // that they say different things — one names an action the lifter can take and the other
+        // does not, and at accessibility3 both are multi-line.
+        @Test func startRefusalStates() throws {
+            try assertSnapshots(named: "RoutineList-start-refusals") {
+                VStack(alignment: .leading, spacing: Spacing.lg.points) {
+                    ErrorStateView(message: Text(RoutinesStrings.listStartInProgressMessage))
+                    ErrorStateView(message: Text(RoutinesStrings.listStartWriteErrorMessage))
                 }
             }
         }

@@ -89,18 +89,22 @@ struct RecordStampingTests {
                 "RoutineTargetGroup",
                 routineTargetGroupRecord(
                     routineExerciseID: UUID(), order: 1, grams: 90_000, reps: 4, sets: 4)),
+            StampingCase(
+                "PlannedTargetGroup",
+                plannedTargetGroupRecord(
+                    exerciseEntryID: entryID, order: 1, grams: 90_000, reps: 4, sets: 4)),
         ]
     }()
 
-    @Test("Stamping carries every other column through, on all eleven listed record types")
+    @Test("Stamping carries every other column through, on all twelve listed record types")
     func stampingIsLossless() throws {
-        #expect(Self.everyRecordShape.count == 11)
+        #expect(Self.everyRecordShape.count == 12)
         for shape in Self.everyRecordShape {
             #expect(shape.roundTrips(Self.first, Self.second), "\(shape.name)")
         }
     }
 
-    @Test("Stamping writes the four it is given, on all eleven, and does not touch the id")
+    @Test("Stamping writes the four it is given, on all twelve, and does not touch the id")
     func stampingWritesWhatItIsGiven() throws {
         for shape in Self.everyRecordShape {
             #expect(shape.changesTheFour(Self.first, Self.second), "\(shape.name)")

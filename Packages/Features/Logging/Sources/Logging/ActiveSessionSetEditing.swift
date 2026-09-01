@@ -30,10 +30,11 @@ extension ActiveSessionView {
 
     /// ``draft(for:)`` with the unit and the locale passed rather than read off the screen.
     ///
-    /// **The choice between the two initialisers is this function's whole content, and it is the
-    /// note that separates them.** An edit is the *same* set, so a form that opened without the
-    /// note would delete it on the next confirm; a duplicate is a set that has not been performed,
-    /// and repeating a note puts words in the user's mouth.
+    /// **The choice between the three initialisers is this function's whole content.** A plan comes
+    /// first and is the only one whose load can be blank (`FR-15.2.3`); between the other two it is
+    /// the note that separates them — an edit is the *same* set, so a form that opened without the
+    /// note would delete it on the next confirm, while a duplicate is a set that has not been
+    /// performed and repeating a note puts words in the user's mouth.
     ///
     /// - Parameters:
     ///   - target: What the editor is open over.
@@ -41,6 +42,9 @@ extension ActiveSessionView {
     ///   - locale: The locale to render the numbers in.
     /// - Returns: The draft.
     static func draft(for target: SetEditorTarget, unit: MassUnit, locale: Locale) -> SetDraft {
+        if let planned = target.planned {
+            return SetDraft(planning: planned, unit: unit, locale: locale)
+        }
         guard let values = target.values else { return SetDraft(unit: unit, locale: locale) }
         return target.editing == nil
             ? SetDraft(repeating: values, unit: unit, locale: locale)

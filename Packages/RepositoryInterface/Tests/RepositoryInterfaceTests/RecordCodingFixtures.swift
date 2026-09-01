@@ -207,6 +207,20 @@ func codingRoutineTargetGroup() -> RoutineTargetGroup {
     )
 }
 
+func codingPlannedTargetGroup(grams: Int? = 90_000) -> PlannedTargetGroup {
+    PlannedTargetGroup(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        exerciseEntryID: codingJoinID,
+        order: 1,
+        targetWeight: grams.map(Weight.init(grams:)),
+        targetReps: 4,
+        targetSets: 4
+    )
+}
+
 /// `record` encoded as JSON text.
 ///
 /// `String(bytes:encoding:)` rather than `String(decoding:as:)`, which SwiftLint bans here and is

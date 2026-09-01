@@ -11,7 +11,8 @@
 "routines.list.error.message" = "Читання не вдалося. Спробуйте ще раз.";
 
 "routines.list.start" = "Почати тренування";
-"routines.list.start.error.message" = "Завершіть або скасуйте поточне тренування, перш ніж починати нове.";
+"routines.list.start.in-progress.message" = "Завершіть або скасуйте поточне тренування, перш ніж починати нове.";
+"routines.list.start.write-error.message" = "Не вдалося почати тренування. Спробуйте ще раз.";
 
 "routines.list.row.unnamed" = "Програма без назви";
 
