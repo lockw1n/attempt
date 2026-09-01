@@ -39,17 +39,34 @@
             }
         }
 
-        // FR-15.2.3's command, which is what the list is FOR now: the plan is pushed by the row
-        // and the workout is started by the button under it. Stacked rather than side by side, so
-        // accessibility3 is the configuration worth reading here.
-        @Test func cardCarriesTheStartCommand() throws {
+        // FR-15.2.3's command and FR-15.2.5's three, which is what the list is FOR now: the plan
+        // is pushed by the row, the workout is started by the button under it, and the management
+        // commands sit below that as icons. Stacked rather than side by side, so accessibility3 is
+        // the configuration worth reading here — and what it settles is that the three icon
+        // commands still share one row at that size where three spelled-out ones would not.
+        @Test func cardCarriesItsCommands() throws {
             try assertSnapshots(named: "RoutineList-card") {
                 VStack(alignment: .leading) {
                     RoutineCard(
                         routine: RoutineSummary(
                             id: UUID(), name: "Heavy squat day", exerciseCount: 4),
-                        start: {}
+                        start: {},
+                        duplicate: {},
+                        rename: {},
+                        archive: {}
                     )
+                }
+            }
+        }
+
+        // FR-15.2.5's two refusals, drawn together for the same reason the start's two are: one
+        // names a field the lifter can fill in and the other names only the store, and a picture is
+        // where "these say different things" is checkable.
+        @Test func managementRefusalStates() throws {
+            try assertSnapshots(named: "RoutineList-manage-refusals") {
+                VStack(alignment: .leading, spacing: Spacing.lg.points) {
+                    ErrorStateView(message: Text(RoutinesStrings.listNameRequiredMessage))
+                    ErrorStateView(message: Text(RoutinesStrings.listManageWriteErrorMessage))
                 }
             }
         }

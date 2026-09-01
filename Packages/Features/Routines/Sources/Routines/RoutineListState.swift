@@ -53,7 +53,17 @@ public final class RoutineListState {
     /// every fresh read — a read that succeeds retires a claim about a write that failed.
     public private(set) var startFailure: RoutineStartOutcome?
 
-    private let repository: any RoutineRepository
+    /// Why the last duplicate, rename or archive changed nothing (`FR-15.2.5`), or `nil` where the
+    /// last one landed and none has been attempted since.
+    ///
+    /// **A second failure beside ``startFailure`` rather than one of its cases**, which is the same
+    /// split T-15.03 made between its own two: starting a workout and managing the library are
+    /// different commands, and a lifter who archived a routine while a start refusal was on screen
+    /// is owed both sentences or the older one alone. Cleared by every fresh read, for
+    /// ``startFailure``'s reason.
+    public internal(set) var managementFailure: RoutineManagementFailure?
+
+    let repository: any RoutineRepository
 
     /// Builds the list over the repository it reads through.
     public init(repository: any RoutineRepository) {
@@ -69,6 +79,7 @@ public final class RoutineListState {
         if phase == .loading { return }
         phase = .loading
         startFailure = nil
+        managementFailure = nil
         do {
             let stored = try await repository.routines(includingDeleted: false)
             var summaries: [RoutineSummary] = []

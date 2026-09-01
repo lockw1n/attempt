@@ -66,21 +66,21 @@ cd "$(dirname "$0")/.."
 # honest setting rather than a number chosen to look like the former.
 #   DesignSystem:    27 tests, 15 reference-backed, 12 harness probes  -> 20, above the 15.
 #   ExerciseLibrary: 29 tests, all of them reference-backed, no probes -> 29, its own count.
-#   Logging:         57 tests, 56 reference-backed, one width probe    -> 57, above the 56.
+#   Logging:         59 tests, 58 reference-backed, one width probe    -> 59, above the 58.
 #   History:         19 tests, all of them reference-backed, no probes -> 19, its own count.
 #   Dashboard:       10 tests, all of them reference-backed, no probes -> 10, its own count.
 #   Settings:        45 tests, all of them reference-backed, no probes -> 45, its own count.
-#   Routines:         7 tests, all of them reference-backed, no probes ->  7, its own count.
+#   Routines:         8 tests, all of them reference-backed, no probes ->  8, its own count.
 # A screen suite added later is the ExerciseLibrary case unless it brings probes of its own, and a
 # screen added to an existing package raises that package's floor rather than adding a row.
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|20"
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|29"
-    "Packages/Features/Logging|Logging|LoggingSnapshotTests|57"
+    "Packages/Features/Logging|Logging|LoggingSnapshotTests|59"
     "Packages/Features/History|History|HistorySnapshotTests|19"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|10"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|45"
-    "Packages/Features/Routines|Routines|RoutinesSnapshotTests|7"
+    "Packages/Features/Routines|Routines|RoutinesSnapshotTests|8"
 )
 
 # The iOS version the committed references were rendered on. See the header: bump it only when

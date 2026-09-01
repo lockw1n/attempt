@@ -37,12 +37,56 @@ extension LoggingStrings {
     /// What a failed correction says. The rows are unchanged, so the retry is the same edit again.
     static let pastSessionWriteErrorMessage = resource("logging.past-session.write-error.message")
 
+    // MARK: - Saving the workout as a routine (FR-15.2.6)
+
+    /// The section's heading.
+    static let saveRoutineSection = resource("logging.past-session.save-routine.section")
+
+    /// What the new routine will contain, said before the command rather than discovered after it.
+    static let saveRoutineExplanation = resource("logging.past-session.save-routine.explanation")
+
+    /// The command that opens the naming prompt.
+    static let saveRoutineAction = resource("logging.past-session.save-routine.action")
+
+    /// That prompt's own title.
+    static let saveRoutineTitle = resource("logging.past-session.save-routine.title")
+
+    /// Its field's placeholder — the routine editor's, so one field is asked for one way.
+    static let saveRoutinePrompt = resource("logging.past-session.save-routine.prompt")
+
+    /// The prompt's confirming command.
+    static let saveRoutineConfirm = resource("logging.past-session.save-routine.confirm")
+
+    /// The prompt's way out.
+    static let saveRoutineCancel = resource("logging.past-session.save-routine.cancel")
+
+    /// Why nothing was saved: the field held no name.
+    static let saveRoutineNameRequired = resource(
+        "logging.past-session.save-routine.name-required.message")
+
+    /// Why nothing was saved: the store refused.
+    static let saveRoutineWriteError = resource(
+        "logging.past-session.save-routine.write-error.message")
+
+    /// What a routine that was saved is called, said back so the lifter knows where it went.
+    ///
+    /// **The name is an argument and is never looked up** — it is the lifter's own words.
+    ///
+    /// - Parameter name: What they called it.
+    /// - Returns: The confirmation.
+    static func saveRoutineSaved(_ name: String) -> LocalizedStringResource {
+        resource("logging.past-session.save-routine.saved \(name)")
+    }
+
     /// This file's strings, for ``LoggingStrings/all``.
     static var allPastSessionStrings: [LocalizedStringResource] {
         [
             pastSessionTitle, pastSessionErrorHeadline, pastSessionErrorMessage,
             pastSessionMissingHeadline, pastSessionMissingMessage, pastSessionEmptyHeadline,
-            pastSessionEmptyMessage, pastSessionWriteErrorMessage,
+            pastSessionEmptyMessage, pastSessionWriteErrorMessage, saveRoutineSection,
+            saveRoutineExplanation, saveRoutineAction, saveRoutineTitle, saveRoutinePrompt,
+            saveRoutineConfirm, saveRoutineCancel, saveRoutineNameRequired, saveRoutineWriteError,
+            saveRoutineSaved("Push"),
         ]
     }
 }

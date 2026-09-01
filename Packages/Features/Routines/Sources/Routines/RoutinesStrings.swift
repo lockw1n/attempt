@@ -39,6 +39,51 @@ enum RoutinesStrings {
     /// A routine with no name, which the editor cannot save and a foreign row can still hold.
     static let listUnnamed = resource("routines.list.row.unnamed")
 
+    // MARK: - Managing the library (FR-15.2.5)
+
+    /// Copies a routine, content and all.
+    static let listDuplicate = resource("routines.list.duplicate")
+
+    /// Opens the one-field prompt that retitles a routine.
+    static let listRename = resource("routines.list.rename")
+
+    /// Takes a routine out of the library without touching what was logged from it.
+    static let listArchive = resource("routines.list.archive")
+
+    /// Backs out of either prompt.
+    static let listCancel = resource("routines.list.cancel")
+
+    /// The rename prompt's own title.
+    static let listRenameTitle = resource("routines.list.rename.title")
+
+    /// The rename prompt's placeholder — the editor's, so one field is asked for one way.
+    static let listRenamePrompt = resource("routines.editor.name.prompt")
+
+    /// The archive prompt's title, which is the question it asks.
+    static let listArchiveTitle = resource("routines.list.archive.title")
+
+    /// What archiving costs and what it does not — the sentence that makes the confirmation worth
+    /// showing, this being the one command here with no way back.
+    static let listArchiveMessage = resource("routines.list.archive.message")
+
+    /// Why a rename changed nothing: the field was empty.
+    static let listNameRequiredMessage = resource("routines.list.manage.name-required.message")
+
+    /// Why a duplicate, rename or archive changed nothing: the store refused the write.
+    static let listManageWriteErrorMessage = resource("routines.list.manage.write-error.message")
+
+    /// What a copy is called, from what the original is called (`FR-15.2.5`).
+    ///
+    /// **Resolved against the process locale, not the screen's**, and then *stored* — so the copy
+    /// keeps the wording of the language the lifter duplicated it in, exactly as the name they
+    /// typed themselves would. A name is user data the moment it is written.
+    ///
+    /// - Parameter name: The original routine's name.
+    /// - Returns: The copy's name.
+    static func listDuplicateName(_ name: String) -> LocalizedStringResource {
+        resource("routines.list.duplicate.name \(name)")
+    }
+
     /// How many exercises a routine prescribes.
     ///
     /// **Plural, and the count is an argument** — see the `.stringsdict` beside the catalogue for
@@ -167,7 +212,11 @@ enum RoutinesStrings {
     static var allResources: [LocalizedStringResource] {
         [
             listTitle, listNewRoutine, listEmptyHeadline, listEmptyMessage, listErrorHeadline,
-            listErrorMessage, listUnnamed, editorCreateTitle, editorEditTitle, editorNameLabel,
+            listErrorMessage, listStartAction, listStartInProgressMessage,
+            listStartWriteErrorMessage, listUnnamed, listDuplicate, listRename, listArchive,
+            listCancel, listRenameTitle, listRenamePrompt, listArchiveTitle, listArchiveMessage,
+            listNameRequiredMessage, listManageWriteErrorMessage,
+            editorCreateTitle, editorEditTitle, editorNameLabel,
             editorNamePrompt, editorNameCaption, editorExercisesSection,
             editorExercisesEmptyHeadline, editorExercisesEmptyMessage, editorAddExercise,
             editorRemoveExercise, editorUnnamedExercise, editorMoveUp, editorMoveDown,
@@ -176,6 +225,7 @@ enum RoutinesStrings {
             editorGroupRefusal, editorSave, editorErrorHeadline, editorErrorMessage,
             editorMissingHeadline, editorMissingMessage, editorWriteError,
         ]
+            + [listDuplicateName("Push")]
             + [1, 2].map(listExerciseCount)
             + [1, 2].map(editorGroupHeading)
             + MassUnit.allCases.map(unitSymbol(for:))

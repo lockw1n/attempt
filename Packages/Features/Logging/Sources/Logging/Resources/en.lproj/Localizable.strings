@@ -416,3 +416,22 @@
 "logging.session.plan.next.heading" = "Planned next";
 "logging.session.plan.log.action" = "Log planned set";
 "logging.session.plan.on-target" = "On target";
+
+/* FR-15.2.6, at the foot of a session that is over. The explanation says what the new routine will
+   contain BEFORE the command is tapped, because the answer is not obvious: it is what was lifted,
+   not what was planned, and the two differ exactly on the workouts worth saving. */
+"logging.past-session.save-routine.section" = "Save as routine";
+"logging.past-session.save-routine.explanation" = "Builds a routine from this workout: the exercises in the order you did them, and the weights and reps you actually lifted. Warmups and sets you did not complete are left out.";
+"logging.past-session.save-routine.action" = "Save as routine";
+
+"logging.past-session.save-routine.title" = "Name this routine";
+"logging.past-session.save-routine.prompt" = "Heavy squat day";
+"logging.past-session.save-routine.confirm" = "Save";
+"logging.past-session.save-routine.cancel" = "Cancel";
+
+/* The routine editor's own rule, applied where a name is typed into a prompt instead of a form. */
+"logging.past-session.save-routine.name-required.message" = "A routine needs a name. Nothing was saved.";
+"logging.past-session.save-routine.write-error.message" = "That routine could not be saved. Try again.";
+/* Where it went: nothing on this screen changes when a routine is written, so the confirmation is
+   the only thing that says the command did anything. */
+"logging.past-session.save-routine.saved %@" = "Saved “%@” to your routines.";

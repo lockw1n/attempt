@@ -22,6 +22,21 @@ public struct RoutineListView: View {
     /// one.
     private let startWorkout: @MainActor (UUID) async -> RoutineStartOutcome
 
+    /// Which routine the rename prompt is open over, or `nil` (`FR-15.2.5`).
+    ///
+    /// **The screen's rather than the state's**, on the set editor's rule one module over: a name
+    /// being typed into a prompt is not a fact about the library until the command is confirmed.
+    @State private var renaming: RoutineSummary?
+
+    /// What is in that prompt's field. Seeded from the routine's stored name when it opens.
+    @State private var renameText = ""
+
+    /// Which routine the archive confirmation is open over, or `nil`.
+    ///
+    /// **It asks first, unlike the other two commands**, this being the one here with no way back —
+    /// see ``RoutineListState/archive(_:)``.
+    @State private var archiving: RoutineSummary?
+
     /// The shell's navigation position: starting a workout lands on Train's session screen, which
     /// is not a push from here.
     @Environment(NavigationState.self) private var navigation: NavigationState?
@@ -61,6 +76,44 @@ public struct RoutineListView: View {
         // Re-read on every appearance, not only the first: the editor pushed over this screen is
         // what changes what it lists, and it writes on its way out.
         .task { await state.load() }
+        .alert(
+            Text(RoutinesStrings.listRenameTitle),
+            isPresented: presentation(of: $renaming),
+            presenting: renaming
+        ) { routine in
+            // An alert rather than a screen: one field, two answers, and nothing to come back to.
+            // It carries no route for the reason the set editor carries none — a half-typed rename
+            // is not a place in the app.
+            TextField(text: $renameText) { Text(RoutinesStrings.listRenamePrompt) }
+            Button(role: .cancel) {
+                renaming = nil
+            } label: {
+                Text(RoutinesStrings.listCancel)
+            }
+            Button {
+                commitRename(routine)
+            } label: {
+                Text(RoutinesStrings.listRename)
+            }
+        }
+        .alert(
+            Text(RoutinesStrings.listArchiveTitle),
+            isPresented: presentation(of: $archiving),
+            presenting: archiving
+        ) { routine in
+            Button(role: .cancel) {
+                archiving = nil
+            } label: {
+                Text(RoutinesStrings.listCancel)
+            }
+            Button(role: .destructive) {
+                commitArchive(routine)
+            } label: {
+                Text(RoutinesStrings.listArchive)
+            }
+        } message: { _ in
+            Text(RoutinesStrings.listArchiveMessage)
+        }
     }
 
     /// The screen's four states (`FR-1.13.1`), each one of T-1.09's shared components.
@@ -91,21 +144,44 @@ public struct RoutineListView: View {
             }
             .buttonStyle(.primaryAction(.fill))
         case .ready:
-            // The start's own refusal, drawn above the routines rather than over them: the list is
-            // still what the lifter came for, and the two failures say different things.
-            switch state.startFailure {
-            case .workoutInProgress:
-                ErrorStateView(message: Text(RoutinesStrings.listStartInProgressMessage))
-            case .writeFailed:
-                ErrorStateView(message: Text(RoutinesStrings.listStartWriteErrorMessage))
-            case .started, nil:
-                EmptyView()
-            }
+            refusals
             LazyVStack(spacing: Spacing.md.points) {
                 ForEach(state.routines) { routine in
-                    RoutineCard(routine: routine, start: { start(routine.id) })
+                    RoutineCard(
+                        routine: routine,
+                        start: { start(routine.id) },
+                        duplicate: { Task { await state.duplicate(routine.id) } },
+                        rename: { openRename(routine) },
+                        archive: { archiving = routine }
+                    )
                 }
             }
+        }
+    }
+
+    /// Whichever write refusals are current, drawn above the routines rather than over them: the
+    /// list is still what the lifter came for.
+    ///
+    /// **Four separate sentences and up to two of them at once** (`FR-15.2.3`, `FR-15.2.5`). Each
+    /// says a different thing — one names an action the lifter can take, one names a field they can
+    /// fill in, and two name only the store — and a start refusal is not retired by a management
+    /// command failing.
+    @ViewBuilder private var refusals: some View {
+        switch state.startFailure {
+        case .workoutInProgress:
+            ErrorStateView(message: Text(RoutinesStrings.listStartInProgressMessage))
+        case .writeFailed:
+            ErrorStateView(message: Text(RoutinesStrings.listStartWriteErrorMessage))
+        case .started, nil:
+            EmptyView()
+        }
+        switch state.managementFailure {
+        case .nameRequired:
+            ErrorStateView(message: Text(RoutinesStrings.listNameRequiredMessage))
+        case .writeFailed:
+            ErrorStateView(message: Text(RoutinesStrings.listManageWriteErrorMessage))
+        case nil:
+            EmptyView()
         }
     }
 
@@ -124,21 +200,81 @@ public struct RoutineListView: View {
             navigation?.navigate(to: .training(.activeSession))
         }
     }
+
+    /// Opens the rename prompt over `routine`, holding the name it has now (`FR-15.2.5`).
+    ///
+    /// **Seeded rather than empty**, because a rename is usually an edit: a lifter fixing a typo
+    /// should not have to retype the rest.
+    ///
+    /// - Parameter routine: The row whose command was tapped.
+    private func openRename(_ routine: RoutineSummary) {
+        renameText = routine.name
+        renaming = routine
+    }
+
+    /// Renames `routine` to what the prompt held and closes it.
+    ///
+    /// **The field's text is read before the prompt is dismissed**, the alert's own dismissal being
+    /// what would otherwise race the read.
+    ///
+    /// - Parameter routine: The routine being renamed.
+    private func commitRename(_ routine: RoutineSummary) {
+        let typed = renameText
+        renaming = nil
+        Task { await state.rename(routine.id, to: typed) }
+    }
+
+    /// Archives `routine` and closes the confirmation.
+    ///
+    /// - Parameter routine: The routine being archived.
+    private func commitArchive(_ routine: RoutineSummary) {
+        archiving = nil
+        Task { await state.archive(routine.id) }
+    }
+
+    /// A `Bool` binding over an optional, for the two `alert` presentations.
+    ///
+    /// **It only ever clears**, never sets: an alert is opened by choosing what it is about, and a
+    /// setter that could turn one on without a subject would be a prompt with nothing in it.
+    ///
+    /// - Parameter value: What the alert is open over.
+    /// - Returns: Whether it is open.
+    private func presentation<Value>(of value: Binding<Value?>) -> Binding<Bool> {
+        Binding(
+            get: { value.wrappedValue != nil },
+            set: { if !$0 { value.wrappedValue = nil } })
+    }
 }
 
-/// One routine as the list offers it: the plan to edit, and the command that starts a workout from
-/// it (`FR-15.2.1`, `FR-15.2.3`).
+/// One routine as the list offers it: the plan to edit, the command that starts a workout from it,
+/// and the three that manage it (`FR-15.2.1`, `FR-15.2.3`, `FR-15.2.5`).
 ///
-/// **Two controls stacked rather than one row doing both**, and neither nested in the other. A
-/// button inside a `NavigationLink` is the classic SwiftUI trap — the outer link swallows the inner
-/// tap — and side by side they are two commands sharing a row at `accessibility3`, which is
+/// **Everything stacked rather than sharing a row**, and nothing nested in the link. A button
+/// inside a `NavigationLink` is the classic SwiftUI trap — the outer link swallows the inner tap —
+/// and side by side they are commands sharing a row at `accessibility3`, which is
 /// `SessionExerciseCard`'s reason for stacking its own two.
+///
+/// **The management commands sit below the start**, not between it and the name: `FR-15.2.3` is
+/// what this list is for, and a row of secondary controls driven in above it would push the primary
+/// action away from the routine it belongs to. They are icon buttons carrying their names to
+/// VoiceOver (`G-4.2`), the shape the editor's slot header already uses for the same reason — three
+/// spelled-out commands do not fit a row at any Dynamic Type size.
 struct RoutineCard: View {
     /// What the card draws.
     let routine: RoutineSummary
 
     /// Starts a workout from this routine.
     let start: () -> Void
+
+    /// Copies this routine (`FR-15.2.5`). It acts at once — a copy costs nothing to undo, being a
+    /// new row the lifter can archive.
+    let duplicate: () -> Void
+
+    /// Opens the prompt that retitles it.
+    let rename: () -> Void
+
+    /// Opens the confirmation that archives it.
+    let archive: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm.points) {
@@ -150,6 +286,30 @@ struct RoutineCard: View {
                 Text(RoutinesStrings.listStartAction)
             }
             .buttonStyle(.primaryAction(.fill))
+            management
+        }
+    }
+
+    /// Duplicate, rename, archive — each a 44pt target (`G-4.3`) with a label rather than a bare
+    /// glyph (`G-4.2`), and leading-aligned so they read as this card's rather than the list's.
+    @ViewBuilder private var management: some View {
+        HStack(spacing: Spacing.sm.points) {
+            SlotCommandButton(
+                symbolName: "plus.square.on.square",
+                label: RoutinesStrings.listDuplicate,
+                isEnabled: true,
+                action: duplicate)
+            SlotCommandButton(
+                symbolName: "pencil",
+                label: RoutinesStrings.listRename,
+                isEnabled: true,
+                action: rename)
+            SlotCommandButton(
+                symbolName: "archivebox",
+                label: RoutinesStrings.listArchive,
+                isEnabled: true,
+                action: archive)
+            Spacer()
         }
     }
 }

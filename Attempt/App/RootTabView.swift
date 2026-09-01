@@ -285,7 +285,8 @@ struct RootTabView: View {
                 settings: repositories.settings,
                 vocabulary: stores.modifiers,
                 equipment: stores.equipment,
-                records: stores.records
+                records: stores.records,
+                routines: repositories.routines
             )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)

@@ -1,6 +1,7 @@
 #if os(iOS)
 
     import DesignSystem
+    import DesignTokens
     import Foundation
     import PowerliftingCore
     import RepositoryInterface
@@ -73,6 +74,33 @@
                     headline: Text(LoggingStrings.pastSessionMissingHeadline),
                     message: Text(LoggingStrings.pastSessionMissingMessage)
                 )
+            }
+        }
+
+        // MARK: - Saving the workout as a routine (FR-15.2.6)
+
+        @Test func saveAsRoutineSection() throws {
+            // What the section looks like before anything has been asked of it. The picture is
+            // where the explanation is checkable: it says the routine will hold what was LIFTED,
+            // which is the one thing about this command a lifter cannot guess, and at
+            // accessibility3 it is four lines above a full-width control.
+            try assertSnapshots(named: "Past-session-save-routine") {
+                SaveAsRoutineSection(outcome: nil, save: {})
+            }
+        }
+
+        @Test func saveAsRoutineOutcomes() throws {
+            // The three answers, drawn together rather than as three sections: they are the whole
+            // difference between a command that worked and two that did not, and stacking the
+            // reports alone is what keeps this reference short enough to have content in it.
+            try assertSnapshots(named: "Past-session-save-routine-outcomes") {
+                VStack(alignment: .leading, spacing: Spacing.lg.points) {
+                    Text(LoggingStrings.saveRoutineSaved("Tuesday"))
+                        .font(Typography.caption.font)
+                        .foregroundStyle(ColorToken.textSecondary)
+                    ErrorStateView(message: Text(LoggingStrings.saveRoutineNameRequired))
+                    ErrorStateView(message: Text(LoggingStrings.saveRoutineWriteError))
+                }
             }
         }
 

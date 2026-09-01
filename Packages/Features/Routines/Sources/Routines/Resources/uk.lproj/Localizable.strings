@@ -55,3 +55,18 @@
 "routines.editor.missing.headline" = "Цієї програми більше немає";
 "routines.editor.missing.message" = "Її видалено, або її ніколи не було.";
 "routines.editor.write.error" = "Не вдалося зберегти програму. Спробуйте ще раз.";
+
+"routines.list.duplicate" = "Дублювати";
+"routines.list.rename" = "Перейменувати";
+"routines.list.archive" = "Архівувати";
+"routines.list.cancel" = "Скасувати";
+
+"routines.list.rename.title" = "Перейменувати програму";
+
+"routines.list.archive.title" = "Архівувати цю програму?";
+"routines.list.archive.message" = "Вона назавжди зникне зі списку програм. Тренування, які ви вже записали за нею, залишаться без змін.";
+
+"routines.list.manage.name-required.message" = "Програмі потрібна назва. Нічого не перейменовано.";
+"routines.list.manage.write-error.message" = "Не вдалося зберегти зміну. Спробуйте ще раз.";
+
+"routines.list.duplicate.name %@" = "%@ (копія)";

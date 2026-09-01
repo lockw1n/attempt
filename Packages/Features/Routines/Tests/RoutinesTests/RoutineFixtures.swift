@@ -70,10 +70,11 @@ func fillFirstGroup(_ state: RoutineEditorState, slot index: Int) {
 
 /// A routine store that forwards to another and refuses a chosen call.
 ///
-/// Two failures the in-memory stack cannot produce on its own, and neither is reachable without
-/// one: a read that fails and then succeeds, which is what `reload()` is for; and a delete that
-/// fails *after* an earlier delete in the same save has already landed, which is the partial write
-/// a retry has to be able to finish.
+/// Failures the in-memory stack cannot produce on its own, and none of them reachable without one:
+/// a read that fails and then succeeds, which is what `reload()` is for; a delete that fails
+/// *after* an earlier delete in the same save has already landed, which is the partial write a
+/// retry has to be able to finish; and, for `FR-15.2.5`, a refused routine write or routine
+/// delete — the store saying no to a management command that asked for nothing unusual.
 @MainActor
 final class FlakyRoutineRepository: RoutineRepository {
     /// What a refused call throws.
@@ -91,18 +92,32 @@ final class FlakyRoutineRepository: RoutineRepository {
     /// How many slot deletes have been asked for so far.
     private var slotDeletes = 0
 
+    /// Whether `save(_ routine:)` refuses (`FR-15.2.5`).
+    private let refusesRoutineSaves: Bool
+
+    /// Whether `deleteRoutine(id:)` refuses (`FR-15.2.5`).
+    private let refusesRoutineDeletes: Bool
+
     /// Wraps `base`.
     ///
     /// - Parameters:
     ///   - base: The store the calls that are not refused go to.
     ///   - refusingReads: How many reads to refuse before letting one through.
     ///   - refusingSlotDelete: Which slot delete to refuse, counting from one.
+    ///   - refusingRoutineSaves: Whether every routine write is refused.
+    ///   - refusingRoutineDeletes: Whether every routine delete is refused.
     init(
-        _ base: any RoutineRepository, refusingReads: Int = 0, refusingSlotDelete: Int? = nil
+        _ base: any RoutineRepository,
+        refusingReads: Int = 0,
+        refusingSlotDelete: Int? = nil,
+        refusingRoutineSaves: Bool = false,
+        refusingRoutineDeletes: Bool = false
     ) {
         self.base = base
         readsToRefuse = refusingReads
         slotDeleteToRefuse = refusingSlotDelete
+        refusesRoutineSaves = refusingRoutineSaves
+        refusesRoutineDeletes = refusingRoutineDeletes
     }
 
     func routines(includingDeleted: Bool) async throws -> [Routine] {
@@ -115,9 +130,15 @@ final class FlakyRoutineRepository: RoutineRepository {
         return try await base.routine(id: id, includingDeleted: includingDeleted)
     }
 
-    func save(_ routine: Routine) async throws { try await base.save(routine) }
+    func save(_ routine: Routine) async throws {
+        if refusesRoutineSaves { throw Refusal() }
+        try await base.save(routine)
+    }
 
-    func deleteRoutine(id: UUID) async throws { try await base.deleteRoutine(id: id) }
+    func deleteRoutine(id: UUID) async throws {
+        if refusesRoutineDeletes { throw Refusal() }
+        try await base.deleteRoutine(id: id)
+    }
 
     func exercises(
         forRoutineID routineID: UUID, includingDeleted: Bool

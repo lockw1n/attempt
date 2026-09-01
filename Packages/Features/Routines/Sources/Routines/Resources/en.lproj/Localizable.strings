@@ -82,3 +82,30 @@
 "routines.editor.missing.headline" = "This routine is gone";
 "routines.editor.missing.message" = "It was deleted, or it was never there.";
 "routines.editor.write.error" = "Could not save this routine. Try again.";
+
+/* FR-15.2.5's three management commands, on the card rather than inside the editor: a routine on
+   the list has no draft, so what they act on is unambiguous. Icon buttons carry these as VoiceOver
+   labels (G-4.2). */
+"routines.list.duplicate" = "Duplicate";
+"routines.list.rename" = "Rename";
+"routines.list.archive" = "Archive";
+"routines.list.cancel" = "Cancel";
+
+"routines.list.rename.title" = "Rename routine";
+
+/* Archive is a soft delete and there is no way back from it in this release, so it asks first and
+   the message says what survives: the workouts already logged from this routine copied their
+   targets when they started (TR-15.3), so nothing in History moves. */
+"routines.list.archive.title" = "Archive this routine?";
+"routines.list.archive.message" = "It leaves your routines for good. The workouts you already logged from it are kept exactly as they are.";
+
+/* The rename prompt's field can be emptied, and the editor's own rule applies to it: a routine
+   needs a name. It says what did NOT happen, since the row is still on screen under its old name. */
+"routines.list.manage.name-required.message" = "A routine needs a name. Nothing was renamed.";
+/* The other way a management command changes nothing, and a different fact: the store refused. It
+   names nothing the lifter did, so it asks for the one thing that can help. */
+"routines.list.manage.write-error.message" = "That change could not be saved. Try again.";
+
+/* What a copy is called. The original's name is the argument and is never looked up — it is the
+   lifter's own words. */
+"routines.list.duplicate.name %@" = "%@ (copy)";

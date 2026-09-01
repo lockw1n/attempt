@@ -67,11 +67,14 @@ struct PastSession {
     ///   - sessionID: The session it is about.
     ///   - repositories: What it reads.
     ///   - workouts: The workout repository to use, where it is not the stack's own — a double, say.
+    ///   - routines: The routine repository to use, likewise — the seam `FR-15.2.6`'s refusal is
+    ///     injected at.
     /// - Returns: The state.
     static func state(
         sessionID: UUID,
         over repositories: InMemoryRepositoryStack,
-        workouts: (any WorkoutRepository)? = nil
+        workouts: (any WorkoutRepository)? = nil,
+        routines: (any RoutineRepository)? = nil
     ) -> PastSessionState {
         let reader = workouts ?? repositories.workouts
         return PastSessionState(
@@ -82,7 +85,8 @@ struct PastSession {
             records: PersonalRecordRecomputer(
                 workouts: reader,
                 exercises: InMemoryRepositoryStack().exercises,
-                cache: repositories.personalRecords)
+                cache: repositories.personalRecords),
+            routines: routines ?? repositories.routines
         )
     }
 
