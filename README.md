@@ -49,7 +49,7 @@ Packages/
 ├── DerivedValues/           Background actor recomputing personal records and estimated max on set
 │                            mutation, behind its own cache repository, plus the shared tonnage
 │                            arithmetic every screen totalling logged load reads. Not a feature
-│                            module — four of the five below read it, so it cannot live inside any
+│                            module — four of the six below read it, so it cannot live inside any
 │                            one of them.
 ├── Features/                Feature modules, one level deeper — the level is load-bearing:
 │                            .swiftlint.yml scopes the no-raw-values rules to this path.
@@ -58,7 +58,8 @@ Packages/
 │   ├── History/             Past training: sessions, calendar, search
 │   ├── Dashboard/           e1RM tiles, the recent-PR feed, the week summary, the start-workout
 │   │                        action
-│   └── Settings/            Preferences, data portability, sync, the bodyweight log
+│   ├── Settings/            Preferences, data portability, sync, the bodyweight log
+│   └── Routines/            Authoring a routine: its exercises in order and their target groups
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -81,11 +82,11 @@ must not be shaped like a storage record. `RemoteFetch` sits above both
 because the bundled leg of `exercises.json`'s fallback lives in `SeedContent`.
 `DerivedValues` depends on `PowerliftingCore` and `RepositoryInterface` alone —
 no `DesignSystem`, no `AppNavigation`, since nothing in it renders, and no
-`Persistence` for the same reason no feature has one. The five packages under
+`Persistence` for the same reason no feature has one. The six packages under
 `Packages/Features/` sit at the top: each depends on `PowerliftingCore`,
 `RepositoryInterface`, `DesignSystem`, `AppNavigation` and `Localization`, and
 never on `Persistence` — a feature reaches storage through the protocols
-alone. Four of the five also depend on `DerivedValues`.
+alone. Four of the six also depend on `DerivedValues`.
 Two constraints are load-bearing rather than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
@@ -216,7 +217,7 @@ swift run --package-path Packages/DebugHarness attempt-harness
 It publishes an executable product only, so the app target cannot link it — that is the whole of
 how it stays out of release builds, checked by `scripts/check-harness-excluded.sh`.
 
-`PowerliftingCore`, `Persistence`, `DesignSystem`, `AppNavigation` and the five feature modules
+`PowerliftingCore`, `Persistence`, `DesignSystem`, `AppNavigation` and the six feature modules
 under `Packages/Features/` are linked into the app target as local package references, so
 `xcodebuild` builds them alongside the app. `RepositoryInterface` arrives transitively
 through `Persistence`; the composition root takes a direct product dependency when app
