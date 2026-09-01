@@ -61,6 +61,7 @@ public struct TrainingHomeView: View {
             VStack(alignment: .leading, spacing: Spacing.xl.points) {
                 content
                 libraryLink
+                routinesLink
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Spacing.lg.points)
@@ -149,15 +150,43 @@ public struct TrainingHomeView: View {
         navigation?.navigate(to: .training(.activeSession))
     }
 
+    /// The way into the routines (`FR-15.2.1`).
+    ///
+    /// **A card beside the library's rather than a tab of its own**, `D-8` having fixed the four:
+    /// a routine is a plan for a training day, so the place it is reached from is the screen a
+    /// training day starts on. It is a `NavigationLink` on a `Route` this module does not own,
+    /// which costs nothing — the route enum is shared and the destination is the app target's.
+    private var routinesLink: some View {
+        DestinationCard(
+            label: LoggingStrings.trainRoutinesAction, value: .routines(.routineList))
+    }
+
     /// The way into the exercise library (`FR-1.1.1`).
     ///
     /// The library's real entry point, and the reason the shell's placeholder link could go: it was
     /// pointed here so the built screen was reachable at all before this screen existed.
     private var libraryLink: some View {
-        NavigationLink(value: Route.exerciseLibrary(.exerciseList)) {
+        DestinationCard(
+            label: LoggingStrings.trainLibraryAction, value: .exerciseLibrary(.exerciseList))
+    }
+}
+
+/// A card that pushes one route — the shape both of this screen's two way-out links take.
+///
+/// Extracted when the second arrived: the two differ in a string and a route, and a second copy of
+/// the chrome is a second place to forget a Dynamic Type or accessibility change.
+struct DestinationCard: View {
+    /// What the card says, which is also what VoiceOver reads.
+    let label: LocalizedStringResource
+
+    /// Where it goes.
+    let value: Route
+
+    var body: some View {
+        NavigationLink(value: value) {
             Card {
                 HStack(spacing: Spacing.sm.points) {
-                    Text(LoggingStrings.trainLibraryAction)
+                    Text(label)
                         .font(Typography.actionLabel.font)
                         .foregroundStyle(ColorToken.textPrimary)
                     Spacer(minLength: Spacing.sm.points)

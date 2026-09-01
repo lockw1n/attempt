@@ -9,6 +9,12 @@ import PowerliftingCore
 /// ``prescription`` for the projection that hands it back as the domain type. A second
 /// `Prescription` case reaching this slot is a schema change and a new record property, not a
 /// change to this one.
+///
+/// **A blank weight is `nil`, and it is not the same fact as zero** (`FR-15.2.2`): `nil` is a load
+/// the lifter will decide in the session, and zero is a load they have decided is nothing. Only the
+/// weight is blankable — ``targetReps`` and ``targetSets`` are prescribed either way
+/// (`FR-15.2.1`), which is what keeps a blank-weight group inside `FR-15.3.3`'s adherence
+/// denominator instead of silently leaving it.
 public struct RoutineTargetGroup: StoredRecord {
     /// See ``StoredRecord/id``.
     public let id: UUID
@@ -28,8 +34,8 @@ public struct RoutineTargetGroup: StoredRecord {
     /// Position within the slot, ascending — the top set before the backoff, for instance.
     public let order: Int
 
-    /// The load on **one** implement. See this type's note.
-    public let targetWeight: Weight
+    /// The load on **one** implement, or `nil` for a blank target. See this type's note.
+    public let targetWeight: Weight?
 
     /// Reps prescribed per set in this group.
     public let targetReps: Int
@@ -45,7 +51,7 @@ public struct RoutineTargetGroup: StoredRecord {
         deletedAt: Date?,
         routineExerciseID: UUID,
         order: Int,
-        targetWeight: Weight,
+        targetWeight: Weight?,
         targetReps: Int,
         targetSets: Int
     ) {
@@ -65,13 +71,19 @@ public struct RoutineTargetGroup: StoredRecord {
 
 extension RoutineTargetGroup {
     /// This group's load as `TR-0.2.10`'s domain type, ready for
-    /// ``PowerliftingCore/PrescriptionResolver``.
+    /// ``PowerliftingCore/PrescriptionResolver``, or `nil` where the target is blank.
     ///
-    /// Never fails: `.fixedWeight` accepts any ``PowerliftingCore/Weight``, including a negative
-    /// one (assisted work). The one case this slice can store is the one case this returns — see
-    /// this type's note.
-    public var prescription: Prescription {
-        .fixedWeight(targetWeight)
+    /// **Optional rather than a case of the enum**, because `Prescription` has none that means "no
+    /// load is prescribed": ``PowerliftingCore/Prescription/amrap`` is a rep instruction that
+    /// happens to carry no load, and returning it here would tell the session to work up to
+    /// failure on a target the lifter merely has not filled in yet. A blank target has nothing to
+    /// resolve, and `nil` is how the resolver is not called.
+    ///
+    /// Where a weight is present this never fails: `.fixedWeight` accepts any
+    /// ``PowerliftingCore/Weight``, including a negative one (assisted work). The one case this
+    /// slice can store is the one case this returns — see this type's note.
+    public var prescription: Prescription? {
+        targetWeight.map(Prescription.fixedWeight)
     }
 }
 
@@ -101,7 +113,7 @@ extension RoutineTargetGroup {
             deletedAt: try container.decodeIfPresent(Date.self, forKey: .deletedAt),
             routineExerciseID: try container.decode(UUID.self, forKey: .routineExerciseID),
             order: try container.decode(Int.self, forKey: .order),
-            targetWeight: try container.decode(Weight.self, forKey: .targetWeight),
+            targetWeight: try container.decodeIfPresent(Weight.self, forKey: .targetWeight),
             targetReps: try container.decode(Int.self, forKey: .targetReps),
             targetSets: try container.decode(Int.self, forKey: .targetSets)
         )
@@ -116,7 +128,7 @@ extension RoutineTargetGroup {
         try container.encodeIfPresent(deletedAt, forKey: .deletedAt)
         try container.encode(routineExerciseID, forKey: .routineExerciseID)
         try container.encode(order, forKey: .order)
-        try container.encode(targetWeight, forKey: .targetWeight)
+        try container.encodeIfPresent(targetWeight, forKey: .targetWeight)
         try container.encode(targetReps, forKey: .targetReps)
         try container.encode(targetSets, forKey: .targetSets)
     }

@@ -16,6 +16,7 @@
 		D3432946301E887D00DC20FF /* History in Frameworks */ = {isa = PBXBuildFile; productRef = D3432936301E887D00DC20FF /* History */; };
 		D3432947301E887D00DC20FF /* Dashboard in Frameworks */ = {isa = PBXBuildFile; productRef = D3432937301E887D00DC20FF /* Dashboard */; };
 		D3432948301E887D00DC20FF /* Settings in Frameworks */ = {isa = PBXBuildFile; productRef = D3432938301E887D00DC20FF /* Settings */; };
+		D3432948301E887E00DC20FF /* Routines in Frameworks */ = {isa = PBXBuildFile; productRef = D3432938301E887E00DC20FF /* Routines */; };
 		D3432949301E887D00DC20FF /* SeedImport in Frameworks */ = {isa = PBXBuildFile; productRef = D3432939301E887D00DC20FF /* SeedImport */; };
 /* End PBXBuildFile section */
 
@@ -45,6 +46,7 @@
 				D3432946301E887D00DC20FF /* History in Frameworks */,
 				D3432947301E887D00DC20FF /* Dashboard in Frameworks */,
 				D3432948301E887D00DC20FF /* Settings in Frameworks */,
+				D3432948301E887E00DC20FF /* Routines in Frameworks */,
 				D3432949301E887D00DC20FF /* SeedImport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -97,6 +99,7 @@
 				D3432936301E887D00DC20FF /* History */,
 				D3432937301E887D00DC20FF /* Dashboard */,
 				D3432938301E887D00DC20FF /* Settings */,
+				D3432938301E887E00DC20FF /* Routines */,
 				D3432939301E887D00DC20FF /* SeedImport */,
 			);
 			productName = Attempt;
@@ -138,6 +141,7 @@
 				D3432926301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/History" */,
 				D3432927301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Dashboard" */,
 				D3432928301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Settings" */,
+				D3432929301E887E00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Routines" */,
 				D3432929301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/SeedImport" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -420,6 +424,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/Features/Settings;
 		};
+		D3432929301E887E00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Routines" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/Features/Routines;
+		};
 		D3432929301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/SeedImport" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/SeedImport;
@@ -462,6 +470,10 @@
 		D3432938301E887D00DC20FF /* Settings */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Settings;
+		};
+		D3432938301E887E00DC20FF /* Routines */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Routines;
 		};
 		D3432939301E887D00DC20FF /* SeedImport */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -24,6 +24,9 @@
 "logging.train.in-progress.resume" = "Resume workout";
 
 "logging.train.library.action" = "Browse exercises";
+/* FR-15.2.1, beside the library. "Routines" rather than "Plans": a routine is one training day,
+   and a plan reads like the week. */
+"logging.train.routines.action" = "Routines";
 
 /* The read failed — the screen does not know whether a workout is in progress, so this one takes
    the whole screen. A sentence for the user; the diagnostic is never shown. */

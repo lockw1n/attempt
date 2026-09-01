@@ -23,8 +23,14 @@ final class RoutineTargetGroupEntity: StoredEntity {
     var order: Int = 0
 
     /// The load on **one** implement, in grams (`G-1.1`) —
-    /// ``PowerliftingCore/Prescription/fixedWeight(_:)``'s payload.
-    var targetWeightGrams: Int = 0
+    /// ``PowerliftingCore/Prescription/fixedWeight(_:)``'s payload, or `nil` for a target whose
+    /// weight is decided in the session (`FR-15.2.2`).
+    ///
+    /// **Optional so that blank is a value rather than a zero**, which is `FR-15.2.2`'s whole
+    /// distinction: a lifter who plans `5×5` without deciding the load has not planned an empty
+    /// bar. The reps and sets beside it stay required — `FR-15.2.1` prescribes those whether or not
+    /// a weight is known — so this is the one column a blank target empties.
+    var targetWeightGrams: Int?
 
     /// Reps prescribed per set in this group.
     var targetReps: Int = 0
@@ -36,7 +42,7 @@ final class RoutineTargetGroupEntity: StoredEntity {
         id: UUID = UUID(),
         routineExerciseID: UUID,
         order: Int,
-        targetWeightGrams: Int,
+        targetWeightGrams: Int?,
         targetReps: Int,
         targetSets: Int,
         createdAt: Date = .now,

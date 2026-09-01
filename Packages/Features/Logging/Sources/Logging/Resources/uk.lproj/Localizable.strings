@@ -15,6 +15,7 @@
 "logging.train.in-progress.resume" = "Продовжити тренування";
 
 "logging.train.library.action" = "Переглянути вправи";
+"logging.train.routines.action" = "Програми";
 
 "logging.train.error.headline" = "Тренування недоступні";
 "logging.train.error.message" = "Не вдалося прочитати ваші тренування.";

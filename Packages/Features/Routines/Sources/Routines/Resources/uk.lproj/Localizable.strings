@@ -1,0 +1,53 @@
+/* Українська для модуля програм тренувань (G-3.4, FR-15.2). Кожен ключ має відповідник у
+   en.lproj — ключ без пари показує сам себе. */
+
+"routines.list.title" = "Програми";
+"routines.list.new" = "Нова програма";
+
+"routines.list.empty.headline" = "Програм ще немає";
+"routines.list.empty.message" = "Програма — це план одного тренувального дня: вправи по порядку і те, що робити в кожній.";
+
+"routines.list.error.headline" = "Не вдалося завантажити програми";
+"routines.list.error.message" = "Читання не вдалося. Спробуйте ще раз.";
+
+"routines.list.row.unnamed" = "Програма без назви";
+
+"routines.editor.create.title" = "Нова програма";
+"routines.editor.edit.title" = "Редагувати програму";
+
+"routines.editor.name.label" = "Назва";
+"routines.editor.name.prompt" = "Важкий день присідань";
+"routines.editor.name.caption" = "Програмі потрібна назва.";
+
+"routines.editor.exercises.section" = "Вправи";
+"routines.editor.exercises.empty.headline" = "Вправ ще немає";
+"routines.editor.exercises.empty.message" = "Додайте вправи цього дня в тому порядку, у якому їх виконуєте.";
+"routines.editor.exercise.add" = "Додати вправу";
+"routines.editor.exercise.remove" = "Прибрати вправу";
+"routines.editor.exercise.unnamed" = "Невідома вправа";
+"routines.editor.move.up" = "Перемістити вище";
+"routines.editor.move.down" = "Перемістити нижче";
+
+"routines.editor.group.heading %lld" = "Ціль %lld";
+
+"routines.editor.group.weight.label" = "Вага";
+"routines.editor.group.weight.prompt" = "Вирішити на тренуванні";
+"routines.editor.group.reps.label" = "Повторення";
+"routines.editor.group.sets.label" = "Підходи";
+"routines.editor.group.blank" = "Вага на тренуванні";
+"routines.editor.group.add" = "Додати ціль";
+"routines.editor.group.remove" = "Прибрати ціль";
+"routines.editor.group.up" = "Перемістити ціль вище";
+"routines.editor.group.down" = "Перемістити ціль нижче";
+"routines.editor.group.refusal" = "Кожній цілі потрібні повторення й підходи. Вагу можна залишити порожньою.";
+
+"routines.editor.group.unit.kilograms" = "кг";
+"routines.editor.group.unit.pounds" = "фунт";
+
+"routines.editor.save" = "Зберегти програму";
+
+"routines.editor.error.headline" = "Не вдалося завантажити програму";
+"routines.editor.error.message" = "Читання не вдалося. Спробуйте ще раз.";
+"routines.editor.missing.headline" = "Цієї програми більше немає";
+"routines.editor.missing.message" = "Її видалено, або її ніколи не було.";
+"routines.editor.write.error" = "Не вдалося зберегти програму. Спробуйте ще раз.";

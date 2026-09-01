@@ -1,5 +1,6 @@
 #if os(iOS)
 
+    import AppNavigation
     import DesignSystem
     import Foundation
     import PowerliftingCore
@@ -36,6 +37,25 @@
     @Suite("Session lifecycle snapshots")
     struct SessionSnapshotTests {
         // MARK: - Train root (FR-1.2.1, FR-1.2.11, FR-1.13.2)
+
+        // The two way-out cards under the workout — the exercise library (`FR-1.1.1`) and, since
+        // T-15.02, the routines (`FR-15.2.1`). One reference for both, because they are one
+        // component with two labels, and the pair is what has to keep sharing a line: two cards of
+        // one line each at default type, two of two lines at accessibility3.
+        //
+        // Dimmer here than in the app, on this suite's own `NavigationLink` note above.
+        @Test func destinationCards() throws {
+            try assertSnapshots(named: "TrainHome-destinations") {
+                VStack(alignment: .leading) {
+                    DestinationCard(
+                        label: LoggingStrings.trainLibraryAction,
+                        value: .exerciseLibrary(.exerciseList))
+                    DestinationCard(
+                        label: LoggingStrings.trainRoutinesAction,
+                        value: .routines(.routineList))
+                }
+            }
+        }
 
         @Test func workoutInProgress() throws {
             try assertSnapshots(named: "Train-in-progress") {

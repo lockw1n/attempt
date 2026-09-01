@@ -78,7 +78,7 @@ extension RoutineTargetGroupEntity: RecordMappable {
             deletedAt: deletedAt,
             routineExerciseID: routineExerciseID,
             order: order,
-            targetWeight: Weight(grams: targetWeightGrams),
+            targetWeight: targetWeightGrams.map(Weight.init(grams:)),
             targetReps: targetReps,
             targetSets: targetSets
         )
@@ -90,7 +90,7 @@ extension RoutineTargetGroupEntity: RecordMappable {
             id: record.id,
             routineExerciseID: record.routineExerciseID,
             order: record.order,
-            targetWeightGrams: record.targetWeight.grams,
+            targetWeightGrams: record.targetWeight?.grams,
             targetReps: record.targetReps,
             targetSets: record.targetSets,
             createdAt: record.createdAt,
@@ -102,7 +102,7 @@ extension RoutineTargetGroupEntity: RecordMappable {
     func update(from record: RoutineTargetGroup) {
         routineExerciseID = record.routineExerciseID
         order = record.order
-        targetWeightGrams = record.targetWeight.grams
+        targetWeightGrams = record.targetWeight?.grams
         targetReps = record.targetReps
         targetSets = record.targetSets
     }

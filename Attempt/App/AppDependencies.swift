@@ -3,6 +3,7 @@ import Foundation
 import Logging
 import Persistence
 import RepositoryInterface
+import Routines
 import SeedImport
 import Settings
 
@@ -40,6 +41,9 @@ struct AppDependencies {
         /// `FR-1.11.3`'s backup writes every profile out, which is a read of the table and not a
         /// question about which one is in use.
         let equipment: any EquipmentRepository
+
+        /// Routines, their exercise slots and their target groups (`FR-15.2`).
+        let routines: any RoutineRepository
     }
 
     /// The app-lifetime stores (`TR-1.2`), built over the repositories beside them.
@@ -82,6 +86,12 @@ struct AppDependencies {
         /// The gym the plate calculator loads against (`FR-1.4.1`, `FR-1.4.2`) — one for the whole
         /// app, so a profile edited in Settings reaches the next loading without a relaunch.
         let equipment: PlateCalculatorStore
+
+        /// The routine being authored or edited (`FR-15.2.1`) — one for the whole app, because the
+        /// exercise chooser that adds to it is a screen pushed *over* the editor, and a store
+        /// created with the editor could not be written into from there. `ActiveSessionStore` is
+        /// here for the same reason, one tab over.
+        let routineEditor: RoutineEditorState
     }
 
     /// The opened store's repositories, or why the store could not be opened.
@@ -141,7 +151,8 @@ struct AppDependencies {
                     exercises: stack.exercises,
                     workouts: stack.workouts,
                     bodyweight: stack.bodyweight,
-                    equipment: stack.equipment
+                    equipment: stack.equipment,
+                    routines: stack.routines
                 ),
                 Stores(
                     activeSession: ActiveSessionStore(
@@ -155,7 +166,11 @@ struct AppDependencies {
                     display: DisplayPreferences(),
                     modifiers: SetModifierVocabulary(),
                     equipment: PlateCalculatorStore(
-                        repository: stack.equipment, settings: stack.settings)
+                        repository: stack.equipment, settings: stack.settings),
+                    routineEditor: RoutineEditorState(
+                        repository: stack.routines,
+                        catalogue: stack.exercises,
+                        settings: stack.settings)
                 )
             )
         } catch {
