@@ -107,5 +107,25 @@
 			<string>%lld повторення</string>
 		</dict>
 	</dict>
+	<key>logging.session.adherence %lld %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$lld з %2$#@sets@</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld підходу</string>
+			<key>few</key>
+			<string>%lld підходів</string>
+			<key>many</key>
+			<string>%lld підходів</string>
+			<key>other</key>
+			<string>%lld підходу</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

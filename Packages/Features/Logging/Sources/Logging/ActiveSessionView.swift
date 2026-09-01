@@ -234,7 +234,7 @@ public struct ActiveSessionView: View {
     ///     failure can only have come from a write — it renders beside the commands.
     /// - Returns: The workout, in full.
     @ViewBuilder private func loaded(_ session: WorkoutSession, writeFailed: Bool) -> some View {
-        SessionSummarySection(session: session)
+        SessionSummarySection(session: session, adherence: store.adherence)
         SessionNotesSection(
             draft: $noteDraft,
             hasFailed: store.noteWriteFailure != nil,

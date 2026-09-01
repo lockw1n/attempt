@@ -26,6 +26,7 @@
 "logging.session.summary.section" = "Це тренування";
 "logging.session.day" = "Тренувальний день";
 "logging.session.started" = "Початок";
+"logging.session.adherence" = "Дотримання плану";
 
 "logging.session.empty.headline" = "Вправ ще немає";
 "logging.session.empty.message" = "Вправи, які ви додасте до цього тренування, з’являться тут.";

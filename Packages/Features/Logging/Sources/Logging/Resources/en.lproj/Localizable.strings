@@ -42,6 +42,7 @@
 "logging.session.summary.section" = "This workout";
 "logging.session.day" = "Training day";
 "logging.session.started" = "Started";
+"logging.session.adherence" = "Adherence";
 
 /* The workout exists and has nothing in it. The action is FR-1.2.2's chooser, which is also the
    only command this state can offer — the sets inside an exercise need an exercise first. */

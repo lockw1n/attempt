@@ -83,6 +83,27 @@ extension LoggingStrings {
         resource("logging.session.plan.reps-delta \(reps)")
     }
 
+    // MARK: - Adherence (FR-15.3.3)
+
+    /// The label on the workout's adherence, among its own facts.
+    static let sessionAdherence = resource("logging.session.adherence")
+
+    /// How much of the plan was performed as prescribed, as a count over a count.
+    ///
+    /// **Plural on the total, in the `.stringsdict`**, for
+    /// ``LoggingStrings/sessionProgress(completed:total:)``'s reason — the noun is the one the total
+    /// agrees with.
+    ///
+    /// - Parameters:
+    ///   - asPrescribed: How many prescribed sets were completed as planned.
+    ///   - prescribed: How many were prescribed.
+    /// - Returns: The reading.
+    static func sessionAdherenceValue(
+        asPrescribed: Int, prescribed: Int
+    ) -> LocalizedStringResource {
+        resource("logging.session.adherence \(asPrescribed) \(prescribed)")
+    }
+
     /// This surface's copy, for ``LoggingStrings/all``.
     static var allPlanStrings: [LocalizedStringResource] {
         [
@@ -91,6 +112,9 @@ extension LoggingStrings {
             sessionPlanTarget(weight: "", reps: 0),
             sessionPlanTargetOpenLoad(reps: 0),
             sessionPlanRepsDelta(0),
+            sessionAdherence,
+            sessionAdherenceValue(asPrescribed: 0, prescribed: 0),
+            sessionAdherenceValue(asPrescribed: 1, prescribed: 1),
         ] + [true, false].map(sessionExerciseDoneAction(isDone:))
     }
 }

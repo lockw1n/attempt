@@ -2,6 +2,9 @@ import Foundation
 import PowerliftingCore
 import RepositoryFakes
 import RepositoryInterface
+import Testing
+
+@testable import Logging
 
 // The routine every `FR-15.2`/`FR-15.3` suite starts a workout from, in a file of its own because
 // two suites now need it: `SessionRoutineStartTests` proves the snapshot is taken, and
@@ -109,5 +112,88 @@ struct RoutineFixture {
             notes: "",
             manualE1RM: nil
         )
+    }
+}
+
+/// What a `FR-15.3` suite does to a workout, in one place: start it, log into it, adjust a set,
+/// and read the plan back off the cards.
+///
+/// **Here rather than in the suite that first wrote them**, because two suites now issue the same
+/// commands — `SessionPlanAdjustmentTests` and `SessionAdherenceTests` — and an adjustment routed
+/// through the production lookup in one file and re-derived in the other is exactly the split that
+/// let a broken `prescription(for:in:)` ship green once already.
+///
+/// An extension rather than free functions so each reads as the command a screen issues.
+@MainActor
+extension ActiveSessionStore {
+    /// Logs a set against the first card and hands it back as the store holds it.
+    ///
+    /// - Parameters:
+    ///   - grams: The load logged.
+    ///   - reps: The repetitions logged.
+    /// - Returns: The set, read back from the card rather than reconstructed.
+    func logFirstSquatSet(grams: Int, reps: Int) async throws -> SetEntry {
+        let entryID = try #require(exercises.first?.id)
+        await addSet(
+            toEntryID: entryID,
+            values: SetEntryValues(weight: Weight(grams: grams), reps: reps, rpe: nil, isWarmup: false))
+        return try #require(exercises.first?.sets.last)
+    }
+
+    /// Adjusts one logged set through the sheet the card opens over it (`FR-15.3.5`).
+    ///
+    /// - Parameters:
+    ///   - set: The set being corrected.
+    ///   - values: What the confirmed form holds.
+    func adjust(_ set: SetEntry, to values: SetEntryValues) async throws {
+        let target = ActiveSessionView.target(
+            editing: set,
+            prescribed: ActiveSessionView.prescription(for: set, in: exercises))
+        // The prescription is carried by an edit and seeds nothing — the form opens holding the set
+        // as it was logged. Asserted here rather than in a test of its own because every adjustment
+        // below depends on it: a target that seeded would overwrite the correction being made.
+        #expect(target.prescribed != nil)
+        #expect(target.planned == nil)
+        let draft = SetDraft(editing: values, unit: .kilograms, locale: .posix)
+        let write = try #require(ActiveSessionView.write(draft, over: target))
+        await self.write(write)
+    }
+
+    /// The first card's first set measured against the group it was planned in, or `nil`.
+    ///
+    /// - Returns: The comparison, where the set was planned.
+    func comparisonForFirstSet() -> PlannedTargetComparison? {
+        guard let card = exercises.first, let set = card.sets.first,
+            let target = card.plannedTargets[set.id]
+        else { return nil }
+        return PlannedTargetComparison(set: set, target: target)
+    }
+}
+
+@MainActor
+extension RoutineFixture {
+    /// A workout started from the fixture's routine, with its cards loaded.
+    ///
+    /// - Returns: The store holding it.
+    func startedWorkout() async throws -> ActiveSessionStore {
+        let store = ActiveSessionStore.over(stack)
+        try await start(store)
+        return store
+    }
+
+    /// The routine's own target groups for the squat, as the store holds them.
+    ///
+    /// - Returns: The template rows, in order.
+    func template() async throws -> [RoutineTargetGroup] {
+        try await stack.routines.targetGroups(
+            forRoutineExerciseID: squatSlotID, includingDeleted: false)
+    }
+
+    /// Starts a workout from the fixture's routine on an existing store, cards loaded.
+    ///
+    /// - Parameter store: The store to start it on.
+    func start(_ store: ActiveSessionStore) async throws {
+        #expect(await store.start(on: today, fromRoutineID: routineID, in: stack.routines))
+        await store.loadExercises()
     }
 }

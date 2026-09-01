@@ -109,9 +109,13 @@
         // MARK: - The workout in progress (FR-1.2.11, FR-1.2.12)
 
         @Test func workoutSummary() throws {
+            // `nil` adherence, which is `FR-1.13.3`'s half of `FR-15.3.3` and the commoner case by
+            // far: a workout started by hand prescribes nothing, so the section carries the day and
+            // the start time and no third row at all. The reference is unchanged by T-15.07, which
+            // is itself the claim — a figure that had appeared here would be a ratio over nothing.
             try assertSnapshots(named: "Session-summary") {
                 fixedEnvironment {
-                    SessionSummarySection(session: Fixtures.session)
+                    SessionSummarySection(session: Fixtures.session, adherence: nil)
                 }
             }
         }

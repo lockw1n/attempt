@@ -414,6 +414,15 @@ public final class ActiveSessionStore {
     /// How far through the workout the user is (`FR-1.2.13`).
     public var progress: SessionProgress { SessionProgress(exercises) }
 
+    /// How much of what a routine prescribed has been performed as prescribed (`FR-15.3.3`), or
+    /// `nil` for a workout nobody planned.
+    ///
+    /// **Recomputed off the held exercises on every read, like ``progress``**, which is what makes
+    /// an adjustment show up in it for free: every command that changes a set ends in
+    /// ``loadExercises()``, so the next read of this sees the corrected set with nothing to
+    /// invalidate.
+    public var adherence: SessionAdherence? { SessionAdherence(exercises) }
+
     /// Drops the exercise list, because the workout it belonged to is no longer the one held.
     ///
     /// **All three diagnostics go with it, and so do the previous-performance answer and the record

@@ -48,6 +48,25 @@
             }
         }
 
+        // MARK: - Adherence (FR-15.3.3)
+
+        @Test func adherenceSummary() throws {
+            // The workout's own facts with the plan's reading among them, which is the whole of
+            // this reference's claim: adherence is drawn as a fact about the session beside the day
+            // and the start time, not as a verdict beside the button that ends it. The count is the
+            // requirement's own wording rather than a percentage, and `accessibility3` is where a
+            // `SessionFactRow` stops fitting on one line and wraps — the state that decides whether
+            // "2 of 7 sets" stays readable at all.
+            try assertSnapshots(named: "Session-adherence") {
+                fixedEnvironment {
+                    SessionSummarySection(
+                        session: Fixtures.session,
+                        adherence: SessionAdherence(PlanFixtures.deviations + PlanFixtures.completion)
+                    )
+                }
+            }
+        }
+
         // MARK: - Adjusting one of them (FR-15.3.5)
 
         @Test func setEditorAdjusting() throws {
