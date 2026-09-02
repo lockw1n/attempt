@@ -17,6 +17,7 @@ func makeExercise(
     id: UUID = UUID(),
     deletedAt: Date? = nil,
     name: String = "Low-bar back squat",
+    ukrainianName: String? = nil,
     movement: Movement = .squat,
     implementCount: Int = 2,
     isArchived: Bool = true
@@ -27,6 +28,7 @@ func makeExercise(
         updatedAt: fixtureUpdatedAt,
         deletedAt: deletedAt,
         name: name,
+        ukrainianName: ukrainianName,
         movement: movement,
         parentExerciseID: nil,
         equipment: .barbell,

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Українська має чотири категорії множини там, де англійська має дві: one (1, 21, 31…),
+	     few (2–4, 22–24…), many (0, 5–20, 25–30…) і other, якого ціле число не досягає. -->
+	<key>routines.list.row.exercises %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@exercises@</string>
+		<key>exercises</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld вправа</string>
+			<key>few</key>
+			<string>%lld вправи</string>
+			<key>many</key>
+			<string>%lld вправ</string>
+			<key>other</key>
+			<string>%lld вправи</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

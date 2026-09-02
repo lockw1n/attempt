@@ -102,6 +102,79 @@ struct SingletonConformanceTests {
         #expect(after.deletedAt == nil)
     }
 
+    /// `FR-1.11.3`'s restore onto a device that has already bootstrapped — the case the shipping
+    /// app is always in, and the one `save(_:)` refuses.
+    ///
+    /// **The comparison is one equality against a record built by ``RepositoryInterface/UserSettings/carryingPreferences(of:)``**,
+    /// which is field-for-field rather than a hand-picked three: this record has gained columns
+    /// twice, and a list of preferences written out here would agree with a restore that had
+    /// quietly stopped carrying the next one. `updatedAt` is neutralised because the write stamps
+    /// it (rule 7) and `AuditColumnConformanceTests` is where that claim lives.
+    ///
+    /// The incoming record carries a `deletedAt`, so rule 7's "a save ignores it" is exercised on
+    /// this path too — a restore that honoured it would leave the device holding a settings row the
+    /// app reads as deleted, under an identity with no setter to repair it with.
+    @Test("A restore keeps the identity in force and takes the file's preferences", arguments: Subject.all)
+    func aRestoreKeepsTheIdentityInForce(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let stored = try await repositories.settings.settings()
+        let incoming = foreignBackupSettings()
+
+        try await repositories.settings.restorePreferences(from: incoming)
+
+        let after = try await repositories.settings.settings()
+        // Explicitly, and from both directions: the device's id stayed and the file's did not land.
+        #expect(after.userID == stored.userID)
+        #expect(after.userID != incoming.userID)
+        #expect(after.id == stored.id)
+        #expect(after.createdAt == stored.createdAt)
+
+        var expected = stored.carryingPreferences(of: incoming)
+        expected.updatedAt = after.updatedAt
+        #expect(after == expected)
+    }
+
+    /// The other half of the rule: where no identity is in force, the file's is honoured — that is
+    /// the mint rather than a rewrite, and it is what makes `DOD-1.3`'s wipe-and-restore lossless
+    /// over this table as well as the other eleven.
+    @Test("A restore into an empty store honours the identity it carries", arguments: Subject.all)
+    func aRestoreIntoAnEmptyStoreReinstatesTheIdentity(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let incoming = foreignBackupSettings()
+
+        try await repositories.settings.restorePreferences(from: incoming)
+
+        let after = try await repositories.settings.settings()
+        #expect(after.userID == incoming.userID)
+        #expect(after.id == incoming.id)
+        #expect(after.createdAt == fixtureCreatedAt)
+        #expect(after.deletedAt == nil)
+        #expect(after.displayUnit == .pounds)
+    }
+
+    /// A backup row from another device: every preference moved off the bootstrap's choice, so a
+    /// restore that wrote nothing is visible in each column rather than in one.
+    ///
+    /// - Returns: The record.
+    private func foreignBackupSettings() -> UserSettings {
+        UserSettings(
+            id: UUID(),
+            createdAt: fixtureCreatedAt,
+            updatedAt: fixtureUpdatedAt,
+            deletedAt: Date(timeIntervalSince1970: 0),
+            userID: UUID(),
+            displayUnit: .pounds,
+            e1RMFormula: .brzycki,
+            theme: .light,
+            defaultRoundingIncrement: Weight(grams: 1134),
+            defaultRoundingStrategy: .down,
+            displayPrecision: DisplayPrecision(milliUnits: 100),
+            e1RMLookbackDays: 30,
+            keepScreenAwake: false,
+            dashboardExerciseIDs: [ExportedIDs.first, ExportedIDs.second]
+        )
+    }
+
     @Test("A saved profile cannot claim the default flag", arguments: Subject.all)
     func aSaveCannotClaimTheDefault(_ subject: Subject) async throws {
         let repositories = try subject.make()
@@ -200,4 +273,11 @@ struct SingletonConformanceTests {
         #expect(try await repositories.equipment.defaultProfile()?.id == id)
         #expect(try await repositories.equipment.defaultProfile()?.name == "Garage")
     }
+}
+
+/// Two fixed identifiers for the dashboard selection, so the restored order is assertable rather
+/// than merely non-empty.
+private enum ExportedIDs {
+    static let first = UUID(uuid: (1, 0, 0, 0, 0, 0, 0x40, 0, 0x80, 0, 0, 0, 0, 0, 0, 0))
+    static let second = UUID(uuid: (2, 0, 0, 0, 0, 0, 0x40, 0, 0x80, 0, 0, 0, 0, 0, 0, 0))
 }

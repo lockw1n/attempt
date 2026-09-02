@@ -51,6 +51,13 @@ final class SessionListState {
     /// The screen's read state.
     private(set) var phase: Phase = .idle
 
+    /// Which of an exercise's two names a summary lists (`FR-1.14.2`).
+    ///
+    /// A summary's names are strings ``SessionSummaryReader`` bakes in, so a row cannot resolve one
+    /// for itself, and `FR-1.14.3`'s search over this screen matches exactly those strings. Set by
+    /// the view, on ``RepositoryInterface/ExerciseNameLanguage``'s rule.
+    var nameLanguage: ExerciseNameLanguage = .english
+
     /// The last extension that failed, as the error's description, or `nil`. A **diagnostic**, not
     /// copy (`G-3.4`).
     private(set) var extendFailure: String?
@@ -210,7 +217,7 @@ final class SessionListState {
     ///
     /// - Returns: Each exercise's name, keyed by its identifier.
     private func exerciseNames() async throws -> [UUID: String] {
-        Self.names(in: try await exercises.exercises(includingDeleted: true))
+        Self.names(in: try await exercises.exercises(includingDeleted: true), as: nameLanguage)
     }
 
     /// `catalogue` as a name lookup, first row winning where two share an identifier.
@@ -218,15 +225,23 @@ final class SessionListState {
     /// Separate from the read above because the store cannot produce the case it defends against —
     /// a repository's `save` is keyed on the identifier — so the tiebreak is only assertable here.
     ///
-    /// - Parameter catalogue: The exercises, in the order the repository returned them.
+    /// **The name resolved for `language`, not the English column** (`FR-1.14.2`) — a session's
+    /// summary is read by a person, and `FR-1.14.3`'s search over this screen matches the strings
+    /// this lookup put there.
+    ///
+    /// - Parameters:
+    ///   - catalogue: The exercises, in the order the repository returned them.
+    ///   - language: Which of an exercise's two names the screen is showing.
     /// - Returns: Each name, keyed by its identifier.
-    static func names(in catalogue: [Exercise]) -> [UUID: String] {
-        Dictionary(catalogue.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+    static func names(in catalogue: [Exercise], as language: ExerciseNameLanguage) -> [UUID: String] {
+        Dictionary(
+            catalogue.map { ($0.id, $0.displayName(in: language)) },
+            uniquingKeysWith: { first, _ in first })
     }
 
     /// `sessions` with at most one row per identifier, the first — the newest — kept.
     ///
-    /// The same `G-2.5` argument as ``names(in:)``, one level up and with a sharper consequence: the
+    /// The same `G-2.5` argument as ``names(in:as:)``, one level up and with a sharper consequence: the
     /// list is a `ForEach` keyed on this identifier, which renders neither of a duplicated pair
     /// correctly, and the paging trigger compares against the last row's.
     ///

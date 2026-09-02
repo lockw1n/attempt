@@ -10,6 +10,12 @@ import RepositoryInterface
 /// changed with the reader's language is a heading no formula can reference. The lifter's own words
 /// — every note, every modifier they typed — are carried verbatim.
 ///
+/// **The exercise column is the English name, whatever locale the export was taken in**
+/// (`FR-1.14.2` resolves what a *screen* shows). Same argument as the headings: two exports of one
+/// log must line up, and a column whose values changed with the exporter's language is a column no
+/// sheet can join on. Nothing is lost — the Ukrainian name is a field of the exercise in
+/// ``TrainingLogArchive``'s JSON, which is `FR-1.11.1`'s lossless half.
+///
 /// **This is the readable half rather than the lossless one.** `FR-1.11.1` names two formats and
 /// gives "lossless" to the JSON; a weight is written in the unit the lifter reads in, rounded to the
 /// third decimal, and the exact grams are ``TrainingLogArchive``'s.

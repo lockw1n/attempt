@@ -47,6 +47,9 @@ enum LoggingStrings {
     /// The way into the exercise library from the session surface.
     static let trainLibraryAction = resource("logging.train.library.action")
 
+    /// The way into the routines (`FR-15.2.1`), beside the library's.
+    static let trainRoutinesAction = resource("logging.train.routines.action")
+
     /// The heading when the workouts could not be read.
     static let trainErrorHeadline = resource("logging.train.error.headline")
 
@@ -439,6 +442,7 @@ enum LoggingStrings {
             trainEmptyHeadline, trainEmptyMessage, trainStartAction, trainDateSection,
             trainDatePicker, trainDateHint, trainInProgressSection, trainInProgressDay,
             trainInProgressStarted, trainInProgressResume, trainLibraryAction,
+            trainRoutinesAction,
             trainErrorHeadline,
             trainErrorMessage, trainStartErrorMessage, sessionTitle, sessionSummarySection,
             sessionDay, sessionStarted, sessionEmptyHeadline, sessionEmptyMessage,
@@ -465,7 +469,7 @@ enum LoggingStrings {
             setWarmupNumber("1"), setWarmupPosition(1), setWarmupSection, setWarmupLabel,
             setWarmupHint,
         ] + allModifierStrings + allPlateStrings + allEquipmentStrings + allPastSessionStrings
-            + allRecordStrings
+            + allRecordStrings + allPlanStrings
             + MassUnit.allCases.map(setUnitSymbol(for:))
             + [true, false].map(setMarkAction(isWarmup:))
             + [true, false].map(setOutcome(isCompleted:))

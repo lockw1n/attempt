@@ -138,7 +138,18 @@ enum History {
 ///
 /// The one failure this suite needs and a faithful fake will not produce: the workout in progress
 /// still reads, so the cards are on screen when the history behind them is not.
-actor UnreadableHistory: WorkoutRepository {
+actor UnreadableHistory: WorkoutRepository, PlannedTargetRepository {
+    // TR-15.3's two members: no test here starts from a routine, so the plan is empty and a save
+    // is refused the way this double refuses anything it was not written to answer.
+    func plannedTargets(
+        forEntryID entryID: UUID, includingDeleted: Bool
+    ) async throws -> [PlannedTargetGroup] {
+        []
+    }
+    func save(_ group: PlannedTargetGroup) async throws {
+        throw RepositoryError.recordNotFound(id: group.id)
+    }
+
     private let base: any WorkoutRepository
     private let error: RepositoryError
 

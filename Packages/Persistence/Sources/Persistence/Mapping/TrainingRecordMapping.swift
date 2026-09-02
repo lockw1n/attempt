@@ -3,7 +3,7 @@ import PowerliftingCore
 import RepositoryInterface
 import SwiftData
 
-// The four training entities. See `RecordMapping.swift` for the three members' contract and for why
+// The five training entities. See `RecordMapping.swift` for the three members' contract and for why
 // `update(from:)` leaves the audit columns alone.
 
 extension ExerciseEntity: RecordMappable {
@@ -15,6 +15,7 @@ extension ExerciseEntity: RecordMappable {
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             name: name,
+            ukrainianName: ukrainianName,
             movement: RecordVocabulary.resolve(movementRawValue, or: RecordVocabulary.movement),
             parentExerciseID: parentExerciseID,
             equipment: RecordVocabulary.resolve(equipmentRawValue, or: RecordVocabulary.equipment),
@@ -32,6 +33,7 @@ extension ExerciseEntity: RecordMappable {
         self.init(
             id: record.id,
             name: record.name,
+            ukrainianName: record.ukrainianName,
             movement: record.movement,
             equipment: record.equipment,
             laterality: record.laterality,
@@ -50,6 +52,7 @@ extension ExerciseEntity: RecordMappable {
     /// Overwrites this row from `record`, preserving an unmappable stored spelling.
     func update(from record: Exercise) {
         name = record.name
+        ukrainianName = record.ukrainianName
         movementRawValue = preservingRawValue(
             record.movement, stored: movementRawValue, fallback: RecordVocabulary.movement)
         parentExerciseID = record.parentExerciseID
@@ -124,7 +127,8 @@ extension ExerciseEntryEntity: RecordMappable {
             sessionID: sessionID,
             exerciseID: exerciseID,
             order: order,
-            notes: notes
+            notes: notes,
+            isMarkedDone: isMarkedDone
         )
     }
 
@@ -136,6 +140,7 @@ extension ExerciseEntryEntity: RecordMappable {
             exerciseID: record.exerciseID,
             order: record.order,
             notes: record.notes,
+            isMarkedDone: record.isMarkedDone,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt
         )
@@ -147,6 +152,7 @@ extension ExerciseEntryEntity: RecordMappable {
         exerciseID = record.exerciseID
         order = record.order
         notes = record.notes
+        isMarkedDone = record.isMarkedDone
     }
 }
 
@@ -218,5 +224,45 @@ extension SetEntryEntity: RecordMappable {
         replaceModifiers(with: record.modifiers.map(\.rawValue))
         notes = record.notes
         completedAt = record.completedAt
+    }
+}
+
+extension PlannedTargetGroupEntity: RecordMappable {
+    /// This row as a record.
+    var record: PlannedTargetGroup {
+        PlannedTargetGroup(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            exerciseEntryID: exerciseEntryID,
+            order: order,
+            targetWeight: targetWeightGrams.map(Weight.init(grams:)),
+            targetReps: targetReps,
+            targetSets: targetSets
+        )
+    }
+
+    /// A new row carrying `record`.
+    convenience init(record: PlannedTargetGroup) {
+        self.init(
+            id: record.id,
+            exerciseEntryID: record.exerciseEntryID,
+            order: record.order,
+            targetWeightGrams: record.targetWeight?.grams,
+            targetReps: record.targetReps,
+            targetSets: record.targetSets,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt
+        )
+    }
+
+    /// Overwrites this row from `record`.
+    func update(from record: PlannedTargetGroup) {
+        exerciseEntryID = record.exerciseEntryID
+        order = record.order
+        targetWeightGrams = record.targetWeight?.grams
+        targetReps = record.targetReps
+        targetSets = record.targetSets
     }
 }

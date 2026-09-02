@@ -64,6 +64,81 @@ struct SetEditorWriteTests {
         #expect(edited.repsText == repeated.repsText)
     }
 
+    /// `FR-15.2.3`'s pre-fill, and `FR-15.2.2`'s blank target inside it: the plan is the third way
+    /// a form opens filled in, and the only one whose load can be missing.
+    @Test("A planned target opens the form filled in, and a blank-weight one still fills the reps")
+    func aPlannedTargetOpensTheFormFilledIn() {
+        let entryID = UUID()
+
+        let planned = ActiveSessionView.draft(
+            for: SetEditorTarget(
+                entryID: entryID, planned: PlannedSetSeed(weight: Weight(grams: 100_000), reps: 5)),
+            unit: .kilograms,
+            locale: .posix
+        )
+        let blankWeight = ActiveSessionView.draft(
+            for: SetEditorTarget(entryID: entryID, planned: PlannedSetSeed(weight: nil, reps: 8)),
+            unit: .kilograms,
+            locale: .posix
+        )
+
+        #expect(planned.weightText == "100")
+        #expect(planned.repsText == "5")
+        // The load is the one thing the blank plan left open. The reps are not: a form that opened
+        // wholly blank here would be `NFR-15.3`'s two taps plus a keyboard.
+        #expect(blankWeight.weightText.isEmpty)
+        #expect(blankWeight.repsText == "8")
+        // A plan prescribes the work, so neither seeds a warmup or a note.
+        #expect(planned.isWarmup == false)
+        #expect(planned.notes.isEmpty)
+    }
+
+    /// `FR-15.3.1` on the form the sheet covers the card with: the prescription is carried so the
+    /// editor can draw it, and it seeds nothing — an edit opens holding the set as it was logged.
+    @Test("An edited set carries its prescription without the plan seeding the form")
+    func anEditCarriesItsPrescription() {
+        let group = PlannedTargetGroup(
+            id: UUID(),
+            createdAt: .distantPast,
+            updatedAt: .distantPast,
+            deletedAt: nil,
+            exerciseEntryID: UUID(),
+            order: 0,
+            targetWeight: Weight(grams: 100_000),
+            targetReps: 5,
+            targetSets: 3
+        )
+        let set = SetEntry(
+            id: UUID(),
+            createdAt: .distantPast,
+            updatedAt: .distantPast,
+            deletedAt: nil,
+            entryID: UUID(),
+            order: 0,
+            weight: Weight(grams: 97_500),
+            reps: 4,
+            rpe: nil,
+            rir: nil,
+            isWarmup: false,
+            isCompleted: true,
+            targetWeight: nil,
+            targetReps: nil,
+            modifiers: [],
+            notes: "",
+            completedAt: nil
+        )
+
+        let target = ActiveSessionView.target(editing: set, prescribed: group)
+        let draft = ActiveSessionView.draft(for: target, unit: .kilograms, locale: .posix)
+
+        #expect(target.prescribed == group)
+        #expect(target.planned == nil)
+        // What the lifter did, not what was asked for: a plan that seeded here would overwrite the
+        // set being corrected with the prescription it deviated from.
+        #expect(draft.weightText == "97.5")
+        #expect(draft.repsText == "4")
+    }
+
     @Test("A target carrying a set rewrites that set, and one without logs a new one")
     func aTargetDecidesWhichWriteConfirmingIt() {
         let entryID = UUID()

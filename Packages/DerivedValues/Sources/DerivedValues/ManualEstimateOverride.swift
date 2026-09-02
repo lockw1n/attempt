@@ -77,6 +77,7 @@ extension Exercise {
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             name: name,
+            ukrainianName: ukrainianName,
             movement: movement,
             parentExerciseID: parentExerciseID,
             equipment: equipment,

@@ -33,7 +33,8 @@
 //
 // 5. EVERYTHING ELSE STILL THROWS. A string where an integer belongs, or a missing non-optional
 //    key, is corruption rather than a newer vocabulary, and a record that invented a value for it
-//    would be a backup that cannot be told from a good one.
+//    would be a backup that cannot be told from a good one. A column this format did not always
+//    carry is the exception, and is rule 7's.
 //
 // 6. A RECORD VALIDATES NOTHING ON DECODE. Unlike `SetRecord` and `RoundingRule`, whose decoders
 //    re-run their initialisers' guards, these carry a stored row's values whatever they are — that
@@ -41,6 +42,15 @@
 //    format that cannot carry the rows a repair exists for. The refusals live in `Projections.swift`.
 //    `SetEntry`'s modifier canonicalisation is not validation and does run: it rejects nothing and
 //    alters no spelling, and without it the format would admit two encodings of one set.
+//
+// 7. A COLUMN ADDED AFTER THIS FORMAT WAS ALREADY WRITING FILES IS READ WITH decodeIfPresent AND
+//    ITS BACKFILL VALUE, and written unconditionally. Rule 5 is about a file this app never wrote;
+//    a file it wrote itself before the column existed is neither corruption nor a newer vocabulary,
+//    and a decoder that refused one would make `FR-1.11.3`'s restore reject the app's own backups —
+//    reported as damage rather than as a version, because the archive's `formatVersion` does not
+//    move when a record gains a column. The value an absent key resolves to is the same one the
+//    stored column backfills from, so a row that leaves through a backup and comes back reads
+//    identically whichever route it took. `ExerciseEntry.isMarkedDone` is the first of these.
 //
 // The DATE representation is deliberately NOT pinned here. It is whatever the encoder in use is
 // configured for, because choosing one is choosing a wire format for Phase 2's blob (TR-2.1) and

@@ -1,4 +1,5 @@
 import Foundation
+import PowerliftingCore
 import RepositoryInterface
 
 /// One exercise as it sits in the workout being logged — the entry, the exercise it names, and the
@@ -27,6 +28,14 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
     /// The sets logged against it, in ``RepositoryInterface/SetEntry/order``.
     public let sets: [SetEntry]
 
+    /// What the routine prescribed for it when the workout was started, in
+    /// ``RepositoryInterface/PlannedTargetGroup/order`` (`TR-15.3`).
+    ///
+    /// **Empty for an exercise nobody planned**, which is most of them: a workout started by hand
+    /// has no plan, and an exercise added to a planned workout is not part of the plan either. That
+    /// is not a state anything reports — the card simply has no target to show.
+    public let planned: [PlannedTargetGroup]
+
     /// The entry's id: one entry is one card, and the same exercise may be performed twice in a
     /// workout.
     public var id: UUID { entry.id }
@@ -37,10 +46,17 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
     ///   - entry: This exercise's place in the workout.
     ///   - exercise: The catalogue row it names, where there is one.
     ///   - sets: The sets logged against the entry.
-    public init(entry: ExerciseEntry, exercise: Exercise?, sets: [SetEntry]) {
+    ///   - planned: The targets snapshotted from a routine, or none.
+    public init(
+        entry: ExerciseEntry,
+        exercise: Exercise?,
+        sets: [SetEntry],
+        planned: [PlannedTargetGroup] = []
+    ) {
         self.entry = entry
         self.exercise = exercise
         self.sets = sets
+        self.planned = planned
     }
 
     /// Whether this exercise is finished — what `FR-1.2.13` collapses a card for.
@@ -64,6 +80,141 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
     public var hasWorkingSets: Bool {
         sets.contains { !$0.isWarmup }
     }
+
+    /// Whether the exercise is finished, by either route (`FR-1.2.13`, `FR-15.3.4`).
+    ///
+    /// **The lifter's verdict or the sets', whichever arrives** — a disjunction rather than a
+    /// replacement, because the two answer different questions and Phase 1's answer is still true.
+    /// ``isComplete`` reads the work: every working set logged and completed. ``RepositoryInterface/ExerciseEntry``'s
+    /// `isMarkedDone` reads the lifter: three of five sets can be enough for the day, and an
+    /// exercise nobody performed can still be dealt with. Neither can stand in for the other, so a
+    /// card folds and the progress bar advances on either.
+    public var isDone: Bool {
+        entry.isMarkedDone || isComplete
+    }
+
+    /// Whether the exercise was checked off with none of the work behind it (`FR-15.3.4`).
+    ///
+    /// **A skip is an outcome, not an error.** A routine named this exercise and the lifter
+    /// decided against it — which the check-off has to be able to say, or the only way to record
+    /// "not today" would be to leave the card looking untouched.
+    ///
+    /// **Working sets, on this type's own rule.** Warming up to a lift and then skipping it is
+    /// still a skip: warmups are not the work anywhere else here either.
+    public var isSkipped: Bool {
+        entry.isMarkedDone && !hasWorkingSets
+    }
+
+    /// The planned group the next working set falls in, or `nil` (`FR-15.2.3`).
+    ///
+    /// **Working sets only, and it walks the groups rather than indexing them.** A plan of
+    /// `100×5×1` then `85×8×3` puts the first set in the top-set group and the next three in the
+    /// backoff, so the answer is the group whose running total the next set has not yet passed —
+    /// which is also what makes a multi-group exercise pre-populate correctly rather than offering
+    /// the top set four times.
+    ///
+    /// **Warmups do not consume a planned set.** A routine prescribes the work; warming up to it is
+    /// the lifter's business, and counting warmups here would push a lifter who took three of them
+    /// straight past their first working target.
+    ///
+    /// `nil` once the plan is exhausted — an extra set beyond what was planned is `FR-15.2.4`'s
+    /// independence, not an error, and the form opens blank for it exactly as an unplanned
+    /// exercise's does.
+    public var nextPlannedGroup: PlannedTargetGroup? {
+        Self.plannedGroup(in: planned, afterWorkingSets: sets.count { !$0.isWarmup })
+    }
+
+    /// The planned group the working set at `consumed` working sets in falls in, or `nil`.
+    ///
+    /// **One rule, asked at three positions.** ``nextPlannedGroup`` asks it at the end of what has
+    /// been logged, `FR-15.3.1` asks it at each logged set, and `NFR-15.3`'s one-tap command asks
+    /// it again after re-reading the store; expressing any of those as a second walk is how the
+    /// pre-filled editor and the target on the row start disagreeing about which group a set
+    /// belongs to.
+    ///
+    /// **Static, and taking the groups rather than reading them off an instance**, because the
+    /// third asker has no instance: it runs at the back of the store's write chain, where the held
+    /// list is the one from before whatever is queued ahead of it.
+    ///
+    /// - Parameters:
+    ///   - planned: The groups, in order.
+    ///   - consumed: How many working sets precede the one being placed.
+    /// - Returns: The group it falls in, or `nil` past the end of the plan.
+    static func plannedGroup(
+        in planned: [PlannedTargetGroup], afterWorkingSets consumed: Int
+    ) -> PlannedTargetGroup? {
+        var remaining = consumed
+        for group in planned {
+            if remaining < group.targetSets { return group }
+            remaining -= group.targetSets
+        }
+        return nil
+    }
+
+    /// What each logged set was planned against, keyed on the set (`FR-15.3.1`, `FR-15.3.2`).
+    ///
+    /// **Warmups are absent rather than mapped to the first group.** They do not consume a planned
+    /// set — ``nextPlannedGroup``'s rule — so they have no target to deviate from, and a warmup
+    /// drawn as 40 kg short of the top set would report a deviation the lifter did not make.
+    ///
+    /// **A set past the end of the plan is absent too**, which is `FR-15.2.4`'s independence: an
+    /// extra set is not an error and has nothing to be measured against.
+    ///
+    /// Empty for an exercise nobody planned, which costs the card nothing — there is simply no
+    /// target on any row.
+    public var plannedTargets: [UUID: PlannedTargetGroup] {
+        guard !planned.isEmpty else { return [:] }
+        var targets: [UUID: PlannedTargetGroup] = [:]
+        var position = 0
+        for set in sets where !set.isWarmup {
+            if let group = Self.plannedGroup(in: planned, afterWorkingSets: position) {
+                targets[set.id] = group
+            }
+            position += 1
+        }
+        return targets
+    }
+
+    /// What the set editor opens filled in with for the next set, or `nil` where nothing was
+    /// planned for it (`FR-15.2.3`).
+    ///
+    /// **A blank-weight group still fills the reps in** (`FR-15.2.2`). The load is the one thing
+    /// that plan left to the lifter, and it is left empty rather than zeroed — a zero would assert
+    /// a load nobody chose, which is the distinction that requirement exists for — but the reps and
+    /// the sets are prescribed either way, and dropping them would make a blank-weight group
+    /// pre-populate nothing at all.
+    public var plannedSeed: PlannedSetSeed? {
+        guard let group = nextPlannedGroup else { return nil }
+        return PlannedSetSeed(weight: group.targetWeight, reps: group.targetReps)
+    }
+}
+
+/// What a planned group puts into the set editor when it opens (`FR-15.2.3`).
+///
+/// **Not ``SetEntryValues``, because the load is optional here and is not there.** That type
+/// describes a set that was performed — `FR-1.2.6`'s duplicate and `FR-1.2.7`'s edit both start from
+/// one — and every set that was performed has a weight. A plan need not: `FR-15.2.2`'s blank target
+/// prescribes the reps and leaves the load open, and widening the performed-set type to carry that
+/// would put an unreachable `nil` in front of every existing caller.
+///
+/// Warmup is not a field: a routine prescribes the work, and `FR-1.2.4`'s warmup is a mark the
+/// lifter puts on a set rather than something a plan can predict.
+public struct PlannedSetSeed: Equatable, Sendable {
+    /// The load prescribed, or `nil` where the plan named none (`FR-15.2.2`).
+    public let weight: Weight?
+
+    /// The reps prescribed per set in the group the next set falls in.
+    public let reps: Int
+
+    /// Builds the seed.
+    ///
+    /// - Parameters:
+    ///   - weight: The load prescribed, or `nil`.
+    ///   - reps: The reps prescribed.
+    public init(weight: Weight?, reps: Int) {
+        self.weight = weight
+        self.reps = reps
+    }
 }
 
 /// How far through the workout the user is (`FR-1.2.13`).
@@ -79,10 +230,14 @@ public struct SessionProgress: Equatable, Sendable {
 
     /// Reads the progress off the workout's exercises.
     ///
+    /// **Counting ``SessionExercise/isDone``, so a checked-off exercise advances the bar**
+    /// (`FR-15.3.4`). A mark that changed nothing above the card would be a mark the lifter has to
+    /// take on trust.
+    ///
     /// - Parameter exercises: The workout's exercises, in order.
     public init(_ exercises: [SessionExercise]) {
         total = exercises.count
-        completed = exercises.count(where: \.isComplete)
+        completed = exercises.count(where: \.isDone)
     }
 
     /// The proportion complete, `0` through `1`.

@@ -35,7 +35,9 @@ struct SoftDeleteConformanceTests {
     /// tests pin them, so the drift would have been one-sided and invisible exactly here.
     /// `exercise(id:)` is absent on purpose — nothing in `ExerciseRepository` deletes, so the
     /// deleted half of its flag is unreachable; the suite header records that as exclusion 4 and
-    /// `theFlagNeverHidesALiveRow` asserts the half that is reachable.
+    /// `theFlagNeverHidesALiveRow` asserts the half that is reachable. `routine(id:)` and
+    /// `routineExercise(id:)` are here rather than excluded, because `RoutineRepository` does
+    /// delete both.
     @Test("Every by-id read hides its deleted row and the flag brings it back", arguments: Subject.all)
     func theByIDReadsAllHonourTheFlag(_ subject: Subject) async throws {
         let repositories = try subject.make()
@@ -44,10 +46,19 @@ struct SoftDeleteConformanceTests {
         let weightID = UUID()
         try await repositories.equipment.save(profileRecord(id: profileID))
         try await repositories.bodyweight.save(bodyweightRecord(id: weightID))
+        let routine = routineRecord()
+        try await repositories.routines.save(routine)
+        let slot = routineExerciseRecord(
+            routineID: routine.id, exerciseID: timeline.exerciseID)
+        try await repositories.routines.save(slot)
 
         try await repositories.workouts.deleteSession(id: timeline.sessionID)
         try await repositories.equipment.deleteProfile(id: profileID)
         try await repositories.bodyweight.deleteEntry(id: weightID)
+        // The slot first: deleting the routine cascades into it, so deleting the routine alone
+        // would leave the slot's own delete untested behind the cascade's work.
+        try await repositories.routines.deleteRoutineExercise(id: slot.id)
+        try await repositories.routines.deleteRoutine(id: routine.id)
 
         #expect(
             try await repositories.workouts.session(
@@ -56,6 +67,11 @@ struct SoftDeleteConformanceTests {
             try await repositories.equipment.profile(id: profileID, includingDeleted: false) == nil)
         #expect(
             try await repositories.bodyweight.entry(id: weightID, includingDeleted: false) == nil)
+        #expect(
+            try await repositories.routines.routine(id: routine.id, includingDeleted: false) == nil)
+        #expect(
+            try await repositories.routines.routineExercise(
+                id: slot.id, includingDeleted: false) == nil)
 
         // Both halves, so the test cannot be satisfied by a read that answers `nil` regardless.
         #expect(
@@ -65,6 +81,11 @@ struct SoftDeleteConformanceTests {
             try await repositories.equipment.profile(id: profileID, includingDeleted: true) != nil)
         #expect(
             try await repositories.bodyweight.entry(id: weightID, includingDeleted: true) != nil)
+        #expect(
+            try await repositories.routines.routine(id: routine.id, includingDeleted: true) != nil)
+        #expect(
+            try await repositories.routines.routineExercise(
+                id: slot.id, includingDeleted: true) != nil)
     }
 
     @Test("An enumerating read drops the deleted row and the flag brings it back", arguments: Subject.all)

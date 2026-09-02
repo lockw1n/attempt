@@ -10,9 +10,10 @@ import RepositoryInterface
 /// immutable records cannot obey that without a way to put the four columns back.
 ///
 /// **One implementation per record type, and no shortcut.** A record's properties are `let`, so
-/// each conformance restates the whole memberwise initialiser — eight of them, mechanical and
+/// each conformance restates the whole memberwise initialiser — thirteen of them, mechanical and
 /// verbose, and the alternative is a mutable mirror of every record shape, which is a second place
-/// for a column to go missing. `RecordStampingTests` proves each one changes nothing but the four.
+/// for a column to go missing. `RecordStampingTests` proves this of every conformance on its list;
+/// ``RepositoryInterface/PersonalRecordCache``'s is the one not on it.
 protocol AuditStamped: StoredRecord {
     /// `self` with the four audit columns replaced and every other column untouched.
     func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> Self
@@ -26,6 +27,7 @@ extension Exercise: AuditStamped {
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             name: name,
+            ukrainianName: ukrainianName,
             movement: movement,
             parentExerciseID: parentExerciseID,
             equipment: equipment,
@@ -87,7 +89,8 @@ extension ExerciseEntry: AuditStamped {
             sessionID: sessionID,
             exerciseID: exerciseID,
             order: order,
-            notes: notes
+            notes: notes,
+            isMarkedDone: isMarkedDone
         )
     }
 }
@@ -216,6 +219,64 @@ extension UserSettings: AuditStamped {
     /// is already there rather than replacing its identity (`TR-1.10`).
     func preferencesWritten(onto row: UserSettings) -> UserSettings {
         row.carryingPreferences(of: self)
+    }
+}
+
+extension Routine: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> Routine {
+        Routine(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            name: name
+        )
+    }
+}
+
+extension RoutineExercise: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> RoutineExercise {
+        RoutineExercise(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            routineID: routineID,
+            exerciseID: exerciseID,
+            order: order
+        )
+    }
+}
+
+extension RoutineTargetGroup: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> RoutineTargetGroup {
+        RoutineTargetGroup(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            routineExerciseID: routineExerciseID,
+            order: order,
+            targetWeight: targetWeight,
+            targetReps: targetReps,
+            targetSets: targetSets
+        )
+    }
+}
+
+extension PlannedTargetGroup: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> PlannedTargetGroup {
+        PlannedTargetGroup(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            exerciseEntryID: exerciseEntryID,
+            order: order,
+            targetWeight: targetWeight,
+            targetReps: targetReps,
+            targetSets: targetSets
+        )
     }
 }
 

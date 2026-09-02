@@ -19,8 +19,24 @@ struct HistoryStringsTests {
 
     @Test("The catalogue is this module's, not the app's")
     func copyComesFromTheModuleBundle() {
-        #expect(Bundle.module.localizations == ["en"])
+        #expect(Bundle.module.localizations.sorted() == ["en", "uk"])
         #expect(String(localized: HistoryStrings.emptyHeadline) == "No training logged yet")
+    }
+
+    /// `FR-1.14.1`. `scripts/check-translations.sh` is what holds the whole table complete, key for
+    /// key; what it cannot say is that the table reached the built bundle, which is the half a
+    /// comparison of two files in the repo has no way to see.
+    @Test("The Ukrainian catalogue is in this module's bundle")
+    func ukrainianCopyIsBundled() throws {
+        let url = try #require(
+            Bundle.module.url(
+                forResource: "Localizable",
+                withExtension: "strings",
+                subdirectory: nil,
+                localization: "uk"
+            ))
+        let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
+        #expect(catalogue["history.list.empty.action"] == "Почати тренування")
     }
 
     @Test("The catalogue and the accessors name exactly the same keys")

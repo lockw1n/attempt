@@ -14,8 +14,9 @@ public struct InMemoryRepositoryStack: Sendable {
     /// The exercise catalogue and each exercise's training-max history.
     public let exercises: any ExerciseRepository
 
-    /// Sessions, entries and sets.
-    public let workouts: any WorkoutRepository
+    /// Sessions, entries, sets and their planned targets — one property answering two protocols,
+    /// for `PersistenceStack`'s reason.
+    public let workouts: any WorkoutRepository & PlannedTargetRepository
 
     /// The single settings row (`TR-1.10`).
     public let settings: any SettingsRepository
@@ -29,6 +30,9 @@ public struct InMemoryRepositoryStack: Sendable {
     /// The cached N-rep maxes (`TR-1.6`).
     public let personalRecords: any PersonalRecordCacheRepository
 
+    /// Routines, their exercise slots and target groups (`FR-15.2`).
+    public let routines: any RoutineRepository
+
     /// The fakes over one empty store.
     public init() {
         let store = InMemoryRepositoryStore()
@@ -38,5 +42,6 @@ public struct InMemoryRepositoryStack: Sendable {
         bodyweight = InMemoryBodyweightRepository(store: store)
         equipment = InMemoryEquipmentRepository(store: store)
         personalRecords = InMemoryPersonalRecordCacheRepository(store: store)
+        routines = InMemoryRoutineRepository(store: store)
     }
 }

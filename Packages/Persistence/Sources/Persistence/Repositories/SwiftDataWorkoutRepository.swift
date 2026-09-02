@@ -38,8 +38,12 @@ struct FeedSortKey: Comparable {
 ///
 /// Three levels joined by `UUID` columns, because `G-2.5` forbids relationships — so the cascade
 /// and the personal-record ordering are both written here rather than inherited from the store.
+///
+/// **It answers `PlannedTargetRepository` too** (`TR-15.3`). A planned target hangs off an entry
+/// like a set does, so its cascade is this type's, and splitting it across two actors over one
+/// container would mean two writers for one delete.
 @ModelActor
-actor SwiftDataWorkoutRepository: WorkoutRepository {
+actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     func sessions(in range: ClosedRange<Date>, includingDeleted: Bool) throws -> [WorkoutSession] {
         let (start, end) = (range.lowerBound, range.upperBound)
         return try modelContext.rows(
@@ -210,7 +214,30 @@ actor SwiftDataWorkoutRepository: WorkoutRepository {
         .map(\.record)
     }
 
-    /// Soft-deletes `entries` and every set hanging off them, without saving.
+    // MARK: - Planned targets
+
+    /// The groups planned for one entry, by order then id (`TR-15.3`).
+    func plannedTargets(
+        forEntryID entryID: UUID, includingDeleted: Bool
+    ) throws -> [PlannedTargetGroup] {
+        try modelContext.rows(
+            PlannedTargetGroupEntity.self,
+            matching: #Predicate { $0.exerciseEntryID == entryID },
+            includingDeleted: includingDeleted
+        )
+        .sortedDeterministically { ($0.order, $0.id.uuidString) }
+        .map(\.record)
+    }
+
+    func save(_ group: PlannedTargetGroup) throws {
+        try modelContext.requireReferenced(
+            ExerciseEntryEntity.self, id: group.exerciseEntryID, from: group.id)
+        try modelContext.upsert(group, as: PlannedTargetGroupEntity.self)
+        try modelContext.saveStamped()
+    }
+
+    /// Soft-deletes `entries`, every set hanging off them and every target planned for them,
+    /// without saving.
     ///
     /// Shared by the two cascading deletes so that "a deleted entry never leaves a live set" is one
     /// piece of code rather than an obligation on two. An entry already deleted keeps the date it
@@ -227,5 +254,14 @@ actor SwiftDataWorkoutRepository: WorkoutRepository {
             includingDeleted: false
         )
         for set in sets { set.markDeleted(at: now) }
+
+        // The plan goes with the exercise it was planned for (`TR-15.3`): a target left live under
+        // a deleted entry is a prescription for work nothing can be logged against.
+        let planned = try modelContext.rows(
+            PlannedTargetGroupEntity.self,
+            matching: #Predicate { entryIDs.contains($0.exerciseEntryID) },
+            includingDeleted: false
+        )
+        for group in planned { group.markDeleted(at: now) }
     }
 }

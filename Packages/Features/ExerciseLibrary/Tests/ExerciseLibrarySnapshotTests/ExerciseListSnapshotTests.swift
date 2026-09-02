@@ -41,6 +41,18 @@
             }
         }
 
+        @Test func ukrainianCatalogue() throws {
+            // `FR-1.14.2` as a picture: the same rows a Ukrainian reader gets, ordered by the names
+            // they show and falling back to English on the row nothing translated. Since
+            // `FR-1.14.1` the chrome around them is Ukrainian too — the badges and the equipment
+            // captions resolve from `uk.lproj`, so this reference is now of the whole row rather
+            // than only of its data.
+            try assertSnapshots(named: "ExerciseList-groups-uk") {
+                ExerciseGroupList(groups: Fixtures.ukrainianGroups)
+                    .environment(\.locale, Fixtures.ukrainianLocale)
+            }
+        }
+
         @Test func filterChips() throws {
             try assertSnapshots(named: "ExerciseList-filter-chips") {
                 VStack(alignment: .leading, spacing: Spacing.sm.points) {
@@ -193,6 +205,38 @@
             ),
         ]
 
+        /// The same two headings a Ukrainian reader sees (`FR-1.14.2`): two rows translated, one
+        /// left in English because nothing translated it — which is the fallback, and the only
+        /// picture that shows a mixed list is honest rather than broken.
+        static let ukrainianGroups: [ExerciseGroup] = [
+            ExerciseGroup(
+                movement: .squat,
+                exercises: [
+                    exercise(
+                        id: 1,
+                        name: "Front Squat",
+                        ukrainianName: "Глибокі присідання",
+                        movement: .squat,
+                        isCustom: true),
+                    exercise(
+                        id: 2,
+                        name: "Back Squat",
+                        ukrainianName: "Присідання зі штангою",
+                        movement: .squat),
+                ]
+            ),
+            ExerciseGroup(
+                movement: .bench,
+                exercises: [
+                    exercise(id: 3, name: "Bench Press", movement: .bench, equipment: .dumbbell)
+                ]
+            ),
+        ]
+
+        /// The locale the Ukrainian references render in. Region-free, which is the pair
+        /// ``RepositoryInterface/ExerciseNameLanguage/init(_:)`` resolves on.
+        static let ukrainianLocale = Locale(identifier: "uk")
+
         /// The list once "show archived" is on (`FR-1.1.5`): a live row and an archived one under
         /// the same heading, which is the only picture that shows the badge doing its job.
         static let archivedGroups: [ExerciseGroup] = [
@@ -211,6 +255,7 @@
         static func exercise(
             id: Int,
             name: String,
+            ukrainianName: String? = nil,
             movement: Movement,
             equipment: Equipment = .barbell,
             isCustom: Bool = false,
@@ -224,6 +269,7 @@
                 updatedAt: Date(timeIntervalSince1970: 0),
                 deletedAt: nil,
                 name: name,
+                ukrainianName: ukrainianName,
                 movement: movement,
                 parentExerciseID: nil,
                 equipment: equipment,

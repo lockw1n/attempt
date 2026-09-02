@@ -1,9 +1,66 @@
 import Foundation
+import Persistence
 import PowerliftingCore
 import RepositoryFakes
 import RepositoryInterface
 
 @testable import Settings
+
+/// The repositories a fixture writes through, whichever store is underneath.
+///
+/// **A type of its own rather than either stack**, because `DOD-1.3`'s round trip has to build the
+/// same fixture twice — once over the fakes, where every other test here runs, and once over the
+/// real SwiftData store, which is the only place `TR-1.14`'s purge exists. Two fixtures would be two
+/// stores that could drift, and the drift would be invisible: the round trip would still pass, over
+/// a store shaped differently from the one every other assertion in this suite is made against.
+struct FixtureRepositories {
+    /// The exercise catalogue and each exercise's training-max history.
+    let exercises: any ExerciseRepository
+
+    /// Sessions, entries, sets and their planned targets.
+    let workouts: any WorkoutRepository & PlannedTargetRepository
+
+    /// The single settings row (`TR-1.10`).
+    let settings: any SettingsRepository
+
+    /// The bodyweight log.
+    let bodyweight: any BodyweightRepository
+
+    /// The user's equipment profiles.
+    let equipment: any EquipmentRepository
+
+    /// The cached N-rep maxes (`TR-1.6`).
+    let personalRecords: any PersonalRecordCacheRepository
+
+    /// Routines, their exercise slots and target groups (`FR-15.2`).
+    let routines: any RoutineRepository
+
+    /// The fakes.
+    ///
+    /// - Parameter stack: The in-memory stack.
+    init(_ stack: InMemoryRepositoryStack) {
+        exercises = stack.exercises
+        workouts = stack.workouts
+        settings = stack.settings
+        bodyweight = stack.bodyweight
+        equipment = stack.equipment
+        personalRecords = stack.personalRecords
+        routines = stack.routines
+    }
+
+    /// The real store.
+    ///
+    /// - Parameter stack: The SwiftData stack.
+    init(_ stack: PersistenceStack) {
+        exercises = stack.exercises
+        workouts = stack.workouts
+        settings = stack.settings
+        bodyweight = stack.bodyweight
+        equipment = stack.equipment
+        personalRecords = stack.personalRecords
+        routines = stack.routines
+    }
+}
 
 /// A store with a training log in it, written through the real fakes.
 ///
@@ -11,8 +68,8 @@ import RepositoryInterface
 /// three levels joined by `UUID` columns, and a double that returned what a test handed it would
 /// agree with any walk at all.
 struct ExportLog {
-    /// The fakes over one store.
-    let repositories: InMemoryRepositoryStack
+    /// The repositories over one store — the fakes, or the real one where a test needs it.
+    let repositories: FixtureRepositories
 
     /// A fixed instant everything is stamped from — one with a sub-second component, because the
     /// losslessness claim is about exactly that. It reads as 2025-07-06T00:00:00Z.
@@ -20,7 +77,14 @@ struct ExportLog {
 
     /// A store with an empty catalogue and nothing logged.
     init() {
-        repositories = InMemoryRepositoryStack()
+        repositories = FixtureRepositories(InMemoryRepositoryStack())
+    }
+
+    /// The same fixture over a real SwiftData store — `DOD-1.3`'s round trip and nothing else.
+    ///
+    /// - Parameter stack: The store to write into.
+    init(_ stack: PersistenceStack) {
+        repositories = FixtureRepositories(stack)
     }
 
     /// Writes an exercise into the catalogue.
@@ -153,9 +217,9 @@ struct ExportLog {
 
     /// A store with one session, one exercise and three sets — the shape most tests here want.
     ///
+    /// - Parameter log: Which store to write into, defaulting to a fresh set of fakes.
     /// - Returns: The populated fixture.
-    static func populated() async throws -> ExportLog {
-        let log = ExportLog()
+    static func populated(_ log: ExportLog = ExportLog()) async throws -> ExportLog {
         let squat = try await log.exercise(named: "Back Squat")
         let session = try await log.session(daysAgo: 0, notes: "felt good")
         let entry = try await log.entry(squat, in: session)
@@ -193,6 +257,7 @@ enum ExportRecords {
             updatedAt: stamp,
             deletedAt: nil,
             name: name,
+            ukrainianName: nil,
             movement: .squat,
             parentExerciseID: nil,
             equipment: .barbell,

@@ -38,6 +38,10 @@ public struct ExerciseListView: View {
     /// The way back once a row has been chosen. Unused while ``select`` is `nil`.
     @Environment(\.dismiss) private var dismiss
 
+    /// The locale the screen is rendering in, which decides which name its rows show and its search
+    /// matches (`FR-1.14.2`, `FR-1.14.3`).
+    @Environment(\.locale) private var locale
+
     /// Builds the screen over the repository its state reads through.
     ///
     /// - Parameters:
@@ -95,7 +99,13 @@ public struct ExerciseListView: View {
         }
         // `refresh()`, not `load()`: an exercise created or edited above this screen has to be here
         // on the way back down (`FR-1.1.3`, `FR-1.1.4`). See the method's own note.
-        .task { await state.refresh() }
+        //
+        // The language is handed over before the read rather than watched for changes: iOS restarts
+        // the app when its language changes, so there is no running screen to update.
+        .task {
+            state.nameLanguage = ExerciseNameLanguage(locale)
+            await state.refresh()
+        }
     }
 
     /// The screen's four states (`FR-1.13.1`), each one of T-1.09's shared components.
@@ -125,6 +135,9 @@ public struct ExerciseListView: View {
     /// that unhides it (`FR-1.1.5`), and a search that matched nothing has the filters that caused
     /// it and one tap out.
     @ViewBuilder private var loaded: some View {
+        // One read, because ``ExerciseListState/groups`` sorts on every one of them: the empty
+        // check below and the list it guards are the same value.
+        let groups = state.groups
         if state.isCatalogueEmpty {
             EmptyStateView(
                 symbolName: "figure.strengthtraining.traditional",
@@ -154,7 +167,7 @@ public struct ExerciseListView: View {
                         state.showsArchived = true
                     }
             )
-        } else if state.groups.isEmpty {
+        } else if groups.isEmpty {
             EmptyStateView(
                 symbolName: "magnifyingglass",
                 headline: Text(ExerciseLibraryStrings.noMatchesHeadline),
@@ -164,7 +177,7 @@ public struct ExerciseListView: View {
                 }
             )
         } else {
-            ExerciseGroupList(groups: state.groups, select: rowAction)
+            ExerciseGroupList(groups: groups, select: rowAction)
         }
     }
 
@@ -202,7 +215,7 @@ struct ExerciseGroupList: View {
     /// the chooser as a link would promise a screen the tap does not open.
     var select: ((Exercise) -> Void)?
 
-    /// A lazy stack: 116 rows is the seeded catalogue and a custom one only grows it (`NFR-1.1`).
+    /// A lazy stack: 132 rows is the seeded catalogue and a custom one only grows it (`NFR-1.1`).
     var body: some View {
         LazyVStack(alignment: .leading, spacing: Spacing.xl.points) {
             ForEach(groups) { group in
@@ -253,18 +266,28 @@ struct ExerciseRow: View {
     /// The exercise this row names.
     let exercise: Exercise
 
+    /// The locale the row resolves its name in (`FR-1.14.2`).
+    ///
+    /// Read here rather than passed in, so every surface that draws a row — the list, the picker,
+    /// the detail screen's variations — resolves the same way without each of them remembering to.
+    @Environment(\.locale) private var locale
+
     /// Which trailing mark this row carries. Disclosure unless the caller says otherwise.
     var accessory: Accessory = .disclosure
 
     /// Name, then what it is performed with, and a badge when the user wrote it or archived it.
     ///
     /// The whole row is one VoiceOver element (`G-4.2`): name, equipment and badge are one thing to
-    /// say about one exercise, and three stops per row over 116 rows is the failure mode. The
+    /// say about one exercise, and three stops per row over 132 rows is the failure mode. The
     /// chevron is hidden — it says "this pushes", which the button trait already says.
+    ///
+    /// **The name takes no `lineLimit`, and the row is given a minimum height rather than a fixed
+    /// one**, so a long name wraps and the row grows instead of clipping. The catalogue's longest
+    /// is 42 characters, in Ukrainian (`FR-1.14.2`), and a larger Dynamic Type size is a longer one.
     var body: some View {
         HStack(spacing: Spacing.md.points) {
             VStack(alignment: .leading, spacing: Spacing.xxs.points) {
-                Text(verbatim: exercise.name)
+                Text(verbatim: exercise.displayName(for: locale))
                     .font(Typography.body.font)
                     .foregroundStyle(ColorToken.textPrimary)
                 HStack(spacing: Spacing.sm.points) {

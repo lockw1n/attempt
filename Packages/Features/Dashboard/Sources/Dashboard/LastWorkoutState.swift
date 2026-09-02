@@ -43,6 +43,12 @@ final class LastWorkoutState {
     /// Whether the last repeat could not be started. The card is unchanged either way.
     private(set) var repeatDidFail = false
 
+    /// Which of an exercise's two names the card lists (`FR-1.14.2`).
+    ///
+    /// The card's names are strings this state builds, and it de-duplicates on them — the view sets
+    /// this, on ``RepositoryInterface/ExerciseNameLanguage``'s rule.
+    var nameLanguage: ExerciseNameLanguage = .english
+
     /// The sessions, their entries and their sets.
     private let workouts: any WorkoutRepository
 
@@ -108,7 +114,8 @@ final class LastWorkoutState {
         let entries = try await workouts.entries(forSessionID: session.id, includingDeleted: false)
             .sorted { $0.order < $1.order }
         let named = Dictionary(
-            try await catalogue.exercises(includingDeleted: true).map { ($0.id, $0.name) }
+            try await catalogue.exercises(includingDeleted: true)
+                .map { ($0.id, $0.displayName(in: nameLanguage)) }
         ) { first, _ in first }
         var names: [String] = []
         var workingSets = 0

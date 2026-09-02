@@ -151,6 +151,7 @@ private struct RepeatFixture {
             updatedAt: today,
             deletedAt: nil,
             name: name,
+            ukrainianName: nil,
             movement: .squat,
             parentExerciseID: nil,
             equipment: .barbell,
@@ -207,7 +208,18 @@ private struct RepeatFixture {
 /// **Only that one method refuses**, which is what makes this the repeat's half-failure rather than
 /// a failure: the session still persists, so the test can ask what happens to a workout whose
 /// exercises did not follow it.
-private struct EntryWriteRefusingRepository: WorkoutRepository {
+private struct EntryWriteRefusingRepository: WorkoutRepository, PlannedTargetRepository {
+    // TR-15.3's two members: no test here starts from a routine, so the plan is empty and a save
+    // is refused the way this double refuses anything it was not written to answer.
+    func plannedTargets(
+        forEntryID entryID: UUID, includingDeleted: Bool
+    ) async throws -> [PlannedTargetGroup] {
+        []
+    }
+    func save(_ group: PlannedTargetGroup) async throws {
+        throw RepositoryError.recordNotFound(id: group.id)
+    }
+
     /// The fakes everything else delegates to.
     let wrapped: any WorkoutRepository
 

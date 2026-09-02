@@ -56,6 +56,19 @@
             }
         }
 
+        @Test func ukrainianVariations() throws {
+            // The detail screen's own name-bearing rows (`FR-1.14.2`). Its title is a
+            // `navigationTitle`, which the harness has no bar to draw — what the title resolves to
+            // is `ExerciseLocaleDisplayTests`' and the simulator run's.
+            try assertSnapshots(named: "ExerciseDetail-variations-uk") {
+                ExerciseVariationsSection(
+                    parent: DetailFixtures.ukrainianBackSquat,
+                    variations: [DetailFixtures.ukrainianFrontSquat, DetailFixtures.pauseSquat]
+                )
+                .environment(\.locale, Fixtures.ukrainianLocale)
+            }
+        }
+
         @Test func history() throws {
             // One picture with every row variant in it: a working set with a rating, one without,
             // a warmup, and a failed set. Four references over four rows rather than four suites —
@@ -259,6 +272,21 @@
         )
 
         static let pauseSquat = Fixtures.exercise(id: 3, name: "Pause Squat", movement: .squat)
+
+        /// ``backSquat`` and ``frontSquat`` with Ukrainian names, for the reference that shows a
+        /// translated parent over a mixed list of variations (`FR-1.14.2`).
+        static let ukrainianBackSquat = Fixtures.exercise(
+            id: 1, name: "Back Squat", ukrainianName: "Присідання зі штангою", movement: .squat)
+
+        static let ukrainianFrontSquat = Fixtures.exercise(
+            id: 2,
+            name: "Front Squat",
+            ukrainianName: "Глибокі присідання",
+            movement: .squat,
+            isCustom: true,
+            laterality: .unilateral,
+            barType: .safetySquat
+        )
 
         static let retired = Fixtures.exercise(
             id: 4,

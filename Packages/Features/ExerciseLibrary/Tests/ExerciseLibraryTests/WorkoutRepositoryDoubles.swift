@@ -15,6 +15,10 @@ actor RefusingSettingsRepository: SettingsRepository {
     func save(_ settings: UserSettings) async throws {
         throw RepositoryError.recordNotFound(id: UUID())
     }
+
+    func restorePreferences(from backup: UserSettings) async throws {
+        throw RepositoryError.recordNotFound(id: UUID())
+    }
 }
 
 /// Counts the reads, which is what makes "the walk stops early" and "the second read is conditional

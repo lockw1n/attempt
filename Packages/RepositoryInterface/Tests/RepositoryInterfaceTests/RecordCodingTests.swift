@@ -20,13 +20,13 @@ struct RecordCodingKeyTests {
     // Every fixture has all of its optionals populated, because an omitted key is not a missing
     // one: the omit-when-nil rule has its own test.
 
-    @Test("An exercise writes fifteen keys")
+    @Test("An exercise writes sixteen keys")
     func exerciseKeys() throws {
         #expect(
             try encodedKeys(of: codingExercise()) == [
                 "barType", "createdAt", "deletedAt", "equipment", "id", "implementCount",
                 "isArchived", "isCustom", "laterality", "manualE1RM", "movement", "name", "notes",
-                "parentExerciseID", "updatedAt",
+                "parentExerciseID", "ukrainianName", "updatedAt",
             ])
     }
 
@@ -39,12 +39,12 @@ struct RecordCodingKeyTests {
             ])
     }
 
-    @Test("An exercise entry writes eight keys")
+    @Test("An exercise entry writes nine keys")
     func exerciseEntryKeys() throws {
         #expect(
             try encodedKeys(of: codingExerciseEntry()) == [
-                "createdAt", "deletedAt", "exerciseID", "id", "notes", "order", "sessionID",
-                "updatedAt",
+                "createdAt", "deletedAt", "exerciseID", "id", "isMarkedDone", "notes", "order",
+                "sessionID", "updatedAt",
             ])
     }
 
@@ -113,6 +113,40 @@ struct RecordCodingKeyTests {
                 "repCount", "sourceSetID", "updatedAt", "weight",
             ])
     }
+
+    @Test("A routine writes five keys")
+    func routineKeys() throws {
+        #expect(
+            try encodedKeys(of: codingRoutine()) == [
+                "createdAt", "deletedAt", "id", "name", "updatedAt",
+            ])
+    }
+
+    @Test("A routine exercise slot writes seven keys")
+    func routineExerciseKeys() throws {
+        #expect(
+            try encodedKeys(of: codingRoutineExercise()) == [
+                "createdAt", "deletedAt", "exerciseID", "id", "order", "routineID", "updatedAt",
+            ])
+    }
+
+    @Test("A routine target group writes nine keys")
+    func routineTargetGroupKeys() throws {
+        #expect(
+            try encodedKeys(of: codingRoutineTargetGroup()) == [
+                "createdAt", "deletedAt", "id", "order", "routineExerciseID", "targetReps",
+                "targetSets", "targetWeight", "updatedAt",
+            ])
+    }
+
+    @Test("A planned target group writes nine keys")
+    func plannedTargetGroupKeys() throws {
+        #expect(
+            try encodedKeys(of: codingPlannedTargetGroup()) == [
+                "createdAt", "deletedAt", "exerciseEntryID", "id", "order", "targetReps",
+                "targetSets", "targetWeight", "updatedAt",
+            ])
+    }
 }
 
 @Suite("Nested wire formats are not re-wrapped")
@@ -152,6 +186,14 @@ struct RecordNestedShapeTests {
         #expect(json.contains("\"plates\":[25000,15000]"))
         #expect(json.contains("\"platePairCounts\":[2,3]"))
     }
+
+    @Test("A routine target group's weight is a bare integer of grams")
+    func targetGroupWeightIsBare() throws {
+        let json = try jsonText(of: codingRoutineTargetGroup())
+
+        #expect(json.contains("\"targetWeight\":90000"))
+        #expect(!json.contains("\"grams\""))
+    }
 }
 
 @Suite("Records round-trip through JSON")
@@ -174,6 +216,25 @@ struct RecordJSONRoundTripTests {
         #expect(try Self.roundTrip(codingEquipmentProfile()) == codingEquipmentProfile())
         #expect(try Self.roundTrip(codingUserSettings()) == codingUserSettings())
         #expect(try Self.roundTrip(codingPersonalRecordCache()) == codingPersonalRecordCache())
+        #expect(try Self.roundTrip(codingRoutine()) == codingRoutine())
+        #expect(try Self.roundTrip(codingRoutineExercise()) == codingRoutineExercise())
+        #expect(try Self.roundTrip(codingRoutineTargetGroup()) == codingRoutineTargetGroup())
+        #expect(try Self.roundTrip(codingPlannedTargetGroup()) == codingPlannedTargetGroup())
+    }
+
+    // FR-15.2.2 on the wire: a blank target is an absent key that decodes back to `nil`, not a
+    // zero and not a null. This is the one optional in the layer whose two readings are different
+    // *training* facts rather than a present-or-absent field, so it is pinned separately from the
+    // generic omit rule above.
+    @Test("A blank planned weight is omitted, and comes back blank rather than as zero")
+    func aBlankPlannedWeightIsOmitted() throws {
+        let record = codingPlannedTargetGroup(grams: nil)
+        let json = try jsonText(of: record)
+
+        #expect(!json.contains("targetWeight"))
+        #expect(try Self.roundTrip(record).targetWeight == nil)
+        // The rest of the group is prescribed either way — a blank weight is not a blank plan.
+        #expect(try Self.roundTrip(record).targetReps == 4)
     }
 
     // A nil optional is omitted rather than written as null, and the omission decodes back to nil.
@@ -201,6 +262,36 @@ struct RecordJSONRoundTripTests {
 
         #expect(record.deletedAt == nil)
         #expect(record.isSoftDeleted == false)
+    }
+
+    // `FR-1.14.2` added a column to a wire format that already has backups written against it
+    // (`FR-1.11.4`), so this is the shape of every payload a user restores from today. Anchored on a
+    // neighbouring field as well: a decoder that threw the record away and rebuilt an empty one
+    // would satisfy the `nil` on its own.
+    @Test("A payload written before the Ukrainian name existed decodes without one")
+    func absentUkrainianNameDecodes() throws {
+        // Rebuilt through `JSONSerialization` rather than by deleting a substring: `JSONEncoder`
+        // emits keys in per-process hash order, so whether this key carries a trailing comma varies
+        // between runs and a textual removal would be flaky rather than strict.
+        let encoded = try JSONEncoder().encode(codingExercise())
+        var object = try #require(
+            try JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        #expect(object.removeValue(forKey: "ukrainianName") != nil, "the fixture has no key to drop")
+
+        let older = try JSONSerialization.data(withJSONObject: object)
+        let record = try JSONDecoder().decode(Exercise.self, from: older)
+
+        #expect(record.ukrainianName == nil)
+        #expect(record.name == "Low-bar back squat")
+    }
+
+    @Test("An exercise with no Ukrainian name omits the key rather than writing null")
+    func absentUkrainianNameIsOmitted() throws {
+        let record = makeExercise()
+        let json = try jsonText(of: record)
+
+        #expect(!json.contains("ukrainianName"))
+        #expect(try Self.roundTrip(record).ukrainianName == nil)
     }
 }
 
@@ -338,5 +429,40 @@ struct RecordDecodingFallbackTests {
         #expect(throws: (any Error).self) {
             try JSONDecoder().decode(SetEntry.self, from: Data(json.utf8))
         }
+    }
+}
+
+@Suite("A column added later reads from a file that predates it")
+struct RecordLaterColumnTests {
+    // Rule 7, and the reason it is a rule rather than a convenience: `FR-1.11.3`'s restore reads
+    // records straight out of an archive whose `formatVersion` does not move when one of them gains
+    // a column, so a decoder that insisted on the new key would refuse the app's own backups and
+    // report them as damaged. Hand-written rather than produced by this build, for
+    // `readsAVersionOneFile`'s reason: no encoder here can leave the key out any more.
+    @Test("An entry written before the check-off column decodes as not checked off")
+    func entryWithoutTheCheckOffColumn() throws {
+        let json = """
+            {"id":"0F5A1E24-9B7D-4C31-8E62-000000000001",
+             "createdAt":0,"updatedAt":0,
+             "sessionID":"0F5A1E24-9B7D-4C31-8E62-000000000002",
+             "exerciseID":"0F5A1E24-9B7D-4C31-8E62-000000000003",
+             "order":3,"notes":"wide stance"}
+            """
+        let entry = try JSONDecoder().decode(ExerciseEntry.self, from: Data(json.utf8))
+
+        #expect(entry.isMarkedDone == false)
+        // The neighbouring fields too: a decoder that threw the record away and rebuilt an empty
+        // one would satisfy the assertion above on its own.
+        #expect(entry.notes == "wide stance")
+        #expect(entry.order == 3)
+    }
+
+    // The other half — the key is still required of *this* build's own output, so dropping it from
+    // the encoder is a change this suite notices rather than one the tolerance above absorbs.
+    @Test("This build still writes the column, whatever it holds")
+    func theColumnIsStillWritten() throws {
+        #expect(try encodedKeys(of: codingExerciseEntry()).contains("isMarkedDone"))
+        let json = try jsonText(of: codingExerciseEntry())
+        #expect(json.contains("\"isMarkedDone\":true"))
     }
 }

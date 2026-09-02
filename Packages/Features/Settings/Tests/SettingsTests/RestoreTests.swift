@@ -22,11 +22,20 @@ struct RestoreTests {
     /// - Parameter stack: The fakes to write into.
     /// - Returns: The restore.
     static func restore(into stack: InMemoryRepositoryStack) -> StoreRestore {
+        restore(into: FixtureRepositories(stack))
+    }
+
+    /// The writer over whichever store a fixture is holding.
+    ///
+    /// - Parameter stack: The repositories to write into.
+    /// - Returns: The restore.
+    static func restore(into stack: FixtureRepositories) -> StoreRestore {
         StoreRestore(
             exercises: stack.exercises,
             workouts: stack.workouts,
             bodyweight: stack.bodyweight,
             equipment: stack.equipment,
+            routines: stack.routines,
             settings: stack.settings,
             records: PersonalRecordRecomputer(
                 workouts: stack.workouts,
@@ -57,6 +66,7 @@ struct RestoreTests {
             workouts: target.workouts,
             bodyweight: target.bodyweight,
             equipment: target.equipment,
+            routines: target.routines,
             settings: target.settings
         ).archive(takenAt: ExportLog.epoch)
 
@@ -114,6 +124,7 @@ struct RestoreTests {
             workouts: target.workouts,
             bodyweight: target.bodyweight,
             equipment: target.equipment,
+            routines: target.routines,
             settings: target.settings
         ).archive(takenAt: ExportLog.epoch)
         #expect(reread.deletedCount == 0)
@@ -157,6 +168,10 @@ struct RestoreTests {
                 bodyweight: [],
                 equipment: [],
                 trainingMaxes: [],
+                routines: [],
+                routineExercises: [],
+                routineTargetGroups: [],
+                plannedTargets: [],
                 settings: try await target.repositories.settings.settings()))
 
         let read = try await target.repositories.exercises.exercise(
@@ -186,6 +201,10 @@ struct RestoreTests {
                 bodyweight: [],
                 equipment: [],
                 trainingMaxes: [],
+                routines: [],
+                routineExercises: [],
+                routineTargetGroups: [],
+                plannedTargets: [],
                 settings: try await target.repositories.settings.settings()))
 
         let read = try await target.repositories.exercises.exercise(
@@ -258,9 +277,13 @@ struct RestoreTests {
     @Test func refusesAFileFromALaterVersion() async throws {
         // The Scope's version marker. A future file that still decodes is caught by the guard —
         // this is the case where the bytes are readable and the CLAIM is not honourable.
+        // ONE PAST WHATEVER THIS BUILD WRITES, rather than a literal: the version has moved once
+        // since this test was written, and a literal here would have started asserting that a file
+        // this build itself produces is refused.
+        let next = TrainingLogArchive.currentFormatVersion + 1
         let (archive, _) = try await Self.backupOfWholeStore()
-        let future = try Self.reversioned(archive, to: 3)
-        #expect(throws: RestoreRefusal.futureVersion(3)) {
+        let future = try Self.reversioned(archive, to: next)
+        #expect(throws: RestoreRefusal.futureVersion(next)) {
             try StoreRestore.archive(from: future)
         }
     }

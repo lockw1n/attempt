@@ -37,6 +37,22 @@
 /// it obeys everywhere, which is that it must not name the type: `offline`, never
 /// `OfflineStateView`.
 ///
+/// ## The second language, and why it is all or nothing
+///
+/// Every catalogue ships `en.lproj` and `uk.lproj` (`FR-1.14.1`), and the pair has to stay
+/// complete key for key. Once `uk` is one of a bundle's localizations, a key with no Ukrainian
+/// value renders **its own identifier** on screen — the platform does not fall back to the
+/// development language — so a half-translated table is worse than an untranslated app.
+///
+/// `scripts/check-translations.sh` holds that, over every catalogue in the repo plus the app
+/// target's own String Catalogue and its `knownRegions`; it is wired into CI's lint job and
+/// self-tests. Adding a key therefore means adding it twice, in the same commit. A Ukrainian
+/// plural needs four categories where English needs two — `one`, `few`, `many` and `other` — and
+/// the same script refuses a variable missing any of them.
+///
+/// The Ukrainian copy itself carries no argument for itself: the comment explaining why a string
+/// is worded as it is stays in `en.lproj`, which is that fact's one home.
+///
 /// ## Copy, and what is not copy
 ///
 /// A literal at a copy call site is copy and belongs in the catalogue. A literal bound to a named

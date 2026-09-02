@@ -16,14 +16,22 @@ struct FullBackup {
     /// The catalogue, and each exercise's training-max history.
     let exercises: any ExerciseRepository
 
-    /// Sessions, entries and sets.
-    let workouts: any WorkoutRepository
+    /// Sessions, entries, sets — and what a routine planned for those slots (`FR-15.2.4`).
+    ///
+    /// **One property answering two protocols**, which is `PersistenceStack`'s reason said on this
+    /// side of the boundary: a planned target hangs off an exercise entry, so a backup that read the
+    /// entries from one store and the targets from another would write a file whose two halves
+    /// disagree about which session it is describing.
+    let workouts: any WorkoutRepository & PlannedTargetRepository
 
     /// The bodyweight log.
     let bodyweight: any BodyweightRepository
 
     /// The gyms.
     let equipment: any EquipmentRepository
+
+    /// The routines, their slots and their target groups (`FR-15.2`).
+    let routines: any RoutineRepository
 
     /// The preferences row.
     let settings: any SettingsRepository
@@ -53,6 +61,7 @@ struct FullBackup {
     func archive(takenAt: Date = .now) async throws -> TrainingLogArchive {
         let catalogue = try await exercises.exercises(includingDeleted: true)
         let workoutRows = try await self.workoutRows()
+        let routineRows = try await self.routineRows()
         return TrainingLogArchive(
             takenAt: takenAt,
             exercises: catalogue,
@@ -62,26 +71,66 @@ struct FullBackup {
             bodyweight: try await bodyweight.entries(in: Self.allTime, includingDeleted: true),
             equipment: try await equipment.profiles(includingDeleted: true),
             trainingMaxes: try await trainingMaxes(for: catalogue),
+            routines: routineRows.routines,
+            routineExercises: routineRows.exercises,
+            routineTargetGroups: routineRows.targetGroups,
+            plannedTargets: workoutRows.plannedTargets,
             settings: try await settings.settings())
     }
 
-    /// The three joined tables, walked in one pass.
+    /// The four joined tables, walked in one pass.
     ///
-    /// - Returns: Every session, every slot in them and every set in those.
+    /// **The planned targets are read here rather than in a walk of their own**, because the only
+    /// read there is takes an exercise entry and this is the loop that already has one. A second
+    /// pass would enumerate the same slots to ask them a second question.
+    ///
+    /// - Returns: Every session, every slot in them, every set in those, and every target a routine
+    ///   planned for one of those slots.
     /// - Throws: Whatever the workout repository throws.
     private func workoutRows() async throws -> WorkoutRows {
         let sessions = try await workouts.sessions(in: Self.allTime, includingDeleted: true)
         var entries: [ExerciseEntry] = []
         var sets: [SetEntry] = []
+        var planned: [PlannedTargetGroup] = []
         for session in sessions {
             let slots = try await workouts.entries(forSessionID: session.id, includingDeleted: true)
             entries.append(contentsOf: slots)
             for slot in slots {
                 sets.append(
                     contentsOf: try await workouts.sets(forEntryID: slot.id, includingDeleted: true))
+                planned.append(
+                    contentsOf: try await workouts.plannedTargets(
+                        forEntryID: slot.id, includingDeleted: true))
             }
         }
-        return WorkoutRows(sessions: sessions, entries: entries, sets: sets)
+        return WorkoutRows(
+            sessions: sessions, entries: entries, sets: sets, plannedTargets: planned)
+    }
+
+    /// The routines and the two tables under them, walked the way the sessions are.
+    ///
+    /// **Walked per parent for the sessions' reason** — the protocol offers a routine's slots and a
+    /// slot's target groups and no global fetch of either, so the routine list is the enumeration
+    /// and a slot list is the next one. Soft-deleted rows at every level, since a routine the lifter
+    /// archived (`FR-15.2.5`) is a soft delete and a backup that dropped it would hand back a
+    /// library missing everything ever archived from it.
+    ///
+    /// - Returns: Every routine, every slot in them and every target group in those.
+    /// - Throws: Whatever the routine repository throws.
+    private func routineRows() async throws -> RoutineRows {
+        let plans = try await routines.routines(includingDeleted: true)
+        var slots: [RoutineExercise] = []
+        var groups: [RoutineTargetGroup] = []
+        for plan in plans {
+            let planned = try await routines.exercises(forRoutineID: plan.id, includingDeleted: true)
+            slots.append(contentsOf: planned)
+            for slot in planned {
+                groups.append(
+                    contentsOf: try await routines.targetGroups(
+                        forRoutineExerciseID: slot.id, includingDeleted: true))
+            }
+        }
+        return RoutineRows(routines: plans, exercises: slots, targetGroups: groups)
     }
 
     /// Every training-max entry in the store (`TR-0.3.6`).
@@ -105,10 +154,10 @@ struct FullBackup {
     }
 }
 
-/// The three joined workout tables, read together.
+/// The four joined workout tables, read together.
 ///
-/// A type rather than a tuple, which is the lint rule's call and the better one anyway: three
-/// same-shaped arrays returned positionally are three that a caller can silently transpose.
+/// A type rather than a tuple, which is the lint rule's call and the better one anyway: four
+/// same-shaped arrays returned positionally are four that a caller can silently transpose.
 private struct WorkoutRows {
     /// Every workout, soft-deleted ones included.
     let sessions: [WorkoutSession]
@@ -118,4 +167,19 @@ private struct WorkoutRows {
 
     /// Every set in those slots.
     let sets: [SetEntry]
+
+    /// Every target a routine planned for one of those slots.
+    let plannedTargets: [PlannedTargetGroup]
+}
+
+/// The three joined routine tables, read together — ``WorkoutRows``' shape and its reason.
+private struct RoutineRows {
+    /// Every routine, soft-deleted ones included.
+    let routines: [Routine]
+
+    /// Every exercise slot in them.
+    let exercises: [RoutineExercise]
+
+    /// Every target group in those slots.
+    let targetGroups: [RoutineTargetGroup]
 }

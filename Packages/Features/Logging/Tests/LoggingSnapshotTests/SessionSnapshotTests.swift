@@ -1,5 +1,6 @@
 #if os(iOS)
 
+    import AppNavigation
     import DesignSystem
     import Foundation
     import PowerliftingCore
@@ -36,6 +37,25 @@
     @Suite("Session lifecycle snapshots")
     struct SessionSnapshotTests {
         // MARK: - Train root (FR-1.2.1, FR-1.2.11, FR-1.13.2)
+
+        // The two way-out cards under the workout — the exercise library (`FR-1.1.1`) and, since
+        // T-15.02, the routines (`FR-15.2.1`). One reference for both, because they are one
+        // component with two labels, and the pair is what has to keep sharing a line: two cards of
+        // one line each at default type, two of two lines at accessibility3.
+        //
+        // Dimmer here than in the app, on this suite's own `NavigationLink` note above.
+        @Test func destinationCards() throws {
+            try assertSnapshots(named: "TrainHome-destinations") {
+                VStack(alignment: .leading) {
+                    DestinationCard(
+                        label: LoggingStrings.trainLibraryAction,
+                        value: .exerciseLibrary(.exerciseList))
+                    DestinationCard(
+                        label: LoggingStrings.trainRoutinesAction,
+                        value: .routines(.routineList))
+                }
+            }
+        }
 
         @Test func workoutInProgress() throws {
             try assertSnapshots(named: "Train-in-progress") {
@@ -89,9 +109,13 @@
         // MARK: - The workout in progress (FR-1.2.11, FR-1.2.12)
 
         @Test func workoutSummary() throws {
+            // `nil` adherence, which is `FR-1.13.3`'s half of `FR-15.3.3` and the commoner case by
+            // far: a workout started by hand prescribes nothing, so the section carries the day and
+            // the start time and no third row at all. The reference is unchanged by T-15.07, which
+            // is itself the claim — a figure that had appeared here would be a ratio over nothing.
             try assertSnapshots(named: "Session-summary") {
                 fixedEnvironment {
-                    SessionSummarySection(session: Fixtures.session)
+                    SessionSummarySection(session: Fixtures.session, adherence: nil)
                 }
             }
         }
@@ -149,7 +173,9 @@
                         logSet: { _ in },
                         mark: { _, _ in },
                         markCompleted: { _, _ in },
-                        edit: { _ in }
+                        edit: { _ in },
+                        markDone: { _, _ in },
+                        logPlanned: { _ in }
                     )
                 }
             }
@@ -415,7 +441,8 @@
                         recordReps: records.repCounts(forSetID: numbered.id),
                         mark: { _, _ in },
                         markCompleted: { _, _ in },
-                        edit: { _ in }
+                        edit: { _ in },
+                        target: nil
                     )
                 }
             }

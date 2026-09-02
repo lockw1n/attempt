@@ -47,6 +47,10 @@ struct LastWorkoutSection: View {
     /// The card's own state.
     @State private var state: LastWorkoutState
 
+    /// The locale the exercise names in this section are resolved in (`FR-1.14.2`), handed to the
+    /// state before its read.
+    @Environment(\.locale) private var locale
+
     /// Starts a workout carrying `sessionID`'s exercises, reporting whether one is now in progress.
     ///
     /// **A closure the app target supplies**, for `ExerciseListView`'s reason: writing a session is
@@ -91,7 +95,10 @@ struct LastWorkoutSection: View {
                 }
             }
         )
-        .task { await state.load() }
+        .task {
+            state.nameLanguage = ExerciseNameLanguage(locale)
+            await state.load()
+        }
     }
 }
 

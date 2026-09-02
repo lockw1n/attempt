@@ -22,6 +22,10 @@ import SwiftUI
 public struct ExerciseFormView: View {
     @State private var state: ExerciseFormState
 
+    /// The locale the parent picker resolves its candidates' names in (`FR-1.14.2`). The form's own
+    /// two name fields are the record's, and are edited as stored.
+    @Environment(\.locale) private var locale
+
     /// Pops the form once a save has landed. The screen underneath re-reads for itself.
     @Environment(\.dismiss) private var dismiss
 
@@ -46,7 +50,10 @@ public struct ExerciseFormView: View {
         }
         .background(ColorToken.background)
         .navigationTitle(Text(title))
-        .task { await state.load() }
+        .task {
+            state.nameLanguage = ExerciseNameLanguage(locale)
+            await state.load()
+        }
         // The save is what ends this screen, and the state is what knows the save landed — a
         // dismissal driven from the button would fire on a write that failed.
         .onChange(of: state.didSave) { _, saved in
@@ -134,15 +141,25 @@ public struct ExerciseFormView: View {
     }
 }
 
-/// The exercise's own fields (`FR-1.1.3`): the name, then the four vocabularies.
+/// The exercise's own fields (`FR-1.1.3`, `FR-1.14.2`): the two names, then the four vocabularies.
 struct ExerciseFieldsSection: View {
     /// The form these fields are bound to.
     @Bindable var state: ExerciseFormState
 
-    /// The name field, then either the vocabularies or — on a built-in — the facts they would edit.
+    /// The locale the chosen parent's name is resolved in (`FR-1.14.2`) — a fact about another
+    /// exercise, unlike the two name fields above it, which are this record's own.
+    @Environment(\.locale) private var locale
+
+    /// The two name fields, then either the vocabularies or — on a built-in — the facts they would
+    /// edit.
+    ///
+    /// **The Ukrainian name is above the catalogue-owned split, with the name**, because it is
+    /// editable on a built-in for the same reason the name is: the seed merge fills that column and
+    /// never re-supplies it, so an edit here is not undone by the next import (`FR-1.14.2`).
     var body: some View {
         GroupedSection(Text(ExerciseLibraryStrings.formSection)) {
             nameField
+            ukrainianNameField
             if state.catalogueOwnsFields {
                 catalogueOwnedFacts
             } else {
@@ -152,31 +169,43 @@ struct ExerciseFieldsSection: View {
     }
 
     /// The one field every exercise has in common, and the sentence saying it is required.
+    ///
+    /// The sentence appears only while the name is missing: it reports a problem rather than
+    /// describing a choice, which is the one way this field differs from the one below it.
     @ViewBuilder private var nameField: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs.points) {
-            Text(ExerciseLibraryStrings.formName)
-                .font(Typography.metricLabel.font)
-                .foregroundStyle(ColorToken.textSecondary)
-            TextField(
-                text: $state.name,
-                prompt: Text(ExerciseLibraryStrings.formNamePrompt)
-            ) {
-                Text(ExerciseLibraryStrings.formName)
-            }
-            .labelsHidden()
-            .font(Typography.body.font)
-            .foregroundStyle(ColorToken.textPrimary)
-            .textFieldStyle(.plain)
-            .padding(Spacing.md.points)
-            .background(
-                ColorToken.surfaceRaised,
-                in: .rect(cornerRadius: CornerRadius.control.points)
-            )
+        LabelledTextField(
+            label: ExerciseLibraryStrings.formName,
+            prompt: ExerciseLibraryStrings.formNamePrompt,
+            text: $state.name
+        ) {
             if !state.isNameValid {
                 Text(ExerciseLibraryStrings.formNameRequired)
                     .font(Typography.caption.font)
                     .foregroundStyle(ColorToken.textSecondary)
             }
+        }
+    }
+
+    /// The second name (`FR-1.14.2`), and the sentence saying what leaving it blank does.
+    ///
+    /// **The sentence is a different one on a built-in, because the answer is.** On a custom
+    /// exercise a blank field means the name above is shown in Ukrainian too. On a built-in the seed
+    /// merge fills the column from the catalogue where the row holds nothing, so a blank field there
+    /// means the catalogue's own Ukrainian name — where it has one — and saying otherwise would
+    /// promise a fallback the next launch's import does not honour.
+    @ViewBuilder private var ukrainianNameField: some View {
+        LabelledTextField(
+            label: ExerciseLibraryStrings.formUkrainianName,
+            prompt: ExerciseLibraryStrings.formUkrainianNamePrompt,
+            text: $state.ukrainianName
+        ) {
+            Text(
+                state.catalogueOwnsFields
+                    ? ExerciseLibraryStrings.formUkrainianNameOptionalCatalogue
+                    : ExerciseLibraryStrings.formUkrainianNameOptional
+            )
+            .font(Typography.caption.font)
+            .foregroundStyle(ColorToken.textSecondary)
         }
     }
 
@@ -187,7 +216,7 @@ struct ExerciseFieldsSection: View {
             equipment: state.equipment,
             barType: state.barType,
             laterality: state.laterality,
-            parentName: state.selectedParent?.name
+            parentName: state.selectedParent?.displayName(for: locale)
         )
     }
 
@@ -362,6 +391,9 @@ struct ExerciseParentList: View {
     /// Which one is chosen, or `nil` for a root exercise.
     @Binding var selection: UUID?
 
+    /// The locale a candidate's name is resolved in (`FR-1.14.2`).
+    @Environment(\.locale) private var locale
+
     /// "Nothing" first — it is the default answer and the way back out of a choice — then the
     /// candidates, then the sentence that explains a picker with nothing in it.
     var body: some View {
@@ -373,7 +405,7 @@ struct ExerciseParentList: View {
         }
         ForEach(candidates) { candidate in
             ExerciseChoiceRow(
-                label: Text(verbatim: candidate.name),
+                label: Text(verbatim: candidate.displayName(for: locale)),
                 detail: ExerciseLibraryStrings.label(for: candidate.movement),
                 isSelected: selection == candidate.id
             ) {

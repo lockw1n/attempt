@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Ukrainian takes four plural categories where English takes two: one (1, 21, 31…), few
+	     (2–4, 22–24…), many (0, 5–20, 25–30…) and other, which a whole number never reaches.
+	     Dropping any of them is what makes a count read "5 робочий підхід". -->
+	<key>history.list.metrics.summary %lld %@</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@sets@, %2$@</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld робочий підхід</string>
+			<key>few</key>
+			<string>%lld робочі підходи</string>
+			<key>many</key>
+			<string>%lld робочих підходів</string>
+			<key>other</key>
+			<string>%lld робочого підходу</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

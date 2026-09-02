@@ -16,6 +16,12 @@ public struct SeedExercise: Decodable, Equatable, Sendable {
     /// The user-facing name. Renaming a built-in exercise does not break history (`FR-1.1.4`).
     public let name: String
 
+    /// The Ukrainian name (`FR-1.14.2`), or absent for an entry the catalogue has not translated.
+    ///
+    /// Optional so a partly-translated catalogue is a shippable one: an entry with no Ukrainian name
+    /// shows its English one, which is the same answer a store row with nothing in the column gives.
+    public let ukrainianName: String?
+
     /// ``PowerliftingCore/Movement``'s raw value.
     public let movementRawValue: String
 
@@ -59,6 +65,7 @@ public struct SeedExercise: Decodable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case id
         case name
+        case ukrainianName
         case movementRawValue = "movement"
         case parentExerciseID
         case equipmentRawValue = "equipment"
@@ -73,6 +80,7 @@ public struct SeedExercise: Decodable, Equatable, Sendable {
         try container.rejectUnrecognisedFields(from: decoder)
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
+        ukrainianName = try container.decodeIfPresent(String.self, forKey: .ukrainianName)
         movementRawValue = try container.decode(String.self, forKey: .movementRawValue)
         parentExerciseID = try container.decodeIfPresent(UUID.self, forKey: .parentExerciseID)
         equipmentRawValue = try container.decode(String.self, forKey: .equipmentRawValue)

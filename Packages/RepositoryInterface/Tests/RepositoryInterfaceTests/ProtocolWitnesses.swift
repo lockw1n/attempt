@@ -81,6 +81,8 @@ actor SettingsWitness: SettingsRepository {
     func save(_ settings: UserSettings) async throws {
         throw RepositoryError.identityAlreadyEstablished(recordID: settings.id)
     }
+
+    func restorePreferences(from backup: UserSettings) async throws {}
 }
 
 actor BodyweightWitness: BodyweightRepository {

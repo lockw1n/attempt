@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Ukrainian takes four plural categories where English takes two: one (1, 21, 31…), few
+	     (2–4, 22–24…), many (0, 5–20, 25–30…) and other, which a whole number never reaches.
+	     Both counts here are read after a preposition, so the noun is genitive throughout. -->
+	<key>logging.session.progress %lld %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$lld з %2$#@exercises@ виконано</string>
+		<key>exercises</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld вправи</string>
+			<key>few</key>
+			<string>%lld вправ</string>
+			<key>many</key>
+			<string>%lld вправ</string>
+			<key>other</key>
+			<string>%lld вправи</string>
+		</dict>
+	</dict>
+	<key>logging.equipment.plate-pairs %@ %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$@ × %2$#@pairs@</string>
+		<key>pairs</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld пара</string>
+			<key>few</key>
+			<string>%lld пари</string>
+			<key>many</key>
+			<string>%lld пар</string>
+			<key>other</key>
+			<string>%lld пари</string>
+		</dict>
+	</dict>
+	<!-- FR-15.3's rep counts. "Повторення" is neuter: nominative singular and plural coincide,
+	     so one and few read alike and only many takes the genitive "повторень". -->
+	<key>logging.session.plan.target %@ %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Ціль %1$@ × %2$#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld повторення</string>
+			<key>few</key>
+			<string>%lld повторення</string>
+			<key>many</key>
+			<string>%lld повторень</string>
+			<key>other</key>
+			<string>%lld повторення</string>
+		</dict>
+	</dict>
+	<key>logging.session.plan.target-open %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Ціль %#@reps@, вага на ваш розсуд</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld повторення</string>
+			<key>few</key>
+			<string>%lld повторення</string>
+			<key>many</key>
+			<string>%lld повторень</string>
+			<key>other</key>
+			<string>%lld повторення</string>
+		</dict>
+	</dict>
+	<key>logging.session.plan.reps-delta %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld повторення</string>
+			<key>few</key>
+			<string>%lld повторення</string>
+			<key>many</key>
+			<string>%lld повторень</string>
+			<key>other</key>
+			<string>%lld повторення</string>
+		</dict>
+	</dict>
+	<key>logging.session.adherence %lld %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$lld з %2$#@sets@</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld підходу</string>
+			<key>few</key>
+			<string>%lld підходів</string>
+			<key>many</key>
+			<string>%lld підходів</string>
+			<key>other</key>
+			<string>%lld підходу</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

@@ -36,7 +36,7 @@ private struct StampingCase: Sendable {
     }
 }
 
-/// The fakes' own machinery: eight hand-written restatements of a memberwise initialiser, one per
+/// The fakes' own machinery: twelve hand-written restatements of a memberwise initialiser, one per
 /// record type, and a dropped column in any of them is a column a save silently reverts.
 ///
 /// **Two checks, because neither is sufficient alone.** The round trip is a *total* claim about the
@@ -49,7 +49,10 @@ struct RecordStampingTests {
     private static let first = Date(timeIntervalSince1970: 1)
     private static let second = Date(timeIntervalSince1970: 2)
 
-    /// Every record type the fakes stamp — **one list, walked by both checks.**
+    /// The record types the fakes stamp — **one list, walked by both checks.**
+    ///
+    /// Eleven of the twelve conformances: ``PersonalRecordCache`` is the one absent, and was
+    /// already absent before the three routine shapes were added beside it.
     ///
     /// Listing the shapes per check is what let `UserSettings.stamped` ignore all three of its
     /// arguments with the whole 59-test suite green: the round trip was applied to eight and the
@@ -78,18 +81,30 @@ struct RecordStampingTests {
             StampingCase("BodyweightEntry", bodyweightRecord()),
             StampingCase("EquipmentProfile", profileRecord(isDefault: true)),
             StampingCase("UserSettings", settingsRecord()),
+            StampingCase("Routine", routineRecord(name: "Squat day")),
+            StampingCase(
+                "RoutineExercise",
+                routineExerciseRecord(routineID: UUID(), exerciseID: exerciseID, order: 3)),
+            StampingCase(
+                "RoutineTargetGroup",
+                routineTargetGroupRecord(
+                    routineExerciseID: UUID(), order: 1, grams: 90_000, reps: 4, sets: 4)),
+            StampingCase(
+                "PlannedTargetGroup",
+                plannedTargetGroupRecord(
+                    exerciseEntryID: entryID, order: 1, grams: 90_000, reps: 4, sets: 4)),
         ]
     }()
 
-    @Test("Stamping carries every other column through, on all eight record types")
+    @Test("Stamping carries every other column through, on all twelve listed record types")
     func stampingIsLossless() throws {
-        #expect(Self.everyRecordShape.count == 8)
+        #expect(Self.everyRecordShape.count == 12)
         for shape in Self.everyRecordShape {
             #expect(shape.roundTrips(Self.first, Self.second), "\(shape.name)")
         }
     }
 
-    @Test("Stamping writes the four it is given, on all eight, and does not touch the id")
+    @Test("Stamping writes the four it is given, on all twelve, and does not touch the id")
     func stampingWritesWhatItIsGiven() throws {
         for shape in Self.everyRecordShape {
             #expect(shape.changesTheFour(Self.first, Self.second), "\(shape.name)")

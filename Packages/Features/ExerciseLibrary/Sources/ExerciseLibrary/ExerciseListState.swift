@@ -38,7 +38,7 @@ public struct ExerciseGroup: Sendable, Hashable, Identifiable {
 /// rendering anything.
 ///
 /// **The catalogue is read once.** `G-2.2`/`G-2.3` make the local store's read synchronous under an
-/// `async` signature, and 116 rows filter and group faster than a keystroke — so search does not
+/// `async` signature, and 132 rows filter and group faster than a keystroke — so search does not
 /// return to the repository, and there is no debounce to get wrong (`NFR-1.1`).
 @Observable
 public final class ExerciseListState {
@@ -70,6 +70,12 @@ public final class ExerciseListState {
 
     /// What the user typed into the search field (`FR-1.1.1`).
     public var searchText: String = ""
+
+    /// Which of an exercise's two names this screen is showing (`FR-1.14.2`).
+    ///
+    /// It reaches ``groups`` twice over: the order rows come in, and which of them a search matches
+    /// (`FR-1.14.3`). Set by the view, on ``RepositoryInterface/ExerciseNameLanguage``'s rule.
+    public var nameLanguage: ExerciseNameLanguage = .english
 
     /// Show only this movement, or every movement (`FR-1.1.2`).
     public var movementFilter: Movement?
@@ -154,7 +160,7 @@ public final class ExerciseListState {
         }
         phase = .loading
         do {
-            phase = .loaded(Self.ordered(try await repository.exercises(includingDeleted: false)))
+            phase = .loaded(try await repository.exercises(includingDeleted: false))
         } catch {
             phase = .failed(String(describing: error))
         }
@@ -171,7 +177,7 @@ public final class ExerciseListState {
     ///
     /// **No ``Phase/loading`` in between.** A spinner over content that is already correct is a
     /// flash on every back-swipe; the rows are replaced when the read lands or the screen becomes
-    /// its error state, and 116 local rows do not take long enough for a third state to be visible
+    /// its error state, and 132 local rows do not take long enough for a third state to be visible
     /// (`G-2.2`, `NFR-1.1`).
     ///
     /// A read that fails here **does** cost the list its rows, deliberately: the screen can no
@@ -188,7 +194,7 @@ public final class ExerciseListState {
             break
         }
         do {
-            phase = .loaded(Self.ordered(try await repository.exercises(includingDeleted: false)))
+            phase = .loaded(try await repository.exercises(includingDeleted: false))
         } catch {
             phase = .failed(String(describing: error))
         }
@@ -235,12 +241,6 @@ public final class ExerciseListState {
         if !isRecencyFilterAvailable { showsRecentOnly = false }
     }
 
-    /// Everything the repository returned, in the order every browsable surface in this module
-    /// shares (``ExerciseOrder``).
-    private static func ordered(_ exercises: [Exercise]) -> [Exercise] {
-        exercises.sorted(by: ExerciseOrder.precedes)
-    }
-
     /// The exercises the list may show, before the search text and the filters.
     ///
     /// **Archived rows leave here rather than through a filter binding**, because `FR-1.1.5` makes
@@ -258,10 +258,16 @@ public final class ExerciseListState {
     /// and `other` trails — a list ordered by however many exercises happen to sit under each
     /// heading would reorder itself as the user adds their own. A movement with nothing left in it
     /// is dropped: an empty heading says a filter matched when it did not.
+    ///
+    /// **Ordered here rather than at the read**, because ``nameLanguage`` decides the order and may
+    /// be set after one: a screen that sorted its rows when they arrived would keep an English order
+    /// under Ukrainian names (`FR-1.14.2`). The sort runs on every read of this property, so a
+    /// caller that needs it twice reads it once into a local.
     public var groups: [ExerciseGroup] {
         let matches = filtered
         return Movement.allCases.compactMap { movement in
-            let exercises = matches.filter { $0.movement == movement }
+            let exercises = ExerciseDisplayOrder.sorted(
+                matches.filter { $0.movement == movement }, in: nameLanguage)
             return exercises.isEmpty ? nil : ExerciseGroup(movement: movement, exercises: exercises)
         }
     }
@@ -286,16 +292,23 @@ public final class ExerciseListState {
         return recent.contains(exercise.id)
     }
 
-    /// Whether `exercise`'s name matches what the user typed.
+    /// Whether the name this row is showing matches what the user typed (`FR-1.14.3`).
     ///
     /// `localizedStandardContains` is the search a user expects and the one a hand-rolled
     /// `lowercased().contains` is not: it ignores case *and* diacritics, so "sumo" finds "Sumó" and
     /// a Turkish locale does not lose the dotted I. Whitespace-only input is no search at all —
     /// otherwise the first space typed empties the screen.
+    ///
+    /// **Matched against the resolved display name, never against ``RepositoryInterface/Exercise``'s
+    /// two fields in turn.** `FR-1.14.3` says the name shown, and the two readings disagree exactly
+    /// where it matters: an English query would otherwise find a row whose visible name is Cyrillic
+    /// and holds none of what was typed, and a Ukrainian name left as whitespace — which
+    /// ``RepositoryInterface/Exercise/displayName(in:)`` deliberately renders as the English one —
+    /// would be searchable under a name nothing on screen says.
     private func matchesSearch(_ exercise: Exercise) -> Bool {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return true }
-        return exercise.name.localizedStandardContains(query)
+        return exercise.displayName(in: nameLanguage).localizedStandardContains(query)
     }
 
     /// Which side of `FR-1.1.2`'s custom/built-in split an exercise falls on.

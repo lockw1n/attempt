@@ -130,6 +130,26 @@ struct SettingsRepositoryTests {
         #expect(read.userID == settings.userID)
     }
 
+    /// `FR-1.11.3`'s restore onto a device that has already bootstrapped. The rule itself is a
+    /// conformance claim and is made against both implementations in `RepositoryFakes`; what is
+    /// store-shaped, and what only the real store can get wrong, is the row COUNT — nothing in the
+    /// schema stops a second settings row, and a restore that inserted instead of writing would
+    /// fork the identity exactly as a second bootstrap would.
+    @Test("A restore over a minted row writes it rather than adding a second")
+    func aRestoreDoesNotAddASecondRow() async throws {
+        let harness = try RepositoryHarness()
+        let minted = try await harness.stack.settings.settings()
+        let fromAnotherDevice = variant(of: minted, id: UUID(), userID: UUID())
+
+        try await harness.stack.settings.restorePreferences(from: fromAnotherDevice)
+
+        #expect(try harness.store().fetch(FetchDescriptor<UserSettingsEntity>()).count == 1)
+        let read = try await harness.stack.settings.settings()
+        #expect(read.userID == minted.userID)
+        #expect(read.id == minted.id)
+        #expect(read.displayUnit == .pounds)
+    }
+
     @Test("A save into an empty store honours the identity the record arrived with")
     func aRestoreKeepsItsIdentity() async throws {
         let harness = try RepositoryHarness()

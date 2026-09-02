@@ -51,6 +51,10 @@ struct EstimatedMaxTilesSection: View {
     /// The section's own state.
     @State private var state: EstimatedMaxTilesState
 
+    /// The locale the exercise names in this section are resolved in (`FR-1.14.2`), handed to the
+    /// state before its read.
+    @Environment(\.locale) private var locale
+
     /// Builds the section.
     ///
     /// - Parameters:
@@ -75,7 +79,10 @@ struct EstimatedMaxTilesSection: View {
             unit: state.unit,
             retry: { Task { await state.load() } }
         )
-        .task { await state.load() }
+        .task {
+            state.nameLanguage = ExerciseNameLanguage(locale)
+            await state.load()
+        }
         .task { await state.observeChanges() }
     }
 }

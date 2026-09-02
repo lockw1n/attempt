@@ -8,6 +8,7 @@ import Localization
 import Logging
 import PowerliftingCore
 import RepositoryInterface
+import Routines
 import Settings
 import SwiftUI
 
@@ -71,18 +72,10 @@ struct RootTabView: View {
     @ViewBuilder
     private func destination(for route: Route) -> some View {
         switch route {
-        case .exerciseLibrary(.exerciseList):
-            // No title here: a pushed screen names itself, and this one does (`FR-1.1.1`). The tab
-            // roots are the case where the app target owns the name — see ``AppTab/title``.
-            exerciseListRoot
-        case .exerciseLibrary(.exerciseDetail(let exerciseID)):
-            exerciseDetailRoot(exerciseID)
-        case .exerciseLibrary(.exerciseCreate):
-            exerciseFormRoot(.create)
-        case .exerciseLibrary(.exerciseEdit(let exerciseID)):
-            exerciseFormRoot(.edit(exerciseID: exerciseID))
-        case .exerciseLibrary(.exercisePicker):
-            exercisePickerRoot
+        case .exerciseLibrary(let route):
+            exerciseLibraryDestination(route)
+        case .routines(let route):
+            routinesDestination(route)
         case .training(.activeSession):
             activeSessionRoot
         case .settings(let route):
@@ -95,6 +88,44 @@ struct RootTabView: View {
             recentRecordsRoot
         case .dashboard(.estimatedMaxExercises):
             tiledExerciseSelectionRoot
+        }
+    }
+
+    /// What a pushed exercise-library route shows.
+    ///
+    /// Split out of ``destination(for:)`` for ``settingsDestination(_:)``'s reason: that switch is
+    /// one case per screen in the app, and this area's six were what took it past the complexity
+    /// the lint rules allow when `T-15.02` added a seventh.
+    @ViewBuilder
+    private func exerciseLibraryDestination(_ route: ExerciseLibraryRoute) -> some View {
+        switch route {
+        case .exerciseList:
+            // No title here: a pushed screen names itself, and this one does (`FR-1.1.1`). The tab
+            // roots are the case where the app target owns the name — see ``AppTab/title``.
+            exerciseListRoot
+        case .exerciseDetail(let exerciseID):
+            exerciseDetailRoot(exerciseID)
+        case .exerciseCreate:
+            exerciseFormRoot(.create)
+        case .exerciseEdit(let exerciseID):
+            exerciseFormRoot(.edit(exerciseID: exerciseID))
+        case .exercisePicker:
+            exercisePickerRoot
+        case .routineExercisePicker:
+            routineExercisePickerRoot
+        }
+    }
+
+    /// What a pushed routines route shows (`FR-15.2`).
+    @ViewBuilder
+    private func routinesDestination(_ route: RoutinesRoute) -> some View {
+        switch route {
+        case .routineList:
+            routineListRoot
+        case .routineCreate:
+            routineEditorRoot(.create)
+        case .routineEdit(let routineID):
+            routineEditorRoot(.edit(routineID: routineID))
         }
     }
 
@@ -166,6 +197,72 @@ struct RootTabView: View {
         }
     }
 
+    /// The catalogue as the routine editor's chooser (`FR-15.2.1`), or the reason it cannot be
+    /// shown.
+    ///
+    /// **The same join as ``exercisePickerRoot``, one feature over**: `Routines` and
+    /// `ExerciseLibrary` do not depend on each other (`TR-1.3`), so the screen that chooses an
+    /// exercise and the store that receives one are composed here. The two pickers are two route
+    /// cases rather than one with a mode because *this* closure is the whole difference between
+    /// them, and it is chosen from the route alone.
+    @ViewBuilder
+    private var routineExercisePickerRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, let stores):
+            ExerciseListView(
+                repository: repositories.exercises, workouts: repositories.workouts
+            ) { exercise in
+                await stores.routineEditor.addExercise(id: exercise.id)
+            }
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// The routines the lifter has authored (`FR-15.2.1`), or the reason they cannot be shown.
+    ///
+    /// **The fifth of this file's cross-module joins, and the second that hands over a command**
+    /// (`FR-15.2.3`). Starting a workout is `Logging`'s to write and `TR-1.3` keeps `Routines` from
+    /// importing it, so the screen takes a closure and this target — which owns both — supplies the
+    /// store's own method. ``ActiveSessionStore/resume()`` runs first for
+    /// ``dashboardRoot``'s reason: the store may never have looked, and starting without it would
+    /// start a second workout on top of one already open.
+    /// The store answers both a refusal and a failed write with `false` and the screen says
+    /// different things about them, so the discrimination is made here — the one place with both.
+    @ViewBuilder
+    private var routineListRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, let stores):
+            RoutineListView(repository: repositories.routines) { routineID in
+                await stores.activeSession.resume()
+                let started = await stores.activeSession.start(
+                    on: .now, fromRoutineID: routineID, in: repositories.routines)
+                // A refusal leaves the workout it would not replace held; a failed write does not.
+                if started { return .started }
+                return stores.activeSession.isActive ? .workoutInProgress : .writeFailed
+            }
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// The routine editor (`FR-15.2.1`, `FR-15.2.2`), or the reason it cannot be shown.
+    ///
+    /// **The store is the app's rather than the screen's**, unlike every other form here — see
+    /// ``Routines/RoutineEditorState`` for why, and ``routineExercisePickerRoot`` for the other end
+    /// of the same wire.
+    ///
+    /// - Parameter mode: Which of the two routine routes asked for it.
+    @ViewBuilder
+    private func routineEditorRoot(_ mode: RoutineEditorMode) -> some View {
+        switch dependencies.state {
+        case .open(_, let stores):
+            RoutineEditorView(mode: mode, store: stores.routineEditor)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
     /// One past session (`FR-1.2.7`, `FR-1.2.9`), or the reason it cannot be shown.
     ///
     /// **A `Logging` screen answering a History route**, which is the third of these joins and the
@@ -188,7 +285,8 @@ struct RootTabView: View {
                 settings: repositories.settings,
                 vocabulary: stores.modifiers,
                 equipment: stores.equipment,
-                records: stores.records
+                records: stores.records,
+                routines: repositories.routines
             )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)

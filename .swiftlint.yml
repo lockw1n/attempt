@@ -30,6 +30,7 @@ excluded:
   - Packages/Features/History/.build
   - Packages/Features/Dashboard/.build
   - Packages/Features/Settings/.build
+  - Packages/Features/Routines/.build
   - Packages/Localization/.build
   - Packages/DerivedValues/.build
 

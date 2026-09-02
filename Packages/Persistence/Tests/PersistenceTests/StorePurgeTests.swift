@@ -23,13 +23,6 @@ struct StorePurgeTests {
         return row
     }
 
-    private func count<T: StoredEntity>(
-        _ type: T.Type,
-        in harness: RepositoryHarness
-    ) throws -> Int {
-        try harness.store().rows(type, includingDeleted: true).count
-    }
-
     // A branch nothing outside it names: the whole thing is free, and the count is spelled out so a
     // routine that removed the session and orphaned its sets could not pass.
     @Test("A soft-deleted session takes its entries and their sets")
@@ -128,7 +121,7 @@ struct StorePurgeTests {
     // way — and the catalogue is named by four different columns, all four driven here. The entry
     // is the one that carries real traffic: every logged set hangs off one, so an unheld edge there
     // is the orphan this whole file exists to make unreachable.
-    @Test("A live entry, training max, settings row or variant holds a deleted exercise")
+    @Test("A live entry, training max, settings row, variant or routine slot holds a deleted exercise")
     func catalogueReferrersHoldAnExercise() async throws {
         for referrer in ExerciseReferrer.allCases {
             let harness = try RepositoryHarness()
@@ -157,6 +150,12 @@ struct StorePurgeTests {
                         isCustom: true,
                         parentExerciseID: squat.id
                     ))
+            case .routineSlot:
+                let routine = RoutineEntity(name: "Squat day")
+                rows.append(routine)
+                rows.append(
+                    RoutineExerciseEntity(
+                        routineID: routine.id, exerciseID: squat.id, order: 0))
             }
             try harness.seed(rows)
 
@@ -218,6 +217,8 @@ struct StorePurgeTests {
         let session = WorkoutSessionEntity(date: longAgo)
         let entry = ExerciseEntryEntity(sessionID: session.id, exerciseID: squat.id, order: 0)
         let set = makeSet(entryID: entry.id, order: 0, isWarmup: false, isCompleted: true)
+        let routine = RoutineEntity(name: "Squat day")
+        let slot = RoutineExerciseEntity(routineID: routine.id, exerciseID: squat.id, order: 0)
         try harness.seed([
             squat,
             session,
@@ -241,13 +242,36 @@ struct StorePurgeTests {
                 achievedAt: longAgo,
                 computationVersion: 1
             ),
+            routine,
+            slot,
+            RoutineTargetGroupEntity(
+                routineExerciseID: slot.id,
+                order: 0,
+                targetWeightGrams: 90_000,
+                targetReps: 4,
+                targetSets: 4
+            ),
+            PlannedTargetGroupEntity(
+                exerciseEntryID: entry.id,
+                order: 0,
+                targetWeightGrams: 90_000,
+                targetReps: 4,
+                targetSets: 4
+            ),
         ])
 
         let report = try await harness.stack.purge(.everything)
 
-        #expect(report.removed == 9)
+        // Anchored to `SchemaV1.models.count` rather than to a literal, and that is the whole
+        // point of the assertion rather than a flourish. This test seeded exactly one row per
+        // entity type; a literal count passes vacuously for an entity added later and never
+        // seeded, which is how `PurgePlan` came to be blind to three tables at once. Against the
+        // schema's own list, the next entity added without a fixture here turns this red.
+        #expect(report.removed == SchemaV1.models.count)
         #expect(report.retained == 0)
-        for remaining in try remainingCounts(in: harness) {
+        let remainingCounts = try remainingCounts(in: harness)
+        #expect(remainingCounts.count == SchemaV1.models.count, "a table is missing from the count")
+        for remaining in remainingCounts {
             #expect(remaining.value == 0, "\(remaining.key) still holds rows")
         }
     }
@@ -347,26 +371,42 @@ struct StorePurgeTests {
 
         #expect(report == PurgeReport(removed: 0, retained: 0))
     }
-
-    private func remainingCounts(in harness: RepositoryHarness) throws -> [String: Int] {
-        [
-            "exercises": try count(ExerciseEntity.self, in: harness),
-            "sessions": try count(WorkoutSessionEntity.self, in: harness),
-            "entries": try count(ExerciseEntryEntity.self, in: harness),
-            "sets": try count(SetEntryEntity.self, in: harness),
-            "trainingMaxes": try count(TrainingMaxConfigEntity.self, in: harness),
-            "bodyweight": try count(BodyweightEntryEntity.self, in: harness),
-            "equipment": try count(EquipmentProfileEntity.self, in: harness),
-            "settings": try count(UserSettingsEntity.self, in: harness),
-            "records": try count(PersonalRecordCacheEntity.self, in: harness),
-        ]
-    }
 }
 
-/// The four live columns that can name an exercise, driving one case each.
+// The two helpers the suite's assertions are built from, at file scope rather than inside the
+// struct: they are about the store rather than about any one test, and a suite this long has a
+// body-length ceiling to stay under.
+
+private func count<T: StoredEntity>(
+    _ type: T.Type,
+    in harness: RepositoryHarness
+) throws -> Int {
+    try harness.store().rows(type, includingDeleted: true).count
+}
+
+private func remainingCounts(in harness: RepositoryHarness) throws -> [String: Int] {
+    [
+        "exercises": try count(ExerciseEntity.self, in: harness),
+        "sessions": try count(WorkoutSessionEntity.self, in: harness),
+        "entries": try count(ExerciseEntryEntity.self, in: harness),
+        "sets": try count(SetEntryEntity.self, in: harness),
+        "trainingMaxes": try count(TrainingMaxConfigEntity.self, in: harness),
+        "bodyweight": try count(BodyweightEntryEntity.self, in: harness),
+        "equipment": try count(EquipmentProfileEntity.self, in: harness),
+        "settings": try count(UserSettingsEntity.self, in: harness),
+        "records": try count(PersonalRecordCacheEntity.self, in: harness),
+        "routines": try count(RoutineEntity.self, in: harness),
+        "routineExercises": try count(RoutineExerciseEntity.self, in: harness),
+        "targetGroups": try count(RoutineTargetGroupEntity.self, in: harness),
+        "plannedTargets": try count(PlannedTargetGroupEntity.self, in: harness),
+    ]
+}
+
+/// The five live columns that can name an exercise, driving one case each.
 private enum ExerciseReferrer: CaseIterable {
     case entry
     case trainingMax
     case dashboard
     case variant
+    case routineSlot
 }

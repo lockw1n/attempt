@@ -70,6 +70,12 @@ extension TrainingLogArchive {
     /// `RecordCoding.swift` says an absent value is an omitted key, and this reads the sections that
     /// way: absent means the section is empty, which for a file that never carried one is true.
     ///
+    /// **The four routine sections are read the same way, so a version 2 backup decodes here with
+    /// four empty sections** — which is what that file holds. That is what rule 3 buys, and it is
+    /// only ever about reading an older file: it is not the reason
+    /// ``TrainingLogArchive/currentFormatVersion`` moved to 3, which is about the other direction
+    /// and argued there.
+    ///
     /// **``TrainingLogArchive/formatVersion`` is carried as written rather than replaced with the
     /// current one.** It is what `FR-1.11.4`'s restore refuses a future file on, and a reader that
     /// overwrote it with its own number would leave that refusal nothing to test.
@@ -92,6 +98,13 @@ extension TrainingLogArchive {
                 ?? [],
             trainingMaxes: try container.decodeIfPresent(
                 [TrainingMaxEntry].self, forKey: .trainingMaxes) ?? [],
+            routines: try container.decodeIfPresent([Routine].self, forKey: .routines) ?? [],
+            routineExercises: try container.decodeIfPresent(
+                [RoutineExercise].self, forKey: .routineExercises) ?? [],
+            routineTargetGroups: try container.decodeIfPresent(
+                [RoutineTargetGroup].self, forKey: .routineTargetGroups) ?? [],
+            plannedTargets: try container.decodeIfPresent(
+                [PlannedTargetGroup].self, forKey: .plannedTargets) ?? [],
             settings: try container.decodeIfPresent(UserSettings.self, forKey: .settings))
     }
 
@@ -143,6 +156,14 @@ extension TrainingLogArchive {
         try container.encode(bodyweight, forKey: .bodyweight)
         if !equipment.isEmpty { try container.encode(equipment, forKey: .equipment) }
         if !trainingMaxes.isEmpty { try container.encode(trainingMaxes, forKey: .trainingMaxes) }
+        if !routines.isEmpty { try container.encode(routines, forKey: .routines) }
+        if !routineExercises.isEmpty {
+            try container.encode(routineExercises, forKey: .routineExercises)
+        }
+        if !routineTargetGroups.isEmpty {
+            try container.encode(routineTargetGroups, forKey: .routineTargetGroups)
+        }
+        if !plannedTargets.isEmpty { try container.encode(plannedTargets, forKey: .plannedTargets) }
         try container.encodeIfPresent(settings, forKey: .settings)
     }
 }

@@ -16,7 +16,8 @@ public struct ExerciseDetail: Sendable, Equatable {
     /// would assert that this exercise is a root when it is not.
     public let parent: Exercise?
 
-    /// The exercises that name this one as their parent, in ``ExerciseOrder`` (`FR-1.1.7`).
+    /// The exercises that name this one as their parent, in
+    /// ``RepositoryInterface/ExerciseDisplayOrder`` (`FR-1.1.7`).
     ///
     /// Archived ones are excluded, on the same rule the list applies: this is a browsable surface
     /// into other detail screens, and `FR-1.1.5` is what takes an exercise out of those.
@@ -80,6 +81,13 @@ public final class ExerciseDetailState {
 
     /// The screen's read state.
     public private(set) var phase: Phase = .idle
+
+    /// Which of an exercise's two names this screen is showing (`FR-1.14.2`).
+    ///
+    /// Here it decides only the order the variations come in — each row draws its own name from the
+    /// environment — so it is read at the end of a read rather than kept beside the rows. Set by the
+    /// view, on ``RepositoryInterface/ExerciseNameLanguage``'s rule.
+    public var nameLanguage: ExerciseNameLanguage = .english
 
     /// The last notes write that failed, as the error's description, or `nil` once one succeeds.
     ///
@@ -147,7 +155,7 @@ public final class ExerciseDetailState {
     ///
     /// **Two reads, not one.** The exercise itself answers `FR-1.1.6`; the catalogue answers
     /// `FR-1.1.7`, whose variation list is every row naming this one as its parent and which no
-    /// repository method asks for directly. 116 rows filtered in memory is well inside `NFR-1.1`,
+    /// repository method asks for directly. 132 rows filtered in memory is well inside `NFR-1.1`,
     /// and the alternative is a query the repository protocol does not have.
     public func load() async {
         switch phase {
@@ -365,7 +373,11 @@ public final class ExerciseDetailState {
         }
         let catalogue = try await repository.exercises(includingDeleted: false)
         phase = .loaded(
-            Self.detail(for: exercise, in: catalogue, hasLoggedSets: await hasLoggedSets()))
+            Self.detail(
+                for: exercise,
+                in: catalogue,
+                named: nameLanguage,
+                hasLoggedSets: await hasLoggedSets()))
         // A keystroke that landed while the read was in flight is a fresh edit and survives it,
         // whichever kind of read this was. Failing that, the draft gives way to the record only if
         // the two already agreed when the read began.
@@ -390,9 +402,13 @@ public final class ExerciseDetailState {
     }
 
     /// Pairs an exercise with its parent and its variations, from the whole catalogue.
+    ///
+    /// `language` orders the variations by the name their rows show (`FR-1.14.2`), which is the one
+    /// thing about this screen that a row cannot resolve for itself.
     private static func detail(
         for exercise: Exercise,
         in catalogue: [Exercise],
+        named language: ExerciseNameLanguage,
         hasLoggedSets: Bool
     ) -> ExerciseDetail {
         ExerciseDetail(
@@ -400,10 +416,9 @@ public final class ExerciseDetailState {
             parent: exercise.parentExerciseID.flatMap { parentID in
                 catalogue.first { $0.id == parentID }
             },
-            variations:
-                catalogue
-                .filter { $0.parentExerciseID == exercise.id && !$0.isArchived }
-                .sorted(by: ExerciseOrder.precedes),
+            variations: ExerciseDisplayOrder.sorted(
+                catalogue.filter { $0.parentExerciseID == exercise.id && !$0.isArchived },
+                in: language),
             hasLoggedSets: hasLoggedSets
         )
     }
@@ -419,6 +434,7 @@ public final class ExerciseDetailState {
             updatedAt: exercise.updatedAt,
             deletedAt: exercise.deletedAt,
             name: exercise.name,
+            ukrainianName: exercise.ukrainianName,
             movement: exercise.movement,
             parentExerciseID: exercise.parentExerciseID,
             equipment: exercise.equipment,
@@ -444,6 +460,7 @@ public final class ExerciseDetailState {
             updatedAt: exercise.updatedAt,
             deletedAt: exercise.deletedAt,
             name: exercise.name,
+            ukrainianName: exercise.ukrainianName,
             movement: exercise.movement,
             parentExerciseID: exercise.parentExerciseID,
             equipment: exercise.equipment,

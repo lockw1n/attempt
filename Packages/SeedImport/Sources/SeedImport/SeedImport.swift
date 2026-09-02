@@ -26,7 +26,7 @@
 //
 //   - A SAVE THAT CHANGES NOTHING IS STILL A WRITE, so this module does not make one. Every
 //     repository stamps `updatedAt` on the way in whatever the record said, and `updatedAt` is
-//     `G-2.4`'s conflict key — so an unconditional re-save of 116 rows would let a launch outrank a
+//     `G-2.4`'s conflict key — so an unconditional re-save of 132 rows would let a launch outrank a
 //     real remote edit on every one of them. Each row is compared with what the import would write
 //     and saved only when the two differ.
 //

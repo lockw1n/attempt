@@ -1,6 +1,7 @@
 /* Exercise library (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization
    module doc, and ExerciseLibraryStrings for why the two vocabularies below name a vocabulary
-   where a screen would go. Nothing here is translated: only `en` ships in Phase 1. */
+   where a screen would go. Every key here has a Ukrainian counterpart in uk.lproj beside this
+   file, and has to keep one: a key missing from that table renders its own identifier. */
 
 "exerciselibrary.list.title" = "Exercises";
 "exerciselibrary.list.search.prompt" = "Search exercises";
@@ -226,6 +227,22 @@
    is required, not that something is wrong: an empty form is where every create starts. */
 "exerciselibrary.form.name.required" = "A name is required.";
 
+/* FR-1.14.2. The second name, shown when the app is running in Ukrainian. Labelled by the language
+   and not by a flag or a region: a lifter in Kyiv and a Ukrainian speaker elsewhere want the same
+   field, and "UK" would read as the United Kingdom. */
+"exerciselibrary.form.field.ukrainian-name" = "Ukrainian name";
+/* A Ukrainian rendering of the English prompt above, so the example says what the field wants. */
+"exerciselibrary.form.ukrainian-name.prompt" = "Присідання зі штангою";
+/* Under the field on a CUSTOM exercise. It says what blank means rather than merely that blank is
+   allowed — the fallback is the thing a user cannot see from an empty box. Nothing else supplies a
+   Ukrainian name for a custom exercise, so blank really does mean the name above. */
+"exerciselibrary.form.ukrainian-name.optional" = "Optional. Without one, this exercise keeps its name above in Ukrainian too.";
+/* The same sentence on a BUILT-IN, where blank means something else and the other wording would be
+   a false promise: the seed merge fills this column from the catalogue on any row that holds
+   nothing, so clearing the field hands back the catalogue's Ukrainian name rather than the English
+   one (FR-1.14.2). */
+"exerciselibrary.form.ukrainian-name.optional-catalogue" = "Optional. Left blank, this exercise uses the built-in catalogue's Ukrainian name where it has one.";
+
 "exerciselibrary.form.field.movement" = "Movement";
 "exerciselibrary.form.field.equipment" = "Equipment";
 "exerciselibrary.form.field.bar" = "Bar";
@@ -236,7 +253,7 @@
    fields", because a user looking for the control they expected needs to know this is the sentence
    about it, and it says what the name and the notes are, since those two are still theirs
    (FR-1.1.4). */
-"exerciselibrary.form.catalogue-owned" = "Movement, equipment, bar, sides and what this varies come from the built-in catalogue, which restores them whenever the app updates it. The name and the notes are yours to change.";
+"exerciselibrary.form.catalogue-owned" = "Movement, equipment, bar, sides and what this varies come from the built-in catalogue, which restores them whenever the app updates it. The names and the notes are yours to change.";
 
 /* FR-1.1.7's relationship, from the variation's side. The heading is the sentence: "<this exercise>
    is a variation of <that one>". */

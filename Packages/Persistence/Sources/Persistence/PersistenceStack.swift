@@ -34,8 +34,13 @@ public struct PersistenceStack: Sendable {
     /// The exercise catalogue and each exercise's training-max history.
     public let exercises: any ExerciseRepository
 
-    /// Sessions, entries and sets.
-    public let workouts: any WorkoutRepository
+    /// Sessions, entries, sets — and the targets a routine planned for them (`TR-15.3`).
+    ///
+    /// **One property answering two protocols**, because it is one actor over one container: a
+    /// planned target hangs off an exercise entry, so the delete that cascades into it has to be
+    /// the same object's. Two properties would let a caller be handed two stores and write half a
+    /// session into each.
+    public let workouts: any WorkoutRepository & PlannedTargetRepository
 
     /// The single settings row (`TR-1.10`).
     public let settings: any SettingsRepository
@@ -48,6 +53,9 @@ public struct PersistenceStack: Sendable {
 
     /// The cached N-rep maxes (`TR-1.6`) — derived values, never truth (`G-1.4`).
     public let personalRecords: any PersonalRecordCacheRepository
+
+    /// Routines, their exercise slots and target groups (`FR-15.2`).
+    public let routines: any RoutineRepository
 
     /// `G-1.3`'s hard deletes, reached through ``purge(_:)`` rather than named directly.
     let purgeRoutine: StorePurge
@@ -73,6 +81,7 @@ public struct PersistenceStack: Sendable {
         bodyweight = SwiftDataBodyweightRepository(modelContainer: container)
         equipment = SwiftDataEquipmentRepository(modelContainer: container)
         personalRecords = SwiftDataPersonalRecordCacheRepository(modelContainer: container)
+        routines = SwiftDataRoutineRepository(modelContainer: container)
         purgeRoutine = StorePurge(modelContainer: container)
     }
 }
@@ -102,10 +111,9 @@ let containerLock = NSLock()
 ///   the nine and the CloudKit audit parses it; a container assembled from its own array would be a
 ///   second list, which is the drift that check exists to prevent. The versioned form also carries
 ///   the version identifier a migration keys off.
-/// - **The migration plan, even though it is measurably inert.** ``AppMigrationPlan`` has no stages
-///   and while `G-1.7` holds it never will do anything. It is passed so that the day a second
-///   version exists the container is already reading the version history, rather than needing an
-///   edit at the moment of the first real migration.
+/// - **The migration plan, even though it is measurably inert.** ``AppMigrationPlan`` has no stages,
+///   and adding one is not the edit it looks like — that type carries the measured reason, and the
+///   crash it produces.
 func makeModelContainer(at location: StoreLocation, sync: SyncMode = .disabled) throws -> ModelContainer {
     if case .inMemory = location, sync != .disabled {
         throw StoreConfigurationError.inMemoryStoreCannotSync

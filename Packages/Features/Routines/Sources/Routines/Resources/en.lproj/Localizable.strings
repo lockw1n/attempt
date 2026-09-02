@@ -1,0 +1,111 @@
+/* Routines (G-3.4, FR-15.2). Keys are <module>.<screen>.<element>[.<role>] — see the Localization
+   module doc. Every key here has a Ukrainian counterpart in uk.lproj beside this file, and has to
+   keep one: a key missing from that table renders its own identifier. The exercise count is in the
+   .stringsdict next to this file, plurals not fitting a flat table. */
+
+"routines.list.title" = "Routines";
+"routines.list.new" = "New routine";
+
+/* FR-1.13.2's first launch. It says what a routine IS rather than only that there are none — this
+   is the first screen of a feature nothing else in the app has introduced yet. */
+"routines.list.empty.headline" = "No routines yet";
+"routines.list.empty.message" = "A routine is one training day's plan: the exercises in order, and what to hit on each.";
+
+"routines.list.error.headline" = "Could not load your routines";
+"routines.list.error.message" = "Something went wrong reading them. Try again.";
+
+/* FR-15.2.3's primary command, and NFR-15.3's first of two taps. */
+"routines.list.start" = "Start workout";
+
+/* The refusal this command has: there is one workout in progress by construction, so a routine
+   started on top of an unfinished session is refused rather than queued. It names the way out. */
+"routines.list.start.in-progress.message" = "Finish or discard the workout in progress before starting another.";
+
+/* The other way nothing starts, and a different fact: the session could not be written. It names
+   nothing the lifter did, so it asks for the one thing that can help — Logging's own wording for
+   the same failure on the same command. */
+"routines.list.start.write-error.message" = "That workout could not be started. Try again.";
+
+/* A name the editor will not save, and a row a store this app did not write may still hold. */
+"routines.list.row.unnamed" = "Unnamed routine";
+
+"routines.editor.create.title" = "New routine";
+"routines.editor.edit.title" = "Edit routine";
+
+"routines.editor.name.label" = "Name";
+"routines.editor.name.prompt" = "Heavy squat day";
+/* Under the name field, saying why Save is off. The button is disabled rather than hidden, so the
+   reason has to be somewhere the user is already looking. */
+"routines.editor.name.caption" = "A routine needs a name.";
+
+"routines.editor.exercises.section" = "Exercises";
+"routines.editor.exercises.empty.headline" = "No exercises yet";
+"routines.editor.exercises.empty.message" = "Add the exercises this day trains, in the order you do them.";
+"routines.editor.exercise.add" = "Add exercise";
+"routines.editor.exercise.remove" = "Remove exercise";
+/* A slot whose catalogue row could not be read. Drawn broken rather than dropped: a missing name is
+   visible and a missing row is not. */
+"routines.editor.exercise.unnamed" = "Unknown exercise";
+"routines.editor.move.up" = "Move up";
+"routines.editor.move.down" = "Move down";
+
+/* A group's POSITION, not a count — the top set is 1 and the backoffs follow (FR-15.2.1's
+   amendment). A position takes no plural rules in either language. */
+"routines.editor.group.heading %lld" = "Target %lld";
+
+"routines.editor.group.weight.label" = "Weight";
+/* FR-15.2.2's blank target, offered in the placeholder: an empty field is a plan whose load is
+   decided in the session, and this is where that is said rather than left to be guessed. */
+"routines.editor.group.weight.prompt" = "Decide in session";
+"routines.editor.group.reps.label" = "Reps";
+"routines.editor.group.sets.label" = "Sets";
+/* Drawn on a group whose weight is blank. A WORD and not a tint (G-4.5), because the alternative
+   reading — a load of zero — differs from this one by an empty field alone. */
+"routines.editor.group.blank" = "Weight in session";
+"routines.editor.group.add" = "Add target";
+"routines.editor.group.remove" = "Remove target";
+"routines.editor.group.up" = "Move target up";
+"routines.editor.group.down" = "Move target down";
+/* Why Save is off. It names the two required fields and says the third is optional, since a blank
+   weight is the one thing on this screen that looks like an omission and is not. */
+"routines.editor.group.refusal" = "Every target needs reps and sets. The weight may be left blank.";
+
+"routines.editor.group.unit.kilograms" = "kg";
+"routines.editor.group.unit.pounds" = "lb";
+
+"routines.editor.save" = "Save routine";
+
+"routines.editor.error.headline" = "Could not load this routine";
+"routines.editor.error.message" = "Something went wrong reading it. Try again.";
+/* No retry beside this one: the identifier resolved to nothing, and reading again resolves to
+   nothing. */
+"routines.editor.missing.headline" = "This routine is gone";
+"routines.editor.missing.message" = "It was deleted, or it was never there.";
+"routines.editor.write.error" = "Could not save this routine. Try again.";
+
+/* FR-15.2.5's three management commands, on the card rather than inside the editor: a routine on
+   the list has no draft, so what they act on is unambiguous. Icon buttons carry these as VoiceOver
+   labels (G-4.2). */
+"routines.list.duplicate" = "Duplicate";
+"routines.list.rename" = "Rename";
+"routines.list.archive" = "Archive";
+"routines.list.cancel" = "Cancel";
+
+"routines.list.rename.title" = "Rename routine";
+
+/* Archive is a soft delete and there is no way back from it in this release, so it asks first and
+   the message says what survives: the workouts already logged from this routine copied their
+   targets when they started (TR-15.3), so nothing in History moves. */
+"routines.list.archive.title" = "Archive this routine?";
+"routines.list.archive.message" = "It leaves your routines for good. The workouts you already logged from it are kept exactly as they are.";
+
+/* The rename prompt's field can be emptied, and the editor's own rule applies to it: a routine
+   needs a name. It says what did NOT happen, since the row is still on screen under its old name. */
+"routines.list.manage.name-required.message" = "A routine needs a name. Nothing was renamed.";
+/* The other way a management command changes nothing, and a different fact: the store refused. It
+   names nothing the lifter did, so it asks for the one thing that can help. */
+"routines.list.manage.write-error.message" = "That change could not be saved. Try again.";
+
+/* What a copy is called. The original's name is the argument and is never looked up — it is the
+   lifter's own words. */
+"routines.list.duplicate.name %@" = "%@ (copy)";

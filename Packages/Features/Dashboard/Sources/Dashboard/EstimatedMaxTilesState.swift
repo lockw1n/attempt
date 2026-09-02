@@ -69,6 +69,12 @@ final class EstimatedMaxTilesState {
     /// The settings row, which carries both the selection and the display unit.
     private let settings: any SettingsRepository
 
+    /// Which of an exercise's two names a tile carries (`FR-1.14.2`).
+    ///
+    /// A tile's name is a string built by ``load()``, not a record a view can resolve for itself —
+    /// the view sets this, on ``RepositoryInterface/ExerciseNameLanguage``'s rule.
+    var nameLanguage: ExerciseNameLanguage = .english
+
     /// Builds the state over the three things a tile is made of.
     ///
     /// - Parameters:
@@ -95,7 +101,9 @@ final class EstimatedMaxTilesState {
             let stored = try await settings.settings()
             let exercises = try await catalogue.exercises(includingDeleted: false)
             let chosen = stored.dashboardExerciseIDs ?? DashboardDefaults.exerciseIDs(in: exercises)
-            let named = Dictionary(exercises.map { ($0.id, $0.name) }) { first, _ in first }
+            let named = Dictionary(
+                exercises.map { ($0.id, $0.displayName(in: nameLanguage)) }
+            ) { first, _ in first }
             var built: [EstimatedMaxTile] = []
             for exerciseID in chosen {
                 guard let name = named[exerciseID] else { continue }

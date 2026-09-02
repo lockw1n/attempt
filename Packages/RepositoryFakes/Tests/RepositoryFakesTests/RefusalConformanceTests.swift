@@ -116,7 +116,13 @@ struct RefusalConformanceTests {
             ).isEmpty)
     }
 
-    @Test("Deleting a row that was never there is refused, on all four deletes", arguments: Subject.all)
+    /// **Every delete on every protocol, and the count in the name is load-bearing.**
+    ///
+    /// This test was called "on all four deletes" while its body exercised five, and then a
+    /// protocol arrived with three more and neither the name nor the body noticed. A number in a
+    /// test name is a claim about a set, so it goes stale exactly when a member is added — which
+    /// is the moment the test most needs to be looked at.
+    @Test("Deleting a row that was never there is refused, on all eight deletes", arguments: Subject.all)
     func aMissingRowCannotBeDeleted(_ subject: Subject) async throws {
         let repositories = try subject.make()
         let id = UUID()
@@ -135,6 +141,15 @@ struct RefusalConformanceTests {
         }
         await #expect(throws: RepositoryError.recordNotFound(id: id)) {
             try await repositories.equipment.deleteProfile(id: id)
+        }
+        await #expect(throws: RepositoryError.recordNotFound(id: id)) {
+            try await repositories.routines.deleteRoutine(id: id)
+        }
+        await #expect(throws: RepositoryError.recordNotFound(id: id)) {
+            try await repositories.routines.deleteRoutineExercise(id: id)
+        }
+        await #expect(throws: RepositoryError.recordNotFound(id: id)) {
+            try await repositories.routines.deleteTargetGroup(id: id)
         }
     }
 

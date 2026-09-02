@@ -45,9 +45,20 @@ import Testing
 //      deletes either, so only the `includingDeleted:` flag's *live* half is reachable, and that
 //      half is asserted.
 //
-// Every other behaviour of all thirty-one methods is here. `PersonalRecordCacheRepository` (TR-1.6)
-// joined a phase after the rest and brought two of those three: its reconciliation is cross-row and
-// is written twice, once per subject, which is exactly the drift this suite exists to catch.
+// Every other behaviour of every method on every protocol is here.
+// `PersonalRecordCacheRepository` (TR-1.6) joined a phase after the rest and brought two of those
+// three: its reconciliation is cross-row and is written twice, once per subject, which is exactly
+// the drift this suite exists to catch. `RoutineRepository` (FR-15.2) joined later still, with the
+// same shape of hand-written-twice cascade.
+//
+// **THE METHOD COUNT USED TO BE SPELLED OUT HERE AND IT WAS WRONG.** This line read "all
+// thirty-one methods" while the protocols carried thirty-three — the cache repository had grown
+// from one method to three and the prose did not move — and it then survived a whole new protocol
+// being added beside it. A total in a comment is a claim about a set that nothing walks, so it is
+// stale from the first member added after it is written, and it reads as authoritative the whole
+// time. What holds the claim now is the tests below naming their own populations ("on all eight
+// deletes") plus `Repositories` failing to compile when a protocol is added and not threaded
+// through both subjects.
 
 /// One implementation of the protocols, as the suite sees it.
 struct Subject: Sendable, CustomTestStringConvertible {
@@ -73,7 +84,9 @@ struct Subject: Sendable, CustomTestStringConvertible {
                 settings: stack.settings,
                 bodyweight: stack.bodyweight,
                 equipment: stack.equipment,
-                personalRecords: stack.personalRecords
+                personalRecords: stack.personalRecords,
+                routines: stack.routines,
+                plannedTargets: stack.workouts
             )
         },
         Subject(name: "InMemoryRepositoryStack") {
@@ -84,7 +97,9 @@ struct Subject: Sendable, CustomTestStringConvertible {
                 settings: stack.settings,
                 bodyweight: stack.bodyweight,
                 equipment: stack.equipment,
-                personalRecords: stack.personalRecords
+                personalRecords: stack.personalRecords,
+                routines: stack.routines,
+                plannedTargets: stack.workouts
             )
         },
     ]
@@ -98,6 +113,8 @@ struct Repositories: Sendable {
     let bodyweight: any BodyweightRepository
     let equipment: any EquipmentRepository
     let personalRecords: any PersonalRecordCacheRepository
+    let routines: any RoutineRepository
+    let plannedTargets: any PlannedTargetRepository
 }
 
 // MARK: - Records
@@ -122,6 +139,7 @@ func exerciseRecord(
         updatedAt: fixtureUpdatedAt,
         deletedAt: deletedAt,
         name: name,
+        ukrainianName: nil,
         movement: .squat,
         parentExerciseID: parentExerciseID,
         equipment: .barbell,
@@ -296,6 +314,78 @@ func profileRecord(
     )
 }
 
+func routineRecord(
+    id: UUID = UUID(),
+    name: String = "Push day"
+) -> Routine {
+    Routine(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: nil,
+        name: name
+    )
+}
+
+func routineExerciseRecord(
+    id: UUID = UUID(),
+    routineID: UUID,
+    exerciseID: UUID,
+    order: Int = 0
+) -> RoutineExercise {
+    RoutineExercise(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: nil,
+        routineID: routineID,
+        exerciseID: exerciseID,
+        order: order
+    )
+}
+
+func routineTargetGroupRecord(
+    id: UUID = UUID(),
+    routineExerciseID: UUID,
+    order: Int = 0,
+    grams: Int = 100_000,
+    reps: Int = 5,
+    sets: Int = 4
+) -> RoutineTargetGroup {
+    RoutineTargetGroup(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: nil,
+        routineExerciseID: routineExerciseID,
+        order: order,
+        targetWeight: Weight(grams: grams),
+        targetReps: reps,
+        targetSets: sets
+    )
+}
+
+func plannedTargetGroupRecord(
+    id: UUID = UUID(),
+    exerciseEntryID: UUID,
+    order: Int = 0,
+    grams: Int? = 100_000,
+    reps: Int = 5,
+    sets: Int = 4
+) -> PlannedTargetGroup {
+    PlannedTargetGroup(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: nil,
+        exerciseEntryID: exerciseEntryID,
+        order: order,
+        targetWeight: grams.map(Weight.init(grams:)),
+        targetReps: reps,
+        targetSets: sets
+    )
+}
+
 // MARK: - Ids that sort
 
 /// Three UUIDs whose `uuidString`s sort `a < b < c`.
@@ -310,6 +400,22 @@ enum SortedIDs {
     static let second = UUID(uuidString: "00000000-0000-4000-8000-00000000000A")!
     static let third = UUID(uuidString: "00000000-0000-4000-8000-00000000000B")!
     // swiftlint:enable force_unwrapping
+}
+
+/// Five ids whose `uuidString`s sort ascending — enough ties to score a tie-break probe.
+///
+/// Three would not be: a dropped `id.uuidString` clause leaves a permutation of however many rows
+/// tie, so two rows let a wrong implementation pass half the time and three let it pass one time in
+/// six. See `RoutineConformanceTests.routineChildrenAreOrderedByOrderThenID`.
+enum TiedIDs {
+    /// The five, already in the order a correct read returns them.
+    static let ascending: [UUID] = [
+        "00000000-0000-4000-8000-000000000001",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-00000000000A",
+        "00000000-0000-4000-8000-00000000000B",
+    ].compactMap(UUID.init(uuidString:))
 }
 
 // MARK: - Building a small history through the front door

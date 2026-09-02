@@ -21,8 +21,11 @@ public enum ExerciseFormMode: Sendable, Equatable {
 /// read, ``writeFailure`` is what the last save did, and they are separate because a failed save
 /// must cost the user neither the form nor what they typed.
 ///
-/// **The fields the form exposes are exactly the fields the detail screen displays** — name,
-/// movement, equipment, bar, sides, and the exercise this one varies. `FR-1.1.3` lists five and not
+/// **The fields the form exposes are exactly the fields the detail screen displays, plus one** —
+/// name, Ukrainian name, movement, equipment, bar, sides, and the exercise this one varies.
+/// ``ukrainianName`` is the exception and is one by construction (`FR-1.14.2`): the detail screen
+/// shows *a* name resolved for the reader's locale, so the second name has no row of its own to be
+/// displayed in and would be uneditable anywhere if it were not offered here. `FR-1.1.3` lists five and not
 /// ``RepositoryInterface/Exercise/laterality``; the schema carries it with a default and the detail
 /// screen renders it as *Sides*, so omitting it here would leave the user looking at a value nothing
 /// in the app can change. The two fields on the other side of that line stay off the form for the
@@ -82,6 +85,19 @@ public final class ExerciseFormState {
     /// The exercise's name (`FR-1.1.3`). The one required field.
     public var name: String = "" { didSet { fieldChanged(name != oldValue) } }
 
+    /// The exercise's Ukrainian name (`FR-1.14.2`), blank for an exercise that has only ``name``.
+    ///
+    /// **Optional, and offered on a built-in exercise too** — unlike the five fields
+    /// ``catalogueOwnsFields`` withholds. The seed merge *fills* this column rather than re-supplying
+    /// it, so a value typed here survives the next import the way `FR-1.1.4`'s rename does; the one
+    /// asymmetry is that clearing it lets the next import fill it again, since nothing stored tells
+    /// an emptied column from one never written — and that import runs at **every launch**, not only
+    /// when a new catalogue revision lands.
+    ///
+    /// A `String` rather than `String?`, because a text field's empty state is `""` and the two
+    /// would have to be reconciled somewhere — ``trimmedUkrainianName`` is that somewhere.
+    public var ukrainianName: String = "" { didSet { fieldChanged(ukrainianName != oldValue) } }
+
     /// Which lift this is a form of. Defaults to the schema's `.other`, which claims nothing.
     public var movement: Movement = .other { didSet { fieldChanged(movement != oldValue) } }
 
@@ -103,7 +119,7 @@ public final class ExerciseFormState {
     /// Whether the parent picker offers every movement's exercises rather than only ``movement``'s.
     ///
     /// **Off by default, and it narrows rather than restricts.** A variation almost always trains
-    /// the same lift as what it varies, and 116 candidates is a picker nobody reads; but nothing in
+    /// the same lift as what it varies, and 132 candidates is a picker nobody reads; but nothing in
     /// `FR-1.1.7` says a variation may not cross movements, so the wider set is one tap away rather
     /// than unreachable.
     public var offersEveryMovementAsParent = false
@@ -178,7 +194,8 @@ public final class ExerciseFormState {
 
     // MARK: - The parent picker (FR-1.1.7)
 
-    /// The exercises this one may be made a variation of, in ``ExerciseOrder``.
+    /// The exercises this one may be made a variation of, in
+    /// ``RepositoryInterface/ExerciseDisplayOrder``.
     ///
     /// Four exclusions, and each one is a save the repository or the data model would otherwise
     /// have to refuse:
@@ -194,15 +211,20 @@ public final class ExerciseFormState {
     /// always on another movement, must not lose it because the form could not offer it back.
     public var parentCandidates: [Exercise] {
         let excluded = closure(from: editedRecord?.id)
-        return
-            catalogue
-            .filter { candidate in
-                if candidate.id == parentExerciseID { return true }
-                guard !excluded.contains(candidate.id), !candidate.isArchived else { return false }
-                return offersEveryMovementAsParent || candidate.movement == movement
-            }
-            .sorted(by: ExerciseOrder.precedes)
+        let candidates = catalogue.filter { candidate in
+            if candidate.id == parentExerciseID { return true }
+            guard !excluded.contains(candidate.id), !candidate.isArchived else { return false }
+            return offersEveryMovementAsParent || candidate.movement == movement
+        }
+        return ExerciseDisplayOrder.sorted(candidates, in: nameLanguage)
     }
+
+    /// Which of a candidate's two names the picker is showing (`FR-1.14.2`).
+    ///
+    /// It orders ``parentCandidates`` and nothing else: the two name fields this form edits are the
+    /// record's own, and neither is resolved. Set by the view, on
+    /// ``RepositoryInterface/ExerciseNameLanguage``'s rule.
+    public var nameLanguage: ExerciseNameLanguage = .english
 
     /// The exercise currently chosen as the parent, if one is.
     public var selectedParent: Exercise? {
@@ -263,6 +285,16 @@ public final class ExerciseFormState {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// The Ukrainian name as it would be stored, or `nil` for a field holding nothing.
+    ///
+    /// Blank collapses to absent, so a user who empties the field leaves the column holding nothing
+    /// rather than whitespace — which is what
+    /// ``RepositoryInterface/Exercise/displayName(in:)`` already reads the two as anyway.
+    public var trimmedUkrainianName: String? {
+        let trimmed = ukrainianName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     /// Whether the one required field has been filled in.
     ///
     /// **The only thing that blocks a save.** Every other field carries the schema's own default
@@ -316,6 +348,9 @@ public final class ExerciseFormState {
                 updatedAt: edited.updatedAt,
                 deletedAt: edited.deletedAt,
                 name: trimmedName,
+                // Not one of the seed-owned five: the merge fills this column rather than
+                // re-supplying it, so an edit here is not undone by the next import.
+                ukrainianName: trimmedUkrainianName,
                 movement: owned ? edited.movement : movement,
                 parentExerciseID: owned ? edited.parentExerciseID : parentExerciseID,
                 equipment: owned ? edited.equipment : equipment,
@@ -335,6 +370,7 @@ public final class ExerciseFormState {
             updatedAt: now,
             deletedAt: nil,
             name: trimmedName,
+            ukrainianName: trimmedUkrainianName,
             movement: movement,
             parentExerciseID: parentExerciseID,
             equipment: equipment,
@@ -356,6 +392,7 @@ public final class ExerciseFormState {
     private func populate(from record: Exercise) {
         editedRecord = record
         name = record.name
+        ukrainianName = record.ukrainianName ?? ""
         movement = record.movement
         equipment = record.equipment
         barType = record.barType

@@ -15,6 +15,11 @@ struct InMemorySettingsRepository: SettingsRepository, Sendable {
     func save(_ settings: UserSettings) async throws {
         try await store.saveSettings(settings)
     }
+
+    /// Writes a backup's preferences onto the row in force. See the protocol for the rule.
+    func restorePreferences(from backup: UserSettings) async throws {
+        await store.restoreSettingsPreferences(from: backup)
+    }
 }
 
 extension InMemoryRepositoryStore {
@@ -57,23 +62,35 @@ extension InMemoryRepositoryStore {
     /// **Neither `id` nor `userID` moves**, which is why this is not an upsert: a caller assembling
     /// a record from defaults rather than from ``settings()`` would otherwise replace the identity
     /// the app has been writing under. A save into an empty store inserts and honours the record's
-    /// own `userID` — that is `FR-1.11.3`'s restore, the one caller with an identity to reinstate
-    /// rather than to mint.
+    /// own `userID` — nothing is in force, so writing the record's is the mint rather than a
+    /// rewrite.
     ///
     /// - Throws: ``RepositoryInterface/RepositoryError/identityAlreadyEstablished(recordID:)`` when
     ///   the record names a different `userID` from the stored row's.
     func saveSettings(_ settings: UserSettings) throws {
-        let now = Date.now
-        guard let inForce = settingsRow else {
-            settingsRow = settings.stamped(
-                createdAt: settings.createdAt, updatedAt: now, deletedAt: nil)
-            return
-        }
-        guard inForce.userID == settings.userID else {
+        if let inForce = settingsRow, inForce.userID != settings.userID {
             throw RepositoryError.identityAlreadyEstablished(recordID: settings.id)
         }
+        restoreSettingsPreferences(from: settings)
+    }
+
+    /// Writes a backup's preferences onto the row in force, whatever identity it carries
+    /// (`FR-1.11.3`).
+    ///
+    /// **The store side's shape, one clause apart**, which is the point rather than a coincidence:
+    /// the guard above is the only thing that separates a save from a restore, so the fake cannot
+    /// disagree with the store about which write lands.
+    ///
+    /// - Parameter backup: The settings row a backup file carries.
+    func restoreSettingsPreferences(from backup: UserSettings) {
+        let now = Date.now
+        guard let inForce = settingsRow else {
+            settingsRow = backup.stamped(
+                createdAt: backup.createdAt, updatedAt: now, deletedAt: nil)
+            return
+        }
         settingsRow =
-            settings
+            backup
             .preferencesWritten(onto: inForce)
             .stamped(createdAt: inForce.createdAt, updatedAt: now, deletedAt: inForce.deletedAt)
     }

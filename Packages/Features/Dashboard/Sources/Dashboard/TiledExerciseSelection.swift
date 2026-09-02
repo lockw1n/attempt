@@ -60,6 +60,12 @@ final class TiledExerciseSelectionState {
         self.settings = settings
     }
 
+    /// Which of an exercise's two names a row shows, and orders by (`FR-1.14.2`).
+    ///
+    /// A row's name is a string this state builds — the view sets this, on
+    /// ``RepositoryInterface/ExerciseNameLanguage``'s rule.
+    var nameLanguage: ExerciseNameLanguage = .english
+
     /// Reads the catalogue and the selection.
     ///
     /// The selection defaults exactly as the tiles do — ``DashboardDefaults`` — so the picker opens
@@ -76,14 +82,15 @@ final class TiledExerciseSelectionState {
             let chosen = stored.dashboardExerciseIDs ?? DashboardDefaults.exerciseIDs(in: exercises)
             let tiled = Set(chosen)
             selection = chosen
-            choices =
-                exercises
-                .filter { !$0.isArchived || tiled.contains($0.id) }
-                .sorted { $0.name < $1.name }
-                .map {
-                    TiledExerciseChoice(
-                        exerciseID: $0.id, name: $0.name, isTiled: tiled.contains($0.id))
-                }
+            choices = ExerciseDisplayOrder.sorted(
+                exercises.filter { !$0.isArchived || tiled.contains($0.id) }, in: nameLanguage
+            )
+            .map {
+                TiledExerciseChoice(
+                    exerciseID: $0.id,
+                    name: $0.displayName(in: nameLanguage),
+                    isTiled: tiled.contains($0.id))
+            }
             failure = nil
         } catch {
             failure = String(describing: error)
@@ -112,4 +119,5 @@ final class TiledExerciseSelectionState {
         }
         await load()
     }
+
 }

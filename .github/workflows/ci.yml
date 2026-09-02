@@ -189,6 +189,10 @@ jobs:
             Packages/DesignSystem/.build/snapshot-failures/
             Packages/Features/ExerciseLibrary/.build/snapshot-failures/
             Packages/Features/Logging/.build/snapshot-failures/
+            Packages/Features/History/.build/snapshot-failures/
+            Packages/Features/Dashboard/.build/snapshot-failures/
+            Packages/Features/Settings/.build/snapshot-failures/
+            Packages/Features/Routines/.build/snapshot-failures/
           if-no-files-found: ignore
 
   # TR-0.1.1 / NFR-0.2 / DOD-0.2: the mechanical proof that no *Apple-platform* framework leaked
@@ -305,6 +309,16 @@ jobs:
       - name: Check app-target strings
         run: ./scripts/check-app-strings.sh
 
+      # FR-1.14.1's guard. Once `uk` is a bundle localization a key with no Ukrainian value renders
+      # its own identifier on screen rather than the English string, so an incomplete table is
+      # worse than none — and nothing else in this job can see it: SwiftLint reads source rather
+      # than resources, and the module tests resolve keys against the test process's `en`.
+      - name: Check the Ukrainian translation is complete
+        run: ./scripts/check-translations.sh
+
+      - name: Verify the translation gate fires
+        run: ./scripts/check-translations.sh --self-test
+
       # TR-0.6.2's formatter half. `swift format` ships with the toolchain, so there is nothing to
       # install. Config is `.swift-format`: 4-space indent and a 120-column limit, matching
       # `.editorconfig` and SwiftLint's `line_length` rather than the tool's own defaults.
@@ -353,3 +367,14 @@ jobs:
 
       - name: Verify the CloudKit gate fires
         run: ./scripts/check-cloudkit.sh --self-test
+
+      # G-5.1, and the fact-checker for two sentences the About screen ships inside the binary
+      # (G-5.3). Every dependency here is a local path package, so no third party can be told
+      # anything — a property that holds by construction and decays with one `.package(url:` in a
+      # diff about something else. Beside the CloudKit gate because it is the same shape: a
+      # capability that is off today and would turn itself on quietly.
+      - name: Check no third-party code is in the tree
+        run: ./scripts/check-no-third-party.sh
+
+      - name: Verify the third-party gate fires
+        run: ./scripts/check-no-third-party.sh --self-test

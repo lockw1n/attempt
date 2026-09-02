@@ -24,6 +24,7 @@ func codingExercise() -> Exercise {
         updatedAt: codingUpdatedAt,
         deletedAt: codingDeletedAt,
         name: "Low-bar back squat",
+        ukrainianName: "Присідання зі штангою на низькій позиції",
         movement: .squat,
         parentExerciseID: codingJoinID,
         equipment: .barbell,
@@ -61,7 +62,10 @@ func codingExerciseEntry() -> ExerciseEntry {
         sessionID: codingJoinID,
         exerciseID: codingJoinID,
         order: 3,
-        notes: "wide stance"
+        notes: "wide stance",
+        // Not the default: a round trip through `false` would pass on a coder that dropped the
+        // key entirely.
+        isMarkedDone: true
     )
 }
 
@@ -167,6 +171,56 @@ func codingPersonalRecordCache() -> PersonalRecordCache {
         sourceSetID: codingJoinID,
         achievedAt: codingCreatedAt,
         computationVersion: 1
+    )
+}
+
+func codingRoutine() -> Routine {
+    Routine(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        name: "Squat day"
+    )
+}
+
+func codingRoutineExercise() -> RoutineExercise {
+    RoutineExercise(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        routineID: codingJoinID,
+        exerciseID: codingJoinID,
+        order: 2
+    )
+}
+
+func codingRoutineTargetGroup() -> RoutineTargetGroup {
+    RoutineTargetGroup(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        routineExerciseID: codingJoinID,
+        order: 1,
+        targetWeight: Weight(grams: 90_000),
+        targetReps: 4,
+        targetSets: 4
+    )
+}
+
+func codingPlannedTargetGroup(grams: Int? = 90_000) -> PlannedTargetGroup {
+    PlannedTargetGroup(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        exerciseEntryID: codingJoinID,
+        order: 1,
+        targetWeight: grams.map(Weight.init(grams:)),
+        targetReps: 4,
+        targetSets: 4
     )
 }
 

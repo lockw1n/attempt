@@ -1,0 +1,54 @@
+/* Dashboard, Ukrainian (FR-1.14.1). The keys and the reasoning behind each string are in en.lproj
+   beside this file. The table has to stay complete: a missing key renders its own identifier. */
+
+"dashboard.recent-records.title" = "Нові рекорди";
+/* The window's own number of days is written with the genitive plural throughout this table —
+   30, 60, 90, 180 and 365 are the windows offered, and every one of them takes «днів». */
+"dashboard.recent-records.none" = "Виконайте робочий підхід — і особисті рекорди, які він встановить, з’являться тут. Підхід, у якому не вдалося досягти цілі, рекорду не встановлює, навіть на тій кількості повторень, яку ви зробили.";
+"dashboard.recent-records.error" = "Не вдалося прочитати нові особисті рекорди.";
+"dashboard.recent-records.see-all" = "Показати всі";
+"dashboard.recent-records.rep-max %lld" = "%lld-повторний максимум";
+"dashboard.recent-records.rep-max.range %lld %lld" = "%1$lld–%2$lld-повторний максимум";
+"dashboard.recent-records.exercise-hint" = "Показує особисті рекорди цієї вправи.";
+
+"dashboard.start.action" = "Почати тренування";
+
+"dashboard.last-workout.title" = "Останнє тренування";
+"dashboard.last-workout.none.headline" = "Тренувань ще немає";
+"dashboard.last-workout.none.message" = "Почніть тренування — і воно з’явиться тут, готове до повтору.";
+"dashboard.last-workout.error" = "Не вдалося прочитати ваші тренування.";
+"dashboard.last-workout.in-progress" = "Триває";
+"dashboard.last-workout.sets %lld" = "Робочих підходів: %lld";
+"dashboard.last-workout.resume" = "Продовжити тренування";
+"dashboard.last-workout.repeat" = "Повторити ці вправи";
+"dashboard.last-workout.repeat-error" = "Не вдалося почати нове тренування.";
+
+"dashboard.tiles.title" = "Орієнтовний 1ПМ";
+"dashboard.tiles.error" = "Не вдалося прочитати ваші орієнтовні максимуми.";
+"dashboard.tiles.none.headline" = "На головному екрані немає вправ";
+"dashboard.tiles.none.message" = "Виберіть вправи, для яких потрібна оцінка.";
+"dashboard.tiles.manual" = "Введено вручну";
+"dashboard.tiles.no-previous" = "Немає попередньої оцінки для порівняння";
+"dashboard.tiles.choose.action" = "Вибрати вправи";
+"dashboard.tiles.choose.title" = "Вправи на головному екрані";
+"dashboard.tiles.choose.empty" = "Немає вправ для вибору";
+"dashboard.tiles.choose.error" = "Не вдалося прочитати ваші вправи.";
+"dashboard.tiles.choose.write-error" = "Не вдалося зберегти цю зміну.";
+
+"dashboard.tiles.absence.none" = "Запишіть завершений робочий підхід — і тут з’явиться оцінка.";
+"dashboard.tiles.absence.stale %lld" = "За останні %lld днів тут нічого не записано. Оцінка враховує лише свіжі тренування.";
+"dashboard.tiles.absence.warmups %lld" = "За останні %lld днів були лише розминкові підходи. Оцінка береться з робочих підходів.";
+"dashboard.tiles.absence.incomplete %lld" = "За останні %lld днів немає жодного завершеного робочого підходу. Підхід має бути завершений, перш ніж він щось скаже про максимум.";
+"dashboard.tiles.absence.high-reps %lld" = "Немає оцінки за останні %lld днів: найкращий кандидат перевищив десять повторень, а далі ці формули неточні.";
+"dashboard.tiles.absence.assisted" = "Підходи з допомогою не мають орієнтовного максимуму: формули сприйняли б більшу допомогу як важчий підйом.";
+"dashboard.tiles.absence.no-effort" = "Ця формула зчитує RPE або RIR підходу, а свіжі підходи тут не містять ні того, ні іншого.";
+
+"dashboard.first-launch.headline" = "Ваш щоденник тренувань починається тут";
+"dashboard.first-launch.message" = "Запишіть перше тренування — і цей екран заповниться: що ви тренували востаннє, обсяг за тиждень, ваші особисті рекорди й орієнтовні максимуми.";
+
+"dashboard.week.title" = "Цей тиждень";
+"dashboard.week.workouts" = "Тренування";
+"dashboard.week.volume" = "Обсяг";
+"dashboard.week.none" = "Цього тижня ще не записано жодного робочого підходу.";
+"dashboard.week.unweighed" = "Ніщо цього тижня не несе ваги, яку можна зважити, — підходи з власною вагою та з допомогою не додають обсягу.";
+"dashboard.week.error" = "Не вдалося прочитати тренування цього тижня.";

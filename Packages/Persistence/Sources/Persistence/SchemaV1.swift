@@ -1,8 +1,7 @@
 import Foundation
 import SwiftData
 
-/// The store's shape at version 1 — every `@Model` in this module, and the only list of them
-/// (`TR-0.6.4`).
+/// The store's model list — every `@Model` in this module, and the only list of them (`TR-0.6.4`).
 ///
 /// **One list, not two.** `scripts/check-cloudkit.sh` parses the markers around the array and
 /// compares it against every `@Model` under `Sources/`, so an entity cannot join the store without
@@ -24,6 +23,16 @@ import SwiftData
 ///   this app wrote.
 /// - **Two devices migrate independently**, so a minted default disagrees across them on rows that
 ///   were identical before the upgrade, and `G-2.4` resolves between two meaningless values.
+///
+/// **``ExerciseEntity/ukrainianName`` is the first column those three rules apply to**, and it takes
+/// the branch the first of them names: optional, so every row written before it existed reads back
+/// with nothing rather than with something wrong.
+///
+/// **This enum does not freeze v1's columns, and cannot** — its ``models`` names the module's live
+/// classes, so it describes whatever shape those classes currently have rather than the shape v1
+/// stores were written with. A column added here is therefore added *to v1's declaration*, and the
+/// identifier stays `1.0.0`. That is not a shortcut; ``AppMigrationPlan`` has the measurement that
+/// makes it the only available answer, and the crash the other one produces.
 enum SchemaV1: VersionedSchema {
     static var versionIdentifier: Schema.Version { Schema.Version(1, 0, 0) }
 
@@ -39,6 +48,10 @@ enum SchemaV1: VersionedSchema {
             EquipmentProfileEntity.self,
             UserSettingsEntity.self,
             PersonalRecordCacheEntity.self,
+            RoutineEntity.self,
+            RoutineExerciseEntity.self,
+            RoutineTargetGroupEntity.self,
+            PlannedTargetGroupEntity.self,
         ]
     }
     // audited-models:end
@@ -54,13 +67,27 @@ enum SchemaV1: VersionedSchema {
 /// perform and which `scripts/check-cloudkit.sh` fails the lint job on.
 ///
 /// So this is a declaration, not a mechanism, and it is worth declaring for two reasons. It is the
-/// one place a version history is written down, which is what makes adding `SchemaV2` an edit
-/// rather than a decision. And it is where `G-1.7` becomes visible: a stage that needed to be
-/// `.custom` would have to be written here, where the gate is looking.
+/// one place a version history would be written down. And it is where `G-1.7` becomes visible: a
+/// stage that needed to be `.custom` would have to be written here, where the gate is looking.
 ///
 /// **A migration whose correctness depends on this plan being consulted is a migration `G-1.7` has
-/// already refused.** Adding a version means appending to ``schemas`` and one `.lightweight` stage
-/// to ``stages``.
+/// already refused.**
+///
+/// **A SECOND VERSION CANNOT BE ADDED WITHOUT FREEZING A COPY OF EVERY ENTITY, and adding one
+/// without that crashes the app at launch.** Measured against a real simulator store while
+/// `FR-1.14.2` was adding a column: a `SchemaV2` whose `models` names ``SchemaV1``'s live classes
+/// makes both versions compute the same CoreData checksum, and `NSLightweightMigrationStage`'s
+/// initialiser refuses that pair by throwing `NSInvalidArgumentException`, *"Duplicate version
+/// checksums detected."* It is raised inside `addPersistentStore` and nothing in Swift catches it —
+/// `SIGABRT` at `ModelContainer` construction, on a fresh store as readily as on an old one.
+///
+/// So the version identifier is not free to move, and a column added to this schema is added to
+/// ``SchemaV1``'s own declaration at `1.0.0`. SwiftData infers the additive change either way, which
+/// is what makes that survivable: the store migrates, and what is lost is only the written record
+/// that its shape changed. **A real second version means a per-version copy of all nine entity
+/// classes** — the shape `SchemaVersioningTests`' probe enums use — which is a task, not an edit.
+/// `planNamesOneVersion` is what holds this shut: appending to ``schemas`` turns it red before
+/// anyone runs the app.
 enum AppMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] { [SchemaV1.self] }
 

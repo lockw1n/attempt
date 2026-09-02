@@ -28,12 +28,20 @@ final class ExerciseEntryEntity: StoredEntity {
 
     var notes: String = ""
 
+    /// Whether the lifter has said they are finished with this exercise (`FR-15.3.4`).
+    ///
+    /// **A column added after schema v1, and `false` is the value every existing row backfills
+    /// from** — which is the right answer for all of them: nobody checked off an exercise before
+    /// the control existed.
+    var isMarkedDone: Bool = false
+
     init(
         id: UUID = UUID(),
         sessionID: UUID,
         exerciseID: UUID,
         order: Int,
         notes: String = "",
+        isMarkedDone: Bool = false,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
@@ -42,6 +50,7 @@ final class ExerciseEntryEntity: StoredEntity {
         self.exerciseID = exerciseID
         self.order = order
         self.notes = notes
+        self.isMarkedDone = isMarkedDone
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

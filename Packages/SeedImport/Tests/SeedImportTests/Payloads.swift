@@ -16,6 +16,7 @@ import Testing
 struct AuthoredEntry {
     var id: UUID
     var name: String
+    var ukrainianName: String?
     var movement = "squat"
     var parentExerciseID: UUID?
     var equipment = "barbell"
@@ -38,6 +39,13 @@ struct AuthoredEntry {
         }
     }
 
+    /// `self` with a Ukrainian name, which the file carries only where the catalogue has one.
+    func translated(_ value: String?) -> AuthoredEntry {
+        var copy = self
+        copy.ukrainianName = value
+        return copy
+    }
+
     /// `self` with one vocabulary field respelled.
     func spelling(_ field: SeedVocabularyField, as value: String) -> AuthoredEntry {
         var copy = self
@@ -55,8 +63,11 @@ struct AuthoredEntry {
         var fields = [
             "\"id\": \"\(id.uuidString)\"",
             "\"name\": \"\(name)\"",
-            "\"movement\": \"\(movement)\"",
         ]
+        if let ukrainianName {
+            fields.append("\"ukrainianName\": \"\(ukrainianName)\"")
+        }
+        fields.append("\"movement\": \"\(movement)\"")
         if let parentExerciseID {
             fields.append("\"parentExerciseID\": \"\(parentExerciseID.uuidString)\"")
         }
@@ -139,8 +150,14 @@ extension Exercise {
     /// ``Exercise/movement`` is here despite being seed-owned rather than user-editable: a row that
     /// differs from another in a *kept* column is indistinguishable to the merge, so a duplicate
     /// standing in for one the repository would resolve differently has to differ in an owned one.
+    ///
+    /// ``clearingUkrainianName`` exists because every other parameter here reads `nil` as *leave it
+    /// alone*, which leaves no way to express the one edit that matters most for a column whose
+    /// interesting value is `nil` — a user taking a Ukrainian name back off an exercise.
     func edited(
         name: String? = nil,
+        ukrainianName: String? = nil,
+        clearingUkrainianName: Bool = false,
         notes: String? = nil,
         isArchived: Bool? = nil,
         isCustom: Bool? = nil,
@@ -153,6 +170,7 @@ extension Exercise {
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             name: name ?? self.name,
+            ukrainianName: clearingUkrainianName ? nil : ukrainianName ?? self.ukrainianName,
             movement: movement ?? self.movement,
             parentExerciseID: parentExerciseID,
             equipment: equipment,
@@ -222,6 +240,7 @@ func userAuthored(_ id: UUID, _ name: String, at now: Date = Date()) -> Exercise
         updatedAt: now,
         deletedAt: nil,
         name: name,
+        ukrainianName: nil,
         movement: .other,
         parentExerciseID: nil,
         equipment: .machine,

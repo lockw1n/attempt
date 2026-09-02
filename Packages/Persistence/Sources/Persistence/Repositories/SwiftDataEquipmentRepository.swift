@@ -39,10 +39,11 @@ actor SwiftDataEquipmentRepository: EquipmentRepository {
     /// is what the record shape is for.
     ///
     /// **`isDefault` is cleared on insert rather than honoured.** The mapping's `update(from:)`
-    /// already declines to write it, but `init(record:)` does write it — correctly, for the restore
-    /// path — so the save path has to say no itself, or a record could claim the flag beside a
-    /// profile that already holds it. "Exactly one default" is a cross-row invariant and
-    /// ``makeDefault(profileID:)`` is where it lives.
+    /// already declines to write it, and `init(record:)` carries it like every other column, so the
+    /// save path has to say no itself — or a record could claim the flag beside a profile that
+    /// already holds it. "Exactly one default" is a cross-row invariant and
+    /// ``makeDefault(profileID:)`` is where it lives, which is also how `FR-1.11.3`'s restore gets
+    /// the flag back: it writes the profiles, then names the one the file marked.
     ///
     /// - Throws: ``RepositoryInterface/RepositoryError/unusableRecord(recordID:reason:)`` if
     ///   `EquipmentProfile.inventory()` refuses the two plate lists.

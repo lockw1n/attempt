@@ -1,5 +1,6 @@
 import DerivedValues
 import DesignSystem
+import DesignTokens
 import Foundation
 import Localization
 import PowerliftingCore
@@ -54,6 +55,15 @@ public struct PastSessionView: View {
     /// ``SessionNoteDraft/follow(_:)`` for what happens to an unsaved edit when one is re-read.
     @State private var noteDraft = SessionNoteDraft()
 
+    /// Whether `FR-15.2.6`'s naming prompt is open.
+    ///
+    /// The screen's rather than the state's, on `noteDraft`'s rule: a name being typed is not a
+    /// fact about anything until the command is confirmed.
+    @State private var isNamingRoutine = false
+
+    /// What that prompt's field holds.
+    @State private var routineName = ""
+
     /// Which locale the day and the numbers are rendered for, and the editor parses in (`G-3.4`).
     @Environment(\.locale) private var locale
 
@@ -68,6 +78,7 @@ public struct PastSessionView: View {
     ///   - equipment: The gym the plate calculator loads against (`FR-1.4.1`).
     ///   - records: The app's one recompute actor (`TR-1.6`) — an edit here moves a personal record
     ///     as much as one made during the workout does.
+    ///   - routines: Where `FR-15.2.6`'s routine is written.
     public init(
         sessionID: UUID,
         workouts: any WorkoutRepository,
@@ -75,7 +86,8 @@ public struct PastSessionView: View {
         settings: any SettingsRepository,
         vocabulary: SetModifierVocabulary,
         equipment: PlateCalculatorStore,
-        records: PersonalRecordRecomputer
+        records: PersonalRecordRecomputer,
+        routines: any RoutineRepository
     ) {
         _state = State(
             initialValue: PastSessionState(
@@ -83,7 +95,8 @@ public struct PastSessionView: View {
                 workouts: workouts,
                 catalogue: catalogue,
                 settings: settings,
-                records: records))
+                records: records,
+                routines: routines))
         self.vocabulary = vocabulary
         self.equipment = equipment
     }
@@ -114,6 +127,9 @@ public struct PastSessionView: View {
             SetEditorSheet(
                 draft: draft(for: target),
                 isEditing: true,
+                // No target: this screen has no planned-target read wired up, for the reason its
+                // set rows draw none.
+                unit: state.displayUnit,
                 vocabulary: vocabulary,
                 equipment: equipment,
                 log: { write($0, target) },
@@ -121,6 +137,21 @@ public struct PastSessionView: View {
                 delete: { delete(target) }
             )
             .presentationDetents([.medium, .large])
+        }
+        .alert(Text(LoggingStrings.saveRoutineTitle), isPresented: $isNamingRoutine) {
+            // An alert rather than a screen, on the routine list's rename prompt's argument: one
+            // field, two answers, and nothing to come back to.
+            TextField(text: $routineName) { Text(LoggingStrings.saveRoutinePrompt) }
+            Button(role: .cancel) {
+                isNamingRoutine = false
+            } label: {
+                Text(LoggingStrings.saveRoutineCancel)
+            }
+            Button {
+                saveAsRoutine()
+            } label: {
+                Text(LoggingStrings.saveRoutineConfirm)
+            }
         }
     }
 
@@ -168,6 +199,23 @@ public struct PastSessionView: View {
         // it — including the one that puts the stored note back.
         .onChange(of: noteDraft.text) { state.noteWriteFailure = nil }
         exercises
+        saveAsRoutineSection
+    }
+
+    /// `FR-15.2.6`'s command, at the foot of the screen and only where there is a workout to save.
+    ///
+    /// **Absent rather than disabled on a session with nothing logged in it**, which is the empty
+    /// state's own reading: a workout that was started and never logged into prescribes nothing, and
+    /// a routine built from it would be a list of nothing. Last on the screen for
+    /// `ExerciseArchiveSection`'s reason — it is the one command here that is not about the session's
+    /// own rows.
+    @ViewBuilder private var saveAsRoutineSection: some View {
+        if !state.exercises.isEmpty {
+            SaveAsRoutineSection(outcome: state.saveAsRoutineOutcome) {
+                routineName = ""
+                isNamingRoutine = true
+            }
+        }
     }
 
     /// The session's exercises, or the empty state where it has none.
@@ -243,6 +291,16 @@ public struct PastSessionView: View {
         Task { await state.editSet(id: setID, inEntryID: target.entryID, to: values) }
     }
 
+    /// Writes this workout as a routine under the typed name and closes the prompt (`FR-15.2.6`).
+    ///
+    /// **The field is read before the prompt is dismissed**, the alert's own dismissal being what
+    /// would otherwise race the read.
+    private func saveAsRoutine() {
+        let typed = routineName
+        isNamingRoutine = false
+        Task { await state.saveAsRoutine(named: typed) }
+    }
+
     /// Soft-deletes the set the editor is open over and closes it (`FR-1.2.7`, `G-1.3`).
     ///
     /// - Parameter target: What the editor is open over.
@@ -266,6 +324,9 @@ public struct PastSessionView: View {
 struct PastSessionExerciseCard: View {
     /// The exercise, its entry and its sets.
     let item: SessionExercise
+
+    /// The locale this card resolves its exercise's name in (`FR-1.14.2`).
+    @Environment(\.locale) private var locale
 
     /// The unit this card's loads are shown in (`G-3.1`).
     let unit: MassUnit
@@ -320,8 +381,18 @@ struct PastSessionExerciseCard: View {
         // the workout in progress; a past session would need the workout's map read for a screen that
         // is not logging, and marking an old set as a record it may since have lost is worse than not
         // marking it. Whichever task first wants records on this screen owns that read.
+        // No target: `FR-15.3.1`'s line belongs to the workout in progress, and this screen has no
+        // planned-target read wired up. Drawing one would need that read; drawing nothing is what a
+        // past session has always shown.
         SetRow(
-            numbered: numbered, unit: unit, recordReps: [], mark: nil, markCompleted: nil, edit: edit)
+            numbered: numbered,
+            unit: unit,
+            recordReps: [],
+            mark: nil,
+            markCompleted: nil,
+            edit: edit,
+            target: nil
+        )
     }
 
     /// This card's sets, each carrying its number within its own sequence (`FR-1.2.14`).
@@ -338,6 +409,62 @@ struct PastSessionExerciseCard: View {
         guard let exercise = item.exercise else {
             return Text(LoggingStrings.sessionExerciseMissing)
         }
-        return Text(verbatim: exercise.name)
+        return Text(verbatim: exercise.displayName(for: locale))
+    }
+}
+
+/// `FR-15.2.6`'s section: what it will build, the command, and what the last attempt did.
+///
+/// Taking the outcome and a closure rather than the state, on `ExerciseArchiveSection`'s rule:
+/// this is what the snapshot renders, and every outcome has to be picturable without a store behind
+/// it.
+struct SaveAsRoutineSection: View {
+    /// What the last attempt did, or `nil` where none has been made since the last read.
+    let outcome: SaveAsRoutineOutcome?
+
+    /// Opens the naming prompt.
+    let save: () -> Void
+
+    /// The explanation, the command, and the outcome beneath them.
+    var body: some View {
+        GroupedSection(Text(LoggingStrings.saveRoutineSection)) {
+            Text(LoggingStrings.saveRoutineExplanation)
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textSecondary)
+            Button(action: save) {
+                Text(LoggingStrings.saveRoutineAction)
+                    .font(Typography.actionLabel.font)
+                    .foregroundStyle(ColorToken.textPrimary)
+                    .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points)
+                    .background(
+                        ColorToken.surfaceRaised,
+                        in: .rect(cornerRadius: CornerRadius.control.points)
+                    )
+            }
+            .buttonStyle(.plain)
+            report
+        }
+    }
+
+    /// What the last attempt did, in whichever of its three shapes applies.
+    ///
+    /// **The success is a sentence rather than one of T-1.09's components**, there being no state
+    /// component for a command that worked: nothing on this screen changed, so the confirmation is
+    /// text and not a surface. The two failures are ``DesignSystem/ErrorStateView`` like every other
+    /// refusal in this app, and neither carries a retry — the name is gone with the prompt, so the
+    /// way back is the command itself.
+    @ViewBuilder private var report: some View {
+        switch outcome {
+        case .saved(let name):
+            Text(LoggingStrings.saveRoutineSaved(name))
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textSecondary)
+        case .nameRequired:
+            ErrorStateView(message: Text(LoggingStrings.saveRoutineNameRequired))
+        case .writeFailed:
+            ErrorStateView(message: Text(LoggingStrings.saveRoutineWriteError))
+        case nil:
+            EmptyView()
+        }
     }
 }

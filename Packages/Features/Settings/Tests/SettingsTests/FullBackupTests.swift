@@ -16,12 +16,18 @@ struct FullBackupTests {
         // would satisfy emptiness and lose the rest, and the two training maxes are the case that
         // says the *history* is carried rather than what is in force.
         #expect(archive.exercises.count == 2)
-        #expect(archive.sessions.count == 3)
-        #expect(archive.entries.count == 2)
-        #expect(archive.sets.count == 4)
+        #expect(archive.sessions.count == 4)
+        #expect(archive.entries.count == 3)
+        #expect(archive.sets.count == 5)
         #expect(archive.bodyweight.count == 2)
         #expect(archive.equipment.count == 2)
         #expect(archive.trainingMaxes.count == 2)
+        // FR-15.2's four tables. The two target groups under one slot are this section's version of
+        // the two training maxes above: a walk that stopped at the first would still read one.
+        #expect(archive.routines.count == 2)
+        #expect(archive.routineExercises.count == 2)
+        #expect(archive.routineTargetGroups.count == 4)
+        #expect(archive.plannedTargets.count == 2)
         #expect(archive.settings != nil)
     }
 
@@ -48,11 +54,19 @@ struct FullBackupTests {
         // inside a session that is still live.
         #expect(backup.entries.count { $0.deletedAt != nil } == 1)
         #expect(backup.sets.count { $0.deletedAt != nil } == 1)
+        // An archived routine (`FR-15.2.5`) is a soft delete that cascades, so one call puts a
+        // deleted row in three tables at once — the shape a per-table delete cannot produce.
+        #expect(backup.routines.count { $0.deletedAt != nil } == 1)
+        #expect(backup.routineExercises.count { $0.deletedAt != nil } == 1)
+        #expect(backup.routineTargetGroups.count { $0.deletedAt != nil } == 2)
         #expect(export.equipment.isEmpty)
         #expect(export.bodyweight.count == 1)
-        #expect(export.sessions.count == 2)
-        #expect(export.entries.count == 1)
-        #expect(export.sets.count == 3)
+        #expect(export.sessions.count == 3)
+        #expect(export.entries.count == 2)
+        #expect(export.sets.count == 4)
+        // The export carries none of the four, whatever their state: they are configuration.
+        #expect(export.routines.isEmpty)
+        #expect(export.plannedTargets.isEmpty)
     }
 
     @Test("A deleted set is carried with the date it was deleted on, not merely present")
@@ -118,6 +132,7 @@ struct FullBackupTests {
             workouts: log.repositories.workouts,
             bodyweight: log.repositories.bodyweight,
             equipment: FailingEquipmentReads(),
+            routines: log.repositories.routines,
             settings: log.repositories.settings)
         await #expect(throws: RepositoryError.self) {
             _ = try await backup.archive(takenAt: ExportLog.epoch)
@@ -137,6 +152,7 @@ struct FullBackupTests {
             workouts: log.repositories.workouts,
             bodyweight: log.repositories.bodyweight,
             equipment: log.repositories.equipment,
+            routines: log.repositories.routines,
             settings: log.repositories.settings)
         let archive = try await backup.archive(takenAt: ExportLog.epoch)
         #expect(archive.exercises.count == 2)
@@ -181,6 +197,7 @@ private struct FlaggedExerciseReads: ExerciseRepository {
             updatedAt: gone.updatedAt,
             deletedAt: stamp,
             name: gone.name,
+            ukrainianName: nil,
             movement: gone.movement,
             parentExerciseID: gone.parentExerciseID,
             equipment: gone.equipment,

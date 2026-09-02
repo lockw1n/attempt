@@ -56,6 +56,7 @@ public struct CalendarView: View {
             // The environment's calendar before the read, not after: the grid, the day index and
             // the month bounds are all computed in it, and re-deriving them costs a second pass.
             state.adopt(calendar)
+            state.nameLanguage = ExerciseNameLanguage(locale)
             await state.load()
         }
     }

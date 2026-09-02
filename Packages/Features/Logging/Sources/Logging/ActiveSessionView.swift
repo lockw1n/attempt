@@ -145,6 +145,8 @@ public struct ActiveSessionView: View {
             SetEditorSheet(
                 draft: draft(for: target),
                 isEditing: target.editing != nil,
+                prescribed: target.prescribed,
+                unit: store.displayUnit,
                 vocabulary: vocabulary,
                 equipment: equipment,
                 log: { write($0, target) },
@@ -232,7 +234,7 @@ public struct ActiveSessionView: View {
     ///     failure can only have come from a write — it renders beside the commands.
     /// - Returns: The workout, in full.
     @ViewBuilder private func loaded(_ session: WorkoutSession, writeFailed: Bool) -> some View {
-        SessionSummarySection(session: session)
+        SessionSummarySection(session: session, adherence: store.adherence)
         SessionNotesSection(
             draft: $noteDraft,
             hasFailed: store.noteWriteFailure != nil,
@@ -298,7 +300,13 @@ public struct ActiveSessionView: View {
                     logSet: { editing = $0 },
                     mark: { markSet($0, asWarmup: $1) },
                     markCompleted: { markSet($0, asCompleted: $1) },
-                    edit: { editing = Self.target(editing: $0) }
+                    edit: { editing = Self.target(editing: $0, prescribed: prescription(for: $0)) },
+                    markDone: { id, isDone in
+                        Task { await store.markExercise(id: id, isDone: isDone) }
+                    },
+                    logPlanned: { id in
+                        Task { await store.logPlannedSet(inEntryID: id) }
+                    }
                 )
                 writeFailure(writeFailed)
                 previousFailure

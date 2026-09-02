@@ -306,7 +306,7 @@ final class ExerciseHistoryState {
     /// is applied to are walked as though an id picked out one row: the sets become a `ForEach` and a
     /// dictionary key, and a repeated session would be scanned twice and grouped twice.
     ///
-    /// **Assertable only here, not through the walk**, which is `SessionListState.names(in:)`'s
+    /// **Assertable only here, not through the walk**, which is `SessionListState.names(in:as:)`'s
     /// position: a repository's `save` is keyed on the identifier, so no store this app writes can
     /// produce the case this defends against. What can is a store it did not write — a restored
     /// backup, or a sync that landed two rows — and a read must not be able to crash on one.

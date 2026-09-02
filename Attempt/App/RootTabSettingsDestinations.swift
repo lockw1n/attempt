@@ -69,8 +69,8 @@ extension RootTabView {
 
     /// `FR-1.11.3`: the whole store as one file, or the reason it cannot be read.
     ///
-    /// Five repositories — the export's four, plus the gyms: a backup is the configuration as well
-    /// as the log, and `TR-0.1.2` hands each protocol down on its own.
+    /// Six repositories — the export's four, plus the gyms and the routines: a backup is the
+    /// configuration as well as the log, and `TR-0.1.2` hands each protocol down on its own.
     @ViewBuilder
     private var backupRoot: some View {
         switch dependencies.state {
@@ -80,6 +80,7 @@ extension RootTabView {
                 workouts: repositories.workouts,
                 bodyweight: repositories.bodyweight,
                 equipment: repositories.equipment,
+                routines: repositories.routines,
                 settings: repositories.settings)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
@@ -88,9 +89,9 @@ extension RootTabView {
 
     /// `FR-1.11.4`: a backup file read back onto this device, or the reason it cannot be.
     ///
-    /// Six, and the sixth is the recompute actor: the backup file carries no cached personal record
-    /// (`TR-0.3.9`, `G-1.4`), so the rows a restore writes have to be walked again before any badge
-    /// or estimated max on another tab is true.
+    /// Seven, and the seventh is the recompute actor: the backup file carries no cached personal
+    /// record (`TR-0.3.9`, `G-1.4`), so the rows a restore writes have to be walked again before any
+    /// badge or estimated max on another tab is true.
     @ViewBuilder
     private var restoreRoot: some View {
         switch dependencies.state {
@@ -100,6 +101,7 @@ extension RootTabView {
                 workouts: repositories.workouts,
                 bodyweight: repositories.bodyweight,
                 equipment: repositories.equipment,
+                routines: repositories.routines,
                 settings: repositories.settings,
                 records: stores.records)
         case .failed(let diagnostic):

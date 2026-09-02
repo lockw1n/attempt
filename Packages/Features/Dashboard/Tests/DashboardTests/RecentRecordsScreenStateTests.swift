@@ -104,6 +104,7 @@ private final class TrainingLogFixture {
             updatedAt: day,
             deletedAt: nil,
             name: "Back Squat",
+            ukrainianName: nil,
             movement: .squat,
             parentExerciseID: nil,
             equipment: .barbell,

@@ -294,6 +294,23 @@ enum ExerciseLibraryStrings {
     /// Why the save command is unavailable — the one field that blocks it.
     static let formNameRequired = resource("exerciselibrary.form.name.required")
 
+    /// The Ukrainian name field's label (`FR-1.14.2`).
+    static let formUkrainianName = resource("exerciselibrary.form.field.ukrainian-name")
+
+    /// What the empty Ukrainian name field invites. A Ukrainian example, deliberately: the field
+    /// asks for Ukrainian and a prompt in English would read as a second English name.
+    static let formUkrainianNamePrompt = resource("exerciselibrary.form.ukrainian-name.prompt")
+
+    /// That the Ukrainian name may be left blank, and what happens when it is on a *custom*
+    /// exercise — the name above is shown in Ukrainian too, nothing else supplying one.
+    static let formUkrainianNameOptional = resource("exerciselibrary.form.ukrainian-name.optional")
+
+    /// The same sentence for a built-in, where blank means something else: the seed merge fills the
+    /// column from the catalogue, so a blank field is the catalogue's Ukrainian name where it has
+    /// one rather than a fallback to the English name.
+    static let formUkrainianNameOptionalCatalogue = resource(
+        "exerciselibrary.form.ukrainian-name.optional-catalogue")
+
     /// The movement chips' label.
     static let formMovement = resource("exerciselibrary.form.field.movement")
 
@@ -446,7 +463,10 @@ enum ExerciseLibraryStrings {
             e1rmOverrideEdit, e1rmOverrideRevert, e1rmOverrideError,
             detailErrorHeadline, detailErrorMessage, detailMissingHeadline, detailMissingMessage,
             createAction, editAction, formCreateTitle, formEditTitle, formSection,
-            formName, formNamePrompt, formNameRequired, formMovement, formEquipment, formBar,
+            formName, formNamePrompt, formNameRequired,
+            formUkrainianName, formUkrainianNamePrompt, formUkrainianNameOptional,
+            formUkrainianNameOptionalCatalogue,
+            formMovement, formEquipment, formBar,
             formLaterality, formCatalogueOwned, formParentSection, formParentNone,
             formParentEveryMovement,
             formParentEmpty, formSave, formErrorHeadline, formErrorMessage, formMissingHeadline,

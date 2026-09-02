@@ -430,6 +430,7 @@ enum DetailFixtures {
         updatedAt: Date(timeIntervalSince1970: 2_000),
         deletedAt: nil,
         name: "Anderson Squat",
+        ukrainianName: nil,
         movement: .squat,
         parentExerciseID: identifier("1"),
         equipment: .machine,
@@ -472,6 +473,7 @@ enum DetailFixtures {
     static func exercise(
         id: UUID = UUID(),
         name: String,
+        ukrainianName: String? = nil,
         movement: Movement,
         equipment: Equipment = .barbell,
         parentExerciseID: UUID? = nil,
@@ -482,6 +484,7 @@ enum DetailFixtures {
         Fixtures.exercise(
             id: id,
             name: name,
+            ukrainianName: ukrainianName,
             movement: movement,
             equipment: equipment,
             parentExerciseID: parentExerciseID,

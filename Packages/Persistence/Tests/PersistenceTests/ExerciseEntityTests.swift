@@ -27,12 +27,37 @@ struct ExerciseEntityTests {
         #expect(exercise.barTypeRawValue == "trap")
     }
 
+    // `FR-1.14.2`. The column is the first one added after schema v1, so "unset" is the value every
+    // row written before it existed holds — and a store that turned that into `""` would make an
+    // untranslated exercise indistinguishable from one whose translation is blank.
+    @Test("An exercise saved with no Ukrainian name reads back with none, not with a blank")
+    func absentUkrainianNameStaysAbsent() throws {
+        let context = try makeTrainingContext()
+        context.insert(
+            ExerciseEntity(
+                name: "Back Squat",
+                movement: .squat,
+                equipment: .barbell,
+                laterality: .bilateral,
+                barType: .standard,
+                isCustom: false
+            ))
+        try context.saveStamped()
+
+        let stored = try #require(
+            try context.fetch(FetchDescriptor<ExerciseEntity>.notDeleted()).first)
+
+        #expect(stored.name == "Back Squat", "the row is the one that was written")
+        #expect(stored.ukrainianName == nil)
+    }
+
     @Test("Every field survives a save and a re-read")
     func roundTrips() throws {
         let context = try makeTrainingContext()
         let parent = UUID()
         let exercise = ExerciseEntity(
             name: "Dumbbell Bench Press",
+            ukrainianName: "Жим гантелей лежачи",
             movement: .bench,
             equipment: .dumbbell,
             laterality: .bilateral,
@@ -50,6 +75,7 @@ struct ExerciseEntityTests {
         let stored = try #require(try context.fetch(FetchDescriptor<ExerciseEntity>.notDeleted()).first)
 
         #expect(stored.name == "Dumbbell Bench Press")
+        #expect(stored.ukrainianName == "Жим гантелей лежачи")
         #expect(stored.movementRawValue == "bench")
         #expect(stored.equipmentRawValue == "dumbbell")
         #expect(stored.lateralityRawValue == "bilateral")
@@ -119,6 +145,7 @@ struct ExerciseEntityTests {
         )
         let dumbbellBench = ExerciseEntity(
             name: "Dumbbell Bench Press",
+            ukrainianName: "Жим гантелей лежачи",
             movement: .bench,
             equipment: .dumbbell,
             laterality: .bilateral,

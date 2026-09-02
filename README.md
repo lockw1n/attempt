@@ -49,7 +49,7 @@ Packages/
 ├── DerivedValues/           Background actor recomputing personal records and estimated max on set
 │                            mutation, behind its own cache repository, plus the shared tonnage
 │                            arithmetic every screen totalling logged load reads. Not a feature
-│                            module — four of the five below read it, so it cannot live inside any
+│                            module — four of the six below read it, so it cannot live inside any
 │                            one of them.
 ├── Features/                Feature modules, one level deeper — the level is load-bearing:
 │                            .swiftlint.yml scopes the no-raw-values rules to this path.
@@ -58,7 +58,9 @@ Packages/
 │   ├── History/             Past training: sessions, calendar, search
 │   ├── Dashboard/           e1RM tiles, the recent-PR feed, the week summary, the start-workout
 │   │                        action
-│   └── Settings/            Preferences, data portability, sync, the bodyweight log
+│   ├── Settings/            Preferences, data portability, sync, the bodyweight log
+│   └── Routines/            Authoring a routine — its exercises in order and their target
+│                            groups — managing the library, and starting a workout from one
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -81,11 +83,16 @@ must not be shaped like a storage record. `RemoteFetch` sits above both
 because the bundled leg of `exercises.json`'s fallback lives in `SeedContent`.
 `DerivedValues` depends on `PowerliftingCore` and `RepositoryInterface` alone —
 no `DesignSystem`, no `AppNavigation`, since nothing in it renders, and no
-`Persistence` for the same reason no feature has one. The five packages under
+`Persistence` for the same reason no feature has one. The six packages under
 `Packages/Features/` sit at the top: each depends on `PowerliftingCore`,
 `RepositoryInterface`, `DesignSystem`, `AppNavigation` and `Localization`, and
 never on `Persistence` — a feature reaches storage through the protocols
-alone. Four of the five also depend on `DerivedValues`.
+alone. Four of the six also depend on `DerivedValues`. One exception, and it is
+the shape `RepositoryFakes` already has: `Settings`' *test* target depends on
+`Persistence`, because `DOD-1.3`'s export → wipe → restore has to name the
+backup reader and writer and the real store in one test, and `Persistence` may
+not depend on a feature. The `Settings` library is unaffected; `import
+Persistence` from a source file there still does not resolve.
 Two constraints are load-bearing rather than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
@@ -115,21 +122,21 @@ places a row is refused on account of what it says are the projections in
 two are named in one file.
 
 `PersistenceStack` is how you get a store. It opens one container and hands back
-the five repositories as existentials:
+the seven repositories as existentials:
 
 ```swift
 let stack = try PersistenceStack(location: .inMemory)   // or .applicationDefault, .file(url)
 let exercises = try await stack.exercises.exercises(includingDeleted: false)
 ```
 
-It is the only public type in `Persistence`. The five implementations and the
+It is the only public type in `Persistence`. The seven implementations and the
 `ModelContainer` are `internal`, so nothing outside the module can name a
 SwiftData-backed type. Repository reads and writes live in
 `Packages/Persistence/Sources/Persistence/Repositories/`; start with
 `RowResolution.swift`, which carries the one shape every read has and the reason it
 is not a `FetchDescriptor`.
 
-`InMemoryRepositoryStack()` is the same five repositories without a store file, for
+`InMemoryRepositoryStack()` is the same seven repositories without a store file, for
 previews and for tests of code that consumes them:
 
 ```swift
@@ -216,7 +223,7 @@ swift run --package-path Packages/DebugHarness attempt-harness
 It publishes an executable product only, so the app target cannot link it — that is the whole of
 how it stays out of release builds, checked by `scripts/check-harness-excluded.sh`.
 
-`PowerliftingCore`, `Persistence`, `DesignSystem`, `AppNavigation` and the five feature modules
+`PowerliftingCore`, `Persistence`, `DesignSystem`, `AppNavigation` and the six feature modules
 under `Packages/Features/` are linked into the app target as local package references, so
 `xcodebuild` builds them alongside the app. `RepositoryInterface` arrives transitively
 through `Persistence`; the composition root takes a direct product dependency when app
@@ -366,9 +373,11 @@ a refactor.
 
 **Strings.** User-facing text goes through a per-module `LocalizedStringResource` accessor enum,
 never a literal at the call site — enforced by the `no_literal_ui_strings` lint rule. Each feature
-module and `DesignSystem` owns a catalogue at `Resources/en.lproj/Localizable.strings`; the app
-target's own copy lives in `Attempt/Resources/Localizable.xcstrings`. See the `Localization`
-package's module doc for the key convention and formatting helpers.
+module and `DesignSystem` owns a catalogue at `Resources/en.lproj/Localizable.strings`, with a
+complete `uk.lproj` counterpart (and a `.stringsdict` where a string pluralizes); the app target's
+own copy lives in `Attempt/Resources/Localizable.xcstrings`. `scripts/check-translations.sh` gates
+the `en`/`uk` pair. See the `Localization` package's module doc for the key convention and
+formatting helpers.
 
 **Commits carry requirement IDs.** Lead the subject with the requirement the work
 traces to, then a colon:
@@ -464,6 +473,18 @@ the other:
 ./scripts/check-cloudkit.sh --self-test   # each check, in both directions
 ```
 
+And one dependency gate: every package dependency is a local `path:` one, so no
+tracked `Package.swift` names a remote dependency, a registry package or a binary
+target, and no tracked `.pbxproj` or `.resolved` names a remote package reference
+or a resolved pin. Both routes a third-party dependency takes in are covered — a
+package under `Packages/` is linked transitively without the `.xcodeproj`
+mentioning it, and one added through Xcode never appears in a manifest:
+
+```bash
+./scripts/check-no-third-party.sh
+./scripts/check-no-third-party.sh --self-test   # each spelling, in both directions
+```
+
 To lint on every build, add a **Run Script** build phase to the `Attempt` target
 with `if which swiftlint > /dev/null; then swiftlint; fi`, and untick "Based on
 dependency analysis".
@@ -477,7 +498,7 @@ dependency analysis".
 | **Build** | audits the app target's build settings, checks the debug harness is excluded from the app (and that the check itself fires), then builds the app |
 | **Package tests** | `PowerliftingCore` with coverage, then every package built and tested with warnings as errors (discovered by glob), the runtime gate and its proof, the warnings-gate proof, the `@unchecked Sendable` audit |
 | **Linux core build** | builds and tests `PowerliftingCore` and `RepositoryInterface` on `ubuntu-latest` in a Swift container |
-| **SwiftLint** | lint, lint-rule verification, format check, doc-ratio, doc-units and doc-links gates |
+| **SwiftLint** | lint, lint-rule verification, format check, the app-target string and translation-completeness checks, the doc-ratio, doc-units and doc-links gates, and the CloudKit and third-party gates — sixteen steps, each gate followed by a self-test that proves it can fail |
 | **Component snapshots** | renders every snapshot suite (`DesignSystem`'s components and states, plus each feature module's screens) and compares it against a committed reference, light/dark × default/`accessibility3` |
 
 The first four are **required checks on `main`**, so a red run blocks the

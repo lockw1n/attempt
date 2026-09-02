@@ -366,4 +366,8 @@ private struct FailingSettingsRepository: SettingsRepository {
     func save(_ settings: UserSettings) async throws {
         throw RepositoryError.recordNotFound(id: settings.id)
     }
+
+    func restorePreferences(from backup: UserSettings) async throws {
+        throw RepositoryError.recordNotFound(id: backup.id)
+    }
 }

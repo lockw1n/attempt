@@ -79,6 +79,15 @@ final class PastSessionState {
     /// attempt to store one piece of text.
     var noteWriteFailure: String?
 
+    /// What the last attempt to save this workout as a routine did (`FR-15.2.6`), or `nil` where
+    /// none has been made since the last read.
+    ///
+    /// **An outcome rather than a diagnostic, and it keeps the success too** — unlike this screen's
+    /// other three. Nothing on this screen changes when a routine is written: the row lands in
+    /// another tab, so a command that reported only its failures would be indistinguishable from
+    /// one that did nothing at all.
+    var saveAsRoutineOutcome: SaveAsRoutineOutcome?
+
     /// The unit a load is shown in (`G-3.1`, `G-3.2`).
     ///
     /// **Kilograms until the settings row has been read, and after a read that failed** — the
@@ -105,6 +114,13 @@ final class PastSessionState {
     @ObservationIgnored private let catalogue: any ExerciseRepository
     @ObservationIgnored private let settings: any SettingsRepository
 
+    /// Where `FR-15.2.6`'s new routine is written.
+    ///
+    /// **A fourth repository rather than a parameter on the command**, unlike
+    /// `ActiveSessionStore.start(on:fromRoutineID:in:)`'s: that store is app-lifetime and reads a
+    /// routine once, where this state is built per screen and the app target already hands it three.
+    @ObservationIgnored let routines: any RoutineRepository
+
     /// What is told that a set moved (`FR-1.6.4`). A past session's sets are edited from here, which
     /// is the History-side half of the trigger `LoggedSetWriter` carries.
     @ObservationIgnored private let records: PersonalRecordRecomputer
@@ -118,18 +134,21 @@ final class PastSessionState {
     ///     because the schema declares no relationships (`G-2.5`) — see ``SessionExercise``.
     ///   - settings: The single settings row, for the unit the loads are shown in.
     ///   - records: The app's one recompute actor (`TR-1.6`).
+    ///   - routines: Where `FR-15.2.6`'s routine is written.
     init(
         sessionID: UUID,
         workouts: any WorkoutRepository,
         catalogue: any ExerciseRepository,
         settings: any SettingsRepository,
-        records: PersonalRecordRecomputer
+        records: PersonalRecordRecomputer,
+        routines: any RoutineRepository
     ) {
         self.sessionID = sessionID
         self.workouts = workouts
         self.catalogue = catalogue
         self.settings = settings
         self.records = records
+        self.routines = routines
     }
 
     /// Reads the session, its exercises and the display unit.
@@ -150,6 +169,9 @@ final class PastSessionState {
         // no longer act on against a screen that has since been rebuilt.
         writeFailure = nil
         noteWriteFailure = nil
+        // The routine outcome goes with them, and for the same reason: it reports one attempt made
+        // against the rows this read is about to replace.
+        saveAsRoutineOutcome = nil
         await loadDisplayUnit()
         do {
             guard let session = try await workouts.session(id: sessionID, includingDeleted: false)

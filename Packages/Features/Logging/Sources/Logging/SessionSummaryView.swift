@@ -15,10 +15,23 @@ struct SessionSummarySection: View {
     /// The workout being logged.
     let session: WorkoutSession
 
+    /// How much of what a routine prescribed was performed as prescribed, or `nil` where nothing
+    /// was prescribed at all (`FR-15.3.3`).
+    ///
+    /// **The absent case draws no row rather than a row reading zero**, which is `FR-1.13.3`'s rule
+    /// applied to a value that is undefined and not merely small: a workout started by hand has no
+    /// plan to adhere to, and "0 of 0 sets" would answer a question nobody asked of it.
+    let adherence: SessionAdherence?
+
     /// Which locale the day and the time are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
-    /// The training day, and when the workout was started.
+    /// The training day, when the workout was started, and how much of the plan it has met.
+    ///
+    /// **Adherence sits among the workout's own facts rather than beside the commands that end it.**
+    /// It is a fact about the session in the same sense the day is — readable while the work is
+    /// still going on, which is when it can still change — and a figure that appeared only next to
+    /// **Finish** would read as a verdict rather than a reading.
     var body: some View {
         GroupedSection(Text(LoggingStrings.sessionSummarySection)) {
             SessionFactRow(
@@ -29,6 +42,16 @@ struct SessionSummarySection: View {
                 SessionFactRow(
                     label: LoggingStrings.sessionStarted,
                     value: Text(startedAt, format: AppFormat.dateAndTime(locale: locale))
+                )
+            }
+            if let adherence {
+                SessionFactRow(
+                    label: LoggingStrings.sessionAdherence,
+                    value: Text(
+                        LoggingStrings.sessionAdherenceValue(
+                            asPrescribed: adherence.asPrescribed,
+                            prescribed: adherence.prescribed
+                        ))
                 )
             }
         }

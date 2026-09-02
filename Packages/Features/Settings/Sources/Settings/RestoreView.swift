@@ -22,22 +22,24 @@ public struct RestoreView: View {
 
     /// Builds the screen over the store it writes into.
     ///
-    /// **Six dependencies — the backup's five, plus the recompute actor.** Writing rows the store
+    /// **Seven dependencies — the backup's six, plus the recompute actor.** Writing rows the store
     /// has not seen makes every cached personal record wrong (`TR-0.3.9`, `G-1.4`), and the backup
     /// file deliberately does not carry the cache, so the restore is what has to rebuild it.
     ///
     /// - Parameters:
     ///   - exercises: The catalogue and its training-max history.
-    ///   - workouts: Sessions, entries and sets.
+    ///   - workouts: Sessions, entries, sets and their planned targets.
     ///   - bodyweight: The bodyweight log.
     ///   - equipment: The gyms.
+    ///   - routines: The routines, their slots and their target groups.
     ///   - settings: The preferences row — written from the file here, not read for a display unit.
     ///   - records: The app's one recompute actor.
     public init(
         exercises: any ExerciseRepository,
-        workouts: any WorkoutRepository,
+        workouts: any WorkoutRepository & PlannedTargetRepository,
         bodyweight: any BodyweightRepository,
         equipment: any EquipmentRepository,
+        routines: any RoutineRepository,
         settings: any SettingsRepository,
         records: PersonalRecordRecomputer
     ) {
@@ -48,6 +50,7 @@ public struct RestoreView: View {
                     workouts: workouts,
                     bodyweight: bodyweight,
                     equipment: equipment,
+                    routines: routines,
                     settings: settings,
                     records: records)))
     }

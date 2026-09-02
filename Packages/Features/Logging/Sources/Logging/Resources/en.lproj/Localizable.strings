@@ -1,6 +1,7 @@
 /* Logging (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization module doc.
    The two screens are the Train root, where a workout is started or resumed, and the workout
-   itself. Nothing here is translated: only `en` ships in Phase 1. */
+   itself. Every key here has a Ukrainian counterpart in uk.lproj beside this file, and has to
+   keep one: a key missing from that table renders its own identifier. */
 
 /* Nothing is in progress. FR-1.13.2's first-launch guidance: the headline says what there is none
    of and the message names both ways to make one, since backdating is the half a new user would not
@@ -23,6 +24,9 @@
 "logging.train.in-progress.resume" = "Resume workout";
 
 "logging.train.library.action" = "Browse exercises";
+/* FR-15.2.1, beside the library. "Routines" rather than "Plans": a routine is one training day,
+   and a plan reads like the week. */
+"logging.train.routines.action" = "Routines";
 
 /* The read failed — the screen does not know whether a workout is in progress, so this one takes
    the whole screen. A sentence for the user; the diagnostic is never shown. */
@@ -38,6 +42,7 @@
 "logging.session.summary.section" = "This workout";
 "logging.session.day" = "Training day";
 "logging.session.started" = "Started";
+"logging.session.adherence" = "Adherence";
 
 /* The workout exists and has nothing in it. The action is FR-1.2.2's chooser, which is also the
    only command this state can offer — the sets inside an exercise need an exercise first. */
@@ -402,3 +407,31 @@
 "logging.past-session.empty.headline" = "Nothing was logged";
 "logging.past-session.empty.message" = "This workout was started but no exercises were added to it.";
 "logging.past-session.write-error.message" = "That change could not be saved. Nothing has been lost — try again.";
+
+/* FR-15.3 — planned vs actual, on the workout in progress */
+"logging.session.exercise.marked-done" = "Marked done";
+"logging.session.exercise.skipped" = "Skipped";
+"logging.session.exercise.done.action" = "Mark done";
+"logging.session.exercise.done.undo" = "Mark not done";
+"logging.session.plan.next.heading" = "Planned next";
+"logging.session.plan.log.action" = "Log planned set";
+"logging.session.plan.on-target" = "On target";
+
+/* FR-15.2.6, at the foot of a session that is over. The explanation says what the new routine will
+   contain BEFORE the command is tapped, because the answer is not obvious: it is what was lifted,
+   not what was planned, and the two differ exactly on the workouts worth saving. */
+"logging.past-session.save-routine.section" = "Save as routine";
+"logging.past-session.save-routine.explanation" = "Builds a routine from this workout: the exercises in the order you did them, and the weights and reps you actually lifted. Warmups and sets you did not complete are left out.";
+"logging.past-session.save-routine.action" = "Save as routine";
+
+"logging.past-session.save-routine.title" = "Name this routine";
+"logging.past-session.save-routine.prompt" = "Heavy squat day";
+"logging.past-session.save-routine.confirm" = "Save";
+"logging.past-session.save-routine.cancel" = "Cancel";
+
+/* The routine editor's own rule, applied where a name is typed into a prompt instead of a form. */
+"logging.past-session.save-routine.name-required.message" = "A routine needs a name. Nothing was saved.";
+"logging.past-session.save-routine.write-error.message" = "That routine could not be saved. Try again.";
+/* Where it went: nothing on this screen changes when a routine is written, so the confirmation is
+   the only thing that says the command did anything. */
+"logging.past-session.save-routine.saved %@" = "Saved “%@” to your routines.";

@@ -58,7 +58,41 @@ let pairLoadedExercises: [NamedExercise] = [
     NamedExercise("Rear Delt Fly", "9c36b585-d4d5-4cce-b144-41a64f93d26d"),
     NamedExercise("Dumbbell Chest Fly", "6782cc86-b33c-484a-89db-fbc08a58c5ed"),
     NamedExercise("Dumbbell Shrug", "a0b3b8a9-102d-443a-b1aa-5ba52647edf9"),
+    NamedExercise("Seated Dumbbell Shrug", "5b5c3401-16da-40b0-9335-f6d446182204"),
     NamedExercise("Farmer's Walk", "ea9ee911-8db3-42be-b6fe-754dad6f5ed3"),
+]
+
+/// A variation and the exercise it varies (`FR-1.1.7`).
+///
+/// Named rather than keyed on ids: the validator refuses a parent no entry carries, so what is left
+/// to get wrong is a parent that resolves — to the wrong exercise. These are the edges where the
+/// family an entry belongs to is a judgement rather than a spelling.
+struct VariationEdge: Sendable, CustomTestStringConvertible {
+    let child: String
+    let parent: String
+
+    var testDescription: String { "\(child) varies \(parent)" }
+
+    init(_ child: String, _ parent: String) {
+        self.child = child
+        self.parent = parent
+    }
+}
+
+let variationEdges: [VariationEdge] = [
+    VariationEdge("Lever Chest Press", "Machine Chest Press"),
+    VariationEdge("Incline Lever Chest Press", "Machine Chest Press"),
+    VariationEdge("Independent-Arm Machine Chest Press", "Machine Chest Press"),
+    VariationEdge("Lever Shoulder Press", "Machine Shoulder Press"),
+    VariationEdge("Lever High Row", "Chest-Supported Machine Row"),
+    VariationEdge("Close-Grip Lat Pulldown", "Lat Pulldown"),
+    VariationEdge("Wide-Grip Lat Pulldown", "Lat Pulldown"),
+    VariationEdge("Rope Triceps Pushdown", "Triceps Pushdown"),
+    VariationEdge("Machine Lateral Raise", "Lateral Raise"),
+    VariationEdge("Machine Rear Delt Fly", "Rear Delt Fly"),
+    VariationEdge("Seated Dumbbell Shrug", "Dumbbell Shrug"),
+    VariationEdge("Seated Leg Curl", "Leg Curl"),
+    VariationEdge("Lying Leg Curl", "Leg Curl"),
 ]
 
 /// FNV-1a over every id in sorted order, which is what lets one literal stand for a hundred-odd
@@ -124,8 +158,98 @@ struct BundledCatalogueTests {
     func publishedIDsAreUnchanged() throws {
         let ids = try decoded().exercises.map(\.id)
 
-        #expect(ids.count == 116)
-        #expect(idDigest(ids) == 0x2452_4158_c12f_3ec8)
+        #expect(ids.count == 132)
+        #expect(idDigest(ids) == 0xb689_c4aa_cc95_2774)
+    }
+
+    // FR-1.14.2's catalogue half, over the file we actually ship. `SeedUkrainianNameTests` proves the
+    // key decodes; these prove it is authored on every entry, which nothing at runtime would report:
+    // `displayName(in:)` falls back to the English name, so a translation left out looks to a
+    // Ukrainian reader exactly like an exercise nobody has translated yet.
+    @Test("Every shipped entry carries a Ukrainian name")
+    func everyEntryIsTranslated() throws {
+        let untranslated = try decoded().exercises.filter {
+            ($0.ukrainianName ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+
+        #expect(untranslated.map(\.name) == [])
+    }
+
+    // The other half of "authored": a field filled with the English name, or with a transliteration
+    // that never reached Cyrillic, satisfies the test above and reads as a translation to every
+    // caller. A bar or machine whose name is an **acronym** keeps it — `EZ`, `SSB`, `GHD` — while a
+    // descriptive one is described (`Swiss` → швейцарський, `Cambered` → вигнутий), so the rule is
+    // "contains Cyrillic", not "is Cyrillic throughout".
+    //
+    // A missing or blank field is `everyEntryIsTranslated`'s to report and is skipped here: it
+    // contains no Cyrillic either, so without the skip that test could not fail alone and its
+    // failure would always arrive as two.
+    @Test("No shipped translation is the English name, or Latin throughout")
+    func translationsAreUkrainian() throws {
+        let suspect = try decoded().exercises.filter { entry in
+            let ukrainian = (entry.ukrainianName ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !ukrainian.isEmpty else { return false }
+            let cyrillic = ukrainian.unicodeScalars.contains { (0x0400...0x04ff).contains($0.value) }
+            return !cyrillic || ukrainian == entry.name
+        }
+
+        #expect(suspect.map(\.name) == [])
+    }
+
+    // English names are unique by authoring, and the Ukrainian column has to stay so for the same
+    // reason: two rows reading alike in a picker are two rows the lifter cannot choose between, and
+    // the likeliest way to get there is a copy-paste while translating a family of variations.
+    @Test("No two entries share a Ukrainian name")
+    func translationsAreDistinct() throws {
+        let catalogue = try decoded()
+        let translations = catalogue.exercises.compactMap(\.ukrainianName)
+        var seen: Set<String> = []
+        let repeated = translations.filter { !seen.insert($0).inserted }
+
+        // Vacuous if the column were empty, which the entry count rules out — read against
+        // `everyEntryIsTranslated`, which is what forbids a blank one. Derived rather than written
+        // out so that adding an entry moves the two literals in `publishedIDsAreUnchanged` and no
+        // third one somewhere else.
+        #expect(translations.count == catalogue.exercises.count)
+        #expect(repeated == [])
+    }
+
+    /// The one entry with that name, refusing both none and several.
+    ///
+    /// English names are unique by authoring and nothing else checks it, so a duplicate fails here
+    /// as a lookup rather than silently picking a winner.
+    private func entry(named name: String, in catalogue: SeedCatalogue) throws -> SeedExercise {
+        let found = catalogue.exercises.filter { $0.name == name }
+        return try #require(found.count == 1 ? found.first : nil, "\(name) is not exactly one entry")
+    }
+
+    // The failure this catches is a parent copied from the entry above the intended one: well
+    // formed, unique, resolving, and wrong. Both ends are looked up by the name a reader sees.
+    @Test("Each variation hangs on the exercise it varies", arguments: variationEdges)
+    func variationHangsOnItsParent(_ edge: VariationEdge) throws {
+        let catalogue = try decoded()
+        let child = try entry(named: edge.child, in: catalogue)
+        let parent = try entry(named: edge.parent, in: catalogue)
+
+        #expect(child.parentExerciseID == parent.id)
+    }
+
+    // `FR-1.1.7`'s list is every row naming this one as its parent, and it stops there: the
+    // detail screen filters on one level. A grandchild would be reachable from nowhere but its own
+    // parent's screen, so the catalogue is one level deep and this is what holds it there.
+    @Test("No variation hangs on another variation")
+    func variationsAreOneLevelDeep() throws {
+        let catalogue = try decoded()
+        let byID = Dictionary(catalogue.exercises.map { ($0.id, $0) }) { first, _ in first }
+        let nested = catalogue.exercises.filter { entry in
+            guard let parent = entry.parentExerciseID else { return false }
+            return byID[parent]?.parentExerciseID != nil
+        }
+
+        // A catalogue of roots would satisfy the filter without exercising it.
+        #expect(catalogue.exercises.contains { $0.parentExerciseID != nil })
+        #expect(nested.map(\.name) == [])
     }
 
     @Test("Each pair-loaded entry still says so", arguments: pairLoadedExercises)
@@ -147,7 +271,7 @@ struct BundledCatalogueTests {
             .filter { !listed.contains($0.id) && $0.implementCount != nil }
 
         // A literal that failed to parse would drop out of `listed` and make this pass vacuously.
-        #expect(listed.count == 19)
+        #expect(listed.count == 20)
         #expect(unexpected.map(\.name) == [])
     }
 }

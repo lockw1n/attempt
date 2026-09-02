@@ -90,6 +90,29 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
     /// exist in schema v1 and a backup that skipped them would be lossy the moment it does.
     let trainingMaxes: [TrainingMaxEntry]
 
+    /// Every routine the lifter has built (`FR-15.2.1`). Empty in an export.
+    ///
+    /// **Backup-only, on the argument the gyms and the training maxes already make**: a routine is
+    /// what the lifter trains *from* rather than what they logged, so `FR-1.11.1`'s export leaves it
+    /// out and `FR-1.11.3`'s backup cannot — a file carrying every workout and none of the plans
+    /// behind them is not a store a clean install can be restored to.
+    let routines: [Routine]
+
+    /// Every exercise slot in those routines, across all of them. Empty in an export.
+    let routineExercises: [RoutineExercise]
+
+    /// Every target group in those slots — `FR-15.2.1`'s several weights per exercise, and
+    /// `FR-15.2.2`'s blank ones. Empty in an export.
+    let routineTargetGroups: [RoutineTargetGroup]
+
+    /// What a routine prescribed for a logged session's slots (`FR-15.2.4`). Empty in an export.
+    ///
+    /// **Carried although it hangs off a session that is already here**, because it is the half of
+    /// `FR-15.3.3`'s planned-versus-actual that the sets do not hold: a restored session without it
+    /// keeps every rep logged and loses the yardstick they were judged against, and nothing can
+    /// recompute a plan from the performance it was measuring.
+    let plannedTargets: [PlannedTargetGroup]
+
     /// The preferences row (`TR-0.3.8`), or `nil` in an export.
     ///
     /// **One row and therefore not an array**, which is `TR-1.10`'s find-or-create shape said in the
@@ -109,15 +132,24 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
         case bodyweight
         case equipment
         case trainingMaxes
+        case routines
+        case routineExercises
+        case routineTargetGroups
+        case plannedTargets
         case settings
     }
 
     /// The reading this build writes.
     ///
-    /// **2 rather than 1 because the envelope gained a discriminator**, not merely sections: a
-    /// reader that did not know ``contents`` would read a backup as an export and conclude that
-    /// nothing in it had ever been deleted. `FR-1.11.4`'s refusal keys off this number.
-    nonisolated static let currentFormatVersion = 2
+    /// **The number moves when a reader that ignored the new keys would be wrong about the store,
+    /// and stays when it would merely be incomplete about a row.** 2 was the ``contents``
+    /// discriminator: a reader without it reads a backup as an export and concludes nothing in it
+    /// had ever been deleted. 3 is `FR-15.2`'s routines and the targets a routine planned for a
+    /// logged slot — additive keys, which is exactly why the number had to move, since a reader
+    /// without them drops every plan behind the lifter's log and reports a successful restore.
+    /// `FR-1.11.4`'s refusal is what makes that visible, and it fires only on a number this build
+    /// does not claim. A record gaining a column moves nothing (rule 7 of `RecordCoding.swift`).
+    nonisolated static let currentFormatVersion = 3
 
     /// Builds a training-log export at the current format version.
     ///
@@ -146,6 +178,10 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
             bodyweight: bodyweight,
             equipment: [],
             trainingMaxes: [],
+            routines: [],
+            routineExercises: [],
+            routineTargetGroups: [],
+            plannedTargets: [],
             settings: nil)
     }
 
@@ -164,6 +200,11 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
     ///   - bodyweight: Every reading, soft-deleted rows included.
     ///   - equipment: Every gym, soft-deleted rows included.
     ///   - trainingMaxes: Every training-max entry, soft-deleted rows included.
+    ///   - routines: Every routine, soft-deleted rows included.
+    ///   - routineExercises: Every slot in them, soft-deleted rows included.
+    ///   - routineTargetGroups: Every target group in those slots, soft-deleted rows included.
+    ///   - plannedTargets: Every target a routine planned for a logged slot, soft-deleted rows
+    ///     included.
     ///   - settings: The preferences row.
     nonisolated init(
         takenAt: Date,
@@ -174,6 +215,10 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
         bodyweight: [BodyweightEntry],
         equipment: [EquipmentProfile],
         trainingMaxes: [TrainingMaxEntry],
+        routines: [Routine],
+        routineExercises: [RoutineExercise],
+        routineTargetGroups: [RoutineTargetGroup],
+        plannedTargets: [PlannedTargetGroup],
         settings: UserSettings
     ) {
         self.init(
@@ -186,6 +231,10 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
             bodyweight: bodyweight,
             equipment: equipment,
             trainingMaxes: trainingMaxes,
+            routines: routines,
+            routineExercises: routineExercises,
+            routineTargetGroups: routineTargetGroups,
+            plannedTargets: plannedTargets,
             settings: settings)
     }
 
@@ -207,6 +256,10 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
         bodyweight: [BodyweightEntry],
         equipment: [EquipmentProfile],
         trainingMaxes: [TrainingMaxEntry],
+        routines: [Routine],
+        routineExercises: [RoutineExercise],
+        routineTargetGroups: [RoutineTargetGroup],
+        plannedTargets: [PlannedTargetGroup],
         settings: UserSettings?
     ) {
         self.formatVersion = formatVersion
@@ -219,6 +272,10 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
         self.bodyweight = bodyweight
         self.equipment = equipment
         self.trainingMaxes = trainingMaxes
+        self.routines = routines
+        self.routineExercises = routineExercises
+        self.routineTargetGroups = routineTargetGroups
+        self.plannedTargets = plannedTargets
         self.settings = settings
     }
 
@@ -248,7 +305,8 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
     /// The preferences row counts as the one row it is.
     var recordCount: Int {
         exercises.count + sessions.count + entries.count + sets.count + bodyweight.count
-            + equipment.count + trainingMaxes.count + (settings == nil ? 0 : 1)
+            + equipment.count + trainingMaxes.count + routines.count + routineExercises.count
+            + routineTargetGroups.count + plannedTargets.count + (settings == nil ? 0 : 1)
     }
 
     /// How many of those rows carry a ``RepositoryInterface/StoredRecord/deletedAt``.
@@ -265,7 +323,9 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
     var deletedCount: Int {
         Self.deleted(exercises) + Self.deleted(sessions) + Self.deleted(entries)
             + Self.deleted(sets) + Self.deleted(bodyweight) + Self.deleted(equipment)
-            + Self.deleted(trainingMaxes) + Self.deleted(settings.map { [$0] } ?? [])
+            + Self.deleted(trainingMaxes) + Self.deleted(routines) + Self.deleted(routineExercises)
+            + Self.deleted(routineTargetGroups) + Self.deleted(plannedTargets)
+            + Self.deleted(settings.map { [$0] } ?? [])
     }
 
     /// How many of one section's rows are soft-deleted.

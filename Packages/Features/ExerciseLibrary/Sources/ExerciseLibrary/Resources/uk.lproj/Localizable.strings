@@ -1,0 +1,200 @@
+/* Exercise library, Ukrainian (FR-1.14.1). The keys and the reasoning behind each string are in
+   en.lproj beside this file. The table has to stay complete: a missing key renders its own
+   identifier. */
+
+"exerciselibrary.list.title" = "Вправи";
+"exerciselibrary.list.search.prompt" = "Пошук вправ";
+
+"exerciselibrary.list.filter.movement" = "Рух";
+"exerciselibrary.list.filter.equipment" = "Обладнання";
+"exerciselibrary.list.filter.origin" = "Походження";
+
+"exerciselibrary.list.filter.all" = "Усі";
+
+"exerciselibrary.list.filter.recently-used" = "Нещодавні";
+"exerciselibrary.list.filter.recently-used.hint" = "Стане доступним, щойно ви запишете тренування.";
+"exerciselibrary.list.filter.recently-used.available %lld" = "Вправи, які ви тренували за останні %lld днів";
+
+"exerciselibrary.list.row.custom" = "Власна";
+
+"exerciselibrary.list.filter.archived" = "Показати архівовані";
+"exerciselibrary.list.row.archived" = "Архівовано";
+
+"exerciselibrary.list.empty.headline" = "Немає вправ";
+"exerciselibrary.list.empty.message" = "Вбудований каталог ще не завантажено.";
+
+"exerciselibrary.list.archived-only.headline" = "Усе архівовано";
+"exerciselibrary.list.archived-only.message" = "Усі вправи архівовано. Увімкніть «Показати архівовані», щоб повернути одну з них.";
+
+"exerciselibrary.list.no-matches.headline" = "Збігів немає";
+"exerciselibrary.list.no-matches.message" = "Жодна вправа не відповідає цьому пошуку та цим фільтрам.";
+"exerciselibrary.list.no-matches.action" = "Очистити пошук і фільтри";
+
+"exerciselibrary.list.error.headline" = "Вправи недоступні";
+"exerciselibrary.list.error.message" = "Не вдалося прочитати каталог вправ.";
+
+/* Movement names. «Горизонтальна тяга» rather than a bare «Тяга», which is what a Ukrainian lifter
+   calls the deadlift. */
+"exerciselibrary.movement.squat" = "Присідання";
+"exerciselibrary.movement.bench" = "Жим лежачи";
+"exerciselibrary.movement.deadlift" = "Станова тяга";
+"exerciselibrary.movement.overhead-press" = "Жим стоячи";
+"exerciselibrary.movement.row" = "Горизонтальна тяга";
+"exerciselibrary.movement.other" = "Інше";
+
+"exerciselibrary.equipment.barbell" = "Штанга";
+"exerciselibrary.equipment.dumbbell" = "Гантелі";
+"exerciselibrary.equipment.kettlebell" = "Гиря";
+"exerciselibrary.equipment.machine" = "Тренажер";
+"exerciselibrary.equipment.cable" = "Блок";
+"exerciselibrary.equipment.smith-machine" = "Машина Сміта";
+"exerciselibrary.equipment.bodyweight" = "Власна вага";
+"exerciselibrary.equipment.band" = "Гумка";
+"exerciselibrary.equipment.other" = "Інше";
+
+"exerciselibrary.detail.section.details" = "Деталі";
+"exerciselibrary.detail.field.movement" = "Рух";
+"exerciselibrary.detail.field.equipment" = "Обладнання";
+"exerciselibrary.detail.field.bar" = "Гриф";
+"exerciselibrary.detail.field.laterality" = "Сторони";
+"exerciselibrary.detail.field.origin" = "Походження";
+
+"exerciselibrary.detail.badge.archived" = "Архівовано";
+
+"exerciselibrary.detail.section.notes" = "Нотатки";
+"exerciselibrary.detail.notes.prompt" = "Підказки, налаштування, будь-що варте запам’ятовування";
+"exerciselibrary.detail.notes.save" = "Зберегти нотатки";
+"exerciselibrary.detail.notes.discard" = "Скасувати зміни";
+"exerciselibrary.detail.notes.error" = "Не вдалося зберегти ці нотатки.";
+
+"exerciselibrary.detail.section.archive" = "Архів";
+"exerciselibrary.detail.archive.explanation" = "Архівування ховає цю вправу зі списку та з усіх списків вибору. Усе, що ви з нею записали, зберігається, і ви можете повернути її будь-коли.";
+"exerciselibrary.detail.archive.action" = "Архівувати вправу";
+"exerciselibrary.detail.unarchive.explanation" = "Цю вправу архівовано, тож вона не з’являється ні в списку, ні в списках вибору. Усе, що з нею записано, залишається на місці.";
+"exerciselibrary.detail.unarchive.action" = "Розархівувати вправу";
+"exerciselibrary.detail.archive.error" = "Не вдалося зберегти цю зміну.";
+
+"exerciselibrary.detail.section.variations" = "Варіації";
+"exerciselibrary.detail.variations.parent" = "Варіація вправи";
+
+"exerciselibrary.detail.section.history" = "Історія";
+"exerciselibrary.detail.history.none" = "Запишіть підхід із цією вправою — і її історія з’явиться тут.";
+
+"exerciselibrary.detail.history.error" = "Не вдалося прочитати історію цієї вправи.";
+"exerciselibrary.detail.history.more" = "Показати давніші тренування";
+"exerciselibrary.detail.history.more.error" = "Не вдалося прочитати давніші тренування.";
+
+"exerciselibrary.detail.history.warmup" = "Розминка";
+"exerciselibrary.detail.history.failed" = "Не виконано";
+"exerciselibrary.detail.history.reps %lld" = "Повторень %lld";
+"exerciselibrary.detail.history.rpe %@" = "RPE %@";
+"exerciselibrary.detail.section.records" = "Особисті рекорди";
+"exerciselibrary.detail.records.none" = "Запишіть підхід із цією вправою — і її особисті рекорди з’являться тут.";
+"exerciselibrary.detail.records.error" = "Не вдалося прочитати особисті рекорди цієї вправи.";
+"exerciselibrary.detail.records.rep-max %lld" = "%lld-повторний максимум";
+"exerciselibrary.detail.records.more" = "6–10-повторні максимуми";
+"exerciselibrary.detail.records.source-hint" = "Показує тренування, у якому встановлено цей рекорд.";
+"exerciselibrary.detail.records.more.expanded" = "Розгорнуто";
+"exerciselibrary.detail.records.more.collapsed" = "Згорнуто";
+"exerciselibrary.detail.section.e1rm" = "Орієнтовний 1ПМ";
+"exerciselibrary.detail.e1rm.value" = "Поточна оцінка";
+"exerciselibrary.detail.e1rm.error" = "Не вдалося обчислити орієнтовний 1ПМ цієї вправи.";
+"exerciselibrary.detail.e1rm.provenance %@ %lld" = "%1$@, за останні %2$lld днів";
+
+/* Word for word the same seven refusals the dashboard's tiles show — one fact carried up from
+   E1RMCalculator, and the English catalogues say so of themselves. */
+"exerciselibrary.detail.e1rm.none" = "Запишіть завершений робочий підхід — і тут з’явиться оцінка.";
+"exerciselibrary.detail.e1rm.stale %lld" = "За останні %lld днів тут нічого не записано. Оцінка враховує лише свіжі тренування.";
+"exerciselibrary.detail.e1rm.warmups %lld" = "За останні %lld днів були лише розминкові підходи. Оцінка береться з робочих підходів.";
+"exerciselibrary.detail.e1rm.incomplete %lld" = "За останні %lld днів немає жодного завершеного робочого підходу. Підхід має бути завершений, перш ніж він щось скаже про максимум.";
+"exerciselibrary.detail.e1rm.high-reps %lld" = "Немає оцінки за останні %lld днів: найкращий кандидат перевищив десять повторень, а далі ці формули неточні.";
+"exerciselibrary.detail.e1rm.assisted" = "Підходи з допомогою не мають орієнтовного максимуму: формули сприйняли б більшу допомогу як важчий підйом.";
+"exerciselibrary.detail.e1rm.no-effort" = "Ця формула зчитує RPE або RIR підходу, а свіжі підходи тут не містять ні того, ні іншого.";
+
+/* Five surnames, kept in the Latin alphabet the literature spells them in, exactly as the English
+   catalogue says they would be in any locale. Only the sixth describes rather than names. */
+"exerciselibrary.detail.e1rm.formula.epley" = "Epley";
+"exerciselibrary.detail.e1rm.formula.brzycki" = "Brzycki";
+"exerciselibrary.detail.e1rm.formula.lombardi" = "Lombardi";
+"exerciselibrary.detail.e1rm.formula.oconner" = "O'Conner";
+"exerciselibrary.detail.e1rm.formula.wathan" = "Wathan";
+"exerciselibrary.detail.e1rm.formula.rpebased" = "На основі RPE";
+
+"exerciselibrary.detail.error.headline" = "Вправа недоступна";
+"exerciselibrary.detail.error.message" = "Не вдалося прочитати цю вправу.";
+"exerciselibrary.detail.missing.headline" = "Вправу не знайдено";
+"exerciselibrary.detail.missing.message" = "Цієї вправи більше немає у вашій бібліотеці.";
+
+"exerciselibrary.origin.built-in" = "Вбудована";
+"exerciselibrary.origin.custom" = "Власна";
+
+"exerciselibrary.laterality.bilateral" = "Обидві сторони";
+"exerciselibrary.laterality.unilateral" = "По одній стороні";
+"exerciselibrary.laterality.alternating" = "Почергово";
+
+"exerciselibrary.bar-type.standard" = "Звичайний";
+"exerciselibrary.bar-type.ez-curl" = "EZ-гриф";
+"exerciselibrary.bar-type.trap" = "Трап-гриф";
+"exerciselibrary.bar-type.safety-squat" = "Безпечний присідальний";
+"exerciselibrary.bar-type.cambered" = "Вигнутий";
+"exerciselibrary.bar-type.swiss" = "Швейцарський";
+"exerciselibrary.bar-type.no-bar" = "Без грифа";
+"exerciselibrary.bar-type.other" = "Інший";
+
+"exerciselibrary.list.create" = "Нова вправа";
+"exerciselibrary.detail.edit" = "Редагувати";
+
+"exerciselibrary.form.create.title" = "Нова вправа";
+"exerciselibrary.form.edit.title" = "Редагувати вправу";
+
+"exerciselibrary.form.section.details" = "Деталі";
+"exerciselibrary.form.field.name" = "Назва";
+/* The field above holds the exercise's own name, which is the English one on every catalogue row —
+   so the example stays in English here, where the Ukrainian field's example below is Ukrainian. */
+"exerciselibrary.form.name.prompt" = "Barbell Back Squat";
+"exerciselibrary.form.name.required" = "Потрібна назва.";
+
+"exerciselibrary.form.field.ukrainian-name" = "Українська назва";
+"exerciselibrary.form.ukrainian-name.prompt" = "Присідання зі штангою";
+"exerciselibrary.form.ukrainian-name.optional" = "Необов’язково. Без неї ця вправа й українською зберігає назву, указану вище.";
+"exerciselibrary.form.ukrainian-name.optional-catalogue" = "Необов’язково. Якщо залишити порожнім, вправа візьме українську назву з вбудованого каталогу, якщо вона там є.";
+
+"exerciselibrary.form.field.movement" = "Рух";
+"exerciselibrary.form.field.equipment" = "Обладнання";
+"exerciselibrary.form.field.bar" = "Гриф";
+"exerciselibrary.form.field.laterality" = "Сторони";
+
+"exerciselibrary.form.catalogue-owned" = "Рух, обладнання, гриф, сторони й те, що ця вправа варіює, походять із вбудованого каталогу, який відновлює їх під час кожного оновлення застосунку. Назви та нотатки — ваші, їх можна змінювати.";
+
+"exerciselibrary.form.section.parent" = "Варіація вправи";
+"exerciselibrary.form.parent.none" = "Нічого — це самостійна вправа";
+"exerciselibrary.form.parent.every-movement" = "Усі рухи";
+"exerciselibrary.form.parent.empty" = "Жодна інша вправа поки що не тренує цей рух. Увімкніть «Усі рухи», щоб варіювати вправу з іншого руху.";
+
+"exerciselibrary.form.save" = "Зберегти";
+
+"exerciselibrary.form.error.headline" = "Вправа недоступна";
+"exerciselibrary.form.error.message" = "Не вдалося прочитати цю вправу.";
+
+"exerciselibrary.form.missing.headline" = "Вправу не знайдено";
+"exerciselibrary.form.missing.message" = "Цієї вправи більше не існує.";
+
+"exerciselibrary.form.write-error" = "Не вдалося зберегти цю вправу.";
+
+"exerciselibrary.picker.title" = "Додати вправу";
+"exerciselibrary.picker.archived-only.message" = "Усі вправи архівовано. Розархівуйте одну в бібліотеці вправ, щоб додати її до тренування.";
+
+"exerciselibrary.detail.records.no-working-sets" = "Особисті рекорди беруться із завершених робочих підходів на десять повторень або менше. Таких із цією вправою ще не записано.";
+
+"exerciselibrary.detail.e1rm.source-hint" = "Показує тренування, у якому записано вихідний підхід.";
+
+"exerciselibrary.detail.e1rm.manual" = "Введено вручну";
+
+"exerciselibrary.detail.e1rm.override.action" = "Задати вручну";
+"exerciselibrary.detail.e1rm.override.field" = "1ПМ вручну";
+"exerciselibrary.detail.e1rm.override.save" = "Зберегти";
+"exerciselibrary.detail.e1rm.override.cancel" = "Скасувати";
+"exerciselibrary.detail.e1rm.override.edit" = "Змінити введене значення";
+"exerciselibrary.detail.e1rm.override.revert" = "Використати обчислене значення";
+
+"exerciselibrary.detail.e1rm.override.error" = "Не вдалося зберегти цю ручну оцінку.";

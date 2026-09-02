@@ -230,6 +230,12 @@ actor ScriptedSettingsRepository: SettingsRepository {
         row = settings
     }
 
+    /// Counted as a write like any other — this screen never calls it, and a double that answered
+    /// it differently would be inventing a second write path for no test here to observe.
+    func restorePreferences(from backup: UserSettings) async throws {
+        try await save(row.carryingPreferences(of: backup))
+    }
+
     /// Stops failing reads, so the next one behaves.
     func recoverReads() { readError = nil }
 

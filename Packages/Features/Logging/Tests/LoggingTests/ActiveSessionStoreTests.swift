@@ -167,7 +167,18 @@ struct ActiveSessionStoreTests {
 ///
 /// The happy paths above run against `RepositoryFakes`, whose conformance suite says it behaves like
 /// the real store. This one exists for the failures a faithful fake will not produce.
-actor ScriptedWorkoutRepository: WorkoutRepository {
+actor ScriptedWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
+    // TR-15.3's two members: no test here starts from a routine, so the plan is empty and a save
+    // is refused the way this double refuses anything it was not written to answer.
+    func plannedTargets(
+        forEntryID entryID: UUID, includingDeleted: Bool
+    ) async throws -> [PlannedTargetGroup] {
+        []
+    }
+    func save(_ group: PlannedTargetGroup) async throws {
+        throw RepositoryError.recordNotFound(id: group.id)
+    }
+
     private var row: WorkoutSession?
     private var readError: RepositoryError?
     private let writeError: RepositoryError?

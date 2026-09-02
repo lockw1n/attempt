@@ -20,8 +20,24 @@ struct LoggingStringsTests {
 
     @Test("The catalogue is this module's, not the app's")
     func copyComesFromTheModuleBundle() {
-        #expect(Bundle.module.localizations == ["en"])
+        #expect(Bundle.module.localizations.sorted() == ["en", "uk"])
         #expect(String(localized: LoggingStrings.trainStartAction) == "Start workout")
+    }
+
+    /// `FR-1.14.1`. `scripts/check-translations.sh` is what holds the whole table complete, key for
+    /// key; what it cannot say is that the table reached the built bundle, which is the half a
+    /// comparison of two files in the repo has no way to see.
+    @Test("The Ukrainian catalogue is in this module's bundle")
+    func ukrainianCopyIsBundled() throws {
+        let url = try #require(
+            Bundle.module.url(
+                forResource: "Localizable",
+                withExtension: "strings",
+                subdirectory: nil,
+                localization: "uk"
+            ))
+        let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
+        #expect(catalogue["logging.train.start.action"] == "Почати тренування")
     }
 
     @Test("The catalogue and the accessors name exactly the same keys")
@@ -50,6 +66,27 @@ struct LoggingStringsTests {
         #expect(
             String(localized: LoggingStrings.sessionProgress(completed: 0, total: 0))
                 == "0 of 0 exercises complete")
+    }
+
+    @Test("The plan's three rep counts pluralise, one rep included")
+    func planLinesPluraliseOnTheRepCount() {
+        // `FR-15.3.2`'s deviation is off by one more often than by anything else, so "1 reps" is
+        // the reading this would otherwise carry most of the time — the same argument the progress
+        // line's plural is made on, one requirement later.
+        #expect(String(localized: LoggingStrings.sessionPlanRepsDelta(1)) == "1 rep")
+        #expect(String(localized: LoggingStrings.sessionPlanRepsDelta(2)) == "2 reps")
+        #expect(
+            String(localized: LoggingStrings.sessionPlanTarget(weight: "100 kg", reps: 1))
+                == "Target 100 kg × 1 rep")
+        #expect(
+            String(localized: LoggingStrings.sessionPlanTarget(weight: "85 kg", reps: 8))
+                == "Target 85 kg × 8 reps")
+        #expect(
+            String(localized: LoggingStrings.sessionPlanTargetOpenLoad(reps: 1))
+                == "Target 1 rep, load your own")
+        #expect(
+            String(localized: LoggingStrings.sessionPlanTargetOpenLoad(reps: 5))
+                == "Target 5 reps, load your own")
     }
 
     @Test("Keys follow the convention: lowercase, dotted, module-prefixed")

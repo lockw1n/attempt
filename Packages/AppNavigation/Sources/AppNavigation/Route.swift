@@ -30,6 +30,9 @@ public enum Route: Hashable, Sendable, Codable {
     /// A destination under Train that belongs to the exercise library.
     case exerciseLibrary(ExerciseLibraryRoute)
 
+    /// A destination under Train that belongs to routines (`FR-15.2`).
+    case routines(RoutinesRoute)
+
     /// A destination under History.
     case history(HistoryRoute)
 
@@ -38,12 +41,12 @@ public enum Route: Hashable, Sendable, Codable {
 
     /// The tab whose stack this route belongs on.
     ///
-    /// Two areas answer `train`, which is Q-1.2's split rather than an accident: logging and the
-    /// exercise library are separate feature modules (`TR-1.3`) sharing one tab.
+    /// Three areas answer `train`, which is Q-1.2's split rather than an accident: logging, the
+    /// exercise library and routines are separate feature modules (`TR-1.3`) sharing one tab.
     public var tab: AppTab {
         switch self {
         case .dashboard: .home
-        case .training, .exerciseLibrary: .train
+        case .training, .exerciseLibrary, .routines: .train
         case .history: .history
         case .settings: .settings
         }
@@ -120,6 +123,51 @@ public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
     /// already the one saying there is no workout to add to. Nothing is reported here because
     /// nothing was lost, and a diagnostic would land on a screen the user is leaving.
     case exercisePicker
+
+    /// The catalogue as a chooser, for adding an exercise to the routine being edited
+    /// (`FR-15.2.1`).
+    ///
+    /// **A second case rather than a mode on ``exercisePicker``**, even though both push the same
+    /// screen in the same second mode. The two differ in where the selection goes — one into the
+    /// workout in progress, one into the routine open in the editor — and that destination is what
+    /// the app target composes from the route alone. One case serving both would have to ask which
+    /// of the two stores was "current", which is a question a restored stack cannot answer.
+    ///
+    /// It carries no routine identifier, for ``exercisePicker``'s reason: which routine is being
+    /// edited is one fact about the app rather than a parameter of a push, and a restored stack
+    /// that opens here with no routine open lands on a chooser whose selection is refused silently.
+    case routineExercisePicker
+}
+
+/// Destinations pushed from routines (`FR-15.2`).
+///
+/// **Phase 1.5's first screens, and they extend Phase 1's own `Route`** — there is one enum, and
+/// `TR-1.13`'s inventory keys off it, so these screens are written down wherever that inventory
+/// lives (Q-15.1).
+public enum RoutinesRoute: Hashable, Sendable, Codable {
+    /// Every routine the lifter has authored (`FR-15.2.1`).
+    ///
+    /// **Pushed onto Train's stack rather than being Train's root**, for
+    /// ``ExerciseLibraryRoute/exerciseList``'s reason: the root is the session surface, so Train
+    /// opens on a workout and not on a plan.
+    case routineList
+
+    /// The editor authoring a new routine (`FR-15.2.1`).
+    ///
+    /// **A case of its own rather than ``routineEdit(routineID:)`` with no identifier**, which is
+    /// ``ExerciseLibraryRoute/exerciseCreate``'s argument: an optional payload would make one case
+    /// mean two screens, one that reads a record and one that cannot.
+    case routineCreate
+
+    /// The editor over an existing routine (`FR-15.2.1`, `FR-15.2.2`).
+    ///
+    /// Carries the identifier and not the record, for
+    /// ``ExerciseLibraryRoute/exerciseDetail(exerciseID:)``'s reason.
+    ///
+    /// **The draft it holds is not persisted with the stack**, unlike the two Settings editors that
+    /// have no case at all: this screen writes nothing until the lifter saves, so a restored stack
+    /// opens it on what the store holds rather than on what was half-typed in another session.
+    case routineEdit(routineID: UUID)
 }
 
 /// Destinations pushed from history (`FR-1.5`).

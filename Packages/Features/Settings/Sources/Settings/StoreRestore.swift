@@ -94,8 +94,12 @@ struct StoreRestore {
     /// The catalogue, and each exercise's training-max history.
     let exercises: any ExerciseRepository
 
-    /// Sessions, entries and sets.
-    let workouts: any WorkoutRepository
+    /// Sessions, entries, sets — and what a routine planned for those slots (`FR-15.2.4`).
+    ///
+    /// One property answering two protocols, for ``FullBackup``'s reason read backwards: a planned
+    /// target's save checks that the exercise entry it names is there, so the two writes have to be
+    /// against one store.
+    let workouts: any WorkoutRepository & PlannedTargetRepository
 
     /// The bodyweight log.
     let bodyweight: any BodyweightRepository
@@ -103,7 +107,10 @@ struct StoreRestore {
     /// The gyms.
     let equipment: any EquipmentRepository
 
-    /// The preferences row.
+    /// The routines, their slots and their target groups (`FR-15.2`).
+    let routines: any RoutineRepository
+
+    /// The preferences row — written through the restore's own entry point, not through a save.
     let settings: any SettingsRepository
 
     /// The app's one recompute actor, told that every restored session's sets are new to it.
@@ -159,13 +166,24 @@ struct StoreRestore {
     ///
     /// **The order is the store's referential rule and not a preference**: a save checks that the
     /// rows its foreign keys name are already there, so the catalogue precedes the training maxes
-    /// and the slots, a session precedes its slots, and a slot precedes its sets. Getting it wrong
-    /// does not corrupt anything — it fails the save.
+    /// and the slots, a session precedes its slots, and a slot precedes its sets and the targets a
+    /// routine planned for it. Getting it wrong does not corrupt anything — it fails the save.
+    ///
+    /// **The routine tables are three more levels of the same rule** (`FR-15.2`): a routine precedes
+    /// its slots, a slot precedes its target groups, and the catalogue precedes all three because a
+    /// routine's slot names an exercise. They are written after the catalogue and before the log for
+    /// no referential reason — nothing in the log names a routine — but reading the loops in
+    /// dependency order is what makes the rule above checkable by eye.
     ///
     /// **A failed write stops the restore where it is, and the rows already written stay.** There is
-    /// no transaction across five repositories, so the honest thing is to say so on the screen; what
-    /// makes that recoverable is that every write here is an id-keyed upsert, so running the same
-    /// file again is safe and finishes the job.
+    /// no transaction across six repositories, so the honest thing is to say so on the screen; what
+    /// makes running the same file again *safe* is that every write here is an id-keyed upsert.
+    /// **Safe is all it is, and the screen copy says only that** — a write that refused once refuses
+    /// again, so a retry finishes the job only where the failure was transient. `FR-1.11.3` cost one
+    /// of those the other reading: the settings row is written last and used to refuse a file from
+    /// another device on identity grounds, forever, with all eleven other tables already landed —
+    /// which is why the last write is now ``RepositoryInterface/SettingsRepository/restorePreferences(from:)``
+    /// rather than a save.
     ///
     /// **`TR-0.3.9`'s cached records are not in the file and are recomputed afterwards** (`G-1.4`).
     /// Left out, every personal-record badge and estimated-max tile would read whatever the device
@@ -179,17 +197,76 @@ struct StoreRestore {
     /// - Throws: Whatever a repository throws.
     @discardableResult
     func restore(_ archive: TrainingLogArchive) async throws -> BackupSummary {
+        try await restoreCatalogue(archive)
+        try await restoreRoutines(archive)
+        try await restoreLog(archive)
+        if let restored = archive.settings {
+            try await settings.restorePreferences(from: restored)
+        }
+
+        for session in archive.sessions { await records.sessionDidChange(id: session.id) }
+        return BackupSummary(archive)
+    }
+
+    /// Writes what the log's rows refer to: the catalogue, its training maxes, and the gyms.
+    ///
+    /// **The default gym is reinstated after the profiles rather than by them** (`FR-1.10.3`). No
+    /// save writes `isDefault` — "exactly one default" is a cross-row invariant that no single
+    /// row's write can hold, so an insert clears the flag and an update leaves the stored row's
+    /// alone. Without the second step a backup restored into a clean install brings every gym back
+    /// and none of them marked, which is `FR-1.11.3`'s clean install losing the one column the
+    /// repository reserves to itself — and losing it silently, since a profile that is not the
+    /// default is indistinguishable from one that never was.
+    ///
+    /// - Parameter archive: The file.
+    /// - Throws: Whatever a repository throws.
+    private func restoreCatalogue(_ archive: TrainingLogArchive) async throws {
         for exercise in archive.exercises { try await exercises.save(exercise) }
         for entry in archive.trainingMaxes { try await exercises.saveTrainingMax(entry) }
         for profile in archive.equipment { try await equipment.save(profile) }
+        if let defaulted = Self.defaultProfile(in: archive.equipment) {
+            try await equipment.makeDefault(profileID: defaulted.id)
+        }
+    }
+
+    /// Which gym the file marks as the default, if any.
+    ///
+    /// **Live claimants only, and rule 2 breaks a tie.**
+    /// ``RepositoryInterface/EquipmentRepository/makeDefault(profileID:)`` refuses a deleted or
+    /// absent profile, so a file whose only claimant was deleted has to restore to no default
+    /// rather than to a failed restore. Two live rows can both carry the flag — a read resolves
+    /// that rather than repairing it — so picking by later `updatedAt` and then greater
+    /// `id.uuidString` is what makes the restored device mark the gym the source device was
+    /// showing, instead of whichever row the file happened to list first.
+    ///
+    /// - Parameter profiles: The file's equipment section.
+    /// - Returns: The profile to mark, or `nil` where the file marks none.
+    private static func defaultProfile(in profiles: [EquipmentProfile]) -> EquipmentProfile? {
+        profiles
+            .filter { $0.isDefault && !$0.isSoftDeleted }
+            .max { ($0.updatedAt, $0.id.uuidString) < ($1.updatedAt, $1.id.uuidString) }
+    }
+
+    /// Writes the three routine tables, parents first (`FR-15.2`).
+    ///
+    /// - Parameter archive: The file.
+    /// - Throws: Whatever the routine repository throws.
+    private func restoreRoutines(_ archive: TrainingLogArchive) async throws {
+        for routine in archive.routines { try await routines.save(routine) }
+        for slot in archive.routineExercises { try await routines.save(slot) }
+        for group in archive.routineTargetGroups { try await routines.save(group) }
+    }
+
+    /// Writes what the lifter logged, and what a routine had planned for it.
+    ///
+    /// - Parameter archive: The file.
+    /// - Throws: Whatever a repository throws.
+    private func restoreLog(_ archive: TrainingLogArchive) async throws {
         for entry in archive.bodyweight { try await bodyweight.save(entry) }
         for session in archive.sessions { try await workouts.save(session) }
         for entry in archive.entries { try await workouts.save(entry) }
         for set in archive.sets { try await workouts.save(set) }
-        if let restored = archive.settings { try await settings.save(restored) }
-
-        for session in archive.sessions { await records.sessionDidChange(id: session.id) }
-        return BackupSummary(archive)
+        for group in archive.plannedTargets { try await workouts.save(group) }
     }
 }
 
