@@ -210,12 +210,41 @@ struct StoreRestore {
 
     /// Writes what the log's rows refer to: the catalogue, its training maxes, and the gyms.
     ///
+    /// **The default gym is reinstated after the profiles rather than by them** (`FR-1.10.3`). No
+    /// save writes `isDefault` — "exactly one default" is a cross-row invariant that no single
+    /// row's write can hold, so an insert clears the flag and an update leaves the stored row's
+    /// alone. Without the second step a backup restored into a clean install brings every gym back
+    /// and none of them marked, which is `FR-1.11.3`'s clean install losing the one column the
+    /// repository reserves to itself — and losing it silently, since a profile that is not the
+    /// default is indistinguishable from one that never was.
+    ///
     /// - Parameter archive: The file.
     /// - Throws: Whatever a repository throws.
     private func restoreCatalogue(_ archive: TrainingLogArchive) async throws {
         for exercise in archive.exercises { try await exercises.save(exercise) }
         for entry in archive.trainingMaxes { try await exercises.saveTrainingMax(entry) }
         for profile in archive.equipment { try await equipment.save(profile) }
+        if let defaulted = Self.defaultProfile(in: archive.equipment) {
+            try await equipment.makeDefault(profileID: defaulted.id)
+        }
+    }
+
+    /// Which gym the file marks as the default, if any.
+    ///
+    /// **Live claimants only, and rule 2 breaks a tie.**
+    /// ``RepositoryInterface/EquipmentRepository/makeDefault(profileID:)`` refuses a deleted or
+    /// absent profile, so a file whose only claimant was deleted has to restore to no default
+    /// rather than to a failed restore. Two live rows can both carry the flag — a read resolves
+    /// that rather than repairing it — so picking by later `updatedAt` and then greater
+    /// `id.uuidString` is what makes the restored device mark the gym the source device was
+    /// showing, instead of whichever row the file happened to list first.
+    ///
+    /// - Parameter profiles: The file's equipment section.
+    /// - Returns: The profile to mark, or `nil` where the file marks none.
+    private static func defaultProfile(in profiles: [EquipmentProfile]) -> EquipmentProfile? {
+        profiles
+            .filter { $0.isDefault && !$0.isSoftDeleted }
+            .max { ($0.updatedAt, $0.id.uuidString) < ($1.updatedAt, $1.id.uuidString) }
     }
 
     /// Writes the three routine tables, parents first (`FR-15.2`).

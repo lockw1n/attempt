@@ -114,9 +114,8 @@ struct BackupRoundTripTests {
         // file's is always foreign. This threw before T-1.69, on the last of twelve writes, with
         // every other table already landed and a screen saying to run the same file again.
         let stack = try PersistenceStack(location: .inMemory)
-        let fixture = try await ExportLog.wholeStore(ExportLog(stack))
+        _ = try await ExportLog.wholeStore(ExportLog(stack))
         try await Self.configureEveryPreference(of: stack)
-        _ = fixture
 
         let before = try await Self.backup(over: stack).archive(takenAt: ExportLog.epoch)
         let file = try before.encoded()

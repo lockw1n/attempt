@@ -294,10 +294,12 @@
 "settings.restore.refused.unreadable.headline" = "That file cannot be read";
 "settings.restore.refused.unreadable.message" = "It is not an Attempt backup, or the copy is damaged. Nothing on this device has been changed.";
 
-/* Not a refusal: rows are already written. The retry is honest because every write is keyed on the
-   record's own identifier, so the same file run twice lands the same store. */
+/* Not a refusal: rows are already written. Every write is keyed on the record's own identifier, so
+   the same file run twice lands the same store rather than a second copy of it — but safe is all
+   the retry is. A write that refused once refuses again, so the copy must not promise that running
+   the file again finishes the job. */
 "settings.restore.error.headline" = "The restore did not finish";
-"settings.restore.error.message" = "Part of the file is already on this device. Running the same file again is safe: nothing is written twice, though it may stop in the same place.";
+"settings.restore.error.message" = "Part of the file is already on this device. Running the same file again is safe — nothing is duplicated — though it may stop in the same place.";
 "settings.restore.error.retry" = "Try again";
 
 /* FR-1.12.1-FR-1.12.3. The screen's copy. "iCloud" rather than "the cloud" throughout: the private

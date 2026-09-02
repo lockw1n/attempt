@@ -174,7 +174,11 @@ extension ExportLog {
         let bench = try await log.exercise(named: "Bench Press")
         try await log.trainingMax(for: bench, percentage: 0.9, daysAgo: 30)
         try await log.trainingMax(for: bench, percentage: 0.95)
-        try await log.gym(named: "home gym")
+        // FR-1.10.3's flag is written by `makeDefault(profileID:)` and by nothing else — no save
+        // carries it — so a fixture that only wrote profiles would leave `isDefault` false on both
+        // sides of every comparison and agree with a restore that had dropped the column.
+        let home = try await log.gym(named: "home gym")
+        try await log.repositories.equipment.makeDefault(profileID: home.id)
         try await log.bodyweight(grams: 82_000)
 
         let deletedGym = try await log.gym(named: "the meet")

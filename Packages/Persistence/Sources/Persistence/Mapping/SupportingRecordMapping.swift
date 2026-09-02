@@ -152,8 +152,9 @@ extension EquipmentProfileEntity: RecordMappable {
     /// the unique constraint that would notice, two rows claiming the flag is a bug nothing else
     /// catches.
     ///
-    /// `init(record:)` *does* write it, because a new row has no previous value to keep and a
-    /// restore has to reinstate the one the backup carried.
+    /// `init(record:)` carries it like every other column, but no caller ever reads that value:
+    /// the one insert path clears it on the way in, and a restore reinstates the flag afterwards
+    /// through ``RepositoryInterface/EquipmentRepository/makeDefault(profileID:)``.
     func update(from record: EquipmentProfile) {
         name = record.name
         barWeightGrams = record.barWeight.grams
