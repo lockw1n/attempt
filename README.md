@@ -473,6 +473,18 @@ the other:
 ./scripts/check-cloudkit.sh --self-test   # each check, in both directions
 ```
 
+And one dependency gate: every package dependency is a local `path:` one, so no
+tracked `Package.swift` names a remote dependency, a registry package or a binary
+target, and no tracked `.pbxproj` or `.resolved` names a remote package reference
+or a resolved pin. Both routes a third-party dependency takes in are covered — a
+package under `Packages/` is linked transitively without the `.xcodeproj`
+mentioning it, and one added through Xcode never appears in a manifest:
+
+```bash
+./scripts/check-no-third-party.sh
+./scripts/check-no-third-party.sh --self-test   # each spelling, in both directions
+```
+
 To lint on every build, add a **Run Script** build phase to the `Attempt` target
 with `if which swiftlint > /dev/null; then swiftlint; fi`, and untick "Based on
 dependency analysis".
@@ -486,7 +498,7 @@ dependency analysis".
 | **Build** | audits the app target's build settings, checks the debug harness is excluded from the app (and that the check itself fires), then builds the app |
 | **Package tests** | `PowerliftingCore` with coverage, then every package built and tested with warnings as errors (discovered by glob), the runtime gate and its proof, the warnings-gate proof, the `@unchecked Sendable` audit |
 | **Linux core build** | builds and tests `PowerliftingCore` and `RepositoryInterface` on `ubuntu-latest` in a Swift container |
-| **SwiftLint** | lint, lint-rule verification, format check, doc-ratio, doc-units and doc-links gates |
+| **SwiftLint** | lint, lint-rule verification, format check, the app-target string and translation-completeness checks, the doc-ratio, doc-units and doc-links gates, and the CloudKit and third-party gates — sixteen steps, each gate followed by a self-test that proves it can fail |
 | **Component snapshots** | renders every snapshot suite (`DesignSystem`'s components and states, plus each feature module's screens) and compares it against a committed reference, light/dark × default/`accessibility3` |
 
 The first four are **required checks on `main`**, so a red run blocks the
