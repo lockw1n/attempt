@@ -22,9 +22,11 @@
 # lands without either sentence moving makes the app's own privacy policy false, which is the failure
 # G-5.3 is written to prevent at every submission.
 #
-#   1  manifests    No `.package(url:` in any tracked Package.swift. This is how a package under
-#                   Packages/ acquires a remote dependency, and the app links it transitively
-#                   without the .xcodeproj mentioning anything.
+#   1  manifests    No remote dependency and no binary target in any tracked Package.swift. This
+#                   is how a package under Packages/ acquires one, and the app links it
+#                   transitively without the .xcodeproj mentioning anything. Four spellings,
+#                   because three of them name no URL on the line that declares them — see
+#                   REMOTE_MANIFEST_RE.
 #   2  project      No XCRemoteSwiftPackageReference in any tracked .pbxproj, and no resolved
 #                   dependency pinned in a Package.resolved. This is the other route in — Xcode's
 #                   own "Add Package Dependency", which touches neither manifest.
@@ -56,9 +58,18 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# `.package(url:` with any spacing. `.package(path:` is the local form and is what this repo uses
-# everywhere; only the remote spelling is banned.
-REMOTE_MANIFEST_RE='\.package\([ \t]*url[ \t]*:'
+# Every route third-party code takes into a manifest. `.package(path:` is the local form, is what
+# this repo uses everywhere, and is the only one left standing.
+#
+#   .package(url:   the remote source form
+#   .package(id:    the registry form, which names no URL at all
+#   .binaryTarget(  any binary target, fetched or vendored — `settings.about.acknowledgements.code`
+#                   says the app bundles no third-party code, and a committed .xcframework makes
+#                   that sentence false exactly as a downloaded one does
+#   a bare `url:`   either of the first two wrapped across lines, which is what swift-format does to
+#                   a dependency long enough to need it. Safe as a bare match: no other manifest API
+#                   in use here takes a `url:`, and the 25 manifests in this repo contain none.
+REMOTE_MANIFEST_RE='\.package\([ \t]*(url|id)[ \t]*:|\.binaryTarget\(|(^|[^A-Za-z0-9_])url[ \t]*:'
 
 # Xcode's remote reference, plus the `pins` array a Package.resolved carries once one is resolved.
 # The second is not redundant: a resolved file can outlive the reference that produced it, and it is
@@ -101,9 +112,29 @@ report() {
     return 0
 }
 
+# Runs one check over its population, and fails when that population is empty — the pathspec having
+# stopped matching is the green-while-enforcing-nothing shape every gate here is written against. A
+# branch of its own rather than a clause inside the two checks, which is what lets the self-test
+# reach it.
+#
+# **Call it as `gate ... ${FILES[@]+"${FILES[@]}"}`, never `"${FILES[@]}"`.** Expanding an empty
+# array under `set -u` is an error on bash 3.2 — what `/usr/bin/env bash` finds on macOS — so the
+# unguarded form aborts with `FILES[@]: unbound variable` before this function can say what is
+# actually wrong, and the branch below becomes unreachable on the one shell that runs it.
+gate() {
+    local label="$1" summary="$2" checker="$3"
+    shift 3
+    if (( $# == 0 )); then
+        fail "$label" "no file matched the pathspec — the population is wrong."
+        return 0
+    fi
+    if "$checker" "$@"; then ok "$label" "$# $summary"; fi
+    return 0
+}
+
 check_manifests() {
     report "remote in manifest" \
-        "G-5.1: a package manifest names a remote dependency. Found:" \
+        "G-5.1: a package manifest names a remote dependency or a binary target. Found:" \
         "$(grep_files "$REMOTE_MANIFEST_RE" "$@" | code_only)"
 }
 
@@ -127,7 +158,8 @@ if (( SELF_TEST )); then
     scratch="$(mktemp -d)"
     trap 'rm -rf "$scratch"' EXIT
 
-    mkdir -p "$scratch/clean" "$scratch/dirty" "$scratch/trailing" "$scratch/lone"
+    mkdir -p "$scratch/clean" "$scratch/dirty" "$scratch/trailing" "$scratch/lone" \
+        "$scratch/registry" "$scratch/binary" "$scratch/wrapped"
 
     # The shape this repo is actually in, plus prose naming the banned spelling — which is what the
     # file you are reading does, and what every manifest here would do if it explained the rule.
@@ -160,6 +192,29 @@ EOF
   ]
 }
 EOF
+    # The registry form. It names no URL anywhere, so the url-shaped spellings above cannot see it.
+    cat >"$scratch/registry/Package.swift" <<'EOF'
+dependencies: [
+    .package(id: "telemetrydeck.swiftsdk", from: "2.14.2"),
+]
+EOF
+    # A binary target by `path:` — already vendored, nothing to fetch. It fires deliberately: the
+    # About screen's sentence is about what the app bundles, not about what it downloads.
+    cat >"$scratch/binary/Package.swift" <<'EOF'
+targets: [
+    .binaryTarget(name: "Vendor", path: "Vendor.xcframework"),
+]
+EOF
+    # What swift-format does to a dependency too long for one line, which leaves `url:` alone on
+    # its own — the case the first spelling misses and the bare one exists for.
+    cat >"$scratch/wrapped/Package.swift" <<'EOF'
+dependencies: [
+    .package(
+        url: "https://github.com/TelemetryDeck/SwiftSDK.git",
+        from: "2.14.2"
+    ),
+]
+EOF
     # A real dependency carrying a trailing comment — the mirror of the clean case, and the one a
     # naive "drop any line mentioning a comment" filter would wave through.
     cat >"$scratch/trailing/Package.swift" <<'EOF'
@@ -187,6 +242,12 @@ EOF
     expect "…local path only" 0 check_manifests "${FILES[@]}"
     collect "$scratch/trailing/Package.swift"
     expect "…with a trailing comment" 1 check_manifests "${FILES[@]}"
+    collect "$scratch/registry/Package.swift"
+    expect "…the registry form" 1 check_manifests "${FILES[@]}"
+    collect "$scratch/binary/Package.swift"
+    expect "…a vendored binary target" 1 check_manifests "${FILES[@]}"
+    collect "$scratch/wrapped/Package.swift"
+    expect "…a url: wrapped onto its own line" 1 check_manifests "${FILES[@]}"
 
     collect "$scratch/dirty/project.pbxproj"
     expect "remote in project" 1 check_project "${FILES[@]}"
@@ -194,6 +255,8 @@ EOF
     expect "…local references only" 0 check_project "${FILES[@]}"
     collect "$scratch/lone/Package.resolved"
     expect "…a resolved file's pins alone" 1 check_project "${FILES[@]}"
+
+    expect "an empty population" 1 gate "remote in manifest" "manifest(s)" check_manifests
 
     echo
     if (( failures > 0 )); then
@@ -206,23 +269,11 @@ fi
 
 echo "third-party code: none, so no SDK is in a position to be told anything (G-5.1, G-5.3)"
 
-# An empty population is a failure rather than a pass: it means the pathspec stopped matching, which
-# is the green-while-enforcing-nothing shape every gate here is written against.
 collect "$(git ls-files -- '*/Package.swift' 'Package.swift')"
-manifests=("${FILES[@]}")
-if (( ${#manifests[@]} == 0 )); then
-    fail "remote in manifest" "no Package.swift is tracked — the population is wrong."
-elif check_manifests "${manifests[@]}"; then
-    ok "remote in manifest" "${#manifests[@]} manifest(s), local paths only"
-fi
+gate "remote in manifest" "manifest(s), local paths only" check_manifests ${FILES[@]+"${FILES[@]}"}
 
 collect "$(git ls-files -- '*.pbxproj' '*.resolved')"
-project=("${FILES[@]}")
-if (( ${#project[@]} == 0 )); then
-    fail "remote in project" "no .pbxproj is tracked — the population is wrong."
-elif check_project "${project[@]}"; then
-    ok "remote in project" "${#project[@]} project file(s), no remote package"
-fi
+gate "remote in project" "project file(s), no remote package" check_project ${FILES[@]+"${FILES[@]}"}
 
 echo
 if (( failures > 0 )); then

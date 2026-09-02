@@ -68,10 +68,15 @@ struct FirstLaunchIdentityTests {
     ///
     /// The rule is `SettingsRepository/restorePreferences(from:)`'s and is asserted against both
     /// implementations elsewhere — the identity in force wins, the file's preferences land. What is
-    /// only checkable here is that the outcome is **durable**: a restore that inserted a second row
-    /// rather than writing the one in force would still answer correctly through the container that
-    /// made it, because the tiebreak picks the newer row. It is the relaunch that tells the two
-    /// apart, and it is the relaunch that the lifter performs.
+    /// only checkable here is that the outcome **reached the store**: a write that updated the row
+    /// in force and never saved answers correctly through the context that made the change, and the
+    /// row count agrees with it, so nothing inside one container can see the difference. Measured —
+    /// dropping the write's `saveStamped()` leaves this test green when `found` is read back
+    /// through the first launch's container and fails it through the second, which is the relaunch
+    /// the lifter performs.
+    ///
+    /// A restore that *forked* the identity instead is caught by the row count in either container.
+    /// The relaunch is not what tells those two apart.
     @Test("A restore after a launch leaves one identity, and the relaunch still finds it")
     func aRestoreAfterALaunchDoesNotForkTheIdentity() async throws {
         let url = makeTemporaryStoreURL()
