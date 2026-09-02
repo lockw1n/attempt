@@ -70,10 +70,11 @@ extension TrainingLogArchive {
     /// `RecordCoding.swift` says an absent value is an omitted key, and this reads the sections that
     /// way: absent means the section is empty, which for a file that never carried one is true.
     ///
-    /// **The four routine sections were added the same way, which is why
-    /// ``TrainingLogArchive/currentFormatVersion`` did not move for them.** A backup written before
-    /// they existed decodes here with four empty sections, and four empty sections is what that
-    /// file holds — the reading rule 3 already gave the three above.
+    /// **The four routine sections are read the same way, so a version 2 backup decodes here with
+    /// four empty sections** — which is what that file holds. That is what rule 3 buys, and it is
+    /// only ever about reading an older file: it is not the reason
+    /// ``TrainingLogArchive/currentFormatVersion`` moved to 3, which is about the other direction
+    /// and argued there.
     ///
     /// **``TrainingLogArchive/formatVersion`` is carried as written rather than replaced with the
     /// current one.** It is what `FR-1.11.4`'s restore refuses a future file on, and a reader that

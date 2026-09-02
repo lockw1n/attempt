@@ -176,7 +176,7 @@ struct StoreRestore {
     /// dependency order is what makes the rule above checkable by eye.
     ///
     /// **A failed write stops the restore where it is, and the rows already written stay.** There is
-    /// no transaction across five repositories, so the honest thing is to say so on the screen; what
+    /// no transaction across six repositories, so the honest thing is to say so on the screen; what
     /// makes that recoverable is that every write here is an id-keyed upsert, so running the same
     /// file again is safe and finishes the job.
     ///

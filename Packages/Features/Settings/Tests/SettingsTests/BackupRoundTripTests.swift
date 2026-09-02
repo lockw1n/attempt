@@ -165,7 +165,12 @@ struct BackupRoundTripTests {
     /// **The settings row is asked for by count rather than by ``RepositoryInterface/SettingsRepository/settings()``**,
     /// which would mint one — see ``mintingTheSettingsRowBeforeTheRestoreRefusesIt``. There is no
     /// read that can see the row without creating it, so the purge's own report is the evidence for
-    /// that one table and the seven below are the evidence for the rest.
+    /// that one table and the five below are the evidence for the rest.
+    ///
+    /// **Five reads for twelve tables, and the seven missing ones cannot be asked.** Every child
+    /// table is reached through its parent's identifier, so once the parents are gone there is
+    /// nothing left to enumerate them from — which is why `wiped.removed` carries the weight for
+    /// those rather than a read.
     ///
     /// - Parameter stack: The wiped store.
     /// - Throws: Whatever a repository throws.
@@ -180,28 +185,62 @@ struct BackupRoundTripTests {
 
     /// Fails unless the two archives hold the same rows, field for field.
     ///
-    /// Every section is compared, so adding one to ``TrainingLogArchive`` and forgetting it here
-    /// fails to compile rather than passing quietly.
+    /// **The list below is hand-written and omitting a line from it compiles**, so
+    /// ``expectEverySectionCompared(_:_:)`` is what actually holds it complete. `TrainingLogArchive`'s
+    /// explicit initialiser forces a new section to be answered wherever one is *built*, which is
+    /// what keeps the fixtures honest; nothing forces it to be answered *here*, and a comparison
+    /// that quietly skips a table is the defect this suite exists to catch.
     ///
     /// - Parameters:
     ///   - before: The archive taken before the wipe.
     ///   - after: The archive taken after the restore.
     /// - Throws: A `DecodingError` if a record will not re-encode.
     static func expectSameRows(_ before: TrainingLogArchive, _ after: TrainingLogArchive) throws {
-        try expectSameRows(before.exercises, after.exercises, "exercises")
-        try expectSameRows(before.sessions, after.sessions, "sessions")
-        try expectSameRows(before.entries, after.entries, "entries")
-        try expectSameRows(before.sets, after.sets, "sets")
-        try expectSameRows(before.bodyweight, after.bodyweight, "bodyweight")
-        try expectSameRows(before.equipment, after.equipment, "equipment")
-        try expectSameRows(before.trainingMaxes, after.trainingMaxes, "trainingMaxes")
-        try expectSameRows(before.routines, after.routines, "routines")
-        try expectSameRows(before.routineExercises, after.routineExercises, "routineExercises")
+        var compared: Set<String> = []
+        try expectSameRows(before.exercises, after.exercises, "exercises", &compared)
+        try expectSameRows(before.sessions, after.sessions, "sessions", &compared)
+        try expectSameRows(before.entries, after.entries, "entries", &compared)
+        try expectSameRows(before.sets, after.sets, "sets", &compared)
+        try expectSameRows(before.bodyweight, after.bodyweight, "bodyweight", &compared)
+        try expectSameRows(before.equipment, after.equipment, "equipment", &compared)
+        try expectSameRows(before.trainingMaxes, after.trainingMaxes, "trainingMaxes", &compared)
+        try expectSameRows(before.routines, after.routines, "routines", &compared)
         try expectSameRows(
-            before.routineTargetGroups, after.routineTargetGroups, "routineTargetGroups")
-        try expectSameRows(before.plannedTargets, after.plannedTargets, "plannedTargets")
+            before.routineExercises, after.routineExercises, "routineExercises", &compared)
         try expectSameRows(
-            before.settings.map { [$0] } ?? [], after.settings.map { [$0] } ?? [], "settings")
+            before.routineTargetGroups, after.routineTargetGroups, "routineTargetGroups", &compared)
+        try expectSameRows(before.plannedTargets, after.plannedTargets, "plannedTargets", &compared)
+        try expectSameRows(
+            before.settings.map { [$0] } ?? [],
+            after.settings.map { [$0] } ?? [],
+            "settings",
+            &compared)
+        try expectEverySectionCompared(before, compared)
+    }
+
+    /// Fails unless every section the file actually carries was compared.
+    ///
+    /// **Read off the encoded envelope rather than a second hand-written list**, which is the only
+    /// reading that cannot itself go stale: a section added to ``TrainingLogArchive`` shows up here
+    /// as a key nobody compared, on the first run after the fixture writes a row into it.
+    ///
+    /// The residual hole is a section the fixture leaves empty — an omitted key (rule 3) is a
+    /// section this file does not carry, and there is nothing to compare. That is the same
+    /// condition ``expectSameRows(_:_:_:_:)``'s own non-empty anchor reports for every section
+    /// named above.
+    ///
+    /// - Parameters:
+    ///   - archive: The file taken before the wipe.
+    ///   - compared: The sections that were checked.
+    /// - Throws: A `DecodingError` if the archive will not encode.
+    static func expectEverySectionCompared(
+        _ archive: TrainingLogArchive,
+        _ compared: Set<String>
+    ) throws {
+        let envelope: Set<String> = ["contents", "exportedAt", "formatVersion"]
+        let json = try #require(String(bytes: try archive.encoded(), encoding: .utf8))
+        let carried = Set(TrainingLogArchiveTests.envelopeKeys(of: json)).subtracting(envelope)
+        #expect(carried == compared, "a section the file carries was never compared")
     }
 
     /// Fails unless one section came back whole.
@@ -210,12 +249,15 @@ struct BackupRoundTripTests {
     ///   - before: The section as it was written.
     ///   - after: The section as it was read back.
     ///   - section: What to name in a failure.
+    ///   - compared: The ledger ``expectEverySectionCompared(_:_:)`` reads back.
     /// - Throws: A `DecodingError` if a record will not re-encode.
     static func expectSameRows<Record: StoredRecord>(
         _ before: [Record],
         _ after: [Record],
-        _ section: String
+        _ section: String,
+        _ compared: inout Set<String>
     ) throws {
+        compared.insert(section)
         #expect(!before.isEmpty, "\(section) is empty, so this section asserts nothing")
         #expect(before.count == after.count, "\(section) row count")
 

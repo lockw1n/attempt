@@ -141,10 +141,15 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
 
     /// The reading this build writes.
     ///
-    /// **2 rather than 1 because the envelope gained a discriminator**, not merely sections: a
-    /// reader that did not know ``contents`` would read a backup as an export and conclude that
-    /// nothing in it had ever been deleted. `FR-1.11.4`'s refusal keys off this number.
-    nonisolated static let currentFormatVersion = 2
+    /// **The number moves when a reader that ignored the new keys would be wrong about the store,
+    /// and stays when it would merely be incomplete about a row.** 2 was the ``contents``
+    /// discriminator: a reader without it reads a backup as an export and concludes nothing in it
+    /// had ever been deleted. 3 is `FR-15.2`'s routines and the targets a routine planned for a
+    /// logged slot — additive keys, which is exactly why the number had to move, since a reader
+    /// without them drops every plan behind the lifter's log and reports a successful restore.
+    /// `FR-1.11.4`'s refusal is what makes that visible, and it fires only on a number this build
+    /// does not claim. A record gaining a column moves nothing (rule 7 of `RecordCoding.swift`).
+    nonisolated static let currentFormatVersion = 3
 
     /// Builds a training-log export at the current format version.
     ///
