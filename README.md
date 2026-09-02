@@ -87,7 +87,12 @@ no `DesignSystem`, no `AppNavigation`, since nothing in it renders, and no
 `Packages/Features/` sit at the top: each depends on `PowerliftingCore`,
 `RepositoryInterface`, `DesignSystem`, `AppNavigation` and `Localization`, and
 never on `Persistence` — a feature reaches storage through the protocols
-alone. Four of the six also depend on `DerivedValues`.
+alone. Four of the six also depend on `DerivedValues`. One exception, and it is
+the shape `RepositoryFakes` already has: `Settings`' *test* target depends on
+`Persistence`, because `DOD-1.3`'s export → wipe → restore has to name the
+backup reader and writer and the real store in one test, and `Persistence` may
+not depend on a feature. The `Settings` library is unaffected; `import
+Persistence` from a source file there still does not resolve.
 Two constraints are load-bearing rather than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
