@@ -22,6 +22,13 @@ let settings: [SwiftSetting] = [
 // conformance suite, and a target that did not name it cannot import it. TR-0.1.2 is intact; what a
 // hand-rolled stub here would lose is the conformance suite that says the fake behaves like the
 // real store.
+//
+// AND `Persistence` IS NOW A SECOND TEST-ONLY EDGE, for `RepositoryFakes`' own reason stated in its
+// manifest: DOD-1.3's export → wipe → restore has to name both halves in one test — the backup
+// reader and writer, which are here, and the real SwiftData store and `TR-1.14`'s purge, which are
+// there. No other arrangement can host it, since `Persistence` may not depend on a feature. The edge
+// is on the test target alone, so the `Settings` library still links the six above and
+// `import Persistence` from a source file here still does not resolve.
 // G-3.4 (T-1.14) adds two lines and a fifth dependency to the shape above. `defaultLocalization`
 // plus `resources:` give the module its own catalogue at Sources/<Target>/Resources/en.lproj/, so
 // its copy resolves against `Bundle.module` rather than the app's; `Localization` carries the key
@@ -46,6 +53,7 @@ let package = Package(
         // the feature level, over RepositoryInterface alone.
         .package(path: "../../DerivedValues"),
         .package(path: "../../RepositoryFakes"),
+        .package(path: "../../Persistence"),
     ],
     targets: [
         .target(
@@ -63,7 +71,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SettingsTests",
-            dependencies: ["Settings", "RepositoryFakes", "DerivedValues"],
+            dependencies: ["Settings", "RepositoryFakes", "DerivedValues", "Persistence"],
             swiftSettings: settings
         ),
         // TR-1.12's references for this module's screens. A separate target from the one above for

@@ -7,7 +7,7 @@ import RepositoryInterface
 /// The rows a backup carries and the export does not, written through the real fakes.
 ///
 /// An extension of ``ExportLog`` rather than a fixture of its own: `FR-1.11.3`'s file is
-/// `FR-1.11.1`'s plus three tables, so a second store would make every test that compares the two
+/// `FR-1.11.1`'s plus seven tables, so a second store would make every test that compares the two
 /// compare two different logs.
 extension ExportLog {
     /// The backup over these fakes.
@@ -17,6 +17,7 @@ extension ExportLog {
             workouts: repositories.workouts,
             bodyweight: repositories.bodyweight,
             equipment: repositories.equipment,
+            routines: repositories.routines,
             settings: repositories.settings)
     }
 
@@ -75,16 +76,101 @@ extension ExportLog {
         return entry
     }
 
-    /// A store with something in every table a backup reads, and one deleted row in three of them.
+    /// Writes one routine with one slot and two target groups (`FR-15.2.1`).
+    ///
+    /// **Two groups rather than one**, because a single group is the shape a walk that read only the
+    /// first would still agree with.
+    ///
+    /// - Parameters:
+    ///   - name: What the lifter calls it.
+    ///   - exercise: What the one slot prescribes.
+    /// - Returns: The routine, its slot and its groups.
+    @discardableResult
+    func routine(named name: String, for exercise: Exercise) async throws -> WrittenRoutine {
+        let plan = Routine(
+            id: UUID(),
+            createdAt: Self.epoch,
+            updatedAt: Self.epoch,
+            deletedAt: nil,
+            name: name)
+        try await repositories.routines.save(plan)
+
+        let slot = RoutineExercise(
+            id: UUID(),
+            createdAt: Self.epoch,
+            updatedAt: Self.epoch,
+            deletedAt: nil,
+            routineID: plan.id,
+            exerciseID: exercise.id,
+            order: 0)
+        try await repositories.routines.save(slot)
+
+        // One fixed weight and one blank — `FR-15.2.2`'s two readings, which is also the only pair
+        // that proves an optional column survives the file in both of its states.
+        let groups = [
+            RoutineTargetGroup(
+                id: UUID(),
+                createdAt: Self.epoch,
+                updatedAt: Self.epoch,
+                deletedAt: nil,
+                routineExerciseID: slot.id,
+                order: 0,
+                targetWeight: Weight(grams: 100_000),
+                targetReps: 5,
+                targetSets: 3),
+            RoutineTargetGroup(
+                id: UUID(),
+                createdAt: Self.epoch,
+                updatedAt: Self.epoch,
+                deletedAt: nil,
+                routineExerciseID: slot.id,
+                order: 1,
+                targetWeight: nil,
+                targetReps: 8,
+                targetSets: 1),
+        ]
+        for group in groups { try await repositories.routines.save(group) }
+        return WrittenRoutine(routine: plan, slot: slot, targetGroups: groups)
+    }
+
+    /// Writes what a routine prescribed for one logged slot (`FR-15.2.4`).
+    ///
+    /// - Parameters:
+    ///   - entry: The slot it was planned for.
+    ///   - grams: The target load, or `nil` for a blank one.
+    ///   - order: Its position among that slot's groups.
+    /// - Returns: The record.
+    @discardableResult
+    func plannedTarget(
+        for entry: ExerciseEntry,
+        grams: Int? = 102_500,
+        order: Int = 0
+    ) async throws -> PlannedTargetGroup {
+        let group = PlannedTargetGroup(
+            id: UUID(),
+            createdAt: Self.epoch,
+            updatedAt: Self.epoch,
+            deletedAt: nil,
+            exerciseEntryID: entry.id,
+            order: order,
+            targetWeight: grams.map(Weight.init(grams:)),
+            targetReps: 5,
+            targetSets: 3)
+        try await repositories.workouts.save(group)
+        return group
+    }
+
+    /// A store with something in every table a backup reads, and one deleted row in four of them.
     ///
     /// **The deleted rows are made by the repositories' own delete calls, not by saving a record
     /// with a `deletedAt` on it.** Every save ignores that column (rule 7 of the mapping layer), so
     /// a fixture that set it by hand would produce a store with no soft-deleted rows in it and a
     /// suite that passed against a fiction.
     ///
+    /// - Parameter store: Which store to write into, defaulting to a fresh set of fakes.
     /// - Returns: The populated fixture.
-    static func wholeStore() async throws -> ExportLog {
-        let log = try await ExportLog.populated()
+    static func wholeStore(_ store: ExportLog = ExportLog()) async throws -> ExportLog {
+        let log = try await ExportLog.populated(store)
         let bench = try await log.exercise(named: "Bench Press")
         try await log.trainingMax(for: bench, percentage: 0.9, daysAgo: 30)
         try await log.trainingMax(for: bench, percentage: 0.95)
@@ -105,6 +191,36 @@ extension ExportLog {
         let removed = try await log.entry(bench, in: kept)
         _ = try await log.set(in: removed, order: 0, grams: 80_000, reps: 5)
         try await log.repositories.workouts.deleteExerciseEntry(id: removed.id)
+
+        // FR-15.2: a routine the lifter trains from, and one they archived. Archiving is the
+        // repository's soft delete cascading to the slot and its groups (`FR-15.2.5`), so the
+        // second routine is what puts a deleted row in all three of those tables at once.
+        try await log.routine(named: "Heavy day", for: bench)
+        let archived = try await log.routine(named: "Last block", for: bench)
+        try await log.repositories.routines.deleteRoutine(id: archived.routine.id)
+
+        // FR-15.2.3/FR-15.2.4: a session started from a routine keeps what was prescribed beside
+        // what was logged. On a LIVE slot, so the plan and the sets are readable together — the
+        // deleted slot above already covers the other case.
+        let planned = try await log.session(daysAgo: 1)
+        let plannedEntry = try await log.entry(bench, in: planned)
+        _ = try await log.set(in: plannedEntry, order: 0, grams: 100_000, reps: 5)
+        try await log.plannedTarget(for: plannedEntry, grams: 102_500, order: 0)
+        try await log.plannedTarget(for: plannedEntry, grams: nil, order: 1)
         return log
     }
+}
+
+/// The three rows one fixture routine is — a type rather than a tuple, which is the lint rule's
+/// call and `FullBackup`'s own reason: three same-shaped values returned positionally are three a
+/// caller can silently transpose.
+struct WrittenRoutine {
+    /// The routine itself.
+    let routine: Routine
+
+    /// Its one exercise slot.
+    let slot: RoutineExercise
+
+    /// That slot's target groups.
+    let targetGroups: [RoutineTargetGroup]
 }

@@ -163,6 +163,7 @@ struct RestoreStateTests {
                 workouts: stack.workouts,
                 bodyweight: stack.bodyweight,
                 equipment: stack.equipment,
+                routines: stack.routines,
                 settings: stack.settings,
                 records: PersonalRecordRecomputer(
                     workouts: stack.workouts,
@@ -193,6 +194,7 @@ struct RestoreStateTests {
                 workouts: stack.workouts,
                 bodyweight: stack.bodyweight,
                 equipment: stack.equipment,
+                routines: stack.routines,
                 settings: stack.settings,
                 records: PersonalRecordRecomputer(
                     workouts: stack.workouts,

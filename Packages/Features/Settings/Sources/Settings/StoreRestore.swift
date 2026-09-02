@@ -94,14 +94,21 @@ struct StoreRestore {
     /// The catalogue, and each exercise's training-max history.
     let exercises: any ExerciseRepository
 
-    /// Sessions, entries and sets.
-    let workouts: any WorkoutRepository
+    /// Sessions, entries, sets — and what a routine planned for those slots (`FR-15.2.4`).
+    ///
+    /// One property answering two protocols, for ``FullBackup``'s reason read backwards: a planned
+    /// target's save checks that the exercise entry it names is there, so the two writes have to be
+    /// against one store.
+    let workouts: any WorkoutRepository & PlannedTargetRepository
 
     /// The bodyweight log.
     let bodyweight: any BodyweightRepository
 
     /// The gyms.
     let equipment: any EquipmentRepository
+
+    /// The routines, their slots and their target groups (`FR-15.2`).
+    let routines: any RoutineRepository
 
     /// The preferences row.
     let settings: any SettingsRepository
@@ -159,8 +166,14 @@ struct StoreRestore {
     ///
     /// **The order is the store's referential rule and not a preference**: a save checks that the
     /// rows its foreign keys name are already there, so the catalogue precedes the training maxes
-    /// and the slots, a session precedes its slots, and a slot precedes its sets. Getting it wrong
-    /// does not corrupt anything — it fails the save.
+    /// and the slots, a session precedes its slots, and a slot precedes its sets and the targets a
+    /// routine planned for it. Getting it wrong does not corrupt anything — it fails the save.
+    ///
+    /// **The routine tables are three more levels of the same rule** (`FR-15.2`): a routine precedes
+    /// its slots, a slot precedes its target groups, and the catalogue precedes all three because a
+    /// routine's slot names an exercise. They are written after the catalogue and before the log for
+    /// no referential reason — nothing in the log names a routine — but reading the loops in
+    /// dependency order is what makes the rule above checkable by eye.
     ///
     /// **A failed write stops the restore where it is, and the rows already written stay.** There is
     /// no transaction across five repositories, so the honest thing is to say so on the screen; what
@@ -179,17 +192,45 @@ struct StoreRestore {
     /// - Throws: Whatever a repository throws.
     @discardableResult
     func restore(_ archive: TrainingLogArchive) async throws -> BackupSummary {
-        for exercise in archive.exercises { try await exercises.save(exercise) }
-        for entry in archive.trainingMaxes { try await exercises.saveTrainingMax(entry) }
-        for profile in archive.equipment { try await equipment.save(profile) }
-        for entry in archive.bodyweight { try await bodyweight.save(entry) }
-        for session in archive.sessions { try await workouts.save(session) }
-        for entry in archive.entries { try await workouts.save(entry) }
-        for set in archive.sets { try await workouts.save(set) }
+        try await restoreCatalogue(archive)
+        try await restoreRoutines(archive)
+        try await restoreLog(archive)
         if let restored = archive.settings { try await settings.save(restored) }
 
         for session in archive.sessions { await records.sessionDidChange(id: session.id) }
         return BackupSummary(archive)
+    }
+
+    /// Writes what the log's rows refer to: the catalogue, its training maxes, and the gyms.
+    ///
+    /// - Parameter archive: The file.
+    /// - Throws: Whatever a repository throws.
+    private func restoreCatalogue(_ archive: TrainingLogArchive) async throws {
+        for exercise in archive.exercises { try await exercises.save(exercise) }
+        for entry in archive.trainingMaxes { try await exercises.saveTrainingMax(entry) }
+        for profile in archive.equipment { try await equipment.save(profile) }
+    }
+
+    /// Writes the three routine tables, parents first (`FR-15.2`).
+    ///
+    /// - Parameter archive: The file.
+    /// - Throws: Whatever the routine repository throws.
+    private func restoreRoutines(_ archive: TrainingLogArchive) async throws {
+        for routine in archive.routines { try await routines.save(routine) }
+        for slot in archive.routineExercises { try await routines.save(slot) }
+        for group in archive.routineTargetGroups { try await routines.save(group) }
+    }
+
+    /// Writes what the lifter logged, and what a routine had planned for it.
+    ///
+    /// - Parameter archive: The file.
+    /// - Throws: Whatever a repository throws.
+    private func restoreLog(_ archive: TrainingLogArchive) async throws {
+        for entry in archive.bodyweight { try await bodyweight.save(entry) }
+        for session in archive.sessions { try await workouts.save(session) }
+        for entry in archive.entries { try await workouts.save(entry) }
+        for set in archive.sets { try await workouts.save(set) }
+        for group in archive.plannedTargets { try await workouts.save(group) }
     }
 }
 

@@ -16,7 +16,7 @@ struct BackupArchiveTests {
     /// The stamp the export's suite uses, so the two files' bytes are comparable.
     static let stamp = TrainingLogArchiveTests.stamp
 
-    /// The same archive as ``TrainingLogArchiveTests/awkwardArchive()``, plus the three sections only a backup carries.
+    /// The same archive as ``TrainingLogArchiveTests/awkwardArchive()``, plus the seven sections only a backup carries.
     ///
     /// - Returns: The backup.
     static func awkwardBackup() -> TrainingLogArchive {
@@ -30,7 +30,68 @@ struct BackupArchiveTests {
             bodyweight: log.bodyweight,
             equipment: [awkwardProfile()],
             trainingMaxes: [awkwardTrainingMax(log.exercises[0].id)],
+            routines: [awkwardRoutine()],
+            routineExercises: [awkwardRoutineExercise(log.exercises[0].id)],
+            routineTargetGroups: [awkwardTargetGroup()],
+            plannedTargets: [awkwardPlannedTarget(log.entries[0].id)],
             settings: awkwardSettings())
+    }
+
+    /// A routine the lifter archived — `FR-15.2.5`'s soft delete, which is the state the export
+    /// never carries and a restore is documented not to give back.
+    private static func awkwardRoutine() -> Routine {
+        Routine(
+            id: ExportRecords.id(0xAA),
+            createdAt: stamp,
+            updatedAt: stamp,
+            deletedAt: stamp,
+            name: "\"heavy\" day")
+    }
+
+    /// The archived routine's one slot, soft-deleted with it.
+    ///
+    /// - Parameter exerciseID: What the slot prescribes.
+    private static func awkwardRoutineExercise(_ exerciseID: UUID) -> RoutineExercise {
+        RoutineExercise(
+            id: ExportRecords.id(0xAB),
+            createdAt: stamp,
+            updatedAt: stamp,
+            deletedAt: stamp,
+            routineID: ExportRecords.id(0xAA),
+            exerciseID: exerciseID,
+            order: 2)
+    }
+
+    /// A target group with no weight at all — `FR-15.2.2`'s blank target, and the one shape that
+    /// proves an omitted optional is read back as absent rather than as zero.
+    private static func awkwardTargetGroup() -> RoutineTargetGroup {
+        RoutineTargetGroup(
+            id: ExportRecords.id(0xAC),
+            createdAt: stamp,
+            updatedAt: stamp,
+            deletedAt: stamp,
+            routineExerciseID: ExportRecords.id(0xAB),
+            order: 0,
+            targetWeight: nil,
+            targetReps: 8,
+            targetSets: 3)
+    }
+
+    /// What a routine planned for a logged slot, at a negative load — assisted work, which `Weight`
+    /// is signed for.
+    ///
+    /// - Parameter entryID: The slot it was planned for.
+    private static func awkwardPlannedTarget(_ entryID: UUID) -> PlannedTargetGroup {
+        PlannedTargetGroup(
+            id: ExportRecords.id(0xAD),
+            createdAt: stamp,
+            updatedAt: stamp,
+            deletedAt: nil,
+            exerciseEntryID: entryID,
+            order: 1,
+            targetWeight: Weight(grams: -15_000),
+            targetReps: 6,
+            targetSets: 4)
     }
 
     /// A gym whose two plate lists disagree in length — a row the projection refuses and the wire
@@ -87,13 +148,16 @@ struct BackupArchiveTests {
             dashboardExerciseIDs: [ExportRecords.id(0x11)])
     }
 
-    @Test("A backup round-trips its three extra sections too")
+    @Test("A backup round-trips its seven extra sections too")
     func backupRoundTripsLosslessly() throws {
         let backup = Self.awkwardBackup()
         let restored = try TrainingLogArchive.decoded(from: backup.encoded())
         #expect(restored.equipment.first?.deletedAt == Self.stamp)
         #expect(restored.settings?.displayUnit == .pounds)
         #expect(restored.trainingMaxes.first?.progressionIncrement == Weight(grams: -5_000))
+        #expect(restored.routines.first?.deletedAt == Self.stamp)
+        #expect(restored.routineTargetGroups.first?.targetWeight == nil)
+        #expect(restored.plannedTargets.first?.targetWeight == Weight(grams: -15_000))
         #expect(restored == backup)
     }
 
@@ -107,13 +171,14 @@ struct BackupArchiveTests {
         #expect(json.contains("\"contents\" : \"fullBackup\""))
     }
 
-    @Test("A backup writes the three extra keys and an export writes none of them")
+    @Test("A backup writes the seven extra keys and an export writes none of them")
     func onlyABackupCarriesTheConfiguration() throws {
         let backup = try #require(String(data: Self.awkwardBackup().encoded(), encoding: .utf8))
         #expect(
             TrainingLogArchiveTests.envelopeKeys(of: backup) == [
                 "bodyweight", "contents", "entries", "equipment", "exercises", "exportedAt",
-                "formatVersion", "sessions", "sets", "settings", "trainingMaxes",
+                "formatVersion", "plannedTargets", "routineExercises", "routineTargetGroups",
+                "routines", "sessions", "sets", "settings", "trainingMaxes",
             ])
         let export = try #require(String(data: TrainingLogArchiveTests.awkwardArchive().encoded(), encoding: .utf8))
         // An empty section is omitted rather than written as `[]`, so an export's bytes are what
@@ -121,6 +186,8 @@ struct BackupArchiveTests {
         #expect(!TrainingLogArchiveTests.envelopeKeys(of: export).contains("equipment"))
         #expect(!TrainingLogArchiveTests.envelopeKeys(of: export).contains("settings"))
         #expect(!TrainingLogArchiveTests.envelopeKeys(of: export).contains("trainingMaxes"))
+        #expect(!TrainingLogArchiveTests.envelopeKeys(of: export).contains("routines"))
+        #expect(!TrainingLogArchiveTests.envelopeKeys(of: export).contains("plannedTargets"))
     }
 
     @Test("A file written before any of this still decodes, as the export it was")
@@ -144,6 +211,8 @@ struct BackupArchiveTests {
         #expect(restored.contents == .trainingLog)
         #expect(restored.equipment.isEmpty)
         #expect(restored.trainingMaxes.isEmpty)
+        #expect(restored.routines.isEmpty)
+        #expect(restored.plannedTargets.isEmpty)
         #expect(restored.settings == nil)
     }
 

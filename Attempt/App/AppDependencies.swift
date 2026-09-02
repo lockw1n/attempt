@@ -31,8 +31,15 @@ struct AppDependencies {
         /// The exercise catalogue (`FR-1.1`).
         let exercises: any ExerciseRepository
 
-        /// Sessions, the exercises in them and their sets (`FR-1.2`).
-        let workouts: any WorkoutRepository
+        /// Sessions, the exercises in them, their sets (`FR-1.2`) — and what a routine planned for
+        /// those slots (`FR-15.2.4`).
+        ///
+        /// **One property answering two protocols**, which is `PersistenceStack`'s own reason
+        /// carried up: a planned target hangs off an exercise entry, so a screen handed the two
+        /// separately could be handed two stores. `FR-1.11.3`'s backup is the first caller that
+        /// needs both, and a widened existential still satisfies every screen that wants only the
+        /// first.
+        let workouts: any WorkoutRepository & PlannedTargetRepository
 
         /// The bodyweight log — readings on days with no training on them too (`FR-1.8`).
         let bodyweight: any BodyweightRepository

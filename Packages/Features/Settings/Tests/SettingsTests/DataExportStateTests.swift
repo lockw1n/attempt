@@ -274,7 +274,7 @@ private actor FailsOnceThenReads: WorkoutRepository {
 ///
 /// Internal rather than private because ``BackupStateTests`` gates the same read to prove the same
 /// guard: both screens walk the store behind a `.task` that re-runs on every appearance.
-actor GatedWorkoutReads: WorkoutRepository {
+actor GatedWorkoutReads: WorkoutRepository, PlannedTargetRepository {
     /// How many session reads have begun.
     private(set) var reads = 0
 
@@ -335,6 +335,11 @@ actor GatedWorkoutReads: WorkoutRepository {
     func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
         []
     }
+    func plannedTargets(
+        forEntryID entryID: UUID,
+        includingDeleted: Bool
+    ) async throws -> [PlannedTargetGroup] { [] }
+    func save(_ group: PlannedTargetGroup) async throws {}
 }
 
 /// A settings repository whose read throws.
