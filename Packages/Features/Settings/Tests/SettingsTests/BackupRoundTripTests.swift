@@ -106,22 +106,63 @@ struct BackupRoundTripTests {
 
     // MARK: - What the wipe has to leave alone
 
-    @Test func mintingTheSettingsRowBeforeTheRestoreRefusesIt() async throws {
-        // The ordering constraint a wipe-then-restore flow has to keep, measured rather than
-        // assumed. `TR-1.10`'s find-or-create mints a NEW `userID` the first time anything reads
-        // settings, and `SettingsRepository.save` refuses a record carrying a different one — so a
-        // read between the wipe and the restore makes the restore fail on its last write, after
-        // every other row has landed.
+    @Test func restoringOntoAMintedIdentityKeepsItAndTakesThePreferences() async throws {
+        // FR-1.11.3's clean install, over the real store and through the file — and the case the
+        // round trip above cannot see. `TR-1.10`'s find-or-create mints a `userID` the first time
+        // anything reads settings, and the shipping app reads settings at every launch, so by the
+        // time a lifter can reach the restore screen there is ALWAYS an identity in force and the
+        // file's is always foreign. This threw before T-1.69, on the last of twelve writes, with
+        // every other table already landed and a screen saying to run the same file again.
         let stack = try PersistenceStack(location: .inMemory)
-        _ = try await ExportLog.populated(ExportLog(stack))
+        let fixture = try await ExportLog.wholeStore(ExportLog(stack))
+        try await Self.configureEveryPreference(of: stack)
+        _ = fixture
+
         let before = try await Self.backup(over: stack).archive(takenAt: ExportLog.epoch)
+        let file = try before.encoded()
+        let fromAnotherDevice = try #require(before.settings)
 
         try await stack.purge(.everything)
-        _ = try await stack.settings.settings()
+        // The launch, which is the whole point of the fixture: this is what makes the file foreign.
+        let minted = try await stack.settings.settings()
+        #expect(minted.userID != fromAnotherDevice.userID)
 
-        await #expect(throws: RepositoryError.self) {
-            try await Self.restore(into: stack).restore(before)
-        }
+        try await Self.restore(into: stack).restore(StoreRestore.archive(from: file))
+
+        let after = try await Self.backup(over: stack).archive(takenAt: ExportLog.epoch)
+        let restored = try #require(after.settings)
+        // The rule, asserted from both directions rather than left as whatever landed.
+        #expect(restored.userID == minted.userID)
+        #expect(restored.userID != fromAnotherDevice.userID)
+        #expect(restored.id == minted.id)
+        #expect(restored.createdAt == minted.createdAt)
+
+        // …and every other table is whole, which is the half the refusal used to leave written but
+        // reported as a failure.
+        try Self.expectSameRows(before, after, settingsIdentityMoved: true)
+    }
+
+    /// Moves every preference off the value a first-launch row holds, so a restore that wrote
+    /// nothing is visible in each column rather than in one.
+    ///
+    /// **The dashboard selection names an exercise that is in the fixture**, which is the one
+    /// preference whose value is a join key; the rest are scalars and any distinct value does.
+    ///
+    /// - Parameter stack: The store to configure.
+    /// - Throws: Whatever the repository throws.
+    static func configureEveryPreference(of stack: PersistenceStack) async throws {
+        let tiled = try #require(try await stack.exercises.exercises(includingDeleted: false).first)
+        var configured = try await stack.settings.settings()
+        configured.displayUnit = .pounds
+        configured.displayPrecision = DisplayPrecision(milliUnits: 100)
+        configured.e1RMFormula = .brzycki
+        configured.e1RMLookbackDays = 30
+        configured.theme = .light
+        configured.keepScreenAwake = false
+        configured.defaultRoundingIncrement = Weight(grams: 1134)
+        configured.defaultRoundingStrategy = .down
+        configured.dashboardExerciseIDs = [tiled.id]
+        try await stack.settings.save(configured)
     }
 
     // MARK: - Subjects
@@ -195,7 +236,11 @@ struct BackupRoundTripTests {
     ///   - before: The archive taken before the wipe.
     ///   - after: The archive taken after the restore.
     /// - Throws: A `DecodingError` if a record will not re-encode.
-    static func expectSameRows(_ before: TrainingLogArchive, _ after: TrainingLogArchive) throws {
+    static func expectSameRows(
+        _ before: TrainingLogArchive,
+        _ after: TrainingLogArchive,
+        settingsIdentityMoved: Bool = false
+    ) throws {
         var compared: Set<String> = []
         try expectSameRows(before.exercises, after.exercises, "exercises", &compared)
         try expectSameRows(before.sessions, after.sessions, "sessions", &compared)
@@ -210,11 +255,16 @@ struct BackupRoundTripTests {
         try expectSameRows(
             before.routineTargetGroups, after.routineTargetGroups, "routineTargetGroups", &compared)
         try expectSameRows(before.plannedTargets, after.plannedTargets, "plannedTargets", &compared)
-        try expectSameRows(
-            before.settings.map { [$0] } ?? [],
-            after.settings.map { [$0] } ?? [],
-            "settings",
-            &compared)
+        if settingsIdentityMoved {
+            compared.insert("settings")
+            try expectSamePreferences(before.settings, after.settings)
+        } else {
+            try expectSameRows(
+                before.settings.map { [$0] } ?? [],
+                after.settings.map { [$0] } ?? [],
+                "settings",
+                &compared)
+        }
         try expectEverySectionCompared(before, compared)
     }
 
@@ -267,6 +317,36 @@ struct BackupRoundTripTests {
             #expect(match != nil, "\(section) lost \(row.id)")
             #expect(match == (try fields(of: row)), "\(section) row \(row.id)")
         }
+    }
+
+    /// Fails unless every preference the file carried is on the device, identity aside.
+    ///
+    /// **The same generic diff as every other section, three keys shorter.** A restore onto an
+    /// identity that is already in force writes preferences and not identity (`TR-1.10`), so `id`,
+    /// `userID` and `createdAt` are the row that was already there — and everything else has to be
+    /// the file's, including a column this record gains later.
+    ///
+    /// - Parameters:
+    ///   - before: The settings row the file carries.
+    ///   - after: The row on the device after the restore.
+    /// - Throws: A `DecodingError` if either will not re-encode.
+    static func expectSamePreferences(_ before: UserSettings?, _ after: UserSettings?) throws {
+        let file = try #require(before, "the file carries no settings row, so this asserts nothing")
+        let device = try #require(after, "the device has no settings row after a restore")
+        #expect(
+            try preferenceFields(of: file) == preferenceFields(of: device),
+            "a preference the file carried is not on the device")
+    }
+
+    /// One settings row's wire fields, less the three that belong to the identity in force.
+    ///
+    /// - Parameter settings: The row.
+    /// - Returns: Its preferences, keyed as the file keys them.
+    /// - Throws: A `DecodingError` if the encoded row is not a JSON object.
+    static func preferenceFields(of settings: UserSettings) throws -> NSDictionary {
+        let object = NSMutableDictionary(dictionary: try fields(of: settings))
+        for key in ["id", "userID", "createdAt"] { object.removeObject(forKey: key) }
+        return NSDictionary(dictionary: object)
     }
 
     /// One row's wire fields, less the two columns a restore is documented not to reproduce.

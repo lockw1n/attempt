@@ -212,6 +212,8 @@
         }
 
         func save(_ settings: UserSettings) async throws {}
+
+        func restorePreferences(from backup: UserSettings) async throws {}
     }
 
     /// A routine store nothing in these references reads or writes — the editor opens on

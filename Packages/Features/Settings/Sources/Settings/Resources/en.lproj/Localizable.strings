@@ -297,7 +297,7 @@
 /* Not a refusal: rows are already written. The retry is honest because every write is keyed on the
    record's own identifier, so the same file run twice lands the same store. */
 "settings.restore.error.headline" = "The restore did not finish";
-"settings.restore.error.message" = "Part of the file is already on this device. Running the same file again is safe — it finishes the job.";
+"settings.restore.error.message" = "Part of the file is already on this device. Running the same file again is safe: nothing is written twice, though it may stop in the same place.";
 "settings.restore.error.retry" = "Try again";
 
 /* FR-1.12.1-FR-1.12.3. The screen's copy. "iCloud" rather than "the cloud" throughout: the private

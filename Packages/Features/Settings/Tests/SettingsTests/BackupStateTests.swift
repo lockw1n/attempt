@@ -191,4 +191,5 @@ private struct FailingSettingsRead: SettingsRepository {
         throw RepositoryError.recordNotFound(id: UUID())
     }
     func save(_ settings: UserSettings) async throws {}
+    func restorePreferences(from backup: UserSettings) async throws {}
 }

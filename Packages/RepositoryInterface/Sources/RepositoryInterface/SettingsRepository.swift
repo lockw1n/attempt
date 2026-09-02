@@ -28,4 +28,23 @@ public protocol SettingsRepository: Sendable {
     /// - Throws: ``RepositoryError/identityAlreadyEstablished(recordID:)`` if
     ///   ``UserSettings/userID`` differs from the stored one.
     func save(_ settings: UserSettings) async throws
+
+    /// Writes a backup's preferences onto the row already in force (`FR-1.11.3`).
+    ///
+    /// **The identity in force wins, and the file's is honoured only where there is none.** That is
+    /// `TR-1.10` read exactly — the id is minted once and never *re*written — and it is the only
+    /// reading under which both requirements hold. A backup taken on one device and restored onto
+    /// another arrives after that device has already bootstrapped, so there is always an identity in
+    /// force by the time a restore is reachable at all; adopting the file's would hand `FR-5.1.2`
+    /// two devices claiming one identity, and refusing would fail the restore's last write with
+    /// every other table already landed. What the lifter gets back is what they can name — unit,
+    /// precision, formula, lookback, rounding, theme, keep-awake, dashboard picks — and the rows
+    /// those preferences describe stay claimed under this device's id, which is where they are.
+    ///
+    /// **A separate member rather than a flag on ``save(_:)``**, because the two are different acts.
+    /// An arbitrary caller carrying a foreign id is a stale or hand-assembled record and is still
+    /// refused; widening `save(_:)` would retire that invariant instead of qualifying it.
+    ///
+    /// - Parameter backup: The settings row a backup file carries.
+    func restorePreferences(from backup: UserSettings) async throws
 }

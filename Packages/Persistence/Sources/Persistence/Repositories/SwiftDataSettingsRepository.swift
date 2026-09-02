@@ -71,8 +71,8 @@ actor SwiftDataSettingsRepository: SettingsRepository {
     /// disagreeing about `userID` is a store this layer cannot repair, and checking them all would
     /// make it a store where preferences can no longer be saved either.
     ///
-    /// A save into an empty store inserts, honouring the record's `userID` — that is `FR-1.11.3`'s
-    /// restore, which is the one caller with an identity to reinstate rather than to mint.
+    /// A save into an empty store inserts, honouring the record's `userID` — nothing is in force,
+    /// so writing the record's is the mint rather than a rewrite.
     ///
     /// **This is the one save that does not key on the record's `id`**, and it is the only save
     /// whose row is a singleton. `ModelContext.upsert(_:as:)` would insert a second settings row
@@ -81,8 +81,30 @@ actor SwiftDataSettingsRepository: SettingsRepository {
     /// method above. Writing the existing rows instead keeps their own ids, and `update(from:)`
     /// does not touch `id` or `userID`, so neither identity moves.
     func save(_ settings: UserSettings) throws {
-        // The same lock, because this method also inserts when the store is empty — a restore
-        // racing a first launch forks the identity exactly as two bootstraps would.
+        try write(settings, refusingAForeignIdentity: true)
+    }
+
+    /// Writes a backup's preferences onto the row in force. See the protocol for the rule.
+    ///
+    /// **The refusal is the only thing this drops**, which is what makes the two the same write
+    /// with one clause between them rather than two writers that could drift: `update(from:)`
+    /// declines to touch `id` or `userID` whichever way it was reached, so the identity cannot move
+    /// down this path either.
+    func restorePreferences(from backup: UserSettings) throws {
+        try write(backup, refusingAForeignIdentity: false)
+    }
+
+    /// The settings row's one write, with or without the identity guard.
+    ///
+    /// - Parameters:
+    ///   - settings: The record to write.
+    ///   - refusingAForeignIdentity: Whether a record naming a different `userID` is refused —
+    ///     `true` for ``save(_:)``, `false` for ``restorePreferences(from:)``.
+    /// - Throws: ``RepositoryInterface/RepositoryError/identityAlreadyEstablished(recordID:)``, or
+    ///   whatever the store throws.
+    private func write(_ settings: UserSettings, refusingAForeignIdentity: Bool) throws {
+        // The bootstrap's lock, because this method also inserts when the store is empty — a
+        // restore racing a first launch forks the identity exactly as two bootstraps would.
         settingsBootstrapLock.lock()
         defer { settingsBootstrapLock.unlock() }
 
@@ -92,7 +114,7 @@ actor SwiftDataSettingsRepository: SettingsRepository {
             try modelContext.saveStamped()
             return
         }
-        guard inForce.userID == settings.userID else {
+        if refusingAForeignIdentity, inForce.userID != settings.userID {
             throw RepositoryError.identityAlreadyEstablished(recordID: settings.id)
         }
 

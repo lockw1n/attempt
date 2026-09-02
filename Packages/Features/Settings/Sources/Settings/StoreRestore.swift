@@ -110,7 +110,7 @@ struct StoreRestore {
     /// The routines, their slots and their target groups (`FR-15.2`).
     let routines: any RoutineRepository
 
-    /// The preferences row.
+    /// The preferences row — written through the restore's own entry point, not through a save.
     let settings: any SettingsRepository
 
     /// The app's one recompute actor, told that every restored session's sets are new to it.
@@ -177,8 +177,13 @@ struct StoreRestore {
     ///
     /// **A failed write stops the restore where it is, and the rows already written stay.** There is
     /// no transaction across six repositories, so the honest thing is to say so on the screen; what
-    /// makes that recoverable is that every write here is an id-keyed upsert, so running the same
-    /// file again is safe and finishes the job.
+    /// makes running the same file again *safe* is that every write here is an id-keyed upsert.
+    /// **Safe is all it is, and the screen copy says only that** — a write that refused once refuses
+    /// again, so a retry finishes the job only where the failure was transient. `FR-1.11.3` cost one
+    /// of those the other reading: the settings row is written last and used to refuse a file from
+    /// another device on identity grounds, forever, with all eleven other tables already landed —
+    /// which is why the last write is now ``RepositoryInterface/SettingsRepository/restorePreferences(from:)``
+    /// rather than a save.
     ///
     /// **`TR-0.3.9`'s cached records are not in the file and are recomputed afterwards** (`G-1.4`).
     /// Left out, every personal-record badge and estimated-max tile would read whatever the device
@@ -195,7 +200,9 @@ struct StoreRestore {
         try await restoreCatalogue(archive)
         try await restoreRoutines(archive)
         try await restoreLog(archive)
-        if let restored = archive.settings { try await settings.save(restored) }
+        if let restored = archive.settings {
+            try await settings.restorePreferences(from: restored)
+        }
 
         for session in archive.sessions { await records.sessionDidChange(id: session.id) }
         return BackupSummary(archive)
