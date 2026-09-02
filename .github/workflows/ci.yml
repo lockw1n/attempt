@@ -367,3 +367,14 @@ jobs:
 
       - name: Verify the CloudKit gate fires
         run: ./scripts/check-cloudkit.sh --self-test
+
+      # G-5.1, and the fact-checker for two sentences the About screen ships inside the binary
+      # (G-5.3). Every dependency here is a local path package, so no third party can be told
+      # anything — a property that holds by construction and decays with one `.package(url:` in a
+      # diff about something else. Beside the CloudKit gate because it is the same shape: a
+      # capability that is off today and would turn itself on quietly.
+      - name: Check no third-party code is in the tree
+        run: ./scripts/check-no-third-party.sh
+
+      - name: Verify the third-party gate fires
+        run: ./scripts/check-no-third-party.sh --self-test

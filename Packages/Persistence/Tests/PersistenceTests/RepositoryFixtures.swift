@@ -23,8 +23,12 @@ struct RepositoryHarness {
     let container: ModelContainer
     let stack: PersistenceStack
 
-    init() throws {
-        container = try makeModelContainer(at: .inMemory)
+    /// Opens a store the way the app opens one, through `Persistence`'s own container factory.
+    ///
+    /// - Parameter location: Where the store lives. In memory unless a test needs a store that
+    ///   survives the container that made it — see ``FirstLaunchIdentityTests``.
+    init(at location: StoreLocation = .inMemory) throws {
+        container = try makeModelContainer(at: location)
         stack = PersistenceStack(container: container)
     }
 

@@ -36,23 +36,34 @@ func makeMigratedContext(
     return ModelContext(container)
 }
 
-/// A store URL nothing else uses, and its cleanup — the store plus SQLite's `-shm` and `-wal`.
+/// A store URL nothing else uses. The caller deletes it with ``removeStore(at:)``.
+///
+/// Split from ``withTemporaryStore(_:)`` so a test with an `async` body can hold the same URL
+/// across two containers without a second copy of the cleanup below.
+func makeTemporaryStoreURL() -> URL {
+    FileManager.default.temporaryDirectory
+        .appending(path: "T034-\(UUID().uuidString)")
+        .appendingPathExtension("store")
+}
+
+/// Deletes a store file and SQLite's `-shm` and `-wal` siblings.
 ///
 /// **`path(percentEncoded: false)`, not `path()`.** `path()` percent-encodes and
 /// `URL(fileURLWithPath:)` takes its argument literally, so under a `TMPDIR` containing a space the
 /// round trip yields `/tmp/dir%20with%20space/…` and every removal silently misses — silently,
 /// because the failure is swallowed. macOS's own temp path has no such character, which is exactly
 /// why this would never have been noticed here.
-func withTemporaryStore(_ body: (URL) throws -> Void) throws {
-    let url = FileManager.default.temporaryDirectory
-        .appending(path: "T034-\(UUID().uuidString)")
-        .appendingPathExtension("store")
-    defer {
-        for suffix in ["", "-shm", "-wal"] {
-            let path = url.path(percentEncoded: false) + suffix
-            try? FileManager.default.removeItem(at: URL(fileURLWithPath: path))
-        }
+func removeStore(at url: URL) {
+    for suffix in ["", "-shm", "-wal"] {
+        let path = url.path(percentEncoded: false) + suffix
+        try? FileManager.default.removeItem(at: URL(fileURLWithPath: path))
     }
+}
+
+/// A store URL nothing else uses, and its cleanup.
+func withTemporaryStore(_ body: (URL) throws -> Void) throws {
+    let url = makeTemporaryStoreURL()
+    defer { removeStore(at: url) }
     try body(url)
 }
 
