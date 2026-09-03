@@ -161,6 +161,7 @@
                         exercises: Fixtures.exercises,
                         expansion: .constant([:]),
                         warmupExpansion: .constant([:]),
+                        groupExpansion: .constant([]),
                         move: { _, _ in },
                         unit: .kilograms,
                         previous: Fixtures.previousPerformances,

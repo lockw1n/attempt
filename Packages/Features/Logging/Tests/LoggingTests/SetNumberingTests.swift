@@ -163,6 +163,68 @@ struct SetNumberingTests {
     }
 }
 
+/// `FR-16.1.1`'s groups carrying `FR-1.2.14`'s numbers.
+@Suite("Numbered set groups")
+struct NumberedSetGroupTests {
+    @Test("A group is numbered by its first set and its last")
+    func aGroupSpansARange() {
+        let sets = (0..<4).map { _ in SetEntry.numbering(isWarmup: false, reps: 6) }
+        let groups = SetNumbering.grouped(SetNumbering.numbered(sets))
+
+        #expect(groups.count == 1)
+        #expect(groups[0].numbers == 1...4)
+        #expect(groups[0].count == 4)
+        #expect(!groups[0].isSingle)
+    }
+
+    @Test("A group of one spans one number")
+    func aLoneSetIsItsOwnRange() {
+        let groups = SetNumbering.grouped(
+            SetNumbering.numbered([SetEntry.numbering(isWarmup: false, reps: 6)]))
+
+        #expect(groups[0].numbers == 1...1)
+        #expect(groups[0].isSingle)
+    }
+
+    @Test("Every number survives the grouping, in order")
+    func theNumbersAreNeitherLostNorReordered() {
+        // Grouping is a partition of the numbered list, so the members read back as `1, 2, 3, 4, 5`
+        // however the runs fall — which is what makes the badge a range rather than a fifth number.
+        let sets = [
+            SetEntry.numbering(isWarmup: false, reps: 6),
+            SetEntry.numbering(isWarmup: false, reps: 6),
+            SetEntry.numbering(isWarmup: false, reps: 3),
+            SetEntry.numbering(isWarmup: false, reps: 6),
+            SetEntry.numbering(isWarmup: false, reps: 6),
+        ]
+
+        let groups = SetNumbering.grouped(SetNumbering.numbered(sets))
+
+        #expect(groups.map(\.count) == [2, 1, 2])
+        #expect(groups.flatMap { $0.members.map(\.number) } == [1, 2, 3, 4, 5])
+        #expect(groups.map(\.numbers) == [1...2, 3...3, 4...5])
+    }
+
+    @Test("A warmup group is numbered in the warmups' own sequence")
+    func warmupsKeepTheirOwnRange() {
+        // The card partitions before it groups, so a warmup group's range is `W1–2` and the working
+        // group beside it still starts at 1.
+        let numbered = SetNumbering.numbered([
+            SetEntry.numbering(isWarmup: true, reps: 5),
+            SetEntry.numbering(isWarmup: true, reps: 5),
+            SetEntry.numbering(isWarmup: false, reps: 6),
+            SetEntry.numbering(isWarmup: false, reps: 6),
+        ])
+
+        let warmups = SetNumbering.grouped(numbered.filter(\.isWarmup))
+        let working = SetNumbering.grouped(numbered.filter { !$0.isWarmup })
+
+        #expect(warmups.map(\.numbers) == [1...2])
+        #expect(warmups.map(\.isWarmup) == [true])
+        #expect(working.map(\.numbers) == [1...2])
+    }
+}
+
 extension SetEntry {
     /// A set with every field fixed but the three these tests vary.
     ///

@@ -127,5 +127,28 @@
 			<string>%lld підходу</string>
 		</dict>
 	</dict>
+	<!-- Ukrainian's four categories, on the file's own note above. The count stands alone here
+	     rather than after a preposition, so the noun takes the nominative plural at «few» and the
+	     genitive at «many». -->
+	<key>logging.session.set.group.count %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@sets@</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld підхід</string>
+			<key>few</key>
+			<string>%lld підходи</string>
+			<key>many</key>
+			<string>%lld підходів</string>
+			<key>other</key>
+			<string>%lld підходу</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

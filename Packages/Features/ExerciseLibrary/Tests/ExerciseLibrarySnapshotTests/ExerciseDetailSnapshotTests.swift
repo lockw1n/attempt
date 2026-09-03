@@ -81,6 +81,18 @@
             }
         }
 
+        @Test func historyGroups() throws {
+            // `FR-16.1.1` on this section: a run of identical sets is one line with the count after
+            // it, and the set that broke the run is a line of its own. Its own reference rather than
+            // a wider fixture above, because that one exists to put the four row *variants* side by
+            // side and a run in it would picture two things at once.
+            try assertSnapshots(named: "ExerciseDetail-history-groups") {
+                ExerciseHistoryGroupView(group: DetailFixtures.groupedDay, unit: .kilograms)
+                    .environment(\.locale, DetailFixtures.locale)
+                    .environment(\.timeZone, .gmt)
+            }
+        }
+
         @Test func personalRecords() throws {
             // FR-1.6.2's list, at the shape the section draws when the disclosure is closed and again
             // when it is open. Rendered as rows rather than as `ExerciseRecordsSection`, on the
@@ -312,6 +324,21 @@
                 loggedSet(order: 1, kilos: 102.5, reps: 5, rpe: 8),
                 loggedSet(order: 2, kilos: 102.5, reps: 5),
                 loggedSet(order: 3, kilos: 102.5, reps: 3, rpe: 9.5, isCompleted: false),
+            ]
+        )
+
+        /// The same day performed as a run: a warmup, four identical working sets and a fifth a
+        /// rep short (`FR-16.1.1`).
+        static let groupedDay = ExerciseSessionHistory(
+            id: UUID(),
+            date: Date(timeIntervalSince1970: 1_700_000_000),
+            sets: [
+                loggedSet(order: 0, kilos: 60, reps: 5, isWarmup: true),
+                loggedSet(order: 1, kilos: 100, reps: 6, rpe: 8),
+                loggedSet(order: 2, kilos: 100, reps: 6, rpe: 8),
+                loggedSet(order: 3, kilos: 100, reps: 6, rpe: 8),
+                loggedSet(order: 4, kilos: 100, reps: 6, rpe: 8),
+                loggedSet(order: 5, kilos: 100, reps: 5, rpe: 9),
             ]
         )
 

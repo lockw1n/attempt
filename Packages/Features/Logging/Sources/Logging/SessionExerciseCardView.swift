@@ -34,6 +34,17 @@ struct SessionExerciseCard: View {
     /// Opens or closes it, independently of the card's own fold.
     let toggleWarmups: () -> Void
 
+    /// Which of this card's set groups the user has opened (`FR-16.1.3`), keyed on the group — which
+    /// is its first set's id.
+    ///
+    /// **Held above the card rather than inside it**, on ``areWarmupsExpanded``'s rule: a card is
+    /// rebuilt on every set written into the workout, and a fold kept in the view's own `@State`
+    /// would close every group each time one did.
+    let expandedGroups: Set<UUID>
+
+    /// Opens or closes one of them.
+    let toggleGroup: (UUID) -> Void
+
     /// Moves the named exercise by that many places (`FR-1.2.2`).
     let move: (UUID, Int) -> Void
 
@@ -205,7 +216,7 @@ struct SessionExerciseCard: View {
                     .foregroundStyle(ColorToken.textSecondary)
             } else {
                 warmupGroup
-                ForEach(workingSets) { row(for: $0, target: targets[$0.id]) }
+                ForEach(workingGroups) { groupRow(for: $0, targets: targets) }
             }
             plannedNext
             setCommands
@@ -258,28 +269,34 @@ struct SessionExerciseCard: View {
             WarmupSectionHeader(
                 count: warmups.count, isExpanded: areWarmupsExpanded, toggle: toggleWarmups)
             if areWarmupsExpanded {
-                // No target, and by construction rather than by lookup: a warmup consumes no
+                // No targets, and by construction rather than by lookup: a warmup consumes no
                 // planned set, so ``SessionExercise/plannedTargets`` never holds one.
-                ForEach(warmups) { row(for: $0, target: nil) }
+                ForEach(warmupGroups) { groupRow(for: $0, targets: [:]) }
             }
         }
     }
 
-    /// One set's row, wherever on the card it is drawn.
+    /// One group's line, wherever on the card it is drawn (`FR-16.1.1`).
+    ///
+    /// A group of one draws as the row it always was — see ``SetGroupRow``.
     ///
     /// - Parameters:
-    ///   - numbered: The set and its number.
-    ///   - target: What a routine planned for it, or `nil` (`FR-15.3.1`).
-    /// - Returns: The row.
-    private func row(for numbered: NumberedSet, target: PlannedTargetGroup?) -> some View {
-        SetRow(
-            numbered: numbered,
+    ///   - group: The run of identical sets, and their numbers.
+    ///   - targets: What a routine planned for each set, keyed on the set (`FR-15.3.1`).
+    /// - Returns: The line.
+    private func groupRow(
+        for group: NumberedSetGroup, targets: [UUID: PlannedTargetGroup]
+    ) -> some View {
+        SetGroupRow(
+            group: group,
             unit: unit,
-            recordReps: personalRecords.repCounts(forSetID: numbered.id),
+            isExpanded: expandedGroups.contains(group.id),
+            toggle: { toggleGroup(group.id) },
             mark: mark,
             markCompleted: markCompleted,
             edit: edit,
-            target: target
+            recordReps: { personalRecords.repCounts(forSetID: $0) },
+            target: { targets[$0] }
         )
     }
 
@@ -291,6 +308,17 @@ struct SessionExerciseCard: View {
 
     /// The work proper, likewise.
     private var workingSets: [NumberedSet] { numberedSets.filter { !$0.isWarmup } }
+
+    /// The work proper as `FR-16.1.1`'s groups.
+    ///
+    /// **Grouped after the partition, not before it.** The card draws the warmups above the work, so
+    /// a warmup logged between two identical working sets is not between them on screen — and two
+    /// groups of two where the reader sees four adjacent identical rows would be a split with
+    /// nothing visible behind it. ``SetNumbering`` makes the same argument about the numbering.
+    private var workingGroups: [NumberedSetGroup] { SetNumbering.grouped(workingSets) }
+
+    /// The warmups likewise, inside their own fold.
+    private var warmupGroups: [NumberedSetGroup] { SetNumbering.grouped(warmups) }
 
     /// `FR-1.2.6`'s duplicate, then `FR-1.2.3`'s blank form.
     ///

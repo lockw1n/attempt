@@ -97,6 +97,10 @@
    multiplication sign is a character of this language, and the order of the two is not fixed in
    every language — which is why this is a format string and not an interpolation. */
 "logging.session.previous.set %@ %@" = "%1$@ × %2$@";
+/* FR-16.1.1: the same line for a run of identical sets, which is what four back-off sets look like
+   when they are read rather than counted. A third argument rather than a repetition of the line
+   above — the second multiplication sign is punctuation of this language too. */
+"logging.session.previous.group %@ %@ %@" = "%1$@ × %2$@ × %3$@";
 /* FR-1.13.3, not FR-1.13.1's empty: there is history here and none of it is about this exercise, so
    the message says what would make a comparison possible rather than what to create. */
 "logging.session.previous.empty.headline" = "No previous session";
@@ -173,6 +177,19 @@
 "logging.session.set.reps %lld" = "Reps %lld";
 /* A logged set's rating. The number arrives already rendered, so it is the locale's. */
 "logging.session.set.rpe %@" = "RPE %@";
+
+/* FR-16.1.1's set groups: consecutive identical sets read as one line. */
+/* The badge a group leads with — the numbers of its first and last set. Both arrive already
+   rendered, so a range is drawn in the same style as the bare numeral on the row beside it, and the
+   separator is punctuation this catalogue owns rather than a dash written in Swift. */
+"logging.session.set.number-range %@ %@" = "%1$@–%2$@";
+/* VoiceOver's label for that badge. Never "1–4": read aloud, a dash is not a word. */
+"logging.session.set.position-range %lld %lld" = "Sets %1$lld to %2$lld";
+/* The same for a warmup group's badge. */
+"logging.session.set.warmup.position-range %lld %lld" = "Warmup sets %1$lld to %2$lld";
+/* What a tap on a collapsed group does (FR-16.1.3). The rows it opens carry every per-set control,
+   so the hint promises the sets themselves rather than "more". */
+"logging.session.set.group.hint" = "Shows each set";
 
 /* FR-1.2.4 and FR-1.2.14: warmups, marked and numbered apart from the work. */
 /* The badge a warmup row leads with. "W1" rather than "1" is the requirement's own spelling, and it

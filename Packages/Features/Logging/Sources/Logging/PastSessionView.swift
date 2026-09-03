@@ -42,6 +42,12 @@ public struct PastSessionView: View {
     /// condition already met — see ``SessionExerciseList/defaultWarmupExpansion(for:)``.
     @State private var warmupExpansion: [UUID: Bool] = [:]
 
+    /// Which set groups the user has opened (`FR-16.1.3`), keyed on the group — which is its first
+    /// set's id.
+    ///
+    /// Collapsed by default, on ``SessionExerciseList/groupExpansion``'s rule and for its reason.
+    @State private var groupExpansion: Set<UUID> = []
+
     /// Which set the editor is open over, or `nil` (`FR-1.2.7`).
     ///
     /// The screen's, and it carries no route, on `ActiveSessionView`'s argument: a half-corrected
@@ -241,6 +247,14 @@ public struct PastSessionView: View {
                         toggleWarmups: {
                             warmupExpansion[item.id] = !(warmupExpansion[item.id] ?? false)
                         },
+                        expandedGroups: groupExpansion,
+                        toggleGroup: { setID in
+                            if groupExpansion.contains(setID) {
+                                groupExpansion.remove(setID)
+                            } else {
+                                groupExpansion.insert(setID)
+                            }
+                        },
                         edit: { editing = ActiveSessionView.target(editing: $0) }
                     )
                 }
@@ -337,6 +351,12 @@ struct PastSessionExerciseCard: View {
     /// Opens or closes it.
     let toggleWarmups: () -> Void
 
+    /// Which of this card's set groups the user has opened (`FR-16.1.3`), keyed on the group.
+    let expandedGroups: Set<UUID>
+
+    /// Opens or closes one of them.
+    let toggleGroup: (UUID) -> Void
+
     /// Opens `FR-1.2.7`'s editor over one of this card's sets.
     let edit: (SetEntry) -> Void
 
@@ -355,7 +375,7 @@ struct PastSessionExerciseCard: View {
                         .foregroundStyle(ColorToken.textSecondary)
                 } else {
                     warmupGroup
-                    ForEach(workingSets) { row(for: $0) }
+                    ForEach(workingGroups) { groupRow(for: $0) }
                 }
             }
         }
@@ -367,16 +387,16 @@ struct PastSessionExerciseCard: View {
             WarmupSectionHeader(
                 count: warmups.count, isExpanded: areWarmupsExpanded, toggle: toggleWarmups)
             if areWarmupsExpanded {
-                ForEach(warmups) { row(for: $0) }
+                ForEach(warmupGroups) { groupRow(for: $0) }
             }
         }
     }
 
-    /// One set's row, with the two marking controls absent — see ``SetRow/mark``.
+    /// One group's line, with the two marking controls absent — see ``SetRow/mark``.
     ///
-    /// - Parameter numbered: The set and its number.
-    /// - Returns: The row.
-    private func row(for numbered: NumberedSet) -> some View {
+    /// - Parameter group: The run of identical sets, and their numbers.
+    /// - Returns: The line.
+    private func groupRow(for group: NumberedSetGroup) -> some View {
         // No record badge here. `FR-1.6.3` puts it on the set "at the moment it is logged", which is
         // the workout in progress; a past session would need the workout's map read for a screen that
         // is not logging, and marking an old set as a record it may since have lost is worse than not
@@ -384,14 +404,14 @@ struct PastSessionExerciseCard: View {
         // No target: `FR-15.3.1`'s line belongs to the workout in progress, and this screen has no
         // planned-target read wired up. Drawing one would need that read; drawing nothing is what a
         // past session has always shown.
-        SetRow(
-            numbered: numbered,
+        SetGroupRow(
+            group: group,
             unit: unit,
-            recordReps: [],
+            isExpanded: expandedGroups.contains(group.id),
+            toggle: { toggleGroup(group.id) },
             mark: nil,
             markCompleted: nil,
-            edit: edit,
-            target: nil
+            edit: edit
         )
     }
 
@@ -403,6 +423,13 @@ struct PastSessionExerciseCard: View {
 
     /// The work proper, likewise.
     private var workingSets: [NumberedSet] { numberedSets.filter { !$0.isWarmup } }
+
+    /// The work proper as `FR-16.1.1`'s groups — grouped after the partition, on the live card's
+    /// rule.
+    private var workingGroups: [NumberedSetGroup] { SetNumbering.grouped(workingSets) }
+
+    /// The warmups likewise, inside their own fold.
+    private var warmupGroups: [NumberedSetGroup] { SetNumbering.grouped(warmups) }
 
     /// The exercise's name, or a sentence in place of one — see ``SessionExercise/exercise``.
     private var name: Text {

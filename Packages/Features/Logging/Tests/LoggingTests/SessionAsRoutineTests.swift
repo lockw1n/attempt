@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -104,6 +105,36 @@ struct SessionAsRoutineTests {
 
         #expect(plan.slots.count == 2)
         #expect(plan.slots.allSatisfy { $0.groups.isEmpty })
+    }
+
+    @Test("The routine's groups are the display grouping, coarsened rather than recomputed")
+    func theTwoGroupingsAgree() {
+        // `FR-16.1.1` and `FR-15.2.6` read the same runs at two grains, and this is the claim that
+        // there is one rule behind both: over a workout holding a warmup, a failure and a rating
+        // that drifts, the targets are exactly the load-and-reps grouping of the sets a routine
+        // keeps. A second walk anywhere would show up here.
+        let sets = [
+            set(order: 0, grams: 60_000, reps: 5, isWarmup: true),
+            set(order: 1, grams: 100_000, reps: 5),
+            set(order: 2, grams: 100_000, reps: 5),
+            set(order: 3, grams: 100_000, reps: 5, isCompleted: false),
+            set(order: 4, grams: 100_000, reps: 5),
+            set(order: 5, grams: 90_000, reps: 8),
+        ]
+
+        let expected =
+            SetGrouping
+            .groups(sets.filter { !$0.isWarmup && $0.isCompleted }, at: .loadAndReps)
+            .map { SessionAsRoutine.Target(weight: $0.weight, reps: $0.reps, sets: $0.count) }
+
+        #expect(SessionAsRoutine.targets(from: sets) == expected)
+        // Anchored against the literal as well, so the assertion cannot pass by both sides being
+        // wrong in the same way — the shape a comparison of two reads has otherwise.
+        #expect(
+            SessionAsRoutine.targets(from: sets) == [
+                SessionAsRoutine.Target(weight: Weight(grams: 100_000), reps: 5, sets: 3),
+                SessionAsRoutine.Target(weight: Weight(grams: 90_000), reps: 8, sets: 1),
+            ])
     }
 
     /// One logged set, with only the fields this conversion reads spelled out.

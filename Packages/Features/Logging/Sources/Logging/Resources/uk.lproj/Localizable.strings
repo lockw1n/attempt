@@ -55,6 +55,7 @@
 
 "logging.session.previous.heading" = "Минулого разу";
 "logging.session.previous.set %@ %@" = "%1$@ × %2$@";
+"logging.session.previous.group %@ %@ %@" = "%1$@ × %2$@ × %3$@";
 "logging.session.previous.empty.headline" = "Попереднього тренування немає";
 "logging.session.previous.empty.message" = "Запишіть її сьогодні — і наступного разу вона буде тут.";
 "logging.session.previous.error.message" = "Не вдалося прочитати ваші попередні тренування.";
@@ -95,6 +96,13 @@
 "logging.session.set.position %lld" = "Підхід %lld";
 "logging.session.set.reps %lld" = "Повторень %lld";
 "logging.session.set.rpe %@" = "RPE %@";
+
+/* FR-16.1.1's set groups. «Підходи 1–4» is the plural of the badge label above, and the dash is the
+   same en dash the English catalogue draws. */
+"logging.session.set.number-range %@ %@" = "%1$@–%2$@";
+"logging.session.set.position-range %lld %lld" = "Підходи %1$lld–%2$lld";
+"logging.session.set.warmup.position-range %lld %lld" = "Розминка %1$lld–%2$lld";
+"logging.session.set.group.hint" = "Показує кожен підхід";
 
 /* «Р» for розминка, the way the English badge is «W» for warmup. */
 "logging.session.set.warmup.number %@" = "Р%@";

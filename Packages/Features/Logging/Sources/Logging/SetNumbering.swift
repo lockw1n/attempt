@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import RepositoryInterface
 
@@ -65,5 +66,64 @@ enum SetNumbering {
             working += 1
             return NumberedSet(record: set, number: working)
         }
+    }
+}
+
+/// A ``DerivedValues/SetGroup`` whose members carry their numbers (`FR-16.1.1`, `FR-1.2.14`).
+///
+/// **Numbers first, then the grouping over them.** A number is a position among sets of the same
+/// kind, and grouping never mixes kinds, so a group's members are numbered consecutively and the
+/// badge is the range `1–4` rather than a fifth number nothing else uses.
+///
+/// Never empty: ``SetNumbering/grouped(_:)`` builds these from runs that are non-empty by
+/// construction.
+struct NumberedSetGroup: Identifiable, Equatable {
+    /// Its members, in order, each carrying its number.
+    let members: [NumberedSet]
+
+    /// The first of them — what every shared field is read off.
+    var first: NumberedSet { members[0] }
+
+    /// The group's id: its first set's, as ``DerivedValues/SetGroup/id``.
+    var id: UUID { first.id }
+
+    /// The set every shared field belongs to.
+    var record: SetEntry { members[0].record }
+
+    /// How many sets it holds — the `× 4`.
+    var count: Int { members.count }
+
+    /// Whether it holds exactly one set, which is a row rather than a group.
+    var isSingle: Bool { members.count == 1 }
+
+    /// Whether these are warmups — which sequence the numbers belong to.
+    var isWarmup: Bool { first.isWarmup }
+
+    /// Whether they were completed rather than failed (`FR-1.2.5`).
+    var isCompleted: Bool { first.isCompleted }
+
+    /// The numbers it spans, first through last.
+    var numbers: ClosedRange<Int> { first.number...members[members.count - 1].number }
+}
+
+extension SetNumbering {
+    /// Groups numbered sets on `FR-16.1.1`'s rule, keeping each member's number.
+    ///
+    /// **The partition comes from ``DerivedValues/SetGrouping`` rather than from a second walk
+    /// here.** The runs it returns concatenate back to what it was given, so the numbers are
+    /// re-attached by position — which is what makes this a projection of the one rule rather than
+    /// a copy of it.
+    ///
+    /// - Parameter sets: Numbered sets of one kind, in order.
+    /// - Returns: The groups, in that order.
+    static func grouped(_ sets: [NumberedSet]) -> [NumberedSetGroup] {
+        var groups: [NumberedSetGroup] = []
+        var start = sets.startIndex
+        for group in SetGrouping.groups(sets.map(\.record)) {
+            let end = start + group.count
+            groups.append(NumberedSetGroup(members: Array(sets[start..<end])))
+            start = end
+        }
+        return groups
     }
 }

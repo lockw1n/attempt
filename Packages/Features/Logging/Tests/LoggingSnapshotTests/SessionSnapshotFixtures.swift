@@ -159,6 +159,22 @@
             loggedSet(index: 6, weight: Weight(grams: 102_500), reps: 5, rpe: nil),
         ]
 
+        /// `FR-16.1.1`'s own example: two identical warmups, four identical working sets, and a
+        /// fifth that fell a rep short.
+        ///
+        /// **The fifth set is the point of the fixture rather than decoration.** A card that held
+        /// nothing but one run could not show that a group ends — and it is the shape `DOD-16.5`
+        /// describes after the edit it names.
+        static let groupedSets: [SetEntry] = [
+            loggedSet(index: 30, weight: Weight(grams: 60_000), reps: 5, rpe: nil, isWarmup: true),
+            loggedSet(index: 31, weight: Weight(grams: 60_000), reps: 5, rpe: nil, isWarmup: true),
+            loggedSet(index: 32, weight: Weight(grams: 100_000), reps: 6, rpe: 8),
+            loggedSet(index: 33, weight: Weight(grams: 100_000), reps: 6, rpe: 8),
+            loggedSet(index: 34, weight: Weight(grams: 100_000), reps: 6, rpe: 8),
+            loggedSet(index: 35, weight: Weight(grams: 100_000), reps: 6, rpe: 8),
+            loggedSet(index: 36, weight: Weight(grams: 100_000), reps: 5, rpe: 9),
+        ]
+
         /// `FR-1.2.5`'s outcome, pictured: a working set that fell short between two that did not,
         /// and a warmup that did too.
         ///

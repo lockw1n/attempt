@@ -43,16 +43,38 @@ struct ExerciseLibraryStringsTests {
 
     @Test("The catalogue and the accessors name exactly the same keys")
     func catalogueAndAccessorsAgree() throws {
+        // Two files, one catalogue, on `LoggingStrings`' shape: `FR-16.1.1`'s set count is a plural,
+        // which only the `.stringsdict` can express, and a key in one file must not also be in the
+        // other.
+        let strings = try Self.keys(inCatalogueNamed: "strings")
+        let plurals = try Self.keys(inCatalogueNamed: "stringsdict")
+        #expect(strings.isDisjoint(with: plurals))
+        #expect(strings.union(plurals) == Set(ExerciseLibraryStrings.all.map(\.key)))
+        #expect(!strings.isEmpty)
+        #expect(!plurals.isEmpty)
+    }
+
+    @Test("A history row's set count pluralises, which a .strings format could not")
+    func theSetCountPluralises() {
+        // The reason this module gained a `.stringsdict`. A run of two would otherwise read
+        // "2 set", and the numeral is the one the noun agrees with (`G-3.4`).
+        #expect(String(localized: ExerciseLibraryStrings.historySets(2)) == "2 sets")
+        #expect(String(localized: ExerciseLibraryStrings.historySets(1)) == "1 set")
+    }
+
+    /// Every key in one of this module's two catalogue files.
+    ///
+    /// - Parameter ext: `strings` or `stringsdict`.
+    /// - Returns: The keys it declares.
+    private static func keys(inCatalogueNamed ext: String) throws -> Set<String> {
         let url = try #require(
             Bundle.module.url(
                 forResource: "Localizable",
-                withExtension: "strings",
+                withExtension: ext,
                 subdirectory: nil,
                 localization: "en"
             ))
-        let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
-        #expect(Set(catalogue.keys) == Set(ExerciseLibraryStrings.all.map(\.key)))
-        #expect(!catalogue.isEmpty)
+        return Set(try #require(NSDictionary(contentsOf: url) as? [String: Any]).keys)
     }
 
     @Test("Keys follow the convention: lowercase, dotted, module-prefixed")

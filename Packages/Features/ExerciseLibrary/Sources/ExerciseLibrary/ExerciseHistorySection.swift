@@ -1,3 +1,4 @@
+import DerivedValues
 import DesignSystem
 import Foundation
 import Localization
@@ -112,15 +113,19 @@ struct ExerciseHistoryGroupView: View {
                 .font(Typography.metricLabel.font)
                 .foregroundStyle(ColorToken.textSecondary)
                 .accessibilityAddTraits(.isHeader)
-            ForEach(group.sets) { set in
-                ExerciseHistoryRow(loggedSet: set, unit: unit)
+            // `FR-16.1.1`: a run of identical sets is one line here too. At the full grain —
+            // this row draws the rating, the warmup label and the outcome, so a group that merged
+            // across any of them would be a line asserting one member's fact about all of them.
+            ForEach(SetGrouping.groups(group.sets)) { sets in
+                ExerciseHistoryRow(sets: sets, unit: unit)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-/// One logged set, in `FR-1.5.2`'s `weight × reps @ RPE` form.
+/// One run of identical logged sets, in `FR-1.5.2`'s `weight × reps @ RPE` form with
+/// `FR-16.1.1`'s `× 4` after it.
 ///
 /// **The rating is omitted rather than blank when it was not recorded**, which is the requirement's
 /// own wording: a trailing `@` with nothing after it claims a rating that was never given.
@@ -133,12 +138,19 @@ struct ExerciseHistoryGroupView: View {
 /// colour, which `G-4.5` will not let carry a distinction alone. The failed mark is drawn only on the
 /// sets that failed, unlike the live row's — there the glyph is a *control* and has to exist on every
 /// row to be reachable, where this is a readout and only needs the mark that distinguishes.
+///
+/// **A group needs no way to expand here, and that is not `FR-16.1.3` unmet.** Every field this row
+/// draws is one the grouping compares, so a collapsed run hides nothing — where the live card's
+/// record badge and planned target are not compared, which is why that surface has to open.
 struct ExerciseHistoryRow: View {
-    /// The set this row reports.
+    /// The run this row reports — one set, or several that read identically.
+    let sets: SetGroup
+
+    /// The set every drawn field is read off.
     ///
     /// Named `loggedSet` rather than `set`, which at the head of a computed property's body is
     /// parsed as an accessor keyword rather than as this property.
-    let loggedSet: SetEntry
+    private var loggedSet: SetEntry { sets.first }
 
     /// The unit its load is shown in (`G-3.1`).
     let unit: MassUnit
@@ -181,6 +193,7 @@ struct ExerciseHistoryRow: View {
                     .font(valueFont)
                     .foregroundStyle(valueColour)
                     .accessibilityLabel(Text(ExerciseLibraryStrings.historyReps(loggedSet.reps)))
+                setCount
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: Spacing.sm.points) {
@@ -201,6 +214,23 @@ struct ExerciseHistoryRow: View {
         dynamicTypeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: Spacing.xxs.points))
             : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Spacing.sm.points))
+    }
+
+    /// `FR-16.1.1`'s `× 4`, where the run holds more than one set.
+    ///
+    /// **The second multiplication sign is punctuation like the first** — drawn, hidden from
+    /// VoiceOver, and the numeral after it carries its own label.
+    @ViewBuilder private var setCount: some View {
+        if !sets.isSingle {
+            Image(systemName: "multiply")
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textTertiary)
+                .accessibilityHidden(true)
+            Text(sets.count, format: AppFormat.count(locale: locale))
+                .font(valueFont)
+                .foregroundStyle(valueColour)
+                .accessibilityLabel(Text(ExerciseLibraryStrings.historySets(sets.count)))
+        }
     }
 
     /// `G-1.8`'s warmup flag, said in a word.

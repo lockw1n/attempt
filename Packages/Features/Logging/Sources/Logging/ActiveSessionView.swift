@@ -67,6 +67,12 @@ public struct ActiveSessionView: View {
     /// in that one because the two folds are independent — see ``SessionExerciseList``.
     @State var warmupExpansion: [UUID: Bool] = [:]
 
+    /// Which set groups the user has opened (`FR-16.1.3`).
+    ///
+    /// Stored nowhere, for ``expansion``'s reason, and a set of ids rather than a dictionary —
+    /// collapsed is the default a group returns to, and there is no third state to record.
+    @State var groupExpansion: Set<UUID> = []
+
     /// What is in `FR-1.2.9`'s session-note field.
     ///
     /// **The screen's, like every other half-typed thing here**, and the store's own rule for what
@@ -291,6 +297,7 @@ public struct ActiveSessionView: View {
                     exercises: items,
                     expansion: $expansion,
                     warmupExpansion: $warmupExpansion,
+                    groupExpansion: $groupExpansion,
                     move: { id, offset in
                         Task { await store.moveExercise(id: id, by: offset) }
                     },

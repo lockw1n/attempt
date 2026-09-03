@@ -105,6 +105,7 @@
                 exercises: exercises,
                 expansion: .constant(expansion),
                 warmupExpansion: .constant([:]),
+                groupExpansion: .constant([]),
                 move: { _, _ in },
                 unit: .kilograms,
                 previous: PreviousPerformances(),

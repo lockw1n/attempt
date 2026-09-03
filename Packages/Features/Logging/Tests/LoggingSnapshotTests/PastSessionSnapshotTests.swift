@@ -42,6 +42,8 @@
                         unit: .kilograms,
                         areWarmupsExpanded: false,
                         toggleWarmups: {},
+                        expandedGroups: [],
+                        toggleGroup: { _ in },
                         edit: { _ in }
                     )
                 }
@@ -58,6 +60,28 @@
                         unit: .kilograms,
                         areWarmupsExpanded: true,
                         toggleWarmups: {},
+                        expandedGroups: [],
+                        toggleGroup: { _ in },
+                        edit: { _ in }
+                    )
+                }
+            }
+        }
+
+        @Test func exerciseCardWithGroups() throws {
+            // `FR-16.1.1` on the past session: four identical sets as one line, and the set that
+            // broke the run as a row beneath it. Its own reference rather than a variant of the
+            // card above, because that fixture has no run in it at all — which is the state this
+            // screen was in before the grouping and is worth keeping a picture of.
+            try assertSnapshots(named: "Past-session-card-groups") {
+                fixedEnvironment {
+                    PastSessionExerciseCard(
+                        item: PastFixtures.groupedExercise,
+                        unit: .kilograms,
+                        areWarmupsExpanded: false,
+                        toggleWarmups: {},
+                        expandedGroups: [],
+                        toggleGroup: { _ in },
                         edit: { _ in }
                     )
                 }
@@ -145,6 +169,33 @@
                     set(entryID: entryID, order: 1, grams: 80_000, reps: 3, isWarmup: true),
                     set(entryID: entryID, order: 2, grams: 102_500, reps: 5, rpe: 8),
                     set(entryID: entryID, order: 3, grams: 102_500, reps: 3, isCompleted: false),
+                ]
+            )
+        }
+
+        /// The same exercise performed as a run: a warmup, then four identical working sets and a
+        /// fifth a rep short (`FR-16.1.1`).
+        static var groupedExercise: SessionExercise {
+            let entryID = UUID()
+            return SessionExercise(
+                entry: ExerciseEntry(
+                    id: entryID,
+                    createdAt: stamp,
+                    updatedAt: stamp,
+                    deletedAt: nil,
+                    sessionID: UUID(),
+                    exerciseID: UUID(),
+                    order: 0,
+                    notes: ""
+                ),
+                exercise: catalogueRow,
+                sets: [
+                    set(entryID: entryID, order: 0, grams: 60_000, reps: 5, isWarmup: true),
+                    set(entryID: entryID, order: 1, grams: 100_000, reps: 6, rpe: 8),
+                    set(entryID: entryID, order: 2, grams: 100_000, reps: 6, rpe: 8),
+                    set(entryID: entryID, order: 3, grams: 100_000, reps: 6, rpe: 8),
+                    set(entryID: entryID, order: 4, grams: 100_000, reps: 6, rpe: 8),
+                    set(entryID: entryID, order: 5, grams: 100_000, reps: 5, rpe: 9),
                 ]
             )
         }
