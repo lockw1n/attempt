@@ -97,11 +97,12 @@
 "logging.session.set.reps %lld" = "Повторень %lld";
 "logging.session.set.rpe %@" = "RPE %@";
 
-/* FR-16.1.1's set groups. «Підходи 1–4» is the plural of the badge label above, and the dash is the
-   same en dash the English catalogue draws. */
+/* FR-16.1.1's set groups. The badge keeps the en dash the English catalogue draws — it is drawn
+   punctuation. The two labels below it are read aloud, so they spell the range in words on the
+   English catalogue's own rule: a dash is not a word. */
 "logging.session.set.number-range %@ %@" = "%1$@–%2$@";
-"logging.session.set.position-range %lld %lld" = "Підходи %1$lld–%2$lld";
-"logging.session.set.warmup.position-range %lld %lld" = "Розминка %1$lld–%2$lld";
+"logging.session.set.position-range %lld %lld" = "Підходи з %1$lld по %2$lld";
+"logging.session.set.warmup.position-range %lld %lld" = "Розминка з %1$lld по %2$lld";
 "logging.session.set.group.hint" = "Показує кожен підхід";
 
 /* «Р» for розминка, the way the English badge is «W» for warmup. */

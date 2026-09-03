@@ -128,6 +128,21 @@ struct SetGroupingTests {
         #expect(SetGrouping.groups(sets, at: .loadAndReps).map(\.count) == [1, 1, 1])
     }
 
+    @Test("A run never crosses an entry boundary, at either grain")
+    func aSecondEntryStartsANewRun() {
+        // `NFR-16.2` says *one* entry's sets, and `ExerciseSessionHistory` hands in two: an exercise
+        // performed twice in a workout is read back as one day's work, so two identical sets can be
+        // adjacent in the list having been separated by the rest of the session. Merged, they would
+        // claim a run nobody performed.
+        let second = UUID()
+        let sets = [
+            set(order: 0), set(order: 1),
+            set(order: 0, entryID: second), set(order: 1, entryID: second),
+        ]
+        #expect(SetGrouping.groups(sets, at: .displayed).map(\.count) == [2, 2])
+        #expect(SetGrouping.groups(sets, at: .loadAndReps).map(\.count) == [2, 2])
+    }
+
     @Test("A group cannot be built over no sets")
     func anEmptyGroupIsRefused() {
         #expect(SetGroup([]) == nil)
@@ -146,6 +161,8 @@ struct SetGroupingTests {
     ///   - notes: Its own note.
     ///   - modifiers: `FR-1.2.8`'s modifiers.
     ///   - id: Its identifier, where a test needs to hold on to one.
+    ///   - entryID: The entry it was logged against — the same one unless a test is about the
+    ///     boundary between two.
     /// - Returns: The set.
     private func set(
         order: Int,
@@ -156,14 +173,15 @@ struct SetGroupingTests {
         isCompleted: Bool = true,
         notes: String = "",
         modifiers: [SetModifier] = [],
-        id: UUID = UUID()
+        id: UUID = UUID(),
+        entryID: UUID? = nil
     ) -> SetEntry {
         SetEntry(
             id: id,
             createdAt: .distantPast,
             updatedAt: .distantPast,
             deletedAt: nil,
-            entryID: entryID,
+            entryID: entryID ?? self.entryID,
             order: order,
             weight: Weight(grams: grams),
             reps: reps,

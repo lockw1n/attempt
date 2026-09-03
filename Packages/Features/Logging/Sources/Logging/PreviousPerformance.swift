@@ -25,6 +25,26 @@ struct PreviousPerformance: Equatable, Sendable {
     /// columns together, so a strip that read one of them would compare today against a number no
     /// other screen recognises.
     var workingSets: [SetEntry] { sets.filter { !$0.isWarmup && $0.isCompleted } }
+
+    /// The same sets as maximal *consecutive* runs of them (`FR-16.1.1`).
+    ///
+    /// **The filter is what makes this necessary rather than ``workingSets`` being enough.**
+    /// Grouping the filtered list would join sets the dropped ones stood between: a set, a failed
+    /// repeat of it and a third would read as `100 kg × 5 × 2`, a run of two that never happened.
+    /// A dropped set ends the run it interrupted, so the strip counts what was consecutive on the
+    /// day rather than what is consecutive after the filter.
+    var workingRuns: [[SetEntry]] {
+        var runs: [[SetEntry]] = []
+        for set in sets {
+            guard !set.isWarmup, set.isCompleted else {
+                runs.append([])
+                continue
+            }
+            if runs.isEmpty { runs.append([]) }
+            runs[runs.count - 1].append(set)
+        }
+        return runs.filter { !$0.isEmpty }
+    }
 }
 
 /// The previous performance behind every card in the workout, and whether it is known yet.

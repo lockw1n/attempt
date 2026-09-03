@@ -72,6 +72,12 @@ public struct SetGroup: Identifiable, Equatable, Sendable {
 /// **The order handed in is the order out.** Sets are grouped where they are *consecutive*, never
 /// where they are merely equal: a wave back up to the opening load is a third group and not a bigger
 /// first one, and sorting would erase the difference.
+///
+/// **A run never crosses an entry boundary, at either grain** (`NFR-16.2`). The requirement says
+/// *one entry's* sets, and one reader hands in more than that: an exercise performed twice in a
+/// workout is two entries whose sets are read back as one day's work, so the last set of the first
+/// and the first set of the second are adjacent in the list and were not adjacent in the session.
+/// Comparing the entry here defends that at every call site rather than at the one that noticed.
 public enum SetGrouping {
     /// How closely two sets have to match to share a group.
     public enum Grain: Sendable {
@@ -120,6 +126,7 @@ extension SetGrouping.Grain {
     ///   - next: The set being placed.
     /// - Returns: Whether the two share a group.
     fileprivate func joins(_ previous: SetEntry, _ next: SetEntry) -> Bool {
+        guard previous.entryID == next.entryID else { return false }
         guard previous.weight == next.weight, previous.reps == next.reps else { return false }
         switch self {
         case .loadAndReps:

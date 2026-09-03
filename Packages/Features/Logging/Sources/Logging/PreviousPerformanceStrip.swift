@@ -92,14 +92,19 @@ struct PreviousPerformanceStrip: View {
     /// a third.
     ///
     /// **Grouped at ``DerivedValues/SetGrouping/Grain/loadAndReps``, which is exactly what this line
-    /// draws.** `workingSets` has already dropped the warmups and the failures, so the two fields
-    /// left are the two shown — and four back-off sets read as `105 kg × 4 × 4` rather than as the
-    /// same phrase four times.
+    /// draws.** The warmups and the failures are dropped before it, so the two fields left are the
+    /// two shown — and four back-off sets read as `105 kg × 4 × 4` rather than as the same phrase
+    /// four times.
+    ///
+    /// **Over ``PreviousPerformance/workingRuns`` rather than ``PreviousPerformance/workingSets``**:
+    /// a dropped set ends the run it stood in the middle of, so the counts are of sets that were
+    /// consecutive on the day rather than of sets the filter made adjacent.
     ///
     /// - Parameter performance: The previous session's performance.
     /// - Returns: The line.
     private func summary(of performance: PreviousPerformance) -> String {
-        SetGrouping.groups(performance.workingSets, at: .loadAndReps)
+        performance.workingRuns
+            .flatMap { SetGrouping.groups($0, at: .loadAndReps) }
             .map { group in
                 let weight = AppFormat.weight(
                     WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale

@@ -113,10 +113,10 @@ struct ExerciseHistoryGroupView: View {
                 .font(Typography.metricLabel.font)
                 .foregroundStyle(ColorToken.textSecondary)
                 .accessibilityAddTraits(.isHeader)
-            // `FR-16.1.1`: a run of identical sets is one line here too. At the full grain —
-            // this row draws the rating, the warmup label and the outcome, so a group that merged
-            // across any of them would be a line asserting one member's fact about all of them.
-            ForEach(SetGrouping.groups(group.sets)) { sets in
+            // `FR-16.1.1`: a run of identical sets is one line here too. Which runs those are is
+            // ``ExerciseSessionHistory/groups``, so the grain this section reads at is a value a
+            // test can hold rather than a call buried in a view body.
+            ForEach(group.groups) { sets in
                 ExerciseHistoryRow(sets: sets, unit: unit)
             }
         }

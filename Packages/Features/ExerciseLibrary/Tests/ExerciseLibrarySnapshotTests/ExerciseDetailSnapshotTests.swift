@@ -383,12 +383,17 @@
             isCompleted: Bool = true
         ) -> SetEntry {
             let stamp = Date(timeIntervalSince1970: 1_700_000_000)
+            // One entry for the whole day, because a run never crosses a boundary between two
+            // (`NFR-16.2`). A fresh identifier per set would quietly make every group a group of
+            // one, and `ExerciseDetail-history-groups` would picture the reading it exists to
+            // rule out.
+            let entry = UUID(uuidString: "0BE10000-0000-4000-8000-00000000DE70") ?? UUID()
             return SetEntry(
                 id: UUID(),
                 createdAt: stamp,
                 updatedAt: stamp,
                 deletedAt: nil,
-                entryID: UUID(),
+                entryID: entry,
                 order: order,
                 weight: Weight(grams: Int(kilos * 1000)),
                 reps: reps,

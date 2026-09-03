@@ -66,14 +66,14 @@ struct SetGroupRow: View {
         } else {
             VStack(alignment: .leading, spacing: Spacing.xs.points) {
                 summary
-                if isExpanded {
-                    // Indented, so the rows read as this group's members rather than as sets the
-                    // card gained. Each is the ordinary row, controls and all — which is the whole
-                    // of `FR-16.1.3`: nothing a set carries is more than one tap away.
-                    ForEach(group.members) { member in
-                        row(for: member)
-                            .padding(.leading, Spacing.md.points)
-                    }
+                // Indented, so the rows read as this group's members rather than as sets the
+                // card gained. Each is the ordinary row, controls and all — which is the whole of
+                // `FR-16.1.3`: nothing a set carries is more than one tap away. Which rows those
+                // are is ``NumberedSetGroup/memberRows(isExpanded:)``, so the claim is a value a
+                // test can hold rather than a branch inside a view body.
+                ForEach(group.memberRows(isExpanded: isExpanded)) { member in
+                    row(for: member)
+                        .padding(.leading, Spacing.md.points)
                 }
             }
         }
@@ -265,22 +265,13 @@ struct SetGroupRow: View {
     /// line would name one member's target under all four — so where they differ it belongs to the
     /// rows, which is one tap away.
     @ViewBuilder private var plannedTarget: some View {
-        if let shared = sharedTarget {
+        if let shared = group.sharedTarget(target) {
             PlannedTargetLine(
                 target: shared,
                 comparison: PlannedTargetComparison(set: group.record, target: shared),
                 unit: unit
             )
         }
-    }
-
-    /// The planned group every member falls in, or `nil` where they do not share one.
-    private var sharedTarget: PlannedTargetGroup? {
-        let targets = group.members.map { target($0.id) }
-        guard let first = targets.first, targets.allSatisfy({ $0?.id == first?.id }) else {
-            return nil
-        }
-        return first
     }
 
     /// The rating, where the group carries one.
