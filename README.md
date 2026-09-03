@@ -47,9 +47,10 @@ Packages/
 ├── Localization/            The key convention every module's catalogue follows, plus
 │                            locale-explicit FormatStyles for numbers, weights, dates and percentages.
 ├── DerivedValues/           Background actor recomputing personal records and estimated max on set
-│                            mutation, behind its own cache repository, plus the shared tonnage
-│                            arithmetic every screen totalling logged load reads. Not a feature
-│                            module — four of the six below read it, so it cannot live inside any
+│                            mutation, behind its own cache repository, plus the pure read-side
+│                            values every screen shares: the tonnage arithmetic, and the grouping
+│                            that reads a run of identical sets as one line. Not a feature
+│                            module — five of the six below read it, so it cannot live inside any
 │                            one of them.
 ├── Features/                Feature modules, one level deeper — the level is load-bearing:
 │                            .swiftlint.yml scopes the no-raw-values rules to this path.
@@ -87,7 +88,8 @@ no `DesignSystem`, no `AppNavigation`, since nothing in it renders, and no
 `Packages/Features/` sit at the top: each depends on `PowerliftingCore`,
 `RepositoryInterface`, `DesignSystem`, `AppNavigation` and `Localization`, and
 never on `Persistence` — a feature reaches storage through the protocols
-alone. Four of the six also depend on `DerivedValues`. One exception, and it is
+alone. Five of the six also depend on `DerivedValues`; `Routines` is the one
+that does not. One exception, and it is
 the shape `RepositoryFakes` already has: `Settings`' *test* target depends on
 `Persistence`, because `DOD-1.3`'s export → wipe → restore has to name the
 backup reader and writer and the real store in one test, and `Persistence` may
