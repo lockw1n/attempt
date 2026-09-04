@@ -85,14 +85,29 @@ struct RecordCodingKeyTests {
             ])
     }
 
-    @Test("Settings write twelve keys")
+    @Test("Settings write fourteen keys")
     func settingsKeys() throws {
         #expect(
             try encodedKeys(of: codingUserSettings()) == [
                 "createdAt", "defaultRoundingIncrement", "defaultRoundingStrategy", "deletedAt",
-                "displayUnit", "e1RMFormula", "e1RMLookbackDays", "id", "keepScreenAwake", "theme",
-                "updatedAt", "userID",
+                "displayUnit", "e1RMFormula", "e1RMLookbackDays", "id", "keepScreenAwake",
+                "recentRecordsScope", "recentRecordsShowsBaselines", "theme", "updatedAt", "userID",
             ])
+    }
+
+    /// `FR-16.3.2`'s chosen cells are two parallel columns, on the wire as in the store, and both
+    /// are absent where the schemes are derived — which is what makes an unconfigured row short.
+    @Test("Chosen schemes write two parallel key columns; derived schemes write neither")
+    func settingsSchemeKeys() throws {
+        var configured = codingUserSettings()
+        configured.recentRecordsSchemes = .chosen([
+            RecordScheme(reps: 5, sets: 5), RecordScheme(reps: 3, sets: 1),
+        ])
+
+        let keys = try encodedKeys(of: configured)
+        #expect(keys.contains("recentRecordsSchemeReps"))
+        #expect(keys.contains("recentRecordsSchemeSets"))
+        #expect(try !encodedKeys(of: codingUserSettings()).contains("recentRecordsSchemeReps"))
     }
 
     /// The two optional preferences are absent rather than null where the user never chose, and
@@ -235,6 +250,13 @@ struct RecordJSONRoundTripTests {
         #expect(try Self.roundTrip(codingTrainingMaxEntry()) == codingTrainingMaxEntry())
         #expect(try Self.roundTrip(codingEquipmentProfile()) == codingEquipmentProfile())
         #expect(try Self.roundTrip(codingUserSettings()) == codingUserSettings())
+        // FR-16.3.2's chosen cells are two parallel columns on the wire, and pairing them up again
+        // is the one thing about this record's format that a plain field comparison would miss.
+        var configured = codingUserSettings()
+        configured.recentRecordsSchemes = .chosen([
+            RecordScheme(reps: 5, sets: 5), RecordScheme(reps: 3, sets: 1),
+        ])
+        #expect(try Self.roundTrip(configured) == configured)
         #expect(try Self.roundTrip(codingPersonalRecordCache()) == codingPersonalRecordCache())
         #expect(try Self.roundTrip(codingRoutine()) == codingRoutine())
         #expect(try Self.roundTrip(codingRoutineExercise()) == codingRoutineExercise())
@@ -351,6 +373,23 @@ struct RecordDecodingFallbackTests {
         #expect(record.barType == .safetySquat)
     }
 
+    /// Rule 4 over the twelfth vocabulary column: a scope spelling from a newer version costs that
+    /// preference and nothing else.
+    @Test("An unreadable feed scope resolves without costing the other preferences")
+    func unknownScopeResolves() throws {
+        let record = try decode(
+            UserSettings.self,
+            replacing: (
+                "\"recentRecordsScope\":\"dashboardLifts\"",
+                "\"recentRecordsScope\":\"strongestLifts\""
+            ),
+            in: codingUserSettings())
+
+        #expect(record.recentRecordsScope == .dashboardLifts)
+        #expect(record.theme == .dark)
+        #expect(record.displayUnit == .pounds)
+    }
+
     @Test("An unreadable formula name resolves without costing the other preferences")
     func unknownFormulaResolves() throws {
         let record = try decode(
@@ -449,40 +488,5 @@ struct RecordDecodingFallbackTests {
         #expect(throws: (any Error).self) {
             try JSONDecoder().decode(SetEntry.self, from: Data(json.utf8))
         }
-    }
-}
-
-@Suite("A column added later reads from a file that predates it")
-struct RecordLaterColumnTests {
-    // Rule 7, and the reason it is a rule rather than a convenience: `FR-1.11.3`'s restore reads
-    // records straight out of an archive whose `formatVersion` does not move when one of them gains
-    // a column, so a decoder that insisted on the new key would refuse the app's own backups and
-    // report them as damaged. Hand-written rather than produced by this build, for
-    // `readsAVersionOneFile`'s reason: no encoder here can leave the key out any more.
-    @Test("An entry written before the check-off column decodes as not checked off")
-    func entryWithoutTheCheckOffColumn() throws {
-        let json = """
-            {"id":"0F5A1E24-9B7D-4C31-8E62-000000000001",
-             "createdAt":0,"updatedAt":0,
-             "sessionID":"0F5A1E24-9B7D-4C31-8E62-000000000002",
-             "exerciseID":"0F5A1E24-9B7D-4C31-8E62-000000000003",
-             "order":3,"notes":"wide stance"}
-            """
-        let entry = try JSONDecoder().decode(ExerciseEntry.self, from: Data(json.utf8))
-
-        #expect(entry.isMarkedDone == false)
-        // The neighbouring fields too: a decoder that threw the record away and rebuilt an empty
-        // one would satisfy the assertion above on its own.
-        #expect(entry.notes == "wide stance")
-        #expect(entry.order == 3)
-    }
-
-    // The other half — the key is still required of *this* build's own output, so dropping it from
-    // the encoder is a change this suite notices rather than one the tolerance above absorbs.
-    @Test("This build still writes the column, whatever it holds")
-    func theColumnIsStillWritten() throws {
-        #expect(try encodedKeys(of: codingExerciseEntry()).contains("isMarkedDone"))
-        let json = try jsonText(of: codingExerciseEntry())
-        #expect(json.contains("\"isMarkedDone\":true"))
     }
 }

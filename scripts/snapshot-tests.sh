@@ -68,7 +68,7 @@ cd "$(dirname "$0")/.."
 #   ExerciseLibrary: 34 tests, all of them reference-backed, no probes -> 34, its own count.
 #   Logging:         63 tests, 62 reference-backed, one width probe    -> 63, above the 62.
 #   History:         19 tests, all of them reference-backed, no probes -> 19, its own count.
-#   Dashboard:       15 tests, all of them reference-backed, no probes -> 15, its own count.
+#   Dashboard:       18 tests, all of them reference-backed, no probes -> 18, its own count.
 #   Settings:        45 tests, all of them reference-backed, no probes -> 45, its own count.
 #   Routines:         8 tests, all of them reference-backed, no probes ->  8, its own count.
 # A screen suite added later is the ExerciseLibrary case unless it brings probes of its own, and a
@@ -85,7 +85,7 @@ SUITES=(
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|34"
     "Packages/Features/Logging|Logging|LoggingSnapshotTests|63"
     "Packages/Features/History|History|HistorySnapshotTests|19"
-    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|15"
+    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|18"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|45"
     "Packages/Features/Routines|Routines|RoutinesSnapshotTests|8"
 )

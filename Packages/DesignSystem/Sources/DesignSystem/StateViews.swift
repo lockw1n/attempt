@@ -159,23 +159,34 @@ public struct OfflineStateView: View {
 /// This is also the component the silent refusals get explained through: a 12-rep set, assisted
 /// work, a failed set and a training max that cannot be derived are all *this* state rather than an
 /// omission, and the copy that says so is owed by the screens that show them.
+///
+/// **The action is optional and most callers have none**, which is what separates this from
+/// ``EmptyStateView``: there is usually nothing a button can do about not enough data, because the
+/// remedy is to train. It exists for the case where the shortfall is a *setting* — a feed narrowed
+/// to three lifts has plenty of data one scope wider (`FR-16.3.4`), and offering that widening is
+/// the whole difference between a dead end and a next tap.
 public struct InsufficientDataView: View {
     private let headline: Text?
     private let message: Text
+    private let action: StateAction?
 
     /// Builds the state.
     ///
     /// - Parameters:
     ///   - headline: What cannot be shown. Omit it for this module's generic heading.
     ///   - message: What would make it showable, stated concretely.
-    public init(headline: Text? = nil, message: Text) {
+    ///   - action: The way to make it showable, where there is one the screen can perform. Omit it
+    ///     where the only way is to train — a button cannot log a set.
+    public init(headline: Text? = nil, message: Text, action: StateAction? = nil) {
         self.headline = headline
         self.message = message
+        self.action = action
     }
 
     /// The scaffold this view configures. The fallback heading is the kind's.
     var scaffold: StateScaffold {
-        StateScaffold(kind: .insufficientData, headline: headline, message: message)
+        StateScaffold(
+            kind: .insufficientData, headline: headline, message: message, action: action)
     }
 
     /// The scaffold, as the insufficient-data kind.

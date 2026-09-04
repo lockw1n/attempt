@@ -143,6 +143,18 @@ enum SchemaDefaults {
     /// `NFR-1.9` read as written — see ``RepositoryInterface/UserSettings/defaultKeepScreenAwake``.
     static let keepScreenAwake = UserSettings.defaultKeepScreenAwake
 
+    /// ``RepositoryInterface/RecentRecordsScope/dashboardLifts``, read from the one place
+    /// `FR-16.3.1`'s default is written.
+    ///
+    /// **The first default here that a real migration will reach**, which is what the type's note
+    /// says stops being hypothetical at the first schema version to change this column set. It is
+    /// safe to reach: a backfilled row asserts the same scope a fresh install gets.
+    static let recentRecordsScope = UserSettings.defaultRecentRecordsScope.rawValue
+
+    /// `FR-16.3.4` read as written — see
+    /// ``RepositoryInterface/UserSettings/defaultRecentRecordsShowsBaselines``.
+    static let recentRecordsShowsBaselines = UserSettings.defaultRecentRecordsShowsBaselines
+
     /// The distant past, for a cached personal record whose date was never written.
     ///
     /// The direction that cannot mint a badge: `FR-1.6.3` announces a record at the moment it is

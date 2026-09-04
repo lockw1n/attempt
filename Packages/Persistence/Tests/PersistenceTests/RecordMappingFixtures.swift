@@ -318,6 +318,12 @@ func mappingTargetProfile(id: UUID) -> EquipmentProfileEntity {
 /// The one tiled exercise the source settings fixture names (`FR-1.9.1`).
 let mappingTiledExerciseID = UUID(uuidString: "77777777-7777-7777-7777-777777777777") ?? UUID()
 
+/// The one exercise the source settings fixture scopes the recent-PR feed to (`FR-16.3.1`).
+///
+/// A different identifier from ``mappingTiledExerciseID``: the two lists are separate columns, and a
+/// fixture sharing one value between them would pass for a mapping that read the wrong column.
+let mappingFeedExerciseID = UUID(uuidString: "66666666-6666-6666-6666-666666666666") ?? UUID()
+
 /// The user id both settings fixtures share. `update(from:)` never writes it, so a differing one
 /// would make the round trip fail for a reason that is not a mapping defect.
 let mappingUserID = UUID(uuidString: "88888888-8888-8888-8888-888888888888") ?? UUID()
@@ -334,6 +340,13 @@ func mappingSourceSettings(id: UUID, userID: UUID = mappingUserID) -> UserSettin
         // Non-empty here and `nil` on the target, so the round trip carries a value and
         // `update(from:)` is seen to overwrite one that was never set (`FR-1.9.1`).
         dashboardExerciseIDs: [mappingTiledExerciseID],
+        // FR-16.3's four, all away from their defaults and all differing from the target's, so the
+        // round trip carries each one and `update(from:)` is seen to overwrite it.
+        recentRecordsScope: .chosen,
+        recentRecordsExerciseIDs: [mappingFeedExerciseID],
+        recentRecordsSchemeReps: [5, 3],
+        recentRecordsSchemeSets: [5, 1],
+        recentRecordsShowsBaselines: true,
         createdAt: mappingCreatedAt,
         updatedAt: mappingUpdatedAt
     )

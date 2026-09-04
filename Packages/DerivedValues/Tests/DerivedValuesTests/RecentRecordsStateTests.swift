@@ -6,6 +6,10 @@ import Testing
 
 @testable import DerivedValues
 
+/// `FR-1.9.1`'s default resolver for a test that is not about it: every exercise in the catalogue,
+/// so a scope left at `FR-16.3.1`'s default narrows nothing.
+func everyExercise(_ exercises: [Exercise]) -> [UUID] { exercises.map(\.id) }
+
 /// The `@Observable` half of `FR-1.6.5`'s feed: what a screen sees, and when.
 @Suite("Recent records state")
 @MainActor
@@ -54,6 +58,7 @@ struct RecentRecordsStateTests {
             now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: squat)
         try await recomputer.recompute(forExerciseID: bench)
+        try await log.showEveryRecord()
         return Trained(log: log, recomputer: recomputer, exercises: [squat, bench])
     }
 
@@ -61,7 +66,11 @@ struct RecentRecordsStateTests {
     func aLoadReportsTheFeed() async throws {
         let trained = try await trainedLog()
         let state = RecentRecordsState(
-            recomputer: trained.recomputer, catalogue: trained.log.repositories.exercises, limit: 10)
+            recomputer: trained.recomputer,
+            catalogue: trained.log.repositories.exercises,
+            settings: trained.log.repositories.settings,
+            limit: 10,
+            defaultDashboardExerciseIDs: everyExercise(_:))
 
         await state.load()
 
@@ -83,7 +92,11 @@ struct RecentRecordsStateTests {
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         let state = RecentRecordsState(
-            recomputer: recomputer, catalogue: log.repositories.exercises, limit: 10)
+            recomputer: recomputer,
+            catalogue: log.repositories.exercises,
+            settings: log.repositories.settings,
+            limit: 10,
+            defaultDashboardExerciseIDs: everyExercise(_:))
 
         #expect(!state.hasLoaded)
         await state.load()
@@ -98,7 +111,11 @@ struct RecentRecordsStateTests {
     func theLimitIsHonoured() async throws {
         let trained = try await trainedLog()
         let state = RecentRecordsState(
-            recomputer: trained.recomputer, catalogue: trained.log.repositories.exercises, limit: 1)
+            recomputer: trained.recomputer,
+            catalogue: trained.log.repositories.exercises,
+            settings: trained.log.repositories.settings,
+            limit: 1,
+            defaultDashboardExerciseIDs: everyExercise(_:))
 
         await state.load()
 
@@ -116,7 +133,11 @@ struct RecentRecordsStateTests {
             cache: RefusingCache(failure: failure),
             now: { fixtureNow })
         let state = RecentRecordsState(
-            recomputer: recomputer, catalogue: InMemoryRepositoryStack().exercises, limit: 10)
+            recomputer: recomputer,
+            catalogue: InMemoryRepositoryStack().exercises,
+            settings: InMemoryRepositoryStack().settings,
+            limit: 10,
+            defaultDashboardExerciseIDs: everyExercise(_:))
 
         await state.load()
 
@@ -134,7 +155,9 @@ struct RecentRecordsStateTests {
         let state = RecentRecordsState(
             recomputer: trained.recomputer,
             catalogue: RefusingExercises(failure: .recordNotFound(id: UUID())),
-            limit: 10)
+            settings: trained.log.repositories.settings,
+            limit: 10,
+            defaultDashboardExerciseIDs: everyExercise(_:))
 
         await state.load()
 
@@ -147,7 +170,11 @@ struct RecentRecordsStateTests {
     func anyExerciseMovesTheFeed() async throws {
         let trained = try await trainedLog()
         let state = RecentRecordsState(
-            recomputer: trained.recomputer, catalogue: trained.log.repositories.exercises, limit: 10)
+            recomputer: trained.recomputer,
+            catalogue: trained.log.repositories.exercises,
+            settings: trained.log.repositories.settings,
+            limit: 10,
+            defaultDashboardExerciseIDs: everyExercise(_:))
         await state.load()
         #expect(state.records.first?.weight == Weight(grams: 100_000))
 
@@ -181,8 +208,13 @@ struct RecentRecordsStateTests {
             cache: gated,
             now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: bench)
+        try await log.showEveryRecord()
         let state = RecentRecordsState(
-            recomputer: recomputer, catalogue: log.repositories.exercises, limit: 10)
+            recomputer: recomputer,
+            catalogue: log.repositories.exercises,
+            settings: log.repositories.settings,
+            limit: 10,
+            defaultDashboardExerciseIDs: everyExercise(_:))
 
         // The first read takes the cache holding 100 kg, and is held before it can assign.
         let stale = Task { await state.load() }
@@ -225,7 +257,9 @@ struct RecentRecordsStateTests {
         let state = RecentRecordsState(
             recomputer: trained.recomputer,
             catalogue: RetiredCatalogue(exerciseID: retired, name: "Bench Press"),
-            limit: 10)
+            settings: trained.log.repositories.settings,
+            limit: 10,
+            defaultDashboardExerciseIDs: everyExercise(_:))
 
         await state.load()
 
@@ -233,28 +267,37 @@ struct RecentRecordsStateTests {
         #expect(state.exerciseNames[retired] == "Bench Press")
     }
 
-    /// A formula change moves every estimate and no rep max, so waking this feed for one would walk
-    /// the cache for an answer that cannot have moved.
-    @Test("A formula change does not reload the feed")
-    func aFormulaChangeIsIgnored() async throws {
+    /// **A settings change now reaches this feed, and a formula change rides along.** Until
+    /// `FR-16.3` the reasoning was that a rep max reads no setting, so nothing a picker could do
+    /// moved this screen — true of the records and no longer true of the feed, which reads a scope,
+    /// a scheme rule and a baseline flag. `.everyExercise` is the one announcement those changes
+    /// have, so it is taken; the cost is that a formula change, which still moves nothing here,
+    /// reloads it. That cost is what this test pins, so a later narrowing is a deliberate change
+    /// rather than a silent one.
+    @Test("A settings-wide change reloads the feed")
+    func aSettingsChangeReloadsTheFeed() async throws {
         let trained = try await trainedLog()
         let state = RecentRecordsState(
-            recomputer: trained.recomputer, catalogue: trained.log.repositories.exercises, limit: 10)
+            recomputer: trained.recomputer,
+            catalogue: trained.log.repositories.exercises,
+            settings: trained.log.repositories.settings,
+            limit: 10,
+            defaultDashboardExerciseIDs: everyExercise(_:))
         await state.load()
+        #expect(state.records.count == 2)
 
         let subscription = Task { await state.observeChanges() }
         defer { subscription.cancel() }
         await awaitSubscriber(on: trained.recomputer)
-        // The cache is emptied behind the state's back: a reload would show it, so a feed that still
-        // holds two entries is one that did not reload.
+        // The cache is emptied behind the state's back: only a reload can show it.
         for exerciseID in state.records.map(\.exerciseID) {
             try await trained.log.repositories.personalRecords.replacePersonalRecords(
                 forExerciseID: exerciseID, with: [])
         }
-        await trained.recomputer.formulaDidChange(to: .brzycki)
+        await trained.recomputer.recentRecordsPreferencesDidChange()
 
-        await settle(until: { false }, within: 20)
-        #expect(state.records.count == 2)
+        await settle { state.records.isEmpty }
+        #expect(state.records.isEmpty)
     }
 }
 
@@ -383,9 +426,14 @@ struct RecentRecordsLocaleNameTests {
             now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: squat)
         try await recomputer.recompute(forExerciseID: bench)
+        try await log.showEveryRecord()
 
         let state = RecentRecordsState(
-            recomputer: recomputer, catalogue: log.repositories.exercises, limit: 10)
+            recomputer: recomputer,
+            catalogue: log.repositories.exercises,
+            settings: log.repositories.settings,
+            limit: 10,
+            defaultDashboardExerciseIDs: everyExercise(_:))
         state.nameLanguage = .ukrainian
         await state.load()
 

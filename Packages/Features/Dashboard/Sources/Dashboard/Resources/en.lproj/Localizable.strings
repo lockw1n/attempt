@@ -109,3 +109,39 @@
    load is negative, so summing it would make the total fall as more work was done. */
 "dashboard.week.unweighed" = "Nothing this week carries a load to weigh — bodyweight and assisted sets add no volume.";
 "dashboard.week.error" = "This week's training could not be read.";
+
+/* FR-16.3.4's empty feed under a narrower scope. It is not "no records yet": the records exist and
+   the scope is what is hiding them, so the sentence names the scope and the button offers the wider
+   one — a control rather than a sentence pointing at Settings. */
+"dashboard.recent-records.none-in-scope" = "No recent personal records for the lifts this feed is scoped to.";
+"dashboard.recent-records.show-every" = "Show every exercise";
+
+/* FR-16.3's configuration screen, reached from Settings. The title matches the feed's own: it is
+   the same feature, and a second name would read as a second one. */
+"dashboard.recent-records.settings.title" = "Recent PRs";
+"dashboard.recent-records.settings.error" = "Your Recent PRs settings could not be read.";
+"dashboard.recent-records.settings.write-error" = "That change could not be saved.";
+
+/* FR-16.3.1's scope. The detail names where the first option's list comes from, because that is the
+   whole point of it: one selection, obeyed by the dashboard tiles and by this feed. */
+"dashboard.recent-records.scope.title" = "Which lifts";
+"dashboard.recent-records.scope.dashboard-lifts" = "Dashboard";
+"dashboard.recent-records.scope.every-exercise" = "Everything";
+"dashboard.recent-records.scope.chosen" = "Chosen";
+"dashboard.recent-records.scope.detail" = "Dashboard follows the lifts you tile an estimated 1RM for, so one choice covers both.";
+"dashboard.recent-records.exercises.title" = "Lifts in this feed";
+"dashboard.recent-records.exercises.empty" = "No exercises to choose from";
+
+/* FR-16.3.2. "Derived" is stated as the threshold rather than as a word, since three is the whole
+   rule and a lifter cannot guess it. The list under the toggle offers the schemes their own records
+   are held at — the full table is sixty cells, which is not a control. */
+"dashboard.recent-records.schemes.title" = "Which schemes";
+"dashboard.recent-records.schemes.derived" = "Follow my training";
+"dashboard.recent-records.schemes.detail" = "Shows records at any rep-and-set scheme you have trained at least three times. Turn it off to pick the schemes yourself.";
+"dashboard.recent-records.schemes.empty" = "No records to choose a scheme from yet.";
+
+/* FR-16.3.4. The label says what a baseline is rather than naming it: "baseline" is our word for it,
+   and the lifter's is "the first time". */
+"dashboard.recent-records.baselines.title" = "First-time records";
+"dashboard.recent-records.baselines.label" = "Show first-time records";
+"dashboard.recent-records.baselines.detail" = "The first time you perform a scheme it sets a record with nothing to compare against. Off by default, so a new accessory lift does not fill the feed.";

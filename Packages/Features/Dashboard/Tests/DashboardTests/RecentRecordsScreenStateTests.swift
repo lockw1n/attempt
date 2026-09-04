@@ -7,7 +7,7 @@ import Testing
 
 @testable import Dashboard
 
-/// `FR-1.13.1`: which of the feed's four states a load is in, asserted without rendering anything.
+/// `FR-1.13.1`: which of the feed's five states a load is in, asserted without rendering anything.
 @Suite("Recent records screen state")
 @MainActor
 struct RecentRecordsScreenStateTests {
@@ -21,7 +21,9 @@ struct RecentRecordsScreenStateTests {
                 exercises: repositories.exercises,
                 cache: repositories.personalRecords),
             catalogue: repositories.exercises,
-            limit: limit)
+            settings: repositories.settings,
+            limit: limit,
+            defaultDashboardExerciseIDs: DashboardDefaults.exerciseIDs(in:))
     }
 
     @Test("Before the first read it is loading, not empty")
@@ -29,21 +31,64 @@ struct RecentRecordsScreenStateTests {
         #expect(RecentRecordsScreenState.current(state()) == .loading)
     }
 
-    @Test("A store holding no records is the insufficient-data case")
-    func anEmptyStoreHasNothingYet() async {
+    /// The scope is what separates the two empty states, and under `FR-16.3.1`'s default it is
+    /// narrower than every exercise — so a store with nothing in it lands on the offer rather than
+    /// on "log a working set".
+    @Test("A store holding no records under the default scope offers the wider one")
+    func anEmptyStoreUnderTheDefaultScopeOffers() async {
         let feed = state()
         await feed.load()
 
         #expect(feed.hasLoaded)
+        #expect(RecentRecordsScreenState.current(feed) == .nothingInScope)
+    }
+
+    /// And at the widest scope there is nothing left to widen to, so the sentence is the one about
+    /// what a set has to be.
+    @Test("A store holding no records at the widest scope is the insufficient-data case")
+    func anEmptyStoreHasNothingYet() async throws {
+        let feed = state()
+        try await widenScope(feed)
+        await feed.load()
+
         #expect(RecentRecordsScreenState.current(feed) == .nothingYet)
+    }
+
+    /// `FR-16.3.4`'s offer taken: the setting moves, and the feed re-reads under it.
+    @Test("Taking the offer widens the stored scope and reloads")
+    func takingTheOfferWidensTheScope() async throws {
+        let log = TrainingLogFixture()
+        // Improved rather than logged once, so the standing record beat something: a baseline is
+        // hidden by `FR-16.3.4`'s own default and widening the scope would not reveal it.
+        try await log.trainAndImprove()
+        // A lifter who removed every tile: `FR-1.9.1`'s selection is empty rather than never made,
+        // so `FR-16.3.1`'s default scope resolves to nothing and the record is outside it.
+        var stored = try await log.repositories.settings.settings()
+        stored.dashboardExerciseIDs = []
+        try await log.repositories.settings.save(stored)
+        let feed = log.feed()
+        await feed.load()
+        #expect(RecentRecordsScreenState.current(feed) == .nothingInScope)
+
+        await feed.widenScope()
+
+        #expect(RecentRecordsScreenState.current(feed) == .ready)
+        #expect(feed.scope == .everyExercise)
+        #expect(
+            try await log.repositories.settings.settings().recentRecordsScope == .everyExercise)
+    }
+
+    /// Widens the scope on the store behind `feed`, for the tests that are not about the offer.
+    private func widenScope(_ feed: RecentRecordsState) async throws {
+        await feed.widenScope()
     }
 
     @Test("Records to show is the ready case")
     func recordsAreReady() async throws {
         let log = TrainingLogFixture()
         let exerciseID = try await log.trainOnce()
-        let feed = RecentRecordsState(
-            recomputer: log.recomputer, catalogue: log.repositories.exercises, limit: 5)
+        let feed = log.feed()
+        try await log.showEveryRecord()
 
         await feed.load()
 
@@ -57,8 +102,8 @@ struct RecentRecordsScreenStateTests {
     func aFailureOutranksAStaleList() async throws {
         let log = TrainingLogFixture()
         try await log.trainOnce()
-        let feed = RecentRecordsState(
-            recomputer: log.recomputer, catalogue: log.repositories.exercises, limit: 5)
+        let feed = log.feed()
+        try await log.showEveryRecord()
         await feed.load()
         #expect(RecentRecordsScreenState.current(feed) == .ready)
 
@@ -82,6 +127,25 @@ private final class TrainingLogFixture {
 
     init() { cache = SwitchableCache(wrapping: repositories.personalRecords) }
 
+    /// The feed over this fixture's store, at the card's length.
+    func feed(limit: Int = 5) -> RecentRecordsState {
+        RecentRecordsState(
+            recomputer: recomputer,
+            catalogue: repositories.exercises,
+            settings: repositories.settings,
+            limit: limit,
+            defaultDashboardExerciseIDs: DashboardDefaults.exerciseIDs(in:))
+    }
+
+    /// Turns `FR-16.3`'s filters off, for the tests that are about the state mapping rather than
+    /// about the configuration.
+    func showEveryRecord() async throws {
+        var stored = try await repositories.settings.settings()
+        stored.recentRecordsScope = .everyExercise
+        stored.recentRecordsShowsBaselines = true
+        try await repositories.settings.save(stored)
+    }
+
     /// Logs one working set against one exercise and recomputes it.
     @discardableResult
     func trainOnce() async throws -> UUID {
@@ -89,6 +153,19 @@ private final class TrainingLogFixture {
         try await repositories.exercises.save(exercise(id: exerciseID))
         let entryID = try await loggedEntry(for: exerciseID)
         try await repositories.workouts.save(workingSet(inEntryID: entryID))
+        try await recomputer.recompute(forExerciseID: exerciseID)
+        return exerciseID
+    }
+
+    /// The same, and then a heavier session — so the standing record beat something and is not a
+    /// baseline, which is what `FR-16.3.4` hides by default.
+    @discardableResult
+    func trainAndImprove() async throws -> UUID {
+        let exerciseID = try await trainOnce()
+        let later = day.addingTimeInterval(604_800)
+        let entryID = try await loggedEntry(for: exerciseID, on: later)
+        try await repositories.workouts.save(
+            workingSet(inEntryID: entryID, grams: 150_000, on: later))
         try await recomputer.recompute(forExerciseID: exerciseID)
         return exerciseID
     }
@@ -118,7 +195,8 @@ private final class TrainingLogFixture {
     }
 
     /// A session and one entry under it, saved — returns the entry a set can be logged against.
-    private func loggedEntry(for exerciseID: UUID) async throws -> UUID {
+    private func loggedEntry(for exerciseID: UUID, on stamp: Date? = nil) async throws -> UUID {
+        let day = stamp ?? self.day
         let sessionID = UUID()
         try await repositories.workouts.save(
             WorkoutSession(
@@ -148,15 +226,17 @@ private final class TrainingLogFixture {
     }
 
     /// One completed working set, which is the only kind `FR-1.6.1` counts.
-    private func workingSet(inEntryID entryID: UUID) -> SetEntry {
+    private func workingSet(
+        inEntryID entryID: UUID, grams: Int = 140_000, on stamp: Date? = nil
+    ) -> SetEntry {
         SetEntry(
             id: UUID(),
-            createdAt: day,
-            updatedAt: day,
+            createdAt: stamp ?? day,
+            updatedAt: stamp ?? day,
             deletedAt: nil,
             entryID: entryID,
             order: 0,
-            weight: Weight(grams: 140_000),
+            weight: Weight(grams: grams),
             reps: 3,
             rpe: nil,
             rir: nil,
@@ -166,7 +246,7 @@ private final class TrainingLogFixture {
             targetReps: nil,
             modifiers: [],
             notes: "",
-            completedAt: day)
+            completedAt: stamp ?? day)
     }
 
     /// Makes every later cache read throw, so a second load fails over a feed already on screen.

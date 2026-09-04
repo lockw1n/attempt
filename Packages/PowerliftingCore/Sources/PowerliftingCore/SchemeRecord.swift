@@ -143,10 +143,28 @@ public struct SchemeRecordCalculator: Sendable {
     /// under `G-1.5`, one version being a complete statement of what produced a row.
     public init() {}
 
+    /// The corner cell `run` reaches — its own scheme, clamped to the table — or `nil` where it
+    /// reaches no cell at all.
+    ///
+    /// **The one place a run is turned into a cell**, so the table's bounds are stated once. A run
+    /// past either bound clamps rather than being refused: eight sets of twelve is a record at
+    /// `10 × 6`, and the cells above the bounds are not cells. A run below the rep floor — a set of
+    /// none, which a failed set records — reaches nothing.
+    ///
+    /// - Parameter run: The run.
+    /// - Returns: The maximal cell it holds, or `nil`.
+    public static func cell(for run: SetRun) -> RecordScheme? {
+        let reps = min(run.reps, PersonalRecords.repRange.upperBound)
+        let sets = min(run.count, Self.setRange.upperBound)
+        guard reps >= PersonalRecords.repRange.lowerBound, sets >= Self.setRange.lowerBound
+        else { return nil }
+        return RecordScheme(reps: reps, sets: sets)
+    }
+
     /// Every scheme record `runs` holds, ascending by ``SchemeRecord/scheme``.
     ///
-    /// A run reaching past either bound **clamps** rather than being refused: eight sets of twelve
-    /// is a record at `10 × 6`, and the cells above the bounds are not cells.
+    /// A run reaching past either bound **clamps** rather than being refused — see ``cell(for:)``,
+    /// which is where that rule lives.
     ///
     /// - Parameter runs: One exercise's runs of consecutive equal completed working sets, oldest
     ///   first. Warmups, failures and the runs they interrupt are the caller's to exclude — see
@@ -155,12 +173,9 @@ public struct SchemeRecordCalculator: Sendable {
     public func records(in runs: [SetRun]) -> [SchemeRecord] {
         var held: [RecordScheme: SchemeRecord] = [:]
         for run in runs {
-            let reps = min(run.reps, PersonalRecords.repRange.upperBound)
-            let sets = min(run.count, Self.setRange.upperBound)
-            guard reps >= PersonalRecords.repRange.lowerBound, sets >= Self.setRange.lowerBound
-            else { continue }
-            for repCount in PersonalRecords.repRange.lowerBound...reps {
-                for setCount in Self.setRange.lowerBound...sets {
+            guard let corner = Self.cell(for: run) else { continue }
+            for repCount in PersonalRecords.repRange.lowerBound...corner.reps {
+                for setCount in Self.setRange.lowerBound...corner.sets {
                     let scheme = RecordScheme(reps: repCount, sets: setCount)
                     // Strict, which *is* the tie-break: repeating a record is not setting one, so an
                     // equal load later leaves the earlier run holding the cell — and leaves the

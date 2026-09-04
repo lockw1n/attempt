@@ -286,4 +286,18 @@ public enum SettingsRoute: Hashable, Sendable, Codable {
     /// confirmation over a file they chose in another session — possibly one they have since
     /// replaced. A restored stack opens this screen with nothing chosen, the same as a fresh push.
     case restore
+
+    /// What the recent-PR feed reports on — the lifts, the schemes and whether baselines show
+    /// (`FR-16.3.1`, `FR-16.3.2`, `FR-16.3.4`).
+    ///
+    /// **A Settings route over a screen the dashboard module owns**, which is
+    /// ``equipmentProfiles``' join in the other direction: the screen configures `FR-1.6.5`'s feed
+    /// and reuses that module's picker row and its default-lifts rule, `TR-1.3` keeps the two
+    /// feature modules apart, and the app target composes them.
+    ///
+    /// **Pushed rather than presented**, on ``DashboardRoute/estimatedMaxExercises``' rule: every
+    /// control here is written straight through, so the screen holds no unsaved draft and is a place
+    /// the app can legitimately be restored to. It carries no selection for the same reason that one
+    /// does — what is configured is a stored row, not a parameter of a push.
+    case recentRecords
 }

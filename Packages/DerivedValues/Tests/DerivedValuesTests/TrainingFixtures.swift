@@ -30,6 +30,19 @@ struct TrainingLog {
     /// The fakes everything here is written to and read from.
     let repositories = InMemoryRepositoryStack()
 
+    /// Turns `FR-16.3`'s filters off, so a feed test asserts on the feed's own mechanics.
+    ///
+    /// **A fixture, not a default.** `FR-16.3.1` scopes a fresh row to the dashboard lifts and
+    /// `FR-16.3.4` hides baselines, so an unconfigured store draws almost nothing here — every
+    /// record a short fixture sets is the first of its scheme. A test about grouping, ordering or
+    /// subscription says so by calling this; a test about the filters configures them itself.
+    func showEveryRecord() async throws {
+        var stored = try await repositories.settings.settings()
+        stored.recentRecordsScope = .everyExercise
+        stored.recentRecordsShowsBaselines = true
+        try await repositories.settings.save(stored)
+    }
+
     /// An exercise in the catalogue.
     @discardableResult
     func exercise(

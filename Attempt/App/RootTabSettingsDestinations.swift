@@ -1,4 +1,5 @@
 import AppNavigation
+import Dashboard
 import DesignSystem
 import Logging
 import RepositoryInterface
@@ -40,12 +41,34 @@ extension RootTabView {
             backupRoot
         case .restore:
             restoreRoot
+        case .recentRecords:
+            recentRecordsSettingsRoot
         case .sync:
             // NO STORE SWITCH HERE, unlike every other case in this function. The switch and the
             // status are facts about the container and the preference rather than rows in it, so a
             // store that did not open takes nothing away from this screen — and is arguably when a
             // lifter most wants to know whether their log ever reached iCloud.
             SyncSettingsView(control: dependencies.sync)
+        }
+    }
+
+    /// `FR-16.3`: what the recent-PR feed reports on, or the reason it cannot be shown.
+    ///
+    /// **A `Dashboard` screen answering a Settings route**, which is the gyms' join in the other
+    /// direction: the screen configures `FR-1.6.5`'s feed and reuses that module's picker row, and
+    /// `TR-1.3` keeps the two feature modules from importing each other. It is handed the same
+    /// recompute actor the feed subscribes to, which is what carries a change made here back to the
+    /// dashboard without it being revisited (`TR-1.5`).
+    @ViewBuilder
+    private var recentRecordsSettingsRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, let stores):
+            RecentRecordsSettingsView(
+                settings: repositories.settings,
+                catalogue: repositories.exercises,
+                records: stores.records)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
         }
     }
 

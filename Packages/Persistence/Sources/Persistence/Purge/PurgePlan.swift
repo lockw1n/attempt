@@ -114,8 +114,11 @@ struct PurgePlan {
             for config in trainingMaxes where !freedTrainingMaxes.contains(config.id) {
                 changed = retain(config.exerciseID, in: &freedExercises) || changed
             }
+            // TWO LISTS ON THIS ROW, not one: `FR-16.3.1`'s chosen feed scope names exercises the
+            // dashboard selection need not, so a purge reading only the tiles would free an
+            // exercise the recent-PR feed still filters on.
             for row in settings where !freedSettings.contains(row.id) {
-                for id in row.dashboardExerciseIDs ?? [] {
+                for id in (row.dashboardExerciseIDs ?? []) + (row.recentRecordsExerciseIDs ?? []) {
                     changed = retain(id, in: &freedExercises) || changed
                 }
             }

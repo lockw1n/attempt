@@ -121,7 +121,7 @@ struct StorePurgeTests {
     // way — and the catalogue is named by four different columns, all four driven here. The entry
     // is the one that carries real traffic: every logged set hangs off one, so an unheld edge there
     // is the orphan this whole file exists to make unreachable.
-    @Test("A live entry, training max, settings row, variant or routine slot holds a deleted exercise")
+    @Test("A live entry, training max, either settings list, variant or routine slot holds an exercise")
     func catalogueReferrersHoldAnExercise() async throws {
         for referrer in ExerciseReferrer.allCases {
             let harness = try RepositoryHarness()
@@ -138,6 +138,10 @@ struct StorePurgeTests {
             case .dashboard:
                 let settings = makeSettings(userID: UUID())
                 settings.dashboardExerciseIDs = [squat.id]
+                rows.append(settings)
+            case .feedScope:
+                let settings = makeSettings(userID: UUID())
+                settings.recentRecordsExerciseIDs = [squat.id]
                 rows.append(settings)
             case .variant:
                 rows.append(
@@ -407,6 +411,9 @@ private enum ExerciseReferrer: CaseIterable {
     case entry
     case trainingMax
     case dashboard
+    // FR-16.3.1's feed scope is a SECOND list on the same row, and a purge reading only the tiles
+    // would free an exercise the recent-PR feed still filters on.
+    case feedScope
     case variant
     case routineSlot
 }

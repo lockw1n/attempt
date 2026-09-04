@@ -254,6 +254,21 @@ public actor PersonalRecordRecomputer {
         publish(.everyExercise)
     }
 
+    /// The third settings trigger: a recent-PR preference moved (`FR-16.3.1`, `FR-16.3.2`,
+    /// `FR-16.3.4`).
+    ///
+    /// **It publishes unconditionally, where the other two compare first**, because this actor does
+    /// not hold the preference. A formula and a window are in force *here* — they are what an
+    /// estimate is computed under — so a redundant announcement is one this type can recognise. The
+    /// feed's scope lives on the settings row and is read by the screen, so all this can say is that
+    /// the row was written; the caller writing it is the one that knows whether anything changed.
+    ///
+    /// Nothing is invalidated, on ``formulaDidChange(to:)``'s rule: the cache holds cells, which read
+    /// no setting. What is stale is which of them a screen draws.
+    public func recentRecordsPreferencesDidChange() {
+        publish(.everyExercise)
+    }
+
     // MARK: - The computation
 
     /// Both halves, from the one walk ``walked(_:writingCache:)`` performed.

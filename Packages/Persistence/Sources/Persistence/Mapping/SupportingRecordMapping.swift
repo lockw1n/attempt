@@ -187,7 +187,13 @@ extension UserSettingsEntity: RecordMappable {
             displayPrecision: displayPrecisionMilliUnits.flatMap(DisplayPrecision.init(milliUnits:)),
             e1RMLookbackDays: e1RMLookbackDays,
             keepScreenAwake: keepScreenAwake,
-            dashboardExerciseIDs: dashboardExerciseIDs
+            dashboardExerciseIDs: dashboardExerciseIDs,
+            recentRecordsScope: RecordVocabulary.resolve(
+                recentRecordsScopeRawValue, or: RecordVocabulary.recentRecordsScope),
+            recentRecordsExerciseIDs: recentRecordsExerciseIDs,
+            recentRecordsSchemes: RecentRecordsSchemes.stored(
+                reps: recentRecordsSchemeReps, sets: recentRecordsSchemeSets),
+            recentRecordsShowsBaselines: recentRecordsShowsBaselines
         )
     }
 
@@ -205,6 +211,11 @@ extension UserSettingsEntity: RecordMappable {
             e1RMLookbackDays: record.e1RMLookbackDays,
             keepScreenAwake: record.keepScreenAwake,
             dashboardExerciseIDs: record.dashboardExerciseIDs,
+            recentRecordsScope: record.recentRecordsScope,
+            recentRecordsExerciseIDs: record.recentRecordsExerciseIDs,
+            recentRecordsSchemeReps: record.recentRecordsSchemes.chosenSchemes?.map(\.reps),
+            recentRecordsSchemeSets: record.recentRecordsSchemes.chosenSchemes?.map(\.sets),
+            recentRecordsShowsBaselines: record.recentRecordsShowsBaselines,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt
         )
@@ -235,6 +246,14 @@ extension UserSettingsEntity: RecordMappable {
             stored: defaultRoundingStrategyRawValue,
             fallback: RecordVocabulary.roundingStrategy)
         dashboardExerciseIDs = record.dashboardExerciseIDs
+        recentRecordsScopeRawValue = preservingRawValue(
+            record.recentRecordsScope,
+            stored: recentRecordsScopeRawValue,
+            fallback: RecordVocabulary.recentRecordsScope)
+        recentRecordsExerciseIDs = record.recentRecordsExerciseIDs
+        recentRecordsSchemeReps = record.recentRecordsSchemes.chosenSchemes?.map(\.reps)
+        recentRecordsSchemeSets = record.recentRecordsSchemes.chosenSchemes?.map(\.sets)
+        recentRecordsShowsBaselines = record.recentRecordsShowsBaselines
     }
 }
 

@@ -1,7 +1,7 @@
 import PowerliftingCore
 
 /// What an unreadable vocabulary spelling becomes — the whole of rule 4 in this module's header, as
-/// eleven columns' worth of constants and the one function that applies them.
+/// twelve columns' worth of constants and the one function that applies them.
 ///
 /// **This is the second home of these values and the duplication is deliberate.** `Persistence`'s
 /// `SchemaDefaults` holds what an *absent* column contains; this holds what an *unreadable* value
@@ -14,11 +14,11 @@ import PowerliftingCore
 /// version through the store and the same row arriving through a backup file resolve identically.
 /// A second copy in either path is how those two drift.
 ///
-/// **Three of the ten already degrade on their own, and they still route through here.** `Movement`,
+/// **Three of the eleven already degrade on their own, and they still route through here.** `Movement`,
 /// `Equipment` and `BarType` each hand-write a lenient `init(from:)` in `PowerliftingCore`, decided
 /// for the seed catalogue rather than for storage — so decoding those three through the plain
 /// `Codable` conformance would give the same answer today. Going through this table anyway is what
-/// keeps all ten resolving in one place and makes a divergence between the two policies visible;
+/// keeps all eleven resolving in one place and makes a divergence between the two policies visible;
 /// `RecordVocabularyAgreementTests` is what would notice one.
 ///
 /// **Nothing here preserves the original spelling.** A restore into an empty store therefore writes
@@ -29,7 +29,7 @@ public enum RecordVocabulary {
     /// One vocabulary's fallback, and whether that fallback claims anything.
     ///
     /// **``isUnknownMarker`` exists because a write path needs it, and getting it wrong is a
-    /// user-visible bug rather than a nicety.** Only three of the ten fallbacks are cases meaning
+    /// user-visible bug rather than a nicety.** Only three of the eleven fallbacks are cases meaning
     /// *"this version does not recognise the stored spelling"*; the other seven are ordinary answers
     /// a user can also pick deliberately. A mapping that treats the two alike cannot tell "the
     /// caller left this column alone" from "the caller chose this value", and so makes the value
@@ -43,7 +43,7 @@ public enum RecordVocabulary {
         /// rather than a real answer a user could also have chosen.
         public let isUnknownMarker: Bool
 
-        /// Private so the ten constants below are the only instances: a vocabulary's fallback is a
+        /// Private so the eleven constants below are the only instances: a vocabulary's fallback is a
         /// decision with an argument behind it, not something a call site supplies.
         fileprivate init(_ value: T, isUnknownMarker: Bool) {
             self.value = value
@@ -87,10 +87,17 @@ public enum RecordVocabulary {
     /// marker: a user choosing "System" has to be able to make that stick.
     public static let theme = Fallback(ThemePreference.system, isUnknownMarker: false)
 
+    /// An unreadable ``RecentRecordsScope``.
+    ///
+    /// `.dashboardLifts` is `FR-16.3.1`'s own default and one of the three a user picks, so it is
+    /// not a marker: a user choosing the dashboard lifts has to be able to make that stick.
+    public static let recentRecordsScope = Fallback(
+        RecentRecordsScope.dashboardLifts, isUnknownMarker: false)
+
     /// `raw` as a `T`, or the fallback's value when this version does not recognise the spelling.
     ///
     /// Total on purpose: it is the reason no read in this module can fail on a vocabulary column,
-    /// and it is written once so that a tenth vocabulary cannot acquire a tenth policy.
+    /// and it is written once so that an eleventh vocabulary cannot acquire an eleventh policy.
     ///
     /// - Parameters:
     ///   - raw: The stored or decoded spelling. Any string, including one no version has used.

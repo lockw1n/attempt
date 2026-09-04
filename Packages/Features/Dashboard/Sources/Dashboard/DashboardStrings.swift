@@ -1,4 +1,5 @@
 import Foundation
+import RepositoryInterface
 
 /// This module's copy (`G-3.4`), and the only place a dashboard string literal is written.
 ///
@@ -93,6 +94,75 @@ enum DashboardStrings {
     /// What tapping a feed entry does.
     static let recentRecordsExerciseHint = resource("dashboard.recent-records.exercise-hint")
 
+    /// Why the feed is empty under a scope narrower than every exercise (`FR-16.3.4`).
+    ///
+    /// **A different sentence from ``recentRecordsNone``, not a variant of it.** That one explains
+    /// what a set has to be before it sets a record, which is the wrong thing to tell a lifter whose
+    /// records exist and are outside the scope they chose.
+    static let recentRecordsNoneInScope = resource("dashboard.recent-records.none-in-scope")
+
+    /// `FR-16.3.4`'s offer: the wider scope, as the button that takes it.
+    static let recentRecordsShowEveryExercise = resource("dashboard.recent-records.show-every")
+
+    /// The configuration screen's title (`FR-16.3.1`), and the Settings row that opens it.
+    static let recentRecordsSettingsTitle = resource("dashboard.recent-records.settings.title")
+
+    /// The configuration could not be read.
+    static let recentRecordsSettingsError = resource("dashboard.recent-records.settings.error")
+
+    /// A change to it could not be stored. Nothing moved.
+    static let recentRecordsSettingsWriteError = resource(
+        "dashboard.recent-records.settings.write-error")
+
+    /// `FR-16.3.1`'s heading.
+    static let recentRecordsScopeTitle = resource("dashboard.recent-records.scope.title")
+
+    /// What choosing a narrower scope does, and where the first option's list comes from.
+    static let recentRecordsScopeDetail = resource("dashboard.recent-records.scope.detail")
+
+    /// One scope's name (`FR-16.3.1`).
+    ///
+    /// **A function over the vocabulary rather than three constants**, on
+    /// ``Settings/SettingsStrings/themeName(for:)``' rule: the enum is the list the picker draws, so
+    /// a case added without a name is a compile error rather than a blank row.
+    ///
+    /// - Parameter scope: The scope.
+    /// - Returns: Its name.
+    static func recentRecordsScopeName(for scope: RecentRecordsScope) -> LocalizedStringResource {
+        switch scope {
+        case .dashboardLifts: resource("dashboard.recent-records.scope.dashboard-lifts")
+        case .everyExercise: resource("dashboard.recent-records.scope.every-exercise")
+        case .chosen: resource("dashboard.recent-records.scope.chosen")
+        }
+    }
+
+    /// The heading over the chosen scope's own exercise list.
+    static let recentRecordsExercisesTitle = resource("dashboard.recent-records.exercises.title")
+
+    /// The catalogue holds nothing to choose from.
+    static let recentRecordsExercisesEmpty = resource("dashboard.recent-records.exercises.empty")
+
+    /// `FR-16.3.2`'s heading.
+    static let recentRecordsSchemesTitle = resource("dashboard.recent-records.schemes.title")
+
+    /// The switch between derived and chosen schemes.
+    static let recentRecordsSchemesDerived = resource("dashboard.recent-records.schemes.derived")
+
+    /// What "derived" means, in the threshold the requirement names.
+    static let recentRecordsSchemesDetail = resource("dashboard.recent-records.schemes.detail")
+
+    /// The scope holds no record to choose a scheme from.
+    static let recentRecordsSchemesEmpty = resource("dashboard.recent-records.schemes.empty")
+
+    /// `FR-16.3.4`'s heading.
+    static let recentRecordsBaselinesTitle = resource("dashboard.recent-records.baselines.title")
+
+    /// The toggle itself.
+    static let recentRecordsBaselinesLabel = resource("dashboard.recent-records.baselines.label")
+
+    /// Why it is off to begin with.
+    static let recentRecordsBaselinesDetail = resource("dashboard.recent-records.baselines.detail")
+
     /// `FR-1.9.4`'s primary action, which navigates to Train rather than logging anything here.
     ///
     /// **Also `FR-1.13.2`'s action**, where the first-launch state carries it instead of the button.
@@ -161,6 +231,15 @@ enum DashboardStrings {
             recentRecordsRepMax(3), recentRecordsScheme(5, 5),
             recentRecordsSet("145 kg", "8"), recentRecordsRun("100 kg", "5", "5"),
             recentRecordsBaseline, recentRecordsExerciseHint,
+            recentRecordsNoneInScope, recentRecordsShowEveryExercise,
+            recentRecordsSettingsTitle, recentRecordsSettingsError,
+            recentRecordsSettingsWriteError,
+            recentRecordsScopeTitle, recentRecordsScopeDetail,
+            recentRecordsExercisesTitle, recentRecordsExercisesEmpty,
+            recentRecordsSchemesTitle, recentRecordsSchemesDerived, recentRecordsSchemesDetail,
+            recentRecordsSchemesEmpty,
+            recentRecordsBaselinesTitle, recentRecordsBaselinesLabel,
+            recentRecordsBaselinesDetail,
             startWorkout, lastWorkoutTitle, lastWorkoutNone, lastWorkoutNoneMessage,
             lastWorkoutError, lastWorkoutInProgress, lastWorkoutResume, lastWorkoutRepeat,
             lastWorkoutRepeatError, lastWorkoutSets(4),
@@ -170,6 +249,7 @@ enum DashboardStrings {
             tileNoPrevious, tilesChooseAction, tilesChooseTitle, tilesChooseEmpty,
             tilesChooseError, tilesChooseWriteError,
         ] + absences.map { tileAbsence($0, days: 90) }
+            + RecentRecordsScope.allCases.map { recentRecordsScopeName(for: $0) }
     }
 
     /// Binds a key to this module's catalogue.

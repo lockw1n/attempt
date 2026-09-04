@@ -7,12 +7,19 @@ import PowerliftingCore
 import RepositoryInterface
 import SwiftUI
 
-/// Which of the feed's four states is current (`FR-1.13.1`, `FR-1.13.3`).
+/// Which of the feed's five states is current (`FR-1.13.1`, `FR-1.13.3`).
 ///
-/// **Four, and there is no empty and no offline one.** The records are computed from local rows, so
+/// **Five, and there is no empty and no offline one.** The records are computed from local rows, so
 /// there is no fetch to be offline for; and a feed with nothing in it is `FR-1.13.3`'s
-/// insufficient-data case rather than an emptied list — nothing was filtered away, the sets that
-/// would produce a record have not been logged.
+/// insufficient-data case rather than an emptied list.
+///
+/// **The fifth is the one `FR-16.3.4` added, and it is a different sentence rather than a
+/// decoration on the fourth.** Under `FR-16.3.1`'s default the feed reports on the dashboard lifts
+/// alone, so an empty one no longer means "nothing has produced a record" — it usually means the
+/// records are somewhere the scope excludes, and saying "log a working set" to a lifter who has
+/// logged four hundred of them is wrong. What separates the two is whether anything was narrowed,
+/// which is the scope and nothing else: a `nothingYet` under `.everyExercise` really is a log with
+/// no records in it.
 ///
 /// **Nor is there the pair the per-exercise list has.** That screen tells "nothing logged against
 /// this exercise" from "logged, but nothing that counts" by counting the exercise's sets; globally
@@ -24,6 +31,10 @@ enum RecentRecordsScreenState: Equatable {
 
     /// It answered, and no set this build counts has produced a record.
     case nothingYet
+
+    /// It answered, nothing survived a scope narrower than every exercise, and widening it is the
+    /// offer (`FR-16.3.4`).
+    case nothingInScope
 
     /// There are records to show.
     case ready
@@ -42,14 +53,15 @@ enum RecentRecordsScreenState: Equatable {
     static func current(_ state: RecentRecordsState) -> Self {
         if state.failure != nil { return .failed }
         guard state.hasLoaded else { return .loading }
-        return state.records.isEmpty ? .nothingYet : .ready
+        guard state.records.isEmpty else { return .ready }
+        return state.scope == .everyExercise ? .nothingYet : .nothingInScope
     }
 }
 
 /// `FR-1.6.5`'s global feed of recent personal records, across every exercise.
 ///
 /// **A read of the cache and never a recompute** — see
-/// ``DerivedValues/PersonalRecordRecomputer/recentRecords(limit:)``, which is where the reason it
+/// ``DerivedValues/PersonalRecordRecomputer/recentRecords(limit:filter:)``, which is where the reason it
 /// may not walk the catalogue is written.
 ///
 /// **It subscribes as well as reads** (`TR-1.5`), so a set logged in another tab appears here
@@ -62,21 +74,12 @@ struct RecentRecordsFeed: View {
     /// before its read.
     @Environment(\.locale) private var locale
 
-    /// The unit the loads are shown in (`G-3.1`).
-    ///
-    /// The screen's own read, and kilograms until it lands — a record reads no setting, which is
-    /// what lets `TR-0.3.9` cache it, so the unit is not the state's to carry.
-    @State private var unit: MassUnit = .kilograms
-
-    /// Where the display unit comes from.
-    private let settings: any SettingsRepository
-
     /// Builds the feed.
     ///
     /// - Parameters:
     ///   - records: The app's one recompute actor (`TR-1.6`).
     ///   - catalogue: The exercises, for the name on each entry.
-    ///   - settings: The settings row, for the unit the loads are shown in.
+    ///   - settings: The settings row — `FR-16.3`'s configuration and `G-3.1`'s unit.
     ///   - limit: How many entries to draw.
     init(
         records: PersonalRecordRecomputer,
@@ -84,13 +87,18 @@ struct RecentRecordsFeed: View {
         settings: any SettingsRepository,
         limit: Int
     ) {
-        self.settings = settings
         _state = State(
             initialValue: RecentRecordsState(
-                recomputer: records, catalogue: catalogue, limit: limit))
+                recomputer: records,
+                catalogue: catalogue,
+                settings: settings,
+                limit: limit,
+                // FR-16.3.1's default scope is FR-1.9.1's selection, and where the lifter has made
+                // none it is this module's rule that says which three lifts those are.
+                defaultDashboardExerciseIDs: DashboardDefaults.exerciseIDs(in:)))
     }
 
-    /// Whichever of the four states is current.
+    /// Whichever of the five states is current.
     ///
     /// Two tasks, because they have different lifetimes: the first is a read that finishes, the
     /// second runs until the screen goes away.
@@ -99,7 +107,6 @@ struct RecentRecordsFeed: View {
             .task {
                 state.nameLanguage = ExerciseNameLanguage(locale)
                 await state.load()
-                if let stored = try? await settings.settings().displayUnit { unit = stored }
             }
             .task { await state.observeChanges() }
     }
@@ -111,6 +118,15 @@ struct RecentRecordsFeed: View {
             LoadingStateView()
         case .nothingYet:
             InsufficientDataView(message: Text(DashboardStrings.recentRecordsNone))
+        case .nothingInScope:
+            // FR-16.3.4's offer, and a button rather than a sentence pointing at Settings: the
+            // remedy is one setting, so making the reader go and find it is the dead end the
+            // requirement is written against.
+            InsufficientDataView(
+                message: Text(DashboardStrings.recentRecordsNoneInScope),
+                action: StateAction(Text(DashboardStrings.recentRecordsShowEveryExercise)) {
+                    Task { await state.widenScope() }
+                })
         case .failed:
             ErrorStateView(
                 message: Text(DashboardStrings.recentRecordsError),
@@ -121,7 +137,7 @@ struct RecentRecordsFeed: View {
                 RecentRecordRow(
                     record: record,
                     exerciseName: state.exerciseNames[record.exerciseID],
-                    unit: unit
+                    unit: state.displayUnit
                 )
             }
         }
