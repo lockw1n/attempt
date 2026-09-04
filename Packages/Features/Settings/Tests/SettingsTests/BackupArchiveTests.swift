@@ -190,6 +190,21 @@ struct BackupArchiveTests {
         #expect(!TrainingLogArchiveTests.envelopeKeys(of: export).contains("plannedTargets"))
     }
 
+    /// `G-1.4` and `TR-16.1`: the personal-record cache is derived, so it is not a section — and a
+    /// restore recomputes it rather than reinstating an answer. `TR-16.1`'s two new columns are
+    /// therefore not a table added to the backup, which is why the format version does not move.
+    @Test("The derived record cache is not a section of the backup")
+    func theRecordCacheIsNotBackedUp() throws {
+        let backup = try #require(String(data: Self.awkwardBackup().encoded(), encoding: .utf8))
+        let sections = TrainingLogArchiveTests.envelopeKeys(of: backup)
+
+        #expect(!sections.contains("personalRecords"))
+        #expect(!sections.contains { $0.localizedCaseInsensitiveContains("personalRecord") })
+        // Anchored, so the three absences above cannot pass over an empty key list.
+        #expect(sections.contains("sets"))
+        #expect(TrainingLogArchive.currentFormatVersion == 3)
+    }
+
     @Test("A file written before any of this still decodes, as the export it was")
     func readsAVersionOneFile() throws {
         // Hand-written rather than produced by this build, which is the whole point: no encoder

@@ -105,13 +105,33 @@ struct RecordCodingKeyTests {
         #expect(try !encodedKeys(of: codingUserSettings()).contains("displayPrecision"))
     }
 
-    @Test("A cached record writes ten keys")
+    @Test("A cached record writes twelve keys")
     func cacheKeys() throws {
         #expect(
             try encodedKeys(of: codingPersonalRecordCache()) == [
                 "achievedAt", "computationVersion", "createdAt", "deletedAt", "exerciseID", "id",
-                "repCount", "sourceSetID", "updatedAt", "weight",
+                "previousWeight", "repCount", "setCount", "sourceSetID", "updatedAt", "weight",
             ])
+    }
+
+    // TR-16.1's optional column, on `deletedAt`'s rule: a baseline writes no key at all rather than
+    // a zero, since `Weight` is signed and zero is a real beaten load (FR-16.2.3).
+    @Test("A baseline record writes no beaten load")
+    func baselineCacheKeys() throws {
+        let baseline = PersonalRecordCache(
+            id: codingID,
+            createdAt: codingCreatedAt,
+            updatedAt: codingUpdatedAt,
+            deletedAt: codingDeletedAt,
+            exerciseID: codingJoinID,
+            repCount: 3,
+            weight: Weight(grams: 180_000),
+            sourceSetID: codingJoinID,
+            achievedAt: codingCreatedAt,
+            computationVersion: 1)
+
+        #expect(try !encodedKeys(of: baseline).contains("previousWeight"))
+        #expect(try encodedKeys(of: baseline).contains("setCount"))
     }
 
     @Test("A routine writes five keys")

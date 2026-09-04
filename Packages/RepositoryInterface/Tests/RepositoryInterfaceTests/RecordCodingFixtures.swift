@@ -167,9 +167,11 @@ func codingPersonalRecordCache() -> PersonalRecordCache {
         deletedAt: codingDeletedAt,
         exerciseID: codingJoinID,
         repCount: 3,
+        setCount: 4,
         weight: Weight(grams: 180_000),
         sourceSetID: codingJoinID,
         achievedAt: codingCreatedAt,
+        previousWeight: Weight(grams: 175_000),
         computationVersion: 1
     )
 }

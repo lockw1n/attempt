@@ -289,9 +289,11 @@ extension PersonalRecordCache: AuditStamped {
             deletedAt: deletedAt,
             exerciseID: exerciseID,
             repCount: repCount,
+            setCount: setCount,
             weight: weight,
             sourceSetID: sourceSetID,
             achievedAt: achievedAt,
+            previousWeight: previousWeight,
             computationVersion: computationVersion
         )
     }

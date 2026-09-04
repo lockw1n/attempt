@@ -248,9 +248,11 @@ extension PersonalRecordCacheEntity: RecordMappable {
             deletedAt: deletedAt,
             exerciseID: exerciseID,
             repCount: repCount,
+            setCount: setCount,
             weight: Weight(grams: weightGrams),
             sourceSetID: sourceSetID,
             achievedAt: achievedAt,
+            previousWeight: previousWeightGrams.map(Weight.init(grams:)),
             computationVersion: computationVersion
         )
     }
@@ -261,9 +263,11 @@ extension PersonalRecordCacheEntity: RecordMappable {
             id: record.id,
             exerciseID: record.exerciseID,
             repCount: record.repCount,
+            setCount: record.setCount,
             weightGrams: record.weight.grams,
             sourceSetID: record.sourceSetID,
             achievedAt: record.achievedAt,
+            previousWeightGrams: record.previousWeight?.grams,
             computationVersion: record.computationVersion,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt
@@ -274,9 +278,11 @@ extension PersonalRecordCacheEntity: RecordMappable {
     func update(from record: PersonalRecordCache) {
         exerciseID = record.exerciseID
         repCount = record.repCount
+        setCount = record.setCount
         weightGrams = record.weight.grams
         sourceSetID = record.sourceSetID
         achievedAt = record.achievedAt
+        previousWeightGrams = record.previousWeight?.grams
         computationVersion = record.computationVersion
     }
 }

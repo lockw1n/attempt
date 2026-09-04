@@ -5,7 +5,7 @@ import RepositoryInterface
 struct InMemoryPersonalRecordCacheRepository: PersonalRecordCacheRepository, Sendable {
     let store: InMemoryRepositoryStore
 
-    /// One exercise's cached records, ascending by rep count.
+    /// One exercise's cached records, ascending by scheme.
     func personalRecords(
         forExerciseID exerciseID: UUID, includingDeleted: Bool
     ) async throws -> [PersonalRecordCache] {
@@ -26,14 +26,14 @@ struct InMemoryPersonalRecordCacheRepository: PersonalRecordCacheRepository, Sen
 }
 
 extension InMemoryRepositoryStore {
-    /// One exercise's cached records, ascending by rep count.
+    /// One exercise's cached records, ascending by scheme.
     func personalRecords(
         forExerciseID exerciseID: UUID, includingDeleted: Bool
     ) -> [PersonalRecordCache] {
         personalRecordCache.values
             .filter { $0.exerciseID == exerciseID }
             .live(includingDeleted: includingDeleted)
-            .sortedDeterministically { ($0.repCount, $0.id.uuidString) }
+            .sortedDeterministically { ($0.scheme, $0.id.uuidString) }
     }
 
     /// Every cached record, newest first — see the protocol for why the sort is written out here.
@@ -46,7 +46,7 @@ extension InMemoryRepositoryStore {
 
     /// Makes the exercise's live rows say exactly what `values` says.
     ///
-    /// **Keyed on rep count, so a record that did not move keeps its row and its id** — see the
+    /// **Keyed on the scheme, so a record that did not move keeps its row and its id** — see the
     /// protocol, which is where the reconciliation is specified. A row this leaves alone keeps its
     /// `updatedAt` too, which is the half a fake is easiest to get wrong: `upserted(_:into:at:)`
     /// restamps unconditionally, so the unchanged rows must not go through it at all.
@@ -57,10 +57,10 @@ extension InMemoryRepositoryStore {
         let live = personalRecordCache.values.filter {
             $0.exerciseID == exerciseID && !$0.isSoftDeleted
         }
-        let byRepCount = Dictionary(grouping: live, by: \.repCount)
+        let byScheme = Dictionary(grouping: live, by: \.scheme)
 
         for value in values {
-            guard let rows = byRepCount[value.repCount] else {
+            guard let rows = byScheme[value.scheme] else {
                 let fresh = PersonalRecordCache(
                     id: UUID(),
                     createdAt: now,
@@ -68,9 +68,11 @@ extension InMemoryRepositoryStore {
                     deletedAt: nil,
                     exerciseID: exerciseID,
                     repCount: value.repCount,
+                    setCount: value.setCount,
                     weight: value.weight,
                     sourceSetID: value.sourceSetID,
                     achievedAt: value.achievedAt,
+                    previousWeight: value.previousWeight,
                     computationVersion: value.computationVersion
                 )
                 personalRecordCache[fresh.id] = fresh
@@ -81,8 +83,8 @@ extension InMemoryRepositoryStore {
             }
         }
 
-        let held = Set(values.map(\.repCount))
-        for row in live where !held.contains(row.repCount) {
+        let held = Set(values.map(\.scheme))
+        for row in live where !held.contains(row.scheme) {
             personalRecordCache[row.id] = row.stamped(
                 createdAt: row.createdAt, updatedAt: now, deletedAt: now)
         }
@@ -93,9 +95,11 @@ extension PersonalRecordCache {
     /// Whether this row already says what `values` says — every column but the audit four.
     func states(_ values: PersonalRecordCacheValues) -> Bool {
         repCount == values.repCount
+            && setCount == values.setCount
             && weight == values.weight
             && sourceSetID == values.sourceSetID
             && achievedAt == values.achievedAt
+            && previousWeight == values.previousWeight
             && computationVersion == values.computationVersion
     }
 
@@ -108,9 +112,11 @@ extension PersonalRecordCache {
             deletedAt: deletedAt,
             exerciseID: exerciseID,
             repCount: values.repCount,
+            setCount: values.setCount,
             weight: values.weight,
             sourceSetID: values.sourceSetID,
             achievedAt: values.achievedAt,
+            previousWeight: values.previousWeight,
             computationVersion: values.computationVersion
         )
     }

@@ -88,17 +88,21 @@ func makeInventory(_ denominations: [(grams: Int, pairs: Int)]) throws -> PlateI
 func makeCachedRecord(
     exerciseID: UUID,
     repCount: Int,
+    setCount: Int = 1,
     weightGrams: Int,
     sourceSetID: UUID = UUID(),
     achievedAt: Date = Date(timeIntervalSince1970: 1_700_000_000),
+    previousWeightGrams: Int? = nil,
     computationVersion: Int = PersonalRecordCalculator.computationVersion
 ) -> PersonalRecordCacheEntity {
     PersonalRecordCacheEntity(
         exerciseID: exerciseID,
         repCount: repCount,
+        setCount: setCount,
         weightGrams: weightGrams,
         sourceSetID: sourceSetID,
         achievedAt: achievedAt,
+        previousWeightGrams: previousWeightGrams,
         computationVersion: computationVersion
     )
 }

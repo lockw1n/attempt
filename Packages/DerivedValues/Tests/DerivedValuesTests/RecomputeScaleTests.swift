@@ -97,6 +97,58 @@ struct RecomputeScaleTests {
         #expect(cached.allSatisfy { $0.sourceSetID == logged[Self.setCount - 1].id })
     }
 
+    /// 1,500 sessions of ten **identical** sets, ascending session to session — the worst case for
+    /// `FR-16.2.2`'s second dimension, where the first fixture has none.
+    ///
+    /// Every entry is one run of ten, so every session fills a whole rectangle: `repRange` × the
+    /// clamped six sets, thirty cells reached 1,500 times. The other fixture's ascending sets group
+    /// into runs of one and exercise the dominance rule at its cheapest.
+    private func groupedHistory() async throws -> (log: TrainingLog, exerciseID: UUID) {
+        let log = TrainingLog()
+        let exerciseID = try await log.exercise()
+        for session in 0..<(Self.setCount / 10) {
+            try await log.session(
+                of: exerciseID,
+                on: weeksAgo(1_600 - session),
+                sets: Array(repeating: working(50_000 + session * 10, 5), count: 10))
+        }
+        return (log, exerciseID)
+    }
+
+    /// `NFR-16.1`, which is `NFR-1.6`'s budget and is not relaxed by the second dimension.
+    ///
+    /// **`DOD-16.4`'s other half — the author's own 3,065-set log — is not run here**: it needs a
+    /// restored backup, and this suite's subject is `RepositoryFakes`. This measures the algorithm
+    /// at five times that population; the log is `T-1.83`'s to measure against the real store.
+    @Test("Recomputing 15,000 grouped sets stays inside NFR-16.1's budget")
+    func fifteenThousandGroupedSets() async throws {
+        let (log, exerciseID) = try await groupedHistory()
+        let recomputer = PersonalRecordRecomputer(
+            workouts: log.repositories.workouts,
+            exercises: log.repositories.exercises,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
+
+        let clock = ContinuousClock()
+        let elapsed = try await clock.measure {
+            try await recomputer.recompute(forExerciseID: exerciseID)
+        }
+
+        let ceiling = Self.isHostedRunner ? "hosted-runner sanity" : "NFR-16.1"
+        print(
+            "NFR-16.1 first pass: \(Self.setCount) grouped sets recomputed in \(elapsed) "
+                + "(ceiling \(Self.budget), \(ceiling))")
+        #expect(elapsed < Self.budget)
+
+        // Worthless unless it computed the table: the last session is the heaviest and its entry is
+        // one run of ten, so it holds every cell up to five reps and the clamped six sets.
+        let cached = try await log.repositories.personalRecords.personalRecords(
+            forExerciseID: exerciseID, includingDeleted: false)
+        #expect(cached.count == 30)
+        #expect(cached.map(\.setCount).max() == 6)
+        #expect(cached.map(\.repCount).max() == 5)
+    }
+
     /// The read `G-1.5`'s version exists to make cheap, at the size where cheap matters.
     @Test("A current cache answers the same history without walking it")
     func aCurrentCacheSkipsTheWalk() async throws {

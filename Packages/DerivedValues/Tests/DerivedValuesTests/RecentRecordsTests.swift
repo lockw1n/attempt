@@ -16,9 +16,11 @@ struct RecentRecordFeedTests {
     private func row(
         _ exerciseID: UUID,
         reps: Int,
+        sets: Int = 1,
         set sourceSetID: UUID,
         on achievedAt: Date,
         grams: Int = 100_000,
+        previous: Int? = nil,
         version: Int = PersonalRecordCalculator.computationVersion
     ) -> PersonalRecordCache {
         PersonalRecordCache(
@@ -28,9 +30,11 @@ struct RecentRecordFeedTests {
             deletedAt: nil,
             exerciseID: exerciseID,
             repCount: reps,
+            setCount: sets,
             weight: Weight(grams: grams),
             sourceSetID: sourceSetID,
             achievedAt: achievedAt,
+            previousWeight: previous.map(Weight.init(grams:)),
             computationVersion: version)
     }
 
@@ -133,6 +137,82 @@ struct RecentRecordFeedTests {
         let feed = RecentRecord.feed(from: cached, limit: 10)
 
         #expect(feed.map(\.exerciseID) == [mine, theirs])
+    }
+
+    // MARK: - FR-16.2, the second dimension
+
+    /// One `100 × 5 × 5` fills twenty-five cells and is **one** event — the whole reason the feed
+    /// groups on the run's first set rather than on each cell.
+    @Test("A run's whole rectangle is one entry, spanning both dimensions")
+    func oneRunIsOneEntry() {
+        let (exercise, source) = (UUID(), UUID())
+        let day = weeksAgo(1)
+        let cached = (1...5).flatMap { reps in
+            (1...5).map { row(exercise, reps: reps, sets: $0, set: source, on: day) }
+        }
+
+        let feed = RecentRecord.feed(from: cached, limit: 10)
+
+        #expect(cached.count == 25)
+        #expect(feed.count == 1)
+        #expect(feed.first?.reps == 1...5)
+        #expect(feed.first?.sets == 1...5)
+        #expect(feed.first?.scheme.sets == 1...5)
+    }
+
+    /// `FR-16.3.2` shows a run's **maximal** scheme, so the delta beside it has to be that scheme's
+    /// — a run that is a first-ever `5 × 5` and an improvement at `5 × 1` is a baseline `5 × 5`.
+    @Test("The beaten load is the maximal scheme's, not any cell's")
+    func theBeatenLoadIsTheMaximalSchemes() {
+        let (exercise, source) = (UUID(), UUID())
+        let day = weeksAgo(1)
+        let cached = [
+            row(exercise, reps: 5, sets: 1, set: source, on: day, previous: 95_000),
+            row(exercise, reps: 5, sets: 2, set: source, on: day, previous: 90_000),
+            row(exercise, reps: 5, sets: 3, set: source, on: day),
+        ]
+
+        let feed = RecentRecord.feed(from: cached, limit: 10)
+
+        #expect(feed.first?.previous == nil)
+        #expect(feed.first?.isBaseline == true)
+        #expect(feed.first?.delta == nil)
+    }
+
+    @Test("An improvement carries the maximal scheme's beaten load and its delta")
+    func anImprovementCarriesItsDelta() {
+        let (exercise, source) = (UUID(), UUID())
+        let cached = [
+            row(exercise, reps: 5, sets: 1, set: source, on: weeksAgo(1), grams: 105_000),
+            row(
+                exercise,
+                reps: 5,
+                sets: 3,
+                set: source,
+                on: weeksAgo(1),
+                grams: 105_000,
+                previous: 100_000),
+        ]
+
+        let feed = RecentRecord.feed(from: cached, limit: 10)
+
+        #expect(feed.first?.previous == Weight(grams: 100_000))
+        #expect(feed.first?.delta == Weight(grams: 5_000))
+        #expect(feed.first?.isBaseline == false)
+    }
+
+    /// A rep max is the one-set column, so a cache holding nothing else reads exactly as it did
+    /// before `FR-16.2` — which is what keeps `FR-1.6.5`'s feed unchanged for an exercise trained
+    /// in singles.
+    @Test("A one-set table reads as the rep-max feed it always was")
+    func theOneSetColumnReadsUnchanged() {
+        let (exercise, source) = (UUID(), UUID())
+        let cached = (1...3).map { row(exercise, reps: $0, set: source, on: weeksAgo(1)) }
+
+        let feed = RecentRecord.feed(from: cached, limit: 10)
+
+        #expect(feed.first?.reps == 1...3)
+        #expect(feed.first?.sets == 1...1)
     }
 
     @Test("A limit of nothing draws nothing")

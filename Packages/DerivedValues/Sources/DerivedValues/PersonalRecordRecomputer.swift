@@ -16,7 +16,7 @@ import RepositoryInterface
 /// on every logged set is the shape `NFR-1.6` rules out. ``formulaDidChange(to:)`` is not an
 /// exception — it recomputes nothing at all, it says the estimates are stale.
 ///
-/// **Two reads, because the two halves are cached differently.** ``repMaxes(forExerciseID:)``
+/// **Two kinds of read, because the two halves are cached differently.** ``repMaxes(forExerciseID:)``
 /// answers from `TR-0.3.9`'s cache whenever the stored `computationVersion` is the one this build
 /// computes under, so the common read costs no walk at all (`G-1.5`: a stale value is invalidated by
 /// version mismatch, not by recomputing eagerly). ``estimatedMax(forExerciseID:)`` always walks,
@@ -38,8 +38,11 @@ public actor PersonalRecordRecomputer {
     /// live in their own file.
     let exercises: any ExerciseRepository
 
-    /// The N-rep max cache (`TR-0.3.9`).
-    private let cache: any PersonalRecordCacheRepository
+    /// The scheme-record cache (`TR-0.3.9`, `TR-16.1`).
+    ///
+    /// Internal rather than private on ``workouts``' rule, so the reads over it can live in their
+    /// own file.
+    let cache: any PersonalRecordCacheRepository
 
     /// The formula estimates are produced under (`TR-0.3.8`, `FR-1.7.2`).
     private var formula: E1RMFormulaID
@@ -135,74 +138,6 @@ public actor PersonalRecordRecomputer {
     /// any other and lives in its own file.
     func publish(_ change: RecordChange) {
         for continuation in subscribers.values { continuation.yield(change) }
-    }
-
-    // MARK: - Reads
-
-    /// One exercise's N-rep maxes, from the cache when it is current (`FR-1.6.1`, `G-1.5`).
-    ///
-    /// **An empty cache is recomputed**, because a table cannot tell "nothing has computed this yet"
-    /// from "this exercise holds no records"; the walk it costs is the cheap one, since an exercise
-    /// with no sets has no entries to fetch them through.
-    ///
-    /// **A miss recomputes but announces nothing.** Publication belongs to the triggers below. A
-    /// read that published would be told to read again by every subscriber it woke, and an exercise
-    /// holding no records caches nothing to stop the next pass — so what looks like a slow path is an
-    /// unbounded loop, for exactly the exercises that hold no records.
-    ///
-    /// **Every row has to match, not just one.** A partially-written cache — a bumped version landing
-    /// mid-write, or a restore of a backup taken under older rules — would otherwise read as current
-    /// on the strength of whichever row was checked.
-    ///
-    /// - Parameter exerciseID: The exercise.
-    /// - Returns: The records, ascending by rep count.
-    /// - Throws: Whatever the repositories throw reading the cache, or recomputing.
-    public func repMaxes(forExerciseID exerciseID: UUID) async throws -> [DatedRepMax] {
-        let cached = try await cache.personalRecords(
-            forExerciseID: exerciseID, includingDeleted: false)
-        let current =
-            !cached.isEmpty
-            && cached.allSatisfy {
-                $0.computationVersion == PersonalRecordCalculator.computationVersion
-            }
-        guard current else {
-            return try await walked(exerciseID, writingCache: true).repMaxes
-        }
-        return cached.map {
-            DatedRepMax(
-                reps: $0.repCount,
-                record: DatedRecord(
-                    weight: $0.weight, sourceSetID: $0.sourceSetID, achievedAt: $0.achievedAt))
-        }
-    }
-
-    /// One exercise's best estimate, under the formula and window in force (`FR-1.7.1`).
-    ///
-    /// Never cached and never read from the cache — see this type's note, and
-    /// `PersonalRecordCacheEntity`, which says why the column does not exist.
-    ///
-    /// - Parameter exerciseID: The exercise.
-    /// - Returns: The estimate, or why there is none — see ``EstimatedMax``.
-    /// - Throws: Whatever the repository throws reading the exercise's sets.
-    public func estimatedMax(forExerciseID exerciseID: UUID) async throws -> EstimatedMax {
-        try await recomputed(exerciseID, writingCache: false).estimate
-    }
-
-    /// `FR-1.6.5`'s global feed: the most recent PR-setting sets, across every exercise.
-    ///
-    /// **The cache is read and nothing is recomputed** — the one read here that cannot fall back to a
-    /// walk, deliberately. A miss on one exercise is answered by recomputing it because a walk of one
-    /// exercise's sets is what `NFR-1.6` budgets; a miss here would be a walk of the whole catalogue
-    /// on the screen the app launches into. What a row this build did not compute costs the feed is
-    /// written on ``RecentRecord/feed(from:limit:)``.
-    ///
-    /// - Parameter limit: How many entries to return, counted in PR-setting *sets* rather than in
-    ///   cached rows.
-    /// - Returns: The feed, newest first.
-    /// - Throws: Whatever the repository throws reading the cache.
-    public func recentRecords(limit: Int) async throws -> [RecentRecord] {
-        RecentRecord.feed(
-            from: try await cache.personalRecords(includingDeleted: false), limit: limit)
     }
 
     /// The formula estimates are currently produced under.
@@ -322,13 +257,16 @@ public actor PersonalRecordRecomputer {
     // MARK: - The computation
 
     /// Both halves, from the one walk ``walked(_:writingCache:)`` performed.
-    private func recomputed(
+    ///
+    /// Internal rather than private on ``workouts``' rule, so the reads can live in their own file.
+    func recomputed(
         _ exerciseID: UUID, writingCache: Bool
     ) async throws -> ExerciseRecords {
         let walk = try await walked(exerciseID, writingCache: writingCache)
         return ExerciseRecords(
             exerciseID: exerciseID,
             repMaxes: walk.repMaxes,
+            schemeRecords: walk.schemeRecords,
             estimate: try await estimate(over: walk))
     }
 
@@ -346,7 +284,9 @@ public actor PersonalRecordRecomputer {
     /// the user every record for that exercise rather than the one set. ``Walk/analysed`` is the
     /// one filtered sequence both halves index into, which is what keeps `PersonalRecord`'s offsets
     /// pointing at the set that actually holds the record.
-    private func walked(_ exerciseID: UUID, writingCache: Bool) async throws -> Walk {
+    ///
+    /// Internal rather than private on ``workouts``' rule, so the reads can live in their own file.
+    func walked(_ exerciseID: UUID, writingCache: Bool) async throws -> Walk {
         // Claimed before the first `await`, and only by a call that intends to write: two reads that
         // never touch the row cannot supersede each other.
         let generation = writingCache ? claimWriteGeneration(exerciseID) : 0
@@ -356,17 +296,24 @@ public actor PersonalRecordRecomputer {
         let estimator = E1RMCalculator(formula)
         let calculator = PersonalRecordCalculator(e1rm: estimator)
 
-        // All-time, per `FR-1.6.1`.
-        let computedRepMaxes = PersonalRecords.repRange.compactMap { reps in
-            calculator.repMax(forReps: reps, in: analysed.map(\.1))
-                .map { (reps: reps, record: $0) }
-        }
+        // All-time, per `FR-1.6.1`, and every cell of `FR-16.2.1`'s table from the same runs.
+        let computed = SchemeRecordCalculator().records(
+            in: SchemeRuns.runs(over: stored, offsetsInto: analysed))
         let dates = await sessionDates(
-            forEntryIDs: Set(computedRepMaxes.map { analysed[$0.record.setOffset].0.entryID }))
-        let repMaxes = computedRepMaxes.map { repMax in
-            DatedRepMax(
-                reps: repMax.reps,
-                record: dated(repMax.record, over: analysed, using: dates))
+            forEntryIDs: Set(computed.map { analysed[$0.setOffset].0.entryID }))
+        let schemeRecords = computed.map { record in
+            DatedSchemeRecord(
+                scheme: record.scheme,
+                record: dated(
+                    PersonalRecord(weight: record.weight, setOffset: record.setOffset),
+                    over: analysed,
+                    using: dates),
+                previous: record.previousWeight)
+        }
+        // Derived from the table rather than computed beside it: two passes over one definition are
+        // two places for `FR-1.6.1` and `FR-16.2.1` to start disagreeing about the same column.
+        let repMaxes = schemeRecords.filter { $0.scheme.sets == 1 }.map {
+            DatedRepMax(reps: $0.scheme.reps, record: $0.record)
         }
 
         // Refused rather than written where a newer recompute of this exercise has started since:
@@ -375,12 +322,14 @@ public actor PersonalRecordRecomputer {
         if writingCache, writeGenerations[exerciseID] == generation {
             try await cache.replacePersonalRecords(
                 forExerciseID: exerciseID,
-                with: repMaxes.map {
+                with: schemeRecords.map {
                     PersonalRecordCacheValues(
-                        repCount: $0.reps,
+                        repCount: $0.scheme.reps,
+                        setCount: $0.scheme.sets,
                         weight: $0.record.weight,
                         sourceSetID: $0.record.sourceSetID,
                         achievedAt: $0.record.achievedAt,
+                        previousWeight: $0.previous,
                         computationVersion: PersonalRecordCalculator.computationVersion)
                 })
         }
@@ -391,7 +340,8 @@ public actor PersonalRecordRecomputer {
             analysed: analysed,
             estimator: estimator,
             calculator: calculator,
-            repMaxes: repMaxes)
+            repMaxes: repMaxes,
+            schemeRecords: schemeRecords)
     }
 
     /// `FR-1.7.1`'s estimate, over the sets `walk` already read — or `FR-1.7.5`'s override instead
@@ -432,7 +382,10 @@ public actor PersonalRecordRecomputer {
     /// Carries the two calculators as well as the rows because both are built from the formula in
     /// force at the moment of the walk: rebuilding them in ``estimate(over:)`` would let a formula
     /// change landing between the two halves report a reason the rep maxes were not computed under.
-    private struct Walk {
+    ///
+    /// Internal rather than private on ``workouts``' rule: the reads in their own file take a walk's
+    /// two halves off it. Nothing outside this module can see it.
+    struct Walk {
         let exerciseID: UUID
 
         /// Every live set of this exercise, as stored.
@@ -444,8 +397,11 @@ public actor PersonalRecordRecomputer {
         let estimator: E1RMCalculator
         let calculator: PersonalRecordCalculator
 
-        /// `FR-1.6.1`'s all-time rep maxes, dated.
+        /// `FR-1.6.1`'s all-time rep maxes, dated — the `sets == 1` column of ``schemeRecords``.
         let repMaxes: [DatedRepMax]
+
+        /// `FR-16.2.1`'s whole table, dated.
+        let schemeRecords: [DatedSchemeRecord]
     }
 
     /// The record with the set at its offset resolved to an identity and a date.
@@ -464,9 +420,10 @@ public actor PersonalRecordRecomputer {
 
     /// The session date behind each of `entryIDs`, for the ones that resolve.
     ///
-    /// **At most eleven entries, however long the history is.** Only a set that actually holds a
-    /// record is looked up, and there are ten rep maxes and one estimate; a walk over the exercise's
-    /// sessions to date the same eleven is what `NFR-1.6` puts out of reach.
+    /// **At most sixty-one entries, however long the history is.** Only a set that actually holds a
+    /// record is looked up, and `FR-16.2.1`'s table is `repRange × setRange` cells plus one
+    /// estimate; a walk over the exercise's sessions to date them is what `NFR-1.6` puts out of
+    /// reach. In practice it is far fewer — one run fills up to sixty cells and is one entry.
     ///
     /// **Deleted entries and sessions are read**, for the reason the repository's own set ordering
     /// reads them: the row is wanted for its date rather than for itself, and a live set under a

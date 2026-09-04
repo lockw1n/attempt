@@ -43,6 +43,43 @@ public struct DatedRepMax: Sendable, Hashable {
     }
 }
 
+/// A scheme record, with the set that holds it and the day it was set (`FR-16.2.1`, `TR-16.1`).
+///
+/// **``DatedRepMax`` is the `sets == 1` case of this**, not a different record. The rep-max type
+/// stays because `FR-1.6.x`'s readers ask a one-dimensional question and a screen that draws ten
+/// rows should not have to filter sixty; both are read off the same cached table.
+public struct DatedSchemeRecord: Sendable, Hashable {
+    /// The cell this is the record for.
+    public let scheme: RecordScheme
+
+    /// The record itself. Its `sourceSetID` is the record-setting run's **first** set — see
+    /// ``RepositoryInterface/PersonalRecordCache/sourceSetID``.
+    public let record: DatedRecord
+
+    /// The load this record beat at this scheme, or `nil` where it is a baseline (`FR-16.2.3`).
+    public let previous: Weight?
+
+    /// How far the load moved, or `nil` for a baseline (`FR-16.3.3`).
+    ///
+    /// Strictly positive wherever it is not `nil`, and for ``EstimatedMax/delta``'s reason: a cell
+    /// only moves on a strict improvement, so there is a rise or nothing. The type stays signed for
+    /// that property's reason too.
+    public var delta: Weight? {
+        guard let previous else { return nil }
+        return record.weight - previous
+    }
+
+    /// Whether this scheme had never been performed for this exercise before (`FR-16.3.4`).
+    public var isBaseline: Bool { previous == nil }
+
+    /// Creates a dated scheme record.
+    public init(scheme: RecordScheme, record: DatedRecord, previous: Weight?) {
+        self.scheme = scheme
+        self.record = record
+        self.previous = previous
+    }
+}
+
 /// Why there is no estimated one-rep maximum (`FR-1.7.1`, `FR-1.13.3`).
 ///
 /// **Three reasons, and only one of them is "nothing has been logged".** The other two are the ones
@@ -223,7 +260,13 @@ public struct ExerciseRecords: Sendable, Hashable {
 
     /// The N-rep maxes, ascending by ``DatedRepMax/reps``. An N no set reached is **absent**, not
     /// present at zero — `Weight` is signed, so zero is a real load.
+    ///
+    /// The `sets == 1` column of ``schemeRecords``, and nothing else (`FR-16.2.1`).
     public let repMaxes: [DatedRepMax]
+
+    /// Every cell of `FR-16.2.1`'s table this exercise holds, ascending by
+    /// ``DatedSchemeRecord/scheme``. A cell no run reached is absent, on ``repMaxes``' rule.
+    public let schemeRecords: [DatedSchemeRecord]
 
     /// The current estimated one-rep maximum, or why there is none.
     public let estimate: EstimatedMax
@@ -236,9 +279,22 @@ public struct ExerciseRecords: Sendable, Hashable {
     public var formula: E1RMFormulaID { estimate.formula }
 
     /// Creates one exercise's records.
-    public init(exerciseID: UUID, repMaxes: [DatedRepMax], estimate: EstimatedMax) {
+    ///
+    /// - Parameters:
+    ///   - exerciseID: The exercise.
+    ///   - repMaxes: `FR-1.6.1`'s ten rows.
+    ///   - schemeRecords: `FR-16.2.1`'s table. Defaults to empty, for a caller that only has the
+    ///     rep maxes to state.
+    ///   - estimate: `FR-1.7.1`'s number, or the reason there is none.
+    public init(
+        exerciseID: UUID,
+        repMaxes: [DatedRepMax],
+        schemeRecords: [DatedSchemeRecord] = [],
+        estimate: EstimatedMax
+    ) {
         self.exerciseID = exerciseID
         self.repMaxes = repMaxes
+        self.schemeRecords = schemeRecords
         self.estimate = estimate
     }
 
@@ -247,6 +303,16 @@ public struct ExerciseRecords: Sendable, Hashable {
     /// A lookup, not a guard: it finds whatever ``repMaxes`` holds.
     public func repMax(forReps reps: Int) -> DatedRecord? {
         repMaxes.first { $0.reps == reps }?.record
+    }
+
+    /// The record for one cell, or `nil` when no run reached it.
+    ///
+    /// A lookup, not a guard: it finds whatever ``schemeRecords`` holds.
+    ///
+    /// - Parameter scheme: The cell.
+    /// - Returns: The record, or `nil`.
+    public func schemeRecord(for scheme: RecordScheme) -> DatedSchemeRecord? {
+        schemeRecords.first { $0.scheme == scheme }
     }
 }
 
