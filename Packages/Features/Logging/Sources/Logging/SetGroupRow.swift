@@ -104,7 +104,7 @@ struct SetGroupRow: View {
             Button(action: logNext) {
                 Text(LoggingStrings.setGroupLogNextAction)
             }
-            .buttonStyle(.secondaryAction(.fill))
+            .buttonStyle(.secondaryAction(.fill, touch: .logging))
             .accessibilityLabel(
                 Text(
                     LoggingStrings.setGroupLogNextLabel(

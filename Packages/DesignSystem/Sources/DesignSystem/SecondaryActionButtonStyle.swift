@@ -19,22 +19,33 @@ import SwiftUI
 /// parameter: a secondary action is the same control with a different fill, so the two share one
 /// width vocabulary rather than owning two spellings of `intrinsic` and `fill`.
 ///
+/// **The touch target is a parameter, and this style is where `G-4.3`'s second figure lives.** The
+/// requirement asks 44pt of every control and 60pt of a *logging* one, and after `FR-16.6.4` every
+/// command on the session card is drawn here — so a style that floored at 44 would put the whole of
+/// `NFR-1.3`'s three taps under the smaller number. It defaults to ``DesignTokens/TouchTarget/standard``
+/// because most callers are not logging controls; a caller inside the workout passes
+/// ``DesignTokens/TouchTarget/logging``.
+///
 /// Pressed and disabled fade, as the primary does — the same function decides, so the two cannot
 /// drift apart.
 public struct SecondaryActionButtonStyle: ButtonStyle {
     let width: PrimaryActionWidth
+    let touch: TouchTarget
 
     /// Creates the style. Prefer `.buttonStyle(.secondaryAction)`.
     ///
-    /// - Parameter width: How much of the available width the button claims.
-    public init(width: PrimaryActionWidth = .intrinsic) {
+    /// - Parameters:
+    ///   - width: How much of the available width the button claims.
+    ///   - touch: The extent it is guaranteed at least (`G-4.3`).
+    public init(width: PrimaryActionWidth = .intrinsic, touch: TouchTarget = .standard) {
         self.width = width
+        self.touch = touch
     }
 
     /// Draws the unfilled action. A private `View` for ``PrimaryActionButtonStyle``'s reason: a
     /// `ButtonStyle` is not a `View`, so an `@Environment` property on it never updates.
     public func makeBody(configuration: Configuration) -> some View {
-        SecondaryActionButton(configuration: configuration, width: width)
+        SecondaryActionButton(configuration: configuration, width: width, touch: touch)
     }
 }
 
@@ -44,9 +55,15 @@ extension ButtonStyle where Self == SecondaryActionButtonStyle {
 
     /// The app's secondary action at a chosen width — `.buttonStyle(.secondaryAction(.fill))`.
     ///
-    /// - Parameter width: How much of the available width the button claims.
-    public static func secondaryAction(_ width: PrimaryActionWidth) -> Self {
-        SecondaryActionButtonStyle(width: width)
+    /// - Parameters:
+    ///   - width: How much of the available width the button claims.
+    ///   - touch: The extent it is guaranteed at least (`G-4.3`). A command inside a workout passes
+    ///     ``DesignTokens/TouchTarget/logging``.
+    /// - Returns: The style.
+    public static func secondaryAction(
+        _ width: PrimaryActionWidth, touch: TouchTarget = .standard
+    ) -> Self {
+        SecondaryActionButtonStyle(width: width, touch: touch)
     }
 }
 
@@ -55,6 +72,7 @@ private struct SecondaryActionButton: View {
 
     let configuration: ButtonStyleConfiguration
     let width: PrimaryActionWidth
+    let touch: TouchTarget
 
     private var opacity: Opacity {
         PrimaryActionButtonStyle.opacity(isEnabled: isEnabled, isPressed: configuration.isPressed)
@@ -67,9 +85,9 @@ private struct SecondaryActionButton: View {
             .padding(.horizontal, Spacing.lg.points)
             .padding(.vertical, Spacing.md.points)
             .frame(
-                minWidth: TouchTarget.standard.points,
+                minWidth: touch.points,
                 maxWidth: width.maxWidth,
-                minHeight: TouchTarget.standard.points
+                minHeight: touch.points
             )
             .background(
                 ColorToken.surfaceRaised, in: .rect(cornerRadius: CornerRadius.control.points)

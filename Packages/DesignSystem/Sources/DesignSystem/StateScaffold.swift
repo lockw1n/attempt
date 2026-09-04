@@ -106,6 +106,7 @@ nonisolated enum StateKind: Sendable, CaseIterable {
 /// handler with no label.
 public struct StateAction {
     let label: Text
+    let emphasis: StateActionEmphasis
     let handler: () -> Void
 
     /// Builds the action.
@@ -113,11 +114,30 @@ public struct StateAction {
     /// - Parameters:
     ///   - label: The button's title, built by the caller so it is localized in the caller's
     ///     bundle — see ``GroupedSection`` for why.
+    ///   - emphasis: How much weight it is drawn at (`FR-16.6.4`).
     ///   - handler: What the button does.
-    public init(_ label: Text, handler: @escaping () -> Void) {
+    public init(
+        _ label: Text, emphasis: StateActionEmphasis = .primary, handler: @escaping () -> Void
+    ) {
         self.label = label
+        self.emphasis = emphasis
         self.handler = handler
     }
+}
+
+/// How much weight a state's action is drawn at (`FR-16.6.4`, `G-7.2`).
+///
+/// **A state is not always the whole screen, which is the only reason this is a choice.** Where the
+/// placeholder *is* the screen its action genuinely is the primary one and the default holds. Where
+/// a section is empty inside a screen that still carries its own filled command — an active workout
+/// with no exercises in it yet, drawn above **Finish workout** — two accents would be two primary
+/// actions and no primary action, so that caller asks for the lighter one.
+public enum StateActionEmphasis: Sendable {
+    /// The screen's one filled accent.
+    case primary
+
+    /// The unfilled companion, for a state drawn beside a command that already spends the accent.
+    case secondary
 }
 
 /// The layout all five state views share: indicator, copy, at most one action.
@@ -180,12 +200,23 @@ struct StateScaffold: View {
                 copy
             }
             if let action {
-                Button(action: action.handler) { action.label }
-                    .buttonStyle(.primaryAction)
+                actionButton(action)
             }
         }
         .frame(maxWidth: .infinity)
         .padding(Spacing.xl.points)
+    }
+
+    /// The state's one command, at the weight the caller asked for (``StateActionEmphasis``).
+    ///
+    /// - Parameter action: The command.
+    /// - Returns: The button.
+    @ViewBuilder private func actionButton(_ action: StateAction) -> some View {
+        let button = Button(action: action.handler) { action.label }
+        switch action.emphasis {
+        case .primary: button.buttonStyle(.primaryAction)
+        case .secondary: button.buttonStyle(.secondaryAction)
+        }
     }
 
     /// The spinner, or the glyph.

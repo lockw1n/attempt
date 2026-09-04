@@ -352,7 +352,12 @@ public struct ActiveSessionView: View {
                     symbolName: "list.bullet.rectangle",
                     headline: Text(LoggingStrings.sessionEmptyHeadline),
                     message: Text(LoggingStrings.sessionEmptyMessage),
-                    action: StateAction(Text(LoggingStrings.sessionAddExerciseAction)) {
+                    // Secondary, and that is `FR-16.6.4` rather than taste: this placeholder is a
+                    // section inside a workout that still draws **Finish workout** below it, so a
+                    // filled action here would be the screen's second accent.
+                    action: StateAction(
+                        Text(LoggingStrings.sessionAddExerciseAction), emphasis: .secondary
+                    ) {
                         navigation?.navigate(to: .exerciseLibrary(.exercisePicker))
                     }
                 )

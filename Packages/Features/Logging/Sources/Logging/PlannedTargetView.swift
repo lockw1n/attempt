@@ -156,7 +156,7 @@ struct PlannedNextSetSection: View {
                 Button(action: log) {
                     Text(LoggingStrings.sessionPlanLogAction)
                 }
-                .buttonStyle(.secondaryAction(.fill))
+                .buttonStyle(.secondaryAction(.fill, touch: .logging))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

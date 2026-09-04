@@ -51,13 +51,17 @@
         }
 
         @Test func setGroupLogNext() throws {
-            // `FR-16.1.4`, and `FR-16.6.4` with it. What the picture settles is the pair of claims
-            // the requirement makes together: the command is attached to the *last* group and to no
-            // other, and it is drawn secondary — the same shape as **Repeat set** below it, with the
-            // screen's one accent left for **Finish workout**. At `accessibility3` it is also where
+            // `FR-16.1.4`, and `FR-16.6.4` with it. What the picture settles is three claims the
+            // requirement makes together: the command sits under a group that has a count to tick
+            // — a `× 3` line, which is why the fixture is the one ending in a run rather than
+            // `groupedSets` and its lone final set — it is attached to the *last* working group and
+            // to no other, and it is drawn secondary at `G-4.3`'s 60pt logging extent, the screen's
+            // one accent being left for **Finish workout**. At `accessibility3` it is also where
             // the full-width label has to survive a two-line wrap.
             try assertSnapshots(named: "Session-set-groups-log-next") {
-                fixedEnvironment { groupRows(Fixtures.groupedSets, logsNext: true) }
+                fixedEnvironment {
+                    groupRows(Fixtures.groupedSetsEndingInARun, logsNext: true)
+                }
             }
         }
 

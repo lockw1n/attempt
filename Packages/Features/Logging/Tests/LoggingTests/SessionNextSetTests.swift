@@ -21,6 +21,7 @@ struct SessionNextSetTests {
     @Test("The appended set matches the group's last, and the line ticks from × 3 to × 4")
     func theCountTicks() async throws {
         let card = try await Card.withRun(of: 3)
+        await card.failAWrite()
 
         await card.store.logNextSet(inEntryID: card.entryID, copying: card.lastSetID)
 
@@ -34,6 +35,8 @@ struct SessionNextSetTests {
         #expect(appended.reps == 6)
         #expect(appended.rpe == 8)
         #expect(appended.modifiers == [SetModifier(.belt)])
+        // Anchored against a diagnostic that was really there: `exercisesWriteFailure` starts nil,
+        // so asserting nil after a command that never touched it passes for no reason at all.
         #expect(card.store.exercisesWriteFailure == nil)
     }
 
@@ -78,6 +81,21 @@ struct SessionNextSetTests {
         #expect(groups.map(\.count) == [3, 1])
     }
 
+    @Test("It writes a working set even from a warmup source — the flag is set, not carried")
+    func theAppendedSetIsWorkingEvenFromAWarmup() async throws {
+        // The card never offers the command on the ramp, so this is the guarantee the doc comment
+        // makes to a *caller*: the flag is written rather than copied precisely so that a surface
+        // which offered it somewhere else could not append below the fold it was tapped in.
+        let card = try await Card.withRun(of: 3, isWarmup: true)
+
+        await card.store.logNextSet(inEntryID: card.entryID, copying: card.lastSetID)
+
+        let appended = try #require(card.store.sets.last)
+        #expect(appended.isWarmup == false)
+        #expect(appended.weight == Weight(grams: 100_000))
+        #expect(appended.reps == 6)
+    }
+
     // MARK: - What it copies from (FR-16.1.4)
 
     @Test("The source is re-read, so an edit landing in between is what gets copied")
@@ -100,6 +118,9 @@ struct SessionNextSetTests {
     @Test("A source that is no longer there writes nothing and reports nothing")
     func aDeletedSourceIsSilentlyNothing() async throws {
         let card = try await Card.withRun(of: 3)
+        // A real diagnostic first, so the assertion below has something to be about: the branch
+        // under test *clears* the field, and nil is also what it holds having never been set.
+        await card.failAWrite()
 
         await card.store.logNextSet(inEntryID: card.entryID, copying: UUID())
 
@@ -109,20 +130,22 @@ struct SessionNextSetTests {
         #expect(card.store.exercisesWriteFailure == nil)
     }
 
-    @Test("A workout that is not held writes nothing")
+    @Test("A workout that is no longer held writes nothing, though its sets are still readable")
     func noWorkoutWritesNothing() async throws {
         let card = try await Card.withRun(of: 3)
         let entryID = card.entryID
         let setID = card.lastSetID
-        await card.store.discard()
+        // Finished rather than discarded, and that is the whole of what this test is for.
+        // `discard()` soft-deletes the sets, so the command would stop at "the source is gone" —
+        // the branch the test above already covers — and never reach the guard that asks whether a
+        // workout is held. `finish()` leaves the rows standing and clears the session, which is the
+        // one arrangement that puts that guard in the path.
+        await card.store.finish()
 
         await card.store.logNextSet(inEntryID: entryID, copying: setID)
 
-        // Read including the deleted, because discarding the workout soft-deleted these three
-        // (`G-1.3`) — what the assertion is about is that a fourth was not written on top of a
-        // workout that is gone, and a count of live rows would read zero either way.
         let stored = try await card.repositories.workouts.sets(
-            forEntryID: entryID, includingDeleted: true)
+            forEntryID: entryID, includingDeleted: false)
         #expect(stored.count == 3)
     }
 
@@ -142,8 +165,11 @@ struct SessionNextSetTests {
         /// - Parameters:
         ///   - count: How many sets the run holds.
         ///   - note: The per-set note each of them carries, or none.
+        ///   - isWarmup: Which kind of set the run is made of.
         /// - Returns: The card.
-        static func withRun(of count: Int, note: String = "") async throws -> Card {
+        static func withRun(
+            of count: Int, note: String = "", isWarmup: Bool = false
+        ) async throws -> Card {
             let workout = try await Workout.started()
             await workout.store.addExercise(id: workout.squat.id)
             let entry = try #require(workout.store.exercises.first)
@@ -154,7 +180,7 @@ struct SessionNextSetTests {
                         weight: Weight(grams: 100_000),
                         reps: 6,
                         rpe: 8,
-                        isWarmup: false,
+                        isWarmup: isWarmup,
                         modifiers: [SetModifier(.belt)],
                         notes: note
                     )
@@ -167,6 +193,14 @@ struct SessionNextSetTests {
                 entryID: entry.id,
                 lastSetID: last.id
             )
+        }
+
+        /// Leaves a real write diagnostic on the store, so an assertion that it is gone can fail.
+        ///
+        /// An exercise the catalogue does not have is the failure these commands actually have —
+        /// the repositories refuse a dangling reference — and it costs the card nothing else.
+        func failAWrite() async {
+            await store.addExercise(id: UUID())
         }
     }
 }

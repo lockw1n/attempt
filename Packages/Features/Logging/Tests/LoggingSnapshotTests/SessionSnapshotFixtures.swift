@@ -175,6 +175,20 @@
             loggedSet(index: 36, weight: Weight(grams: 100_000), reps: 5, rpe: 9),
         ]
 
+        /// ``groupedSets`` with the short set carried on into a run of its own, so the **last**
+        /// working group is a `× 3` rather than a set of one (`FR-16.1.4`).
+        ///
+        /// **A separate fixture because `FR-16.1.4`'s claim is about a line that ticks**, and
+        /// ``groupedSets`` ends in a group of one — where **Log next set** and `FR-1.2.6`'s
+        /// **Repeat set** would write the same set and the count has no `× n` to move. This shape
+        /// still holds two working groups, so the picture also settles that the command is on the
+        /// last of them and on no other.
+        static let groupedSetsEndingInARun: [SetEntry] =
+            groupedSets + [
+                loggedSet(index: 37, weight: Weight(grams: 100_000), reps: 5, rpe: 9),
+                loggedSet(index: 38, weight: Weight(grams: 100_000), reps: 5, rpe: 9),
+            ]
+
         /// Which cells each of ``groupedSets``' sets holds a record at (`FR-16.2.4`).
         ///
         /// **Keyed on the run's first set**, which is what the cache does: the four-set run is named

@@ -391,7 +391,7 @@ struct SessionExerciseCard: View {
             } label: {
                 Text(LoggingStrings.setRepeatAction)
             }
-            .buttonStyle(.secondaryAction(.fill))
+            .buttonStyle(.secondaryAction(.fill, touch: .logging))
         }
     }
 
@@ -409,7 +409,7 @@ struct SessionExerciseCard: View {
         } label: {
             Text(LoggingStrings.setAddAction)
         }
-        .buttonStyle(.secondaryAction(.fill))
+        .buttonStyle(.secondaryAction(.fill, touch: .logging))
     }
 
     /// The exercise's name, or a sentence in place of one.
