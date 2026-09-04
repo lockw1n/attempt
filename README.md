@@ -251,8 +251,8 @@ path to work on one in isolation (`./scripts/build-packages.sh Packages/Powerlif
 Note that a bare `swift build` does **not** fail on warnings — that gate lives in
 the script, not in the manifests.
 
-Every package outside `Packages/Features/` has a Swift Testing target (`@Test` / `#expect`, not
-XCTest); the feature modules get theirs as their first screens land. The app target has no
+Every package has a Swift Testing target (`@Test` / `#expect`, not XCTest) — the feature modules
+included, each with a unit suite and a snapshot suite. The app target has no
 tests; it is a composition root, and the Xcode project has no test target for it (Q-1.3) — anything
 that needs a unit test lives under `Packages/` instead.
 
@@ -317,6 +317,10 @@ deletes the references, records them again and verifies what it wrote:
 ```bash
 ./scripts/snapshot-tests.sh --record
 ```
+
+Each suite also has a **minimum test count** in `scripts/snapshot-tests.sh`, so a suite that
+silently stops running is a failure rather than a green zero. Adding a snapshot test means raising
+that number in the same commit; `git grep -c '@Test' -- <suite>` is what to set it from.
 
 The references are committed beside each suite's tests — for example
 `Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__` and

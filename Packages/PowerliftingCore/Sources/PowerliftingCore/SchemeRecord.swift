@@ -44,7 +44,8 @@ public struct RecordScheme: Sendable, Hashable, Comparable {
     }
 }
 
-/// A run of consecutive equal working sets, as the record rules see one (`FR-16.1.1`).
+/// A run of consecutive working sets at one load and one repetition count — the `100 kg × 5 × 4`
+/// a lifter writes down (`FR-16.1.1`).
 ///
 /// **What a caller has already established, not what this module can compute.** Consecutiveness is
 /// a property of the order sets were logged in, and a warmup or a failed set standing between two
@@ -55,12 +56,22 @@ public struct SetRun: Sendable, Hashable {
     public let weight: Weight
 
     /// The repetitions every set in the run carried.
+    ///
+    /// Zero upwards, on ``SetRecord/reps``' rule: a failed set records the reps it reached, which
+    /// can be none. A run below ``PersonalRecords/repRange`` sets no record rather than being
+    /// refused, and one above it clamps — see ``SchemeRecordCalculator/records(in:)``.
     public let reps: Int
 
-    /// How many sets it holds — the `× 4`. At least 1.
+    /// How many sets it holds — the `× 4`.
+    ///
+    /// At least 1, and it counts *sets* where ``reps`` counts repetitions: a run of five sets of
+    /// five has 5 in both, which is the one place the two are easy to read for each other.
     public let count: Int
 
     /// The position of the run's **first** set in the collection the caller supplied.
+    ///
+    /// Zero-based, and a valid index into that collection where the caller built this from one; a
+    /// hand-built run is not checked, as ``PersonalRecord/setOffset`` is not.
     ///
     /// The first rather than the last, and that choice is what keeps one run one record: the set
     /// that *completed* a scheme differs per cell — two sets complete the two-set scheme, five the
@@ -85,7 +96,8 @@ public struct SchemeRecord: Sendable, Hashable {
     /// The record load.
     public let weight: Weight
 
-    /// The position of the record-holding run's first set — see ``SetRun/setOffset``.
+    /// The position of the record-holding run's first set — zero-based, and see
+    /// ``SetRun/setOffset`` for what it indexes into.
     public let setOffset: Int
 
     /// The load this record beat at this scheme, or `nil` where it is a baseline: the first time
