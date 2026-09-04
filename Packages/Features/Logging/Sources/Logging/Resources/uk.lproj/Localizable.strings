@@ -23,8 +23,7 @@
 "logging.train.start-error.message" = "Не вдалося почати це тренування. Спробуйте ще раз.";
 
 "logging.session.title" = "Тренування";
-"logging.session.summary.section" = "Це тренування";
-"logging.session.day" = "Тренувальний день";
+"logging.session.title.day %@" = "Тренування · %@";
 "logging.session.started" = "Початок";
 "logging.session.adherence" = "Дотримання плану";
 

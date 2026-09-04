@@ -73,6 +73,18 @@ public struct ActiveSessionView: View {
     /// collapsed is the default a group returns to, and there is no third state to record.
     @State var groupExpansion: Set<UUID> = []
 
+    /// Whether `FR-16.6.1`'s note fold is open.
+    ///
+    /// Stored nowhere, for ``expansion``'s reason, and folded is where a workout reopened tomorrow
+    /// starts: the note is written once, at the end, and the header says its first line meanwhile.
+    @State private var areNotesExpanded = false
+
+    /// Whether this screen's opening read has finished (`FR-16.6.1`).
+    ///
+    /// **Once per screen, not once per read** — see ``scrollToExerciseInProgress(_:)`` for what
+    /// goes wrong without it.
+    @State private var hasScrolledToExerciseInProgress = false
+
     /// What is in `FR-1.2.9`'s session-note field.
     ///
     /// **The screen's, like every other half-typed thing here**, and the store's own rule for what
@@ -91,6 +103,10 @@ public struct ActiveSessionView: View {
 
     /// Which locale the set editor parses and renders numbers in (`G-3.4`).
     @Environment(\.locale) var locale
+
+    /// Which calendar and time zone the title's training day is resolved in — the device's own,
+    /// bound explicitly for ``Localization/AppFormat/resolved(_:in:)``'s reason.
+    @Environment(\.calendar) private var calendar
 
     /// Builds the screen over the store that holds the workout.
     ///
@@ -115,35 +131,43 @@ public struct ActiveSessionView: View {
     /// read that would find one has not run. The call is idempotent — a workout already held is kept
     /// and nothing is read.
     public var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, pinnedViews: [.sectionHeaders]) {
-                Section {
-                    VStack(alignment: .leading, spacing: Spacing.xl.points) {
-                        content
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, pinnedViews: [.sectionHeaders]) {
+                    Section {
+                        VStack(alignment: .leading, spacing: Spacing.xl.points) {
+                            content
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(Spacing.lg.points)
+                    } header: {
+                        progressHeader
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(Spacing.lg.points)
-                } header: {
-                    progressHeader
                 }
+            }
+            .task {
+                // The first two in this order: the exercises belong to whichever workout the
+                // resume settled on, and reading them first would read them for the workout held
+                // before it. The unit is independent of both and is re-read on every appearance —
+                // the preference lives in another tab, and this screen is returned to rather than
+                // rebuilt.
+                await store.resume()
+                await store.loadExercises()
+                // Third, because it is read against the workout the resume settled on and the cards
+                // it is keyed to. `FR-1.2.10`'s answer cannot move while this workout is being
+                // logged, so nothing but an added exercise reads it again.
+                await store.loadPreviousPerformances()
+                await store.loadDisplayUnit()
+                noteDraft.follow(store.session)
+                scrollToExerciseInProgress(proxy)
             }
         }
         .background(ColorToken.background)
-        .navigationTitle(Text(LoggingStrings.sessionTitle))
-        .task {
-            // The first two in this order: the exercises belong to whichever workout the resume
-            // settled on, and reading them first would read them for the workout held before it.
-            // The unit is independent of both and is re-read on every appearance — the preference
-            // lives in another tab, and this screen is returned to rather than rebuilt.
-            await store.resume()
-            await store.loadExercises()
-            // Third, because it is read against the workout the resume settled on and the cards it
-            // is keyed to. `FR-1.2.10`'s answer cannot move while this workout is being logged, so
-            // nothing but an added exercise reads it again.
-            await store.loadPreviousPerformances()
-            await store.loadDisplayUnit()
-            noteDraft.follow(store.session)
-        }
+        .navigationTitle(title)
+        // Inline rather than large, which is `NFR-16.3`'s cheapest 50-odd points: a large title
+        // block is a second heading above a screen whose first line already names the workout, and
+        // this one now carries the training day, so it is a fact rather than a decoration.
+        .inlineNavigationTitle()
         // Every path that replaces the held record, the note's own save among them: the draft gives
         // way to what is stored only where the two already agreed.
         .onChange(of: store.session) { noteDraft.follow(store.session) }
@@ -240,9 +264,11 @@ public struct ActiveSessionView: View {
     ///     failure can only have come from a write — it renders beside the commands.
     /// - Returns: The workout, in full.
     @ViewBuilder private func loaded(_ session: WorkoutSession, writeFailed: Bool) -> some View {
-        SessionSummarySection(session: session, adherence: store.adherence)
-        SessionNotesSection(
+        SessionSummaryLine(session: session, adherence: store.adherence)
+        exercises
+        SessionNotesFold(
             draft: $noteDraft,
+            isExpanded: $areNotesExpanded,
             hasFailed: store.noteWriteFailure != nil,
             save: { Task { await store.saveNote(noteDraft.text) } }
         )
@@ -250,12 +276,47 @@ public struct ActiveSessionView: View {
         // it — including the one that puts the stored note back. Without this it outlives the edit
         // it belongs to, leaving a retry on screen with nothing left to write.
         .onChange(of: noteDraft.text) { store.noteWriteFailure = nil }
-        exercises
         SessionCommandsSection(
             hasFailed: writeFailed,
             finish: { Task { await finish() } },
             discard: { isConfirmingDiscard = true }
         )
+    }
+
+    /// The screen's title: its name, and the training day once there is a workout to name one
+    /// (`FR-16.6.1`).
+    ///
+    /// **The bare name is what the other three states get**, and it is not a placeholder — a screen
+    /// that is still reading, or that has nothing to show, has no day to put in its title, and
+    /// inventing today's would name a workout that is not there.
+    private var title: Text {
+        guard let session = store.session else { return Text(LoggingStrings.sessionTitle) }
+        return Text(
+            LoggingStrings.sessionTitleDay(
+                session.date.formatted(
+                    AppFormat.resolved(AppFormat.dayAndMonth(locale: locale), in: calendar))))
+    }
+
+    /// Scrolls to the exercise in progress, once, when the opening read has finished
+    /// (`FR-16.6.1`).
+    ///
+    /// **Called from `.task` rather than watched for**, and that is the whole of the rule. The
+    /// answer changes every time an exercise is checked off, so a screen that scrolled whenever it
+    /// *became* non-`nil` would jump mid-workout — measured in the simulator, where marking the
+    /// first exercise done dragged the view back to the second. Resuming is a question about
+    /// opening the screen, so it is asked once, there.
+    ///
+    /// **The flag is set even when there is nowhere to go**, for the same reason: what it records
+    /// is that the opening read has happened, not that a scroll did.
+    ///
+    /// - Parameter proxy: The enclosing scroll view's proxy.
+    private func scrollToExerciseInProgress(_ proxy: ScrollViewProxy) {
+        guard !hasScrolledToExerciseInProgress else { return }
+        hasScrolledToExerciseInProgress = true
+        guard let target = SessionResumeTarget.exerciseInProgress(in: store.exercises) else {
+            return
+        }
+        proxy.scrollTo(target, anchor: .top)
     }
 
     /// The workout's exercises, or whichever of that list's own four states is current
@@ -398,7 +459,10 @@ public struct ActiveSessionView: View {
     /// The screen stays open on a failure, with the workout still on it: nothing was stored, so the
     /// retry is another tap at the same command rather than a workout the user has to find again.
     private func finish() async {
-        await store.finish()
+        // The note's own **Save** is inside a fold the user may never have opened, and this command
+        // is directly beneath it — so what is in the field is committed with the workout rather
+        // than dropped by it. Nothing is written where the field and the record already agree.
+        await store.finish(saving: noteDraft.hasUnsavedChanges ? noteDraft.text : nil)
         guard !store.isActive else { return }
         dismiss()
     }
@@ -408,44 +472,5 @@ public struct ActiveSessionView: View {
         await store.discard()
         guard !store.isActive else { return }
         dismiss()
-    }
-}
-
-/// Which of the pushed screen's four states is current (`FR-1.13.1`).
-///
-/// A value rather than a chain of `if`s, for ``TrainingHomeState``'s reason.
-enum ActiveSessionState: Equatable {
-    /// Nothing has looked for a workout yet.
-    case loading
-
-    /// The workout, and whether the last command against it failed.
-    case inProgress(WorkoutSession, writeFailed: Bool)
-
-    /// The read failed, so whether the workout is still in progress is not known.
-    case readFailed
-
-    /// There is no workout: it was finished or discarded.
-    case ended
-
-    /// The state to render.
-    ///
-    /// **A held workout outranks a failure**, and while one is held the failure can only be a
-    /// write's — the screen keeps the workout and renders the failure beside the commands.
-    ///
-    /// **With no workout held, a failure is a read's, and it is not the same fact as "ended".** The
-    /// store answers both with a `nil` session; reporting the first as the second tells a user
-    /// whose workout is still in progress that it has been finished or discarded, and leaves them
-    /// nothing to retry.
-    ///
-    /// - Parameters:
-    ///   - hasChecked: ``ActiveSessionStore/hasCheckedForSession``.
-    ///   - session: ``ActiveSessionStore/session``.
-    ///   - failure: ``ActiveSessionStore/failure``.
-    /// - Returns: The current state.
-    static func current(hasChecked: Bool, session: WorkoutSession?, failure: String?) -> Self {
-        if !hasChecked { return .loading }
-        if let session { return .inProgress(session, writeFailed: failure != nil) }
-        if failure != nil { return .readFailed }
-        return .ended
     }
 }

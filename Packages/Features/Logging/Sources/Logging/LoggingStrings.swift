@@ -67,11 +67,20 @@ enum LoggingStrings {
     /// is no tab whose name it could contradict.
     static let sessionTitle = resource("logging.session.title")
 
-    /// The heading over the workout's own facts.
-    static let sessionSummarySection = resource("logging.session.summary.section")
-
-    /// The training day this workout belongs to.
-    static let sessionDay = resource("logging.session.day")
+    /// The same title once a workout is held — the screen's name and the training day, together
+    /// (`FR-16.6.1`).
+    ///
+    /// **The day arrives already rendered**, for ``setWarmupNumber(_:)``'s reason: the style is
+    /// `AppFormat.dayAndMonth`, bound to the view's locale, and a date formatted here instead would
+    /// be the one date in this module not going through it. The separator is inside the value
+    /// rather than interpolated at the call site, so a language that joins the two differently has
+    /// somewhere to say so.
+    ///
+    /// - Parameter day: The training day, already rendered.
+    /// - Returns: The title.
+    static func sessionTitleDay(_ day: String) -> LocalizedStringResource {
+        resource("logging.session.title.day \(day)")
+    }
 
     /// When it was started.
     static let sessionStarted = resource("logging.session.started")
@@ -444,8 +453,8 @@ enum LoggingStrings {
             trainInProgressStarted, trainInProgressResume, trainLibraryAction,
             trainRoutinesAction,
             trainErrorHeadline,
-            trainErrorMessage, trainStartErrorMessage, sessionTitle, sessionSummarySection,
-            sessionDay, sessionStarted, sessionEmptyHeadline, sessionEmptyMessage,
+            trainErrorMessage, trainStartErrorMessage, sessionTitle, sessionTitleDay("Sep 4"),
+            sessionStarted, sessionEmptyHeadline, sessionEmptyMessage,
             sessionFinishAction, sessionDiscardAction, sessionDiscardConfirmTitle,
             sessionDiscardConfirmMessage, sessionDiscardConfirmAction, sessionDiscardConfirmCancel,
             sessionErrorHeadline, sessionErrorMessage, sessionEndedHeadline, sessionEndedMessage,

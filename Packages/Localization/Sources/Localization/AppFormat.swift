@@ -104,6 +104,31 @@ public enum AppFormat {
         .dateTime.year().month(.abbreviated).day().locale(locale)
     }
 
+    /// A training day as a screen title says it — "Sep 4", without the year.
+    ///
+    /// **The year is dropped on purpose, and only here.** This is the day a workout *in progress*
+    /// belongs to, which is today or a day the lifter backdated to from today (`FR-1.2.1`), so the
+    /// year is a constant the title would spend a third of its width on. Anywhere a date has to
+    /// stand on its own — a finished session, a record, a training max — ``date(locale:)`` is the
+    /// style, and it keeps the year.
+    ///
+    /// - Parameter locale: The locale to render for.
+    /// - Returns: The style.
+    public static func dayAndMonth(locale: Locale) -> Date.FormatStyle {
+        .dateTime.month(.abbreviated).day().locale(locale)
+    }
+
+    /// A time of day on its own — when a workout that is still on screen was started.
+    ///
+    /// **The day is the caller's to have said already.** A bare time is only unambiguous beside the
+    /// date it belongs to; ``dateAndTime(locale:)`` is the style for anywhere that is not true.
+    ///
+    /// - Parameter locale: The locale to render for.
+    /// - Returns: The style.
+    public static func time(locale: Locale) -> Date.FormatStyle {
+        .dateTime.hour().minute().locale(locale)
+    }
+
     /// The month and year a calendar grid is showing — "August 2026".
     ///
     /// The month is spelled out rather than abbreviated: it is a screen title with a whole line to

@@ -110,12 +110,15 @@
 
         @Test func workoutSummary() throws {
             // `nil` adherence, which is `FR-1.13.3`'s half of `FR-15.3.3` and the commoner case by
-            // far: a workout started by hand prescribes nothing, so the section carries the day and
-            // the start time and no third row at all. The reference is unchanged by T-15.07, which
-            // is itself the claim — a figure that had appeared here would be a ratio over nothing.
+            // far: a workout started by hand prescribes nothing, so the line carries the start time
+            // and nothing else. A figure that had appeared here would be a ratio over nothing.
+            //
+            // The training day is not on it either, and that is `FR-16.6.1`: it is in the screen's
+            // navigation title now, which no reference in this package can picture — the harness
+            // renders a view, not a navigation stack.
             try assertSnapshots(named: "Session-summary") {
                 fixedEnvironment {
-                    SessionSummarySection(session: Fixtures.session, adherence: nil)
+                    SessionSummaryLine(session: Fixtures.session, adherence: nil)
                 }
             }
         }

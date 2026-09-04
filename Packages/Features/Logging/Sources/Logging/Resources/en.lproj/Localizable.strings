@@ -39,8 +39,7 @@
 "logging.train.start-error.message" = "That workout could not be started. Try again.";
 
 "logging.session.title" = "Workout";
-"logging.session.summary.section" = "This workout";
-"logging.session.day" = "Training day";
+"logging.session.title.day %@" = "Workout · %@";
 "logging.session.started" = "Started";
 "logging.session.adherence" = "Adherence";
 

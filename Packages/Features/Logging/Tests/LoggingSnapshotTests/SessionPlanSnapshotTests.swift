@@ -52,11 +52,11 @@
 
         @Test func adherenceSummary() throws {
             // The workout's own facts with the plan's reading among them, which is the whole of
-            // this reference's claim: adherence is drawn as a fact about the session beside the day
-            // and the start time, not as a verdict beside the button that ends it. The count is the
-            // requirement's own wording rather than a percentage, and `accessibility3` is where a
-            // `SessionFactRow` stops fitting on one line and wraps — the state that decides whether
-            // the reading stays legible at all.
+            // this reference's claim: adherence is drawn as a fact about the session beside the
+            // start time, not as a verdict beside the button that ends it. The count is the
+            // requirement's own wording rather than a percentage, and `accessibility3` is where the
+            // line stops fitting side by side and `ViewThatFits` stacks it — the state that decides
+            // whether the reading stays legible at all.
             //
             // The four cards prescribe 4 + 3 + 3 + 3 and match three of them — the squat's top set,
             // the bench's first, and the press's only one — so the row reads "3 of 13 sets". Two of
@@ -64,7 +64,7 @@
             // the half of "completed as prescribed" a comparison alone cannot see.
             try assertSnapshots(named: "Session-adherence") {
                 fixedEnvironment {
-                    SessionSummarySection(
+                    SessionSummaryLine(
                         session: Fixtures.session,
                         adherence: SessionAdherence(PlanFixtures.deviations + PlanFixtures.completion)
                     )

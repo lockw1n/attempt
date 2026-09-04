@@ -73,6 +73,23 @@ struct SessionNoteDraft: Equatable, Sendable {
 
     /// Puts the record's text back, discarding the edit.
     mutating func discard() { text = stored }
+
+    /// The note's first line, for the folded header to show (`FR-16.6.1`) — empty when there is no
+    /// note.
+    ///
+    /// **``text`` rather than ``stored``**, so what the header shows is what is on screen: a note
+    /// typed and not yet saved is still the note this workout has, and a header quoting the stored
+    /// text instead would fold away over an edit and show the version that edit replaced.
+    ///
+    /// **Split on newlines only, and never trimmed to a length.** Where the line ends on screen is
+    /// the label's business — one `lineLimit` truncates for the width it actually has, in the
+    /// locale's own way, where a character count here would cut mid-word at a width nothing here
+    /// knows.
+    var firstLine: String {
+        text.split(separator: "\n", omittingEmptySubsequences: false)
+            .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .map(String.init) ?? ""
+    }
 }
 
 /// `FR-1.2.9`'s write. A file of its own on ``ActiveSessionCommands``' argument.
@@ -118,6 +135,30 @@ extension ActiveSessionStore {
             // retry is another tap at the same command rather than a note the user has to retype.
             noteWriteFailure = String(describing: error)
         }
+    }
+
+    /// Stores an unsaved note, then finishes the workout (`FR-1.2.9`, `FR-1.2.11`, `FR-16.6.1`).
+    ///
+    /// **This exists because the note moved next to Finish.** While the field sat at the top of the
+    /// screen, a note typed and left unsaved was several screens away from the command that ends
+    /// the workout, and losing it needed the user to scroll past **Save note** to reach **Finish**.
+    /// Folded at the foot the two are adjacent, so tapping **Finish** over a dirty field is the
+    /// ordinary path rather than a mistake, and silently dropping the text there would be the
+    /// screen throwing away the last thing the user wrote.
+    ///
+    /// **The note is written first, and that order is not a preference.** ``writeNote(_:)``
+    /// rebuilds the record from the one being held, and after ``finish()`` nothing is held — a note
+    /// written second would be written against `nil` and dropped without a diagnostic.
+    ///
+    /// A failed note write still finishes the workout: the workout ending is the command the user
+    /// asked for, the failure is reported where the note is, and a session left open because its
+    /// prose did not store would be the smaller loss taking the larger one hostage.
+    ///
+    /// - Parameter note: What the field held when **Finish** was tapped, or `nil` where it held
+    ///   nothing the record does not already have.
+    func finish(saving note: String?) async {
+        if let note { await saveNote(note) }
+        await finish()
     }
 
     /// `session` with its note replaced and every other field untouched.
