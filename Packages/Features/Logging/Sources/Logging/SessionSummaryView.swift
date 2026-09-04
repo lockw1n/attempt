@@ -34,19 +34,29 @@ struct SessionSummaryLine: View {
 
     /// When it started, and how much of the plan it has met — side by side where both fit.
     ///
-    /// **It can render as nothing at all**, and that is the right answer rather than a hole: a
-    /// workout with no start time and no plan — a restored one, logged by hand — has no fact here
-    /// the title does not already carry.
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .firstTextBaseline, spacing: Spacing.lg.points) {
-                facts
-            }
-            VStack(alignment: .leading, spacing: Spacing.xxs.points) {
-                facts
+    /// **It can draw nothing at all**, and that is the right answer rather than a hole: a workout
+    /// with no start time and no plan — a restored one, logged by hand — has no fact here the title
+    /// does not already carry.
+    ///
+    /// **Nothing means `EmptyView`, not an empty stack**, and the difference is visible. The screen
+    /// stacks this at `xl`, and a `ViewThatFits` with no content in it is still a child: it takes a
+    /// gap above and a gap below, leaving a double space under the progress bar where a line the
+    /// workout has no facts for used to be. A view the stack can omit takes neither.
+    @ViewBuilder var body: some View {
+        if hasFacts {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: Spacing.lg.points) {
+                    facts
+                }
+                VStack(alignment: .leading, spacing: Spacing.xxs.points) {
+                    facts
+                }
             }
         }
     }
+
+    /// Whether there is a fact to draw — see ``body`` for why the empty case is not merely narrow.
+    private var hasFacts: Bool { session.startedAt != nil || adherence != nil }
 
     /// The facts themselves, laid out by whichever of the two stacks fits.
     @ViewBuilder private var facts: some View {

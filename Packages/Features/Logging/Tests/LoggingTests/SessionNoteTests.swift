@@ -207,23 +207,41 @@ struct SessionNoteTests {
         #expect(stored?.endedAt != nil)
     }
 
-    @Test("A note that could not be stored does not hold the workout open")
-    func finishOutlivesAFailedNote() async throws {
-        // The workout ending is what was asked for; the failure is reported where the note is. A
-        // session left open because its prose did not store would be the smaller loss taking the
-        // larger one hostage.
+    @Test("A note that could not be stored holds the workout open")
+    func finishStopsAtAFailedNote() async throws {
+        // Finishing over a failed note write would dismiss the screen, which draws the diagnostic
+        // nowhere and loses the text with no sign that anything happened. Holding the workout costs
+        // one more tap at a command the user is already standing on.
+        //
+        // ONLY THE FIRST WRITE FAILS, and that is what makes this test say anything: a double that
+        // refuses both cannot tell "the finish was never attempted" from "the finish was attempted
+        // and refused", and both leave the workout held.
         let failure = RepositoryError.danglingReference(recordID: UUID(), referencing: UUID())
         let session = WorkoutSession.fixture()
         let store = ActiveSessionStore.overWorkouts(
-            ScriptedWorkoutRepository(row: session, writeError: failure))
+            ScriptedWorkoutRepository(row: session, writeError: failure, writeFailures: 1))
         await store.adopt(sessionID: session.id)
 
         await store.finish(saving: "bar felt fast")
 
         #expect(store.noteWriteFailure == String(describing: failure))
-        // The finish failed too — the same repository refuses both writes — so the workout is still
-        // held, which is `finish()`'s own rule and not this one's.
         #expect(store.session == session)
+        #expect(store.session?.endedAt == nil)
+        #expect(store.isActive)
+    }
+
+    @Test("A workout whose note stores is finished in the same tap")
+    func finishRunsOnWhenTheNoteStores() async throws {
+        // The other side of the rule above, over the same double with nothing refusing: the note is
+        // written and the finish runs on, so one tap ends the workout.
+        let session = WorkoutSession.fixture()
+        let store = ActiveSessionStore.overWorkouts(ScriptedWorkoutRepository(row: session))
+        await store.adopt(sessionID: session.id)
+
+        await store.finish(saving: "bar felt fast")
+
+        #expect(store.noteWriteFailure == nil)
+        #expect(store.session == nil)
     }
 
     @Test("Finishing a workout keeps the note that was saved into it")

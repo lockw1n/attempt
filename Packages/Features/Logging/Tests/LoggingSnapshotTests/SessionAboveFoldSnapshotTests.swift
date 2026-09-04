@@ -41,22 +41,23 @@
         }
 
         @Test func resumedWorkout() throws {
-            // The same head with a workout in progress behind it: the progress bar part-filled, and
-            // the summary line carrying both its facts — the start time and `FR-15.3.3`'s adherence
-            // — which is the case that puts `SessionSummaryLine`'s `ViewThatFits` to work.
+            // The same head with a workout in progress behind it, and the case that puts
+            // `SessionSummaryLine`'s `ViewThatFits` to work: the summary line carrying BOTH its
+            // facts — the start time and `FR-15.3.3`'s adherence — over a card that came from a
+            // plan.
             //
-            // The planned fixtures, so the figure and the cards are the same workout: adherence read
+            // The planned fixtures, so the figure and the card are the same workout: adherence read
             // off some other list would be a number this picture cannot be checked against.
             //
-            // TWO OF THEM, and the cut is not a shortcut. `ImageRenderer` hands back a blank image
-            // past about 7k pixels of height, and the harness compares dimensions before pixels —
-            // so a taller subject records a blank reference that matches a blank render forever.
-            // Caught here by hashing the light and dark pair, which were identical at
-            // `accessibility3`. What this reference claims is the HEAD — the part-filled bar and
-            // the two-fact line — and the cards below it are already pictured by `Session-cards`,
-            // so nothing is lost with them; one done and one not is what the bar and the figure
-            // need.
-            let planned = Array((PlanFixtures.deviations + PlanFixtures.completion).prefix(2))
+            // ONE CARD, and the cut costs this reference no claim it was the only one making.
+            // `ImageRenderer` hands back a blank image past roughly 7k pixels of height and the
+            // harness compares dimensions before pixels, so a reference that crosses it records a
+            // blank that matches a blank render forever — and two cards put `accessibility3` at
+            // 6,814, thirty pixels under the tallest height anything here has been proven to
+            // render. The bar over a longer list is `Session-progress`'s claim and the cards below
+            // are `Session-cards`', both of which exist; what is left here is the stack, which one
+            // card shows as well as two.
+            let planned = Array((PlanFixtures.deviations + PlanFixtures.completion).prefix(1))
             try assertSnapshots(named: "Session-above-fold-resumed") {
                 fixedEnvironment {
                     aboveTheFold(adherence: SessionAdherence(planned), exercises: planned)
@@ -67,24 +68,37 @@
         @Test func theFirstSetRowIsInsideTheFirstScreen() throws {
             // DOD-16.3, asserted on the rendering's own height rather than by eye.
             //
-            // THE BUDGET. The smallest device this app supports is the one with the smallest screen
-            // still running its deployment target: 375 × 667 pt. A pushed screen loses the status
-            // bar (20 pt) and an inline navigation bar (44 pt) off the top, which leaves 603 pt of
-            // content — and nothing off the bottom, that device having a home button rather than a
-            // home indicator.
+            // THE SUBJECT HAS TO BE A CARD THAT OPENS, and this is the trap the measurement walks
+            // into otherwise. `SessionExerciseList` draws a card with `isExpanded:` defaulted to
+            // `!item.isDone`, so an exercise whose working sets are all completed renders as a
+            // header and nothing else — no set row at all, and a budget assertion over it measures
+            // a heading. `Fixtures.exercises[1]` is the resumed shape instead: warmups done and
+            // folded into their group, the first working set logged and not completed, so `isDone`
+            // is false, the card is open, and there is a set row in the picture to be inside the
+            // screen. Measured, on the same assertion: `exercises[0]` reads 296 pt and `exercises[1]`
+            // 560 pt — 264 pt of a card that never opened.
             //
-            // WHY THE MEASUREMENT IS CONSERVATIVE, twice over. The harness renders at 320 pt rather
-            // than 375, so every label here has less width and more of them wrap; and the card in
-            // the subject carries TWO set rows, so what is measured runs past the first one to the
-            // bottom of the second. Both make the number larger than the screen's, which is the
-            // direction that keeps a pass meaningful.
-            let budget = 603.0
+            // THE BUDGET. The smallest device this app supports is the one with the smallest screen
+            // still running its deployment target: 375 × 667 pt. This screen is pushed into a
+            // `NavigationStack` inside `RootTabView`'s `TabView` and hides nothing, so it loses the
+            // status bar (20 pt), an inline navigation bar (44 pt) AND the tab bar (49 pt) — that
+            // device having a home button rather than a home indicator, so the tab bar is its full
+            // 49 and there is no inset under it.
+            //
+            // WHAT IS SUBTRACTED FROM THE MEASUREMENT. `Snapshot.render` pads every subject by
+            // `Spacing.lg` on all four sides; the screen has no such padding above its progress bar
+            // or below its last card, so the vertical 32 pt is the harness's and not the screen's.
+            // The horizontal 32 pt is left where it is, and is the reason this stays conservative:
+            // it renders the content 32 pt narrower than the device would, so more labels wrap here
+            // than there and the height comes out larger than the screen's. So does measuring to the
+            // bottom of the whole card rather than to the bottom of its first set row.
+            let budget = 667.0 - 20.0 - 44.0 - 49.0
             let rendered = try Snapshot.render(
-                fixedEnvironment { aboveTheFold(adherence: nil, exercises: [Fixtures.exercises[0]]) },
+                fixedEnvironment { aboveTheFold(adherence: nil, exercises: [Fixtures.exercises[1]]) },
                 appearance: .light,
                 typeSize: .default
             )
-            let points = Double(rendered.height) / Snapshot.scale
+            let points = Double(rendered.height) / Snapshot.scale - 2 * Spacing.lg.points
             print("DOD-16.3 above-the-fold height: \(points) pt against a \(budget) pt budget")
             #expect(points < budget)
         }

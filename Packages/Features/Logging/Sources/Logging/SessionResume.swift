@@ -9,9 +9,10 @@ import SwiftUI
 enum SessionResumeTarget {
     /// The card a resumed session should scroll to, or `nil` where it should not scroll at all.
     ///
-    /// **The first exercise not marked done**, which is `FR-15.3.4`'s check and not a set count: an
-    /// exercise a lifter skipped or finished early is done whatever its rows say, and walking the
-    /// sets instead would send a resumed session back to work its owner has already dismissed.
+    /// **The first exercise ``SessionExercise/isDone`` is false for**, which is a set count *or*
+    /// `FR-15.3.4`'s check, whichever arrives — not the set count alone. An exercise a lifter
+    /// skipped or finished early is done whatever its rows say, and reading only the sets would
+    /// send a resumed session back to work its owner has already dismissed.
     ///
     /// **`nil` when that exercise is the first one**, and this is the case that keeps the answer
     /// honest rather than merely tidy: the screen already opens on the first card, so scrolling to

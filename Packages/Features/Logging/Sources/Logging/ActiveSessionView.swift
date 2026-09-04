@@ -159,6 +159,10 @@ public struct ActiveSessionView: View {
                 await store.loadPreviousPerformances()
                 await store.loadDisplayUnit()
                 noteDraft.follow(store.session)
+                // Last, and after a hop: `scrollTo` can only reach a row the list has laid out, and
+                // the cards these reads produced are laid out on a later pass than the one this
+                // task is running in. Yielding is what puts the scroll on that pass.
+                await Task.yield()
                 scrollToExerciseInProgress(proxy)
             }
         }
@@ -463,6 +467,10 @@ public struct ActiveSessionView: View {
         // is directly beneath it — so what is in the field is committed with the workout rather
         // than dropped by it. Nothing is written where the field and the record already agree.
         await store.finish(saving: noteDraft.hasUnsavedChanges ? noteDraft.text : nil)
+        // A note that would not store keeps the workout — see `finish(saving:)`. Its diagnostic is
+        // inside the fold, so the fold is opened: otherwise the tap reports nothing at all, which
+        // is the failure that rule exists to prevent.
+        if store.noteWriteFailure != nil { areNotesExpanded = true }
         guard !store.isActive else { return }
         dismiss()
     }

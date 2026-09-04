@@ -182,17 +182,30 @@ actor ScriptedWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     private var row: WorkoutSession?
     private var readError: RepositoryError?
     private let writeError: RepositoryError?
+    private let writeFailures: Int?
+    private var writesRefused = 0
     private let deleteError: RepositoryError?
 
+    /// - Parameters:
+    ///   - row: The one session this double holds, or none.
+    ///   - readError: What every read throws, or `nil` for reads that behave.
+    ///   - writeError: What a refused write throws, or `nil` for writes that behave.
+    ///   - writeFailures: How many writes refuse before they start succeeding. `nil` — the default
+    ///     — refuses every one. A number is for a *chain* of writes where only the first is meant
+    ///     to fail: a double that refuses both cannot tell "the second was never attempted" from
+    ///     "the second was attempted and refused", which is the whole claim of the rule under test.
+    ///   - deleteError: What a refused delete throws, or `nil` for deletes that behave.
     init(
         row: WorkoutSession? = nil,
         readError: RepositoryError? = nil,
         writeError: RepositoryError? = nil,
+        writeFailures: Int? = nil,
         deleteError: RepositoryError? = nil
     ) {
         self.row = row
         self.readError = readError
         self.writeError = writeError
+        self.writeFailures = writeFailures
         self.deleteError = deleteError
     }
 
@@ -212,7 +225,10 @@ actor ScriptedWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     func forgetRow() { row = nil }
 
     func save(_ session: WorkoutSession) async throws {
-        if let writeError { throw writeError }
+        guard let writeError else { return }
+        guard writesRefused < (writeFailures ?? .max) else { return }
+        writesRefused += 1
+        throw writeError
     }
 
     /// The one row, when it is dated inside `range` — the read `resume()` makes.

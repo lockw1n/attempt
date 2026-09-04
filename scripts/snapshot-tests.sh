@@ -66,8 +66,8 @@ cd "$(dirname "$0")/.."
 # honest setting rather than a number chosen to look like the former.
 #   DesignSystem:    27 tests, 15 reference-backed, 12 harness probes  -> 20, above the 15.
 #   ExerciseLibrary: 34 tests, all of them reference-backed, no probes -> 34, its own count.
-#   Logging:         67 tests, 65 reference-backed, a width probe and a layout budget
-#                                                                    -> 67, above the 65.
+#   Logging:         69 tests, 67 reference-backed, a width probe and a layout budget
+#                                                                    -> 69, above the 67.
 #   History:         19 tests, all of them reference-backed, no probes -> 19, its own count.
 #   Dashboard:       18 tests, all of them reference-backed, no probes -> 18, its own count.
 #   Settings:        45 tests, all of them reference-backed, no probes -> 45, its own count.
@@ -84,7 +84,7 @@ cd "$(dirname "$0")/.."
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|20"
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|34"
-    "Packages/Features/Logging|Logging|LoggingSnapshotTests|67"
+    "Packages/Features/Logging|Logging|LoggingSnapshotTests|69"
     "Packages/Features/History|History|HistorySnapshotTests|19"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|18"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|45"

@@ -150,14 +150,24 @@ extension ActiveSessionStore {
     /// rebuilds the record from the one being held, and after ``finish()`` nothing is held — a note
     /// written second would be written against `nil` and dropped without a diagnostic.
     ///
-    /// A failed note write still finishes the workout: the workout ending is the command the user
-    /// asked for, the failure is reported where the note is, and a session left open because its
-    /// prose did not store would be the smaller loss taking the larger one hostage.
+    /// **A note that would not store holds the workout open**, and the alternative is what makes
+    /// this the rule rather than a preference: finishing over a failed note write ends the workout,
+    /// and ``finish()`` clears every diagnostic on its way out — so the one ``writeNote(_:)`` just
+    /// set is not merely off-screen behind a dismissal, it is erased, and the last thing the user
+    /// wrote is gone with nothing anywhere to say so. That clearing is safe on its own terms —
+    /// nothing it drops belongs to a workout still on screen — and this is the one caller that
+    /// could put a live diagnostic in front of it. Holding the workout costs one more tap at a
+    /// command the user is already standing on, and the retry carries the text with it. The screen
+    /// unfolds the note when this returns a failure, the banner being inside the fold (see
+    /// ``ActiveSessionView``).
     ///
     /// - Parameter note: What the field held when **Finish** was tapped, or `nil` where it held
     ///   nothing the record does not already have.
     func finish(saving note: String?) async {
-        if let note { await saveNote(note) }
+        if let note {
+            await saveNote(note)
+            guard noteWriteFailure == nil else { return }
+        }
         await finish()
     }
 
