@@ -35,10 +35,10 @@ struct BackupStateTests {
         #expect(state.phase == .idle)
         await state.prepare()
         let file = try #require(Self.file(of: state.phase))
-        // 2 exercises + 4 sessions + 3 entries + 5 sets + 2 readings + 2 gyms + 2 training maxes
-        // + 2 routines + 2 routine slots + 4 target groups + 2 planned targets + the preferences
-        // row.
-        #expect(file.recordCount == 31)
+        // 3 exercises (one of them a variation) + 4 sessions + 3 entries + 5 sets + 2 readings
+        // + 2 gyms + 2 training maxes + 2 routines + 2 routine slots + 4 target groups
+        // + 2 planned targets + the preferences row.
+        #expect(file.recordCount == 32)
         #expect(file.workoutCount == 4)
         // A session, a slot, that slot's set, a reading, a gym, and the archived routine with its
         // slot and that slot's two target groups.

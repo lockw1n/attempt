@@ -15,7 +15,7 @@ struct FullBackupTests {
         // Anchored to counts rather than to `!isEmpty`: a reader that returned one row per section
         // would satisfy emptiness and lose the rest, and the two training maxes are the case that
         // says the *history* is carried rather than what is in force.
-        #expect(archive.exercises.count == 2)
+        #expect(archive.exercises.count == 3)
         #expect(archive.sessions.count == 4)
         #expect(archive.entries.count == 3)
         #expect(archive.sets.count == 5)

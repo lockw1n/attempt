@@ -1,5 +1,4 @@
 /// Puts records that name a parent of their own kind into an order a store will accept.
-
 public enum ParentOrdering {
     /// `items` reordered so that an item whose parent the collection also carries comes after it.
     ///

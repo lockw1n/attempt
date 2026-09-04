@@ -92,10 +92,16 @@ struct ExportLog {
     /// - Parameters:
     ///   - name: What it is called.
     ///   - id: Its identifier.
+    ///   - parentExerciseID: The exercise this is a variation of (`FR-1.1.7`), or `nil` for a root.
     /// - Returns: The record.
     @discardableResult
-    func exercise(named name: String, id: UUID = UUID()) async throws -> Exercise {
-        let exercise = ExportRecords.exercise(id: id, name: name, at: Self.epoch)
+    func exercise(
+        named name: String,
+        id: UUID = UUID(),
+        parentExerciseID: UUID? = nil
+    ) async throws -> Exercise {
+        let exercise = ExportRecords.exercise(
+            id: id, name: name, at: Self.epoch, parentExerciseID: parentExerciseID)
         try await repositories.exercises.save(exercise)
         return exercise
     }

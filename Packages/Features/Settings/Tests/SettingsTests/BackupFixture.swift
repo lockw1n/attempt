@@ -174,6 +174,13 @@ extension ExportLog {
         let bench = try await log.exercise(named: "Bench Press")
         try await log.trainingMax(for: bench, percentage: 0.9, daysAgo: 30)
         try await log.trainingMax(for: bench, percentage: 0.95)
+        // FR-1.1.7's variations make `exercises` a self-referencing table, and `parentExerciseID`
+        // is carried from the record like any other column — so a fixture whose exercises are all
+        // roots leaves it nil on both sides of every field-for-field comparison and agrees with a
+        // restore that dropped the link entirely. This says the column survives; it deliberately
+        // says nothing about the ORDER the section is written in, which is
+        // `aVariationListedAboveItsParentRestores`' subject and needs the child listed first.
+        try await log.exercise(named: "Close-grip Bench Press", parentExerciseID: bench.id)
         // FR-1.10.3's flag is written by `makeDefault(profileID:)` and by nothing else — no save
         // carries it — so a fixture that only wrote profiles would leave `isDefault` false on both
         // sides of every comparison and agree with a restore that had dropped the column.

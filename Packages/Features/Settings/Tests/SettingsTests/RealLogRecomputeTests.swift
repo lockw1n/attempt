@@ -83,7 +83,8 @@ struct RealLogRecomputeTests {
         // The anchor, before anything is timed: a store the restore left empty would meet every
         // ceiling in this file.
         let catalogue = try await stack.exercises.exercises(includingDeleted: false)
-        let restoredSets = try await RealLogBackup.liveSetCount(in: stack, over: catalogue)
+        let setCounts = try await RealLogBackup.liveSetCounts(in: stack, over: catalogue)
+        let restoredSets = setCounts.values.reduce(0, +)
         #expect(restoredSets >= Self.minimumSets)
         // Every restored row comes back live (`RecordMapping.swift` rule 1), so the file's whole
         // set section is what a live read has to find — a lost row is a defect in the restore.
@@ -107,21 +108,29 @@ struct RealLogRecomputeTests {
             }
         }
 
+        // The asserted figure, and the size of what it walked. `perExercise` is appended in
+        // `catalogue` order, so the index carries back to the exercise and to its set count.
+        let slowestIndex = perExercise.indices.max { perExercise[$0] < perExercise[$1] }
+        let slowest = slowestIndex.map { perExercise[$0] } ?? .zero
+        let slowestSets = slowestIndex.flatMap { setCounts[catalogue[$0].id] } ?? 0
+
         let cached = try await stack.personalRecords.personalRecords(includingDeleted: false)
         // What the second dimension actually cost the write side (`FR-16.2.2`). A row at one set is
         // the shape that existed before it; everything else is a cell the second dimension added.
         let singleSet = cached.count { $0.setCount == 1 }
+        let multiplier = String(
+            format: "%.2f", Double(cached.count) / Double(max(singleSet, 1)))
         let ceiling = Self.isHostedRunner ? "hosted-runner sanity" : "NFR-16.1"
         print(
             """
             DOD-16.4 real log:  \(restoredSets) sets, \(archive.sessions.count) sessions, \
             \(catalogue.count) exercises
-            DOD-16.4 recompute: max \(perExercise.max() ?? .zero) for one exercise \
-            (ceiling \(Self.budget), \(ceiling))
+            DOD-16.4 recompute: max \(slowest) for ONE exercise over \(slowestSets) of this \
+            log's \(restoredSets) sets (ceiling \(Self.budget), \(ceiling))
             DOD-16.4 catalogue: \(recomputeElapsed) over \(catalogue.count) exercises, \
             mean \(recomputeElapsed / max(catalogue.count, 1)) — reported, not asserted
             DOD-16.4 write side: \(cached.count) cached rows, \(singleSet) of them at one set — \
-            a x\(Double(cached.count) / Double(max(singleSet, 1))) multiplier
+            a x\(multiplier) multiplier
             DOD-16.4 restore:   \(restoreElapsed) (reported, not asserted — the fan-out above)
             """)
         // ASSERTED ON THE SLOWEST SINGLE RECOMPUTE, NOT ON THE SUM, and the difference is the
@@ -132,13 +141,22 @@ struct RealLogRecomputeTests {
         // one. What the app does on the hot path is a single exercise after a single logged set,
         // which is this number.
         //
+        // NEITHER READING IS CLEAN, AND THIS IS A CHOICE RATHER THAN A DERIVATION. `NFR-16.1` fixes
+        // both a unit (one call) and an input (15,000 sets), and over a real log the two come
+        // apart: the log is spread across the whole catalogue, so NO single call ever sees all of
+        // it. Asserting one call compares an input of `slowestSets` against a budget written for
+        // 15,000; asserting the sum compares 132 calls against a budget written for one. The unit
+        // is the harder of the two to argue away — it is what `RecomputeScaleTests` measures and
+        // what the app's hot path actually runs — so it is the one asserted, and the printed line
+        // states the asserted call's input size so that the choice is auditable rather than
+        // implied by a bare duration.
+        //
         // THE SUM IS REPORTED AND NOT ASSERTED, because it is a real finding at ~0.53 s over 3,065
         // sets where the fake takes 0.155 s over 15,000 — the store is roughly 25x the cost per
         // set, and nothing recomputes the whole catalogue on a lifter's device except the restore,
         // whose own figure is worse and is already filed. It belongs with
         // `repMaxes(forExerciseID:)`'s stored-derivation question on `T-1.83`, not against a
         // ceiling this requirement does not set.
-        let slowest = perExercise.max() ?? .zero
         #expect(slowest < Self.budget)
         // The walk is worthless if it cached nothing, and a log this size has records.
         #expect(!cached.isEmpty)
@@ -234,25 +252,29 @@ enum RealLogBackup {
         return (stack, directory)
     }
 
-    /// How many live sets the store holds, counted the only way the repositories allow — through
-    /// the catalogue, since there is no read that enumerates every set.
+    /// How many live sets the store holds against each exercise, counted the only way the
+    /// repositories allow — through the catalogue, since there is no read that enumerates every set.
+    ///
+    /// **Per exercise rather than one total**, because the total anchors the restore and the
+    /// per-exercise figure is what says how large the input to the asserted recompute was. A bare
+    /// duration cannot say that, and `NFR-16.1`'s budget is written against an input size.
     ///
     /// - Parameters:
     ///   - stack: The store.
     ///   - catalogue: Its live exercises.
-    /// - Returns: The count.
+    /// - Returns: The count for each exercise that has one.
     /// - Throws: Whatever the repository throws.
-    static func liveSetCount(
+    static func liveSetCounts(
         in stack: PersistenceStack,
         over catalogue: [Exercise]
-    ) async throws -> Int {
-        var total = 0
+    ) async throws -> [UUID: Int] {
+        var counts: [UUID: Int] = [:]
         for exercise in catalogue {
-            total += try await stack.workouts.sets(
+            counts[exercise.id] = try await stack.workouts.sets(
                 forExerciseID: exercise.id, includingDeleted: false
             ).count
         }
-        return total
+        return counts
     }
 
     /// The app's own writer over a real store.
