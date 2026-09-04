@@ -10,26 +10,39 @@ import RepositoryInterface
 /// four exercises fills a reverse-chronological feed with one day of training. A per-exercise list
 /// wants the rows — it is a table of ten N's — and a feed wants the events.
 ///
-/// **``reps`` and ``sets`` are ranges because the cells one run holds are contiguous.** A run holds a
-/// cell when it is the earliest run at the heaviest load for it; a run that lost a cell to an earlier
-/// one lost every cell below it in both dimensions too, so there is no gap for a range to
-/// misrepresent. Both are built from the lowest and highest present, so a cache hand-edited into a
-/// gap is spanned rather than refused.
-///
 /// **A run, not a set** (`FR-16.2.4`). One `100 × 5 × 5` fills up to twenty-five cells; listed as
 /// they are stored, a single good session would fill the whole feed. The rows are grouped on the
 /// run's first set — see ``RepositoryInterface/PersonalRecordCache/sourceSetID``, which is why that
 /// identifier is the run's rather than each cell's.
+///
+/// **What a run holds is not a rectangle, so this states two exact things rather than one
+/// approximate one.** A pair of `(reps, sets)` ranges would describe a box, and the cells a run
+/// actually takes are a staircase: a heavy single standing at `1 × 1` blocks that one cell and
+/// nothing else, so a later `100 × 5 × 5` holds twenty-four of its twenty-five and a box spanning
+/// `1...5 × 1...5` claims the twenty-fifth at a load the lifter never lifted for it. So the type
+/// carries ``scheme`` — the one cell `FR-16.3.2` shows — and ``repMaxReps``, which is exact for the
+/// different reason: within the `sets == 1` column the held N's really are contiguous, a run that
+/// lost an N there having lost every N below it too.
 public struct RecentRecord: Sendable, Hashable {
     /// The exercise the record belongs to. Records are never compared across exercises.
     public let exerciseID: UUID
 
-    /// The N's this one run is the record for — `1...3` for a 140 × 3 that beat all three.
-    public let reps: ClosedRange<Int>
+    /// The maximal scheme this run set — the bottom-right cell of what it holds (`FR-16.3.2`).
+    ///
+    /// **Always a cell the run really holds.** The highest reps and the highest set count a run
+    /// reached are the corner nothing standing can block: every other cell in its rectangle is
+    /// dominated by an equal or heavier record wherever this one is beaten, so if the run set
+    /// anything at all it set this.
+    public let scheme: RecordScheme
 
-    /// The set counts it is the record for — `1...5` for a `× 5` that beat every one of them
-    /// (`FR-16.2.1`).
-    public let sets: ClosedRange<Int>
+    /// The N's this run is the record for **at a single set** — `1...3` for a 140 × 3 that beat all
+    /// three (`FR-1.6.1`) — or `nil` where it set no rep max at all.
+    ///
+    /// **`nil` is the case the second dimension introduced**, and it is why this is not simply the
+    /// span of ``scheme``: a `100 × 5 × 5` performed after a heavier single of five holds cells at
+    /// two sets and up, and nothing in the one-set column. Reading it as a rep max would label the
+    /// feed's row with an N-rep max the lifter's history contradicts.
+    public let repMaxReps: ClosedRange<Int>?
 
     /// The load. Signed: assisted work records a negative load.
     public let weight: Weight
@@ -51,9 +64,6 @@ public struct RecentRecord: Sendable, Hashable {
     /// be a number about a different record.
     public let previous: Weight?
 
-    /// The maximal scheme this event set — the bottom-right cell of what it holds (`FR-16.3.2`).
-    public var scheme: (reps: ClosedRange<Int>, sets: ClosedRange<Int>) { (reps, sets) }
-
     /// How far the load moved at the maximal scheme, or `nil` for a baseline (`FR-16.3.3`).
     public var delta: Weight? {
         guard let previous else { return nil }
@@ -65,20 +75,28 @@ public struct RecentRecord: Sendable, Hashable {
 
     /// Creates one feed entry.
     ///
-    /// ``sets`` and ``previous`` default to what an `FR-1.6.1` rep max holds — one set, no beaten
-    /// load — so a caller stating a rep max states the same entry it always did.
+    /// - Parameters:
+    ///   - exerciseID: The exercise.
+    ///   - scheme: The maximal cell the run set.
+    ///   - repMaxReps: The N's it holds at a single set, or `nil` for a run that set no rep max.
+    ///     Stated rather than defaulted: `nil` and "the one-set column" are the distinction this
+    ///     type exists to keep, and a default would let a caller lose it by saying nothing.
+    ///   - weight: The load.
+    ///   - sourceSetID: The run's first set.
+    ///   - achievedAt: The day.
+    ///   - previous: What the maximal scheme beat, or `nil` for a baseline (`FR-16.2.3`).
     public init(
         exerciseID: UUID,
-        reps: ClosedRange<Int>,
-        sets: ClosedRange<Int> = 1...1,
+        scheme: RecordScheme,
+        repMaxReps: ClosedRange<Int>?,
         weight: Weight,
         sourceSetID: UUID,
         achievedAt: Date,
         previous: Weight? = nil
     ) {
         self.exerciseID = exerciseID
-        self.reps = reps
-        self.sets = sets
+        self.scheme = scheme
+        self.repMaxReps = repMaxReps
         self.weight = weight
         self.sourceSetID = sourceSetID
         self.achievedAt = achievedAt
@@ -117,17 +135,15 @@ extension RecentRecord {
             grouped[key, default: []].append(row)
         }
         return order.prefix(limit).compactMap { key in
-            guard let rows = grouped[key], let first = rows.first else { return nil }
-            let reps = rows.map(\.repCount)
-            let sets = rows.map(\.setCount)
-            guard let lowReps = reps.min(), let highReps = reps.max(),
-                let lowSets = sets.min(), let highSets = sets.max(),
+            guard let rows = grouped[key], let first = rows.first,
                 let maximal = rows.max(by: { $0.scheme < $1.scheme })
             else { return nil }
+            let singles = rows.filter { $0.setCount == 1 }.map(\.repCount)
+            let repMaxReps = singles.min().flatMap { low in singles.max().map { low...$0 } }
             return RecentRecord(
                 exerciseID: key.exerciseID,
-                reps: lowReps...highReps,
-                sets: lowSets...highSets,
+                scheme: maximal.scheme,
+                repMaxReps: repMaxReps,
                 weight: first.weight,
                 sourceSetID: key.sourceSetID,
                 achievedAt: first.achievedAt,

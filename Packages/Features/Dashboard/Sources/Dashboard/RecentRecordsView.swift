@@ -210,13 +210,8 @@ struct RecentRecordRow: View {
         .contentShape(.rect)
     }
 
-    /// What this entry is the record for — one N, or the span a single set took in one go.
-    private var label: LocalizedStringResource {
-        record.reps.lowerBound == record.reps.upperBound
-            ? DashboardStrings.recentRecordsRepMax(record.reps.lowerBound)
-            : DashboardStrings.recentRecordsRepMaxRange(
-                record.reps.lowerBound, record.reps.upperBound)
-    }
+    /// What this entry is the record for — see ``RecentRecord/feedLabel``.
+    private var label: LocalizedStringResource { record.feedLabel }
 
     /// The line, or the stack — `ExerciseRecordRow`'s measured switch, for its reason: at
     /// `accessibility3` a date pushed to the trailing edge takes the width the load needs.
@@ -334,5 +329,26 @@ public struct RecentRecordsSection: View {
             }
             .buttonStyle(.plain)
         }
+    }
+}
+
+extension RecentRecord {
+    /// What one feed row is the record for — one N, the span a single set took in one go, or the
+    /// scheme itself where the run set no rep max at all (`FR-1.6.5`, `FR-16.2.1`).
+    ///
+    /// **The third case is not a widening of the first two.** A rep max is a claim about a single
+    /// set, and a run whose records all stand at two sets and up — a `100 × 5 × 5` performed after a
+    /// heavier set of five — set none; labelling it "1–5-rep max" would name records the lifter's
+    /// own history contradicts, at a lighter load than the one that holds them.
+    ///
+    /// **Off the `View` deliberately.** The choice between three sentences is the claim worth
+    /// testing, and a claim that lives inside a `View` body can only be closed by a picture.
+    var feedLabel: LocalizedStringResource {
+        guard let reps = repMaxReps else {
+            return DashboardStrings.recentRecordsScheme(scheme.reps, scheme.sets)
+        }
+        return reps.lowerBound == reps.upperBound
+            ? DashboardStrings.recentRecordsRepMax(reps.lowerBound)
+            : DashboardStrings.recentRecordsRepMaxRange(reps.lowerBound, reps.upperBound)
     }
 }

@@ -47,7 +47,8 @@ struct RecentRecordFeedTests {
         let feed = RecentRecord.feed(from: cached, limit: 10)
 
         #expect(feed.count == 1)
-        #expect(feed.first?.reps == 1...3)
+        #expect(feed.first?.repMaxReps == 1...3)
+        #expect(feed.first?.scheme == RecordScheme(reps: 3, sets: 1))
         #expect(feed.first?.weight == Weight(grams: 140_000))
         #expect(feed.first?.sourceSetID == source)
         #expect(feed.first?.achievedAt == day)
@@ -60,7 +61,8 @@ struct RecentRecordFeedTests {
         let feed = RecentRecord.feed(from: cached, limit: 10)
 
         #expect(feed.count == 1)
-        #expect(feed.first?.reps == 8...8)
+        #expect(feed.first?.repMaxReps == 8...8)
+        #expect(feed.first?.scheme == RecordScheme(reps: 8, sets: 1))
     }
 
     /// `G-1.5`: a row this build did not compute is not an answer this build may show, and
@@ -109,7 +111,7 @@ struct RecentRecordFeedTests {
         let feed = RecentRecord.feed(from: cached, limit: 10)
 
         #expect(feed.map(\.sourceSetID) == [recent, older])
-        #expect(feed.first?.reps == 1...2)
+        #expect(feed.first?.repMaxReps == 1...2)
     }
 
     /// The N's one set holds are contiguous by construction, so this is a store that was edited
@@ -122,7 +124,7 @@ struct RecentRecordFeedTests {
 
         let feed = RecentRecord.feed(from: cached, limit: 10)
 
-        #expect(feed.map(\.reps) == [1...4])
+        #expect(feed.map(\.repMaxReps) == [1...4])
     }
 
     @Test("Two exercises' records are never merged, even sharing a set identifier")
@@ -155,9 +157,46 @@ struct RecentRecordFeedTests {
 
         #expect(cached.count == 25)
         #expect(feed.count == 1)
-        #expect(feed.first?.reps == 1...5)
-        #expect(feed.first?.sets == 1...5)
-        #expect(feed.first?.scheme.sets == 1...5)
+        #expect(feed.first?.scheme == RecordScheme(reps: 5, sets: 5))
+        // The whole one-set column is there too, so this run really did set five rep maxes.
+        #expect(feed.first?.repMaxReps == 1...5)
+    }
+
+    /// The defect the pair of ranges hid: a run whose cells all stand at two sets and up set **no
+    /// rep max**, and a span built from the whole table would name five of them.
+    @Test("A run that set no rep max reports none, not a span")
+    func aRunThatSetNoRepMaxSaysSo() {
+        let (exercise, source) = (UUID(), UUID())
+        let day = weeksAgo(1)
+        // What a `100 × 5 × 5` holds after a heavier single set of five already stands: every cell
+        // at two sets and up, and nothing in the one-set column.
+        let cached = (1...5).flatMap { reps in
+            (2...5).map { row(exercise, reps: reps, sets: $0, set: source, on: day) }
+        }
+
+        let feed = RecentRecord.feed(from: cached, limit: 10)
+
+        #expect(feed.first?.repMaxReps == nil)
+        // Anchored against a literal, so a `nil` scheme cannot agree with a `nil` expectation.
+        #expect(feed.first?.scheme == RecordScheme(reps: 5, sets: 5))
+    }
+
+    /// What a run holds is a staircase, not a rectangle — so the one-set column's span is read off
+    /// that column alone and never off the table's extremes.
+    @Test("A blocked corner is not claimed by the rep-max span")
+    func aBlockedCornerIsNotClaimed() {
+        let (exercise, source) = (UUID(), UUID())
+        let day = weeksAgo(1)
+        // Heavier records standing at `(1…4, 1)` and `(1…2, 2)` leave this run holding `(5, 1)` and
+        // `(3…5, 2)`: reps 3 and 4 are its records at two sets, and are not rep maxes.
+        let cached =
+            [row(exercise, reps: 5, sets: 1, set: source, on: day)]
+            + (3...5).map { row(exercise, reps: $0, sets: 2, set: source, on: day) }
+
+        let feed = RecentRecord.feed(from: cached, limit: 10)
+
+        #expect(feed.first?.repMaxReps == 5...5)
+        #expect(feed.first?.scheme == RecordScheme(reps: 5, sets: 2))
     }
 
     /// `FR-16.3.2` shows a run's **maximal** scheme, so the delta beside it has to be that scheme's
@@ -211,8 +250,8 @@ struct RecentRecordFeedTests {
 
         let feed = RecentRecord.feed(from: cached, limit: 10)
 
-        #expect(feed.first?.reps == 1...3)
-        #expect(feed.first?.sets == 1...1)
+        #expect(feed.first?.repMaxReps == 1...3)
+        #expect(feed.first?.scheme == RecordScheme(reps: 3, sets: 1))
     }
 
     @Test("A limit of nothing draws nothing")
@@ -259,7 +298,7 @@ struct RecentRecordsAcrossExercisesTests {
         #expect(feed.map(\.achievedAt) == [weeksAgo(1), weeksAgo(3), weeksAgo(6)])
         // The bench's 100 × 5 holds the 1RM through the 5RM, the deadlift's single holds the 1RM
         // alone, and the squat's 140 × 3 holds three. One entry each, and the ranges say which.
-        #expect(feed.map(\.reps) == [1...5, 1...1, 1...3])
+        #expect(feed.map(\.repMaxReps) == [1...5, 1...1, 1...3])
     }
 
     @Test("An exercise nothing recomputed contributes nothing")

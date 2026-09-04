@@ -23,6 +23,7 @@
    the number sits inside the compound before "max", so "1-rep max" is already correct. */
 "dashboard.recent-records.rep-max %lld" = "%lld-rep max";
 "dashboard.recent-records.rep-max.range %lld %lld" = "%1$lld–%2$lld-rep max";
+"dashboard.recent-records.scheme %lld %lld" = "%1$lld × %2$lld max";
 /* VoiceOver's hint on a feed entry. It opens the exercise, not the session — see RecentRecordRow. */
 "dashboard.recent-records.exercise-hint" = "Shows this exercise's personal records.";
 

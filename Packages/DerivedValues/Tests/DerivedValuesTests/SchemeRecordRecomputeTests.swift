@@ -202,6 +202,29 @@ struct SchemeRecordRecomputeTests {
         #expect(fromRun.record?.sourceSetID != nil)
     }
 
+    /// `FR-1.6.5`'s feed over `FR-16.2`'s table, end to end: a run can set records at two sets and
+    /// up while setting no rep max at all, and the feed has to say so rather than name five.
+    @Test("A volume run under a heavier single sets no rep max, and the feed reports none")
+    func aVolumeRunUnderASingleSetsNoRepMax() async throws {
+        let log = TrainingLog()
+        let exerciseID = try await log.exercise()
+        try await log.session(of: exerciseID, on: weeksAgo(2), sets: [working(140_000, 5)])
+        try await log.session(
+            of: exerciseID, on: weeksAgo(1), sets: Array(repeating: working(100_000, 5), count: 5))
+        let recomputer = recomputer(over: log)
+        _ = try await recomputer.recompute(forExerciseID: exerciseID)
+
+        let feed = try await recomputer.recentRecords(limit: 10)
+        let volume = try #require(feed.first { $0.weight == Weight(grams: 100_000) })
+
+        #expect(volume.repMaxReps == nil)
+        #expect(volume.scheme == RecordScheme(reps: 5, sets: 5))
+        // Anchored against the rep maxes themselves: every one of them is the heavier single's.
+        let repMaxes = try await recomputer.repMaxes(forExerciseID: exerciseID)
+        #expect(repMaxes.map(\.reps) == [1, 2, 3, 4, 5])
+        #expect(repMaxes.allSatisfy { $0.record.weight == Weight(grams: 140_000) })
+    }
+
     /// The recomputer over `log`, with the fixtures' fixed clock.
     private func recomputer(over log: TrainingLog) -> PersonalRecordRecomputer {
         PersonalRecordRecomputer(

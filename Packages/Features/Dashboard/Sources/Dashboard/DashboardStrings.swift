@@ -48,6 +48,21 @@ enum DashboardStrings {
         resource("dashboard.recent-records.rep-max.range \(lowest) \(highest)")
     }
 
+    /// What one entry is the record for, where the run set no single-set rep max at all
+    /// (`FR-16.2.1`).
+    ///
+    /// **The lifter's own notation, `reps × sets`**, rather than a sentence: a run whose records all
+    /// stand at two sets and up has no N-rep max to name, and "5 × 5" is what the training log it
+    /// came from calls it. The compound carries no plural, so no rule file is needed.
+    ///
+    /// - Parameters:
+    ///   - reps: The maximal scheme's repetitions.
+    ///   - sets: How many consecutive sets it asks for.
+    /// - Returns: The label.
+    static func recentRecordsScheme(_ reps: Int, _ sets: Int) -> LocalizedStringResource {
+        resource("dashboard.recent-records.scheme \(reps) \(sets)")
+    }
+
     /// What tapping a feed entry does.
     static let recentRecordsExerciseHint = resource("dashboard.recent-records.exercise-hint")
 
@@ -116,7 +131,8 @@ enum DashboardStrings {
     static var all: [LocalizedStringResource] {
         [
             recentRecordsTitle, recentRecordsNone, recentRecordsError, recentRecordsSeeAll,
-            recentRecordsRepMax(3), recentRecordsRepMaxRange(1, 3), recentRecordsExerciseHint,
+            recentRecordsRepMax(3), recentRecordsRepMaxRange(1, 3), recentRecordsScheme(5, 5),
+            recentRecordsExerciseHint,
             startWorkout, lastWorkoutTitle, lastWorkoutNone, lastWorkoutNoneMessage,
             lastWorkoutError, lastWorkoutInProgress, lastWorkoutResume, lastWorkoutRepeat,
             lastWorkoutRepeatError, lastWorkoutSets(4),

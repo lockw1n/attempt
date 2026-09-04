@@ -213,10 +213,11 @@ struct SetGroupRow: View {
 
     /// `FR-1.6.3`'s badge, where **any** member holds a record.
     ///
-    /// A record is per set today (`SessionRecordMarks`), and a group is not a compared field — so
-    /// the badge on the collapsed line reports that the run contains one, and which set it was is a
-    /// tap away on the rows. T-16.05 replaces this with the group's own maximal scheme
-    /// (`FR-16.2.4`), at which point the badge belongs to the group properly.
+    /// A record is per set here (`SessionRecordMarks` reads `FR-1.6.1`'s one-set column), and a
+    /// group is not a compared field — so the badge on the collapsed line reports that the run
+    /// contains one, and which set it was is a tap away on the rows. `FR-16.2.4` asks instead for
+    /// the group's own maximal scheme, which the cache can now answer and this row does not yet
+    /// read; until it does, a run whose records all stand at two sets and up carries no badge here.
     @ViewBuilder private var recordMark: some View {
         let counts = recordRepCounts
         if !counts.isEmpty {

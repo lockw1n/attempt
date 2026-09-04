@@ -75,6 +75,26 @@ struct SchemeRecordCalculatorTests {
         #expect(SchemeRecordCalculator().records(in: []).isEmpty)
     }
 
+    /// **What a run holds is a staircase, not a rectangle**, and a reader that describes it as a
+    /// pair of ranges says something false. The most ordinary history there is produces one: a heavy
+    /// single blocks exactly the `1 × 1` cell and nothing else.
+    @Test("A blocked corner leaves a run holding all but one of its cells")
+    func aRunsCellsAreNotARectangle() {
+        let records = SchemeRecordCalculator().records(in: [
+            run(140_000, 1, by: 1, at: 0),
+            run(100_000, 5, by: 5, at: 1),
+        ])
+
+        let volume = records.filter { $0.setOffset == 1 }
+        #expect(volume.count == 24)
+        #expect(!volume.contains { $0.scheme == RecordScheme(reps: 1, sets: 1) })
+        // The corner the volume run did not take is still a record — the single's.
+        #expect(record(records, reps: 1, sets: 1)?.weight == Weight(grams: 140_000))
+        // And its own bottom-right corner is always held, which is what makes a maximal scheme safe
+        // to read where a pair of ranges is not.
+        #expect(volume.contains { $0.scheme == RecordScheme(reps: 5, sets: 5) })
+    }
+
     // MARK: - FR-16.2.3, the load a record beat
 
     @Test("The first run at a scheme is a baseline; the next heavier one carries what it beat")

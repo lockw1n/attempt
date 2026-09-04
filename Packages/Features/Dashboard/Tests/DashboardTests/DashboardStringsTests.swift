@@ -1,4 +1,6 @@
+import DerivedValues
 import Foundation
+import PowerliftingCore
 import Testing
 
 @testable import Dashboard
@@ -63,11 +65,37 @@ struct DashboardStringsTests {
         }
     }
 
-    /// The two forms are one label at two shapes, and the range one has to keep both numbers — a
-    /// translation that dropped one would read as the wrong record.
-    @Test("A single N and a span read as different labels")
-    func theTwoRepMaxFormsDiffer() {
+    /// The three forms are one label at three shapes, and each has to keep every number it was
+    /// given — a translation that dropped one would read as the wrong record.
+    @Test("A single N, a span and a scheme read as different labels")
+    func theThreeRepMaxFormsDiffer() {
         #expect(String(localized: DashboardStrings.recentRecordsRepMax(3)) == "3-rep max")
         #expect(String(localized: DashboardStrings.recentRecordsRepMaxRange(1, 3)) == "1–3-rep max")
+        #expect(String(localized: DashboardStrings.recentRecordsScheme(5, 5)) == "5 × 5 max")
+    }
+
+    /// `FR-16.2.1`: which of the three a row gets is decided off the record, not inside a `View`.
+    ///
+    /// The third case is the one the second dimension introduced — a run holding cells at two sets
+    /// and up sets no rep max, and naming one would contradict the lifter's own history.
+    @Test("A feed row is labelled by what the run actually set")
+    func aFeedRowIsLabelledByWhatItSet() {
+        #expect(String(localized: label(reps: 3, sets: 1, repMaxReps: 3...3)) == "3-rep max")
+        #expect(String(localized: label(reps: 3, sets: 1, repMaxReps: 1...3)) == "1–3-rep max")
+        #expect(String(localized: label(reps: 5, sets: 5, repMaxReps: nil)) == "5 × 5 max")
+    }
+
+    /// One feed row's label, over a record stating only what the label reads.
+    private func label(
+        reps: Int, sets: Int, repMaxReps: ClosedRange<Int>?
+    ) -> LocalizedStringResource {
+        RecentRecord(
+            exerciseID: UUID(),
+            scheme: RecordScheme(reps: reps, sets: sets),
+            repMaxReps: repMaxReps,
+            weight: Weight(grams: 100_000),
+            sourceSetID: UUID(),
+            achievedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        ).feedLabel
     }
 }

@@ -90,7 +90,8 @@
         ) -> RecentRecord {
             RecentRecord(
                 exerciseID: exerciseID,
-                reps: reps,
+                scheme: RecordScheme(reps: reps.upperBound, sets: 1),
+                repMaxReps: reps,
                 weight: Weight(grams: Int(kilos * 1000)),
                 sourceSetID: UUID(
                     uuidString: "0F5A1E24-9B7D-4C31-8E62-0000000000\(String(format: "%02d", daysAgo))"
