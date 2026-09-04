@@ -43,19 +43,63 @@ struct RecentRecordsScreenStateTests {
         #expect(RecentRecordsScreenState.current(feed) == .nothingInScope)
     }
 
-    /// And at the widest scope there is nothing left to widen to, so the sentence is the one about
-    /// what a set has to be.
-    @Test("A store holding no records at the widest scope is the insufficient-data case")
+    /// And at the widest configuration there is nothing left to relax, so the sentence is the one
+    /// about what a set has to be.
+    @Test("A store holding no records at the widest configuration is the insufficient-data case")
     func anEmptyStoreHasNothingYet() async throws {
         let feed = state()
-        try await widenScope(feed)
+        await feed.showEverything()
         await feed.load()
 
+        #expect(!feed.isNarrowed)
         #expect(RecentRecordsScreenState.current(feed) == .nothingYet)
     }
 
-    /// `FR-16.3.4`'s offer taken: the setting moves, and the feed re-reads under it.
-    @Test("Taking the offer widens the stored scope and reloads")
+    /// The baseline flag alone empties the feed, and `FR-16.3.4`'s own default is to hide them — so
+    /// a scope of every exercise is **not** on its own the widest the feed goes. A screen reading
+    /// the scope alone tells a lifter whose only record is a first-time one to go and log a set.
+    @Test("Hidden baselines at the widest scope are still the offer, not the empty log")
+    func hiddenBaselinesAtTheWidestScopeStillOffer() async throws {
+        let log = TrainingLogFixture()
+        // Logged once and never beaten: the standing record is a baseline, which the shipped
+        // default hides.
+        try await log.trainOnce()
+        var stored = try await log.repositories.settings.settings()
+        stored.recentRecordsScope = .everyExercise
+        try await log.repositories.settings.save(stored)
+        let feed = log.feed()
+
+        await feed.load()
+        #expect(feed.records.isEmpty)
+        #expect(RecentRecordsScreenState.current(feed) == .nothingInScope)
+
+        await feed.showEverything()
+
+        #expect(RecentRecordsScreenState.current(feed) == .ready)
+    }
+
+    /// The third narrowing, on the same rule: a chosen scheme list the records do not carry empties
+    /// the feed without the scope or the flag being touched.
+    @Test("A chosen scheme list holding nothing is the offer too")
+    func aChosenSchemeListIsANarrowing() async throws {
+        let log = TrainingLogFixture()
+        try await log.trainAndImprove()
+        var stored = try await log.repositories.settings.settings()
+        stored.recentRecordsScope = .everyExercise
+        stored.recentRecordsShowsBaselines = true
+        // A cell the fixture's 140/150 × 3 single never sets.
+        stored.recentRecordsSchemes = .chosen([RecordScheme(reps: 8, sets: 4)])
+        try await log.repositories.settings.save(stored)
+        let feed = log.feed()
+
+        await feed.load()
+
+        #expect(feed.records.isEmpty)
+        #expect(RecentRecordsScreenState.current(feed) == .nothingInScope)
+    }
+
+    /// `FR-16.3.4`'s offer taken: the settings move, and the feed re-reads under them.
+    @Test("Taking the offer relaxes every narrowing and reloads")
     func takingTheOfferWidensTheScope() async throws {
         let log = TrainingLogFixture()
         // Improved rather than logged once, so the standing record beat something: a baseline is
@@ -70,17 +114,16 @@ struct RecentRecordsScreenStateTests {
         await feed.load()
         #expect(RecentRecordsScreenState.current(feed) == .nothingInScope)
 
-        await feed.widenScope()
+        await feed.showEverything()
 
         #expect(RecentRecordsScreenState.current(feed) == .ready)
-        #expect(feed.scope == .everyExercise)
-        #expect(
-            try await log.repositories.settings.settings().recentRecordsScope == .everyExercise)
-    }
-
-    /// Widens the scope on the store behind `feed`, for the tests that are not about the offer.
-    private func widenScope(_ feed: RecentRecordsState) async throws {
-        await feed.widenScope()
+        #expect(!feed.isNarrowed)
+        // All three, not the scope alone: an offer that moved one of them would answer itself with
+        // the same empty feed under either of the other two.
+        let widened = try await log.repositories.settings.settings()
+        #expect(widened.recentRecordsScope == .everyExercise)
+        #expect(widened.recentRecordsShowsBaselines == true)
+        #expect(widened.recentRecordsSchemes == .derived)
     }
 
     @Test("Records to show is the ready case")

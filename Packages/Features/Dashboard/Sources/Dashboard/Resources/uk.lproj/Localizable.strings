@@ -56,8 +56,8 @@
 "dashboard.week.unweighed" = "Ніщо цього тижня не несе ваги, яку можна зважити, — підходи з власною вагою та з допомогою не додають обсягу.";
 "dashboard.week.error" = "Не вдалося прочитати тренування цього тижня.";
 
-"dashboard.recent-records.none-in-scope" = "Немає свіжих особистих рекордів для вправ, до яких звужено цю стрічку.";
-"dashboard.recent-records.show-every" = "Показати всі вправи";
+"dashboard.recent-records.none-in-scope" = "Жоден свіжий особистий рекорд не відповідає вашим налаштуванням свіжих рекордів.";
+"dashboard.recent-records.show-every" = "Показати все";
 
 "dashboard.recent-records.settings.title" = "Свіжі рекорди";
 "dashboard.recent-records.settings.error" = "Не вдалося прочитати налаштування свіжих рекордів.";

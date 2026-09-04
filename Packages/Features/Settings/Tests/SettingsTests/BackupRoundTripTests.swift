@@ -144,13 +144,22 @@ struct BackupRoundTripTests {
     /// Moves every preference off the value a first-launch row holds, so a restore that wrote
     /// nothing is visible in each column rather than in one.
     ///
-    /// **The dashboard selection names an exercise that is in the fixture**, which is the one
-    /// preference whose value is a join key; the rest are scalars and any distinct value does.
+    /// **Two of these are join keys and they name *different* exercises in the fixture** — the
+    /// dashboard selection and, since `FR-16.3.1`, the recent-PR feed's own list. A fixture sharing
+    /// one exercise between them would pass for a restore that wrote either column into both; the
+    /// rest are scalars and any distinct value does.
+    ///
+    /// **A column left at its default is compared, agrees, and means nothing.** That is why every
+    /// preference here is moved — including `FR-16.3`'s five, whose defaults are what a
+    /// first-launch row already holds, and whose three optional columns are absent from the wire
+    /// entirely until something writes them.
     ///
     /// - Parameter stack: The store to configure.
     /// - Throws: Whatever the repository throws.
     static func configureEveryPreference(of stack: PersistenceStack) async throws {
-        let tiled = try #require(try await stack.exercises.exercises(includingDeleted: false).first)
+        let catalogue = try await stack.exercises.exercises(includingDeleted: false)
+        let tiled = try #require(catalogue.first)
+        let scoped = try #require(catalogue.dropFirst().first)
         var configured = try await stack.settings.settings()
         configured.displayUnit = .pounds
         configured.displayPrecision = DisplayPrecision(milliUnits: 100)
@@ -161,6 +170,12 @@ struct BackupRoundTripTests {
         configured.defaultRoundingIncrement = Weight(grams: 1134)
         configured.defaultRoundingStrategy = .down
         configured.dashboardExerciseIDs = [tiled.id]
+        configured.recentRecordsScope = .chosen
+        configured.recentRecordsExerciseIDs = [scoped.id]
+        configured.recentRecordsSchemes = .chosen([
+            RecordScheme(reps: 5, sets: 5), RecordScheme(reps: 3, sets: 1),
+        ])
+        configured.recentRecordsShowsBaselines = true
         try await stack.settings.save(configured)
     }
 

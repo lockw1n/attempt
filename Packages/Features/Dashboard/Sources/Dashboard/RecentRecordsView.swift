@@ -14,12 +14,13 @@ import SwiftUI
 /// insufficient-data case rather than an emptied list.
 ///
 /// **The fifth is the one `FR-16.3.4` added, and it is a different sentence rather than a
-/// decoration on the fourth.** Under `FR-16.3.1`'s default the feed reports on the dashboard lifts
-/// alone, so an empty one no longer means "nothing has produced a record" — it usually means the
-/// records are somewhere the scope excludes, and saying "log a working set" to a lifter who has
-/// logged four hundred of them is wrong. What separates the two is whether anything was narrowed,
-/// which is the scope and nothing else: a `nothingYet` under `.everyExercise` really is a log with
-/// no records in it.
+/// decoration on the fourth.** Under `FR-16.3`'s defaults the feed reports on the dashboard lifts
+/// alone and hides baselines, so an empty one no longer means "nothing has produced a record" — it
+/// usually means the records are somewhere the configuration excludes, and saying "log a working
+/// set" to a lifter who has logged four hundred of them is wrong. What separates the two is
+/// whether anything was narrowed at all — the scope, the baseline flag or a chosen scheme list,
+/// any one of which can empty the feed on its own — so `nothingYet` is reachable only at the
+/// widest setting, where it really is a log with no records in it.
 ///
 /// **Nor is there the pair the per-exercise list has.** That screen tells "nothing logged against
 /// this exercise" from "logged, but nothing that counts" by counting the exercise's sets; globally
@@ -32,8 +33,8 @@ enum RecentRecordsScreenState: Equatable {
     /// It answered, and no set this build counts has produced a record.
     case nothingYet
 
-    /// It answered, nothing survived a scope narrower than every exercise, and widening it is the
-    /// offer (`FR-16.3.4`).
+    /// It answered, nothing survived a configuration narrower than the widest, and relaxing it is
+    /// the offer (`FR-16.3.4`).
     case nothingInScope
 
     /// There are records to show.
@@ -54,7 +55,7 @@ enum RecentRecordsScreenState: Equatable {
         if state.failure != nil { return .failed }
         guard state.hasLoaded else { return .loading }
         guard state.records.isEmpty else { return .ready }
-        return state.scope == .everyExercise ? .nothingYet : .nothingInScope
+        return state.isNarrowed ? .nothingInScope : .nothingYet
     }
 }
 
@@ -120,12 +121,12 @@ struct RecentRecordsFeed: View {
             InsufficientDataView(message: Text(DashboardStrings.recentRecordsNone))
         case .nothingInScope:
             // FR-16.3.4's offer, and a button rather than a sentence pointing at Settings: the
-            // remedy is one setting, so making the reader go and find it is the dead end the
+            // remedy is a setting, so making the reader go and find it is the dead end the
             // requirement is written against.
             InsufficientDataView(
                 message: Text(DashboardStrings.recentRecordsNoneInScope),
-                action: StateAction(Text(DashboardStrings.recentRecordsShowEveryExercise)) {
-                    Task { await state.widenScope() }
+                action: StateAction(Text(DashboardStrings.recentRecordsShowEverything)) {
+                    Task { await state.showEverything() }
                 })
         case .failed:
             ErrorStateView(

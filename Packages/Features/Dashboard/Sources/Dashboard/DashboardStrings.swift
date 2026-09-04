@@ -101,8 +101,8 @@ enum DashboardStrings {
     /// records exist and are outside the scope they chose.
     static let recentRecordsNoneInScope = resource("dashboard.recent-records.none-in-scope")
 
-    /// `FR-16.3.4`'s offer: the wider scope, as the button that takes it.
-    static let recentRecordsShowEveryExercise = resource("dashboard.recent-records.show-every")
+    /// `FR-16.3.4`'s offer: the widest configuration, as the button that takes it.
+    static let recentRecordsShowEverything = resource("dashboard.recent-records.show-every")
 
     /// The configuration screen's title (`FR-16.3.1`), and the Settings row that opens it.
     static let recentRecordsSettingsTitle = resource("dashboard.recent-records.settings.title")
@@ -231,7 +231,7 @@ enum DashboardStrings {
             recentRecordsRepMax(3), recentRecordsScheme(5, 5),
             recentRecordsSet("145 kg", "8"), recentRecordsRun("100 kg", "5", "5"),
             recentRecordsBaseline, recentRecordsExerciseHint,
-            recentRecordsNoneInScope, recentRecordsShowEveryExercise,
+            recentRecordsNoneInScope, recentRecordsShowEverything,
             recentRecordsSettingsTitle, recentRecordsSettingsError,
             recentRecordsSettingsWriteError,
             recentRecordsScopeTitle, recentRecordsScopeDetail,

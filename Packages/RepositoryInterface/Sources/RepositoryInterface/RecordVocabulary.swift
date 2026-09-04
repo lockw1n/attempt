@@ -30,7 +30,7 @@ public enum RecordVocabulary {
     ///
     /// **``isUnknownMarker`` exists because a write path needs it, and getting it wrong is a
     /// user-visible bug rather than a nicety.** Only three of the eleven fallbacks are cases meaning
-    /// *"this version does not recognise the stored spelling"*; the other seven are ordinary answers
+    /// *"this version does not recognise the stored spelling"*; the other eight are ordinary answers
     /// a user can also pick deliberately. A mapping that treats the two alike cannot tell "the
     /// caller left this column alone" from "the caller chose this value", and so makes the value
     /// unreachable — see `Persistence`'s `preservingRawValue(_:stored:fallback:)`, which is the only

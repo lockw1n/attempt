@@ -96,8 +96,17 @@ extension PersonalRecordRecomputer {
     /// the grouped events, and `FR-16.3.2`'s derived schemes only where an event survives both** —
     /// which is the order that keeps the expensive part rare. A derived scheme set costs one walk of
     /// that exercise's sets, memoised per call, and it is asked for lazily down the ordered feed, so
-    /// the default scope (`FR-16.3.1`'s dashboard lifts) bounds the walks to the handful of
-    /// exercises the dashboard already estimates a maximum for.
+    /// the walks are bounded by the number of distinct exercises among the events examined before
+    /// `limit` survivors accumulate — under `FR-16.3.1`'s default scope, the handful the dashboard
+    /// already estimates a maximum for.
+    ///
+    /// **That bound is the scope's and nothing else's, and `FR-16.3.4`'s offer removes it.** A
+    /// lifter who takes it is written to `.everyExercise` with the schemes still derived, and this
+    /// read then walks the full set history of every exercise it has to reach — on the tab the app
+    /// launches into, at ``RecentRecordsState/listLimit`` on the feed's own screen. Fixing it is a
+    /// stored derivation rather than a change here, the same shape as
+    /// ``repMaxes(forExerciseID:)`` recomputing for an exercise that qualifies nothing, and it
+    /// wants the same "computed, confirmed" marker (`NFR-1.6`).
     ///
     /// - Parameters:
     ///   - limit: How many entries to return, counted in PR-setting *runs* rather than in cached

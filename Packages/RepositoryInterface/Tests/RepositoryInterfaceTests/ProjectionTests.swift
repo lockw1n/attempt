@@ -355,8 +355,8 @@ struct RecordVocabularyAgreementTests {
         #expect(try decoded(BarType.self, spelling: "axle") == RecordVocabulary.barType.value)
     }
 
-    // And the seven that do not degrade on their own, which is where the table is load-bearing:
-    // three throw and four are not `Codable` at all, so a record decoding one of them through its
+    // And the eight that do not degrade on their own, which is where the table is load-bearing:
+    // three throw and five are not `Codable` at all, so a record decoding one of them through its
     // own conformance would either lose the row or not compile.
     @Test("The vocabularies with no lenient decoder still resolve")
     func strictVocabulariesStillResolve() {
@@ -369,6 +369,9 @@ struct RecordVocabularyAgreementTests {
         #expect(
             RecordVocabulary.resolve("percentOfVelocityLoss", or: RecordVocabulary.trainingMaxSource)
                 == .manual)
+        #expect(
+            RecordVocabulary.resolve("strongestLifts", or: RecordVocabulary.recentRecordsScope)
+                == .dashboardLifts)
     }
 
     // A recognised spelling is not degraded, which the fallback assertions above cannot show: every
@@ -378,6 +381,9 @@ struct RecordVocabularyAgreementTests {
         #expect(RecordVocabulary.resolve("unilateral", or: RecordVocabulary.laterality) == .unilateral)
         #expect(RecordVocabulary.resolve("wathan", or: RecordVocabulary.e1RMFormula) == .wathan)
         #expect(RecordVocabulary.resolve("dark", or: RecordVocabulary.theme) == .dark)
+        #expect(
+            RecordVocabulary.resolve("everyExercise", or: RecordVocabulary.recentRecordsScope)
+                == .everyExercise)
     }
 }
 

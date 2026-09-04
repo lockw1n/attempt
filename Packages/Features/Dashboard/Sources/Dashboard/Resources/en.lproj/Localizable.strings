@@ -110,11 +110,13 @@
 "dashboard.week.unweighed" = "Nothing this week carries a load to weigh — bodyweight and assisted sets add no volume.";
 "dashboard.week.error" = "This week's training could not be read.";
 
-/* FR-16.3.4's empty feed under a narrower scope. It is not "no records yet": the records exist and
-   the scope is what is hiding them, so the sentence names the scope and the button offers the wider
-   one — a control rather than a sentence pointing at Settings. */
-"dashboard.recent-records.none-in-scope" = "No recent personal records for the lifts this feed is scoped to.";
-"dashboard.recent-records.show-every" = "Show every exercise";
+/* FR-16.3.4's empty feed under a narrowed configuration. It is not "no records yet": the records
+   exist and the settings are what hide them, so the sentence names the settings rather than one of
+   them — the scope, the first-time flag and a chosen scheme list can each empty the feed alone, and
+   a sentence naming only the lifts would be wrong for the other two. The button offers the widest
+   of all three, a control rather than a sentence pointing at Settings. */
+"dashboard.recent-records.none-in-scope" = "No recent personal records match your Recent PRs settings.";
+"dashboard.recent-records.show-every" = "Show everything";
 
 /* FR-16.3's configuration screen, reached from Settings. The title matches the feed's own: it is
    the same feature, and a second name would read as a second one. */

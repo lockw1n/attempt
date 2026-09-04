@@ -67,7 +67,7 @@
                 InsufficientDataView(
                     message: Text(DashboardStrings.recentRecordsNoneInScope),
                     action: StateAction(
-                        Text(DashboardStrings.recentRecordsShowEveryExercise), handler: {}))
+                        Text(DashboardStrings.recentRecordsShowEverything), handler: {}))
             }
         }
     }

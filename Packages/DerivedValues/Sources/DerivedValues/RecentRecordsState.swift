@@ -57,11 +57,22 @@ public final class RecentRecordsState {
     /// at are both an empty ``records``, and a screen says opposite things about them.
     public private(set) var hasLoaded = false
 
-    /// The scope the last read ran under (`FR-16.3.1`).
+    /// Whether the last read ran under a filter that could have removed something (`FR-16.3`).
     ///
-    /// Held so an empty feed can offer the wider one (`FR-16.3.4`) — the offer is only honest where
-    /// something was actually narrowed.
-    public private(set) var scope = UserSettings.defaultRecentRecordsScope
+    /// **All three narrowings, not the scope alone.** An empty feed offers the wider one
+    /// (`FR-16.3.4`), and that offer is only honest where something was actually narrowed — but a
+    /// scope of every exercise is not on its own the widest the feed goes: `FR-16.3.4`'s own
+    /// default hides baselines, and `FR-16.3.2`'s chosen list hides cells. A screen reading the
+    /// scope alone tells a lifter whose records are all first-time ones to go and log a working
+    /// set, which is the dead end the offer exists to remove.
+    ///
+    /// ``RepositoryInterface/RecentRecordsSchemes/derived`` does not count: it is the
+    /// un-configured value, and what it drops it drops from the training log rather than from a
+    /// choice the lifter made.
+    /// `true` before the first read, because an unconfigured row is narrowed — `FR-16.3.1` scopes
+    /// it to the dashboard lifts and `FR-16.3.4` hides baselines. Nothing reads it until
+    /// ``hasLoaded``, so this is the safe answer rather than the load-bearing one.
+    public private(set) var isNarrowed = true
 
     /// The unit the loads on these rows are shown in (`G-3.1`).
     ///
@@ -132,7 +143,7 @@ public final class RecentRecordsState {
             let filter = try await resolvedFilter(stored)
             let loaded = try await recomputer.recentRecords(limit: limit, filter: filter)
             guard isCurrent(token) else { return }
-            scope = stored.recentRecordsScope
+            isNarrowed = Self.narrows(stored)
             displayUnit = stored.displayUnit
             records = loaded
             hasLoaded = true
@@ -146,19 +157,25 @@ public final class RecentRecordsState {
         await loadNames(token)
     }
 
-    /// `FR-16.3.4`'s offer taken: widens the stored scope to every exercise and re-reads.
+    /// `FR-16.3.4`'s offer taken: relaxes every narrowing and re-reads.
     ///
-    /// **It writes the setting rather than reading past it for one screenful.** The offer is made
-    /// under an empty feed, and a lifter who accepts it is saying the narrow scope was wrong — a
-    /// widening that lasted until the screen went away would put them back where they started on the
-    /// next launch, with no way to tell that they had already answered.
+    /// **All three, because the offer is one button and the feed is empty under whichever of them
+    /// did it.** A widening that moved the scope and left baselines hidden would answer the offer
+    /// with the same empty feed and no second offer to make.
+    ///
+    /// **It writes the settings rather than reading past them for one screenful.** A lifter who
+    /// accepts is saying the narrowing was wrong — one that lasted until the screen went away would
+    /// put them back where they started on the next launch, with no way to tell that they had
+    /// already answered.
     ///
     /// A write that fails leaves ``failure`` set and the feed as it was; nothing changed, and the
     /// button is still there.
-    public func widenScope() async {
+    public func showEverything() async {
         do {
             var stored = try await settings.settings()
             stored.recentRecordsScope = .everyExercise
+            stored.recentRecordsShowsBaselines = true
+            stored.recentRecordsSchemes = .derived
             try await settings.save(stored)
         } catch {
             failure = String(describing: error)
@@ -166,6 +183,16 @@ public final class RecentRecordsState {
         }
         await recomputer.recentRecordsPreferencesDidChange()
         await load()
+    }
+
+    /// Whether `stored` narrows the feed at all — the inverse of what ``showEverything()`` writes.
+    ///
+    /// - Parameter stored: The settings row.
+    /// - Returns: Whether anything could have been removed.
+    private static func narrows(_ stored: UserSettings) -> Bool {
+        stored.recentRecordsScope != .everyExercise
+            || !stored.recentRecordsShowsBaselines
+            || stored.recentRecordsSchemes != .derived
     }
 
     /// What `stored` narrows the feed to, with `FR-16.3.1`'s scope resolved to identifiers.

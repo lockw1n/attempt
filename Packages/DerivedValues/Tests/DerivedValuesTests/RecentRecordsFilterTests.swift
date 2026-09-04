@@ -20,20 +20,30 @@ struct RecentRecordsFilterTests {
         let recomputer: PersonalRecordRecomputer
         let squat: UUID
         let kickback: UUID
+        /// The five improving lifts, newest record first — what a dashboard scope names.
+        let dashboardLifts: [UUID]
     }
 
+    /// **Five improving lifts and not one**, because `DOD-16.2` asserts on the *first five rows* and
+    /// a feed holding one row satisfies "no baseline among the first five" by having nothing to
+    /// look at. Each is trained on its own weeks so the five stand in a known order.
     private func programme() async throws -> Programme {
         let log = TrainingLog()
-        let squat = try await log.exercise(named: "Back Squat")
-        let kickback = try await log.exercise(named: "Triceps Kickback")
-        // Three 5 × 3 runs, each heavier than the last: the third beats the second at 5 × 3, so the
-        // squat's newest record is an improvement rather than a baseline.
-        for (week, grams) in [(6, 120_000), (4, 130_000), (2, 140_000)] {
-            try await log.session(
-                of: squat,
-                on: weeksAgo(week),
-                sets: (0..<3).map { _ in working(grams, 5) })
+        let names = ["Back Squat", "Bench Press", "Deadlift", "Overhead Press", "Barbell Row"]
+        var lifts: [UUID] = []
+        for (index, name) in names.enumerated() {
+            let lift = try await log.exercise(named: name)
+            lifts.append(lift)
+            // Three 5 × 3 runs, each heavier than the last: the third beats the second at 5 × 3, so
+            // the standing record is an improvement rather than a baseline.
+            for (offset, grams) in [(0, 120_000), (2, 130_000), (4, 140_000)] {
+                try await log.session(
+                    of: lift,
+                    on: weeksAgo(20 - index * 3 - offset),
+                    sets: (0..<3).map { _ in working(grams + index * 5_000, 5) })
+            }
         }
+        let kickback = try await log.exercise(named: "Triceps Kickback")
         // One light single, once, and never before: a baseline at a scheme trained once.
         try await log.session(of: kickback, on: weeksAgo(1), sets: [working(10_000, 12)])
         let recomputer = PersonalRecordRecomputer(
@@ -41,9 +51,13 @@ struct RecentRecordsFilterTests {
             exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
-        try await recomputer.recompute(forExerciseID: squat)
-        try await recomputer.recompute(forExerciseID: kickback)
-        return Programme(log: log, recomputer: recomputer, squat: squat, kickback: kickback)
+        for lift in lifts + [kickback] { try await recomputer.recompute(forExerciseID: lift) }
+        return Programme(
+            log: log,
+            recomputer: recomputer,
+            squat: lifts[0],
+            kickback: kickback,
+            dashboardLifts: lifts)
     }
 
     /// The state the filter replaces — kept as a test, because every assertion below is only worth
@@ -68,16 +82,42 @@ struct RecentRecordsFilterTests {
     func defaultsHideBaselineAccessories() async throws {
         let fixture = try await programme()
         var stored = try await fixture.log.repositories.settings.settings()
-        stored.dashboardExerciseIDs = [fixture.squat]
+        stored.dashboardExerciseIDs = fixture.dashboardLifts
         try await fixture.log.repositories.settings.save(stored)
         let filter = try await shippedFilter(fixture)
 
         let feed = try await fixture.recomputer.recentRecords(limit: 5, filter: filter)
 
-        #expect(!feed.isEmpty)
+        // Five rows, so "no baseline among the first five" is a statement about five of them
+        // rather than one satisfied by a short feed.
+        #expect(feed.count == 5)
         #expect(!feed.contains { $0.exerciseID == fixture.kickback })
         #expect(feed.allSatisfy { $0.previous != nil })
         #expect(feed.allSatisfy { $0.delta != nil })
+    }
+
+    /// `FR-16.3.1`: the chosen scope reads **its own** list, not the dashboard's.
+    ///
+    /// **The two columns name different lifts here**, on `mappingFeedExerciseID`'s rule: a fixture
+    /// sharing one value between them passes for a resolution that read the wrong column, and
+    /// reading the wrong column is the one way `.chosen` could stop being a second list at all.
+    @Test("The chosen scope reads its own list, not the dashboard's")
+    func theChosenScopeReadsItsOwnList() async throws {
+        let fixture = try await programme()
+        var stored = try await fixture.log.repositories.settings.settings()
+        stored.recentRecordsScope = .chosen
+        stored.recentRecordsExerciseIDs = [fixture.kickback]
+        stored.dashboardExerciseIDs = [fixture.squat]
+        try await fixture.log.repositories.settings.save(stored)
+
+        let scope = await RecentRecordsFilter.scope(of: stored) { [fixture.squat] }
+        let feed = try await fixture.recomputer.recentRecords(
+            limit: 5,
+            filter: RecentRecordsFilter(
+                exerciseIDs: scope, schemes: .derived, showsBaselines: true))
+
+        #expect(scope == [fixture.kickback])
+        #expect(feed.map(\.exerciseID) == [fixture.kickback])
     }
 
     /// The scope narrows on identifiers, so a lifter whose dashboard names the accessory sees it —
@@ -217,8 +257,13 @@ struct RecentRecordsFilterTests {
         #expect(!feed.contains { $0.weight == Weight(grams: 200_000) })
     }
 
-    /// The limit counts what survives, not what was considered — a feed of two under a scope that
-    /// excludes the three newest events still draws two.
+    /// The limit counts what survives, not what was considered.
+    ///
+    /// **The rows the fixture excludes are excluded *after* grouping, which is the only way this
+    /// can fail.** A first draft narrowed them out by exercise, and that filter runs over the
+    /// cached rows *before* they are grouped — so the excluded events never reached the limit at
+    /// all and the assertion held whether the limit was applied to candidates or to survivors. The
+    /// baseline flag is the discriminator here because it is read off the grouped event.
     ///
     /// **Three separate accessories rather than three sessions of one**, because a record is the
     /// *current* holder of a cell: three improving sessions of one lift leave one event behind, not
@@ -226,33 +271,39 @@ struct RecentRecordsFilterTests {
     @Test("The limit is applied after the filter, not before it")
     func theLimitCountsSurvivors() async throws {
         let log = TrainingLog()
-        let squat = try await log.exercise(named: "Back Squat")
-        let bench = try await log.exercise(named: "Bench Press")
-        try await log.session(of: squat, on: weeksAgo(9), sets: [working(140_000, 5)])
-        try await log.session(of: bench, on: weeksAgo(8), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
             exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
-        try await recomputer.recompute(forExerciseID: squat)
-        try await recomputer.recompute(forExerciseID: bench)
-        // Three newer records the scope excludes, one per accessory so each stands as its own event.
+        // Two improving lifts: each standing record beat something, so neither is a baseline.
+        for (name, week, light, heavy) in [
+            ("Back Squat", 9, 140_000, 150_000), ("Bench Press", 7, 100_000, 110_000),
+        ] {
+            let lift = try await log.exercise(named: name)
+            try await log.session(of: lift, on: weeksAgo(week), sets: [working(light, 5)])
+            try await log.session(of: lift, on: weeksAgo(week - 1), sets: [working(heavy, 5)])
+            try await recomputer.recompute(forExerciseID: lift)
+        }
+        // Three newer events IN scope that the baseline flag drops, one per accessory so each
+        // stands as its own event. Same scheme as the two above, so only the flag separates them.
         for (week, name) in [(3, "Cable Fly"), (2, "Lateral Raise"), (1, "Triceps Kickback")] {
             let accessory = try await log.exercise(named: name)
-            try await log.session(of: accessory, on: weeksAgo(week), sets: [working(20_000, 10)])
+            try await log.session(of: accessory, on: weeksAgo(week), sets: [working(20_000, 5)])
             try await recomputer.recompute(forExerciseID: accessory)
         }
 
         let feed = try await recomputer.recentRecords(
             limit: 2,
             filter: RecentRecordsFilter(
-                exerciseIDs: [squat, bench],
+                exerciseIDs: nil,
                 schemes: .chosen([RecordScheme(reps: 5, sets: 1)]),
-                showsBaselines: true))
+                showsBaselines: false))
 
+        // A limit applied to candidates would take the three newest, drop all three as baselines
+        // and draw nothing.
         #expect(feed.count == 2)
-        #expect(Set(feed.map(\.exerciseID)) == [squat, bench])
+        #expect(feed.allSatisfy { !$0.isBaseline })
     }
 
     /// `FR-16.3.1`'s default scope reads `FR-1.9.1`'s selection, and where the lifter has made none
