@@ -198,3 +198,15 @@
 "exerciselibrary.detail.e1rm.override.revert" = "Використати обчислене значення";
 
 "exerciselibrary.detail.e1rm.override.error" = "Не вдалося зберегти цю ручну оцінку.";
+
+"exerciselibrary.records.title" = "Рекорди за схемами";
+
+"exerciselibrary.detail.records.all" = "Усі схеми";
+"exerciselibrary.detail.records.all.hint" = "Показує кожну кількість повторень і підходів, у якій ця вправа має рекорд.";
+
+"exerciselibrary.records.column %lld" = "× %lld";
+"exerciselibrary.records.reps-header" = "повт.";
+
+"exerciselibrary.records.scheme %lld %lld" = "%1$lld × %2$lld";
+
+"exerciselibrary.records.cell %lld %lld %@ %@" = "%1$lld на %2$lld, %3$@, %4$@";

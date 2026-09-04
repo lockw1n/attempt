@@ -93,6 +93,17 @@ public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
     /// of truth for it (`G-1.4`).
     case exerciseDetail(exerciseID: UUID)
 
+    /// One exercise's whole record table, by scheme (`FR-16.2.4`).
+    ///
+    /// **A screen of its own rather than a taller section on ``exerciseDetail(exerciseID:)``**: the
+    /// table is up to ten rep counts by six set counts, which is more than a section on a screen
+    /// that already carries facts, history, records and an estimate can hold — the detail keeps the
+    /// diagonal and the rep-max row, which is what a lifter reads at a glance, and this is where the
+    /// rest of the cells live.
+    ///
+    /// Carries the identifier and not the records, for ``exerciseDetail(exerciseID:)``'s reason.
+    case exerciseRecords(exerciseID: UUID)
+
     /// The form that authors a new custom exercise (`FR-1.1.3`).
     ///
     /// **A case of its own rather than ``exerciseEdit(exerciseID:)`` with no identifier.** An

@@ -21,9 +21,15 @@
    optional half: a set that beat the 1RM through the 3RM in one go reads "1–3-rep max", and a
    language that words a range differently needs to be able to say so. Neither needs a plural rule —
    the number sits inside the compound before "max", so "1-rep max" is already correct. */
-"dashboard.recent-records.rep-max %lld" = "%lld-rep max";
-"dashboard.recent-records.rep-max.range %lld %lld" = "%1$lld–%2$lld-rep max";
-"dashboard.recent-records.scheme %lld %lld" = "%1$lld × %2$lld max";
+"dashboard.recent-records.rep-max %lld" = "%lldRM";
+"dashboard.recent-records.scheme %lld %lld" = "%1$lld × %2$lld";
+
+/* FR-16.3.3: the set the record came from, written the way the log writes it. */
+"dashboard.recent-records.set %@ %@" = "%1$@ × %2$@";
+"dashboard.recent-records.run %@ %@ %@" = "%1$@ × %2$@ × %3$@";
+
+/* FR-16.3.4: what stands where the delta would, the first time a scheme is performed. */
+"dashboard.recent-records.baseline" = "First";
 /* VoiceOver's hint on a feed entry. It opens the exercise, not the session — see RecentRecordRow. */
 "dashboard.recent-records.exercise-hint" = "Shows this exercise's personal records.";
 

@@ -441,7 +441,7 @@ enum ExerciseLibraryStrings {
             formParentEveryMovement,
             formParentEmpty, formSave, formErrorHeadline, formErrorMessage, formMissingHeadline,
             formMissingMessage, formWriteError,
-        ] + allHistoryRowStrings
+        ] + allSchemeRecordStrings + allHistoryRowStrings
             + Movement.allCases.map(label(for:))
             + Equipment.allCases.map(label(for:))
             + ExerciseOrigin.allCases.map(label(for:))

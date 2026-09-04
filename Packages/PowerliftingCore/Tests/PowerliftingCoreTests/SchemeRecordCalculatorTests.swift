@@ -219,3 +219,44 @@ extension SchemeRecord {
     /// `DerivedValues` is where a screen asks the question.
     fileprivate var isBaselineForTest: Bool { previousWeight == nil }
 }
+
+/// `FR-16.2.4` — which cell a badge names, given the cells a run holds.
+@Suite("Maximal scheme")
+struct MaximalSchemeTests {
+    /// The corner of what a run took: the highest reps at the highest set count.
+    @Test("The maximal scheme of one run's cells is its corner")
+    func theMaximalSchemeIsTheCorner() {
+        let held = SchemeRecordCalculator()
+            .records(in: [SetRun(weight: Weight(grams: 100_000), reps: 5, count: 3, setOffset: 0)])
+
+        #expect(RecordScheme.maximal(of: held.map(\.scheme)) == RecordScheme(reps: 5, sets: 3))
+    }
+
+    /// **The product, not the order.** `<` puts `10 × 1` above `5 × 3` because it compares reps
+    /// first; the badge names the larger performance, which is fifteen reps rather than ten.
+    @Test("Reps times sets decides, where the scheme order would not")
+    func theProductDecidesRatherThanTheOrder() {
+        let ten = RecordScheme(reps: 10, sets: 1)
+        let fifteen = RecordScheme(reps: 5, sets: 3)
+
+        #expect(ten > fifteen)
+        #expect(RecordScheme.maximal(of: [ten, fifteen]) == fifteen)
+    }
+
+    /// A tie in the product is broken by the order, so the answer is one scheme rather than
+    /// whichever the collection happened to yield first.
+    @Test("A tie in the product falls back to the scheme order")
+    func aTieFallsBackToTheOrder() {
+        let sixByOne = RecordScheme(reps: 6, sets: 1)
+        let twoByThree = RecordScheme(reps: 2, sets: 3)
+
+        #expect(RecordScheme.maximal(of: [twoByThree, sixByOne]) == sixByOne)
+        #expect(RecordScheme.maximal(of: [sixByOne, twoByThree]) == sixByOne)
+    }
+
+    /// No cells is no badge, which is the ordinary case on every row that is not a record.
+    @Test("No schemes is no maximal one")
+    func noSchemesIsNoMaximalOne() {
+        #expect(RecordScheme.maximal(of: [RecordScheme]()) == nil)
+    }
+}

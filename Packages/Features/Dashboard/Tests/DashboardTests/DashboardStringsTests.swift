@@ -65,24 +65,36 @@ struct DashboardStringsTests {
         }
     }
 
-    /// The three forms are one label at three shapes, and each has to keep every number it was
+    /// The two forms are one label at two shapes, and each has to keep every number it was
     /// given — a translation that dropped one would read as the wrong record.
-    @Test("A single N, a span and a scheme read as different labels")
-    func theThreeRepMaxFormsDiffer() {
-        #expect(String(localized: DashboardStrings.recentRecordsRepMax(3)) == "3-rep max")
-        #expect(String(localized: DashboardStrings.recentRecordsRepMaxRange(1, 3)) == "1–3-rep max")
-        #expect(String(localized: DashboardStrings.recentRecordsScheme(5, 5)) == "5 × 5 max")
+    @Test("A rep max and a scheme read as different labels")
+    func theTwoRecordFormsDiffer() {
+        #expect(String(localized: DashboardStrings.recentRecordsRepMax(3)) == "3RM")
+        #expect(String(localized: DashboardStrings.recentRecordsScheme(5, 5)) == "5 × 5")
     }
 
-    /// `FR-16.2.1`: which of the three a row gets is decided off the record, not inside a `View`.
+    /// `FR-16.3.3`: which of the two a row gets is decided off the record, not inside a `View`.
     ///
-    /// The third case is the one the second dimension introduced — a run holding cells at two sets
+    /// **A span names its top and nothing below it.** A set of eight that beat every N up to eight
+    /// is an 8RM; "1–8-rep max" states eight claims where the lifter made one, and that label is
+    /// retired.
+    ///
+    /// The scheme case is the one the second dimension introduced — a run holding cells at two sets
     /// and up sets no rep max, and naming one would contradict the lifter's own history.
     @Test("A feed row is labelled by what the run actually set")
     func aFeedRowIsLabelledByWhatItSet() {
-        #expect(String(localized: label(reps: 3, sets: 1, repMaxReps: 3...3)) == "3-rep max")
-        #expect(String(localized: label(reps: 3, sets: 1, repMaxReps: 1...3)) == "1–3-rep max")
-        #expect(String(localized: label(reps: 5, sets: 5, repMaxReps: nil)) == "5 × 5 max")
+        #expect(String(localized: label(reps: 3, sets: 1, repMaxReps: 3...3)) == "3RM")
+        #expect(String(localized: label(reps: 8, sets: 1, repMaxReps: 1...8)) == "8RM")
+        #expect(String(localized: label(reps: 5, sets: 5, repMaxReps: nil)) == "5 × 5")
+    }
+
+    /// `FR-16.3.3`: the set that produced the record, written the way the log writes it.
+    @Test("A run's reading carries its set count and a single set's does not")
+    func aRunReadsAsThreeNumbersAndASetAsTwo() {
+        #expect(String(localized: DashboardStrings.recentRecordsSet("145 kg", "8")) == "145 kg × 8")
+        #expect(
+            String(localized: DashboardStrings.recentRecordsRun("100 kg", "5", "5"))
+                == "100 kg × 5 × 5")
     }
 
     /// One feed row's label, over a record stating only what the label reads.

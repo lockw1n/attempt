@@ -319,3 +319,24 @@
 /* The write failed. Nothing was stored and the number on screen is unchanged, so the retry is
    another tap at the same command. */
 "exerciselibrary.detail.e1rm.override.error" = "This manual estimate could not be saved.";
+
+/* FR-16.2.4: the whole record table, on a screen of its own. The title names what the table is
+   keyed by rather than repeating the exercise, whose name the navigation bar already carries. */
+"exerciselibrary.records.title" = "Records by scheme";
+
+/* The control on the detail section that opens it, and what it opens. */
+"exerciselibrary.detail.records.all" = "All schemes";
+"exerciselibrary.detail.records.all.hint" = "Shows every rep and set count this exercise holds a record at.";
+
+/* The table's headings. A column is a number of consecutive sets and a row is a rep count, so the
+   column carries the multiplication sign and the row carries the noun. */
+"exerciselibrary.records.column %lld" = "× %lld";
+"exerciselibrary.records.reps-header" = "reps";
+
+/* FR-16.2.1: one scheme, written the way a lifter writes it. */
+"exerciselibrary.records.scheme %lld %lld" = "%1$lld × %2$lld";
+
+/* G-4.2: one cell, read aloud. The cell draws neither of its headings, so the label carries both —
+   "by" rather than the multiplication sign, which VoiceOver would announce as punctuation or not
+   at all. */
+"exerciselibrary.records.cell %lld %lld %@ %@" = "%1$lld by %2$lld, %3$@, %4$@";

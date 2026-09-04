@@ -117,9 +117,10 @@
    them because «rep» agrees with the count; the compound «%@-повторний максимум» is an adjective
    and agrees with «максимум» instead, so it is correct at 1 and at 6 alike — where the literal
    «на %@ повторень» would be wrong at 2, 3 and 4, which are the counts a lifter sets most. */
-"logging.session.set.record" = "ОР";
-"logging.session.set.record.label %@" = "Особистий рекорд: %@-повторний максимум";
-"logging.session.set.record.label.one %@" = "Особистий рекорд: %@-повторний максимум";
+"logging.session.set.record.scheme %lld %lld" = "ОР %1$lld×%2$lld";
+"logging.session.set.record.rep-max %lld" = "ОР %lldПМ";
+"logging.session.set.record.scheme.label %lld %lld" = "Особистий рекорд: %1$lld на %2$lld";
+"logging.session.set.record.rep-max.label %lld" = "Особистий рекорд: %lld-повторний максимум";
 "logging.session.set.warmup.section" = "Розминка";
 "logging.session.set.warmup.label" = "Розминковий підхід";
 "logging.session.set.warmup.hint" = "Нумерується окремо й не входить до ваших робочих підходів.";

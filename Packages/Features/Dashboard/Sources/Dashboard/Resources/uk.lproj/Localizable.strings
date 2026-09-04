@@ -7,9 +7,11 @@
 "dashboard.recent-records.none" = "Виконайте робочий підхід — і особисті рекорди, які він встановить, з’являться тут. Підхід, у якому не вдалося досягти цілі, рекорду не встановлює, навіть на тій кількості повторень, яку ви зробили.";
 "dashboard.recent-records.error" = "Не вдалося прочитати нові особисті рекорди.";
 "dashboard.recent-records.see-all" = "Показати всі";
-"dashboard.recent-records.rep-max %lld" = "%lld-повторний максимум";
-"dashboard.recent-records.rep-max.range %lld %lld" = "%1$lld–%2$lld-повторний максимум";
-"dashboard.recent-records.scheme %lld %lld" = "%1$lld × %2$lld макс.";
+"dashboard.recent-records.rep-max %lld" = "%lldПМ";
+"dashboard.recent-records.scheme %lld %lld" = "%1$lld × %2$lld";
+"dashboard.recent-records.set %@ %@" = "%1$@ × %2$@";
+"dashboard.recent-records.run %@ %@ %@" = "%1$@ × %2$@ × %3$@";
+"dashboard.recent-records.baseline" = "Уперше";
 "dashboard.recent-records.exercise-hint" = "Показує особисті рекорди цієї вправи.";
 
 "dashboard.start.action" = "Почати тренування";

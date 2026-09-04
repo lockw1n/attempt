@@ -128,7 +128,8 @@ struct RecentRecordsFeed: View {
     }
 }
 
-/// One PR-setting set: the exercise, what it was the record for, the load, and when (`FR-1.6.5`).
+/// One PR-setting run: the exercise, the scheme, the set behind it, the delta and the day
+/// (`FR-1.6.5`, `FR-16.3.3`).
 ///
 /// **The whole row links to the exercise's detail, not to the source set** — which is where this
 /// row differs from `FR-1.6.2`'s, and it is a decision rather than an omission. Locating a set
@@ -180,7 +181,8 @@ struct RecentRecordRow: View {
         .accessibilityHint(Text(DashboardStrings.recentRecordsExerciseHint))
     }
 
-    /// What the row says: the exercise, then what it is the record for, the load and the day.
+    /// What the row says: the exercise, then `FR-16.3.3`'s four — the scheme, the set that produced
+    /// it, how far the load moved, and the day.
     private var reading: some View {
         VStack(alignment: .leading, spacing: Spacing.xxs.points) {
             if let exerciseName {
@@ -193,13 +195,10 @@ struct RecentRecordRow: View {
                     .font(Typography.metricLabel.font)
                     .foregroundStyle(ColorToken.textSecondary)
                 Spacer(minLength: Spacing.sm.points)
-                Text(
-                    record.weight,
-                    format: AppFormat.weight(
-                        WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale)
-                )
-                .font(Typography.numericValue.font)
-                .foregroundStyle(ColorToken.textPrimary)
+                Text(sourceGroup)
+                    .font(Typography.numericValue.font)
+                    .foregroundStyle(ColorToken.textPrimary)
+                movement
                 Text(record.achievedAt, format: AppFormat.date(locale: locale))
                     .font(Typography.caption.font)
                     .foregroundStyle(ColorToken.textTertiary)
@@ -210,8 +209,45 @@ struct RecentRecordRow: View {
         .contentShape(.rect)
     }
 
+    /// How far the load moved, or the word that stands where it would (`FR-16.3.3`, `FR-16.3.4`).
+    ///
+    /// **An increase or nothing.** A cell only moves on a strict improvement, so
+    /// ``DerivedValues/RecentRecord/delta`` is positive wherever it is not `nil` — the indicator's
+    /// other two directions are unreachable here, and the arrow and the sign are what carry that
+    /// without colour (`G-4.5`).
+    @ViewBuilder private var movement: some View {
+        if let delta = record.delta {
+            DeltaIndicator(.increase, value: weightStyle.format(delta))
+        } else {
+            Text(DashboardStrings.recentRecordsBaseline)
+                .font(Typography.metricContext.font)
+                .foregroundStyle(ColorToken.textSecondary)
+        }
+    }
+
     /// What this entry is the record for — see ``RecentRecord/feedLabel``.
     private var label: LocalizedStringResource { record.feedLabel }
+
+    /// The set or run that produced it — `145 kg × 8`, `100 kg × 5 × 5` (`FR-16.3.3`).
+    ///
+    /// **The record's own scheme, which is the run's shape clamped to the table's bounds.** The
+    /// cache stores a cell rather than a performance, so a set taken to twelve reps reads `× 10`
+    /// here: what the row states is the record it set, and the twelve-rep set is one tap away on the
+    /// exercise's own screen.
+    private var sourceGroup: LocalizedStringResource {
+        let load = weightStyle.format(record.weight)
+        let reps = record.scheme.reps.formatted(AppFormat.count(locale: locale))
+        guard record.scheme.sets > 1 else {
+            return DashboardStrings.recentRecordsSet(load, reps)
+        }
+        return DashboardStrings.recentRecordsRun(
+            load, reps, record.scheme.sets.formatted(AppFormat.count(locale: locale)))
+    }
+
+    /// The one weight formatter this row uses, so the load and the delta are rendered alike.
+    private var weightStyle: WeightStyle {
+        AppFormat.weight(WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale)
+    }
 
     /// The line, or the stack — `ExerciseRecordRow`'s measured switch, for its reason: at
     /// `accessibility3` a date pushed to the trailing edge takes the width the load needs.
@@ -333,22 +369,25 @@ public struct RecentRecordsSection: View {
 }
 
 extension RecentRecord {
-    /// What one feed row is the record for — one N, the span a single set took in one go, or the
-    /// scheme itself where the run set no rep max at all (`FR-1.6.5`, `FR-16.2.1`).
+    /// What one feed row is the record for — the top N it took at a single set, or the scheme itself
+    /// where the run set no rep max at all (`FR-1.6.5`, `FR-16.2.1`).
     ///
-    /// **The third case is not a widening of the first two.** A rep max is a claim about a single
+    /// **Two cases, where there were three.** The span a set took in one go is not a third label: a
+    /// set of eight that beat every N up to eight is an **8RM**, and the seven records below it are
+    /// the dominance rule rather than the achievement — see
+    /// ``Dashboard/DashboardStrings/recentRecordsRepMax(_:)``, where "1–8-rep max" is retired.
+    ///
+    /// **The scheme case is not a widening of the rep-max one.** A rep max is a claim about a single
     /// set, and a run whose records all stand at two sets and up — a `100 × 5 × 5` performed after a
-    /// heavier set of five — set none; labelling it "1–5-rep max" would name records the lifter's
-    /// own history contradicts, at a lighter load than the one that holds them.
+    /// heavier set of five — set none; labelling it with an N would name records the lifter's own
+    /// history contradicts, at a lighter load than the one that holds them.
     ///
-    /// **Off the `View` deliberately.** The choice between three sentences is the claim worth
+    /// **Off the `View` deliberately.** The choice between the two sentences is the claim worth
     /// testing, and a claim that lives inside a `View` body can only be closed by a picture.
     var feedLabel: LocalizedStringResource {
         guard let reps = repMaxReps else {
             return DashboardStrings.recentRecordsScheme(scheme.reps, scheme.sets)
         }
-        return reps.lowerBound == reps.upperBound
-            ? DashboardStrings.recentRecordsRepMax(reps.lowerBound)
-            : DashboardStrings.recentRecordsRepMaxRange(reps.lowerBound, reps.upperBound)
+        return DashboardStrings.recentRecordsRepMax(reps.upperBound)
     }
 }

@@ -27,25 +27,18 @@ enum DashboardStrings {
     /// The control that opens the full list from the card.
     static let recentRecordsSeeAll = resource("dashboard.recent-records.see-all")
 
-    /// What one entry is the record for, where the set holds a single N.
+    /// What one entry is the record for, where the run set a rep max — `8RM` (`FR-16.3.3`).
     ///
-    /// - Parameter reps: The N.
+    /// **The top of what it took, never the span of it.** A set of eight that beat every N up to
+    /// eight is an 8RM; writing it "1–8-rep max" states eight claims where the lifter made one, and
+    /// the seven below it are the arithmetic rather than the achievement. That label is retired.
+    ///
+    /// **The compound carries no plural**, so no rule file is needed: the numeral sits inside `8RM`.
+    ///
+    /// - Parameter reps: The highest N the run holds at a single set.
     /// - Returns: The label.
     static func recentRecordsRepMax(_ reps: Int) -> LocalizedStringResource {
         resource("dashboard.recent-records.rep-max \(reps)")
-    }
-
-    /// What one entry is the record for, where the set holds several N's at once.
-    ///
-    /// **A range rather than a plural**, so no rule file is needed: the noun is "max" and both
-    /// numbers sit inside the compound before it, which reads the same at every count.
-    ///
-    /// - Parameters:
-    ///   - lowest: The lowest N the set holds.
-    ///   - highest: The highest.
-    /// - Returns: The label.
-    static func recentRecordsRepMaxRange(_ lowest: Int, _ highest: Int) -> LocalizedStringResource {
-        resource("dashboard.recent-records.rep-max.range \(lowest) \(highest)")
     }
 
     /// What one entry is the record for, where the run set no single-set rep max at all
@@ -62,6 +55,40 @@ enum DashboardStrings {
     static func recentRecordsScheme(_ reps: Int, _ sets: Int) -> LocalizedStringResource {
         resource("dashboard.recent-records.scheme \(reps) \(sets)")
     }
+
+    /// The set that produced a record, as `FR-16.3.3`'s row names it — `145 kg × 8`.
+    ///
+    /// **The load and the numbers arrive already rendered**, on
+    /// ``Logging/LoggingStrings/setRPE(_:)``' rule: they are formatted for the locale by the caller's
+    /// own formatter (`G-3.4`), and what this string owns is the punctuation between them.
+    ///
+    /// - Parameters:
+    ///   - load: The record load, formatted.
+    ///   - reps: The repetitions, formatted.
+    /// - Returns: The reading.
+    static func recentRecordsSet(_ load: String, _ reps: String) -> LocalizedStringResource {
+        resource("dashboard.recent-records.set \(load) \(reps)")
+    }
+
+    /// The same, where the record stands over a run of sets — `100 kg × 5 × 5`.
+    ///
+    /// - Parameters:
+    ///   - load: The record load, formatted.
+    ///   - reps: The repetitions, formatted.
+    ///   - sets: How many consecutive sets, formatted.
+    /// - Returns: The reading.
+    static func recentRecordsRun(
+        _ load: String, _ reps: String, _ sets: String
+    ) -> LocalizedStringResource {
+        resource("dashboard.recent-records.run \(load) \(reps) \(sets)")
+    }
+
+    /// What stands where the delta would, for a scheme performed for the first time (`FR-16.3.4`).
+    ///
+    /// **A word rather than a blank.** A baseline and a record whose delta could not be worked out
+    /// would otherwise look the same, and the first time a lifter performs a scheme is the one
+    /// occasion there is nothing to have beaten — which is worth saying.
+    static let recentRecordsBaseline = resource("dashboard.recent-records.baseline")
 
     /// What tapping a feed entry does.
     static let recentRecordsExerciseHint = resource("dashboard.recent-records.exercise-hint")
@@ -131,8 +158,9 @@ enum DashboardStrings {
     static var all: [LocalizedStringResource] {
         [
             recentRecordsTitle, recentRecordsNone, recentRecordsError, recentRecordsSeeAll,
-            recentRecordsRepMax(3), recentRecordsRepMaxRange(1, 3), recentRecordsScheme(5, 5),
-            recentRecordsExerciseHint,
+            recentRecordsRepMax(3), recentRecordsScheme(5, 5),
+            recentRecordsSet("145 kg", "8"), recentRecordsRun("100 kg", "5", "5"),
+            recentRecordsBaseline, recentRecordsExerciseHint,
             startWorkout, lastWorkoutTitle, lastWorkoutNone, lastWorkoutNoneMessage,
             lastWorkoutError, lastWorkoutInProgress, lastWorkoutResume, lastWorkoutRepeat,
             lastWorkoutRepeatError, lastWorkoutSets(4),

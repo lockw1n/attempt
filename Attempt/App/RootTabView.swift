@@ -91,31 +91,6 @@ struct RootTabView: View {
         }
     }
 
-    /// What a pushed exercise-library route shows.
-    ///
-    /// Split out of ``destination(for:)`` for ``settingsDestination(_:)``'s reason: that switch is
-    /// one case per screen in the app, and this area's six were what took it past the complexity
-    /// the lint rules allow when `T-15.02` added a seventh.
-    @ViewBuilder
-    private func exerciseLibraryDestination(_ route: ExerciseLibraryRoute) -> some View {
-        switch route {
-        case .exerciseList:
-            // No title here: a pushed screen names itself, and this one does (`FR-1.1.1`). The tab
-            // roots are the case where the app target owns the name — see ``AppTab/title``.
-            exerciseListRoot
-        case .exerciseDetail(let exerciseID):
-            exerciseDetailRoot(exerciseID)
-        case .exerciseCreate:
-            exerciseFormRoot(.create)
-        case .exerciseEdit(let exerciseID):
-            exerciseFormRoot(.edit(exerciseID: exerciseID))
-        case .exercisePicker:
-            exercisePickerRoot
-        case .routineExercisePicker:
-            routineExercisePickerRoot
-        }
-    }
-
     /// What a pushed routines route shows (`FR-15.2`).
     @ViewBuilder
     private func routinesDestination(_ route: RoutinesRoute) -> some View {
@@ -126,96 +101,6 @@ struct RootTabView: View {
             routineEditorRoot(.create)
         case .routineEdit(let routineID):
             routineEditorRoot(.edit(routineID: routineID))
-        }
-    }
-
-    /// The exercise library's list, or the reason it cannot be shown.
-    ///
-    /// The same shape as ``settingsRoot``: a screen that reads a store cannot be built when the
-    /// store did not open, and the diagnostic is the app's rather than the screen's.
-    @ViewBuilder
-    private var exerciseListRoot: some View {
-        switch dependencies.state {
-        case .open(let repositories, _):
-            ExerciseListView(repository: repositories.exercises, workouts: repositories.workouts)
-        case .failed(let diagnostic):
-            StoreUnavailableScreen(diagnostic: diagnostic)
-        }
-    }
-
-    /// One exercise's detail, or the reason it cannot be shown.
-    ///
-    /// The screen is handed the identifier the route carried, not a record: resolving it is the
-    /// screen's own first read (`G-1.4`).
-    @ViewBuilder
-    private func exerciseDetailRoot(_ exerciseID: UUID) -> some View {
-        switch dependencies.state {
-        case .open(let repositories, let stores):
-            ExerciseDetailView(
-                exerciseID: exerciseID,
-                repository: repositories.exercises,
-                workouts: repositories.workouts,
-                settings: repositories.settings,
-                records: stores.records
-            )
-        case .failed(let diagnostic):
-            StoreUnavailableScreen(diagnostic: diagnostic)
-        }
-    }
-
-    /// The create/edit form, or the reason it cannot be shown.
-    ///
-    /// - Parameter mode: Which of `FR-1.1.3` and `FR-1.1.4` the route asked for.
-    @ViewBuilder
-    private func exerciseFormRoot(_ mode: ExerciseFormMode) -> some View {
-        switch dependencies.state {
-        case .open(let repositories, _):
-            ExerciseFormView(mode: mode, repository: repositories.exercises)
-        case .failed(let diagnostic):
-            StoreUnavailableScreen(diagnostic: diagnostic)
-        }
-    }
-
-    /// The catalogue as `FR-1.2.2`'s chooser, or the reason it cannot be shown.
-    ///
-    /// **This is the join between the two feature modules that share the Train tab**, and it is here
-    /// because nowhere else may make it: `Logging` and `ExerciseLibrary` do not depend on each other
-    /// (`TR-1.3`), so the screen that chooses an exercise and the store that receives one are
-    /// composed by the target that already owns both. The library screen takes a closure and knows
-    /// nothing about workouts; the store takes an identifier and knows nothing about catalogues.
-    @ViewBuilder
-    private var exercisePickerRoot: some View {
-        switch dependencies.state {
-        case .open(let repositories, let stores):
-            ExerciseListView(
-                repository: repositories.exercises, workouts: repositories.workouts
-            ) { exercise in
-                await stores.activeSession.addExercise(id: exercise.id)
-            }
-        case .failed(let diagnostic):
-            StoreUnavailableScreen(diagnostic: diagnostic)
-        }
-    }
-
-    /// The catalogue as the routine editor's chooser (`FR-15.2.1`), or the reason it cannot be
-    /// shown.
-    ///
-    /// **The same join as ``exercisePickerRoot``, one feature over**: `Routines` and
-    /// `ExerciseLibrary` do not depend on each other (`TR-1.3`), so the screen that chooses an
-    /// exercise and the store that receives one are composed here. The two pickers are two route
-    /// cases rather than one with a mode because *this* closure is the whole difference between
-    /// them, and it is chosen from the route alone.
-    @ViewBuilder
-    private var routineExercisePickerRoot: some View {
-        switch dependencies.state {
-        case .open(let repositories, let stores):
-            ExerciseListView(
-                repository: repositories.exercises, workouts: repositories.workouts
-            ) { exercise in
-                await stores.routineEditor.addExercise(id: exercise.id)
-            }
-        case .failed(let diagnostic):
-            StoreUnavailableScreen(diagnostic: diagnostic)
         }
     }
 

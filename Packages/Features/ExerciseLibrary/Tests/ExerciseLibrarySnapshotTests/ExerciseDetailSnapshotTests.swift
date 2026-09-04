@@ -112,6 +112,15 @@
                         ExerciseRecordRow(repMax: repMax, unit: .kilograms, sessionID: nil)
                     }
                     RecordDisclosureHeader(isExpanded: false) {}
+                    // FR-16.2.4: the diagonal beneath the rep-max row, and the way to the rest of
+                    // the table. `1 × 1` is absent from it deliberately — the 1RM above is that
+                    // cell, and drawing it twice under two spellings reads as two records.
+                    ForEach(DetailFixtures.diagonal, id: \.scheme) { record in
+                        ExerciseSchemeRow(record: record, unit: .kilograms, sessionID: nil)
+                    }
+                    Text(ExerciseLibraryStrings.recordsAllSchemes)
+                        .font(Typography.actionLabel.font)
+                        .foregroundStyle(ColorToken.brandAccent)
                 }
                 .environment(\.locale, DetailFixtures.locale)
                 .environment(\.timeZone, .gmt)
@@ -353,6 +362,34 @@
             repMax(reps: 8, kilos: 95, daysAgo: 28),
             repMax(reps: 10, kilos: 85, daysAgo: 63),
         ]
+
+        /// `FR-16.2.4`'s glance: the schemes whose reps and sets match, as the detail section draws
+        /// them under the rep-max row.
+        static let diagonal: [DatedSchemeRecord] = ExerciseSchemeTable([
+            schemeRecord(reps: 2, sets: 2, kilos: 130, daysAgo: 21),
+            schemeRecord(reps: 3, sets: 3, kilos: 120, daysAgo: 10),
+            schemeRecord(reps: 5, sets: 5, kilos: 100, daysAgo: 3),
+            // Off the diagonal, so the picture also shows what the section leaves to the table.
+            schemeRecord(reps: 5, sets: 3, kilos: 110, daysAgo: 3),
+        ]).diagonal
+
+        /// One cell, on ``repMax(reps:kilos:daysAgo:)``'s terms.
+        static func schemeRecord(
+            reps: Int, sets: Int, kilos: Double, daysAgo: Int, previous: Double? = nil
+        ) -> DatedSchemeRecord {
+            DatedSchemeRecord(
+                scheme: RecordScheme(reps: reps, sets: sets),
+                record: DatedRecord(
+                    weight: Weight(grams: Int(kilos * 1000)),
+                    sourceSetID: UUID(
+                        uuidString:
+                            "0F5A1E24-9B7D-4C31-8E62-00000000\(String(format: "%02d%02d", reps, sets))"
+                    ) ?? UUID(),
+                    achievedAt: Date(timeIntervalSince1970: 1_700_000_000)
+                        .addingTimeInterval(-Double(daysAgo) * 86_400)
+                ),
+                previous: previous.map { Weight(grams: Int($0 * 1000)) })
+        }
 
         /// One record, spelled out once so a field nothing in the picture turns on is not repeated.
         ///

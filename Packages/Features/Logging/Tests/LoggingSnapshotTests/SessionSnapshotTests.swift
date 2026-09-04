@@ -439,7 +439,7 @@
                     SetRow(
                         numbered: numbered,
                         unit: .kilograms,
-                        recordReps: records.repCounts(forSetID: numbered.id),
+                        recordSchemes: records.schemes(forSetID: numbered.id),
                         mark: { _, _ in },
                         markCompleted: { _, _ in },
                         edit: { _ in },

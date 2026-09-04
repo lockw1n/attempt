@@ -28,7 +28,19 @@ import RepositoryInterface
 public final class ExerciseRecordsState {
     /// The N-rep maxes, ascending by reps. Empty before anything has loaded and when the exercise
     /// holds none — ``hasLoaded`` is what separates those.
+    ///
+    /// **Derived from ``schemeRecords`` rather than read separately** (`FR-16.2.1`): a rep max is
+    /// the `sets == 1` column of the same table, and two reads of one cache is two answers that can
+    /// disagree about a row written between them.
     public private(set) var repMaxes: [DatedRepMax] = []
+
+    /// Every cell of `FR-16.2.1`'s table this exercise holds, ascending by scheme. Empty on
+    /// ``repMaxes``' terms.
+    ///
+    /// **A superset of ``repMaxes``, and the one a screen drawing the table reads.** Both come from
+    /// the one read in ``loadRecords()``, which is what keeps the diagonal, the rep-max row and the
+    /// full table on one screen from being three answers.
+    public private(set) var schemeRecords: [DatedSchemeRecord] = []
 
     /// `FR-1.7.1`'s estimate — the number, or the reason there is none. `nil` before
     /// ``loadEstimate()`` has ever answered, which is the third thing a screen says.
@@ -132,15 +144,20 @@ public final class ExerciseRecordsState {
         await loadEstimate()
     }
 
-    /// Reloads the N-rep maxes (`FR-1.6.1`).
+    /// Reloads the whole scheme table, and `FR-1.6.1`'s rep maxes with it (`FR-16.2.1`).
     ///
-    /// Costs no walk when the cache is current, which is the whole of what `G-1.5`'s version buys.
+    /// Costs no walk when the cache is current, which is the whole of what `G-1.5`'s version buys —
+    /// and the unfiltered read costs no more than the filtered one did, both reading every cached
+    /// row for the exercise before choosing what to hand back.
     public func loadRecords() async {
         let token = beginRead()
         do {
-            let loaded = try await recomputer.repMaxes(forExerciseID: exerciseID)
+            let loaded = try await recomputer.schemeRecords(forExerciseID: exerciseID)
             guard isCurrent(token) else { return }
-            repMaxes = loaded
+            schemeRecords = loaded
+            repMaxes = loaded.filter { $0.scheme.sets == 1 }.map {
+                DatedRepMax(reps: $0.scheme.reps, record: $0.record)
+            }
             // The links belong to the list they were resolved for. Kept across a replacement they
             // would key on sets that are no longer records, which is a link on the wrong row rather
             // than a missing one — see ``sourceSessions``.
@@ -156,14 +173,14 @@ public final class ExerciseRecordsState {
 
     /// Reloads where each record's source set was performed (`FR-1.6.2`).
     ///
-    /// **Resolves whatever ``repMaxes`` holds now**, so it belongs after ``loadRecords()`` and not
+    /// **Resolves whatever ``schemeRecords`` holds now**, so it belongs after ``loadRecords()`` and not
     /// before it; called on its own it re-resolves the list already on screen, which is what a retry
     /// of a link that came back empty would want.
     ///
     /// **It cannot fail.** The resolution is best-effort, so there is no third diagnostic here and
     /// ``failure`` keeps its two — see ``sourceSessions``.
     public func loadSources() async {
-        let wanted = Set(repMaxes.map(\.record.sourceSetID))
+        let wanted = Set(schemeRecords.map(\.record.sourceSetID))
         guard !wanted.isEmpty else {
             sourceSessions = [:]
             return

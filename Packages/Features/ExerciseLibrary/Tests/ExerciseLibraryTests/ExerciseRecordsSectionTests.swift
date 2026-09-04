@@ -210,6 +210,81 @@ struct ExerciseRecordsSectionTests {
         #expect(state.recordsFailure == nil)
         #expect(ExerciseRecordsScreenState.current(state, hasLoggedSets: true) == .ready)
     }
+
+    /// `FR-16.2.4`: one read fills the whole table, and `FR-1.6.1`'s ten rows are its one-set column
+    /// rather than a second answer.
+    @Test("The scheme table and the rep maxes come from one read and agree")
+    func oneReadFillsBothHalves() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        try await fixture.trainWeighted(
+            squat, onDay: 0, work: Array(repeating: (reps: 5, kilos: 100), count: 3))
+        let state = fixture.records(of: squat, through: fixture.recomputer())
+
+        await state.loadRecords()
+
+        #expect(state.schemeRecords.contains { $0.scheme == RecordScheme(reps: 5, sets: 3) })
+        #expect(
+            state.repMaxes.map(\.reps)
+                == state.schemeRecords.filter { $0.scheme.sets == 1 }.map(\.scheme.reps))
+        #expect(state.repMaxes.map(\.reps) == [1, 2, 3, 4, 5])
+    }
+
+    /// The detail section's glance (`FR-16.2.4`): a run of three shows `2 × 2` and `3 × 3`, and the
+    /// 1RM stays in the rep-max row it already had.
+    @Test("A run of three fills the diagonal up to 3 × 3 and leaves 1 × 1 to the rep-max row")
+    func aRunFillsTheDiagonal() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        try await fixture.trainWeighted(
+            squat, onDay: 0, work: Array(repeating: (reps: 5, kilos: 100), count: 3))
+        let state = fixture.records(of: squat, through: fixture.recomputer())
+
+        await state.loadRecords()
+        let table = ExerciseSchemeTable(state.schemeRecords)
+
+        #expect(
+            table.diagonal.map(\.scheme)
+                == [RecordScheme(reps: 2, sets: 2), RecordScheme(reps: 3, sets: 3)])
+    }
+
+    /// The table screen's four states, which are the section's five minus the pair it cannot tell
+    /// apart — see ``ExerciseRecordsTableState``.
+    @Test("The table screen reports loading, nothing-yet and ready off one read")
+    func theTableScreenReportsItsOwnStates() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        let state = fixture.records(of: squat, through: fixture.recomputer())
+
+        #expect(ExerciseRecordsTableState.current(state) == .loading)
+
+        await state.loadRecords()
+        #expect(ExerciseRecordsTableState.current(state) == .nothingYet)
+
+        try await fixture.trainWeighted(squat, onDay: 0, work: [(reps: 5, kilos: 100)])
+        await state.loadRecords()
+        #expect(ExerciseRecordsTableState.current(state) == .ready)
+    }
+
+    /// A refused cache read is the table's error state, not an empty table — the same precedence
+    /// the section keeps, for the same reason.
+    @Test("A refused read is the table's error state rather than an empty one")
+    func aRefusedReadIsTheTablesErrorState() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        let refused = fixture.records(
+            of: squat,
+            through: PersonalRecordRecomputer(
+                workouts: fixture.stack.workouts,
+                exercises: fixture.stack.exercises,
+                cache: RefusingRecordCache(failure: .recordNotFound(id: squat.id))
+            )
+        )
+
+        await refused.loadRecords()
+
+        #expect(ExerciseRecordsTableState.current(refused) == .failed)
+    }
 }
 
 /// A workout store that refuses every read, so the estimate fails while the record cache answers.

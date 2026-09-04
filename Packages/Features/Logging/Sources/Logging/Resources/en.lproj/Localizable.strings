@@ -209,9 +209,10 @@
    claim. Two forms of the label, chosen on the rep counts themselves rather than on how many there
    are: a set holding only the 1RM is the one case English wants a singular for, and a lone 6RM is
    not. */
-"logging.session.set.record" = "PR";
-"logging.session.set.record.label %@" = "Personal record for %@ reps";
-"logging.session.set.record.label.one %@" = "Personal record for %@ rep";
+"logging.session.set.record.scheme %lld %lld" = "PR %1$lld×%2$lld";
+"logging.session.set.record.rep-max %lld" = "PR %lldRM";
+"logging.session.set.record.scheme.label %lld %lld" = "Personal record, %1$lld by %2$lld";
+"logging.session.set.record.rep-max.label %lld" = "Personal record, %lld-rep max";
 /* FR-1.2.14's collapsible group. A label beside a numeral, so it stays a count in every language
    rather than needing a plural rule. */
 "logging.session.set.warmup.section" = "Warmups";

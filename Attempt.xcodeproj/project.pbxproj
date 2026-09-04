@@ -424,13 +424,13 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/Features/Settings;
 		};
-		D3432929301E887E00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Routines" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = Packages/Features/Routines;
-		};
 		D3432929301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/SeedImport" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/SeedImport;
+		};
+		D3432929301E887E00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Routines" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/Features/Routines;
 		};
 /* End XCLocalSwiftPackageReference section */
 

@@ -44,8 +44,8 @@ struct SetGroupRow: View {
     /// Opens `FR-1.2.7`'s editor over one member.
     let edit: (SetEntry) -> Void
 
-    /// The rep counts one member holds the record at (`FR-1.6.3`), or none.
-    var recordReps: (UUID) -> [Int] = { _ in [] }
+    /// The schemes one member holds the record at (`FR-1.6.3`, `FR-16.2.4`), or none.
+    var recordSchemes: (UUID) -> [RecordScheme] = { _ in [] }
 
     /// What a routine planned for one member (`FR-15.3.1`), or `nil`.
     var target: (UUID) -> PlannedTargetGroup? = { _ in nil }
@@ -211,37 +211,27 @@ struct SetGroupRow: View {
             .accessibilityLabel(Text(LoggingStrings.setOutcome(isCompleted: group.isCompleted)))
     }
 
-    /// `FR-1.6.3`'s badge, where **any** member holds a record.
+    /// `FR-16.2.4`'s badge: the maximal scheme this run set — **PR 5×5**.
     ///
-    /// A record is per set here (`SessionRecordMarks` reads `FR-1.6.1`'s one-set column), and a
-    /// group is not a compared field — so the badge on the collapsed line reports that the run
-    /// contains one, and which set it was is a tap away on the rows. `FR-16.2.4` asks instead for
-    /// the group's own maximal scheme, which the cache can now answer and this row does not yet
-    /// read; until it does, a run whose records all stand at two sets and up carries no badge here.
+    /// **The run's cells, gathered over every member.** The cache names a run by its *first* set
+    /// (`SetRun.setOffset`), so all of them are found under one identifier in practice; reading every
+    /// member costs nothing and keeps the line right if a group is ever drawn over sets the cache
+    /// attributed separately.
     @ViewBuilder private var recordMark: some View {
-        let counts = recordRepCounts
-        if !counts.isEmpty {
-            Text(LoggingStrings.setPersonalRecord)
+        if let badge = recordBadge {
+            Text(badge.text)
                 .font(Typography.metricLabel.font)
                 .foregroundStyle(ColorToken.onBrandAccent)
                 .padding(.horizontal, Spacing.sm.points)
                 .padding(.vertical, Spacing.xxs.points)
                 .background(ColorToken.brandAccent, in: .capsule)
-                .accessibilityLabel(
-                    Text(
-                        LoggingStrings.setPersonalRecordLabel(
-                            counts.map { $0.formatted(AppFormat.count(locale: locale)) }
-                                .formatted(.list(type: .and).locale(locale)),
-                            isSingleRep: counts == [1]
-                        )
-                    )
-                )
+                .accessibilityLabel(Text(badge.label))
         }
     }
 
-    /// Every rep count any member holds a record at, ascending and without repeats.
-    private var recordRepCounts: [Int] {
-        Set(group.members.flatMap { recordReps($0.id) }).sorted()
+    /// The badge this run carries, or `nil` where no member holds a record.
+    private var recordBadge: RecordBadge? {
+        RecordBadge(schemes: group.members.flatMap { recordSchemes($0.id) })
     }
 
     /// `FR-1.2.8`'s modifiers, which the group cannot mix — see
@@ -301,7 +291,7 @@ struct SetGroupRow: View {
         SetRow(
             numbered: numbered,
             unit: unit,
-            recordReps: recordReps(numbered.id),
+            recordSchemes: recordSchemes(numbered.id),
             mark: mark,
             markCompleted: markCompleted,
             edit: edit,

@@ -86,11 +86,15 @@ struct SetRow: View {
     /// The unit the load is shown in (`G-3.1`).
     let unit: MassUnit
 
-    /// The rep counts this set holds the record at, ascending, or none (`FR-1.6.3`).
+    /// The schemes this set holds the record at, or none (`FR-1.6.3`, `FR-16.2.4`).
     ///
     /// **A list rather than a flag**, because one set can hold several: the heaviest five-rep set may
     /// be the record at every N up to five. Empty is the ordinary case and draws nothing.
-    let recordReps: [Int]
+    ///
+    /// **A single set's cells are not all in the one-set column.** This row also draws the members of
+    /// an expanded run, and the run's first set carries every cell the run took — so what the badge
+    /// names is the maximal one, not the highest N.
+    let recordSchemes: [RecordScheme]
 
     /// Marks this set as a warmup or as working (`FR-1.2.4`) — the set, then which it becomes, or
     /// `nil` where the row does not offer it.
@@ -370,25 +374,17 @@ struct SetRow: View {
     /// tinted load would not be; and the semantic palette stays reserved for `G-7.3`'s distinctions —
     /// a record is a highlight, not an outcome.
     ///
-    /// **Two characters visible, the whole claim in the label.** Which N's this set holds is what a
-    /// lifter actually wants and what will not fit on the row, so VoiceOver is given it in full.
+    /// **The scheme visible, the whole claim in the label.** Which cell this set holds is what a
+    /// lifter actually wants; the badge names the maximal one and VoiceOver says it in words.
     @ViewBuilder private var recordMark: some View {
-        if !recordReps.isEmpty {
-            Text(LoggingStrings.setPersonalRecord)
+        if let badge = RecordBadge(schemes: recordSchemes) {
+            Text(badge.text)
                 .font(Typography.metricLabel.font)
                 .foregroundStyle(ColorToken.onBrandAccent)
                 .padding(.horizontal, Spacing.sm.points)
                 .padding(.vertical, Spacing.xxs.points)
                 .background(ColorToken.brandAccent, in: .capsule)
-                .accessibilityLabel(
-                    Text(
-                        LoggingStrings.setPersonalRecordLabel(
-                            recordReps.map { $0.formatted(AppFormat.count(locale: locale)) }
-                                .formatted(.list(type: .and).locale(locale)),
-                            isSingleRep: recordReps == [1]
-                        )
-                    )
-                )
+                .accessibilityLabel(Text(badge.label))
         }
     }
 

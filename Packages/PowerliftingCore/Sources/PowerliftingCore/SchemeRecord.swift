@@ -21,10 +21,26 @@ public struct RecordScheme: Sendable, Hashable, Comparable {
         self.sets = sets
     }
 
-    /// Orders schemes by reps and then by sets — the order a computed table is returned in, and the
-    /// one "the maximal scheme a group set" is read against.
+    /// Orders schemes by reps and then by sets — the order a computed table is returned in.
     public static func < (lhs: Self, rhs: Self) -> Bool {
         (lhs.reps, lhs.sets) < (rhs.reps, rhs.sets)
+    }
+
+    /// The maximal scheme among `schemes` — the one a badge names (`FR-16.2.4`) — or `nil` for
+    /// none.
+    ///
+    /// **Largest `reps × sets`, with ``<`` breaking a tie.** For the cells one run holds that is the
+    /// same answer the plain order gives, the run's own corner dominating every other cell it set in
+    /// both dimensions; the product is what the requirement asks for and what stays right if a
+    /// caller ever hands this cells that are not one run's — `10 × 1` orders above `5 × 3` and is
+    /// the smaller performance.
+    ///
+    /// - Parameter schemes: The cells, in any order.
+    /// - Returns: The maximal one, or `nil` where there are none.
+    public static func maximal(of schemes: some Sequence<Self>) -> Self? {
+        schemes.max { lhs, rhs in
+            (lhs.reps * lhs.sets, lhs) < (rhs.reps * rhs.sets, rhs)
+        }
     }
 }
 

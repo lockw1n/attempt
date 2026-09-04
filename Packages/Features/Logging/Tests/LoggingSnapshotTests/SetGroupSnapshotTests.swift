@@ -38,13 +38,30 @@
             }
         }
 
+        @Test func setGroupRecordBadge() throws {
+            // `FR-16.2.4`: the badge names the maximal scheme the run set. The working group of four
+            // carries **PR 6×4** and the lone fifth set **PR 6RM** — two spellings of one badge, and
+            // the picture is what settles that the collapsed line has room for both beside the
+            // rating and the numbers it already draws.
+            try assertSnapshots(named: "Session-set-groups-record") {
+                fixedEnvironment {
+                    groupRows(Fixtures.groupedSets, schemes: Fixtures.recordSchemes)
+                }
+            }
+        }
+
         /// A column of `FR-16.1.1`'s groups, partitioned and numbered the way the card does it.
         ///
         /// - Parameters:
         ///   - sets: The sets, in the order they were logged.
         ///   - expanded: Which groups are open (`FR-16.1.3`).
+        ///   - schemes: Which cells each set holds a record at (`FR-16.2.4`).
         /// - Returns: The lines.
-        private func groupRows(_ sets: [SetEntry], expanded: Set<UUID> = []) -> some View {
+        private func groupRows(
+            _ sets: [SetEntry],
+            expanded: Set<UUID> = [],
+            schemes: [UUID: [RecordScheme]] = [:]
+        ) -> some View {
             let numbered = SetNumbering.numbered(sets)
             let groups =
                 SetNumbering.grouped(numbered.filter(\.isWarmup))
@@ -58,7 +75,8 @@
                         toggle: {},
                         mark: { _, _ in },
                         markCompleted: { _, _ in },
-                        edit: { _ in }
+                        edit: { _ in },
+                        recordSchemes: { schemes[$0] ?? [] }
                     )
                 }
             }

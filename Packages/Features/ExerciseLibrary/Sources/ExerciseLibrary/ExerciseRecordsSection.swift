@@ -72,6 +72,12 @@ enum ExerciseRecordsScreenState: Equatable {
     /// drawing it under no diagnostic would present a stale list as a current one — which is the
     /// distinction `FR-1.13.1` exists to keep.
     ///
+    /// **The whole table decides, not `FR-1.6.1`'s column.** The section now draws the diagonal and
+    /// the link as well as the rep maxes, so the question is whether there is any *cell*. The two are
+    /// empty together today — every run writes the one-set column as well — but that is
+    /// `FR-16.2.2`'s dominance rule holding rather than something this screen may rely on, and it is
+    /// the diagonal that would go missing if it ever stopped.
+    ///
     /// **The *list's* failure, not the merged one.** The two halves read different stores — the
     /// records answer from `G-1.5`'s cache and the estimate walks the history — so a workout store
     /// that refuses fails the estimate while the cache answers this section perfectly well. Read
@@ -85,7 +91,7 @@ enum ExerciseRecordsScreenState: Equatable {
     static func current(_ state: ExerciseRecordsState, hasLoggedSets: Bool) -> Self {
         if state.recordsFailure != nil { return .failed }
         guard state.hasLoaded else { return .loading }
-        if !state.repMaxes.isEmpty { return .ready }
+        if !state.schemeRecords.isEmpty { return .ready }
         return hasLoggedSets ? .noRecordsYet : .noneYet
     }
 }
@@ -122,6 +128,9 @@ struct ExerciseRecordsSection: View {
     /// nothing-to-show sentences applies.
     private let hasLoggedSets: Bool
 
+    /// The exercise this section reports on — what `FR-16.2.4`'s table is pushed for.
+    private let exerciseID: UUID
+
     /// Where the display unit comes from.
     private let settings: any SettingsRepository
 
@@ -138,6 +147,7 @@ struct ExerciseRecordsSection: View {
         records: PersonalRecordRecomputer,
         settings: any SettingsRepository
     ) {
+        self.exerciseID = exerciseID
         self.hasLoggedSets = hasLoggedSets
         self.settings = settings
         _state = State(initialValue: ExerciseRecordsState(exerciseID: exerciseID, recomputer: records))
@@ -181,10 +191,15 @@ struct ExerciseRecordsSection: View {
         await state.loadSources()
     }
 
-    /// The 1–5RM, then the control that reveals the rest.
+    /// The 1–5RM, then the control that reveals the rest, then the diagonal and the way to the
+    /// whole table (`FR-16.2.4`).
     ///
     /// The disclosure is drawn only when there is something behind it: a control promising rows the
     /// exercise does not hold is the failure a bare "Show more" has.
+    ///
+    /// **The rep-max row and the diagonal, and nothing between them.** The table is up to sixty
+    /// cells; what a lifter reads at a glance is the one-set column and the schemes whose reps and
+    /// sets match — `3 × 3`, `5 × 5` — and the rest is one tap away rather than sixty rows down.
     @ViewBuilder private var records: some View {
         let list = ExerciseRecordList(state.repMaxes)
         ForEach(list.prominent, id: \.reps) { row(for: $0) }
@@ -194,6 +209,31 @@ struct ExerciseRecordsSection: View {
                 ForEach(list.disclosed, id: \.reps) { row(for: $0) }
             }
         }
+        ForEach(ExerciseSchemeTable(state.schemeRecords).diagonal, id: \.scheme) { record in
+            ExerciseSchemeRow(
+                record: record,
+                unit: unit,
+                sessionID: state.sourceSessions[record.record.sourceSetID]
+            )
+        }
+        allSchemesLink
+    }
+
+    /// The way to `FR-16.2.4`'s whole table.
+    ///
+    /// **Always drawn once there is anything to show**, unlike the disclosure above it: the table
+    /// holds every cell the section leaves out, and whether that is more than the diagonal is a
+    /// question the reader can only answer by opening it.
+    private var allSchemesLink: some View {
+        NavigationLink(value: Route.exerciseLibrary(.exerciseRecords(exerciseID: exerciseID))) {
+            Text(ExerciseLibraryStrings.recordsAllSchemes)
+                .font(Typography.actionLabel.font)
+                .foregroundStyle(ColorToken.brandAccent)
+                .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points, alignment: .leading)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(Text(ExerciseLibraryStrings.recordsAllSchemesHint))
     }
 
     /// One record's row, linked to its source set where that resolved.

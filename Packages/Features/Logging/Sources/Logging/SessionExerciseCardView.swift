@@ -295,7 +295,7 @@ struct SessionExerciseCard: View {
             mark: mark,
             markCompleted: markCompleted,
             edit: edit,
-            recordReps: { personalRecords.repCounts(forSetID: $0) },
+            recordSchemes: { personalRecords.schemes(forSetID: $0) },
             target: { targets[$0] }
         )
     }
