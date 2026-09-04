@@ -131,6 +131,7 @@ struct BackupRoundTripTests {
             bodyweight: [],
             equipment: [],
             trainingMaxes: [],
+            trainingMaxHistory: [],
             routines: [],
             routineExercises: [],
             routineTargetGroups: [],
@@ -143,6 +144,53 @@ struct BackupRoundTripTests {
         // refusing it would satisfy a count of one.
         #expect(restored.count == 2)
         #expect(restored.first { $0.id == child.id }?.parentExerciseID == parent.id)
+    }
+
+    // MARK: - The version before the training-max history
+
+    @Test func aFormatThreeFileRestoresWithBothTrainingMaxSectionsEmpty() async throws {
+        // `currentFormatVersion` moved to 4 for `trainingMaxHistory`, so version 3 is the last file
+        // written without it — and `FR-1.11.4` accepts any version at or below this build's. A
+        // file whose bytes carry neither training-max key has to restore, land its log, and leave
+        // both tables empty rather than refusing or half-writing.
+        let stack = try PersistenceStack(location: .inMemory)
+        let settings = try await stack.settings.settings()
+        let squat = ExportRecords.exercise(name: "Squat", at: ExportLog.epoch)
+        let file = TrainingLogArchive(
+            formatVersion: 3,
+            contents: .fullBackup,
+            exportedAt: ExportLog.epoch,
+            exercises: [squat],
+            sessions: [],
+            entries: [],
+            sets: [],
+            bodyweight: [],
+            equipment: [],
+            trainingMaxes: [],
+            trainingMaxHistory: [],
+            routines: [],
+            routineExercises: [],
+            routineTargetGroups: [],
+            plannedTargets: [],
+            settings: settings)
+
+        // Through the bytes rather than the value, so the version is read the way a lifter's file
+        // is: `archive(from:)` is what `FR-1.11.4` refuses a future file on.
+        let accepted = try StoreRestore.archive(from: try file.encoded())
+        #expect(accepted.formatVersion == 3)
+        try await Self.restore(into: stack).restore(accepted)
+
+        #expect(
+            try await stack.trainingMaxes.configurationHistory(
+                forExerciseID: squat.id, includingDeleted: true
+            ).isEmpty)
+        #expect(
+            try await stack.trainingMaxes.history(
+                forExerciseID: squat.id, includingDeleted: true
+            ).isEmpty)
+        // Anchored: without this the two absences above are equally the story of a restore that
+        // wrote nothing at all.
+        #expect(try await stack.exercises.exercises(includingDeleted: false).count == 1)
     }
 
     // MARK: - What the wipe has to leave alone
@@ -229,6 +277,7 @@ struct BackupRoundTripTests {
     static func backup(over stack: PersistenceStack) -> FullBackup {
         FullBackup(
             exercises: stack.exercises,
+            trainingMaxes: stack.trainingMaxes,
             workouts: stack.workouts,
             bodyweight: stack.bodyweight,
             equipment: stack.equipment,
@@ -243,6 +292,7 @@ struct BackupRoundTripTests {
     static func restore(into stack: PersistenceStack) -> StoreRestore {
         StoreRestore(
             exercises: stack.exercises,
+            trainingMaxes: stack.trainingMaxes,
             workouts: stack.workouts,
             bodyweight: stack.bodyweight,
             equipment: stack.equipment,
@@ -304,6 +354,8 @@ struct BackupRoundTripTests {
         try expectSameRows(before.bodyweight, after.bodyweight, "bodyweight", &compared)
         try expectSameRows(before.equipment, after.equipment, "equipment", &compared)
         try expectSameRows(before.trainingMaxes, after.trainingMaxes, "trainingMaxes", &compared)
+        try expectSameRows(
+            before.trainingMaxHistory, after.trainingMaxHistory, "trainingMaxHistory", &compared)
         try expectSameRows(before.routines, after.routines, "routines", &compared)
         try expectSameRows(
             before.routineExercises, after.routineExercises, "routineExercises", &compared)

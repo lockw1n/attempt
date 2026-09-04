@@ -115,12 +115,25 @@ func codingTrainingMaxEntry() -> TrainingMaxEntry {
         exerciseID: codingJoinID,
         source: .percentOfRepMax,
         sourceRepCount: 3,
-        manualWeight: Weight(grams: 180_000),
         percentage: 0.85,
         roundingIncrement: Weight(grams: 5000),
         roundingStrategy: .down,
         progressionIncrement: Weight(grams: 2500),
         effectiveFrom: codingCreatedAt
+    )
+}
+
+func codingTrainingMaxHistoryEntry() -> TrainingMaxHistoryEntry {
+    TrainingMaxHistoryEntry(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        exerciseID: codingJoinID,
+        effectiveFrom: codingCreatedAt,
+        oldWeight: Weight(grams: 140_000),
+        newWeight: Weight(grams: 180_000),
+        reason: "coach"
     )
 }
 

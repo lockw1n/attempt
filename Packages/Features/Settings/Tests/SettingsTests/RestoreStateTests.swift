@@ -160,6 +160,7 @@ struct RestoreStateTests {
         let state = RestoreState(
             restore: StoreRestore(
                 exercises: FailingExerciseSave(),
+                trainingMaxes: stack.trainingMaxes,
                 workouts: stack.workouts,
                 bodyweight: stack.bodyweight,
                 equipment: stack.equipment,
@@ -191,6 +192,7 @@ struct RestoreStateTests {
         let state = RestoreState(
             restore: StoreRestore(
                 exercises: gated,
+                trainingMaxes: stack.trainingMaxes,
                 workouts: stack.workouts,
                 bodyweight: stack.bodyweight,
                 equipment: stack.equipment,

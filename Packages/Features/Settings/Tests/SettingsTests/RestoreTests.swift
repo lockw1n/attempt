@@ -32,6 +32,7 @@ struct RestoreTests {
     static func restore(into stack: FixtureRepositories) -> StoreRestore {
         StoreRestore(
             exercises: stack.exercises,
+            trainingMaxes: stack.trainingMaxes,
             workouts: stack.workouts,
             bodyweight: stack.bodyweight,
             equipment: stack.equipment,
@@ -63,6 +64,7 @@ struct RestoreTests {
 
         let reread = try await FullBackup(
             exercises: target.exercises,
+            trainingMaxes: target.trainingMaxes,
             workouts: target.workouts,
             bodyweight: target.bodyweight,
             equipment: target.equipment,
@@ -121,6 +123,7 @@ struct RestoreTests {
 
         let reread = try await FullBackup(
             exercises: target.exercises,
+            trainingMaxes: target.trainingMaxes,
             workouts: target.workouts,
             bodyweight: target.bodyweight,
             equipment: target.equipment,
@@ -168,6 +171,7 @@ struct RestoreTests {
                 bodyweight: [],
                 equipment: [],
                 trainingMaxes: [],
+                trainingMaxHistory: [],
                 routines: [],
                 routineExercises: [],
                 routineTargetGroups: [],
@@ -201,6 +205,7 @@ struct RestoreTests {
                 bodyweight: [],
                 equipment: [],
                 trainingMaxes: [],
+                trainingMaxHistory: [],
                 routines: [],
                 routineExercises: [],
                 routineTargetGroups: [],

@@ -23,28 +23,6 @@ struct InMemoryExerciseRepository: ExerciseRepository, Sendable {
     func save(_ exercise: Exercise) async throws {
         try await store.saveExercise(exercise)
     }
-
-    /// The configuration in force on `date`, by the latest `effectiveFrom` at or before it.
-    func trainingMax(
-        forExerciseID exerciseID: UUID,
-        on date: Date
-    ) async throws -> TrainingMaxEntry? {
-        await store.trainingMax(forExerciseID: exerciseID, on: date)
-    }
-
-    /// Every configuration written for the exercise, newest effective first.
-    func trainingMaxHistory(
-        forExerciseID exerciseID: UUID,
-        includingDeleted: Bool
-    ) async throws -> [TrainingMaxEntry] {
-        await store.trainingMaxHistory(
-            forExerciseID: exerciseID, includingDeleted: includingDeleted)
-    }
-
-    /// Appends a configuration, refusing one whose exercise does not exist.
-    func saveTrainingMax(_ entry: TrainingMaxEntry) async throws {
-        try await store.saveTrainingMax(entry)
-    }
 }
 
 extension InMemoryRepositoryStore {
@@ -78,40 +56,5 @@ extension InMemoryRepositoryStore {
             try requireReferenced(exercises, id: parentID, from: exercise.id)
         }
         upserted(exercise, into: &exercises, at: .now)
-    }
-
-    /// The live configuration with the latest `effectiveFrom` at or before `date`.
-    ///
-    /// Two entries may share an effective date — `FR-1.5.1.4` keeps every change and `G-2.5` forbids
-    /// the constraint that would make a tie impossible — so the pick continues into `updatedAt` and
-    /// then the id, which is the same total key the reads on the other side use.
-    func trainingMax(forExerciseID exerciseID: UUID, on date: Date) -> TrainingMaxEntry? {
-        trainingMaxes.values
-            .filter { $0.exerciseID == exerciseID && $0.effectiveFrom <= date }
-            .live(includingDeleted: false)
-            .max {
-                ($0.effectiveFrom, $0.updatedAt, $0.id.uuidString)
-                    < ($1.effectiveFrom, $1.updatedAt, $1.id.uuidString)
-            }
-    }
-
-    /// Every configuration written for the exercise, newest effective first.
-    func trainingMaxHistory(
-        forExerciseID exerciseID: UUID,
-        includingDeleted: Bool
-    ) -> [TrainingMaxEntry] {
-        trainingMaxes.values
-            .filter { $0.exerciseID == exerciseID }
-            .live(includingDeleted: includingDeleted)
-            .sortedDeterministically(by: { ($0.effectiveFrom, $0.id.uuidString) }, descending: true)
-    }
-
-    /// Appends or replaces a training-max configuration.
-    ///
-    /// - Throws: ``RepositoryInterface/RepositoryError/danglingReference(recordID:referencing:)``
-    ///   when `exerciseID` names no row.
-    func saveTrainingMax(_ entry: TrainingMaxEntry) throws {
-        try requireReferenced(exercises, id: entry.exerciseID, from: entry.id)
-        upserted(entry, into: &trainingMaxes, at: .now)
     }
 }

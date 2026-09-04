@@ -65,7 +65,7 @@ struct RecordStampingTests {
                 "Exercise", exerciseRecord(parentExerciseID: UUID(), isArchived: true)),
             StampingCase(
                 "TrainingMaxEntry",
-                trainingMaxRecord(exerciseID: exerciseID, effectiveFrom: second)),
+                trainingMaxHistoryRecord(exerciseID: exerciseID, effectiveFrom: second)),
             StampingCase("WorkoutSession", sessionRecord(notes: "a note")),
             StampingCase(
                 "ExerciseEntry",

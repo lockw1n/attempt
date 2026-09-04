@@ -14,8 +14,11 @@ import RepositoryInterface
 /// stores that could drift, and the drift would be invisible: the round trip would still pass, over
 /// a store shaped differently from the one every other assertion in this suite is made against.
 struct FixtureRepositories {
-    /// The exercise catalogue and each exercise's training-max history.
+    /// The exercise catalogue.
     let exercises: any ExerciseRepository
+
+    /// Each exercise's training-max configuration and history.
+    let trainingMaxes: any TrainingMaxRepository
 
     /// Sessions, entries, sets and their planned targets.
     let workouts: any WorkoutRepository & PlannedTargetRepository
@@ -40,6 +43,7 @@ struct FixtureRepositories {
     /// - Parameter stack: The in-memory stack.
     init(_ stack: InMemoryRepositoryStack) {
         exercises = stack.exercises
+        trainingMaxes = stack.trainingMaxes
         workouts = stack.workouts
         settings = stack.settings
         bodyweight = stack.bodyweight
@@ -53,6 +57,7 @@ struct FixtureRepositories {
     /// - Parameter stack: The SwiftData stack.
     init(_ stack: PersistenceStack) {
         exercises = stack.exercises
+        trainingMaxes = stack.trainingMaxes
         workouts = stack.workouts
         settings = stack.settings
         bodyweight = stack.bodyweight

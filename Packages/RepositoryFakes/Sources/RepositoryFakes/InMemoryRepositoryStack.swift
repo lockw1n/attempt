@@ -11,8 +11,11 @@ import RepositoryInterface
 /// For previews and for a caller's unit tests. The conformance suite in this package's tests is
 /// what says it behaves like the real one.
 public struct InMemoryRepositoryStack: Sendable {
-    /// The exercise catalogue and each exercise's training-max history.
+    /// The exercise catalogue.
     public let exercises: any ExerciseRepository
+
+    /// Each exercise's training-max configuration and history (`TR-16.3`, `FR-16.7`).
+    public let trainingMaxes: any TrainingMaxRepository
 
     /// Sessions, entries, sets and their planned targets — one property answering two protocols,
     /// for `PersistenceStack`'s reason.
@@ -37,6 +40,7 @@ public struct InMemoryRepositoryStack: Sendable {
     public init() {
         let store = InMemoryRepositoryStore()
         exercises = InMemoryExerciseRepository(store: store)
+        trainingMaxes = InMemoryTrainingMaxRepository(store: store)
         workouts = InMemoryWorkoutRepository(store: store)
         settings = InMemorySettingsRepository(store: store)
         bodyweight = InMemoryBodyweightRepository(store: store)

@@ -289,6 +289,7 @@ enum RealLogBackup {
     ) -> StoreRestore {
         StoreRestore(
             exercises: stack.exercises,
+            trainingMaxes: stack.trainingMaxes,
             workouts: stack.workouts,
             bodyweight: stack.bodyweight,
             equipment: stack.equipment,

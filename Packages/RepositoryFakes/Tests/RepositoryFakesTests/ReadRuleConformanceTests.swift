@@ -17,27 +17,27 @@ struct ReadRuleConformanceTests {
         // the natural order the two agree and the test passes with `effectiveFrom` dropped from the
         // key entirely — the fixture would be satisfying the property under test.
         for (days, grams) in [(3.0, 170_000), (1.0, 160_000), (0.0, 150_000)] {
-            try await repositories.exercises.saveTrainingMax(
-                trainingMaxRecord(
+            try await repositories.trainingMaxes.save(
+                trainingMaxHistoryRecord(
                     exerciseID: exerciseID,
                     effectiveFrom: fixtureCreatedAt + days * fixtureDay,
                     grams: grams))
         }
 
         #expect(
-            try await repositories.exercises.trainingMax(
+            try await repositories.trainingMaxes.trainingMax(
                 forExerciseID: exerciseID, on: fixtureCreatedAt - fixtureDay) == nil)
         #expect(
-            try await repositories.exercises.trainingMax(
-                forExerciseID: exerciseID, on: fixtureCreatedAt)?.manualWeight
+            try await repositories.trainingMaxes.trainingMax(
+                forExerciseID: exerciseID, on: fixtureCreatedAt)?.newWeight
                 == Weight(grams: 150_000))
         #expect(
-            try await repositories.exercises.trainingMax(
-                forExerciseID: exerciseID, on: fixtureCreatedAt + 2 * fixtureDay)?.manualWeight
+            try await repositories.trainingMaxes.trainingMax(
+                forExerciseID: exerciseID, on: fixtureCreatedAt + 2 * fixtureDay)?.newWeight
                 == Weight(grams: 160_000))
         #expect(
-            try await repositories.exercises.trainingMax(
-                forExerciseID: exerciseID, on: fixtureCreatedAt + 9 * fixtureDay)?.manualWeight
+            try await repositories.trainingMaxes.trainingMax(
+                forExerciseID: exerciseID, on: fixtureCreatedAt + 9 * fixtureDay)?.newWeight
                 == Weight(grams: 170_000))
     }
 
@@ -46,19 +46,19 @@ struct ReadRuleConformanceTests {
         let repositories = try subject.make()
         let exerciseID = UUID()
         try await repositories.exercises.save(exerciseRecord(id: exerciseID))
-        try await repositories.exercises.saveTrainingMax(
-            trainingMaxRecord(
+        try await repositories.trainingMaxes.save(
+            trainingMaxHistoryRecord(
                 exerciseID: exerciseID, effectiveFrom: fixtureCreatedAt, grams: 150_000))
-        try await repositories.exercises.saveTrainingMax(
-            trainingMaxRecord(
+        try await repositories.trainingMaxes.save(
+            trainingMaxHistoryRecord(
                 exerciseID: exerciseID,
                 effectiveFrom: fixtureCreatedAt + fixtureDay,
                 grams: 160_000))
 
-        let history = try await repositories.exercises.trainingMaxHistory(
+        let history = try await repositories.trainingMaxes.history(
             forExerciseID: exerciseID, includingDeleted: false)
 
-        #expect(history.map(\.manualWeight) == [Weight(grams: 160_000), Weight(grams: 150_000)])
+        #expect(history.map(\.newWeight) == [Weight(grams: 160_000), Weight(grams: 150_000)])
     }
 
     @Test("A training-max read answers for one exercise only", arguments: Subject.all)
@@ -68,14 +68,14 @@ struct ReadRuleConformanceTests {
         let theirs = UUID()
         try await repositories.exercises.save(exerciseRecord(id: mine, name: "Squat"))
         try await repositories.exercises.save(exerciseRecord(id: theirs, name: "Bench Press"))
-        try await repositories.exercises.saveTrainingMax(
-            trainingMaxRecord(exerciseID: theirs, effectiveFrom: fixtureCreatedAt, grams: 120_000))
+        try await repositories.trainingMaxes.save(
+            trainingMaxHistoryRecord(exerciseID: theirs, effectiveFrom: fixtureCreatedAt, grams: 120_000))
 
         #expect(
-            try await repositories.exercises.trainingMax(
+            try await repositories.trainingMaxes.trainingMax(
                 forExerciseID: mine, on: fixtureCreatedAt + fixtureDay) == nil)
         #expect(
-            try await repositories.exercises.trainingMaxHistory(
+            try await repositories.trainingMaxes.history(
                 forExerciseID: mine, includingDeleted: true
             ).isEmpty)
     }
@@ -106,8 +106,8 @@ struct ReadRuleConformanceTests {
         let repositories = try subject.make()
         let exerciseID = UUID()
         try await repositories.exercises.save(exerciseRecord(id: exerciseID))
-        try await repositories.exercises.saveTrainingMax(
-            trainingMaxRecord(exerciseID: exerciseID, effectiveFrom: fixtureCreatedAt))
+        try await repositories.trainingMaxes.save(
+            trainingMaxHistoryRecord(exerciseID: exerciseID, effectiveFrom: fixtureCreatedAt))
 
         for flag in [true, false] {
             #expect(try await repositories.exercises.exercises(includingDeleted: flag).count == 1)
@@ -115,7 +115,7 @@ struct ReadRuleConformanceTests {
                 try await repositories.exercises.exercise(id: exerciseID, includingDeleted: flag)
                     != nil)
             #expect(
-                try await repositories.exercises.trainingMaxHistory(
+                try await repositories.trainingMaxes.history(
                     forExerciseID: exerciseID, includingDeleted: flag
                 ).count == 1)
         }

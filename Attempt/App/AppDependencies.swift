@@ -31,6 +31,9 @@ struct AppDependencies {
         /// The exercise catalogue (`FR-1.1`).
         let exercises: any ExerciseRepository
 
+        /// Each exercise's training-max configuration and history (`FR-16.7`, `TR-16.3`).
+        let trainingMaxes: any TrainingMaxRepository
+
         /// Sessions, the exercises in them, their sets (`FR-1.2`) — and what a routine planned for
         /// those slots (`FR-15.2.4`).
         ///
@@ -156,6 +159,7 @@ struct AppDependencies {
                 Repositories(
                     settings: stack.settings,
                     exercises: stack.exercises,
+                    trainingMaxes: stack.trainingMaxes,
                     workouts: stack.workouts,
                     bodyweight: stack.bodyweight,
                     equipment: stack.equipment,

@@ -23,14 +23,15 @@
 //    default value. The verbosity is the point: a defaulted flag is one a caller can pass by
 //    omission, and the omission would be the reading that returns a user's deleted history.
 //
-//    THREE READS DO NOT TAKE IT, and each says so on itself rather than relying on this list.
+//    FOUR READS DO NOT TAKE IT, and each says so on itself rather than relying on this list.
 //    `SettingsRepository.settings()`, because a soft-deleted settings row is a withdrawn identity
-//    and no requirement describes one. `ExerciseRepository.trainingMax(forExerciseID:on:)` and
-//    `EquipmentRepository.defaultProfile()`, because both *resolve* to the one row in force rather
-//    than enumerating: a deleted configuration is a configuration the user replaced, and a deleted
-//    profile is a gym they left, so including either would answer a question nobody asked with a
-//    row the store keeps only for a purge. Their history-shaped siblings — `trainingMaxHistory` and
-//    `profiles` — do take the flag, which is where an export or a diagnostic goes.
+//    and no requirement describes one. `TrainingMaxRepository`'s two in-force lookups and
+//    `EquipmentRepository.defaultProfile()`, because they *resolve* to the one row in force rather
+//    than enumerating: a deleted configuration is a configuration the user replaced, a deleted
+//    training max is a number they withdrew, and a deleted profile is a gym they left, so including
+//    any of them would answer a question nobody asked with a row the store keeps only for a purge.
+//    Their history-shaped siblings — `configurationHistory`, `history` and `profiles` — do take the
+//    flag, which is where an export or a diagnostic goes.
 //
 // 2. TWO ROWS MAY SHARE AN id, AND THE TIEBREAK IS FIXED. `G-2.5` forbids `@Attribute(.unique)`,
 //    so uniqueness is this layer's invariant rather than the store's and a synced or re-imported

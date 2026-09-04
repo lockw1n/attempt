@@ -87,22 +87,24 @@ enum SchemaDefaults {
     /// suppress a reading the user actually typed. A spurious manual entry is a row they can delete.
     static let bodyweightSource = BodyweightSource.manual.rawValue
 
-    /// The distant past, for a training-max configuration whose effective date was never written.
+    /// The distant past, for a training-max configuration or history row whose effective date was
+    /// never written.
     ///
     /// **The opposite direction from ``sessionDate`` and ``bodyweightDate``, because the lookup runs
-    /// the other way.** A configuration is read as "the latest one effective on or before today", so
-    /// the newest wins — and a row defaulting to *now* would displace the user's real configuration
-    /// from this moment on. Defaulting to the distant past loses every such contest and only ever
-    /// applies where the user has configured nothing.
+    /// the other way.** Both tables are read as "the latest row effective on or before today", so
+    /// the newest wins — and a row defaulting to *now* would displace the lifter's real
+    /// configuration, and their real training max, from this moment on. Defaulting to the distant
+    /// past loses every such contest and only ever applies where they have entered nothing.
     static let effectiveFrom = Date.distantPast
 
     /// ``RepositoryInterface/TrainingMaxSourceKind/manual``, for a configuration whose source was never written.
     ///
-    /// The one case that cannot quietly produce a plausible number: `manualWeightGrams` is `nil` on
-    /// such a row, so the configuration refuses to resolve and says so, where `.percentOfE1RM` would
-    /// silently hand back 90% of the user's e1RM as though they had asked for it. It is also
-    /// `FR-1.5.1.5`'s override — the state in which the derived pipeline is *not* running — which is
-    /// the right thing to say about a row this app did not write.
+    /// The one case that cannot quietly produce a plausible number: manual's value lives in
+    /// ``TrainingMaxHistoryEntity`` and a row this app did not write has none there, so the
+    /// configuration refuses to resolve and says so, where `.percentOfE1RM` would silently hand back
+    /// 90% of the user's e1RM as though they had asked for it. It is also `FR-1.5.1.5`'s override —
+    /// the state in which the derived pipeline is *not* running — which is the right thing to say
+    /// about a row this app did not write.
     static let trainingMaxSource = TrainingMaxSourceKind.manual.rawValue
 
     /// `FR-1.5.1.2`'s 90%, as the ratio the domain type uses.

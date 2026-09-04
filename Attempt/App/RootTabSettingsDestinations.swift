@@ -92,14 +92,16 @@ extension RootTabView {
 
     /// `FR-1.11.3`: the whole store as one file, or the reason it cannot be read.
     ///
-    /// Six repositories — the export's four, plus the gyms and the routines: a backup is the
-    /// configuration as well as the log, and `TR-0.1.2` hands each protocol down on its own.
+    /// Seven repositories — the export's four, plus the gyms, the routines and the training maxes:
+    /// a backup is the configuration as well as the log, and `TR-0.1.2` hands each protocol down on
+    /// its own.
     @ViewBuilder
     private var backupRoot: some View {
         switch dependencies.state {
         case .open(let repositories, _):
             BackupView(
                 exercises: repositories.exercises,
+                trainingMaxes: repositories.trainingMaxes,
                 workouts: repositories.workouts,
                 bodyweight: repositories.bodyweight,
                 equipment: repositories.equipment,
@@ -112,7 +114,7 @@ extension RootTabView {
 
     /// `FR-1.11.4`: a backup file read back onto this device, or the reason it cannot be.
     ///
-    /// Seven, and the seventh is the recompute actor: the backup file carries no cached personal
+    /// Eight, and the eighth is the recompute actor: the backup file carries no cached personal
     /// record (`TR-0.3.9`, `G-1.4`), so the rows a restore writes have to be walked again before any
     /// badge or estimated max on another tab is true.
     @ViewBuilder
@@ -121,6 +123,7 @@ extension RootTabView {
         case .open(let repositories, let stores):
             RestoreView(
                 exercises: repositories.exercises,
+                trainingMaxes: repositories.trainingMaxes,
                 workouts: repositories.workouts,
                 bodyweight: repositories.bodyweight,
                 equipment: repositories.equipment,

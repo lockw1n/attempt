@@ -162,7 +162,7 @@ func trainingMaxRecord(
     id: UUID = UUID(),
     exerciseID: UUID,
     effectiveFrom: Date,
-    grams: Int = 180_000
+    percentage: Double = 0.9
 ) -> TrainingMaxEntry {
     TrainingMaxEntry(
         id: id,
@@ -172,12 +172,32 @@ func trainingMaxRecord(
         exerciseID: exerciseID,
         source: .manual,
         sourceRepCount: nil,
-        manualWeight: Weight(grams: grams),
-        percentage: 0.9,
+        percentage: percentage,
         roundingIncrement: Weight(grams: 2500),
         roundingStrategy: .nearest,
         progressionIncrement: nil,
         effectiveFrom: effectiveFrom
+    )
+}
+
+func trainingMaxHistoryRecord(
+    id: UUID = UUID(),
+    exerciseID: UUID,
+    effectiveFrom: Date,
+    grams: Int = 180_000,
+    oldGrams: Int? = nil,
+    reason: String = "coach"
+) -> TrainingMaxHistoryEntry {
+    TrainingMaxHistoryEntry(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: nil,
+        exerciseID: exerciseID,
+        effectiveFrom: effectiveFrom,
+        oldWeight: oldGrams.map(Weight.init(grams:)),
+        newWeight: Weight(grams: grams),
+        reason: reason
     )
 }
 

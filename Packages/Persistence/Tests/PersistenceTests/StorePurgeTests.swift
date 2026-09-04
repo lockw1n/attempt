@@ -135,6 +135,8 @@ struct StorePurgeTests {
                     ExerciseEntryEntity(sessionID: session.id, exerciseID: squat.id, order: 0))
             case .trainingMax:
                 rows.append(makeTrainingMaxConfig(exerciseID: squat.id, source: .manual))
+            case .trainingMaxHistory:
+                rows.append(makeTrainingMaxHistory(exerciseID: squat.id))
             case .dashboard:
                 let settings = makeSettings(userID: UUID())
                 settings.dashboardExerciseIDs = [squat.id]
@@ -229,6 +231,7 @@ struct StorePurgeTests {
             entry,
             set,
             makeTrainingMaxConfig(exerciseID: squat.id, source: .manual),
+            makeTrainingMaxHistory(exerciseID: squat.id),
             BodyweightEntryEntity(date: longAgo, weightGrams: 80_000, source: .manual),
             EquipmentProfileEntity(
                 name: "Home",
@@ -395,6 +398,7 @@ private func remainingCounts(in harness: RepositoryHarness) throws -> [String: I
         "entries": try count(ExerciseEntryEntity.self, in: harness),
         "sets": try count(SetEntryEntity.self, in: harness),
         "trainingMaxes": try count(TrainingMaxConfigEntity.self, in: harness),
+        "trainingMaxHistory": try count(TrainingMaxHistoryEntity.self, in: harness),
         "bodyweight": try count(BodyweightEntryEntity.self, in: harness),
         "equipment": try count(EquipmentProfileEntity.self, in: harness),
         "settings": try count(UserSettingsEntity.self, in: harness),
@@ -406,10 +410,15 @@ private func remainingCounts(in harness: RepositoryHarness) throws -> [String: I
     ]
 }
 
-/// The five live columns that can name an exercise, driving one case each.
+/// The live columns that can name an exercise, driving one case each.
 private enum ExerciseReferrer: CaseIterable {
     case entry
     case trainingMax
+    // The history is a SECOND table hanging off the exercise, kept separately from the
+    // configuration: this phase writes numbers for exercises that have no configuration row at all
+    // (`FR-16.7.2`), so a purge reading only the configurations would free an exercise a live
+    // training max still names.
+    case trainingMaxHistory
     case dashboard
     // FR-16.3.1's feed scope is a SECOND list on the same row, and a purge reading only the tiles
     // would free an exercise the recent-PR feed still filters on.

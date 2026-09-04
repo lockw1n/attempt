@@ -91,8 +91,8 @@ struct AuditColumnConformanceTests {
         try await repositories.workouts.save(setRecord(id: setID, entryID: timeline.entryID))
         try await repositories.bodyweight.save(bodyweightRecord())
         try await repositories.equipment.save(profileRecord())
-        try await repositories.exercises.saveTrainingMax(
-            trainingMaxRecord(exerciseID: timeline.exerciseID, effectiveFrom: fixtureCreatedAt))
+        try await repositories.trainingMaxes.save(
+            trainingMaxHistoryRecord(exerciseID: timeline.exerciseID, effectiveFrom: fixtureCreatedAt))
         let routine = routineRecord()
         try await repositories.routines.save(routine)
         let slot = routineExerciseRecord(
@@ -118,7 +118,7 @@ struct AuditColumnConformanceTests {
         let profile = try #require(
             try await repositories.equipment.profiles(includingDeleted: false).first)
         let trainingMax = try #require(
-            try await repositories.exercises.trainingMax(
+            try await repositories.trainingMaxes.trainingMax(
                 forExerciseID: timeline.exerciseID, on: fixtureCreatedAt))
         let storedRoutine = try #require(
             try await repositories.routines.routine(id: routine.id, includingDeleted: false))

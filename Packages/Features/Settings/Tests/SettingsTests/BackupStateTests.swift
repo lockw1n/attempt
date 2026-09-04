@@ -36,9 +36,9 @@ struct BackupStateTests {
         await state.prepare()
         let file = try #require(Self.file(of: state.phase))
         // 3 exercises (one of them a variation) + 4 sessions + 3 entries + 5 sets + 2 readings
-        // + 2 gyms + 2 training maxes + 2 routines + 2 routine slots + 4 target groups
-        // + 2 planned targets + the preferences row.
-        #expect(file.recordCount == 32)
+        // + 2 gyms + 2 training-max configurations + 2 training-max changes + 2 routines
+        // + 2 routine slots + 4 target groups + 2 planned targets + the preferences row.
+        #expect(file.recordCount == 34)
         #expect(file.workoutCount == 4)
         // A session, a slot, that slot's set, a reading, a gym, and the archived routine with its
         // slot and that slot's two target groups.
@@ -92,6 +92,7 @@ struct BackupStateTests {
         let state = BackupState(
             backup: FullBackup(
                 exercises: log.repositories.exercises,
+                trainingMaxes: log.repositories.trainingMaxes,
                 workouts: log.repositories.workouts,
                 bodyweight: log.repositories.bodyweight,
                 equipment: log.repositories.equipment,
@@ -145,6 +146,7 @@ struct BackupStateTests {
         let state = BackupState(
             backup: FullBackup(
                 exercises: log.repositories.exercises,
+                trainingMaxes: log.repositories.trainingMaxes,
                 workouts: gated,
                 bodyweight: log.repositories.bodyweight,
                 equipment: log.repositories.equipment,

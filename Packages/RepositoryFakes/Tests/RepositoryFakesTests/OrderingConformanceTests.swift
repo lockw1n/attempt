@@ -80,26 +80,26 @@ struct OrderingConformanceTests {
         // Saved oldest-effective first, so `updatedAt` runs with `effectiveFrom` rather than
         // against it — the ordering claim is about `effectiveFrom` and must not be satisfiable by
         // insertion order alone, which the id clause below is what pins.
-        try await repositories.exercises.saveTrainingMax(
-            trainingMaxRecord(exerciseID: exerciseID, effectiveFrom: fixtureCreatedAt, grams: 150_000))
-        try await repositories.exercises.saveTrainingMax(
-            trainingMaxRecord(
+        try await repositories.trainingMaxes.save(
+            trainingMaxHistoryRecord(exerciseID: exerciseID, effectiveFrom: fixtureCreatedAt, grams: 150_000))
+        try await repositories.trainingMaxes.save(
+            trainingMaxHistoryRecord(
                 id: SortedIDs.second,
                 exerciseID: exerciseID,
                 effectiveFrom: fixtureCreatedAt + fixtureDay,
                 grams: 160_000))
-        try await repositories.exercises.saveTrainingMax(
-            trainingMaxRecord(
+        try await repositories.trainingMaxes.save(
+            trainingMaxHistoryRecord(
                 id: SortedIDs.third,
                 exerciseID: exerciseID,
                 effectiveFrom: fixtureCreatedAt + fixtureDay,
                 grams: 170_000))
 
-        let history = try await repositories.exercises.trainingMaxHistory(
+        let history = try await repositories.trainingMaxes.history(
             forExerciseID: exerciseID, includingDeleted: false)
 
         #expect(
-            history.map(\.manualWeight) == [
+            history.map(\.newWeight) == [
                 Weight(grams: 170_000), Weight(grams: 160_000), Weight(grams: 150_000),
             ])
         #expect(history.prefix(2).map(\.id) == [SortedIDs.third, SortedIDs.second])

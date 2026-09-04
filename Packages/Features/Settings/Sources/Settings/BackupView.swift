@@ -20,6 +20,7 @@ public struct BackupView: View {
     ///
     /// - Parameters:
     ///   - exercises: The catalogue and its training-max history.
+    ///   - trainingMaxes: Each exercise's training-max configuration and history.
     ///   - workouts: Sessions, entries, sets and their planned targets.
     ///   - bodyweight: The bodyweight log.
     ///   - equipment: The gyms.
@@ -27,6 +28,7 @@ public struct BackupView: View {
     ///   - settings: The preferences row — a row in the file here, not a value read from it.
     public init(
         exercises: any ExerciseRepository,
+        trainingMaxes: any TrainingMaxRepository,
         workouts: any WorkoutRepository & PlannedTargetRepository,
         bodyweight: any BodyweightRepository,
         equipment: any EquipmentRepository,
@@ -37,6 +39,7 @@ public struct BackupView: View {
             initialValue: BackupState(
                 backup: FullBackup(
                     exercises: exercises,
+                    trainingMaxes: trainingMaxes,
                     workouts: workouts,
                     bodyweight: bodyweight,
                     equipment: equipment,

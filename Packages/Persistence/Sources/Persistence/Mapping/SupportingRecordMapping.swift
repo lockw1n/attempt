@@ -43,10 +43,10 @@ extension BodyweightEntryEntity: RecordMappable {
 extension TrainingMaxConfigEntity: RecordMappable {
     /// This row as a record.
     ///
-    /// The payload columns are carried whatever ``sourceRawValue`` says, and the percentage and
+    /// ``sourceRepCount`` is carried whatever ``sourceRawValue`` says, and the percentage and
     /// rounding columns whatever the source is — reading either as evidence of participation is the
-    /// mistake this type's own note refuses. `TrainingMaxEntry.configuration()` is where the pairing
-    /// is checked.
+    /// mistake this type's own note refuses. `TrainingMaxEntry.configuration(manualWeight:)` is
+    /// where the pairing is checked, against a value this table does not hold.
     var record: TrainingMaxEntry {
         TrainingMaxEntry(
             id: id,
@@ -56,7 +56,6 @@ extension TrainingMaxConfigEntity: RecordMappable {
             exerciseID: exerciseID,
             source: RecordVocabulary.resolve(sourceRawValue, or: RecordVocabulary.trainingMaxSource),
             sourceRepCount: sourceRepCount,
-            manualWeight: manualWeightGrams.map(Weight.init(grams:)),
             percentage: percentage,
             roundingIncrement: Weight(grams: roundingIncrementGrams),
             roundingStrategy: RecordVocabulary.resolve(
@@ -77,7 +76,6 @@ extension TrainingMaxConfigEntity: RecordMappable {
             roundingStrategy: record.roundingStrategy,
             effectiveFrom: record.effectiveFrom,
             sourceRepCount: record.sourceRepCount,
-            manualWeightGrams: record.manualWeight?.grams,
             incrementGrams: record.progressionIncrement?.grams,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt
@@ -90,7 +88,6 @@ extension TrainingMaxConfigEntity: RecordMappable {
         sourceRawValue = preservingRawValue(
             record.source, stored: sourceRawValue, fallback: RecordVocabulary.trainingMaxSource)
         sourceRepCount = record.sourceRepCount
-        manualWeightGrams = record.manualWeight?.grams
         percentage = record.percentage
         roundingIncrementGrams = record.roundingIncrement.grams
         roundingStrategyRawValue = preservingRawValue(
@@ -99,6 +96,46 @@ extension TrainingMaxConfigEntity: RecordMappable {
             fallback: RecordVocabulary.roundingStrategy)
         incrementGrams = record.progressionIncrement?.grams
         effectiveFrom = record.effectiveFrom
+    }
+}
+
+extension TrainingMaxHistoryEntity: RecordMappable {
+    /// This row as a record, column for column. Nothing is paired or checked here.
+    var record: TrainingMaxHistoryEntry {
+        TrainingMaxHistoryEntry(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            exerciseID: exerciseID,
+            effectiveFrom: effectiveFrom,
+            oldWeight: oldGrams.map(Weight.init(grams:)),
+            newWeight: Weight(grams: newGrams),
+            reason: reason
+        )
+    }
+
+    /// A new row carrying `record`.
+    convenience init(record: TrainingMaxHistoryEntry) {
+        self.init(
+            id: record.id,
+            exerciseID: record.exerciseID,
+            effectiveFrom: record.effectiveFrom,
+            newGrams: record.newWeight.grams,
+            reason: record.reason,
+            oldGrams: record.oldWeight?.grams,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt
+        )
+    }
+
+    /// Overwrites this row from `record`. No vocabulary column, so nothing is preserved.
+    func update(from record: TrainingMaxHistoryEntry) {
+        exerciseID = record.exerciseID
+        effectiveFrom = record.effectiveFrom
+        oldGrams = record.oldWeight?.grams
+        newGrams = record.newWeight.grams
+        reason = record.reason
     }
 }
 

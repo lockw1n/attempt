@@ -14,6 +14,7 @@ extension ExportLog {
     var backup: FullBackup {
         FullBackup(
             exercises: repositories.exercises,
+            trainingMaxes: repositories.trainingMaxes,
             workouts: repositories.workouts,
             bodyweight: repositories.bodyweight,
             equipment: repositories.equipment,
@@ -66,13 +67,48 @@ extension ExportLog {
             exerciseID: exercise.id,
             source: .percentOfE1RM,
             sourceRepCount: nil,
-            manualWeight: nil,
             percentage: percentage,
             roundingIncrement: Weight(grams: 2_500),
             roundingStrategy: .down,
             progressionIncrement: Weight(grams: 2_500),
             effectiveFrom: date)
-        try await repositories.exercises.saveTrainingMax(entry)
+        try await repositories.trainingMaxes.saveConfiguration(entry)
+        return entry
+    }
+
+    /// Appends one change to an exercise's training max (`FR-15.1.4`, `FR-16.7.2`).
+    ///
+    /// **The old value and the reason both differ per call**, because two rows agreeing on either
+    /// would pass for a restore that wrote one column into both — the trap `dashboardExerciseIDs`
+    /// and `recentRecordsExerciseIDs` sprang on this suite once already.
+    ///
+    /// - Parameters:
+    ///   - exercise: Whose training max changed.
+    ///   - newGrams: What it becomes.
+    ///   - oldGrams: What it was, or `nil` for the first entry.
+    ///   - reason: Why.
+    ///   - daysAgo: How many days before the epoch it takes effect.
+    /// - Returns: The record.
+    @discardableResult
+    func trainingMaxChange(
+        for exercise: Exercise,
+        newGrams: Int,
+        oldGrams: Int?,
+        reason: String,
+        daysAgo: Int = 0
+    ) async throws -> TrainingMaxHistoryEntry {
+        let date = Self.epoch.addingTimeInterval(-Double(daysAgo) * 86_400)
+        let entry = TrainingMaxHistoryEntry(
+            id: UUID(),
+            createdAt: date,
+            updatedAt: date,
+            deletedAt: nil,
+            exerciseID: exercise.id,
+            effectiveFrom: date,
+            oldWeight: oldGrams.map(Weight.init(grams:)),
+            newWeight: Weight(grams: newGrams),
+            reason: reason)
+        try await repositories.trainingMaxes.save(entry)
         return entry
     }
 
@@ -174,6 +210,15 @@ extension ExportLog {
         let bench = try await log.exercise(named: "Bench Press")
         try await log.trainingMax(for: bench, percentage: 0.9, daysAgo: 30)
         try await log.trainingMax(for: bench, percentage: 0.95)
+        // FR-16.7.2's history, and the two rows differ in EVERY column rather than merely in the
+        // new weight. `oldWeight` and `newWeight` are two weights on one row, so a fixture whose
+        // second row repeats the first's old value is written, compared, agreed, and passes for a
+        // restore that wrote one column into both. The first row names no old value at all, which
+        // is the third distinct shape the column has.
+        try await log.trainingMaxChange(
+            for: bench, newGrams: 137_500, oldGrams: nil, reason: "starting point", daysAgo: 30)
+        try await log.trainingMaxChange(
+            for: bench, newGrams: 142_500, oldGrams: 137_500, reason: "coach, week 4")
         // FR-1.1.7's variations make `exercises` a self-referencing table, and `parentExerciseID`
         // is carried from the record like any other column — so a fixture whose exercises are all
         // roots leaves it nil on both sides of every field-for-field comparison and agrees with a

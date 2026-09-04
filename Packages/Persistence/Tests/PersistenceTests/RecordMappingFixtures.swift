@@ -248,7 +248,6 @@ func mappingSourceTrainingMax(id: UUID) -> TrainingMaxConfigEntity {
         roundingStrategy: .down,
         effectiveFrom: Date(timeIntervalSince1970: 1_690_000_000),
         sourceRepCount: 3,
-        manualWeightGrams: 180_000,
         incrementGrams: 2500,
         createdAt: mappingCreatedAt,
         updatedAt: mappingUpdatedAt

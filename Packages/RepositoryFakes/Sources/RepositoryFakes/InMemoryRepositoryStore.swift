@@ -21,6 +21,7 @@ actor InMemoryRepositoryStore {
     // same split `Persistence` uses, and `private` is file-scoped.
     var exercises: [UUID: Exercise] = [:]
     var trainingMaxes: [UUID: TrainingMaxEntry] = [:]
+    var trainingMaxEntries: [UUID: TrainingMaxHistoryEntry] = [:]
     var sessions: [UUID: WorkoutSession] = [:]
     var entries: [UUID: ExerciseEntry] = [:]
     var sets: [UUID: SetEntry] = [:]

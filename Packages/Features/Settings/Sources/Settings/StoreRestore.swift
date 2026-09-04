@@ -92,8 +92,11 @@ struct BackupSummary: Equatable, Sendable {
 /// stays deleted however the file has it. `TR-1.14`'s purge and a writer that can set the column are
 /// what would close them; neither exists yet.
 struct StoreRestore {
-    /// The catalogue, and each exercise's training-max history.
+    /// The catalogue.
     let exercises: any ExerciseRepository
+
+    /// Each exercise's training-max configuration and history (`TR-16.3`).
+    let trainingMaxes: any TrainingMaxRepository
 
     /// Sessions, entries, sets — and what a routine planned for those slots (`FR-15.2.4`).
     ///
@@ -211,6 +214,11 @@ struct StoreRestore {
 
     /// Writes what the log's rows refer to: the catalogue, its training maxes, and the gyms.
     ///
+    /// **Both training-max sections, and both after the catalogue** — each save checks that the
+    /// exercise it names is stored, the same edge the configurations have always had. A file from
+    /// format 3 carries no history section and restores with it empty, which is what that file
+    /// holds.
+    ///
     /// **The default gym is reinstated after the profiles rather than by them** (`FR-1.10.3`). No
     /// save writes `isDefault` — "exactly one default" is a cross-row invariant that no single
     /// row's write can hold, so an insert clears the flag and an update leaves the stored row's
@@ -234,7 +242,8 @@ struct StoreRestore {
         let catalogue = ParentOrdering.parentsFirst(
             archive.exercises, id: \.id, parentID: \.parentExerciseID)
         for exercise in catalogue { try await exercises.save(exercise) }
-        for entry in archive.trainingMaxes { try await exercises.saveTrainingMax(entry) }
+        for entry in archive.trainingMaxes { try await trainingMaxes.saveConfiguration(entry) }
+        for entry in archive.trainingMaxHistory { try await trainingMaxes.save(entry) }
         for profile in archive.equipment { try await equipment.save(profile) }
         if let defaulted = Self.defaultProfile(in: archive.equipment) {
             try await equipment.makeDefault(profileID: defaulted.id)

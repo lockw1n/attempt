@@ -17,6 +17,7 @@ struct PurgePlan {
     private let entries: [ExerciseEntryEntity]
     private let sets: [SetEntryEntity]
     private let trainingMaxes: [TrainingMaxConfigEntity]
+    private let trainingMaxHistory: [TrainingMaxHistoryEntity]
     private let bodyweight: [BodyweightEntryEntity]
     private let equipment: [EquipmentProfileEntity]
     private let settings: [UserSettingsEntity]
@@ -34,6 +35,7 @@ struct PurgePlan {
     private var freedEntries: Set<UUID> = []
     private var freedSets: Set<UUID> = []
     private var freedTrainingMaxes: Set<UUID> = []
+    private var freedTrainingMaxHistory: Set<UUID> = []
     private var freedBodyweight: Set<UUID> = []
     private var freedEquipment: Set<UUID> = []
     private var freedSettings: Set<UUID> = []
@@ -56,6 +58,8 @@ struct PurgePlan {
         entries = try context.rows(ExerciseEntryEntity.self, includingDeleted: true)
         sets = try context.rows(SetEntryEntity.self, includingDeleted: true)
         trainingMaxes = try context.rows(TrainingMaxConfigEntity.self, includingDeleted: true)
+        trainingMaxHistory = try context.rows(
+            TrainingMaxHistoryEntity.self, includingDeleted: true)
         bodyweight = try context.rows(BodyweightEntryEntity.self, includingDeleted: true)
         equipment = try context.rows(EquipmentProfileEntity.self, includingDeleted: true)
         settings = try context.rows(UserSettingsEntity.self, includingDeleted: true)
@@ -70,6 +74,7 @@ struct PurgePlan {
         freedEntries = eligibleIDs(in: entries)
         freedSets = eligibleIDs(in: sets)
         freedTrainingMaxes = eligibleIDs(in: trainingMaxes)
+        freedTrainingMaxHistory = eligibleIDs(in: trainingMaxHistory)
         freedBodyweight = eligibleIDs(in: bodyweight)
         freedEquipment = eligibleIDs(in: equipment)
         freedSettings = eligibleIDs(in: settings)
@@ -114,6 +119,12 @@ struct PurgePlan {
             for config in trainingMaxes where !freedTrainingMaxes.contains(config.id) {
                 changed = retain(config.exerciseID, in: &freedExercises) || changed
             }
+            // The history hangs off the same edge as the configuration and is kept separately from
+            // it: a lifter may have entered numbers for an exercise they never configured a source
+            // for, which is every exercise in this phase (`FR-16.7.2`).
+            for entry in trainingMaxHistory where !freedTrainingMaxHistory.contains(entry.id) {
+                changed = retain(entry.exerciseID, in: &freedExercises) || changed
+            }
             // TWO LISTS ON THIS ROW, not one: `FR-16.3.1`'s chosen feed scope names exercises the
             // dashboard selection need not, so a purge reading only the tiles would free an
             // exercise the recent-PR feed still filters on.
@@ -155,6 +166,7 @@ struct PurgePlan {
         held(in: exercises, freed: freedExercises) + held(in: sessions, freed: freedSessions)
             + held(in: entries, freed: freedEntries) + held(in: sets, freed: freedSets)
             + held(in: trainingMaxes, freed: freedTrainingMaxes)
+            + held(in: trainingMaxHistory, freed: freedTrainingMaxHistory)
             + held(in: bodyweight, freed: freedBodyweight)
             + held(in: equipment, freed: freedEquipment)
             + held(in: settings, freed: freedSettings)
@@ -188,6 +200,8 @@ struct PurgePlan {
         doomed.append(contentsOf: entries.filter { freedEntries.contains($0.id) })
         doomed.append(contentsOf: sets.filter { freedSets.contains($0.id) })
         doomed.append(contentsOf: trainingMaxes.filter { freedTrainingMaxes.contains($0.id) })
+        doomed.append(
+            contentsOf: trainingMaxHistory.filter { freedTrainingMaxHistory.contains($0.id) })
         doomed.append(contentsOf: bodyweight.filter { freedBodyweight.contains($0.id) })
         doomed.append(contentsOf: equipment.filter { freedEquipment.contains($0.id) })
         doomed.append(contentsOf: settings.filter { freedSettings.contains($0.id) })

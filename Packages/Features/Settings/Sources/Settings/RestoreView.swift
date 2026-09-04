@@ -28,6 +28,7 @@ public struct RestoreView: View {
     ///
     /// - Parameters:
     ///   - exercises: The catalogue and its training-max history.
+    ///   - trainingMaxes: Each exercise's training-max configuration and history.
     ///   - workouts: Sessions, entries, sets and their planned targets.
     ///   - bodyweight: The bodyweight log.
     ///   - equipment: The gyms.
@@ -36,6 +37,7 @@ public struct RestoreView: View {
     ///   - records: The app's one recompute actor.
     public init(
         exercises: any ExerciseRepository,
+        trainingMaxes: any TrainingMaxRepository,
         workouts: any WorkoutRepository & PlannedTargetRepository,
         bodyweight: any BodyweightRepository,
         equipment: any EquipmentRepository,
@@ -47,6 +49,7 @@ public struct RestoreView: View {
             initialValue: RestoreState(
                 restore: StoreRestore(
                     exercises: exercises,
+                    trainingMaxes: trainingMaxes,
                     workouts: workouts,
                     bodyweight: bodyweight,
                     equipment: equipment,

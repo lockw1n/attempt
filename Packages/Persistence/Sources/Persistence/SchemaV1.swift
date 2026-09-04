@@ -45,6 +45,7 @@ enum SchemaV1: VersionedSchema {
             SetEntryEntity.self,
             BodyweightEntryEntity.self,
             TrainingMaxConfigEntity.self,
+            TrainingMaxHistoryEntity.self,
             EquipmentProfileEntity.self,
             UserSettingsEntity.self,
             PersonalRecordCacheEntity.self,

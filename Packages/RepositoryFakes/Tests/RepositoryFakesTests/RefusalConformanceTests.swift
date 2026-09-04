@@ -103,15 +103,15 @@ struct RefusalConformanceTests {
     @Test("A training max needs its exercise", arguments: Subject.all)
     func aTrainingMaxNeedsItsExercise(_ subject: Subject) async throws {
         let repositories = try subject.make()
-        let entry = trainingMaxRecord(exerciseID: UUID(), effectiveFrom: fixtureCreatedAt)
+        let entry = trainingMaxHistoryRecord(exerciseID: UUID(), effectiveFrom: fixtureCreatedAt)
 
         await #expect(
             throws: RepositoryError.danglingReference(
                 recordID: entry.id, referencing: entry.exerciseID)
-        ) { try await repositories.exercises.saveTrainingMax(entry) }
+        ) { try await repositories.trainingMaxes.save(entry) }
 
         #expect(
-            try await repositories.exercises.trainingMaxHistory(
+            try await repositories.trainingMaxes.history(
                 forExerciseID: entry.exerciseID, includingDeleted: true
             ).isEmpty)
     }
@@ -164,7 +164,7 @@ struct RefusalConformanceTests {
         #expect(try await repositories.equipment.profile(id: id, includingDeleted: true) == nil)
         #expect(try await repositories.equipment.defaultProfile() == nil)
         #expect(
-            try await repositories.exercises.trainingMax(forExerciseID: id, on: fixtureCreatedAt)
+            try await repositories.trainingMaxes.trainingMax(forExerciseID: id, on: fixtureCreatedAt)
                 == nil)
     }
 
