@@ -93,7 +93,9 @@ that does not. One exception, and it is
 the shape `RepositoryFakes` already has: `Settings`' *test* target depends on
 `Persistence`, because `DOD-1.3`'s export → wipe → restore has to name the
 backup reader and writer and the real store in one test, and `Persistence` may
-not depend on a feature. The `Settings` library is unaffected; `import
+not depend on a feature. It is also why the record pipeline's real-store
+measurement lives there: `DerivedValues` declares no `Persistence` dependency, so
+`Settings`' test target is the only existing place that can reach both. The `Settings` library is unaffected; `import
 Persistence` from a source file there still does not resolve.
 Two constraints are load-bearing rather than stylistic:
 
@@ -281,6 +283,15 @@ through the hand-rolled `Encoder`/`Decoder` in
 thing not to assert with it: **key order**. It emits keys in per-process hash
 order, so the order differs between runs; assert key spelling and the set of keys
 instead, as `RecordCodingTests` does.
+
+One suite is **off unless you name a file**. `SettingsTests`' `RealLogRecomputeTests`
+measures the record pipeline over a real training log restored into a real file
+store, and its subject is one lifter's own history, which is never committed. It
+skips with a message saying how to supply one; point it at a backup the app wrote:
+
+```bash
+ATTEMPT_REAL_BACKUP=/path/to/backup.json swift test --package-path Packages/Features/Settings
+```
 
 `PowerliftingCore` is held to ≥ 90% line coverage. The script counts only files
 under the package's `Sources/`, and requires `python3`:
