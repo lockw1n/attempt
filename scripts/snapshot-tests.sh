@@ -64,10 +64,10 @@ cd "$(dirname "$0")/.."
 # notice nothing the parity check does not. Set it above that count where such tests exist, and at
 # the suite's own count where they do not — the latter is a floor that adds nothing, which is the
 # honest setting rather than a number chosen to look like the former.
-#   DesignSystem:    27 tests, 15 reference-backed, 12 harness probes  -> 20, above the 15.
+#   DesignSystem:    29 tests, 17 reference-backed, 12 harness probes  -> 22, above the 17.
 #   ExerciseLibrary: 34 tests, all of them reference-backed, no probes -> 34, its own count.
-#   Logging:         69 tests, 67 reference-backed, a width probe and a layout budget
-#                                                                    -> 69, above the 67.
+#   Logging:         70 tests, 68 reference-backed, a width probe and a layout budget
+#                                                                    -> 70, above the 68.
 #   History:         19 tests, all of them reference-backed, no probes -> 19, its own count.
 #   Dashboard:       18 tests, all of them reference-backed, no probes -> 18, its own count.
 #   Settings:        45 tests, all of them reference-backed, no probes -> 45, its own count.
@@ -82,9 +82,9 @@ cd "$(dirname "$0")/.."
 # 15), each drifting one task at a time. `git grep -c '@Test' -- <suite>` is the count to set it
 # from, and a task that adds a snapshot test owes this list the same edit it owes __Snapshots__.
 SUITES=(
-    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|20"
+    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|22"
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|34"
-    "Packages/Features/Logging|Logging|LoggingSnapshotTests|69"
+    "Packages/Features/Logging|Logging|LoggingSnapshotTests|70"
     "Packages/Features/History|History|HistorySnapshotTests|19"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|18"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|45"

@@ -150,10 +150,13 @@ struct PlannedNextSetSection: View {
                 .foregroundStyle(ColorToken.textSecondary)
             PlannedTargetLine(target: target, comparison: nil, unit: unit)
             if target.targetWeight != nil {
+                // Secondary, on `FR-16.6.4`'s count: this is the same class of action as **Repeat
+                // set** and **Log next set** — one more set on one card — and the screen's single
+                // accent belongs to the command that ends the workout (`G-7.2`).
                 Button(action: log) {
                     Text(LoggingStrings.sessionPlanLogAction)
                 }
-                .buttonStyle(.primaryAction(.fill))
+                .buttonStyle(.secondaryAction(.fill))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -378,6 +378,9 @@ public struct ActiveSessionView: View {
                     },
                     logPlanned: { id in
                         Task { await store.logPlannedSet(inEntryID: id) }
+                    },
+                    logNext: { id, set in
+                        Task { await store.logNextSet(inEntryID: id, copying: set.id) }
                     }
                 )
                 writeFailure(writeFailed)

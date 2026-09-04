@@ -137,5 +137,24 @@
 			<string>%lld sets</string>
 		</dict>
 	</dict>
+	<!-- G-4.2: what FR-16.1.4's button would write, for a reader who has already moved past the
+	     line above it. "Log next set" alone does not say what "next" is. The load arrives already
+	     rendered — AppFormat decides how a weight reads, and a catalogue cannot. -->
+	<key>logging.session.set.group.log-next.label %@ %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Log next set, %1$@, %2$#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

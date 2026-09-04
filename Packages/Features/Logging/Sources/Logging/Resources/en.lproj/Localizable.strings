@@ -189,6 +189,10 @@
 /* What a tap on a collapsed group does (FR-16.1.3). The rows it opens carry every per-set control,
    so the hint promises the sets themselves rather than "more". */
 "logging.session.set.group.hint" = "Shows each set";
+/* FR-16.1.4's one-tap append, on the last group of an exercise. "Next" rather than "another": the
+   line above it ticks from × 3 to × 4, so the command is naming the set that follows the run rather
+   than offering a second copy of it. */
+"logging.session.set.group.log-next" = "Log next set";
 
 /* FR-1.2.4 and FR-1.2.14: warmups, marked and numbered apart from the work. */
 /* The badge a warmup row leads with. "W1" rather than "1" is the requirement's own spelling, and it

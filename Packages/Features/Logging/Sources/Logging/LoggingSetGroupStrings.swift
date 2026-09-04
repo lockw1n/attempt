@@ -62,6 +62,30 @@ extension LoggingStrings {
     /// What tapping a group does (`FR-16.1.3`), as VoiceOver's hint on it.
     static let setGroupExpandHint = resource("logging.session.set.group.hint")
 
+    /// `FR-16.1.4`'s one-tap append, on the last group of an exercise.
+    ///
+    /// **"Next", not "another".** What the command writes is the set that comes after the run it is
+    /// attached to, which is why the count on the line above it ticks rather than a fifth line
+    /// appearing — and why it is a different sentence from **Repeat set**, which copies whatever was
+    /// logged last wherever that was.
+    static let setGroupLogNextAction = resource("logging.session.set.group.log-next")
+
+    /// The same command as VoiceOver reads it — with the load and the reps it would write (`G-4.2`).
+    ///
+    /// **The label names the write, because the button cannot.** "Log next set" is three words that
+    /// do not say what "next" is; a sighted reader takes that off the line directly above, and a
+    /// VoiceOver user has moved past it. A plural rather than a numeral beside a word, on
+    /// ``setGroupCount(_:)``'s reason.
+    ///
+    /// - Parameters:
+    ///   - weight: The load it would write, already rendered — `AppFormat` decides how a weight
+    ///     reads, and a catalogue cannot.
+    ///   - reps: The repetitions it would write.
+    /// - Returns: The sentence.
+    static func setGroupLogNextLabel(weight: String, reps: Int) -> LocalizedStringResource {
+        resource("logging.session.set.group.log-next.label \(weight) \(reps)")
+    }
+
     /// One group on `FR-1.2.10`'s strip — a load, a repetition count and how many sets, already
     /// rendered (`FR-16.1.1`).
     ///
@@ -88,6 +112,8 @@ extension LoggingStrings {
             setWarmupPositionRange(first: 1, last: 4),
             setGroupCount(4),
             setGroupExpandHint,
+            setGroupLogNextAction,
+            setGroupLogNextLabel(weight: "", reps: 6),
             sessionPreviousGroup(weight: "", reps: "", sets: ""),
         ]
     }

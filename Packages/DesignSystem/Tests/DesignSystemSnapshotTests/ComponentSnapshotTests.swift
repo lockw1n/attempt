@@ -1,5 +1,6 @@
 #if os(iOS)
 
+    import DesignTokens
     import SnapshotTesting
     import SwiftUI
     import Testing
@@ -91,6 +92,37 @@
                 }
                 .buttonStyle(.primaryAction(.fill))
                 .disabled(true)
+            }
+        }
+
+        // FR-16.6.4: the pair is the whole point — a secondary action is the primary one at the
+        // same size and the same shape, differing only in its fill, so a screen can carry three
+        // commands and still spend `G-7.2`'s one accent once. Snapshotted beside it rather than
+        // alone, because what has to stay true is the relationship.
+        @Test func secondaryActionFill() throws {
+            try assertSnapshots(named: "SecondaryAction-fill") {
+                VStack(spacing: Spacing.lg.points) {
+                    Button {
+                    } label: {
+                        Text(verbatim: "Finish workout")
+                    }
+                    .buttonStyle(.primaryAction(.fill))
+                    Button {
+                    } label: {
+                        Text(verbatim: "Log next set")
+                    }
+                    .buttonStyle(.secondaryAction(.fill))
+                }
+            }
+        }
+
+        @Test func secondaryActionIntrinsic() throws {
+            try assertSnapshots(named: "SecondaryAction-intrinsic") {
+                Button {
+                } label: {
+                    Text(verbatim: "Repeat set")
+                }
+                .buttonStyle(.secondaryAction)
             }
         }
 

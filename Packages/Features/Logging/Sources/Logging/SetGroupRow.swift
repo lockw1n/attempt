@@ -50,6 +50,15 @@ struct SetGroupRow: View {
     /// What a routine planned for one member (`FR-15.3.1`), or `nil`.
     var target: (UUID) -> PlannedTargetGroup? = { _ in nil }
 
+    /// Appends a set equal to this group's last member (`FR-16.1.4`), or `nil` where the surface
+    /// does not offer it.
+    ///
+    /// **Only the card's last working group is handed one**, which is what makes the command's name
+    /// true: "next" is the set after the run, and a group with work logged after it has no next set
+    /// to speak of. The warmups never get it either — the write is a working set, and a **Log next
+    /// set** on the ramp would append below the fold it was tapped in.
+    var logNext: (() -> Void)?
+
     /// Which locale the numbers are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
@@ -61,10 +70,10 @@ struct SetGroupRow: View {
 
     /// The line, and the rows beneath it while it is open.
     var body: some View {
-        if group.isSingle {
-            row(for: group.first)
-        } else {
-            VStack(alignment: .leading, spacing: Spacing.xs.points) {
+        VStack(alignment: .leading, spacing: Spacing.xs.points) {
+            if group.isSingle {
+                row(for: group.first)
+            } else {
                 summary
                 // Indented, so the rows read as this group's members rather than as sets the
                 // card gained. Each is the ordinary row, controls and all — which is the whole of
@@ -76,7 +85,37 @@ struct SetGroupRow: View {
                         .padding(.leading, Spacing.md.points)
                 }
             }
+            logNextCommand
         }
+    }
+
+    /// `FR-16.1.4`'s append, beneath the line it ticks.
+    ///
+    /// **A button of its own, and that is `FR-16.6.4` rather than layout.** Every other element of
+    /// the collapsed line is a label here — the badge, the outcome, the record mark — precisely
+    /// because a tap on one would write across four sets at once, and the way to add a control
+    /// without reintroducing that is to add one that says what it does.
+    ///
+    /// **Secondary, on a screen whose one accent is Finish** (`G-7.2`). It is the common action and
+    /// it is not the screen's primary one: `Repeat set`, `Add set` and `Log planned set` sit beneath
+    /// it at the same weight, and the filled button at the foot ends the workout.
+    @ViewBuilder private var logNextCommand: some View {
+        if let logNext {
+            Button(action: logNext) {
+                Text(LoggingStrings.setGroupLogNextAction)
+            }
+            .buttonStyle(.secondaryAction(.fill))
+            .accessibilityLabel(
+                Text(
+                    LoggingStrings.setGroupLogNextLabel(
+                        weight: renderedWeight, reps: group.last.record.reps)))
+        }
+    }
+
+    /// The load ``logNextCommand`` would write, rendered for the reader's locale and step.
+    private var renderedWeight: String {
+        group.last.record.weight.formatted(
+            AppFormat.weight(WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale))
     }
 
     /// The collapsed line: the range, the group itself, then its outcome.

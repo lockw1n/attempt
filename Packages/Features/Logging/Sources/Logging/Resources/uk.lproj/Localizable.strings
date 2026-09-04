@@ -103,6 +103,8 @@
 "logging.session.set.position-range %lld %lld" = "Підходи з %1$lld по %2$lld";
 "logging.session.set.warmup.position-range %lld %lld" = "Розминка з %1$lld по %2$lld";
 "logging.session.set.group.hint" = "Показує кожен підхід";
+/* FR-16.1.4: «наступний», бо рядок вище змінюється з × 3 на × 4. */
+"logging.session.set.group.log-next" = "Записати наступний підхід";
 
 /* «Р» for розминка, the way the English badge is «W» for warmup. */
 "logging.session.set.warmup.number %@" = "Р%@";

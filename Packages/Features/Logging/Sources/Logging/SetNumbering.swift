@@ -90,6 +90,14 @@ struct NumberedSetGroup: Identifiable, Equatable {
     /// The set every shared field belongs to.
     var record: SetEntry { members[0].record }
 
+    /// The last of them — the set `FR-16.1.4`'s **Log next set** copies.
+    ///
+    /// **Named rather than left to the caller**, because "the group's last member" is the write's
+    /// own definition: the fields a group shares are read off ``first``, and the set the append
+    /// copies is this one. They agree at ``DerivedValues/SetGrouping/Grain/displayed`` and the two
+    /// questions are still different ones.
+    var last: NumberedSet { members[members.count - 1] }
+
     /// How many sets it holds — the `× 4`.
     var count: Int { members.count }
 
@@ -103,7 +111,7 @@ struct NumberedSetGroup: Identifiable, Equatable {
     var isCompleted: Bool { first.isCompleted }
 
     /// The numbers it spans, first through last.
-    var numbers: ClosedRange<Int> { first.number...members[members.count - 1].number }
+    var numbers: ClosedRange<Int> { first.number...last.number }
 
     /// The member rows drawn beneath the collapsed line, which is `FR-16.1.3` itself.
     ///

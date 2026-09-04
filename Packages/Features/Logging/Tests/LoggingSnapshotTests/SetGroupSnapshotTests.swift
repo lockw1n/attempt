@@ -50,22 +50,35 @@
             }
         }
 
+        @Test func setGroupLogNext() throws {
+            // `FR-16.1.4`, and `FR-16.6.4` with it. What the picture settles is the pair of claims
+            // the requirement makes together: the command is attached to the *last* group and to no
+            // other, and it is drawn secondary — the same shape as **Repeat set** below it, with the
+            // screen's one accent left for **Finish workout**. At `accessibility3` it is also where
+            // the full-width label has to survive a two-line wrap.
+            try assertSnapshots(named: "Session-set-groups-log-next") {
+                fixedEnvironment { groupRows(Fixtures.groupedSets, logsNext: true) }
+            }
+        }
+
         /// A column of `FR-16.1.1`'s groups, partitioned and numbered the way the card does it.
         ///
         /// - Parameters:
         ///   - sets: The sets, in the order they were logged.
         ///   - expanded: Which groups are open (`FR-16.1.3`).
         ///   - schemes: Which cells each set holds a record at (`FR-16.2.4`).
+        ///   - logsNext: Whether the last working group carries `FR-16.1.4`'s append, as the card
+        ///     hands it out — to that group and to no other.
         /// - Returns: The lines.
         private func groupRows(
             _ sets: [SetEntry],
             expanded: Set<UUID> = [],
-            schemes: [UUID: [RecordScheme]] = [:]
+            schemes: [UUID: [RecordScheme]] = [:],
+            logsNext: Bool = false
         ) -> some View {
             let numbered = SetNumbering.numbered(sets)
-            let groups =
-                SetNumbering.grouped(numbered.filter(\.isWarmup))
-                + SetNumbering.grouped(numbered.filter { !$0.isWarmup })
+            let working = SetNumbering.grouped(numbered.filter { !$0.isWarmup })
+            let groups = SetNumbering.grouped(numbered.filter(\.isWarmup)) + working
             return VStack(alignment: .leading) {
                 ForEach(groups) { group in
                     SetGroupRow(
@@ -76,7 +89,8 @@
                         mark: { _, _ in },
                         markCompleted: { _, _ in },
                         edit: { _ in },
-                        recordSchemes: { schemes[$0] ?? [] }
+                        recordSchemes: { schemes[$0] ?? [] },
+                        logNext: logsNext && group.id == working.last?.id ? {} : nil
                     )
                 }
             }

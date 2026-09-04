@@ -179,7 +179,8 @@
                         markCompleted: { _, _ in },
                         edit: { _ in },
                         markDone: { _, _ in },
-                        logPlanned: { _ in }
+                        logPlanned: { _ in },
+                        logNext: { _, _ in }
                     )
                 }
             }

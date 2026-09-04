@@ -150,5 +150,25 @@
 			<string>%lld підходу</string>
 		</dict>
 	</dict>
+	<key>logging.session.set.group.log-next.label %@ %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Записати наступний підхід, %1$@, %2$#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld повторення</string>
+			<key>few</key>
+			<string>%lld повторення</string>
+			<key>many</key>
+			<string>%lld повторень</string>
+			<key>other</key>
+			<string>%lld повторення</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

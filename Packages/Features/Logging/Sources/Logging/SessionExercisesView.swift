@@ -165,6 +165,9 @@ struct SessionExerciseList: View {
     /// Logs the next planned set exactly as prescribed (`NFR-15.3`) — the entry.
     let logPlanned: (UUID) -> Void
 
+    /// Appends a set equal to the one named (`FR-16.1.4`) — the entry, then the set to copy.
+    let logNext: (UUID, SetEntry) -> Void
+
     /// One card per entry.
     var body: some View {
         LazyVStack(alignment: .leading, spacing: Spacing.md.points) {
@@ -197,7 +200,8 @@ struct SessionExerciseList: View {
                     markCompleted: markCompleted,
                     edit: edit,
                     markDone: markDone,
-                    logPlanned: logPlanned
+                    logPlanned: logPlanned,
+                    logNext: logNext
                 )
             }
         }
