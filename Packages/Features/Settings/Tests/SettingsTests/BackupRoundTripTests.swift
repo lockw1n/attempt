@@ -104,6 +104,47 @@ struct BackupRoundTripTests {
         #expect(before.sets[0].updatedAt > ExportLog.epoch)
     }
 
+    // MARK: - The catalogue's own order
+
+    @Test func aVariationListedAboveItsParentRestores() async throws {
+        // FR-1.1.7's variations make `exercises` a SELF-REFERENCING table, and a backup lists its
+        // rows in whatever order the store read them — so which side of its parent a variation
+        // lands on is a property of the lifter's own catalogue. `save` refuses a
+        // `parentExerciseID` naming a row that is not stored yet, so a restore that walked the
+        // section as written threw `danglingReference` and stopped, with the rows above it already
+        // written. Found by T-16.16 against a real backup: thirteen of that catalogue's
+        // seventy-one variations were listed above their parent, so no such file could be restored
+        // at all — and every fixture in this suite has a catalogue too small to have one.
+        let stack = try PersistenceStack(location: .inMemory)
+        let parent = ExportRecords.exercise(name: "Overhead Press", at: ExportLog.epoch)
+        let child = ExportRecords.exercise(
+            name: "Arnold Press", at: ExportLog.epoch, parentExerciseID: parent.id)
+        let settings = try await stack.settings.settings()
+
+        // Reversed, which is the order the file had it in: the child first.
+        let file = TrainingLogArchive(
+            takenAt: ExportLog.epoch,
+            exercises: [child, parent],
+            sessions: [],
+            entries: [],
+            sets: [],
+            bodyweight: [],
+            equipment: [],
+            trainingMaxes: [],
+            routines: [],
+            routineExercises: [],
+            routineTargetGroups: [],
+            plannedTargets: [],
+            settings: settings)
+        try await Self.restore(into: stack).restore(file)
+
+        let restored = try await stack.exercises.exercises(includingDeleted: false)
+        // Both rows, and the link intact — a restore that dropped the variation rather than
+        // refusing it would satisfy a count of one.
+        #expect(restored.count == 2)
+        #expect(restored.first { $0.id == child.id }?.parentExerciseID == parent.id)
+    }
+
     // MARK: - What the wipe has to leave alone
 
     @Test func restoringOntoAMintedIdentityKeepsItAndTakesThePreferences() async throws {

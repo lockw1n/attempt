@@ -1,5 +1,6 @@
 import DerivedValues
 import Foundation
+import PowerliftingCore
 import RepositoryInterface
 
 /// Why a backup file cannot be restored — the refusals, in the shape the screen draws them.
@@ -218,10 +219,21 @@ struct StoreRestore {
     /// repository reserves to itself — and losing it silently, since a profile that is not the
     /// default is indistinguishable from one that never was.
     ///
+    /// **The catalogue is a self-referencing table, and its own order is not the file's**
+    /// (`FR-1.1.7`). A variation names another exercise, `save` refuses a foreign key naming a row
+    /// that is not stored yet, and a backup lists the rows in whatever order the store read them —
+    /// so a walk of `archive.exercises` as written fails on the first variation listed above its
+    /// parent. Whether a given file has one is a property of that lifter's catalogue, which is why
+    /// a fixture of two exercises can restore for as long as it likes without saying anything about
+    /// it. ``PowerliftingCore/ParentOrdering/parentsFirst(_:id:parentID:)`` is the same answer the
+    /// seed importer needs for the same table.
+    ///
     /// - Parameter archive: The file.
     /// - Throws: Whatever a repository throws.
     private func restoreCatalogue(_ archive: TrainingLogArchive) async throws {
-        for exercise in archive.exercises { try await exercises.save(exercise) }
+        let catalogue = ParentOrdering.parentsFirst(
+            archive.exercises, id: \.id, parentID: \.parentExerciseID)
+        for exercise in catalogue { try await exercises.save(exercise) }
         for entry in archive.trainingMaxes { try await exercises.saveTrainingMax(entry) }
         for profile in archive.equipment { try await equipment.save(profile) }
         if let defaulted = Self.defaultProfile(in: archive.equipment) {

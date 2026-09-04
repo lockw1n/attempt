@@ -249,8 +249,14 @@ enum ExportRecords {
     ///   - id: Its identifier.
     ///   - name: What it is called.
     ///   - at: When it was written.
+    ///   - parentExerciseID: The exercise this is a variation of (`FR-1.1.7`), or `nil`.
     /// - Returns: The record.
-    static func exercise(id: UUID = UUID(), name: String, at stamp: Date) -> Exercise {
+    static func exercise(
+        id: UUID = UUID(),
+        name: String,
+        at stamp: Date,
+        parentExerciseID: UUID? = nil
+    ) -> Exercise {
         Exercise(
             id: id,
             createdAt: stamp,
@@ -259,7 +265,7 @@ enum ExportRecords {
             name: name,
             ukrainianName: nil,
             movement: .squat,
-            parentExerciseID: nil,
+            parentExerciseID: parentExerciseID,
             equipment: .barbell,
             laterality: .bilateral,
             barType: .standard,
