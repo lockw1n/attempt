@@ -131,6 +131,9 @@ struct BackupArchiveTests {
 
     /// A change to a training max, with every column off its default: an old value present, a
     /// reason that is not the empty string, and a new value that is neither.
+    ///
+    /// **``effectiveFrom`` is a day before ``stamp`` rather than equal to it**, so the two dates a
+    /// restore preserves cannot stand in for one another in a field-for-field comparison.
     private static func awkwardTrainingMaxChange(_ exerciseID: UUID) -> TrainingMaxHistoryEntry {
         TrainingMaxHistoryEntry(
             id: ExportRecords.id(0x99),
@@ -138,7 +141,7 @@ struct BackupArchiveTests {
             updatedAt: stamp,
             deletedAt: nil,
             exerciseID: exerciseID,
-            effectiveFrom: stamp,
+            effectiveFrom: stamp.addingTimeInterval(-86_400),
             oldWeight: Weight(grams: 137_500),
             newWeight: Weight(grams: 142_500),
             reason: "coach, week 4")

@@ -250,7 +250,11 @@ struct TrainingMaxIsolationTests {
                 .newWeight == Weight(grams: 180_000))
     }
 
-    /// Every row of the four tables `NFR-15.2` names, as comparable text.
+    /// Every row of the five tables `NFR-15.2` names, as comparable text.
+    ///
+    /// **`RoutineEntity` is here as well as the two tables beneath it.** "A routine row" is the
+    /// routine as much as its slots, and a snapshot that read only the children would pass for a
+    /// write that renamed the plan.
     ///
     /// - Parameter harness: The open store.
     /// - Returns: One line per row, sorted so two reads of an unchanged store agree.
@@ -277,6 +281,9 @@ struct TrainingMaxIsolationTests {
                         row.exerciseEntryID, row.order, row.targetWeightGrams, row.targetReps,
                         row.targetSets,
                     ]))
+        }
+        for row in try context.fetch(FetchDescriptor<RoutineEntity>()) {
+            lines.append(line(table: "routine", row: row, columns: [row.name]))
         }
         for row in try context.fetch(FetchDescriptor<RoutineExerciseEntity>()) {
             lines.append(
@@ -320,3 +327,88 @@ struct TrainingMaxIsolationTests {
             .joined(separator: " ")
     }
 }
+
+/// `FR-16.7.2`: a training max is entered, never computed — and nothing this app ships can write a
+/// row that says otherwise.
+///
+/// **`TrainingMaxSourceKind` has three cases and this phase builds one.** The other two are
+/// `OUT-16.2`'s, deferred with their requirements, and the schema's default is `.manual` so that a
+/// row this app did not write refuses to resolve rather than handing back 90% of an e1RM nobody
+/// asked for. What holds the deferral is not a comment: it is that no shipping caller writes them.
+@Suite("Nothing shipping writes a computed training-max source")
+struct TrainingMaxSourceReachabilityTests {
+    @Test("The record that carries the number has no source column to get wrong")
+    func theNumberIsManualByConstruction() throws {
+        // The strongest half, and it is structural rather than conventional: `FR-16.7.2`'s number
+        // lives on `TrainingMaxHistoryEntry`, which has no source at all. Every training max this
+        // phase writes is therefore manual because there is nowhere for it to be anything else —
+        // asserted off the wire keys, so a column added later fails here before it ships.
+        let entry = trainingMaxHistoryRecord(
+            exerciseID: UUID(), effectiveFrom: fixtureCreatedAt)
+        let json = try #require(
+            try JSONSerialization.jsonObject(with: try JSONEncoder().encode(entry))
+                as? [String: Any])
+
+        #expect(json["source"] == nil)
+        // Anchored: an encoder that wrote nothing at all would satisfy the absence above.
+        #expect(json["newWeight"] as? Int == 180_000)
+    }
+
+    @Test("`saveConfiguration` is named by four shipping files, and the fourth is the restore")
+    func noShippingCallerWritesAConfiguration() throws {
+        // Checked the only way a test can, and the idiom is `nothingReachesTheNetwork`'s one file
+        // over: a caller that wrote a computed source would have to name this method first.
+        //
+        // Three of the four are the protocol and its two implementations — the method's own
+        // declaration and definitions. The fourth is `StoreRestore`, which writes whatever the
+        // lifter's file holds and must (`FR-1.11.4`), so it is not a caller that CHOOSES a source.
+        // A fifth file here is a screen or a service that does, and `OUT-16.2` says it should not
+        // exist yet — which is what makes this list an assertion rather than an inventory.
+        let expected: Set<String> = [
+            "Packages/Features/Settings/Sources/Settings/StoreRestore.swift",
+            "Packages/Persistence/Sources/Persistence/Repositories/SwiftDataTrainingMaxRepository.swift",
+            "Packages/RepositoryFakes/Sources/RepositoryFakes/InMemoryTrainingMaxRepository.swift",
+            "Packages/RepositoryInterface/Sources/RepositoryInterface/TrainingMaxRepository.swift",
+        ]
+
+        #expect(try shippingFiles(naming: "saveConfiguration(") == expected)
+    }
+
+    /// Every shipped source file whose text contains `needle`, as repo-relative paths.
+    ///
+    /// **`Sources/` only, and never `.build/`.** A test naming the method is not a caller of it,
+    /// and a checkout under a package's build directory is somebody else's code.
+    ///
+    /// - Parameter needle: The text to look for.
+    /// - Returns: The matching paths, relative to the repository root.
+    /// - Throws: Whatever reading a source file throws.
+    private func shippingFiles(naming needle: String) throws -> Set<String> {
+        var found: Set<String> = []
+        for root in ["Attempt", "Packages"] {
+            let base = repositoryRoot.appending(path: root)
+            let walker = FileManager.default.enumerator(atPath: base.path(percentEncoded: false))
+            while let relative = walker?.nextObject() as? String {
+                // Pruned rather than filtered: a package's build directory holds every checked-out
+                // dependency, and walking those is most of what this test would otherwise cost.
+                if (relative as NSString).lastPathComponent == ".build" {
+                    walker?.skipDescendants()
+                    continue
+                }
+                guard relative.hasSuffix(".swift"), relative.contains("/Sources/") else { continue }
+                let text = try String(
+                    contentsOf: base.appending(path: relative), encoding: .utf8)
+                if text.contains(needle) { found.insert("\(root)/\(relative)") }
+            }
+        }
+        return found
+    }
+}
+
+/// The repository root, found from this file rather than from the working directory — `swift test`
+/// and `xcodebuild` do not agree about what that is.
+let repositoryRoot = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent()  // PersistenceTests
+    .deletingLastPathComponent()  // Tests
+    .deletingLastPathComponent()  // Persistence (package)
+    .deletingLastPathComponent()  // Packages
+    .deletingLastPathComponent()  // the repository

@@ -105,6 +105,37 @@ struct OrderingConformanceTests {
         #expect(history.prefix(2).map(\.id) == [SortedIDs.third, SortedIDs.second])
     }
 
+    /// The same claim on the other table. `configurationHistory` sorts in its own code in both
+    /// implementations, so the case above does not reach it.
+    @Test("Training-max configurations come back newest effective first", arguments: Subject.all)
+    func configurationsAreOrderedByEffectiveDateDescending(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let exerciseID = UUID()
+        try await repositories.exercises.save(exerciseRecord(id: exerciseID))
+        // Saved oldest-effective first, for the case above's reason.
+        try await repositories.trainingMaxes.saveConfiguration(
+            trainingMaxRecord(
+                exerciseID: exerciseID, effectiveFrom: fixtureCreatedAt, percentage: 0.80))
+        try await repositories.trainingMaxes.saveConfiguration(
+            trainingMaxRecord(
+                id: SortedIDs.second,
+                exerciseID: exerciseID,
+                effectiveFrom: fixtureCreatedAt + fixtureDay,
+                percentage: 0.85))
+        try await repositories.trainingMaxes.saveConfiguration(
+            trainingMaxRecord(
+                id: SortedIDs.third,
+                exerciseID: exerciseID,
+                effectiveFrom: fixtureCreatedAt + fixtureDay,
+                percentage: 0.95))
+
+        let history = try await repositories.trainingMaxes.configurationHistory(
+            forExerciseID: exerciseID, includingDeleted: false)
+
+        #expect(history.map(\.percentage) == [0.95, 0.85, 0.80])
+        #expect(history.prefix(2).map(\.id) == [SortedIDs.third, SortedIDs.second])
+    }
+
     @Test("Entries come back by order, and ties by id", arguments: Subject.all)
     func entriesAreOrderedByPositionThenID(_ subject: Subject) async throws {
         let repositories = try subject.make()

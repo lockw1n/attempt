@@ -27,7 +27,7 @@ public struct RestoreView: View {
     /// file deliberately does not carry the cache, so the restore is what has to rebuild it.
     ///
     /// - Parameters:
-    ///   - exercises: The catalogue and its training-max history.
+    ///   - exercises: The catalogue.
     ///   - trainingMaxes: Each exercise's training-max configuration and history.
     ///   - workouts: Sessions, entries, sets and their planned targets.
     ///   - bodyweight: The bodyweight log.

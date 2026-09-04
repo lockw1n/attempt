@@ -130,7 +130,10 @@ func codingTrainingMaxHistoryEntry() -> TrainingMaxHistoryEntry {
         updatedAt: codingUpdatedAt,
         deletedAt: codingDeletedAt,
         exerciseID: codingJoinID,
-        effectiveFrom: codingCreatedAt,
+        // A day before `codingCreatedAt` rather than equal to it: this record carries three dates,
+        // and a fixture stamping two of them from one instant round-trips clean through a coder
+        // that wrote either key into both.
+        effectiveFrom: codingCreatedAt.addingTimeInterval(-86_400),
         oldWeight: Weight(grams: 140_000),
         newWeight: Weight(grams: 180_000),
         reason: "coach"

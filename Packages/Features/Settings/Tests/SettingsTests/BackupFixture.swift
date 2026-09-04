@@ -82,6 +82,13 @@ extension ExportLog {
     /// would pass for a restore that wrote one column into both — the trap `dashboardExerciseIDs`
     /// and `recentRecordsExerciseIDs` sprang on this suite once already.
     ///
+    /// **`effectiveFrom` is never the row's `createdAt`**, for the same reason one step further out.
+    /// This record carries three dates, and the two that survive a restore are `createdAt` and
+    /// `effectiveFrom` — so a fixture stamping both from one instant is written, compared, agreed,
+    /// and passes for a mapping that read `createdAt` into `effectiveFrom`. The row is typed at the
+    /// epoch and applies from `daysAgo` before it, which is also what the column means: the day the
+    /// number applies from, not the day it was entered.
+    ///
     /// - Parameters:
     ///   - exercise: Whose training max changed.
     ///   - newGrams: What it becomes.
@@ -95,16 +102,16 @@ extension ExportLog {
         newGrams: Int,
         oldGrams: Int?,
         reason: String,
-        daysAgo: Int = 0
+        daysAgo: Int = 1
     ) async throws -> TrainingMaxHistoryEntry {
-        let date = Self.epoch.addingTimeInterval(-Double(daysAgo) * 86_400)
+        let effective = Self.epoch.addingTimeInterval(-Double(daysAgo) * 86_400)
         let entry = TrainingMaxHistoryEntry(
             id: UUID(),
-            createdAt: date,
-            updatedAt: date,
+            createdAt: Self.epoch,
+            updatedAt: Self.epoch,
             deletedAt: nil,
             exerciseID: exercise.id,
-            effectiveFrom: date,
+            effectiveFrom: effective,
             oldWeight: oldGrams.map(Weight.init(grams:)),
             newWeight: Weight(grams: newGrams),
             reason: reason)

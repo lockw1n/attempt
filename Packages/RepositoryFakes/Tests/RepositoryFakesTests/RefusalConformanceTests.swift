@@ -116,6 +116,27 @@ struct RefusalConformanceTests {
             ).isEmpty)
     }
 
+    /// The same edge on the other table, and it needs its own case: the two saves check the
+    /// reference separately in both implementations, so one test leaves the other guard unheld.
+    ///
+    /// The guard this names is the exercise check, and the arrangement reaches it — the store is
+    /// empty, so there is no earlier guard for the save to stop at.
+    @Test("A training-max configuration needs its exercise", arguments: Subject.all)
+    func aConfigurationNeedsItsExercise(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let entry = trainingMaxRecord(exerciseID: UUID(), effectiveFrom: fixtureCreatedAt)
+
+        await #expect(
+            throws: RepositoryError.danglingReference(
+                recordID: entry.id, referencing: entry.exerciseID)
+        ) { try await repositories.trainingMaxes.saveConfiguration(entry) }
+
+        #expect(
+            try await repositories.trainingMaxes.configurationHistory(
+                forExerciseID: entry.exerciseID, includingDeleted: true
+            ).isEmpty)
+    }
+
     /// **Every delete on every protocol, and the count in the name is load-bearing.**
     ///
     /// This test was called "on all four deletes" while its body exercised five, and then a

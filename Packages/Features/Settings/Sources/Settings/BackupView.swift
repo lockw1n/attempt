@@ -19,7 +19,7 @@ public struct BackupView: View {
     /// — the gyms, and the routines the lifter trains from (`FR-15.2`).
     ///
     /// - Parameters:
-    ///   - exercises: The catalogue and its training-max history.
+    ///   - exercises: The catalogue.
     ///   - trainingMaxes: Each exercise's training-max configuration and history.
     ///   - workouts: Sessions, entries, sets and their planned targets.
     ///   - bodyweight: The bodyweight log.

@@ -93,6 +93,8 @@ struct AuditColumnConformanceTests {
         try await repositories.equipment.save(profileRecord())
         try await repositories.trainingMaxes.save(
             trainingMaxHistoryRecord(exerciseID: timeline.exerciseID, effectiveFrom: fixtureCreatedAt))
+        try await repositories.trainingMaxes.saveConfiguration(
+            trainingMaxRecord(exerciseID: timeline.exerciseID, effectiveFrom: fixtureCreatedAt))
         let routine = routineRecord()
         try await repositories.routines.save(routine)
         let slot = routineExerciseRecord(
@@ -120,6 +122,11 @@ struct AuditColumnConformanceTests {
         let trainingMax = try #require(
             try await repositories.trainingMaxes.trainingMax(
                 forExerciseID: timeline.exerciseID, on: fixtureCreatedAt))
+        // Both training-max saves, not one: they are two write paths through two tables, and the
+        // stamp is per-path.
+        let configuration = try #require(
+            try await repositories.trainingMaxes.configuration(
+                forExerciseID: timeline.exerciseID, on: fixtureCreatedAt))
         let storedRoutine = try #require(
             try await repositories.routines.routine(id: routine.id, includingDeleted: false))
         let storedSlot = try #require(
@@ -133,7 +140,7 @@ struct AuditColumnConformanceTests {
 
         for stamped in [
             session.updatedAt, entry.updatedAt, set.updatedAt,
-            weight.updatedAt, profile.updatedAt, trainingMax.updatedAt,
+            weight.updatedAt, profile.updatedAt, trainingMax.updatedAt, configuration.updatedAt,
             storedRoutine.updatedAt, storedSlot.updatedAt, storedGroup.updatedAt,
         ] {
             #expect(stamped > fixtureUpdatedAt)
