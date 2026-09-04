@@ -21,8 +21,9 @@ extension RootTabView {
     /// What a pushed exercise-library route shows.
     ///
     /// Split out of ``destination(for:)`` for ``settingsDestination(_:)``'s reason: that switch is
-    /// one case per screen in the app, and this area's six were what took it past the complexity
-    /// the lint rules allow when `T-15.02` added a seventh.
+    /// one case per screen in the app, and this area's cases are what took it past the complexity
+    /// the lint rules allow — six of them when `T-15.02` split this method out, seven now that
+    /// `FR-16.2.4`'s table has a route of its own.
     @ViewBuilder
     func exerciseLibraryDestination(_ route: ExerciseLibraryRoute) -> some View {
         switch route {

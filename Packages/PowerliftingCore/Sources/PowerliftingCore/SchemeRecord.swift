@@ -29,7 +29,7 @@ public struct RecordScheme: Sendable, Hashable, Comparable {
     /// The maximal scheme among `schemes` — the one a badge names (`FR-16.2.4`) — or `nil` for
     /// none.
     ///
-    /// **Largest `reps × sets`, with ``<`` breaking a tie.** For the cells one run holds that is the
+    /// **Largest `reps × sets`, with the scheme order (`<`) breaking a tie.** For the cells one run holds that is the
     /// same answer the plain order gives, the run's own corner dominating every other cell it set in
     /// both dimensions; the product is what the requirement asks for and what stays right if a
     /// caller ever hands this cells that are not one run's — `10 × 1` orders above `5 × 3` and is

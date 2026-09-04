@@ -97,10 +97,24 @@ struct DashboardStringsTests {
                 == "100 kg × 5 × 5")
     }
 
-    /// One feed row's label, over a record stating only what the label reads.
-    private func label(
-        reps: Int, sets: Int, repMaxReps: ClosedRange<Int>?
-    ) -> LocalizedStringResource {
+    /// `FR-16.3.3`: which of the two readings a row gets is decided off the record, on
+    /// ``Dashboard/RecentRecord/feedLabel``'s rule — the set count alone, and not inside a `View`.
+    @Test("A record standing at one set reads without a set count and a run reads with one")
+    func aReadingIsChosenByTheRecordsSetCount() {
+        #expect(
+            String(
+                localized: record(reps: 8, sets: 1)
+                    .sourceReading(load: "145 kg", reps: "8", sets: "1")) == "145 kg × 8")
+        #expect(
+            String(
+                localized: record(reps: 5, sets: 5)
+                    .sourceReading(load: "100 kg", reps: "5", sets: "5")) == "100 kg × 5 × 5")
+    }
+
+    /// One feed row's record, stating only what the labels read.
+    private func record(
+        reps: Int, sets: Int, repMaxReps: ClosedRange<Int>? = nil
+    ) -> RecentRecord {
         RecentRecord(
             exerciseID: UUID(),
             scheme: RecordScheme(reps: reps, sets: sets),
@@ -108,6 +122,13 @@ struct DashboardStringsTests {
             weight: Weight(grams: 100_000),
             sourceSetID: UUID(),
             achievedAt: Date(timeIntervalSince1970: 1_700_000_000)
-        ).feedLabel
+        )
+    }
+
+    /// One feed row's label, over a record stating only what the label reads.
+    private func label(
+        reps: Int, sets: Int, repMaxReps: ClosedRange<Int>?
+    ) -> LocalizedStringResource {
+        record(reps: reps, sets: sets, repMaxReps: repMaxReps).feedLabel
     }
 }

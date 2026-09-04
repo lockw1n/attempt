@@ -19,6 +19,20 @@ struct ExerciseLibraryStringsTests {
         }
     }
 
+    /// `FR-16.2.4`'s table copy. The cell label is the one that has to be asserted rather than
+    /// merely resolved: the cell draws neither of its headings, so `G-4.2`'s reading is the only
+    /// place its scheme is spoken at all, and "by" rather than "×" is the whole point of it.
+    @Test("The table's headings, its notation and the cell VoiceOver reads")
+    func theSchemeTableCopyReads() {
+        #expect(String(localized: ExerciseLibraryStrings.recordsRepsHeader) == "reps")
+        #expect(String(localized: ExerciseLibraryStrings.recordsSetColumn(5)) == "× 5")
+        #expect(String(localized: ExerciseLibraryStrings.recordsScheme(5, 5)) == "5 × 5")
+        #expect(
+            String(
+                localized: ExerciseLibraryStrings.recordsCellLabel(
+                    reps: 5, sets: 5, load: "100 kg", date: "1 May")) == "5 by 5, 100 kg, 1 May")
+    }
+
     @Test("The catalogue is this module's, not the app's")
     func copyComesFromTheModuleBundle() {
         #expect(Bundle.module.localizations.sorted() == ["en", "uk"])

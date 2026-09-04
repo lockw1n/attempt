@@ -190,23 +190,74 @@ struct RecentRecordRow: View {
                     .font(Typography.cardTitle.font)
                     .foregroundStyle(ColorToken.textPrimary)
             }
-            layout {
-                Text(label)
-                    .font(Typography.metricLabel.font)
-                    .foregroundStyle(ColorToken.textSecondary)
-                Spacer(minLength: Spacing.sm.points)
-                Text(sourceGroup)
-                    .font(Typography.numericValue.font)
-                    .foregroundStyle(ColorToken.textPrimary)
-                movement
-                Text(record.achievedAt, format: AppFormat.date(locale: locale))
-                    .font(Typography.caption.font)
-                    .foregroundStyle(ColorToken.textTertiary)
+            if dynamicTypeSize.isAccessibilitySize {
+                stacked
+            } else {
+                paired
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minHeight: TouchTarget.standard.points)
         .contentShape(.rect)
+    }
+
+    /// `FR-16.3.3`'s four as two lines: what was lifted and how far it moved, then what record that
+    /// is and when.
+    ///
+    /// **Two lines rather than one, because four readings do not fit on one at the *default* size.**
+    /// `ExerciseRecordRow`'s single line carries three and this row carries four; measured at 320
+    /// points, the fourth breaks the load from its rep count and the date from its year — a wrap
+    /// mid-number, which is the failure `SchemeGrid`'s `.fixedSize` exists to prevent one screen
+    /// over. Neither layout priorities nor a `Spacer` fix it: the content is wider than the row.
+    ///
+    /// **The pairing is what the reader compares.** The delta belongs beside the load it moved, and
+    /// the date beside the record it dates; splitting them the other way puts a number next to a
+    /// number it says nothing about.
+    private var paired: some View {
+        VStack(alignment: .leading, spacing: Spacing.xxs.points) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.sm.points) {
+                loadReading
+                movement
+                Spacer(minLength: 0)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.sm.points) {
+                schemeLabel
+                Spacer(minLength: Spacing.sm.points)
+                dateReading
+            }
+        }
+    }
+
+    /// The same four stacked, one per line — `NFR-1.10`'s largest sizes, where even a pair is wider
+    /// than the row.
+    private var stacked: some View {
+        VStack(alignment: .leading, spacing: Spacing.xxs.points) {
+            schemeLabel
+            loadReading
+            movement
+            dateReading
+        }
+    }
+
+    /// What this entry is the record for — `8RM`, `5 × 5`.
+    private var schemeLabel: some View {
+        Text(label)
+            .font(Typography.metricLabel.font)
+            .foregroundStyle(ColorToken.textSecondary)
+    }
+
+    /// The set or run that produced it.
+    private var loadReading: some View {
+        Text(sourceGroup)
+            .font(Typography.numericValue.font)
+            .foregroundStyle(ColorToken.textPrimary)
+    }
+
+    /// The day it was set.
+    private var dateReading: some View {
+        Text(record.achievedAt, format: AppFormat.date(locale: locale))
+            .font(Typography.caption.font)
+            .foregroundStyle(ColorToken.textTertiary)
     }
 
     /// How far the load moved, or the word that stands where it would (`FR-16.3.3`, `FR-16.3.4`).
@@ -228,20 +279,16 @@ struct RecentRecordRow: View {
     /// What this entry is the record for — see ``RecentRecord/feedLabel``.
     private var label: LocalizedStringResource { record.feedLabel }
 
-    /// The set or run that produced it — `145 kg × 8`, `100 kg × 5 × 5` (`FR-16.3.3`).
+    /// The set or run that produced it — see ``RecentRecord/sourceReading(load:reps:sets:)``.
     ///
-    /// **The record's own scheme, which is the run's shape clamped to the table's bounds.** The
-    /// cache stores a cell rather than a performance, so a set taken to twelve reps reads `× 10`
-    /// here: what the row states is the record it set, and the twelve-rep set is one tap away on the
-    /// exercise's own screen.
+    /// The numbers are rendered here and the choice between the two readings is not, on ``label``'s
+    /// rule: what the row owns is the locale its formatters run in (`G-3.4`).
     private var sourceGroup: LocalizedStringResource {
-        let load = weightStyle.format(record.weight)
-        let reps = record.scheme.reps.formatted(AppFormat.count(locale: locale))
-        guard record.scheme.sets > 1 else {
-            return DashboardStrings.recentRecordsSet(load, reps)
-        }
-        return DashboardStrings.recentRecordsRun(
-            load, reps, record.scheme.sets.formatted(AppFormat.count(locale: locale)))
+        record.sourceReading(
+            load: weightStyle.format(record.weight),
+            reps: record.scheme.reps.formatted(AppFormat.count(locale: locale)),
+            sets: record.scheme.sets.formatted(AppFormat.count(locale: locale))
+        )
     }
 
     /// The one weight formatter this row uses, so the load and the delta are rendered alike.
@@ -249,13 +296,6 @@ struct RecentRecordRow: View {
         AppFormat.weight(WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale)
     }
 
-    /// The line, or the stack — `ExerciseRecordRow`'s measured switch, for its reason: at
-    /// `accessibility3` a date pushed to the trailing edge takes the width the load needs.
-    private var layout: AnyLayout {
-        dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Spacing.xxs.points))
-            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Spacing.sm.points))
-    }
 }
 
 /// The full recent-PR list, behind the dashboard's card (`FR-1.6.5`, `DashboardRoute`).
@@ -389,5 +429,27 @@ extension RecentRecord {
             return DashboardStrings.recentRecordsScheme(scheme.reps, scheme.sets)
         }
         return DashboardStrings.recentRecordsRepMax(reps.upperBound)
+    }
+
+    /// The set or run that produced it — `145 kg × 8`, `100 kg × 5 × 5` (`FR-16.3.3`).
+    ///
+    /// **Off the `View` for ``feedLabel``'s reason.** Which of the two readings a row gets is
+    /// decided by the record's set count alone, and a claim that lives inside a `View` body can only
+    /// be closed by a picture.
+    ///
+    /// **The record's own scheme, which is the run's shape clamped to the table's bounds.** The
+    /// cache stores a cell rather than a performance, so a set taken to twelve reps reads `× 10`
+    /// here: what the row states is the record it set, and the twelve-rep set is one tap away on the
+    /// exercise's own screen.
+    ///
+    /// - Parameters:
+    ///   - load: The record load, formatted for the row's locale.
+    ///   - reps: Its repetitions, likewise.
+    ///   - sets: How many consecutive sets, likewise — unused where the record stands at one.
+    /// - Returns: The reading.
+    func sourceReading(load: String, reps: String, sets: String) -> LocalizedStringResource {
+        scheme.sets > 1
+            ? DashboardStrings.recentRecordsRun(load, reps, sets)
+            : DashboardStrings.recentRecordsSet(load, reps)
     }
 }

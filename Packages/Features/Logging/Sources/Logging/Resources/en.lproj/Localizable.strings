@@ -204,11 +204,12 @@
    happen, and "Mark as warmup" on a set that already is one is the opposite instruction. */
 "logging.session.set.mark-warmup" = "Mark as warmup";
 "logging.session.set.mark-working" = "Mark as working";
-/* FR-1.6.3's badge, and what VoiceOver reads in its place. Two characters on the row because the
-   line is already spending its width on the load and two 44pt controls; the label carries the whole
-   claim. Two forms of the label, chosen on the rep counts themselves rather than on how many there
-   are: a set holding only the 1RM is the one case English wants a singular for, and a lone 6RM is
-   not. */
+/* FR-1.6.3's and FR-16.2.4's badge, and what VoiceOver reads in its place. Short on the row
+   because the line is already spending its width on the load and two 44pt controls; the label
+   carries the whole claim. Two spellings of one badge, chosen on the set count rather than on how
+   many cells the set holds: the one-set column is a rep max and a lifter writes it "8RM", every
+   other cell is a scheme and they write it "5×5". Neither spelling needs a plural rule — the
+   numeral sits inside the compound in both. */
 "logging.session.set.record.scheme %lld %lld" = "PR %1$lld×%2$lld";
 "logging.session.set.record.rep-max %lld" = "PR %lldRM";
 "logging.session.set.record.scheme.label %lld %lld" = "Personal record, %1$lld by %2$lld";

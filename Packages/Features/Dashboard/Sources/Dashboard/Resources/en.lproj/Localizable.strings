@@ -17,10 +17,11 @@
 "dashboard.recent-records.error" = "Recent personal records could not be read.";
 /* Opens the full list behind the dashboard's card. */
 "dashboard.recent-records.see-all" = "See all";
-/* One entry's label. The single-N form and the range form are separate keys rather than one with an
-   optional half: a set that beat the 1RM through the 3RM in one go reads "1–3-rep max", and a
-   language that words a range differently needs to be able to say so. Neither needs a plural rule —
-   the number sits inside the compound before "max", so "1-rep max" is already correct. */
+/* FR-16.3.3: one entry's label, at its two shapes. A rep max names the top N the run took at a
+   single set and nothing below it — a set of eight that beat every N up to eight is "8RM", where
+   the retired "1–8-rep max" stated eight claims for one performance. A run that set no rep max at
+   all is named by its scheme instead. Neither needs a plural rule: the numeral sits inside the
+   compound, "RM" and "×" being notation rather than nouns that agree with it. */
 "dashboard.recent-records.rep-max %lld" = "%lldRM";
 "dashboard.recent-records.scheme %lld %lld" = "%1$lld × %2$lld";
 

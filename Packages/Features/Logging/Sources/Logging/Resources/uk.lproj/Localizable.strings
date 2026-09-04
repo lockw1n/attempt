@@ -113,10 +113,11 @@
 
 /* «ОР» for особистий рекорд, the way the English badge is «PR».
 
-   THE TWO LABEL FORMS ARE ONE SENTENCE IN UKRAINIAN, AND THAT IS NOT AN OVERSIGHT. English splits
-   them because «rep» agrees with the count; the compound «%@-повторний максимум» is an adjective
-   and agrees with «максимум» instead, so it is correct at 1 and at 6 alike — where the literal
-   «на %@ повторень» would be wrong at 2, 3 and 4, which are the counts a lifter sets most. */
+   NEITHER LABEL NEEDS A PLURAL RULE, AND THAT IS NOT AN OVERSIGHT. The compound
+   «%lld-повторний максимум» is an adjective agreeing with «максимум» rather than with the numeral,
+   so it is correct at 1 and at 6 alike — where the literal «на %lld повторень» would be wrong at 2,
+   3 and 4, which are the counts a lifter sets most. The scheme label reads «5 на 5», where «на»
+   sits between the two numerals and agrees with neither. */
 "logging.session.set.record.scheme %lld %lld" = "ОР %1$lld×%2$lld";
 "logging.session.set.record.rep-max %lld" = "ОР %lldПМ";
 "logging.session.set.record.scheme.label %lld %lld" = "Особистий рекорд: %1$lld на %2$lld";
