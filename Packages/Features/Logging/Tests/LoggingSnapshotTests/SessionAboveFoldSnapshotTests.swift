@@ -131,11 +131,17 @@
 
         /// The summary line with all three of its facts — the case `ViewThatFits` has to choose a
         /// stack for, and the one the budget above is measured over.
+        ///
+        /// **Through `fixedEnvironment`, like every other subject here**, and this line draws the
+        /// start *time*: unpinned it renders in the recording machine's own zone, so a reference
+        /// taken on a laptop and compared on a UTC runner differs by the offset between them.
         @Test func summaryLineFromAProgram() throws {
             try assertSnapshots(named: "Session-summary-program") {
-                SessionSummaryLine(
-                    session: Fixtures.programSession,
-                    adherence: SessionAdherence(PlanFixtures.completion))
+                fixedEnvironment {
+                    SessionSummaryLine(
+                        session: Fixtures.programSession,
+                        adherence: SessionAdherence(PlanFixtures.completion))
+                }
             }
         }
 
