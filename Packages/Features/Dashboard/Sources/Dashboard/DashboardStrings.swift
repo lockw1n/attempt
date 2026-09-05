@@ -216,6 +216,22 @@ enum DashboardStrings {
     /// The repeat could not be started. Nothing was written.
     static let lastWorkoutRepeatError = resource("dashboard.last-workout.repeat-error")
 
+    /// What an open workout says where a finished one shows its set count (`FR-16.4.3`).
+    ///
+    /// **A workout dated ahead of today is planned, not in progress.** Nothing has been logged
+    /// against it and nothing is being logged now, and a card claiming otherwise would report work
+    /// that has not happened.
+    ///
+    /// - Parameter lifecycle: Which kind of open the workout is. A finished one shows numbers, so
+    ///   it falls back to the in-progress word this card never draws for it.
+    /// - Returns: The word.
+    static func lastWorkoutState(_ lifecycle: SessionLifecycle) -> LocalizedStringResource {
+        lifecycle == .planned ? lastWorkoutPlanned : lastWorkoutInProgress
+    }
+
+    /// A workout whose training day has not arrived (`FR-16.4.3`).
+    static let lastWorkoutPlanned = resource("dashboard.last-workout.planned")
+
     /// How much work a finished session holds.
     ///
     /// - Parameter count: The working sets — completed, and not warmups (`G-1.8`).
@@ -242,7 +258,7 @@ enum DashboardStrings {
             recentRecordsBaselinesDetail,
             startWorkout, lastWorkoutTitle, lastWorkoutNone, lastWorkoutNoneMessage,
             lastWorkoutError, lastWorkoutInProgress, lastWorkoutResume, lastWorkoutRepeat,
-            lastWorkoutRepeatError, lastWorkoutSets(4),
+            lastWorkoutRepeatError, lastWorkoutSets(4), lastWorkoutPlanned,
             firstLaunchHeadline, firstLaunchMessage,
             weekTitle, weekWorkouts, weekVolume, weekNone, weekUnweighed, weekError,
             tilesTitle, tilesError, tilesNoneChosen, tilesNoneChosenMessage,

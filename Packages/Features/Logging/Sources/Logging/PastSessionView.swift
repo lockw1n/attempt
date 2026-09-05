@@ -276,7 +276,8 @@ public struct PastSessionView: View {
                                 groupExpansion.insert(setID)
                             }
                         },
-                        edit: { editing = ActiveSessionView.target(editing: $0) }
+                        edit: { editing = ActiveSessionView.target(editing: $0) },
+                        isSessionOpen: state.session?.isFinished == false
                     )
                 }
             }

@@ -127,6 +127,13 @@ struct SetRow: View {
     /// times. A group of one has no such line, so it draws its own.
     var statesTrainingMaxShare = true
 
+    /// Whether the session holding this set has yet to end (`FR-16.4.1`).
+    ///
+    /// **What turns an uncompleted set from failed into pending** — see ``SetOutcome``. `false` is
+    /// the safe default: a row drawn without an answer is drawn as a finished session's, which is
+    /// what every surface but the workout in progress shows.
+    var isSessionOpen = false
+
     /// What a routine planned for this set, or `nil` (`FR-15.3.1`).
     ///
     /// **`nil` covers three different cases and the row draws none of them**: an exercise nobody
@@ -295,10 +302,8 @@ struct SetRow: View {
     /// only one. Enclosing the pair makes the outcome a mark of its own rather than a second
     /// operator, and it reads as a pair with the check.
     ///
-    /// **A completed set is drawn quietly and a failed one is not.** Every set logged here is
-    /// completed, so a green tick per row would be a colour the reader has to look past on the way
-    /// to the one row that is different — `G-7.3` reserves the semantic palette for what it
-    /// distinguishes, and the distinguishing case is the failure.
+    /// **A completed set is drawn quietly, a failed one is not, and a pending one is quieter
+    /// still** — see ``SetOutcome``, which owns the three glyphs and their tints.
     ///
     /// At the standard touch target rather than the logging one, for the badge's reason: marking a
     /// set failed is a correction between efforts, not one of `NFR-1.3`'s counted taps.
@@ -311,7 +316,7 @@ struct SetRow: View {
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Text(LoggingStrings.setOutcome(isCompleted: numbered.isCompleted)))
+            .accessibilityLabel(Text(LoggingStrings.setOutcome(outcomeState)))
             .accessibilityHint(
                 Text(LoggingStrings.setOutcomeAction(isCompleted: numbered.isCompleted)))
         } else {
@@ -319,16 +324,22 @@ struct SetRow: View {
             // an outcome the row reports whether or not this surface can change it.
             outcomeLabel
                 .accessibilityElement()
-                .accessibilityLabel(
-                    Text(LoggingStrings.setOutcome(isCompleted: numbered.isCompleted)))
+                .accessibilityLabel(Text(LoggingStrings.setOutcome(outcomeState)))
         }
+    }
+
+    /// Which of the three states this set is in — see ``SetOutcome``.
+    ///
+    /// Not `outcome`: that name is the control at the end of the row.
+    private var outcomeState: SetOutcome {
+        SetOutcome.of(isCompleted: numbered.isCompleted, isSessionOpen: isSessionOpen)
     }
 
     /// The outcome as it is drawn, tappable or not.
     private var outcomeLabel: some View {
-        Image(systemName: numbered.isCompleted ? "checkmark.circle" : "xmark.circle")
+        Image(systemName: outcomeState.glyph)
             .font(Typography.caption.font)
-            .foregroundStyle(numbered.isCompleted ? ColorToken.textTertiary : ColorToken.negative)
+            .foregroundStyle(outcomeState.tint)
             .frame(minWidth: TouchTarget.standard.points, minHeight: TouchTarget.standard.points)
     }
 
@@ -361,17 +372,13 @@ struct SetRow: View {
         numbered.isWarmup ? Typography.caption.font : Typography.numericValue.font
     }
 
-    /// Their place in the colour ramp.
+    /// Their place in the colour ramp — ``SetOutcome/valueColour(isWarmup:)``, which the group's
+    /// line shares.
     ///
-    /// **A failed set is red wherever it sits in that ramp** (`G-7.3`, and the requirement's own
-    /// words are "failure and missed lifts"), so the outcome outranks the warmup de-emphasis rather
-    /// than compounding with it — a failed warmup is a missed lift too.
-    ///
-    /// `G-4.5`'s rule holds through both cases, and by two different cues: the numbering says
-    /// *warmup* in words, and the glyph at the end of the row says *failed* in a shape.
+    /// `G-4.5`'s rule holds through every case, and by two different cues: the numbering says
+    /// *warmup* in words, and the glyph at the end of the row says the outcome in a shape.
     private var valueColour: ColorToken {
-        guard numbered.isCompleted else { return ColorToken.negative }
-        return numbered.isWarmup ? ColorToken.textSecondary : ColorToken.textPrimary
+        outcomeState.valueColour(isWarmup: numbered.isWarmup)
     }
 
     /// `FR-1.6.3`'s badge, where this set holds a record.

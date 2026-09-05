@@ -44,6 +44,13 @@ struct PastSessionExerciseCard: View {
     /// Opens `FR-1.2.7`'s editor over one of this card's sets.
     let edit: (SetEntry) -> Void
 
+    /// Whether the session this card belongs to has yet to end (`FR-16.4.1`).
+    ///
+    /// **Not always `false`, which is what a "past session" screen would suggest.** The screen is
+    /// reached from the history list, and a session that was imported or abandoned is on that list
+    /// while still open — its uncompleted sets are pending rather than missed.
+    var isSessionOpen = false
+
     /// The exercise's name, then its sets.
     var body: some View {
         Card {
@@ -96,7 +103,8 @@ struct PastSessionExerciseCard: View {
             mark: nil,
             markCompleted: nil,
             edit: edit,
-            trainingMax: item.trainingMax
+            trainingMax: item.trainingMax,
+            isSessionOpen: isSessionOpen
         )
     }
 

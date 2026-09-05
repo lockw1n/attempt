@@ -205,7 +205,8 @@ struct SessionListStateTests {
         let state = SessionListState(
             workouts: log.repositories.workouts,
             exercises: ForeignCatalogue(holding: [live, gone]),
-            settings: log.repositories.settings
+            settings: log.repositories.settings,
+            records: log.records
         )
         await state.load()
 
@@ -272,11 +273,7 @@ struct SessionListStateTests {
     @Test("A read that fails is the error state, and load() from there is the retry")
     func failedReadIsRecoverable() async throws {
         let log = TrainingLog()
-        let state = SessionListState(
-            workouts: FailingWorkoutRepository(),
-            exercises: log.repositories.exercises,
-            settings: log.repositories.settings
-        )
+        let state = log.listState(workouts: FailingWorkoutRepository())
         await state.load()
 
         #expect(SessionListScreenState.current(state.phase) == .failed)

@@ -10,19 +10,40 @@ import SwiftData
 /// whose date it is.
 struct FeedPosition: Comparable {
     let sessionDate: Date
+    let sessionStart: Date
     let entryOrder: Int
 
     /// The position of an entry whose session row is not there. Last, not first — see
     /// ``SwiftDataWorkoutRepository/sets(forExerciseID:includingDeleted:)``.
-    static let unplaced = FeedPosition(sessionDate: .distantFuture, entryOrder: .max)
+    static let unplaced = FeedPosition(
+        sessionDate: .distantFuture, sessionStart: .distantFuture, entryOrder: .max)
 
     static func < (lhs: FeedPosition, rhs: FeedPosition) -> Bool {
-        (lhs.sessionDate, lhs.entryOrder) < (rhs.sessionDate, rhs.entryOrder)
+        (lhs.sessionDate, lhs.sessionStart, lhs.entryOrder)
+            < (rhs.sessionDate, rhs.sessionStart, rhs.entryOrder)
     }
 }
 
-/// The total order `TR-0.2.8`'s tie-break depends on: session date, entry order, set order, then
-/// the set's own id.
+extension FeedPosition {
+    /// Where a session sits, with its day first and the instant it was started second.
+    ///
+    /// **A session never tracked live sorts earliest in its own day.** `startedAt` is the only
+    /// column separating two workouts on one training day, and a row without one claims nothing
+    /// about having happened after a row that has one.
+    ///
+    /// - Parameters:
+    ///   - session: The session the entry belongs to.
+    ///   - entryOrder: The entry's position within it.
+    init(session: WorkoutSession, entryOrder: Int) {
+        self.init(
+            sessionDate: session.date,
+            sessionStart: session.startedAt ?? .distantPast,
+            entryOrder: entryOrder)
+    }
+}
+
+/// The total order `TR-0.2.8`'s tie-break depends on: session date, session start, entry order, set
+/// order, then the set's own id.
 struct FeedSortKey: Comparable {
     let position: FeedPosition
     let setOrder: Int
@@ -150,14 +171,19 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
         try modelContext.saveStamped(at: now)
     }
 
-    /// Every set logged against one exercise, oldest first, ordered by
-    /// `(session date, entry order, set order)` — the collection `PersonalRecordCalculator` is
-    /// handed.
+    /// Every set logged against one exercise that somebody performed, oldest first, ordered by
+    /// `(session date, session start, entry order, set order)` — the collection
+    /// `PersonalRecordCalculator` is handed.
     ///
-    /// **Three fetches, and the third one always includes deleted rows.** The session is read for
-    /// its date rather than for itself, and a live entry can belong to a deleted session — a
-    /// foreign row, since the cascade would otherwise have taken it — so filtering there would cost
-    /// the *ordering* of a set the caller did ask for.
+    /// **Three fetches, and the second one always includes deleted rows.** The session is read for
+    /// its day, its start and whether it has ended rather than for itself, and a live entry can
+    /// belong to a deleted session — a foreign row, since the cascade would otherwise have taken it
+    /// — so filtering *there* would cost the ordering of a set the caller did ask for.
+    ///
+    /// **A pending set is dropped** (`FR-16.4.2`), and dropping is the only available shape: a set
+    /// nobody has attempted, sorted late, would still be an offset a `PersonalRecord` could land on.
+    /// The filter is per *set* rather than per entry, one entry being able to hold work that was
+    /// performed and work that has not been.
     ///
     /// **The key ends in `id.uuidString`, which is stronger than the "stably" the protocol asks
     /// for, and deliberately.** A stable sort preserves the input order among equal keys, and the
@@ -166,10 +192,11 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     /// stated keys — `order` is not unique — so without the fourth clause `TR-0.2.8`'s tie-break
     /// would move between runs, silently, and only between sets that weigh the same.
     ///
-    /// **A set whose session row is missing sorts last, not first.** `SchemaDefaults.sessionDate`
+    /// **A set whose session row is missing sorts last, and is kept.** `SchemaDefaults.sessionDate`
     /// already made this call in the other direction for the same reason: earliest is the position
-    /// that *wins* every `TR-0.2.8` tie, so a row this app did not write must not land there.
-    /// Dropping it is not available — that would shift every offset after it.
+    /// that *wins* every `TR-0.2.8` tie, so a row this app did not write must not land there. It is
+    /// not dropped as a pending set is: absent is not open, and a foreign row is history whose day
+    /// is unknown rather than work that has not happened.
     func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) throws -> [SetEntry] {
         let entries = try modelContext.rows(
             ExerciseEntryEntity.self,
@@ -179,22 +206,25 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
         guard !entries.isEmpty else { return [] }
 
         let sessionIDs = entries.map(\.sessionID)
-        let sessionDates = Dictionary(
+        let sessions = Dictionary(
             grouping: try modelContext.rows(
                 WorkoutSessionEntity.self,
                 matching: #Predicate { sessionIDs.contains($0.id) },
                 includingDeleted: true
             ),
             by: \.id
-        ).compactMapValues { resolved($0)?.date }
+        ).compactMapValues { resolved($0)?.record }
 
         var orderingKey: [UUID: FeedPosition] = [:]
+        var openSessions: [UUID: WorkoutSession] = [:]
         for (id, duplicates) in Dictionary(grouping: entries, by: \.id) {
             guard let entry = resolved(duplicates) else { continue }
-            orderingKey[id] = FeedPosition(
-                sessionDate: sessionDates[entry.sessionID] ?? .distantFuture,
-                entryOrder: entry.order
-            )
+            guard let session = sessions[entry.sessionID] else {
+                orderingKey[id] = .unplaced
+                continue
+            }
+            if !session.isFinished { openSessions[id] = session }
+            orderingKey[id] = FeedPosition(session: session, entryOrder: entry.order)
         }
 
         let entryIDs = entries.map(\.id)
@@ -203,6 +233,9 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
             matching: #Predicate { entryIDs.contains($0.entryID) },
             includingDeleted: includingDeleted
         )
+        // `FR-16.4.2`: a set nobody has attempted yet is not history. Dropped rather than sorted
+        // late, which is what makes the exclusion true of the offsets a caller reads back.
+        .filter { openSessions[$0.entryID]?.isPending($0.record) != true }
         .sortedDeterministically { set in
             // The `??` is unreachable and stays as an expression rather than a `!`: these sets were
             // fetched *by* the ids `orderingKey` was built from, so a miss would mean the store

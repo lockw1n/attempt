@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryFakes
@@ -323,14 +324,23 @@ struct TrainingLog {
             from: DateComponents(year: year, month: month, day: day, hour: hour)) ?? epoch
     }
 
+    /// The app's one recompute actor, over these fakes — what a workout ended here announces to.
+    var records: PersonalRecordRecomputer {
+        PersonalRecordRecomputer(
+            workouts: repositories.workouts, cache: repositories.personalRecords)
+    }
+
     /// The state under test, over this store.
     ///
+    /// - Parameter workouts: The workout repository to read through, for the cases that need one
+    ///   that refuses. Defaults to this store's own.
     /// - Returns: A fresh state that has read nothing yet.
-    func listState() -> SessionListState {
+    func listState(workouts: (any WorkoutRepository)? = nil) -> SessionListState {
         SessionListState(
-            workouts: repositories.workouts,
+            workouts: workouts ?? repositories.workouts,
             exercises: repositories.exercises,
-            settings: repositories.settings
+            settings: repositories.settings,
+            records: records
         )
     }
 

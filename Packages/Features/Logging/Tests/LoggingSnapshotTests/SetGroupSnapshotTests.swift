@@ -65,6 +65,27 @@
             }
         }
 
+        @Test func pendingSets() throws {
+            // `FR-16.4.1` with `G-7.3` and `G-4.5`. What the picture settles is that a set nobody
+            // attempted is not drawn as a missed lift: the run of three carries a hollow circle in
+            // the tertiary ramp where the failed set would carry an enclosed cross in the negative
+            // one, and its numbers are quieter than the performed sets above it rather than red.
+            // At `accessibility3` it is also where the three states have to stay distinguishable
+            // once the row becomes a stack.
+            try assertSnapshots(named: "Session-set-pending") {
+                fixedEnvironment { groupRows(Fixtures.pendingSets, isSessionOpen: true) }
+            }
+        }
+
+        @Test func pendingSetsAfterFinish() throws {
+            // The same sets in a workout that has ended — the one column that changed is the
+            // session's, and every uncompleted set is now a failed one. The pair with the picture
+            // above is the whole of "pending is derived, and Finish is what converts it".
+            try assertSnapshots(named: "Session-set-pending-finished") {
+                fixedEnvironment { groupRows(Fixtures.pendingSets, isSessionOpen: false) }
+            }
+        }
+
         /// A column of `FR-16.1.1`'s groups, partitioned and numbered the way the card does it.
         ///
         /// - Parameters:
@@ -73,12 +94,14 @@
         ///   - schemes: Which cells each set holds a record at (`FR-16.2.4`).
         ///   - logsNext: Whether the last working group carries `FR-16.1.4`'s append, as the card
         ///     hands it out — to that group and to no other.
+        ///   - isSessionOpen: Whether the workout has yet to end (`FR-16.4.1`).
         /// - Returns: The lines.
         private func groupRows(
             _ sets: [SetEntry],
             expanded: Set<UUID> = [],
             schemes: [UUID: [RecordScheme]] = [:],
-            logsNext: Bool = false
+            logsNext: Bool = false,
+            isSessionOpen: Bool = false
         ) -> some View {
             let numbered = SetNumbering.numbered(sets)
             let working = SetNumbering.grouped(numbered.filter { !$0.isWarmup })
@@ -94,6 +117,7 @@
                         markCompleted: { _, _ in },
                         edit: { _ in },
                         recordSchemes: { schemes[$0] ?? [] },
+                        isSessionOpen: isSessionOpen,
                         logNext: logsNext && group.id == working.last?.id ? {} : nil
                     )
                 }

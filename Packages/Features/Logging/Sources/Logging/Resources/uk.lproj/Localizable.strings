@@ -299,3 +299,10 @@
 /* FR-16.8.3 / DOD-16.1. */
 "logging.session.program.week-day %lld %lld" = "Тиждень %1$lld · День %2$lld";
 "logging.session.program.label" = "Курс";
+
+"logging.session.set.outcome.pending" = "Очікує";
+
+"logging.session.finish.pending.message" = "Їх не було виконано. Видалити чи залишити як невиконані?";
+"logging.session.finish.pending.remove" = "Видалити";
+"logging.session.finish.pending.keep" = "Залишити невиконаними";
+"logging.session.finish.pending.cancel" = "Повернутися до тренування";

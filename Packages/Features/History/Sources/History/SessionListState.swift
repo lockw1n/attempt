@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -93,12 +94,35 @@ final class SessionListState {
         SessionSummaryReader(workouts: workouts, names: names)
     }
 
+    /// A workout the screen has asked `FR-16.4.4`'s question about.
+    struct PendingPrompt: Identifiable, Equatable {
+        /// The workout being ended, and the prompt's identity — one question at a time.
+        let sessionID: UUID
+
+        /// How many of its sets nobody attempted.
+        let count: Int
+
+        /// See ``sessionID``.
+        var id: UUID { sessionID }
+    }
+
     /// Whether an extension is already running, so two scroll events do not build one page twice.
     @ObservationIgnored private var isExtending = false
+
+    /// A workout waiting on `FR-16.4.4`'s answer, or `nil` where none is.
+    ///
+    /// **The count is read before the question is asked**, so the alert can name what it is about:
+    /// "3 sets were not logged" is the whole of what makes the two answers meaningful.
+    private(set) var pendingPrompt: PendingPrompt?
+
+    /// Why the last attempt to end a workout failed, or `nil`. A **diagnostic**, not copy
+    /// (`G-3.4`); the list is unchanged either way, so the retry is another tap at the command.
+    private(set) var finishFailure: String?
 
     @ObservationIgnored private let workouts: any WorkoutRepository
     @ObservationIgnored private let exercises: any ExerciseRepository
     @ObservationIgnored private let settings: any SettingsRepository
+    @ObservationIgnored private let records: PersonalRecordRecomputer
 
     /// Builds the state over the three repositories it reads.
     ///
@@ -108,14 +132,72 @@ final class SessionListState {
     ///     than a dependency on `ExerciseLibrary`, which `TR-1.3` forbids.
     ///   - settings: The single settings row, for the unit the tonnage is shown in. A third
     ///     protocol rather than a unit passed in, on `ActiveSessionStore`'s rule.
+    ///   - records: The app's one recompute actor (`TR-1.6`), told when a workout ends here — its
+    ///     sets start counting towards records and e1RM the moment it does (`FR-16.4.2`).
     init(
         workouts: any WorkoutRepository,
         exercises: any ExerciseRepository,
-        settings: any SettingsRepository
+        settings: any SettingsRepository,
+        records: PersonalRecordRecomputer
     ) {
         self.workouts = workouts
         self.exercises = exercises
         self.settings = settings
+        self.records = records
+    }
+
+    /// Asks `FR-16.4.4`'s question, or ends the workout where there is nothing to ask about.
+    ///
+    /// **A session with no pending sets is finished on the first tap.** The requirement is that a
+    /// pending set is never converted silently, not that Finish is always two taps.
+    ///
+    /// - Parameter sessionID: The workout to end.
+    func beginFinish(sessionID: UUID) async {
+        finishFailure = nil
+        guard let session = try? await workouts.session(id: sessionID, includingDeleted: false)
+        else { return }
+        do {
+            let pending = try await finisher.pendingSets(in: session)
+            guard !pending.isEmpty else {
+                await finish(sessionID: sessionID, resolving: .keepAsFailed)
+                return
+            }
+            pendingPrompt = PendingPrompt(sessionID: sessionID, count: pending.count)
+        } catch {
+            finishFailure = String(describing: error)
+        }
+    }
+
+    /// Ends the workout, having answered for its pending sets (`FR-16.4.4`).
+    ///
+    /// The list is re-read afterwards rather than patched: the row it ends stops saying **In
+    /// progress** and starts carrying the numbers it has, which is the whole visible consequence.
+    ///
+    /// - Parameters:
+    ///   - sessionID: The workout to end.
+    ///   - resolution: What to do with the sets nobody attempted.
+    func finish(sessionID: UUID, resolving resolution: SessionFinish.Resolution) async {
+        pendingPrompt = nil
+        guard let session = try? await workouts.session(id: sessionID, includingDeleted: false)
+        else { return }
+        do {
+            try await finisher.finish(session, at: .now, resolving: resolution)
+            finishFailure = nil
+        } catch {
+            finishFailure = String(describing: error)
+            return
+        }
+        await load()
+    }
+
+    /// Closes the question with the workout left open.
+    func cancelFinish() {
+        pendingPrompt = nil
+    }
+
+    /// How a workout is ended here — the operation both this screen and the training tab run.
+    private var finisher: SessionFinish {
+        SessionFinish(workouts: workouts, records: records)
     }
 
     /// Reads every session and summarises the first page.

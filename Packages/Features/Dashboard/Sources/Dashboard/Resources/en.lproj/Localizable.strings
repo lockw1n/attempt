@@ -147,3 +147,7 @@
 "dashboard.recent-records.baselines.label" = "Show first-time records";
 "dashboard.recent-records.baselines.detail" = "The first time you perform a scheme it sets a record with nothing to compare against. Off by default, so a new accessory lift does not fill the feed.";
 "dashboard.tiles.training-max %@" = "Training max %@";
+
+/* FR-16.4.3. A workout dated ahead of today: nothing has been logged against it and nothing is
+   being logged now, so neither "In progress" nor a set count of zero is true of it. */
+"dashboard.last-workout.planned" = "Planned";

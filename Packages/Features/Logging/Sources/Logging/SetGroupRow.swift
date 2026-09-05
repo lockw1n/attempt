@@ -59,6 +59,10 @@ struct SetGroupRow: View {
     /// ``SetRow/statesTrainingMaxShare`` keeps them quiet.
     var trainingMax: Weight?
 
+    /// Whether the session holding this run has yet to end (`FR-16.4.1`) — see
+    /// ``SetRow/isSessionOpen``.
+    var isSessionOpen = false
+
     /// Appends a set equal to this group's last member (`FR-16.1.4`), or `nil` where the surface
     /// does not offer it.
     ///
@@ -252,12 +256,18 @@ struct SetGroupRow: View {
     /// `FR-1.2.5`'s outcome, which the group cannot mix — a label here, never the control
     /// ``SetRow/outcome`` is.
     private var outcomeLabel: some View {
-        Image(systemName: group.isCompleted ? "checkmark.circle" : "xmark.circle")
+        Image(systemName: outcome.glyph)
             .font(Typography.caption.font)
-            .foregroundStyle(group.isCompleted ? ColorToken.textTertiary : ColorToken.negative)
+            .foregroundStyle(outcome.tint)
             .frame(minWidth: TouchTarget.standard.points, minHeight: TouchTarget.standard.points)
             .accessibilityElement()
-            .accessibilityLabel(Text(LoggingStrings.setOutcome(isCompleted: group.isCompleted)))
+            .accessibilityLabel(Text(LoggingStrings.setOutcome(outcome)))
+    }
+
+    /// Which of the three states this run is in — the group cannot mix them, so one answer serves
+    /// the line and every member row under it.
+    private var outcome: SetOutcome {
+        SetOutcome.of(isCompleted: group.isCompleted, isSessionOpen: isSessionOpen)
     }
 
     /// `FR-16.2.4`'s badge: the maximal scheme this run set — **PR 5×5**.
@@ -370,6 +380,7 @@ struct SetGroupRow: View {
             edit: edit,
             trainingMax: trainingMax,
             statesTrainingMaxShare: group.isSingle,
+            isSessionOpen: isSessionOpen,
             target: target(numbered.id)
         )
     }
@@ -387,7 +398,6 @@ struct SetGroupRow: View {
     /// Their place in the colour ramp — ``SetRow/valueColour``'s rule, which a group shares because
     /// it cannot mix either fact.
     private var valueColour: ColorToken {
-        guard group.isCompleted else { return ColorToken.negative }
-        return group.isWarmup ? ColorToken.textSecondary : ColorToken.textPrimary
+        outcome.valueColour(isWarmup: group.isWarmup)
     }
 }

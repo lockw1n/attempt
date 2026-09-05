@@ -300,14 +300,19 @@ struct RootTabView: View {
     /// Three repositories, because a summary line is three facts from three tables: the sessions and
     /// their sets, the catalogue the entries name, and the settings row that decides what unit the
     /// tonnage reads in. The screen joins them; `G-2.5` forbids the schema doing it.
+    ///
+    /// The recompute actor is a fourth thing rather than a repository: a workout ended from a
+    /// history card (`FR-16.4.4`) starts counting towards records the moment it is
+    /// (`FR-16.4.2`), and there is one of those for the app (`TR-1.6`).
     @ViewBuilder
     private var historyRoot: some View {
         switch dependencies.state {
-        case .open(let repositories, _):
+        case .open(let repositories, let stores):
             SessionListView(
                 workouts: repositories.workouts,
                 exercises: repositories.exercises,
-                settings: repositories.settings
+                settings: repositories.settings,
+                records: stores.records
             )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)

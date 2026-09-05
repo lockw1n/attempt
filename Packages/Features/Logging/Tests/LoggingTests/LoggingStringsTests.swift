@@ -18,6 +18,40 @@ struct LoggingStringsTests {
         }
     }
 
+    /// `FR-16.4.1`, and the half of it a picture cannot settle: a set nobody attempted announces
+    /// itself as *pending*, and the word is not the failed one.
+    @Test("A pending set announces itself as pending, not as failed")
+    func pendingIsNotAnnouncedAsFailed() {
+        let pending = String(localized: LoggingStrings.setOutcome(.pending))
+        let failed = String(localized: LoggingStrings.setOutcome(.failed))
+        let completed = String(localized: LoggingStrings.setOutcome(.completed))
+
+        #expect(pending == "Pending")
+        #expect(failed == "Failed")
+        #expect(pending != failed)
+        #expect(pending != completed)
+    }
+
+    /// `FR-16.4.4`'s alert, whose copy is the whole of the design and which no reference can hold:
+    /// an alert is presented by the system, and `ImageRenderer` draws the view under it.
+    @Test("Finish asks about pending sets by name, and offers both answers plus a way back")
+    func theFinishQuestionIsAsked() {
+        #expect(
+            String(localized: LoggingStrings.sessionFinishPendingTitle(3))
+                == "3 sets were not logged")
+        // The plural is the reason this key is in the stringsdict rather than the table: the verb
+        // agrees with the count, so one set cannot be spelled by substituting a numeral.
+        #expect(
+            String(localized: LoggingStrings.sessionFinishPendingTitle(1))
+                == "1 set was not logged")
+        #expect(String(localized: LoggingStrings.sessionFinishPendingRemove) == "Remove them")
+        #expect(String(localized: LoggingStrings.sessionFinishPendingKeep) == "Keep as failed")
+        // Naming what it keeps rather than saying "cancel": leaving the alert leaves the workout
+        // open, which is the one outcome the other two do not offer.
+        #expect(
+            String(localized: LoggingStrings.sessionFinishPendingCancel) == "Back to the workout")
+    }
+
     @Test("The catalogue is this module's, not the app's")
     func copyComesFromTheModuleBundle() {
         #expect(Bundle.module.localizations.sorted() == ["en", "uk"])

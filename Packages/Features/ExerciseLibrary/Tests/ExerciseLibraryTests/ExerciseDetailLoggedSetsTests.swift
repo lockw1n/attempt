@@ -132,7 +132,9 @@ struct ExerciseDetailLoggedSetsTests {
             deletedAt: nil,
             date: stamp,
             startedAt: stamp,
-            endedAt: nil,
+            // Finished, so an uncompleted set here is a *failed* one rather than a pending
+            // one (`FR-16.4.1`) — this case is parameterised over both.
+            endedAt: stamp,
             notes: "",
             bodyweight: nil,
             programRunID: nil,

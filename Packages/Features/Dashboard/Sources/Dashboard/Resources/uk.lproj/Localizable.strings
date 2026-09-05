@@ -79,3 +79,5 @@
 "dashboard.recent-records.baselines.label" = "Показувати перші рекорди";
 "dashboard.recent-records.baselines.detail" = "Коли ви виконуєте схему вперше, вона встановлює рекорд, який немає з чим порівняти. Вимкнено за замовчуванням, щоб нова допоміжна вправа не заповнювала стрічку.";
 "dashboard.tiles.training-max %@" = "Тренувальний максимум %@";
+
+"dashboard.last-workout.planned" = "Заплановано";

@@ -319,6 +319,10 @@ struct SessionExerciseCard: View {
             recordSchemes: { personalRecords.schemes(forSetID: $0) },
             target: { targets[$0] },
             trainingMax: item.trainingMax,
+            // Always, and it is a fact about the screen rather than a value passed down: this card
+            // draws the workout in progress, and `ActiveSessionStore` holds one only while it is
+            // open. So an uncompleted set here is one nobody has reached yet (`FR-16.4.1`).
+            isSessionOpen: true,
             logNext: logNext
         )
     }

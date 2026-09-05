@@ -170,5 +170,25 @@
 			<string>%lld повторення</string>
 		</dict>
 	</dict>
+	<key>logging.session.finish.pending.title %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@sets@ не записано</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld підхід</string>
+			<key>few</key>
+			<string>%lld підходи</string>
+			<key>many</key>
+			<string>%lld підходів</string>
+			<key>other</key>
+			<string>%lld підходу</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

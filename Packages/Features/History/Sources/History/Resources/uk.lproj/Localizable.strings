@@ -44,3 +44,13 @@
 "history.calendar.day.untrained %@" = "%1$@, без тренування";
 
 "history.list.program.week-day %lld %lld" = "Тиждень %1$lld · День %2$lld";
+
+"history.list.session.in-progress" = "Триває";
+"history.list.session.planned" = "Заплановано";
+
+"history.list.session.finish" = "Завершити тренування";
+
+"history.list.session.pending.message" = "Їх не було виконано. Видалити чи залишити як невиконані?";
+"history.list.session.pending.remove" = "Видалити";
+"history.list.session.pending.keep" = "Залишити невиконаними";
+"history.list.session.pending.cancel" = "Залишити відкритим";

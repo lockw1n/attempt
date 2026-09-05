@@ -7,18 +7,37 @@ import RepositoryInterface
 /// `Sequence.sortedDeterministically(by:descending:)`.
 struct FeedPosition: Comparable {
     let sessionDate: Date
+    let sessionStart: Date
     let entryOrder: Int
 
     /// The position of an entry whose session row is not there. Last, not first.
-    static let unplaced = FeedPosition(sessionDate: .distantFuture, entryOrder: .max)
+    static let unplaced = FeedPosition(
+        sessionDate: .distantFuture, sessionStart: .distantFuture, entryOrder: .max)
 
     static func < (lhs: FeedPosition, rhs: FeedPosition) -> Bool {
-        (lhs.sessionDate, lhs.entryOrder) < (rhs.sessionDate, rhs.entryOrder)
+        (lhs.sessionDate, lhs.sessionStart, lhs.entryOrder)
+            < (rhs.sessionDate, rhs.sessionStart, rhs.entryOrder)
     }
 }
 
-/// The total order `TR-0.2.8`'s tie-break depends on: session date, entry order, set order, then
-/// the set's own id.
+extension FeedPosition {
+    /// Where a session sits — its day first, then the instant it was started, so two workouts on
+    /// one training day do not fall through to a minted identifier. One never tracked live sorts
+    /// earliest in its own day.
+    ///
+    /// - Parameters:
+    ///   - session: The session the entry belongs to.
+    ///   - entryOrder: The entry's position within it.
+    init(session: WorkoutSession, entryOrder: Int) {
+        self.init(
+            sessionDate: session.date,
+            sessionStart: session.startedAt ?? .distantPast,
+            entryOrder: entryOrder)
+    }
+}
+
+/// The total order `TR-0.2.8`'s tie-break depends on: session date, session start, entry order, set
+/// order, then the set's own id.
 struct FeedSortKey: Comparable {
     let position: FeedPosition
     let setOrder: Int
@@ -219,11 +238,15 @@ extension InMemoryRepositoryStore {
         try softDelete(id: id, in: &sets, at: .now)
     }
 
-    /// Every set logged against one exercise, in the order `PersonalRecordCalculator` is handed.
+    /// Every set logged against one exercise that somebody performed, in the order
+    /// `PersonalRecordCalculator` is handed.
     ///
-    /// **The session lookup always includes deleted sessions.** A session is read for its date
-    /// rather than for itself, and a live entry can belong to a deleted one, so filtering there
-    /// would cost the *ordering* of a set the caller did ask for.
+    /// **The session lookup always includes deleted sessions.** A session is read for its day, its
+    /// start and whether it has ended rather than for itself, and a live entry can belong to a
+    /// deleted one, so filtering *there* would cost the ordering of a set the caller did ask for.
+    ///
+    /// **A pending set is dropped** (`FR-16.4.2`); a set whose session row is absent is kept,
+    /// absent not being open.
     ///
     /// **The key ends in the set's id, which is stronger than "stably".** A stable sort preserves
     /// the input order among equal keys, and the input here is a dictionary's values; `order` is not
@@ -238,15 +261,20 @@ extension InMemoryRepositoryStore {
         // fetches; here it would only be an unreachable branch — an empty `orderingKey` already
         // admits no sets — and a probe confirmed no test can turn it red.
         var orderingKey: [UUID: FeedPosition] = [:]
+        var openSessions: [UUID: WorkoutSession] = [:]
         for entry in matching {
-            orderingKey[entry.id] = FeedPosition(
-                sessionDate: sessions[entry.sessionID]?.date ?? .distantFuture,
-                entryOrder: entry.order
-            )
+            guard let session = sessions[entry.sessionID] else {
+                orderingKey[entry.id] = .unplaced
+                continue
+            }
+            if !session.isFinished { openSessions[entry.id] = session }
+            orderingKey[entry.id] = FeedPosition(session: session, entryOrder: entry.order)
         }
 
         return sets.values
             .filter { orderingKey[$0.entryID] != nil }
+            // `FR-16.4.2`: a set nobody has attempted yet is not history.
+            .filter { openSessions[$0.entryID]?.isPending($0) != true }
             .live(includingDeleted: includingDeleted)
             .sortedDeterministically { set in
                 // Unreachable, and an expression rather than a `!`: the filter above admitted only

@@ -218,20 +218,26 @@ final class TrainingHistory {
     func session(
         id: UUID = UUID(),
         onDay offset: Int,
-        startedAt: Date? = nil
+        startedAt: Date? = nil,
+        endedAt: Date? = nil
     ) async throws -> WorkoutSession {
-        let session = Builder.session(id: id, date: day(offset), startedAt: startedAt)
+        let session = Builder.session(
+            id: id, date: day(offset), startedAt: startedAt, endedAt: endedAt)
         try await stack.workouts.save(session)
         return session
     }
 
     /// One exercise's place in a workout, and the sets logged against it.
+    ///
+    /// - Parameter isCompleted: Whether the sets were performed. `false` inside a session with no
+    ///   `endedAt` is `FR-16.4.1`'s pending set.
     func perform(
         _ exercise: Exercise,
         in session: WorkoutSession,
         order: Int,
         reps: [Int],
-        rpe: [Double?]? = nil
+        rpe: [Double?]? = nil,
+        isCompleted: Bool = true
     ) async throws {
         let entry = ExerciseEntry(
             id: UUID(),
@@ -251,7 +257,8 @@ final class TrainingHistory {
                     order: position,
                     reps: count,
                     rpe: rpe?[position],
-                    stamp: epoch
+                    stamp: epoch,
+                    isCompleted: isCompleted
                 )
             )
         }
@@ -303,7 +310,9 @@ enum Builder {
     /// **`createdAt` is deliberately not `date`.** A session's date is the training day and
     /// `createdAt` is when the row was written; equal, they make a reader that confused the two
     /// indistinguishable from one that did not.
-    static func session(id: UUID, date: Date, startedAt: Date? = nil) -> WorkoutSession {
+    static func session(
+        id: UUID, date: Date, startedAt: Date? = nil, endedAt: Date? = nil
+    ) -> WorkoutSession {
         let written = date.addingTimeInterval(86_400)
         return WorkoutSession(
             id: id,
@@ -312,7 +321,7 @@ enum Builder {
             deletedAt: nil,
             date: date,
             startedAt: startedAt,
-            endedAt: nil,
+            endedAt: endedAt,
             notes: "",
             bodyweight: nil,
             programRunID: nil,
@@ -327,7 +336,8 @@ enum Builder {
         rpe: Double?,
         stamp: Date,
         grams: Int = 100_000,
-        isWarmup: Bool = false
+        isWarmup: Bool = false,
+        isCompleted: Bool = true
     ) -> SetEntry {
         SetEntry(
             id: UUID(),
@@ -341,7 +351,7 @@ enum Builder {
             rpe: rpe,
             rir: nil,
             isWarmup: isWarmup,
-            isCompleted: true,
+            isCompleted: isCompleted,
             targetWeight: nil,
             targetReps: nil,
             modifiers: [],

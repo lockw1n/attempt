@@ -49,7 +49,12 @@ func sessionRecord(
     id: UUID = UUID(),
     date: Date = fixtureCreatedAt,
     notes: String = "",
-    deletedAt: Date? = nil
+    deletedAt: Date? = nil,
+    startedAt: Date? = nil,
+    // Finished by default, so an uncompleted set in a fixture is a *failed* one rather than a
+    // pending one (`FR-16.4.1`) — the feed drops pending sets, and a fixture written open would
+    // test that exclusion rather than whatever it was written for.
+    endedAt: Date? = fixtureCreatedAt
 ) -> WorkoutSession {
     WorkoutSession(
         id: id,
@@ -57,8 +62,8 @@ func sessionRecord(
         updatedAt: fixtureUpdatedAt,
         deletedAt: deletedAt,
         date: date,
-        startedAt: nil,
-        endedAt: nil,
+        startedAt: startedAt,
+        endedAt: endedAt,
         notes: notes,
         bodyweight: nil,
         programRunID: nil,
@@ -402,10 +407,13 @@ extension Repositories {
         sessionID: UUID = UUID(),
         entryID: UUID = UUID(),
         date: Date = fixtureCreatedAt,
-        entryOrder: Int = 0
+        entryOrder: Int = 0,
+        startedAt: Date? = nil,
+        endedAt: Date? = fixtureCreatedAt
     ) async throws -> Timeline {
         try await exercises.save(exerciseRecord(id: exerciseID))
-        try await workouts.save(sessionRecord(id: sessionID, date: date))
+        try await workouts.save(
+            sessionRecord(id: sessionID, date: date, startedAt: startedAt, endedAt: endedAt))
         try await workouts.save(
             entryRecord(
                 id: entryID, sessionID: sessionID, exerciseID: exerciseID, order: entryOrder))

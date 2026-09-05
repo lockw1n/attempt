@@ -493,3 +493,18 @@
    no longer has to carry them. */
 "logging.session.program.week-day %lld %lld" = "Week %1$lld · Day %2$lld";
 "logging.session.program.label" = "Program";
+
+/* FR-16.4.1's third outcome, as VoiceOver's word for the hollow circle: a set inside a workout that
+   has not ended and that nobody has attempted. NOT "failed" — that is the word for a lift that was
+   missed, and a planned set nobody has reached is not one. */
+"logging.session.set.outcome.pending" = "Pending";
+
+/* FR-16.4.4's one question at Finish, asked only when the workout still holds sets nobody
+   attempted. The message says what they are before it says what can be done with them, because the
+   two answers only make sense once the lifter knows which sets are meant.
+   The third button names what it keeps rather than saying "cancel": leaving the alert leaves the
+   workout open, which is the one outcome the other two do not offer. */
+"logging.session.finish.pending.message" = "They were never attempted. Remove them, or keep them as missed lifts?";
+"logging.session.finish.pending.remove" = "Remove them";
+"logging.session.finish.pending.keep" = "Keep as failed";
+"logging.session.finish.pending.cancel" = "Back to the workout";

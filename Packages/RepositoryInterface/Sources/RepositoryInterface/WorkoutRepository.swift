@@ -67,8 +67,15 @@ public protocol WorkoutRepository: Sendable {
     /// - Throws: ``RepositoryError/recordNotFound(id:)`` if no live set carries that id.
     func deleteSet(id: UUID) async throws
 
-    /// Every set ever logged against one exercise, **oldest first**, ordered by
-    /// `(session date, entry order, set order)` and stably.
+    /// Every set logged against one exercise that somebody performed, **oldest first**, ordered by
+    /// `(session date, session start, entry order, set order)` and stably.
+    ///
+    /// **A pending set is not here** (`FR-16.4.2`): an uncompleted set inside a session that has not
+    /// ended is one nobody has attempted, and a workout dated ahead of today would otherwise put
+    /// future work in a lifter's history. Exercise history, the record calculator's input and the
+    /// e1RM window are the three readers of this, and the predicate is
+    /// ``WorkoutSession/isPending(_:)``, applied here so the three cannot disagree. A set whose
+    /// session row is missing is kept: absent is not open.
     ///
     /// This is the collection `PersonalRecordCalculator` is handed, and the order is a correctness
     /// obligation rather than a convenience. `PowerliftingCore` has no `Date`, so `TR-0.2.8`'s
@@ -78,8 +85,15 @@ public protocol WorkoutRepository: Sendable {
     /// and every answer is still plausible: only the tie-break moves, and only between two sets
     /// that weigh the same.
     ///
-    /// **Warmups and incomplete sets are included.** The calculator excludes them itself, and
-    /// pre-filtering here would shift every offset — a wrong answer, not an optimisation. The
-    /// caller must not re-filter or re-sort before reading offsets out of the result.
+    /// **Warmups and failed sets are included.** The calculator excludes them itself, and
+    /// pre-filtering *those* here would shift every offset — a wrong answer, not an optimisation. A
+    /// pending set is different in kind: it is not a set that was performed and lost, it is one that
+    /// has not happened. The caller must not re-filter or re-sort before reading offsets out of the
+    /// result.
+    ///
+    /// **The session's start is the second key.** `date` is the training *day*, so two workouts on
+    /// one day tie on it, and without a start the tie would fall through to a minted identifier —
+    /// which says nothing about which came first. A session never tracked live sorts earliest in its
+    /// own day, nothing about it claiming to have happened after one that was.
     func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry]
 }

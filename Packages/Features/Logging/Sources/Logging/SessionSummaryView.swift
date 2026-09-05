@@ -174,7 +174,7 @@ struct SessionCommandsSection: View {
 /// **The commands appear only once the field is dirty**, on the exercise detail screen's rule: a
 /// workout the user is only logging into carries no buttons here, and an unsaved edit is therefore
 /// visible as one. An unsaved edit is not lost to **Finish** either — see
-/// ``ActiveSessionStore/finish(saving:)``.
+/// ``ActiveSessionStore/finish(saving:resolving:)``.
 ///
 /// Taking a binding and closures rather than the store, for ``SessionSummaryLine``'s reason.
 struct SessionNotesFold: View {

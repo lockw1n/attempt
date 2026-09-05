@@ -89,7 +89,9 @@ func sessionRecord(
         deletedAt: nil,
         date: date,
         startedAt: nil,
-        endedAt: nil,
+        // Finished, so an uncompleted set in a fixture is a *failed* one rather than a
+        // pending one (`FR-16.4.1`) — the ordering read drops pending sets.
+        endedAt: date,
         notes: notes,
         bodyweight: nil,
         programRunID: programRunID,

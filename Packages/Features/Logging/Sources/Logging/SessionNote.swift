@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import RepositoryInterface
 
@@ -98,7 +99,7 @@ extension ActiveSessionStore {
     ///
     /// **Serialized behind every other command**, on the chain's own rule and for a sharper reason
     /// here than most: this write rebuilds the whole session record from the one being held, so a
-    /// note save overlapping ``finish()`` would store the workout as it was before it ended and put
+    /// note save overlapping ``finish(resolving:)`` would store the workout as it was before it ended and put
     /// `endedAt` back to `nil`.
     ///
     /// - Parameter text: What the field held when **Save** was tapped. Taken then rather than read
@@ -147,12 +148,12 @@ extension ActiveSessionStore {
     /// screen throwing away the last thing the user wrote.
     ///
     /// **The note is written first, and that order is not a preference.** ``writeNote(_:)``
-    /// rebuilds the record from the one being held, and after ``finish()`` nothing is held — a note
+    /// rebuilds the record from the one being held, and after ``finish(resolving:)`` nothing is held — a note
     /// written second would be written against `nil` and dropped without a diagnostic.
     ///
     /// **A note that would not store holds the workout open**, and the alternative is what makes
     /// this the rule rather than a preference: finishing over a failed note write ends the workout,
-    /// and ``finish()`` clears every diagnostic on its way out — so the one ``writeNote(_:)`` just
+    /// and ``finish(resolving:)`` clears every diagnostic on its way out — so the one ``writeNote(_:)`` just
     /// set is not merely off-screen behind a dismissal, it is erased, and the last thing the user
     /// wrote is gone with nothing anywhere to say so. That clearing is safe on its own terms —
     /// nothing it drops belongs to a workout still on screen — and this is the one caller that
@@ -161,13 +162,15 @@ extension ActiveSessionStore {
     /// unfolds the note when this returns a failure, the banner being inside the fold (see
     /// ``ActiveSessionView``).
     ///
-    /// - Parameter note: What the field held when **Finish** was tapped, or `nil` where it held
-    ///   nothing the record does not already have.
-    func finish(saving note: String?) async {
+    /// - Parameters:
+    ///   - note: What the field held when **Finish** was tapped, or `nil` where it held nothing the
+    ///     record does not already have.
+    ///   - resolution: What to do with `FR-16.4.4`'s pending sets, or `nil` where there are none.
+    func finish(saving note: String?, resolving resolution: SessionFinish.Resolution? = nil) async {
         if let note {
             await saveNote(note)
             guard noteWriteFailure == nil else { return }
         }
-        await finish()
+        await finish(resolving: resolution)
     }
 }

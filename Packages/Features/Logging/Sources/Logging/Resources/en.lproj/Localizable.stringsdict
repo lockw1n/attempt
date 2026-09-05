@@ -156,5 +156,24 @@
 			<string>%lld reps</string>
 		</dict>
 	</dict>
+	<!-- FR-16.4.4's alert title. Plural on the set count, which is the noun's number: a workout
+	     left with one reads "1 set was not logged", and a .strings entry can only ever say
+	     "1 sets were". The verb agrees with it too, so the whole clause is inside the variant. -->
+	<key>logging.session.finish.pending.title %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@sets@</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld set was not logged</string>
+			<key>other</key>
+			<string>%lld sets were not logged</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

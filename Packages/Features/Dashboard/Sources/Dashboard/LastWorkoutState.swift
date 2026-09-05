@@ -20,6 +20,13 @@ struct LastWorkoutSummary: Sendable, Equatable {
 
     /// How many working sets it holds — completed, and not warmups (`G-1.8`).
     let workingSetCount: Int
+
+    /// Whether it has ended, and if not which kind of open it is (`FR-16.4.3`).
+    ///
+    /// **A second reading of ``isInProgress`` rather than a replacement for it.** That flag decides
+    /// between `FR-1.9.2`'s two commands — resume or repeat — and both open workouts resume; this
+    /// says which word the card puts where a finished workout shows its set count.
+    var lifecycle: SessionLifecycle = .finished
 }
 
 /// `FR-1.9.2`'s read: the workout in progress, or the most recent finished one.
@@ -55,14 +62,29 @@ final class LastWorkoutState {
     /// The catalogue, for the names of what was trained.
     private let catalogue: any ExerciseRepository
 
+    /// The day an open workout is read against (`FR-16.4.3`).
+    private let today: Date
+
+    /// The calendar the two days are compared in (`G-3.4`).
+    private let calendar: Calendar
+
     /// Builds the state.
     ///
     /// - Parameters:
     ///   - workouts: The sessions and what is under them.
     ///   - catalogue: Where the exercise names come from.
-    init(workouts: any WorkoutRepository, catalogue: any ExerciseRepository) {
+    ///   - today: The day an open workout is read against.
+    ///   - calendar: The calendar the two days are compared in.
+    init(
+        workouts: any WorkoutRepository,
+        catalogue: any ExerciseRepository,
+        today: Date = .now,
+        calendar: Calendar = .current
+    ) {
         self.workouts = workouts
         self.catalogue = catalogue
+        self.today = today
+        self.calendar = calendar
     }
 
     /// Reads the workout to report and summarises it.
@@ -129,6 +151,7 @@ final class LastWorkoutState {
             date: session.date,
             isInProgress: session.endedAt == nil,
             exerciseNames: names,
-            workingSetCount: workingSets)
+            workingSetCount: workingSets,
+            lifecycle: session.lifecycle(on: today, calendar: calendar))
     }
 }

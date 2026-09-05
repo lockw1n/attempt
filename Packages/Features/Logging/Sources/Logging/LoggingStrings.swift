@@ -124,7 +124,6 @@ enum LoggingStrings {
     /// The command that finishes the workout (`FR-1.2.11`).
     static let sessionFinishAction = resource("logging.session.finish.action")
 
-    /// The command that discards it (`FR-1.2.12`).
     static let sessionDiscardAction = resource("logging.session.discard.action")
 
     /// The confirmation's question (`FR-1.2.12`).
@@ -368,18 +367,21 @@ enum LoggingStrings {
             : resource("logging.session.set.mark-warmup")
     }
 
-    /// Whether a set was completed or failed (`FR-1.2.5`), as VoiceOver's label for the glyph that
+    /// What a set's outcome is (`FR-1.2.5`, `FR-16.4.1`), as VoiceOver's label for the glyph that
     /// says it.
     ///
     /// **The word the glyph stands for**, which is what keeps the outcome off the tint alone
-    /// (`G-4.5`): the row draws a check or a cross, and this is the same fact in a sentence.
+    /// (`G-4.5`): the row draws a check, a cross or a hollow circle, and this is the same fact in a
+    /// sentence. A pending set says *pending* rather than *failed* — the whole of `FR-16.4.1`.
     ///
-    /// - Parameter isCompleted: Whether the set was completed.
+    /// - Parameter outcome: Which of the three the set is.
     /// - Returns: The outcome, as a word.
-    static func setOutcome(isCompleted: Bool) -> LocalizedStringResource {
-        isCompleted
-            ? resource("logging.session.set.outcome.completed")
-            : resource("logging.session.set.outcome.failed")
+    static func setOutcome(_ outcome: SetOutcome) -> LocalizedStringResource {
+        switch outcome {
+        case .completed: resource("logging.session.set.outcome.completed")
+        case .failed: resource("logging.session.set.outcome.failed")
+        case .pending: resource("logging.session.set.outcome.pending")
+        }
     }
 
     /// What tapping that glyph does (`FR-1.2.5`), as VoiceOver's hint on it.
@@ -455,7 +457,9 @@ enum LoggingStrings {
             trainErrorHeadline,
             trainErrorMessage, trainStartErrorMessage, sessionTitle, sessionTitleDay("Sep 4"),
             sessionStarted, sessionEmptyHeadline, sessionEmptyMessage,
-            sessionFinishAction, sessionDiscardAction, sessionDiscardConfirmTitle,
+            sessionFinishAction, sessionFinishPendingTitle(1), sessionFinishPendingTitle(3),
+            sessionFinishPendingMessage, sessionFinishPendingRemove, sessionFinishPendingKeep,
+            sessionFinishPendingCancel, sessionDiscardAction, sessionDiscardConfirmTitle,
             sessionDiscardConfirmMessage, sessionDiscardConfirmAction, sessionDiscardConfirmCancel,
             sessionErrorHeadline, sessionErrorMessage, sessionEndedHeadline, sessionEndedMessage,
             sessionWriteErrorMessage, sessionExercisesSection, sessionAddExerciseAction,
@@ -482,7 +486,7 @@ enum LoggingStrings {
             + allProgramStrings
             + MassUnit.allCases.map(setUnitSymbol(for:))
             + [true, false].map(setMarkAction(isWarmup:))
-            + [true, false].map(setOutcome(isCompleted:))
+            + [SetOutcome.completed, .failed, .pending].map(setOutcome)
             + [true, false].map(setOutcomeAction(isCompleted:))
     }
 

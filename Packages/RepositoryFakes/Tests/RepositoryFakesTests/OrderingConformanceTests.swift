@@ -223,6 +223,74 @@ struct OrderingConformanceTests {
             ])
     }
 
+    /// `FR-16.4.2`: an uncompleted set inside a workout that has not ended is one nobody has
+    /// attempted, and it is not history.
+    ///
+    /// **The same fixture as the filter test above, with one column moved.** A session's `endedAt`
+    /// is the whole difference between "the feed passes incomplete sets through" and this, which is
+    /// what makes the exclusion a property of the session rather than of the set.
+    ///
+    /// The warmup and the completed set stay, so this cannot pass by dropping the entry.
+    @Test(
+        "A pending set is not in the feed; the same set in a finished workout is",
+        arguments: Subject.all)
+    func theFeedExcludesPendingSets(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let exerciseID = UUID()
+        let timeline = try await repositories.timeline(exerciseID: exerciseID, endedAt: nil)
+        try await repositories.workouts.save(
+            setRecord(entryID: timeline.entryID, order: 0, grams: 60_000, isWarmup: true))
+        try await repositories.workouts.save(
+            setRecord(entryID: timeline.entryID, order: 1, grams: 100_000, isCompleted: false))
+        try await repositories.workouts.save(
+            setRecord(entryID: timeline.entryID, order: 2, grams: 110_000))
+
+        let open = try await repositories.workouts.sets(
+            forExerciseID: exerciseID, includingDeleted: false)
+        #expect(open.map(\.weight) == [Weight(grams: 60_000), Weight(grams: 110_000)])
+
+        // The row is untouched — it is the session ending that puts it back, as a failed set.
+        try await repositories.workouts.save(
+            sessionRecord(id: timeline.sessionID, endedAt: fixtureCreatedAt))
+        let finished = try await repositories.workouts.sets(
+            forExerciseID: exerciseID, includingDeleted: false)
+        #expect(
+            finished.map(\.weight)
+                == [Weight(grams: 60_000), Weight(grams: 100_000), Weight(grams: 110_000)])
+    }
+
+    /// `TR-0.2.8`'s tie-break, at the one key `date` cannot decide.
+    ///
+    /// **Two workouts on one training day.** `date` is the day rather than an instant, so the first
+    /// set of each ties on the day and the entry order; without `startedAt` the two fall through to
+    /// a minted identifier, which says nothing about which came first. The earlier session is given
+    /// the *higher* id, so a fall-through fails loudly rather than by luck.
+    @Test("Two workouts on one day are ordered by when they started", arguments: Subject.all)
+    func sameDayWorkoutsOrderByStart(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let exerciseID = UUID()
+        let morning = try await repositories.timeline(
+            exerciseID: exerciseID,
+            sessionID: SortedIDs.third,
+            date: fixtureCreatedAt,
+            startedAt: fixtureCreatedAt)
+        let evening = try await repositories.timeline(
+            exerciseID: exerciseID,
+            sessionID: SortedIDs.first,
+            date: fixtureCreatedAt,
+            startedAt: fixtureCreatedAt + fixtureDay / 2)
+
+        try await repositories.workouts.save(
+            setRecord(entryID: evening.entryID, order: 0, grams: 110_000))
+        try await repositories.workouts.save(
+            setRecord(entryID: morning.entryID, order: 0, grams: 100_000))
+
+        let feed = try await repositories.workouts.sets(
+            forExerciseID: exerciseID, includingDeleted: false)
+
+        #expect(feed.map(\.weight) == [Weight(grams: 100_000), Weight(grams: 110_000)])
+    }
+
     @Test("The feed passes warmups and incomplete sets through", arguments: Subject.all)
     func theFeedFiltersNothing(_ subject: Subject) async throws {
         let repositories = try subject.make()

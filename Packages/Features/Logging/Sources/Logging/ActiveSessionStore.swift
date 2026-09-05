@@ -165,7 +165,7 @@ public final class ActiveSessionStore {
     let trainingMaxes: any TrainingMaxRepository
 
     /// The programs, their days and the run in force (`FR-16.8`) — **stored rather than passed in
-    /// like ``start(on:fromRoutineID:in:)``'s routines**, the cursor moving at ``finish()``, which
+    /// like ``start(on:fromRoutineID:in:)``'s routines**, the cursor moving at ``finish(resolving:)``, which
     /// every screen calls with no program in its hands.
     let programs: any ProgramRepository
 
@@ -361,47 +361,6 @@ public final class ActiveSessionStore {
         forgetExercises()
     }
 
-    /// Finishes the workout in progress (`FR-1.2.11`).
-    ///
-    /// The row stays: finishing is what `endedAt` records, and a finished session is the history
-    /// every later track reads. What ends is this store holding it — ``resume()`` will not find it
-    /// again, which is the whole of "incomplete sessions resume on next launch".
-    ///
-    /// A write that fails keeps the workout held and reports the failure, so the next tap is another
-    /// attempt at the same command rather than a lost session.
-    public func finish() async {
-        guard let current = session, current.endedAt == nil else { return }
-        await update(Self.ended(current, at: .now))
-        guard failure == nil, let finished = session else { return }
-        session = nil
-        forgetExercises()
-        // After the clear, which retires every diagnostic: this one is about the workout that
-        // has just ended rather than the one now held (none).
-        await advanceProgramRun(after: finished)
-    }
-
-    /// Discards the workout in progress (`FR-1.2.12`).
-    ///
-    /// **Soft, like every deletion here** (`G-1.3`): the repository stamps `deletedAt` and cascades
-    /// to the entries and sets underneath, and nothing is removed from the store until an explicit
-    /// purge runs. The confirmation `FR-1.2.12` asks for is the screen's — a store cannot ask.
-    ///
-    /// **The cascade is why this announces** (`FR-1.6.4`). Every set the workout logged stops
-    /// standing at once without a single set column being written, so none of ``setWriter``'s five
-    /// hooks fires and a record the discarded work set would survive its own source set.
-    public func discard() async {
-        guard let current = session else { return }
-        do {
-            try await repository.deleteSession(id: current.id)
-            await records.sessionDidChange(id: current.id)
-            session = nil
-            failure = nil
-            forgetExercises()
-        } catch {
-            failure = String(describing: error)
-        }
-    }
-
     /// Reads the workout's exercises, their sets and the catalogue rows they name (`FR-1.2.2`).
     ///
     /// **Three reads per call and two per exercise**, which is what a schema with no relationships
@@ -496,5 +455,32 @@ public final class ActiveSessionStore {
             throw RepositoryError.recordNotFound(id: session.id)
         }
         self.session = stored
+    }
+
+    /// Adopts the row a write made elsewhere in this module produced, and retires the diagnostic.
+    ///
+    /// **Here rather than a wider setter on ``session``**, which is `private(set)` deliberately: one
+    /// object with one writer is what keeps two screens from holding two versions of a workout.
+    /// These two name the transitions another file in this module needs, and nothing else.
+    ///
+    /// - Parameter stored: The session as the store holds it.
+    func adopt(stored: WorkoutSession) {
+        session = stored
+        failure = nil
+    }
+
+    /// Lets go of the workout that has just ended or been discarded, and of everything drawn from
+    /// it.
+    func releaseHeldSession() {
+        session = nil
+        failure = nil
+        forgetExercises()
+    }
+
+    /// Reports a write that did not land. The held workout is left alone; see ``update(_:)``.
+    ///
+    /// - Parameter error: What the store said.
+    func report(_ error: any Error) {
+        failure = String(describing: error)
     }
 }

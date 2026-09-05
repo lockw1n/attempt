@@ -1,4 +1,5 @@
 import AppNavigation
+import DerivedValues
 import DesignSystem
 import Foundation
 import Localization
@@ -39,7 +40,7 @@ public struct ActiveSessionView: View {
     let equipment: PlateCalculatorStore
 
     /// The way back to the root once the workout has ended, one way or the other.
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) var dismiss
 
     /// The shell's navigation position, for the one command here that is not a `NavigationLink`.
     ///
@@ -52,6 +53,24 @@ public struct ActiveSessionView: View {
     /// The screen's and not the store's: a dialogue the user has open is not a fact about the
     /// workout, and it must not survive the screen being left.
     @State private var isConfirmingDiscard = false
+
+    /// Whether `FR-16.4.4`'s question is open — the workout holds sets nobody attempted, and Finish
+    /// has been tapped.
+    ///
+    /// Internal rather than private because the command that opens it lives in
+    /// `ActiveSessionViewCommands.swift`; nothing outside `Logging` can reach it.
+    ///
+    /// **Held here rather than derived from the store**, on ``isConfirmingDiscard``'s rule: a
+    /// confirmation that is open is the screen's business, and a workout with pending sets in it is
+    /// a normal thing to be looking at without being asked about them.
+    @State var isResolvingPendingSets = false
+
+    /// How many sets the workout still holds that nobody has attempted.
+    ///
+    /// Read at draw time rather than captured with the alert, so a set logged while the question is
+    /// open is not counted in it — the alert is dismissed by either answer, and the count is right
+    /// each time it opens.
+    var pendingSetCount: Int { store.pendingSets.count }
 
     /// Which cards the user has folded or unfolded by hand, keyed on the entry (`FR-1.2.13`).
     ///
@@ -77,7 +96,7 @@ public struct ActiveSessionView: View {
     ///
     /// Stored nowhere, for ``expansion``'s reason, and folded is where a workout reopened tomorrow
     /// starts: the note is written once, at the end, and the header says its first line meanwhile.
-    @State private var areNotesExpanded = false
+    @State var areNotesExpanded = false
 
     /// Whether this screen's opening read has finished (`FR-16.6.1`).
     ///
@@ -209,6 +228,11 @@ public struct ActiveSessionView: View {
         } message: {
             Text(LoggingStrings.sessionDiscardConfirmMessage)
         }
+        .pendingSetQuestion(
+            count: pendingSetCount,
+            isPresented: $isResolvingPendingSets,
+            resolve: { resolution in Task { await finish(resolving: resolution) } }
+        )
     }
 
     /// The screen's four states (`FR-1.13.1`), each one of T-1.09's shared components.
@@ -464,29 +488,5 @@ public struct ActiveSessionView: View {
         if store.isActive, !store.exercises.isEmpty {
             SessionProgressHeader(progress: store.progress)
         }
-    }
-
-    /// Finishes the workout and leaves the screen, unless the write failed.
-    ///
-    /// The screen stays open on a failure, with the workout still on it: nothing was stored, so the
-    /// retry is another tap at the same command rather than a workout the user has to find again.
-    private func finish() async {
-        // The note's own **Save** is inside a fold the user may never have opened, and this command
-        // is directly beneath it — so what is in the field is committed with the workout rather
-        // than dropped by it. Nothing is written where the field and the record already agree.
-        await store.finish(saving: noteDraft.hasUnsavedChanges ? noteDraft.text : nil)
-        // A note that would not store keeps the workout — see `finish(saving:)`. Its diagnostic is
-        // inside the fold, so the fold is opened: otherwise the tap reports nothing at all, which
-        // is the failure that rule exists to prevent.
-        if store.noteWriteFailure != nil { areNotesExpanded = true }
-        guard !store.isActive else { return }
-        dismiss()
-    }
-
-    /// Discards the workout and leaves the screen, unless the write failed. See ``finish()``.
-    private func discard() async {
-        await store.discard()
-        guard !store.isActive else { return }
-        dismiss()
     }
 }
