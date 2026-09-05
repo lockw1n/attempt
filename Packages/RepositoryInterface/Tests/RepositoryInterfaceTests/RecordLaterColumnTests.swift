@@ -33,6 +33,26 @@ struct RecordLaterColumnTests {
         #expect(entry.order == 3)
     }
 
+    // `FR-16.8.3`'s two columns, which are the first added to a session since schema v1's
+    // declaration was written — so every session in every backup a lifter already holds predates
+    // them. `nil` rather than zero is the whole of the claim: week 0 day 0 is a real position in a
+    // program, and a decoder defaulting there would file every historic workout under one.
+    @Test("A session written before the program columns decodes as belonging to no program")
+    func sessionWithoutTheProgramColumns() throws {
+        let json = """
+            {"id":"0F5A1E24-9B7D-4C31-8E62-000000000001",
+             "createdAt":0,"updatedAt":0,"date":0,
+             "notes":"hot gym"}
+            """
+        let session = try JSONDecoder().decode(WorkoutSession.self, from: Data(json.utf8))
+
+        #expect(session.weekNumber == nil)
+        #expect(session.dayIndex == nil)
+        #expect(session.programRunID == nil)
+        // The neighbouring field too, for `entryWithoutTheCheckOffColumn`'s reason.
+        #expect(session.notes == "hot gym")
+    }
+
     /// Rule 5: a backup taken before these five keys existed restores every preference it does
     /// carry, and the absent ones arrive at exactly the values a fresh install has.
     @Test("A backup written before FR-16.3 restores at the shipped defaults")

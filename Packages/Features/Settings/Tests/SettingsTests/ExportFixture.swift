@@ -38,6 +38,9 @@ struct FixtureRepositories {
     /// Routines, their exercise slots and target groups (`FR-15.2`).
     let routines: any RoutineRepository
 
+    /// Programs, their days and the runs through them (`FR-16.8`).
+    let programs: any ProgramRepository
+
     /// The fakes.
     ///
     /// - Parameter stack: The in-memory stack.
@@ -50,6 +53,7 @@ struct FixtureRepositories {
         equipment = stack.equipment
         personalRecords = stack.personalRecords
         routines = stack.routines
+        programs = stack.programs
     }
 
     /// The real store.
@@ -64,6 +68,7 @@ struct FixtureRepositories {
         equipment = stack.equipment
         personalRecords = stack.personalRecords
         routines = stack.routines
+        programs = stack.programs
     }
 }
 
@@ -117,17 +122,26 @@ struct ExportLog {
     ///   - days: How many days before the epoch it was trained.
     ///   - id: Its identifier.
     ///   - notes: The session note.
+    ///   - programRunID: The run it was started under (`FR-16.8.3`), or `nil`.
+    ///   - weekNumber: The week it was started under, or `nil`.
+    ///   - dayIndex: The day it was started from, or `nil`.
     /// - Returns: The record.
     @discardableResult
     func session(
         daysAgo days: Int,
         id: UUID = UUID(),
-        notes: String = ""
+        notes: String = "",
+        programRunID: UUID? = nil,
+        weekNumber: Int? = nil,
+        dayIndex: Int? = nil
     ) async throws -> WorkoutSession {
         let session = ExportRecords.session(
             id: id,
             at: Self.epoch.addingTimeInterval(-Double(days) * 86_400),
-            notes: notes)
+            notes: notes,
+            programRunID: programRunID,
+            weekNumber: weekNumber,
+            dayIndex: dayIndex)
         try await repositories.workouts.save(session)
         return session
     }
@@ -294,7 +308,14 @@ enum ExportRecords {
     ///   - at: The training day, which is also when the row was written.
     ///   - notes: The session note.
     /// - Returns: The record.
-    static func session(id: UUID = UUID(), at date: Date, notes: String = "") -> WorkoutSession {
+    static func session(
+        id: UUID = UUID(),
+        at date: Date,
+        notes: String = "",
+        programRunID: UUID? = nil,
+        weekNumber: Int? = nil,
+        dayIndex: Int? = nil
+    ) -> WorkoutSession {
         WorkoutSession(
             id: id,
             createdAt: date,
@@ -305,8 +326,10 @@ enum ExportRecords {
             endedAt: date.addingTimeInterval(3_600),
             notes: notes,
             bodyweight: nil,
-            programRunID: nil,
-            scheduledWorkoutID: nil)
+            programRunID: programRunID,
+            scheduledWorkoutID: nil,
+            weekNumber: weekNumber,
+            dayIndex: dayIndex)
     }
 
     /// One exercise slot.

@@ -36,6 +36,9 @@ struct FullBackup {
     /// The routines, their slots and their target groups (`FR-15.2`).
     let routines: any RoutineRepository
 
+    /// The programs, their days and the runs through them (`FR-16.8`).
+    let programs: any ProgramRepository
+
     /// The preferences row.
     let settings: any SettingsRepository
 
@@ -65,6 +68,7 @@ struct FullBackup {
         let catalogue = try await exercises.exercises(includingDeleted: true)
         let workoutRows = try await self.workoutRows()
         let routineRows = try await self.routineRows()
+        let programRows = try await self.programRows()
         return TrainingLogArchive(
             takenAt: takenAt,
             exercises: catalogue,
@@ -78,6 +82,9 @@ struct FullBackup {
             routines: routineRows.routines,
             routineExercises: routineRows.exercises,
             routineTargetGroups: routineRows.targetGroups,
+            programs: programRows.programs,
+            programDays: programRows.days,
+            programRuns: programRows.runs,
             plannedTargets: workoutRows.plannedTargets,
             settings: try await settings.settings())
     }
@@ -135,6 +142,29 @@ struct FullBackup {
             }
         }
         return RoutineRows(routines: plans, exercises: slots, targetGroups: groups)
+    }
+
+    /// The programs and the two tables under them, walked the way the routines are.
+    ///
+    /// **Walked per program for the routines' reason** — the protocol offers a program's days and a
+    /// program's runs and no global fetch of either, so the program list is the enumeration. Both
+    /// reads ask for soft-deleted rows: a program the lifter deleted took its days and its runs with
+    /// it (`G-1.3`), and a backup dropping them would restore sessions whose `programRunID` names a
+    /// row that is not in the file.
+    ///
+    /// - Returns: Every program, every day in them and every run through them.
+    /// - Throws: Whatever the program repository throws.
+    private func programRows() async throws -> ProgramRows {
+        let plans = try await programs.programs(includingDeleted: true)
+        var days: [ProgramDay] = []
+        var runs: [ProgramRun] = []
+        for plan in plans {
+            days.append(
+                contentsOf: try await programs.days(forProgramID: plan.id, includingDeleted: true))
+            runs.append(
+                contentsOf: try await programs.runs(forProgramID: plan.id, includingDeleted: true))
+        }
+        return ProgramRows(programs: plans, days: days, runs: runs)
     }
 
     /// Every training-max configuration in the store (`TR-0.3.6`, `TR-16.3`).
@@ -195,6 +225,18 @@ private struct WorkoutRows {
 
     /// Every target a routine planned for one of those slots.
     let plannedTargets: [PlannedTargetGroup]
+}
+
+/// The three joined program tables, read together — ``WorkoutRows``' shape and its reason.
+private struct ProgramRows {
+    /// Every program, soft-deleted ones included.
+    let programs: [Program]
+
+    /// Every day in them.
+    let days: [ProgramDay]
+
+    /// Every pass through one.
+    let runs: [ProgramRun]
 }
 
 /// The three joined routine tables, read together — ``WorkoutRows``' shape and its reason.

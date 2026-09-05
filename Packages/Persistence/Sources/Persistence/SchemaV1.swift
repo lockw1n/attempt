@@ -53,6 +53,9 @@ enum SchemaV1: VersionedSchema {
             RoutineExerciseEntity.self,
             RoutineTargetGroupEntity.self,
             PlannedTargetGroupEntity.self,
+            ProgramEntity.self,
+            ProgramDayEntity.self,
+            ProgramRunEntity.self,
         ]
     }
     // audited-models:end

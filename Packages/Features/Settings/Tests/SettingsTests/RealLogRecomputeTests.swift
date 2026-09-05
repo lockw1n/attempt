@@ -293,6 +293,7 @@ enum RealLogBackup {
             bodyweight: stack.bodyweight,
             equipment: stack.equipment,
             routines: stack.routines,
+            programs: stack.programs,
             settings: stack.settings,
             records: records)
     }

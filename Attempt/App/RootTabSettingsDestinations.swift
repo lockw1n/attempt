@@ -106,6 +106,7 @@ extension RootTabView {
                 bodyweight: repositories.bodyweight,
                 equipment: repositories.equipment,
                 routines: repositories.routines,
+                programs: repositories.programs,
                 settings: repositories.settings)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
@@ -128,6 +129,7 @@ extension RootTabView {
                 bodyweight: repositories.bodyweight,
                 equipment: repositories.equipment,
                 routines: repositories.routines,
+                programs: repositories.programs,
                 settings: repositories.settings,
                 records: stores.records)
         case .failed(let diagnostic):

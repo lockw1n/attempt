@@ -54,6 +54,9 @@ struct AppDependencies {
 
         /// Routines, their exercise slots and their target groups (`FR-15.2`).
         let routines: any RoutineRepository
+
+        /// Programs, their days and the runs through them (`TR-16.2`, `FR-16.8`).
+        let programs: any ProgramRepository
     }
 
     /// The app-lifetime stores (`TR-1.2`), built over the repositories beside them.
@@ -162,7 +165,8 @@ struct AppDependencies {
                     workouts: stack.workouts,
                     bodyweight: stack.bodyweight,
                     equipment: stack.equipment,
-                    routines: stack.routines
+                    routines: stack.routines,
+                    programs: stack.programs
                 ),
                 Stores(
                     activeSession: ActiveSessionStore(

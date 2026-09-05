@@ -42,6 +42,9 @@ struct RecordJSONRoundTripTests {
         #expect(try Self.roundTrip(codingRoutine()) == codingRoutine())
         #expect(try Self.roundTrip(codingRoutineExercise()) == codingRoutineExercise())
         #expect(try Self.roundTrip(codingRoutineTargetGroup()) == codingRoutineTargetGroup())
+        #expect(try Self.roundTrip(codingProgram()) == codingProgram())
+        #expect(try Self.roundTrip(codingProgramDay()) == codingProgramDay())
+        #expect(try Self.roundTrip(codingProgramRun()) == codingProgramRun())
         #expect(try Self.roundTrip(codingPlannedTargetGroup()) == codingPlannedTargetGroup())
     }
 

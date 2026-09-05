@@ -219,53 +219,7 @@ struct StorePurgeTests {
     @Test("Purging everything empties the store, live rows included")
     func everythingEmptiesTheStore() async throws {
         let harness = try RepositoryHarness()
-        let squat = makeSquat()
-        let session = WorkoutSessionEntity(date: longAgo)
-        let entry = ExerciseEntryEntity(sessionID: session.id, exerciseID: squat.id, order: 0)
-        let set = makeSet(entryID: entry.id, order: 0, isWarmup: false, isCompleted: true)
-        let routine = RoutineEntity(name: "Squat day")
-        let slot = RoutineExerciseEntity(routineID: routine.id, exerciseID: squat.id, order: 0)
-        try harness.seed([
-            squat,
-            session,
-            entry,
-            set,
-            makeTrainingMaxConfig(exerciseID: squat.id, source: .manual),
-            makeTrainingMaxHistory(exerciseID: squat.id),
-            BodyweightEntryEntity(date: longAgo, weightGrams: 80_000, source: .manual),
-            EquipmentProfileEntity(
-                name: "Home",
-                barWeightGrams: 20_000,
-                collarWeightGrams: 0,
-                plateGrams: [25_000],
-                platePairCounts: [2]
-            ),
-            makeSettings(userID: UUID()),
-            PersonalRecordCacheEntity(
-                exerciseID: squat.id,
-                repCount: 5,
-                weightGrams: 100_000,
-                sourceSetID: set.id,
-                achievedAt: longAgo,
-                computationVersion: 1
-            ),
-            routine,
-            slot,
-            RoutineTargetGroupEntity(
-                routineExerciseID: slot.id,
-                order: 0,
-                targetWeightGrams: 90_000,
-                targetReps: 4,
-                targetSets: 4
-            ),
-            PlannedTargetGroupEntity(
-                exerciseEntryID: entry.id,
-                order: 0,
-                targetWeightGrams: 90_000,
-                targetReps: 4,
-                targetSets: 4
-            ),
-        ])
+        try harness.seed(oneRowPerTable(at: longAgo))
 
         let report = try await harness.stack.purge(.everything)
 
@@ -391,6 +345,74 @@ private func count<T: StoredEntity>(
     try harness.store().rows(type, includingDeleted: true).count
 }
 
+/// Exactly one row per entity in ``SchemaV1/models``, all of them live.
+///
+/// **A method rather than an inline literal**, because the wipe's own assertions are the point
+/// of that test and a fifty-line fixture in front of them buries it. The list is what
+/// `report.removed == SchemaV1.models.count` is anchored against: an entity added to the schema
+/// and not seeded here turns that expectation red, which is the whole mechanism.
+///
+/// - Parameter longAgo: The date every dated row carries.
+/// - Returns: The rows to seed.
+private func oneRowPerTable(at longAgo: Date) -> [any PersistentModel] {
+    let squat = makeSquat()
+    let session = WorkoutSessionEntity(date: longAgo)
+    let entry = ExerciseEntryEntity(sessionID: session.id, exerciseID: squat.id, order: 0)
+    let set = makeSet(entryID: entry.id, order: 0, isWarmup: false, isCompleted: true)
+    let routine = RoutineEntity(name: "Squat day")
+    let slot = RoutineExerciseEntity(routineID: routine.id, exerciseID: squat.id, order: 0)
+    let program = ProgramEntity(name: "Block 1", notes: "coach")
+    return [
+        squat,
+        session,
+        entry,
+        set,
+        makeTrainingMaxConfig(exerciseID: squat.id, source: .manual),
+        makeTrainingMaxHistory(exerciseID: squat.id),
+        BodyweightEntryEntity(date: longAgo, weightGrams: 80_000, source: .manual),
+        EquipmentProfileEntity(
+            name: "Home",
+            barWeightGrams: 20_000,
+            collarWeightGrams: 0,
+            plateGrams: [25_000],
+            platePairCounts: [2]
+        ),
+        makeSettings(userID: UUID()),
+        PersonalRecordCacheEntity(
+            exerciseID: squat.id,
+            repCount: 5,
+            weightGrams: 100_000,
+            sourceSetID: set.id,
+            achievedAt: longAgo,
+            computationVersion: 1
+        ),
+        routine,
+        slot,
+        RoutineTargetGroupEntity(
+            routineExerciseID: slot.id,
+            order: 0,
+            targetWeightGrams: 90_000,
+            targetReps: 4,
+            targetSets: 4
+        ),
+        PlannedTargetGroupEntity(
+            exerciseEntryID: entry.id,
+            order: 0,
+            targetWeightGrams: 90_000,
+            targetReps: 4,
+            targetSets: 4
+        ),
+        program,
+        ProgramDayEntity(programID: program.id, routineID: routine.id, order: 0),
+        ProgramRunEntity(
+            programID: program.id,
+            startedAt: longAgo,
+            weekNumber: 2,
+            nextDayIndex: 1
+        ),
+    ]
+}
+
 private func remainingCounts(in harness: RepositoryHarness) throws -> [String: Int] {
     [
         "exercises": try count(ExerciseEntity.self, in: harness),
@@ -407,6 +429,9 @@ private func remainingCounts(in harness: RepositoryHarness) throws -> [String: I
         "routineExercises": try count(RoutineExerciseEntity.self, in: harness),
         "targetGroups": try count(RoutineTargetGroupEntity.self, in: harness),
         "plannedTargets": try count(PlannedTargetGroupEntity.self, in: harness),
+        "programs": try count(ProgramEntity.self, in: harness),
+        "programDays": try count(ProgramDayEntity.self, in: harness),
+        "programRuns": try count(ProgramRunEntity.self, in: harness),
     ]
 }
 

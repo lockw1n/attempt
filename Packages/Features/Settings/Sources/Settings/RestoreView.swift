@@ -22,7 +22,7 @@ public struct RestoreView: View {
 
     /// Builds the screen over the store it writes into.
     ///
-    /// **Seven dependencies — the backup's six, plus the recompute actor.** Writing rows the store
+    /// **Eight dependencies — the backup's seven, plus the recompute actor.** Writing rows the store
     /// has not seen makes every cached personal record wrong (`TR-0.3.9`, `G-1.4`), and the backup
     /// file deliberately does not carry the cache, so the restore is what has to rebuild it.
     ///
@@ -33,6 +33,7 @@ public struct RestoreView: View {
     ///   - bodyweight: The bodyweight log.
     ///   - equipment: The gyms.
     ///   - routines: The routines, their slots and their target groups.
+    ///   - programs: The programs, their days and the runs through them.
     ///   - settings: The preferences row — written from the file here, not read for a display unit.
     ///   - records: The app's one recompute actor.
     public init(
@@ -42,6 +43,7 @@ public struct RestoreView: View {
         bodyweight: any BodyweightRepository,
         equipment: any EquipmentRepository,
         routines: any RoutineRepository,
+        programs: any ProgramRepository,
         settings: any SettingsRepository,
         records: PersonalRecordRecomputer
     ) {
@@ -54,6 +56,7 @@ public struct RestoreView: View {
                     bodyweight: bodyweight,
                     equipment: equipment,
                     routines: routines,
+                    programs: programs,
                     settings: settings,
                     records: records)))
     }

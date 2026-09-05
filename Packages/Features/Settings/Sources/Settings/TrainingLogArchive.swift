@@ -114,6 +114,22 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
     /// `FR-15.2.2`'s blank ones. Empty in an export.
     let routineTargetGroups: [RoutineTargetGroup]
 
+    /// Every program the lifter has built (`TR-16.2`, `FR-16.8.1`). Empty in an export.
+    ///
+    /// **Backup-only, on the argument the routines already make**: a program is what the lifter
+    /// trains *from* rather than what they logged.
+    let programs: [Program]
+
+    /// Every day in those programs, across all of them. Empty in an export.
+    let programDays: [ProgramDay]
+
+    /// Every pass through a program (`FR-16.8.3`). Empty in an export.
+    ///
+    /// **Carried although a run holds no training of its own**, because the sessions do name it:
+    /// `WorkoutSession.programRunID` is a foreign key into this section, and a backup that dropped
+    /// it would restore a log whose week and day numbers point at nothing.
+    let programRuns: [ProgramRun]
+
     /// What a routine prescribed for a logged session's slots (`FR-15.2.4`). Empty in an export.
     ///
     /// **Carried although it hangs off a session that is already here**, because it is the half of
@@ -145,6 +161,9 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
         case routines
         case routineExercises
         case routineTargetGroups
+        case programs
+        case programDays
+        case programRuns
         case plannedTargets
         case settings
     }
@@ -159,9 +178,12 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
     /// without them drops every plan behind the lifter's log and reports a successful restore.
     /// 4 is ``trainingMaxHistory``, on the same argument: a new table, holding the one number
     /// `FR-16.7.1`'s percentages are read against, which nothing recomputes.
+    /// 5 is `FR-16.8`'s programs, their days and their runs — three new tables, and the runs are
+    /// what the log's own `programRunID` points at, so a reader without them restores every session
+    /// and loses which pass through which program it belonged to.
     /// `FR-1.11.4`'s refusal is what makes that visible, and it fires only on a number this build
     /// does not claim. A record gaining a column moves nothing (rule 7 of `RecordCoding.swift`).
-    nonisolated static let currentFormatVersion = 4
+    nonisolated static let currentFormatVersion = 5
 
     /// Builds a training-log export at the current format version.
     ///
@@ -194,6 +216,9 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
             routines: [],
             routineExercises: [],
             routineTargetGroups: [],
+            programs: [],
+            programDays: [],
+            programRuns: [],
             plannedTargets: [],
             settings: nil)
     }
@@ -217,6 +242,9 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
     ///   - routines: Every routine, soft-deleted rows included.
     ///   - routineExercises: Every slot in them, soft-deleted rows included.
     ///   - routineTargetGroups: Every target group in those slots, soft-deleted rows included.
+    ///   - programs: Every program, soft-deleted rows included.
+    ///   - programDays: Every day in them, soft-deleted rows included.
+    ///   - programRuns: Every pass through one, soft-deleted rows included.
     ///   - plannedTargets: Every target a routine planned for a logged slot, soft-deleted rows
     ///     included.
     ///   - settings: The preferences row.
@@ -233,6 +261,9 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
         routines: [Routine],
         routineExercises: [RoutineExercise],
         routineTargetGroups: [RoutineTargetGroup],
+        programs: [Program],
+        programDays: [ProgramDay],
+        programRuns: [ProgramRun],
         plannedTargets: [PlannedTargetGroup],
         settings: UserSettings
     ) {
@@ -250,6 +281,9 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
             routines: routines,
             routineExercises: routineExercises,
             routineTargetGroups: routineTargetGroups,
+            programs: programs,
+            programDays: programDays,
+            programRuns: programRuns,
             plannedTargets: plannedTargets,
             settings: settings)
     }
@@ -276,6 +310,9 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
         routines: [Routine],
         routineExercises: [RoutineExercise],
         routineTargetGroups: [RoutineTargetGroup],
+        programs: [Program],
+        programDays: [ProgramDay],
+        programRuns: [ProgramRun],
         plannedTargets: [PlannedTargetGroup],
         settings: UserSettings?
     ) {
@@ -293,6 +330,9 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
         self.routines = routines
         self.routineExercises = routineExercises
         self.routineTargetGroups = routineTargetGroups
+        self.programs = programs
+        self.programDays = programDays
+        self.programRuns = programRuns
         self.plannedTargets = plannedTargets
         self.settings = settings
     }
@@ -324,7 +364,8 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
     var recordCount: Int {
         exercises.count + sessions.count + entries.count + sets.count + bodyweight.count
             + equipment.count + trainingMaxes.count + trainingMaxHistory.count + routines.count
-            + routineExercises.count + routineTargetGroups.count + plannedTargets.count
+            + routineExercises.count + routineTargetGroups.count + programs.count
+            + programDays.count + programRuns.count + plannedTargets.count
             + (settings == nil ? 0 : 1)
     }
 
@@ -344,7 +385,9 @@ struct TrainingLogArchive: nonisolated Codable, Sendable, Equatable {
             + Self.deleted(sets) + Self.deleted(bodyweight) + Self.deleted(equipment)
             + Self.deleted(trainingMaxes) + Self.deleted(trainingMaxHistory)
             + Self.deleted(routines) + Self.deleted(routineExercises)
-            + Self.deleted(routineTargetGroups) + Self.deleted(plannedTargets)
+            + Self.deleted(routineTargetGroups) + Self.deleted(programs)
+            + Self.deleted(programDays) + Self.deleted(programRuns)
+            + Self.deleted(plannedTargets)
             + Self.deleted(settings.map { [$0] } ?? [])
     }
 

@@ -97,6 +97,14 @@ enum SchemaDefaults {
     /// past loses every such contest and only ever applies where they have entered nothing.
     static let effectiveFrom = Date.distantPast
 
+    /// The distant past, for a program run whose start was never written.
+    ///
+    /// ``effectiveFrom``'s direction and a third argument for it: the open run in force is the one
+    /// with the latest ``ProgramRunEntity/startedAt``, so a row defaulting to *now* would displace
+    /// the pass the lifter is actually on and put `FR-16.8.2`'s Train tab on a program they never
+    /// started. Losing every contest is the only safe way to be wrong here.
+    static let runStartedAt = Date.distantPast
+
     /// ``RepositoryInterface/TrainingMaxSourceKind/manual``, for a configuration whose source was never written.
     ///
     /// The one case that cannot quietly produce a plausible number: manual's value lives in

@@ -36,7 +36,7 @@ private struct StampingCase: Sendable {
     }
 }
 
-/// The fakes' own machinery: twelve hand-written restatements of a memberwise initialiser, one per
+/// The fakes' own machinery: fifteen hand-written restatements of a memberwise initialiser, one per
 /// record type, and a dropped column in any of them is a column a save silently reverts.
 ///
 /// **Two checks, because neither is sufficient alone.** The round trip is a *total* claim about the
@@ -51,7 +51,7 @@ struct RecordStampingTests {
 
     /// The record types the fakes stamp — **one list, walked by both checks.**
     ///
-    /// Eleven of the twelve conformances: ``PersonalRecordCache`` is the one absent, and was
+    /// Fourteen of the fifteen conformances: ``PersonalRecordCache`` is the one absent, and was
     /// already absent before the three routine shapes were added beside it.
     ///
     /// Listing the shapes per check is what let `UserSettings.stamped` ignore all three of its
@@ -93,18 +93,29 @@ struct RecordStampingTests {
                 "PlannedTargetGroup",
                 plannedTargetGroupRecord(
                     exerciseEntryID: entryID, order: 1, grams: 90_000, reps: 4, sets: 4)),
+            StampingCase("Program", programRecord(name: "Block 1", notes: "coach")),
+            StampingCase(
+                "ProgramDay",
+                programDayRecord(programID: UUID(), routineID: UUID(), order: 3)),
+            StampingCase(
+                "ProgramRun",
+                programRunRecord(
+                    programID: UUID(),
+                    endedAt: second,
+                    weekNumber: 4,
+                    nextDayIndex: 2)),
         ]
     }()
 
-    @Test("Stamping carries every other column through, on all twelve listed record types")
+    @Test("Stamping carries every other column through, on all fifteen listed record types")
     func stampingIsLossless() throws {
-        #expect(Self.everyRecordShape.count == 12)
+        #expect(Self.everyRecordShape.count == 15)
         for shape in Self.everyRecordShape {
             #expect(shape.roundTrips(Self.first, Self.second), "\(shape.name)")
         }
     }
 
-    @Test("Stamping writes the four it is given, on all twelve, and does not touch the id")
+    @Test("Stamping writes the four it is given, on all fifteen, and does not touch the id")
     func stampingWritesWhatItIsGiven() throws {
         for shape in Self.everyRecordShape {
             #expect(shape.changesTheFour(Self.first, Self.second), "\(shape.name)")

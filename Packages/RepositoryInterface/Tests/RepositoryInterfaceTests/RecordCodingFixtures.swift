@@ -49,7 +49,9 @@ func codingSession() -> WorkoutSession {
         notes: "hot gym",
         bodyweight: Weight(grams: 82_400),
         programRunID: codingJoinID,
-        scheduledWorkoutID: codingJoinID
+        scheduledWorkoutID: codingJoinID,
+        weekNumber: 2,
+        dayIndex: 1
     )
 }
 
@@ -225,6 +227,43 @@ func codingRoutineTargetGroup() -> RoutineTargetGroup {
         targetWeight: Weight(grams: 90_000),
         targetReps: 4,
         targetSets: 4
+    )
+}
+
+func codingProgram() -> Program {
+    Program(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        name: "#2",
+        notes: "14.09.25"
+    )
+}
+
+func codingProgramDay() -> ProgramDay {
+    ProgramDay(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        programID: codingJoinID,
+        routineID: codingJoinID,
+        order: 2
+    )
+}
+
+func codingProgramRun() -> ProgramRun {
+    ProgramRun(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        programID: codingJoinID,
+        startedAt: codingCreatedAt,
+        endedAt: codingUpdatedAt,
+        weekNumber: 2,
+        nextDayIndex: 1
     )
 }
 

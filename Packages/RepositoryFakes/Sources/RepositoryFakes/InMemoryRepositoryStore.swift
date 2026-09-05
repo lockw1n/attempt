@@ -33,6 +33,9 @@ actor InMemoryRepositoryStore {
     var routineExercises: [UUID: RoutineExercise] = [:]
     var routineTargetGroups: [UUID: RoutineTargetGroup] = [:]
     var plannedTargetGroups: [UUID: PlannedTargetGroup] = [:]
+    var programs: [UUID: Program] = [:]
+    var programDays: [UUID: ProgramDay] = [:]
+    var programRuns: [UUID: ProgramRun] = [:]
 
     /// An empty store.
     init() {}

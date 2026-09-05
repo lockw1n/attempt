@@ -37,6 +37,7 @@ struct RestoreTests {
             bodyweight: stack.bodyweight,
             equipment: stack.equipment,
             routines: stack.routines,
+            programs: stack.programs,
             settings: stack.settings,
             records: PersonalRecordRecomputer(
                 workouts: stack.workouts,
@@ -68,6 +69,7 @@ struct RestoreTests {
             bodyweight: target.bodyweight,
             equipment: target.equipment,
             routines: target.routines,
+            programs: target.programs,
             settings: target.settings
         ).archive(takenAt: ExportLog.epoch)
 
@@ -127,6 +129,7 @@ struct RestoreTests {
             bodyweight: target.bodyweight,
             equipment: target.equipment,
             routines: target.routines,
+            programs: target.programs,
             settings: target.settings
         ).archive(takenAt: ExportLog.epoch)
         #expect(reread.deletedCount == 0)
@@ -174,6 +177,9 @@ struct RestoreTests {
                 routines: [],
                 routineExercises: [],
                 routineTargetGroups: [],
+                programs: [],
+                programDays: [],
+                programRuns: [],
                 plannedTargets: [],
                 settings: try await target.repositories.settings.settings()))
 
@@ -208,6 +214,9 @@ struct RestoreTests {
                 routines: [],
                 routineExercises: [],
                 routineTargetGroups: [],
+                programs: [],
+                programDays: [],
+                programRuns: [],
                 plannedTargets: [],
                 settings: try await target.repositories.settings.settings()))
 

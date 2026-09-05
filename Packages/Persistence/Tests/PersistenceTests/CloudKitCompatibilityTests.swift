@@ -105,12 +105,12 @@ struct CloudKitCompatibilityTests {
     // it carries the version identifier a migration keys off.
     private let schema = Schema(versionedSchema: SchemaV1.self)
 
-    @Test("All fourteen entities are in the audited schema")
-    func fourteenEntities() {
+    @Test("All seventeen entities are in the audited schema")
+    func seventeenEntities() {
         // Without this the audit passes vacuously on an empty or mis-built schema, which is exactly
         // how a checklist becomes a markdown table.
-        #expect(schema.entities.count == 14)
-        #expect(SchemaV1.models.count == 14)
+        #expect(schema.entities.count == 17)
+        #expect(SchemaV1.models.count == 17)
     }
 
     @Test("Every property is optional or defaulted, nothing is unique, nothing is a relationship")
@@ -152,9 +152,9 @@ struct CloudKitCompatibilityTests {
         #expect(defaultValue(of: "id", on: "ExerciseEntity", in: schema) as? UUID != SchemaDefaults.unlinkedID)
     }
 
-    @Test("The twelve defaulted UUID columns that are not identities default to the all-zero sentinel")
+    @Test("The fifteen defaulted UUID columns that are not identities default to the all-zero sentinel")
     func sentinelColumns() {
-        // Ten join keys and one anonymous user id — three distinct failure modes on one type,
+        // Fourteen join keys and one anonymous user id — three distinct failure modes on one type,
         // which is why the checklist gives them a line rather than a tick. Pinned here so a later
         // column cannot quietly take `UUID()` instead and manufacture a reference, or an account.
         let expected = [
@@ -163,6 +163,9 @@ struct CloudKitCompatibilityTests {
             "PersonalRecordCacheEntity.exerciseID",
             "PersonalRecordCacheEntity.sourceSetID",
             "PlannedTargetGroupEntity.exerciseEntryID",
+            "ProgramDayEntity.programID",
+            "ProgramDayEntity.routineID",
+            "ProgramRunEntity.programID",
             "RoutineExerciseEntity.exerciseID",
             "RoutineExerciseEntity.routineID",
             "RoutineTargetGroupEntity.routineExerciseID",

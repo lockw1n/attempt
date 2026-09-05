@@ -30,12 +30,13 @@ struct RecordCodingKeyTests {
             ])
     }
 
-    @Test("A session writes eleven keys")
+    @Test("A session writes thirteen keys")
     func sessionKeys() throws {
         #expect(
             try encodedKeys(of: codingSession()) == [
-                "bodyweight", "createdAt", "date", "deletedAt", "endedAt", "id", "notes",
-                "programRunID", "scheduledWorkoutID", "startedAt", "updatedAt",
+                "bodyweight", "createdAt", "date", "dayIndex", "deletedAt", "endedAt", "id",
+                "notes", "programRunID", "scheduledWorkoutID", "startedAt", "updatedAt",
+                "weekNumber",
             ])
     }
 
@@ -180,6 +181,31 @@ struct RecordCodingKeyTests {
             try encodedKeys(of: codingRoutineTargetGroup()) == [
                 "createdAt", "deletedAt", "id", "order", "routineExerciseID", "targetReps",
                 "targetSets", "targetWeight", "updatedAt",
+            ])
+    }
+
+    @Test("A program writes six keys")
+    func programKeys() throws {
+        #expect(
+            try encodedKeys(of: codingProgram()) == [
+                "createdAt", "deletedAt", "id", "name", "notes", "updatedAt",
+            ])
+    }
+
+    @Test("A program day writes seven keys")
+    func programDayKeys() throws {
+        #expect(
+            try encodedKeys(of: codingProgramDay()) == [
+                "createdAt", "deletedAt", "id", "order", "programID", "routineID", "updatedAt",
+            ])
+    }
+
+    @Test("A program run writes nine keys")
+    func programRunKeys() throws {
+        #expect(
+            try encodedKeys(of: codingProgramRun()) == [
+                "createdAt", "deletedAt", "endedAt", "id", "nextDayIndex", "programID",
+                "startedAt", "updatedAt", "weekNumber",
             ])
     }
 

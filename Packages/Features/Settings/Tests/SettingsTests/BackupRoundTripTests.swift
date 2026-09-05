@@ -135,6 +135,9 @@ struct BackupRoundTripTests {
             routines: [],
             routineExercises: [],
             routineTargetGroups: [],
+            programs: [],
+            programDays: [],
+            programRuns: [],
             plannedTargets: [],
             settings: settings)
         try await Self.restore(into: stack).restore(file)
@@ -235,6 +238,7 @@ struct BackupRoundTripTests {
             bodyweight: stack.bodyweight,
             equipment: stack.equipment,
             routines: stack.routines,
+            programs: stack.programs,
             settings: stack.settings)
     }
 
@@ -250,6 +254,7 @@ struct BackupRoundTripTests {
             bodyweight: stack.bodyweight,
             equipment: stack.equipment,
             routines: stack.routines,
+            programs: stack.programs,
             settings: stack.settings,
             records: PersonalRecordRecomputer(
                 workouts: stack.workouts,
@@ -314,6 +319,9 @@ struct BackupRoundTripTests {
         try expectSameRows(
             before.routineTargetGroups, after.routineTargetGroups, "routineTargetGroups", &compared)
         try expectSameRows(before.plannedTargets, after.plannedTargets, "plannedTargets", &compared)
+        try expectSameRows(before.programs, after.programs, "programs", &compared)
+        try expectSameRows(before.programDays, after.programDays, "programDays", &compared)
+        try expectSameRows(before.programRuns, after.programRuns, "programRuns", &compared)
         if settingsIdentityMoved {
             compared.insert("settings")
             try expectSamePreferences(before.settings, after.settings)

@@ -36,6 +36,9 @@ public struct InMemoryRepositoryStack: Sendable {
     /// Routines, their exercise slots and target groups (`FR-15.2`).
     public let routines: any RoutineRepository
 
+    /// Programs, their days and the runs through them (`TR-16.2`, `FR-16.8`).
+    public let programs: any ProgramRepository
+
     /// The fakes over one empty store.
     public init() {
         let store = InMemoryRepositoryStore()
@@ -47,5 +50,6 @@ public struct InMemoryRepositoryStack: Sendable {
         equipment = InMemoryEquipmentRepository(store: store)
         personalRecords = InMemoryPersonalRecordCacheRepository(store: store)
         routines = InMemoryRoutineRepository(store: store)
+        programs = InMemoryProgramRepository(store: store)
     }
 }

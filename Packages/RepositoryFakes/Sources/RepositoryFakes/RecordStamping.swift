@@ -89,7 +89,52 @@ extension WorkoutSession: AuditStamped {
             notes: notes,
             bodyweight: bodyweight,
             programRunID: programRunID,
-            scheduledWorkoutID: scheduledWorkoutID
+            scheduledWorkoutID: scheduledWorkoutID,
+            weekNumber: weekNumber,
+            dayIndex: dayIndex
+        )
+    }
+}
+
+extension Program: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> Program {
+        Program(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            name: name,
+            notes: notes
+        )
+    }
+}
+
+extension ProgramDay: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> ProgramDay {
+        ProgramDay(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            programID: programID,
+            routineID: routineID,
+            order: order
+        )
+    }
+}
+
+extension ProgramRun: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> ProgramRun {
+        ProgramRun(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            programID: programID,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            weekNumber: weekNumber,
+            nextDayIndex: nextDayIndex
         )
     }
 }

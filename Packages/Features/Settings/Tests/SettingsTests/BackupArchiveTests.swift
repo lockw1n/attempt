@@ -34,6 +34,9 @@ struct BackupArchiveTests {
             routines: [awkwardRoutine()],
             routineExercises: [awkwardRoutineExercise(log.exercises[0].id)],
             routineTargetGroups: [awkwardTargetGroup()],
+            programs: [],
+            programDays: [],
+            programRuns: [],
             plannedTargets: [awkwardPlannedTarget(log.entries[0].id)],
             settings: awkwardSettings())
     }
@@ -222,7 +225,7 @@ struct BackupArchiveTests {
         #expect(!sections.contains { $0.localizedCaseInsensitiveContains("personalRecord") })
         // Anchored, so the three absences above cannot pass over an empty key list.
         #expect(sections.contains("sets"))
-        #expect(TrainingLogArchive.currentFormatVersion == 4)
+        #expect(TrainingLogArchive.currentFormatVersion == 5)
     }
 
     @Test("A file written before any of this still decodes, as the export it was")

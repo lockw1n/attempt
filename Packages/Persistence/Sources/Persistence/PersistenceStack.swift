@@ -60,6 +60,9 @@ public struct PersistenceStack: Sendable {
     /// Routines, their exercise slots and target groups (`FR-15.2`).
     public let routines: any RoutineRepository
 
+    /// Programs, their days and the runs through them (`TR-16.2`, `FR-16.8`).
+    public let programs: any ProgramRepository
+
     /// `G-1.3`'s hard deletes, reached through ``purge(_:)`` rather than named directly.
     let purgeRoutine: StorePurge
 
@@ -86,6 +89,7 @@ public struct PersistenceStack: Sendable {
         equipment = SwiftDataEquipmentRepository(modelContainer: container)
         personalRecords = SwiftDataPersonalRecordCacheRepository(modelContainer: container)
         routines = SwiftDataRoutineRepository(modelContainer: container)
+        programs = SwiftDataProgramRepository(modelContainer: container)
         purgeRoutine = StorePurge(modelContainer: container)
     }
 }

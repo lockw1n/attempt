@@ -15,8 +15,9 @@ public struct BackupView: View {
     ///
     /// **Six repositories rather than a reader**, which is this module's shape for a screen: the
     /// app hands down one protocol at a time (`TR-0.1.2`) and what they are assembled into is this
-    /// module's business. Two more than the export takes, because a backup is the configuration too
-    /// — the gyms, and the routines the lifter trains from (`FR-15.2`).
+    /// module's business. Three more than the export takes, because a backup is the configuration
+    /// too — the gyms, the routines the lifter trains from (`FR-15.2`) and the programs those
+    /// routines are days of (`FR-16.8`).
     ///
     /// - Parameters:
     ///   - exercises: The catalogue.
@@ -25,6 +26,7 @@ public struct BackupView: View {
     ///   - bodyweight: The bodyweight log.
     ///   - equipment: The gyms.
     ///   - routines: The routines, their slots and their target groups.
+    ///   - programs: The programs, their days and the runs through them.
     ///   - settings: The preferences row — a row in the file here, not a value read from it.
     public init(
         exercises: any ExerciseRepository,
@@ -33,6 +35,7 @@ public struct BackupView: View {
         bodyweight: any BodyweightRepository,
         equipment: any EquipmentRepository,
         routines: any RoutineRepository,
+        programs: any ProgramRepository,
         settings: any SettingsRepository
     ) {
         _state = State(
@@ -44,6 +47,7 @@ public struct BackupView: View {
                     bodyweight: bodyweight,
                     equipment: equipment,
                     routines: routines,
+                    programs: programs,
                     settings: settings)))
     }
 

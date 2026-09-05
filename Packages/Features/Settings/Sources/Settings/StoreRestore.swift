@@ -114,6 +114,9 @@ struct StoreRestore {
     /// The routines, their slots and their target groups (`FR-15.2`).
     let routines: any RoutineRepository
 
+    /// The programs, their days and the runs through them (`FR-16.8`).
+    let programs: any ProgramRepository
+
     /// The preferences row — written through the restore's own entry point, not through a save.
     let settings: any SettingsRepository
 
@@ -203,6 +206,7 @@ struct StoreRestore {
     func restore(_ archive: TrainingLogArchive) async throws -> BackupSummary {
         try await restoreCatalogue(archive)
         try await restoreRoutines(archive)
+        try await restorePrograms(archive)
         try await restoreLog(archive)
         if let restored = archive.settings {
             try await settings.restorePreferences(from: restored)
@@ -276,6 +280,27 @@ struct StoreRestore {
         for routine in archive.routines { try await routines.save(routine) }
         for slot in archive.routineExercises { try await routines.save(slot) }
         for group in archive.routineTargetGroups { try await routines.save(group) }
+    }
+
+    /// Writes the three program tables, parents first (`FR-16.8`).
+    ///
+    /// **After the routines and before the log, and both halves are the referential rule.** A day
+    /// names a routine, so the routines have to be stored first; a session names a run, so the runs
+    /// have to be stored before ``restoreLog(_:)`` writes one.
+    ///
+    /// **The runs go in through ``RepositoryInterface/ProgramRepository/save(_:)-(ProgramRun)``
+    /// rather than through `startRun`.** The file already says which pass was open — at most one
+    /// carries no `endedAt` — and `startRun` would close every run it met before the next one, so
+    /// restoring a lifter's history through it would end each pass at the following pass's start
+    /// and, on the last write, leave whichever run happened to be listed last as the current one.
+    /// A restore reinstates the store; it does not re-decide it.
+    ///
+    /// - Parameter archive: The file.
+    /// - Throws: Whatever the program repository throws.
+    private func restorePrograms(_ archive: TrainingLogArchive) async throws {
+        for program in archive.programs { try await programs.save(program) }
+        for day in archive.programDays { try await programs.save(day) }
+        for run in archive.programRuns { try await programs.save(run) }
     }
 
     /// Writes what the lifter logged, and what a routine had planned for it.

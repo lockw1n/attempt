@@ -35,11 +35,12 @@ struct BackupStateTests {
         #expect(state.phase == .idle)
         await state.prepare()
         let file = try #require(Self.file(of: state.phase))
-        // 3 exercises (one of them a variation) + 4 sessions + 3 entries + 5 sets + 2 readings
-        // + 2 gyms + 2 training-max configurations + 2 training-max changes + 2 routines
-        // + 2 routine slots + 4 target groups + 2 planned targets + the preferences row.
-        #expect(file.recordCount == 34)
-        #expect(file.workoutCount == 4)
+        // 3 exercises (one of them a variation) + 5 sessions + 4 entries + 6 sets + 2 readings
+        // + 2 gyms + 2 training-max configurations + 2 training-max changes + 4 routines
+        // + 4 routine slots + 8 target groups + 1 program + 2 program days + 2 program runs
+        // + 2 planned targets + the preferences row.
+        #expect(file.recordCount == 50)
+        #expect(file.workoutCount == 5)
         // A session, a slot, that slot's set, a reading, a gym, and the archived routine with its
         // slot and that slot's two target groups.
         #expect(file.deletedCount == 9)
@@ -97,6 +98,7 @@ struct BackupStateTests {
                 bodyweight: log.repositories.bodyweight,
                 equipment: log.repositories.equipment,
                 routines: log.repositories.routines,
+                programs: log.repositories.programs,
                 settings: FailingSettingsRead()),
             directory: scratch.url,
             now: { stamp })
@@ -151,6 +153,7 @@ struct BackupStateTests {
                 bodyweight: log.repositories.bodyweight,
                 equipment: log.repositories.equipment,
                 routines: log.repositories.routines,
+                programs: log.repositories.programs,
                 settings: log.repositories.settings),
             directory: scratch.url,
             now: { stamp })

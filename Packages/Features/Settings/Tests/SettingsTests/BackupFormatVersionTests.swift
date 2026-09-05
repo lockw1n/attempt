@@ -62,6 +62,9 @@ struct BackupFormatVersionTests {
             routines: [],
             routineExercises: [],
             routineTargetGroups: [],
+            programs: [],
+            programDays: [],
+            programRuns: [],
             plannedTargets: [],
             settings: settings)
 
@@ -81,6 +84,68 @@ struct BackupFormatVersionTests {
                 forExerciseID: squat.id, includingDeleted: true
             ).isEmpty)
         #expect(try await stack.exercises.exercises(includingDeleted: false).count == 1)
+    }
+
+    @Test func aFormatFourFileRestoresNoProgramsAndNoWeekOrDay() async throws {
+        // `currentFormatVersion` moved to 5 for `FR-16.8`'s three tables, so version 4 is the last
+        // file written without them — and without the two columns `FR-16.8.3` put on a session.
+        //
+        // **THE FIXTURE CARRIES A SESSION, AND THAT IS WHAT MAKES THE ASSERTION MEAN ANYTHING.** A
+        // format-4 file with no sessions makes "no session carries a week" true of every
+        // implementation, including one that never reads the section — the emptiness would be the
+        // fixture's. One live session is what turns it into a contrast: the row lands, and the two
+        // columns the file could not carry come back `nil` rather than zero.
+        //
+        // **AND ITS BYTES CARRY NO `weekNumber` KEY AT ALL**, which is what a real format-4 session
+        // looks like: rule 3 of `RecordCoding.swift` reads an absent optional as an absence, and
+        // this is the file that has one. The archive's own encoder omits the key for a `nil`, so
+        // the fixture produces those bytes by leaving both columns unset rather than by injection.
+        let stack = try PersistenceStack(location: .inMemory)
+        let settings = try await stack.settings.settings()
+        let squat = ExportRecords.exercise(name: "Squat", at: ExportLog.epoch)
+        let session = ExportRecords.session(id: ExportRecords.id(0x31), at: ExportLog.epoch)
+        let file = TrainingLogArchive(
+            formatVersion: 4,
+            contents: .fullBackup,
+            exportedAt: ExportLog.epoch,
+            exercises: [squat],
+            sessions: [session],
+            entries: [],
+            sets: [],
+            bodyweight: [],
+            equipment: [],
+            trainingMaxes: [],
+            trainingMaxHistory: [],
+            routines: [],
+            routineExercises: [],
+            routineTargetGroups: [],
+            programs: [],
+            programDays: [],
+            programRuns: [],
+            plannedTargets: [],
+            settings: settings)
+
+        let bytes = try file.encoded()
+        let json = try #require(String(bytes: bytes, encoding: .utf8))
+        // The premise, anchored rather than assumed: these bytes are a file with none of the four
+        // new keys in them. Without this the test could pass over a fixture that carried them.
+        #expect(!json.contains("\"programs\""))
+        #expect(!json.contains("\"programRuns\""))
+        #expect(!json.contains("\"weekNumber\""))
+        #expect(!json.contains("\"dayIndex\""))
+
+        let accepted = try StoreRestore.archive(from: bytes)
+        #expect(accepted.formatVersion == 4)
+        try await BackupRoundTripTests.restore(into: stack).restore(accepted)
+
+        // The session landed — the contrast the two nil columns below are read against.
+        let restored = try await stack.workouts.session(id: session.id, includingDeleted: true)
+        #expect(restored?.id == session.id)
+        #expect(restored?.weekNumber == nil)
+        #expect(restored?.dayIndex == nil)
+        // And the three sections the file does not carry are empty rather than half-written.
+        #expect(try await stack.programs.programs(includingDeleted: true).isEmpty)
+        #expect(try await stack.programs.currentRun() == nil)
     }
 
     /// `file` as bytes, with the retired `manualWeight` key put back on its one configuration row.

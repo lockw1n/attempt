@@ -45,6 +45,18 @@ public struct WorkoutSession: StoredRecord {
     /// See ``programRunID``.
     public let scheduledWorkoutID: UUID?
 
+    /// The ``ProgramRun/weekNumber`` this session was started under, or `nil` where it was not
+    /// started from a program (`FR-16.8.3`).
+    ///
+    /// **Written once, at start, and never again.** A program edited afterwards — days reordered, a
+    /// routine swapped, the week advanced — cannot reach this row, which is `TR-15.3`'s posture
+    /// applied to the plan rather than to the targets: what a session was is a fact about the day it
+    /// happened, not a view of the program as it stands now.
+    public let weekNumber: Int?
+
+    /// The ``ProgramDay/order`` this session was started from. See ``weekNumber``.
+    public let dayIndex: Int?
+
     /// Creates a session record. No property is validated; see this module's header.
     public init(
         id: UUID,
@@ -57,7 +69,9 @@ public struct WorkoutSession: StoredRecord {
         notes: String,
         bodyweight: Weight?,
         programRunID: UUID?,
-        scheduledWorkoutID: UUID?
+        scheduledWorkoutID: UUID?,
+        weekNumber: Int? = nil,
+        dayIndex: Int? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -70,6 +84,8 @@ public struct WorkoutSession: StoredRecord {
         self.bodyweight = bodyweight
         self.programRunID = programRunID
         self.scheduledWorkoutID = scheduledWorkoutID
+        self.weekNumber = weekNumber
+        self.dayIndex = dayIndex
     }
 }
 
@@ -89,6 +105,8 @@ extension WorkoutSession {
         case bodyweight
         case programRunID
         case scheduledWorkoutID
+        case weekNumber
+        case dayIndex
     }
 
     /// Decodes the keyed shape on ``CodingKeys``. Nothing is validated.
@@ -105,11 +123,14 @@ extension WorkoutSession {
             notes: try container.decode(String.self, forKey: .notes),
             bodyweight: try container.decodeIfPresent(Weight.self, forKey: .bodyweight),
             programRunID: try container.decodeIfPresent(UUID.self, forKey: .programRunID),
-            scheduledWorkoutID: try container.decodeIfPresent(UUID.self, forKey: .scheduledWorkoutID)
+            scheduledWorkoutID: try container.decodeIfPresent(
+                UUID.self, forKey: .scheduledWorkoutID),
+            weekNumber: try container.decodeIfPresent(Int.self, forKey: .weekNumber),
+            dayIndex: try container.decodeIfPresent(Int.self, forKey: .dayIndex)
         )
     }
 
-    /// Writes the eleven keys in declaration order.
+    /// Writes the thirteen keys in declaration order.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -123,5 +144,7 @@ extension WorkoutSession {
         try container.encodeIfPresent(bodyweight, forKey: .bodyweight)
         try container.encodeIfPresent(programRunID, forKey: .programRunID)
         try container.encodeIfPresent(scheduledWorkoutID, forKey: .scheduledWorkoutID)
+        try container.encodeIfPresent(weekNumber, forKey: .weekNumber)
+        try container.encodeIfPresent(dayIndex, forKey: .dayIndex)
     }
 }
