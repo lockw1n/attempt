@@ -285,7 +285,6 @@ struct RecentRecordsAcrossExercisesTests {
         let (log, exercises) = try await trainedLog()
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         for exerciseID in exercises {
@@ -306,7 +305,6 @@ struct RecentRecordsAcrossExercisesTests {
         let (log, exercises) = try await trainedLog()
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: exercises[0])

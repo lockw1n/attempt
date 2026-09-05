@@ -32,12 +32,6 @@ public actor PersonalRecordRecomputer {
     /// this type had outgrown SwiftLint's length ceiling. Nothing outside this module can see it.
     let workouts: any WorkoutRepository
 
-    /// The catalogue, read for one column: `FR-1.7.5`'s manual override.
-    ///
-    /// Internal rather than private on ``workouts``' rule, so the override's own read and write can
-    /// live in their own file.
-    let exercises: any ExerciseRepository
-
     /// The scheme-record cache (`TR-0.3.9`, `TR-16.1`).
     ///
     /// Internal rather than private on ``workouts``' rule, so the reads over it can live in their
@@ -76,23 +70,24 @@ public actor PersonalRecordRecomputer {
 
     /// Builds the recomputer over the two repositories it reads and writes.
     ///
+    /// **No catalogue among them, since `D-16.1`.** It was held for one column — `FR-1.7.5`'s
+    /// manual override — and a record is now what the lifter's sets say, with nothing to read from
+    /// the exercise row.
+    ///
     /// - Parameters:
     ///   - workouts: Sessions, their entries and their sets.
-    ///   - exercises: The catalogue, for `FR-1.7.5`'s manual override.
     ///   - cache: Where the N-rep maxes are stored between recomputes.
     ///   - formula: The formula estimates start under, until ``formulaDidChange(to:)`` moves it.
     ///   - lookback: The window estimates read, until ``lookbackDidChange(to:)`` moves it.
     ///   - now: What the window is measured back from.
     public init(
         workouts: any WorkoutRepository,
-        exercises: any ExerciseRepository,
         cache: any PersonalRecordCacheRepository,
         formula: E1RMFormulaID = .defaultFormula,
         lookback: E1RMLookback = .default,
         now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.workouts = workouts
-        self.exercises = exercises
         self.cache = cache
         self.formula = formula
         self.lookback = lookback
@@ -134,8 +129,7 @@ public actor PersonalRecordRecomputer {
 
     /// Tells every subscriber what moved.
     ///
-    /// Internal rather than private on ``workouts``' rule: `FR-1.7.5`'s override is a trigger like
-    /// any other and lives in its own file.
+    /// Internal rather than private on ``workouts``' rule: a trigger may live in its own file.
     func publish(_ change: RecordChange) {
         for continuation in subscribers.values { continuation.yield(change) }
     }
@@ -269,6 +263,25 @@ public actor PersonalRecordRecomputer {
         publish(.everyExercise)
     }
 
+    /// The fourth trigger: an exercise's training max was written (`FR-15.1.4`, `FR-15.1.8`).
+    ///
+    /// **Nothing here is invalidated, and no record moved.** A training max is what a *future* load
+    /// is read against; the sets already logged are unchanged, so the cache is untouched and the
+    /// only thing stale is what a screen draws beside a number — `FR-15.1.8`'s line under a tile,
+    /// and `FR-16.7.1`'s percentage. This actor is the app's one announcement channel (`TR-1.5`),
+    /// which is why a repository write reaches a screen in another tab through it.
+    ///
+    /// **``RecordChange/exercise(_:)`` rather than ``RecordChange/everyExercise``**, on
+    /// `FR-1.6.4`'s scope: one exercise's number moved.
+    ///
+    /// It publishes unconditionally, on ``recentRecordsPreferencesDidChange()``'s rule — the number
+    /// is not in force here, so this actor cannot tell a redundant write from a real one.
+    ///
+    /// - Parameter exerciseID: The exercise whose training max was written.
+    public func trainingMaxDidChange(forExerciseID exerciseID: UUID) {
+        publish(.exercise(exerciseID))
+    }
+
     // MARK: - The computation
 
     /// Both halves, from the one walk ``walked(_:writingCache:)`` performed.
@@ -359,18 +372,14 @@ public actor PersonalRecordRecomputer {
             schemeRecords: schemeRecords)
     }
 
-    /// `FR-1.7.1`'s estimate, over the sets `walk` already read — or `FR-1.7.5`'s override instead
-    /// of one.
+    /// `FR-1.7.1`'s estimate, over the sets `walk` already read.
     ///
-    /// The only reads it adds are the exercise row and, where there is no override, the window's
-    /// own — the sets are the walk's, so asking for the estimate never walks the history a second
-    /// time.
+    /// The only read it adds is the window's own — the sets are the walk's, so asking for the
+    /// estimate never walks the history a second time.
+    ///
+    /// **There is no way past it** (`D-16.1`). An estimate is what the lifter's sets say, and the
+    /// one number they enter themselves is the training max, which lives in a table of its own.
     private func estimate(over walk: Walk) async throws -> EstimatedMax {
-        // Before the window is read, not after: an override answers whatever the sets say, so the
-        // ranged session read the window costs would be work thrown away (`FR-1.7.5`).
-        if let manual = try await manualEstimate(forExerciseID: walk.exerciseID) {
-            return EstimatedMax(manual: manual, formula: formula, lookback: lookback)
-        }
         // The filter preserves the repository's order, which is what keeps "ties resolve to the
         // earlier set" meaning the same thing over the subsequence.
         let window =

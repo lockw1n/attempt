@@ -56,16 +56,8 @@ public final class ExerciseRecordsState {
     /// for different halves and a screen drawing only the estimate calls only the one. Best-effort,
     /// on ``sourceSessions``' rule: a set that will not resolve is a number with no link.
     ///
-    /// `nil` for a manual override, which has no source set at all, and for an absent estimate.
+    /// `nil` for an absent estimate, which has no source set at all.
     public private(set) var estimateSourceSession: UUID?
-
-    /// Why the last ``setManualEstimate(_:)`` failed, or `nil` — a **diagnostic**, not copy
-    /// (`G-3.4`).
-    ///
-    /// Its own property rather than one of the two reads': a write that fails leaves the number on
-    /// screen exactly as it was, and reporting it as a failed *read* would blank a value nothing is
-    /// wrong with.
-    public private(set) var manualFailure: String?
 
     /// The session each record's source set was performed in, keyed on the set — `FR-1.6.2`'s link.
     ///
@@ -223,26 +215,6 @@ public final class ExerciseRecordsState {
     private func sourceSession(of estimate: EstimatedMax) async -> UUID? {
         guard let setID = estimate.record?.sourceSetID else { return nil }
         return await recomputer.sessionIDs(forSetIDs: [setID], inExerciseID: exerciseID)[setID]
-    }
-
-    /// Sets `FR-1.7.5`'s manual override, or clears it, and shows the result of its own write.
-    ///
-    /// **It reloads rather than waiting to be told.** The recomputer announces the change and this
-    /// state is subscribed to it, but a stream is delivered whenever the runtime gets to it — and a
-    /// screen whose own command takes visible effect at some later moment is one the user taps
-    /// twice. The announcement still matters: it is what moves the number on every *other* screen.
-    ///
-    /// - Parameter weight: The number the user entered, or `nil` to return to the computed
-    ///   estimate.
-    public func setManualEstimate(_ weight: Weight?) async {
-        do {
-            try await recomputer.setManualEstimate(weight, forExerciseID: exerciseID)
-            manualFailure = nil
-        } catch {
-            manualFailure = String(describing: error)
-            return
-        }
-        await loadEstimate()
     }
 
     /// Keeps this current until cancelled (`TR-1.5`).

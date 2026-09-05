@@ -171,7 +171,8 @@ struct RootTabView: View {
                 vocabulary: stores.modifiers,
                 equipment: stores.equipment,
                 records: stores.records,
-                routines: repositories.routines
+                routines: repositories.routines,
+                trainingMaxes: repositories.trainingMaxes
             )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
@@ -227,6 +228,7 @@ struct RootTabView: View {
                 catalogue: repositories.exercises,
                 workouts: repositories.workouts,
                 settings: repositories.settings,
+                trainingMaxes: repositories.trainingMaxes,
                 repeatSession: { sessionID in
                     await stores.activeSession.resume()
                     return await stores.activeSession.start(on: .now, repeating: sessionID)

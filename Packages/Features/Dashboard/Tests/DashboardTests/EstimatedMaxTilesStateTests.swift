@@ -203,6 +203,87 @@ struct EstimatedMaxTilesStateTests {
         #expect(EstimatedMaxTileView.direction(of: Weight(grams: 0)) == .unchanged)
     }
 
+    // MARK: - FR-15.1.8's training max, under the estimate
+
+    @Test("A tile carries the training max in force today, beside the estimate")
+    func atileCarriesTheTrainingMax() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.tile([squat])
+        try await fixture.trainingMax(squat, kilos: 180, weeksAgo: 1)
+
+        let state = tiles(over: fixture)
+        await state.load()
+
+        #expect(state.tiles.first?.trainingMax == Weight(grams: 180_000))
+    }
+
+    /// `nil` and not zero, which is the common case: nothing writes a training max until the
+    /// exercise detail's own section does.
+    @Test("An exercise with no training max carries none rather than a zero")
+    func notrainingMaxIsNil() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.tile([squat])
+
+        let state = tiles(over: fixture)
+        await state.load()
+
+        #expect(state.tiles.first?.trainingMax == nil)
+    }
+
+    @Test("A change dated after today is not yet the number under the tile")
+    func afutureTrainingMaxIsNotDrawn() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.tile([squat])
+        try await fixture.trainingMax(squat, kilos: 180, weeksAgo: 1)
+        try await fixture.trainingMax(squat, kilos: 200, weeksAgo: -1, replacing: 180)
+
+        let state = tiles(over: fixture)
+        await state.load()
+
+        #expect(state.tiles.first?.trainingMax == Weight(grams: 180_000))
+    }
+
+    /// `TR-1.5`: the sheet is on another tab, so the write reaches this screen through the app's one
+    /// announcement channel rather than through a read this screen would have to be told to make.
+    @Test("A training max written elsewhere reaches the tile without the tab being revisited")
+    func atrainingMaxWrittenElsewhereReachesTheTile() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.tile([squat])
+        // One actor rather than two: only the one a state subscribed to announces to it.
+        let records = fixture.records
+        let state = EstimatedMaxTilesState(
+            records: records,
+            catalogue: fixture.repositories.exercises,
+            settings: fixture.repositories.settings,
+            trainingMaxes: fixture.repositories.trainingMaxes,
+            now: { fixtureNow })
+        await state.load()
+        #expect(state.tiles.first?.trainingMax == nil)
+
+        let subscription = Task { await state.observeChanges() }
+        defer { subscription.cancel() }
+        try await fixture.trainingMax(squat, kilos: 180, weeksAgo: 1)
+        await records.trainingMaxDidChange(forExerciseID: squat)
+
+        try await waitFor { state.tiles.first?.trainingMax == Weight(grams: 180_000) }
+    }
+
+    /// Polls the state until the subscription has delivered, rather than sleeping a fixed span: the
+    /// stream is delivered whenever the runtime gets to it.
+    ///
+    /// - Parameter condition: What the tile should end up saying.
+    private func waitFor(_ condition: () -> Bool) async throws {
+        for _ in 0..<200 {
+            if condition() { return }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        Issue.record("The tile never took the announced training max.")
+    }
+
     // MARK: - Fixtures
 
     private func tiles(
@@ -211,6 +292,11 @@ struct EstimatedMaxTilesStateTests {
         EstimatedMaxTilesState(
             records: fixture.records,
             catalogue: failing ? FailingExerciseRepository() : fixture.repositories.exercises,
-            settings: fixture.repositories.settings)
+            settings: fixture.repositories.settings,
+            trainingMaxes: fixture.repositories.trainingMaxes,
+            // "Now" is pinned, on `DashboardFixture/records`' rule: every fixture date is an offset
+            // from `fixtureNow`, and left at the real clock a change dated a week ahead of it would
+            // already be in force.
+            now: { fixtureNow })
     }
 }

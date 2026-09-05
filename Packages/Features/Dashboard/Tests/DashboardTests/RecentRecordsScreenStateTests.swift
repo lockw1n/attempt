@@ -18,7 +18,6 @@ struct RecentRecordsScreenStateTests {
         return RecentRecordsState(
             recomputer: PersonalRecordRecomputer(
                 workouts: repositories.workouts,
-                exercises: repositories.exercises,
                 cache: repositories.personalRecords),
             catalogue: repositories.exercises,
             settings: repositories.settings,
@@ -165,7 +164,6 @@ private final class TrainingLogFixture {
     private let cache: SwitchableCache
     lazy var recomputer = PersonalRecordRecomputer(
         workouts: repositories.workouts,
-        exercises: repositories.exercises,
         cache: cache)
 
     init() { cache = SwitchableCache(wrapping: repositories.personalRecords) }

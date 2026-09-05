@@ -115,7 +115,6 @@ struct RecordTriggerTests {
             repository: workout.repositories.workouts,
             records: PersonalRecordRecomputer(
                 workouts: workout.repositories.workouts,
-                exercises: workout.repositories.exercises,
                 cache: workout.repositories.personalRecords))
 
         let written = try await writer.edit(
@@ -152,7 +151,6 @@ struct RecordTriggerTests {
             forEntryID: entryID, includingDeleted: false)
         let recomputer = PersonalRecordRecomputer(
             workouts: workout.repositories.workouts,
-            exercises: workout.repositories.exercises,
             cache: workout.repositories.personalRecords)
         let writer = LoggedSetWriter(
             repository: workout.repositories.workouts, records: recomputer)

@@ -40,7 +40,6 @@ struct RestoreTests {
             settings: stack.settings,
             records: PersonalRecordRecomputer(
                 workouts: stack.workouts,
-                exercises: stack.exercises,
                 cache: stack.personalRecords))
     }
 

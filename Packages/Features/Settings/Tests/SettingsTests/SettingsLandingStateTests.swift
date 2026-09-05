@@ -302,7 +302,6 @@ func landingState(
         records: records
             ?? PersonalRecordRecomputer(
                 workouts: fakes.workouts,
-                exercises: fakes.exercises,
                 cache: fakes.personalRecords))
 }
 
@@ -315,7 +314,6 @@ struct SettingsFormulaTests {
         let fakes = InMemoryRepositoryStack()
         let records = PersonalRecordRecomputer(
             workouts: fakes.workouts,
-            exercises: fakes.exercises,
             cache: fakes.personalRecords)
         let state = landingState(over: repository, records: records)
         await state.load()
@@ -335,7 +333,6 @@ struct SettingsFormulaTests {
         let fakes = InMemoryRepositoryStack()
         let records = PersonalRecordRecomputer(
             workouts: fakes.workouts,
-            exercises: fakes.exercises,
             cache: fakes.personalRecords)
         let state = landingState(over: repository, records: records)
         await state.load()
@@ -368,7 +365,6 @@ struct SettingsFormulaTests {
         let fakes = InMemoryRepositoryStack()
         let records = PersonalRecordRecomputer(
             workouts: fakes.workouts,
-            exercises: fakes.exercises,
             cache: fakes.personalRecords)
         let state = landingState(over: repository, records: records)
         await state.load()
@@ -392,7 +388,6 @@ struct SettingsPreferenceReachTests {
         let fakes = InMemoryRepositoryStack()
         let records = PersonalRecordRecomputer(
             workouts: fakes.workouts,
-            exercises: fakes.exercises,
             cache: fakes.personalRecords)
         let state = landingState(over: repository, records: records)
         await state.load()
@@ -494,5 +489,5 @@ final class Announcements {
 func recomputer() -> PersonalRecordRecomputer {
     let fakes = InMemoryRepositoryStack()
     return PersonalRecordRecomputer(
-        workouts: fakes.workouts, exercises: fakes.exercises, cache: fakes.personalRecords)
+        workouts: fakes.workouts, cache: fakes.personalRecords)
 }

@@ -229,7 +229,6 @@ struct SchemeRecordRecomputeTests {
     private func recomputer(over log: TrainingLog) -> PersonalRecordRecomputer {
         PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
     }

@@ -44,7 +44,6 @@ struct PersonalRecordRecomputerTests {
         try await log.session(of: exerciseID, on: weeksAgo(6), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
 
@@ -66,7 +65,6 @@ struct PersonalRecordRecomputerTests {
             forEntryID: entryID, includingDeleted: false)
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
 
@@ -94,7 +92,6 @@ struct PersonalRecordRecomputerTests {
         try await log.repositories.workouts.save(readable)
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
 
@@ -146,13 +143,11 @@ struct PersonalRecordRecomputerTests {
         try await log.session(of: exerciseID, on: weeksAgo(1), sets: [working(100_000, 5)])
         let epley = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             formula: .epley,
             now: { fixtureNow })
         let brzycki = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             formula: .brzycki,
             now: { fixtureNow })
@@ -173,7 +168,6 @@ struct PersonalRecordRecomputerTests {
         let counting = CountingWorkouts(wrapped: fixture.log.repositories.workouts)
         let reader = PersonalRecordRecomputer(
             workouts: counting,
-            exercises: InMemoryRepositoryStack().exercises,
             cache: fixture.log.repositories.personalRecords,
             now: { fixtureNow })
 
@@ -286,7 +280,6 @@ struct PersonalRecordRecomputerTests {
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let recomputer = PersonalRecordRecomputer(
             workouts: counting,
-            exercises: InMemoryRepositoryStack().exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: bench)
@@ -341,7 +334,6 @@ struct PersonalRecordRecomputerTests {
         try await log.session(of: bench, on: weeksAgo(1), sets: [working(70_000, 5)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: squat)
@@ -402,7 +394,6 @@ func oneSession(sets: [LoggedSet]) async throws -> Fixture {
         entryID: entryID,
         recomputer: PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow }))
 }

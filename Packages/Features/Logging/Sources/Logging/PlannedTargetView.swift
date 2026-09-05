@@ -24,6 +24,13 @@ struct PlannedTargetLine: View {
     /// The unit both the target and the deviation are shown in (`G-3.1`).
     let unit: MassUnit
 
+    /// The training max in force on this session's training day, or `nil` (`FR-16.7.1`).
+    ///
+    /// **The session's day, not today's.** A workout logged three weeks ago was planned against the
+    /// number in force then, and annotating it with this week's would report a load the lifter never
+    /// worked at. The store resolves it once per exercise; see ``SessionExercise/trainingMax``.
+    var trainingMax: Weight?
+
     /// Which locale the numbers are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
@@ -48,6 +55,7 @@ struct PlannedTargetLine: View {
                 .font(Typography.caption.font)
                 .foregroundStyle(ColorToken.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
+            share
             verdict
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -116,6 +124,30 @@ struct PlannedTargetLine: View {
             weight: rendered(weight), reps: target.targetReps)
     }
 
+    /// `FR-16.7.1`'s annotation on the prescribed load, where there is a training max to read it
+    /// against.
+    ///
+    /// **A line of its own under the target, not appended to it.** The target already carries a load
+    /// and a rep count, and T-1.23's measurement on this card is that a third value on the same line
+    /// breaks the first one mid-number at `NFR-1.10`'s ceiling.
+    ///
+    /// **Nothing where the plan named no load** (`FR-15.2.2`): there is no weight to take a
+    /// percentage of, and a share of an open load would be a number about nothing.
+    @ViewBuilder private var share: some View {
+        if let annotation = shareAnnotation {
+            Text(annotation)
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// The share itself, or `nil` — computed apart from the view so the condition is one clause.
+    private var shareAnnotation: LocalizedStringResource? {
+        guard let weight = target.targetWeight else { return nil }
+        return TrainingMaxShare.annotation(for: weight, against: trainingMax, locale: locale)
+    }
+
     /// One load, in the display unit and at the app's precision.
     ///
     /// - Parameter weight: The load.
@@ -139,6 +171,9 @@ struct PlannedNextSetSection: View {
     /// The unit the target is shown in (`G-3.1`).
     let unit: MassUnit
 
+    /// The training max the prescribed load is read against (`FR-16.7.1`), or `nil`.
+    var trainingMax: Weight?
+
     /// Logs it exactly as prescribed.
     let log: () -> Void
 
@@ -148,7 +183,8 @@ struct PlannedNextSetSection: View {
             Text(LoggingStrings.sessionPlanNextHeading)
                 .font(Typography.metricLabel.font)
                 .foregroundStyle(ColorToken.textSecondary)
-            PlannedTargetLine(target: target, comparison: nil, unit: unit)
+            PlannedTargetLine(
+                target: target, comparison: nil, unit: unit, trainingMax: trainingMax)
             if target.targetWeight != nil {
                 // Secondary, on `FR-16.6.4`'s count: this is the same class of action as **Repeat
                 // set** and **Log next set** — one more set on one card — and the screen's single

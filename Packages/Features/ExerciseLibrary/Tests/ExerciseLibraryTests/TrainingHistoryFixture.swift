@@ -51,7 +51,6 @@ final class TrainingHistory {
         let instant = now ?? day(0)
         return PersonalRecordRecomputer(
             workouts: workouts,
-            exercises: stack.exercises,
             cache: cache ?? stack.personalRecords,
             formula: formula,
             lookback: lookback,
@@ -107,6 +106,83 @@ final class TrainingHistory {
             )
         }
         return session
+    }
+
+    /// `FR-15.1`'s state, over this store, with "now" pinned to a training day.
+    ///
+    /// - Parameters:
+    ///   - exercise: The exercise it reports on.
+    ///   - offset: Which day counts as today — what "in force" is resolved at, and what a change
+    ///     entered without backdating takes effect on.
+    /// - Returns: The state under test.
+    func trainingMax(of exercise: Exercise, today offset: Int = 0) -> TrainingMaxSectionState {
+        let instant = day(offset)
+        return TrainingMaxSectionState(
+            exerciseID: exercise.id,
+            trainingMaxes: stack.trainingMaxes,
+            settings: settings,
+            records: recomputer(),
+            now: { instant })
+    }
+
+    /// The calendar every training-max fixture date is snapped to.
+    ///
+    /// **GMT and pinned**, on `SnapshotHarness`' rule for the same reason: `effectiveFrom` is the
+    /// *start of a day*, and a suite that took the machine's zone would compute a different instant
+    /// on a runner three hours away from the one that wrote the expectation.
+    static let gmt: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .gmt
+        return calendar
+    }()
+
+    /// A change sheet's draft, dated on a training day.
+    ///
+    /// - Parameters:
+    ///   - offset: Which training day it takes effect on.
+    ///   - seconds: How far into that instant to place it — what a test asserting the day-snapping
+    ///     needs.
+    ///   - unit: The unit the field is read in.
+    /// - Returns: The draft, with nothing typed into it yet.
+    func draft(
+        onDay offset: Int, atSecondsIntoTheDay seconds: Double = 0, unit: MassUnit = .kilograms
+    ) -> TrainingMaxDraft {
+        TrainingMaxDraft(
+            unit: unit,
+            locale: Locale(identifier: "en_US"),
+            calendar: Self.gmt,
+            day: day(offset).addingTimeInterval(seconds))
+    }
+
+    /// Writes one training max straight to the store, bypassing the screen.
+    ///
+    /// - Parameters:
+    ///   - exercise: Whose training max.
+    ///   - kilos: What it becomes.
+    ///   - offset: The day it takes effect.
+    ///   - old: What it replaced, in kilograms, or `nil` for the first entry.
+    ///   - reason: The note.
+    /// - Returns: The entry written.
+    @discardableResult
+    func writeTrainingMax(
+        _ exercise: Exercise,
+        kilos: Int,
+        onDay offset: Int,
+        replacing old: Int? = nil,
+        reason: String = ""
+    ) async throws -> TrainingMaxHistoryEntry {
+        let entry = TrainingMaxHistoryEntry(
+            id: UUID(),
+            createdAt: epoch,
+            updatedAt: epoch,
+            deletedAt: nil,
+            exerciseID: exercise.id,
+            effectiveFrom: day(offset),
+            oldWeight: old.map { Weight(grams: $0 * 1000) },
+            newWeight: Weight(grams: kilos * 1000),
+            reason: reason)
+        try await stack.trainingMaxes.save(entry)
+        return entry
     }
 
     /// Puts one exercise in the catalogue.

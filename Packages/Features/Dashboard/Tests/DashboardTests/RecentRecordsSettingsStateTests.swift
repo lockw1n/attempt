@@ -24,7 +24,6 @@ struct RecentRecordsSettingsStateTests {
         let repositories = InMemoryRepositoryStack()
         let recomputer = PersonalRecordRecomputer(
             workouts: repositories.workouts,
-            exercises: repositories.exercises,
             cache: repositories.personalRecords)
         let squat = try await repositories.save(
             exerciseNamed: "Back Squat", movement: .squat, isCustom: false)
@@ -152,7 +151,6 @@ struct RecentRecordsSettingsStateTests {
             catalogue: repositories.exercises,
             records: PersonalRecordRecomputer(
                 workouts: repositories.workouts,
-                exercises: repositories.exercises,
                 cache: repositories.personalRecords))
 
         await state.load()

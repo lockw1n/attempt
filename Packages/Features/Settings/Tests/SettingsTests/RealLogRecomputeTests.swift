@@ -65,7 +65,6 @@ struct RealLogRecomputeTests {
 
         let recomputer = PersonalRecordRecomputer(
             workouts: stack.workouts,
-            exercises: stack.exercises,
             cache: stack.personalRecords)
         let archive = try StoreRestore.archive(from: data)
         let clock = ContinuousClock()

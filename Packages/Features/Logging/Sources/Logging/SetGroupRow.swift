@@ -50,6 +50,12 @@ struct SetGroupRow: View {
     /// What a routine planned for one member (`FR-15.3.1`), or `nil`.
     var target: (UUID) -> PlannedTargetGroup? = { _ in nil }
 
+    /// The training max in force on this session's training day, or `nil` (`FR-16.7.1`).
+    ///
+    /// Handed to every member row and to the shared target line. The collapsed summary draws no
+    /// share of its own — see ``SetRow/trainingMax``.
+    var trainingMax: Weight?
+
     /// Appends a set equal to this group's last member (`FR-16.1.4`), or `nil` where the surface
     /// does not offer it.
     ///
@@ -299,7 +305,8 @@ struct SetGroupRow: View {
             PlannedTargetLine(
                 target: shared,
                 comparison: PlannedTargetComparison(set: group.record, target: shared),
-                unit: unit
+                unit: unit,
+                trainingMax: trainingMax
             )
         }
     }
@@ -334,6 +341,7 @@ struct SetGroupRow: View {
             mark: mark,
             markCompleted: markCompleted,
             edit: edit,
+            trainingMax: trainingMax,
             target: target(numbered.id)
         )
     }

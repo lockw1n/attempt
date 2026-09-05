@@ -272,3 +272,4 @@
 "logging.past-session.save-routine.name-required.message" = "Програмі потрібна назва. Нічого не збережено.";
 "logging.past-session.save-routine.write-error.message" = "Не вдалося зберегти програму. Спробуйте ще раз.";
 "logging.past-session.save-routine.saved %@" = "«%@» збережено до ваших програм.";
+"logging.set.training-max-share %@" = "%@ від ТМ";

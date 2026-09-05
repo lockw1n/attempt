@@ -168,10 +168,7 @@
                         days: 90,
                         sessionID: nil),
                     unit: .kilograms,
-                    draft: .constant(nil),
-                    hasFailedWrite: false,
-                    retry: {},
-                    commit: { _ in }
+                    retry: {}
                 )
                 .environment(\.locale, DetailFixtures.locale)
                 .environment(\.timeZone, .gmt)
@@ -188,53 +185,50 @@
                 ExerciseEstimateReading(
                     state: .insufficient(.refused(.repsOutOfRange), days: 90),
                     unit: .kilograms,
-                    draft: .constant(nil),
-                    hasFailedWrite: false,
-                    retry: {},
-                    commit: { _ in }
+                    retry: {}
                 )
             }
         }
 
-        @Test func estimateOverridden() throws {
-            // FR-1.7.5's two halves in one reference: the badge that replaces the provenance line,
-            // and the command that is the way back. At `accessibility3` the badge and the number
-            // are what this gates — a manual estimate that reads as a computed one is the failure
-            // the requirement's "clearly marked" names.
-            try assertSnapshots(named: "ExerciseDetail-estimate-manual") {
-                ExerciseEstimateReading(
-                    state: .manual(Weight(grams: 140_000)),
+        // MARK: - FR-15.1's training max
+
+        @Test func trainingMaxWithHistory() throws {
+            // The number in force with `FR-15.1.5`'s indicator under it, the command, and
+            // `FR-15.1.4`'s history disclosed — three changes, the oldest of which replaced nothing
+            // and therefore reads "Set to" rather than "0 kg → 160 kg". That row is the reference's
+            // sharpest claim: a first entry drawn as a change from zero reports a number the lifter
+            // never had.
+            //
+            // The absent state is not a second reference: it is `T-1.09`'s insufficient-data view
+            // over one sentence, which `ExerciseDetail-estimate-refused` already pictures at both
+            // sizes.
+            try assertSnapshots(named: "ExerciseDetail-training-max") {
+                TrainingMaxReading(
+                    state: .ready(
+                        DetailFixtures.trainingMaxes[0], history: DetailFixtures.trainingMaxes),
                     unit: .kilograms,
-                    draft: .constant(nil),
                     hasFailedWrite: false,
+                    showsHistory: .constant(true),
                     retry: {},
-                    commit: { _ in }
+                    change: {}
                 )
                 .environment(\.locale, DetailFixtures.locale)
+                .environment(\.timeZone, .gmt)
             }
         }
 
-        @Test func estimateOverrideEditor() throws {
-            // The field open, over a computed number, with the failed write beneath it: the two
-            // commands wrap at `accessibility3` and the banner has to stay legible under them.
-            // **The field itself renders as the unsupported-view placeholder**, a `TextField`
-            // being UIKit-backed — the harness's own limit, the same one the loading state's
-            // reference is a picture of. What this gates is everything around it.
-            try assertSnapshots(named: "ExerciseDetail-estimate-override-editor") {
-                ExerciseEstimateReading(
-                    state: .ready(
-                        DatedRecord(
-                            weight: Weight(grams: 116_667),
-                            sourceSetID: UUID(),
-                            achievedAt: DetailFixtures.recordDay),
-                        formula: .epley,
-                        days: 90,
-                        sessionID: nil),
-                    unit: .kilograms,
-                    draft: .constant("140"),
-                    hasFailedWrite: true,
-                    retry: {},
-                    commit: { _ in }
+        @Test func trainingMaxEditor() throws {
+            // `FR-16.7.2`'s three fields, which is the whole of what the sheet asks for: the
+            // number, the day it takes effect, and the note.
+            //
+            // **All three controls rasterise as the unsupported-view placeholder** — two
+            // `TextField`s and a `DatePicker`, every one of them UIKit-backed. That is the
+            // harness's own limit, the same one the estimate's editor reference was a picture of.
+            // What this gates is the three headings, the labels beside the controls, the unit and
+            // the hint, and whether they survive `accessibility3`.
+            try assertSnapshots(named: "ExerciseDetail-training-max-editor") {
+                TrainingMaxEditorContent(
+                    draft: .constant(DetailFixtures.trainingMaxDraft), unit: .kilograms
                 )
                 .environment(\.locale, DetailFixtures.locale)
                 .environment(\.timeZone, .gmt)
@@ -293,6 +287,60 @@
         )
 
         static let pauseSquat = Fixtures.exercise(id: 3, name: "Pause Squat", movement: .squat)
+
+        /// Three changes to one exercise's training max, newest first — the order the repository
+        /// returns and the section draws.
+        ///
+        /// The oldest carries no ``RepositoryInterface/TrainingMaxHistoryEntry/oldWeight``, which is
+        /// the case the row's copy branches on; the middle one carries no note, which is the other.
+        static let trainingMaxes: [TrainingMaxHistoryEntry] = [
+            trainingMax(id: 11, kilos: 180, from: 0, replacing: 172.5, reason: "coach, block 3"),
+            trainingMax(id: 12, kilos: 172.5, from: -28, replacing: 160),
+            trainingMax(id: 13, kilos: 160, from: -70, reason: "coach"),
+        ]
+
+        /// What the change sheet holds mid-entry: a number typed, a day chosen, a note written.
+        static let trainingMaxDraft: TrainingMaxDraft = {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = .gmt
+            var draft = TrainingMaxDraft(
+                unit: .kilograms,
+                locale: locale,
+                calendar: calendar,
+                day: recordDay,
+                newEntryID: Fixtures.identifier(14))
+            draft.weightText = "182.5"
+            draft.reason = "coach"
+            return draft
+        }()
+
+        /// One change to a training max, dated relative to ``recordDay``.
+        ///
+        /// - Parameters:
+        ///   - id: Its stable identifier, so a reference does not change by run.
+        ///   - kilos: What it becomes.
+        ///   - days: How many days from ``recordDay`` it takes effect — negative is earlier.
+        ///   - old: What it replaced, or `nil` for the first entry an exercise ever had.
+        ///   - reason: The note, or empty.
+        /// - Returns: The entry.
+        private static func trainingMax(
+            id: Int,
+            kilos: Double,
+            from days: Int,
+            replacing old: Double? = nil,
+            reason: String = ""
+        ) -> TrainingMaxHistoryEntry {
+            TrainingMaxHistoryEntry(
+                id: Fixtures.identifier(id),
+                createdAt: recordDay,
+                updatedAt: recordDay,
+                deletedAt: nil,
+                exerciseID: backSquat.id,
+                effectiveFrom: recordDay.addingTimeInterval(Double(days) * 86_400),
+                oldWeight: old.map { Weight(grams: Int($0 * 1000)) },
+                newWeight: Weight(grams: Int(kilos * 1000)),
+                reason: reason)
+        }
 
         /// ``backSquat`` and ``frontSquat`` with Ukrainian names, for the reference that shows a
         /// translated parent over a mixed list of variations (`FR-1.14.2`).

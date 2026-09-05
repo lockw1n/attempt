@@ -168,7 +168,6 @@ struct RestoreStateTests {
                 settings: stack.settings,
                 records: PersonalRecordRecomputer(
                     workouts: stack.workouts,
-                    exercises: stack.exercises,
                     cache: stack.personalRecords)))
 
         await state.read(url)
@@ -200,7 +199,6 @@ struct RestoreStateTests {
                 settings: stack.settings,
                 records: PersonalRecordRecomputer(
                     workouts: stack.workouts,
-                    exercises: stack.exercises,
                     cache: stack.personalRecords)))
         await state.read(url)
 

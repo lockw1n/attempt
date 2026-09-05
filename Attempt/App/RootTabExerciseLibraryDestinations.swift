@@ -73,7 +73,8 @@ extension RootTabView {
                 repository: repositories.exercises,
                 workouts: repositories.workouts,
                 settings: repositories.settings,
-                records: stores.records
+                records: stores.records,
+                trainingMaxes: repositories.trainingMaxes
             )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)

@@ -153,7 +153,6 @@ struct AppDependencies {
             let stack = try PersistenceStack(location: location, sync: syncMode)
             let records = PersonalRecordRecomputer(
                 workouts: stack.workouts,
-                exercises: stack.exercises,
                 cache: stack.personalRecords)
             state = .open(
                 Repositories(
@@ -170,7 +169,8 @@ struct AppDependencies {
                         repository: stack.workouts,
                         catalogue: stack.exercises,
                         settings: stack.settings,
-                        records: records
+                        records: records,
+                        trainingMaxes: stack.trainingMaxes
                     ),
                     records: records,
                     screenWake: ScreenWakePreference(),

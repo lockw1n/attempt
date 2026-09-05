@@ -64,7 +64,6 @@ struct RecomputeScaleTests {
         let (log, exerciseID) = try await hugeHistory()
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         let logged = try await log.repositories.workouts.sets(
@@ -125,7 +124,6 @@ struct RecomputeScaleTests {
         let (log, exerciseID) = try await groupedHistory()
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
 
@@ -155,14 +153,12 @@ struct RecomputeScaleTests {
         let (log, exerciseID) = try await hugeHistory()
         let seeding = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         try await seeding.recompute(forExerciseID: exerciseID)
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let reader = PersonalRecordRecomputer(
             workouts: counting,
-            exercises: InMemoryRepositoryStack().exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
 

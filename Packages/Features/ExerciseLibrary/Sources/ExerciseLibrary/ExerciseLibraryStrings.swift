@@ -428,9 +428,7 @@ enum ExerciseLibraryStrings {
             recordsMoreExpanded, recordsMoreCollapsed,
             e1rmSection, e1rmNone, e1rmValue, e1rmError,
             e1rmProvenance("Epley", days: 90),
-            e1rmSourceHint, e1rmManualBadge,
-            e1rmOverrideAction, e1rmOverrideField, e1rmOverrideSave, e1rmOverrideCancel,
-            e1rmOverrideEdit, e1rmOverrideRevert, e1rmOverrideError,
+            e1rmSourceHint,
             detailErrorHeadline, detailErrorMessage, detailMissingHeadline, detailMissingMessage,
             createAction, editAction, formCreateTitle, formEditTitle, formSection,
             formName, formNamePrompt, formNameRequired,
@@ -441,7 +439,7 @@ enum ExerciseLibraryStrings {
             formParentEveryMovement,
             formParentEmpty, formSave, formErrorHeadline, formErrorMessage, formMissingHeadline,
             formMissingMessage, formWriteError,
-        ] + allSchemeRecordStrings + allHistoryRowStrings
+        ] + allSchemeRecordStrings + allHistoryRowStrings + allTrainingMaxStrings
             + Movement.allCases.map(label(for:))
             + Equipment.allCases.map(label(for:))
             + ExerciseOrigin.allCases.map(label(for:))

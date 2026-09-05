@@ -53,7 +53,6 @@ struct RecentRecordsStateTests {
         try await log.session(of: bench, on: weeksAgo(1), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: squat)
@@ -88,7 +87,6 @@ struct RecentRecordsStateTests {
         let log = TrainingLog()
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         let state = RecentRecordsState(
@@ -129,7 +127,6 @@ struct RecentRecordsStateTests {
         let failure = RepositoryError.recordNotFound(id: UUID())
         let recomputer = PersonalRecordRecomputer(
             workouts: InMemoryRepositoryStack().workouts,
-            exercises: InMemoryRepositoryStack().exercises,
             cache: RefusingCache(failure: failure),
             now: { fixtureNow })
         let state = RecentRecordsState(
@@ -204,7 +201,6 @@ struct RecentRecordsStateTests {
         let gated = GatedCache(wrapped: log.repositories.personalRecords)
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: gated,
             now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: bench)
@@ -421,7 +417,6 @@ struct RecentRecordsLocaleNameTests {
         try await log.session(of: bench, on: weeksAgo(1), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: squat)

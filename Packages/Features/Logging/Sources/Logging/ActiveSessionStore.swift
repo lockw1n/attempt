@@ -150,6 +150,9 @@ public final class ActiveSessionStore {
 
     private let settings: any SettingsRepository
 
+    /// Where `FR-16.7.1`'s training max comes from — see ``SessionTrainingMax``.
+    let trainingMaxes: any TrainingMaxRepository
+
     /// The chain every command in `ActiveSessionCommands.swift` runs in.
     ///
     /// **Two taps are two writes, not one.** Each command re-reads what it is about to extend when
@@ -176,16 +179,19 @@ public final class ActiveSessionStore {
     ///   - records: The app's one recompute actor (`TR-1.6`). Not a repository: what a set changing
     ///     owes is a recomputation, and handing this store the cache instead would make it the
     ///     second thing in the app that knows how a personal record is derived.
+    ///   - trainingMaxes: Where `FR-16.7.1`'s training max is stored — see ``SessionTrainingMax``.
     public init(
         repository: any WorkoutRepository & PlannedTargetRepository,
         catalogue: any ExerciseRepository,
         settings: any SettingsRepository,
-        records: PersonalRecordRecomputer
+        records: PersonalRecordRecomputer,
+        trainingMaxes: any TrainingMaxRepository
     ) {
         self.repository = repository
         self.catalogue = catalogue
         self.settings = settings
         self.records = records
+        self.trainingMaxes = trainingMaxes
     }
 
     /// Reads the unit a load is entered and shown in (`G-3.1`, `G-3.2`).
@@ -393,7 +399,9 @@ public final class ActiveSessionStore {
                         exercise: try await catalogue.exercise(id: entry.exerciseID, includingDeleted: false),
                         sets: try await repository.sets(forEntryID: entry.id, includingDeleted: false),
                         planned: try await repository.plannedTargets(
-                            forEntryID: entry.id, includingDeleted: false)
+                            forEntryID: entry.id, includingDeleted: false),
+                        trainingMax: try await SessionTrainingMax.inForce(
+                            trainingMaxes, forExerciseID: entry.exerciseID, on: current.date)
                     )
                 )
             }
@@ -407,21 +415,6 @@ public final class ActiveSessionStore {
         }
         hasLoadedExercises = true
     }
-
-    /// Whether a workout is in progress — what the screen-wake policy and every entry point read.
-    public var isActive: Bool { session != nil }
-
-    /// How far through the workout the user is (`FR-1.2.13`).
-    public var progress: SessionProgress { SessionProgress(exercises) }
-
-    /// How much of what a routine prescribed has been performed as prescribed (`FR-15.3.3`), or
-    /// `nil` for a workout nobody planned.
-    ///
-    /// **Recomputed off the held exercises on every read, like ``progress``**, which is what makes
-    /// an adjustment show up in it for free: every command that changes a set ends in
-    /// ``loadExercises()``, so the next read of this sees the corrected set with nothing to
-    /// invalidate.
-    public var adherence: SessionAdherence? { SessionAdherence(exercises) }
 
     /// Drops the exercise list, because the workout it belonged to is no longer the one held.
     ///

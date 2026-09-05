@@ -116,6 +116,13 @@ struct SetRow: View {
     /// Opens `FR-1.2.7`'s editor over this set.
     let edit: (SetEntry) -> Void
 
+    /// The training max in force on this session's training day, or `nil` (`FR-16.7.1`).
+    ///
+    /// **On the row rather than on the collapsed group line.** A run of four identical sets says
+    /// its share once, in the line every member shares — see ``SetGroupRow`` — and repeating it on
+    /// the summary as well would put the same percentage on screen twice.
+    var trainingMax: Weight?
+
     /// What a routine planned for this set, or `nil` (`FR-15.3.1`).
     ///
     /// **`nil` covers three different cases and the row draws none of them**: an exercise nobody
@@ -216,6 +223,7 @@ struct SetRow: View {
                     rating
                 }
                 recordMark
+                trainingMaxShare
                 modifiers
                 plannedTarget
             }
@@ -413,6 +421,41 @@ struct SetRow: View {
         }
     }
 
+    /// `FR-16.7.1`'s annotation: what was lifted, as a share of the training max in force.
+    ///
+    /// **Below the values rather than beside them**, on ``modifiers``' measured rule and for its
+    /// reason — and inside the values button, because the load and what it is a share of are one
+    /// fact about one set, so VoiceOver reads them as one element.
+    ///
+    /// **Warmups carry it too.** A ramp is loaded off the same number the work is, and a lifter
+    /// checking whether they opened at 50% is asking about exactly those rows.
+    ///
+    /// **Not where the plan's own line below already says it.** A set that hit its target draws the
+    /// same percentage twice, two lines apart — measured in the reference, and it reads as a
+    /// stutter rather than as two facts. A set that *missed* draws both, which is the case the pair
+    /// is worth having: `70% of TM` above `68% of TM` is the size of the deviation in the units the
+    /// programme is written in.
+    @ViewBuilder private var trainingMaxShare: some View {
+        if let percent = ownShare {
+            Text(TrainingMaxShare.annotation(percent, locale: locale))
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// This set's own share, or `nil` where there is none to draw — see ``trainingMaxShare``.
+    private var ownShare: Int? {
+        guard let percent = TrainingMaxShare.percent(for: numbered.record.weight, against: trainingMax)
+        else {
+            return nil
+        }
+        let planned = target?.targetWeight.flatMap {
+            TrainingMaxShare.percent(for: $0, against: trainingMax)
+        }
+        return percent == planned ? nil : percent
+    }
+
     /// `FR-15.3.1`'s target and `FR-15.3.2`'s deviation, where a routine planned this set.
     ///
     /// **Inside the values button and below them**, on ``modifiers``' measured rule: the line is
@@ -424,7 +467,8 @@ struct SetRow: View {
             PlannedTargetLine(
                 target: target,
                 comparison: PlannedTargetComparison(set: numbered.record, target: target),
-                unit: unit
+                unit: unit,
+                trainingMax: trainingMax
             )
         }
     }

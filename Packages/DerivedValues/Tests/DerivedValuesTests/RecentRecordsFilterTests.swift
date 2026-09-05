@@ -48,7 +48,6 @@ struct RecentRecordsFilterTests {
         try await log.session(of: kickback, on: weeksAgo(1), sets: [working(10_000, 12)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         for lift in lifts + [kickback] { try await recomputer.recompute(forExerciseID: lift) }
@@ -173,7 +172,6 @@ struct RecentRecordsFilterTests {
         }
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
 
@@ -199,7 +197,6 @@ struct RecentRecordsFilterTests {
         }
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
 
@@ -221,7 +218,6 @@ struct RecentRecordsFilterTests {
         }
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
 
@@ -244,7 +240,6 @@ struct RecentRecordsFilterTests {
         try await log.session(of: squat, on: weeksAgo(1), sets: [working(200_000, 1)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: squat)
@@ -273,7 +268,6 @@ struct RecentRecordsFilterTests {
         let log = TrainingLog()
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         // Two improving lifts: each standing record beat something, so neither is a baseline.

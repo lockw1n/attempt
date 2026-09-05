@@ -30,7 +30,6 @@
 "dashboard.tiles.error" = "Не вдалося прочитати ваші орієнтовні максимуми.";
 "dashboard.tiles.none.headline" = "На головному екрані немає вправ";
 "dashboard.tiles.none.message" = "Виберіть вправи, для яких потрібна оцінка.";
-"dashboard.tiles.manual" = "Введено вручну";
 "dashboard.tiles.no-previous" = "Немає попередньої оцінки для порівняння";
 "dashboard.tiles.choose.action" = "Вибрати вправи";
 "dashboard.tiles.choose.title" = "Вправи на головному екрані";
@@ -79,3 +78,4 @@
 "dashboard.recent-records.baselines.title" = "Перші рекорди";
 "dashboard.recent-records.baselines.label" = "Показувати перші рекорди";
 "dashboard.recent-records.baselines.detail" = "Коли ви виконуєте схему вперше, вона встановлює рекорд, який немає з чим порівняти. Вимкнено за замовчуванням, щоб нова допоміжна вправа не заповнювала стрічку.";
+"dashboard.tiles.training-max %@" = "Тренувальний максимум %@";

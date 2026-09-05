@@ -36,6 +36,18 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
     /// is not a state anything reports — the card simply has no target to show.
     public let planned: [PlannedTargetGroup]
 
+    /// The training max in force for this exercise on the session's training day, or `nil`
+    /// (`FR-16.7.1`).
+    ///
+    /// **The session's day, not today's.** A load is annotated with the number it was planned
+    /// against, so a training max raised after a workout does not rewrite what that workout's sets
+    /// were a percentage of. Resolved once per entry by the store that built this join —
+    /// ``RepositoryInterface/TrainingMaxRepository/trainingMax(forExerciseID:on:)`` is a lookup over
+    /// the history, not a walk of the sets.
+    ///
+    /// **`nil` is the common case and every surface draws nothing for it**: no zero, no dash.
+    public let trainingMax: Weight?
+
     /// The entry's id: one entry is one card, and the same exercise may be performed twice in a
     /// workout.
     public var id: UUID { entry.id }
@@ -47,16 +59,19 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
     ///   - exercise: The catalogue row it names, where there is one.
     ///   - sets: The sets logged against the entry.
     ///   - planned: The targets snapshotted from a routine, or none.
+    ///   - trainingMax: The number in force on the session's day, or `nil`.
     public init(
         entry: ExerciseEntry,
         exercise: Exercise?,
         sets: [SetEntry],
-        planned: [PlannedTargetGroup] = []
+        planned: [PlannedTargetGroup] = [],
+        trainingMax: Weight? = nil
     ) {
         self.entry = entry
         self.exercise = exercise
         self.sets = sets
         self.planned = planned
+        self.trainingMax = trainingMax
     }
 
     /// Whether this exercise is finished — what `FR-1.2.13` collapses a card for.

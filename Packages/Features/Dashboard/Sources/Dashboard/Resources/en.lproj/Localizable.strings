@@ -64,7 +64,6 @@
 "dashboard.tiles.none.message" = "Choose the lifts you want an estimate for.";
 /* FR-1.7.5's manual mark, where a delta would otherwise be. A manual number has nothing it moved
    from, so this line replaces the delta rather than sitting beside it. */
-"dashboard.tiles.manual" = "Entered manually";
 /* FR-1.9.1's delta has nothing to compare against: this is the first estimate inside the window. */
 "dashboard.tiles.no-previous" = "No earlier estimate to compare";
 "dashboard.tiles.choose.action" = "Choose lifts";
@@ -147,3 +146,4 @@
 "dashboard.recent-records.baselines.title" = "First-time records";
 "dashboard.recent-records.baselines.label" = "Show first-time records";
 "dashboard.recent-records.baselines.detail" = "The first time you perform a scheme it sets a record with nothing to compare against. Off by default, so a new accessory lift does not fill the feed.";
+"dashboard.tiles.training-max %@" = "Training max %@";

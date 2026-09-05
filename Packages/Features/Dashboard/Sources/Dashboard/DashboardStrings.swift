@@ -245,7 +245,8 @@ enum DashboardStrings {
             lastWorkoutRepeatError, lastWorkoutSets(4),
             firstLaunchHeadline, firstLaunchMessage,
             weekTitle, weekWorkouts, weekVolume, weekNone, weekUnweighed, weekError,
-            tilesTitle, tilesError, tilesNoneChosen, tilesNoneChosenMessage, tileManual,
+            tilesTitle, tilesError, tilesNoneChosen, tilesNoneChosenMessage,
+            tileTrainingMax("180 kg"),
             tileNoPrevious, tilesChooseAction, tilesChooseTitle, tilesChooseEmpty,
             tilesChooseError, tilesChooseWriteError,
         ] + absences.map { tileAbsence($0, days: 90) }

@@ -457,3 +457,4 @@
 /* Where it went: nothing on this screen changes when a routine is written, so the confirmation is
    the only thing that says the command did anything. */
 "logging.past-session.save-routine.saved %@" = "Saved “%@” to your routines.";
+"logging.set.training-max-share %@" = "%@ of TM";

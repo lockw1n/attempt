@@ -265,7 +265,9 @@ struct SessionExerciseCard: View {
     /// duplicate exactly where Phase 1 put it.
     @ViewBuilder private var plannedNext: some View {
         if let group = item.nextPlannedGroup {
-            PlannedNextSetSection(target: group, unit: unit) { logPlanned(item.id) }
+            PlannedNextSetSection(target: group, unit: unit, trainingMax: item.trainingMax) {
+                logPlanned(item.id)
+            }
         }
     }
 
@@ -316,6 +318,7 @@ struct SessionExerciseCard: View {
             edit: edit,
             recordSchemes: { personalRecords.schemes(forSetID: $0) },
             target: { targets[$0] },
+            trainingMax: item.trainingMax,
             logNext: logNext
         )
     }
