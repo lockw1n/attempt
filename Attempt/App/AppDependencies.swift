@@ -174,7 +174,8 @@ struct AppDependencies {
                         catalogue: stack.exercises,
                         settings: stack.settings,
                         records: records,
-                        trainingMaxes: stack.trainingMaxes
+                        trainingMaxes: stack.trainingMaxes,
+                        programs: stack.programs
                     ),
                     records: records,
                     screenWake: ScreenWakePreference(),

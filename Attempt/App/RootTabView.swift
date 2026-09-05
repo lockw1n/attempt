@@ -101,6 +101,40 @@ struct RootTabView: View {
             routineEditorRoot(.create)
         case .routineEdit(let routineID):
             routineEditorRoot(.edit(routineID: routineID))
+        case .programList:
+            programListRoot
+        case .programEdit(let programID):
+            programEditorRoot(programID)
+        }
+    }
+
+    /// The programs the lifter has authored (`FR-16.8.1`), or the reason they cannot be shown.
+    @ViewBuilder
+    private var programListRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, _):
+            ProgramListView(repository: repositories.programs)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// One program's editor (`FR-16.8.1`, `FR-16.8.2`), or the reason it cannot be shown.
+    ///
+    /// **Two repositories, because a program day is a join the schema does not declare** (`G-2.5`):
+    /// the day names a routine and the editor draws that routine's name.
+    ///
+    /// - Parameter programID: The program the route carried.
+    @ViewBuilder
+    private func programEditorRoot(_ programID: UUID) -> some View {
+        switch dependencies.state {
+        case .open(let repositories, _):
+            ProgramEditorView(
+                programID: programID,
+                programs: repositories.programs,
+                routines: repositories.routines)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
         }
     }
 
@@ -303,8 +337,12 @@ struct RootTabView: View {
     @ViewBuilder
     private var trainRoot: some View {
         switch dependencies.state {
-        case .open(_, let stores):
-            TrainingHomeView(store: stores.activeSession)
+        case .open(let repositories, let stores):
+            TrainingHomeView(
+                store: stores.activeSession,
+                programs: repositories.programs,
+                routines: repositories.routines,
+                workouts: repositories.workouts)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

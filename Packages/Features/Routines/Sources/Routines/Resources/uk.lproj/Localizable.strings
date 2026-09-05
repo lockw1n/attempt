@@ -70,3 +70,55 @@
 "routines.list.manage.write-error.message" = "Не вдалося зберегти зміну. Спробуйте ще раз.";
 
 "routines.list.duplicate.name %@" = "%@ (копія)";
+
+/* FR-16.8.1 — курси. «Програма» тут уже зайнята розкладом одного дня, тому багатотижневий план
+   називається курсом. */
+"routines.programs.link" = "Курси";
+"routines.programs.title" = "Курси";
+"routines.programs.new" = "Новий курс";
+"routines.programs.new.title" = "Новий курс";
+"routines.programs.new.prompt" = "Назва";
+"routines.programs.new.create" = "Створити";
+
+"routines.programs.empty.headline" = "Курсів ще немає";
+"routines.programs.empty.message" = "Курс — це тиждень тренувань: програми по порядку. «Тренування» пропонує наступну.";
+
+"routines.programs.error.headline" = "Не вдалося завантажити курси";
+"routines.programs.error.message" = "Читання не вдалося. Спробуйте ще раз.";
+
+"routines.programs.name-required.message" = "Спершу дайте курсу назву.";
+"routines.programs.write-error.message" = "Не вдалося зберегти курс. Спробуйте ще раз.";
+
+"routines.programs.current" = "Поточний";
+"routines.programs.row.unnamed" = "Курс без назви";
+
+"routines.program-editor.title" = "Курс";
+"routines.program-editor.name.label" = "Назва";
+"routines.program-editor.name.prompt" = "Назва";
+"routines.program-editor.note.label" = "Нотатка";
+"routines.program-editor.note.prompt" = "Те, що варто пам’ятати про цей курс";
+"routines.program-editor.save" = "Зберегти";
+
+"routines.program-editor.days.section" = "Дні";
+"routines.program-editor.days.empty.headline" = "Днів ще немає";
+"routines.program-editor.days.empty.message" = "Оберіть програму нижче — вона стане першим днем курсу.";
+
+"routines.program-editor.add.section" = "Додати день";
+"routines.program-editor.add.empty.headline" = "Немає програм для додавання";
+"routines.program-editor.add.empty.message" = "Курс складається з програм. Створіть програму — і вона з’явиться тут.";
+
+"routines.program-editor.day.remove" = "Видалити день";
+"routines.program-editor.day.up" = "Перемістити день раніше";
+"routines.program-editor.day.down" = "Перемістити день пізніше";
+"routines.program-editor.day.number %lld" = "День %lld";
+
+"routines.program-editor.day.archived" = "Заархівована програма";
+
+"routines.program-editor.make-current" = "Зробити поточним";
+"routines.program-editor.is-current" = "Це ваш поточний курс";
+
+"routines.program-editor.missing.headline" = "Цього курсу більше немає";
+"routines.program-editor.missing.message" = "Його видалено. Поверніться до списку й оберіть інший.";
+"routines.program-editor.error.headline" = "Не вдалося завантажити курс";
+"routines.program-editor.error.message" = "Читання не вдалося. Спробуйте ще раз.";
+"routines.program-editor.write-error.message" = "Не вдалося зберегти зміну. Спробуйте ще раз.";

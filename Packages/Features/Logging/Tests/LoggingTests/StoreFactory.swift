@@ -30,7 +30,8 @@ extension ActiveSessionStore {
             records: PersonalRecordRecomputer(
                 workouts: repository,
                 cache: fakes.personalRecords),
-            trainingMaxes: fakes.trainingMaxes)
+            trainingMaxes: fakes.trainingMaxes,
+            programs: fakes.programs)
     }
 
     /// A store over a whole fake stack, recompute actor included.
@@ -48,6 +49,7 @@ extension ActiveSessionStore {
             records: PersonalRecordRecomputer(
                 workouts: stack.workouts,
                 cache: stack.personalRecords),
-            trainingMaxes: stack.trainingMaxes)
+            trainingMaxes: stack.trainingMaxes,
+            programs: stack.programs)
     }
 }

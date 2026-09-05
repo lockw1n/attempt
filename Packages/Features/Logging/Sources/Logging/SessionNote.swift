@@ -170,30 +170,4 @@ extension ActiveSessionStore {
         }
         await finish()
     }
-
-    /// `session` with its note replaced and every other field untouched.
-    ///
-    /// Rebuilt rather than mutated, the record being a value with `let` properties; the three
-    /// timestamps are carried across because the write path is an upsert that stamps `updatedAt`
-    /// itself.
-    ///
-    /// - Parameters:
-    ///   - session: The workout.
-    ///   - text: Its new note.
-    /// - Returns: The record to store.
-    private static func noted(_ session: WorkoutSession, as text: String) -> WorkoutSession {
-        WorkoutSession(
-            id: session.id,
-            createdAt: session.createdAt,
-            updatedAt: session.updatedAt,
-            deletedAt: session.deletedAt,
-            date: session.date,
-            startedAt: session.startedAt,
-            endedAt: session.endedAt,
-            notes: text,
-            bodyweight: session.bodyweight,
-            programRunID: session.programRunID,
-            scheduledWorkoutID: session.scheduledWorkoutID
-        )
-    }
 }

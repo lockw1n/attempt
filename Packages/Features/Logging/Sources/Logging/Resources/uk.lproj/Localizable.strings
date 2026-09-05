@@ -273,3 +273,29 @@
 "logging.past-session.save-routine.write-error.message" = "Не вдалося зберегти програму. Спробуйте ще раз.";
 "logging.past-session.save-routine.saved %@" = "«%@» збережено до ваших програм.";
 "logging.set.training-max-share %@" = "%@ від ТМ";
+
+/* FR-16.8.2 — курс на вкладці «Тренування». */
+"logging.train.program.section" = "Далі";
+"logging.train.program.week-day %lld %lld" = "Тиждень %1$lld · День %2$lld";
+"logging.train.program.start" = "Почати";
+"logging.train.program.skip" = "Пропустити день";
+
+"logging.train.program.archived.headline" = "Програму цього дня заархівовано";
+"logging.train.program.archived.message" = "Призначте дню іншу програму в курсі або пропустіть його.";
+
+"logging.train.program.no-days.headline" = "У курсі ще немає днів";
+"logging.train.program.no-days.message" = "Додайте день — обрана програма й буде тим, що запропонує «Тренування».";
+
+/* FR-16.8.4. */
+"logging.train.program.week-complete.headline %lld" = "Тиждень %lld завершено";
+"logging.train.program.week-complete.message" = "Наступний тиждень починається з того, що ви підняли цього. Кожну вагу можна змінити, а цьоготижневі програми буде заархівовано, а не втрачено.";
+"logging.train.program.next-week" = "Почати наступний тиждень";
+
+"logging.train.program.error.message" = "Не вдалося прочитати курс. Спробуйте ще раз.";
+"logging.train.program.skip-error.message" = "Не вдалося пропустити день. Спробуйте ще раз.";
+"logging.train.program.next-week-error.message" = "Не вдалося почати наступний тиждень. Нічого не змінено — спробуйте ще раз.";
+"logging.train.program.advance-error.message" = "Тренування збережено, але курс досі показує цей день. Пропустіть його або завершіть ще раз.";
+
+/* FR-16.8.3 / DOD-16.1. */
+"logging.session.program.week-day %lld %lld" = "Тиждень %1$lld · День %2$lld";
+"logging.session.program.label" = "Курс";

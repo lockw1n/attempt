@@ -90,6 +90,15 @@ public final class ActiveSessionStore {
     /// **Save** beside the field rather than **Finish** at the foot of the screen.
     var noteWriteFailure: String?
 
+    /// Why the program's day cursor did not move when the last workout was finished
+    /// (`FR-16.8.4`), or `nil`.
+    ///
+    /// A **diagnostic**, not copy (`G-3.4`), and a fourth one on the rule the other three follow:
+    /// the workout *was* stored, so what did not happen is a write against a different table — and
+    /// the screen that can say so is the one drawing the program's next day. **Not cleared by
+    /// ``forgetExercises()``**: it is set after the workout it belongs to has been let go of.
+    public internal(set) var programAdvanceFailure: String?
+
     /// What each card's "last time" strip is drawn from (`FR-1.2.10`).
     ///
     /// One value rather than three properties — see ``PreviousPerformances``.
@@ -153,6 +162,13 @@ public final class ActiveSessionStore {
     /// Where `FR-16.7.1`'s training max comes from — see ``SessionTrainingMax``.
     let trainingMaxes: any TrainingMaxRepository
 
+    /// The programs, their days and the run in force (`FR-16.8`).
+    ///
+    /// **Stored rather than passed in like ``start(on:fromRoutineID:in:)``'s routines**: a routine
+    /// is read once by a caller that chose it, where the run's cursor moves at ``finish()`` — a
+    /// command every screen calls with no program in its hands.
+    let programs: any ProgramRepository
+
     /// The chain every command in `ActiveSessionCommands.swift` runs in.
     ///
     /// **Two taps are two writes, not one.** Each command re-reads what it is about to extend when
@@ -180,18 +196,21 @@ public final class ActiveSessionStore {
     ///     owes is a recomputation, and handing this store the cache instead would make it the
     ///     second thing in the app that knows how a personal record is derived.
     ///   - trainingMaxes: Where `FR-16.7.1`'s training max is stored — see ``SessionTrainingMax``.
+    ///   - programs: The programs and the run in force (`FR-16.8`) — see ``programs``.
     public init(
         repository: any WorkoutRepository & PlannedTargetRepository,
         catalogue: any ExerciseRepository,
         settings: any SettingsRepository,
         records: PersonalRecordRecomputer,
-        trainingMaxes: any TrainingMaxRepository
+        trainingMaxes: any TrainingMaxRepository,
+        programs: any ProgramRepository
     ) {
         self.repository = repository
         self.catalogue = catalogue
         self.settings = settings
         self.records = records
         self.trainingMaxes = trainingMaxes
+        self.programs = programs
     }
 
     /// Reads the unit a load is entered and shown in (`G-3.1`, `G-3.2`).
@@ -304,6 +323,17 @@ public final class ActiveSessionStore {
     ///
     /// - Parameter day: The training day the workout belongs to. Today, unless the user backdated.
     public func start(on day: Date) async {
+        await start(on: day, stampedWith: nil)
+    }
+
+    /// ``start(on:)``, with the program run the workout belongs to written into the row it creates
+    /// (`FR-16.8.3`) — at creation rather than in a second write, because a workout that existed
+    /// for one write without its week is one a force-quit leaves belonging to none (`NFR-1.8`).
+    ///
+    /// - Parameters:
+    ///   - day: The training day the workout belongs to.
+    ///   - stamp: The run, week and day index, or `nil` outside a program.
+    func start(on day: Date, stampedWith stamp: ProgramSessionStamp?) async {
         guard session == nil else { return }
         let now = Date.now
         let started = WorkoutSession(
@@ -316,8 +346,10 @@ public final class ActiveSessionStore {
             endedAt: nil,
             notes: "",
             bodyweight: nil,
-            programRunID: nil,
-            scheduledWorkoutID: nil
+            programRunID: stamp?.runID,
+            scheduledWorkoutID: nil,
+            weekNumber: stamp?.weekNumber,
+            dayIndex: stamp?.dayIndex
         )
         do {
             try await persist(started)
@@ -340,9 +372,12 @@ public final class ActiveSessionStore {
     public func finish() async {
         guard let current = session, current.endedAt == nil else { return }
         await update(Self.ended(current, at: .now))
-        guard failure == nil else { return }
+        guard failure == nil, let finished = session else { return }
         session = nil
         forgetExercises()
+        // After the clear, not before: `forgetExercises()` retires every diagnostic, and this one
+        // is about the workout that has just ended rather than about the one now held (none).
+        await advanceProgramRun(after: finished)
     }
 
     /// Discards the workout in progress (`FR-1.2.12`).
@@ -461,26 +496,5 @@ public final class ActiveSessionStore {
             throw RepositoryError.recordNotFound(id: session.id)
         }
         self.session = stored
-    }
-
-    /// `session` with `endedAt` set, and every other field untouched.
-    ///
-    /// Rebuilt rather than mutated because the record is a value with `let` properties, and the
-    /// three timestamps are carried across because the write path is an upsert that stamps
-    /// `updatedAt` itself.
-    private static func ended(_ session: WorkoutSession, at moment: Date) -> WorkoutSession {
-        WorkoutSession(
-            id: session.id,
-            createdAt: session.createdAt,
-            updatedAt: session.updatedAt,
-            deletedAt: session.deletedAt,
-            date: session.date,
-            startedAt: session.startedAt,
-            endedAt: moment,
-            notes: session.notes,
-            bodyweight: session.bodyweight,
-            programRunID: session.programRunID,
-            scheduledWorkoutID: session.scheduledWorkoutID
-        )
     }
 }

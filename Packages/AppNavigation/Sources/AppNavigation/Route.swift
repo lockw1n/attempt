@@ -179,6 +179,29 @@ public enum RoutinesRoute: Hashable, Sendable, Codable {
     /// have no case at all: this screen writes nothing until the lifter saves, so a restored stack
     /// opens it on what the store holds rather than on what was half-typed in another session.
     case routineEdit(routineID: UUID)
+
+    /// Every program the lifter has authored (`FR-16.8.1`).
+    ///
+    /// **Under routines rather than under a namespace of its own**, and the reason is what a
+    /// program *is*: an ordered list of routines. It is reached from the routine list, which is
+    /// reached from Train — so the two screens share an area, an entry point and a repository
+    /// pairing, and a third sub-enum would only make `Route`'s own switch longer.
+    ///
+    /// Pushed onto Train's stack, for ``routineList``'s reason.
+    case programList
+
+    /// The editor over one program: its name, its note, and the days it is made of (`FR-16.8.1`).
+    ///
+    /// **No `programCreate` beside it**, which is where this parts company with
+    /// ``routineCreate``/``routineEdit(routineID:)``. A routine is authored in the editor from
+    /// nothing, so the editor genuinely has two modes; a program is a *name* and then a list of
+    /// days, so the list writes the row from a one-field prompt — the shape `FR-15.2.5`'s rename
+    /// already uses — and this screen only ever opens on a program that exists. One case, one
+    /// screen, and the inventory keys off the case.
+    ///
+    /// Carries the identifier and not the record, for
+    /// ``ExerciseLibraryRoute/exerciseDetail(exerciseID:)``'s reason.
+    case programEdit(programID: UUID)
 }
 
 /// Destinations pushed from history (`FR-1.5`).

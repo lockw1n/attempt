@@ -9,9 +9,12 @@ import RepositoryInterface
 /// there. What such a screen needs is the repository and a session's id, which is all this holds.
 ///
 /// **Only the note.** Every other column is carried across untouched — the day, both lifecycle
-/// timestamps, the bodyweight and the two program keys — because a screen for correcting the record
-/// after the fact offers none of them, and rebuilding a record from a partial view of it is how a
-/// finished session gets its `endedAt` put back to `nil`.
+/// timestamps, the bodyweight, the two program keys and the week and day a program run stamped
+/// (`FR-16.8.3`) — because a screen for correcting the record after the fact offers none of them,
+/// and rebuilding a record from a partial view of it is how a finished session gets its `endedAt`
+/// put back to `nil`. **The upsert is what makes an omission here a silent wipe rather than a
+/// no-op**, so a nullable column added to this record owes every rebuild site an edit, not only
+/// its mapping.
 ///
 /// **Text the record already carries is not written.** Every save restamps `updatedAt`, which is
 /// `G-2.4`'s conflict key, so a no-op local write would outrank a real remote edit — the ordinary
@@ -68,7 +71,9 @@ public struct SessionNoteWriter: Sendable {
             notes: notes,
             bodyweight: session.bodyweight,
             programRunID: session.programRunID,
-            scheduledWorkoutID: session.scheduledWorkoutID
+            scheduledWorkoutID: session.scheduledWorkoutID,
+            weekNumber: session.weekNumber,
+            dayIndex: session.dayIndex
         )
     }
 }

@@ -56,7 +56,9 @@ struct SessionSummaryLine: View {
     }
 
     /// Whether there is a fact to draw — see ``body`` for why the empty case is not merely narrow.
-    private var hasFacts: Bool { session.startedAt != nil || adherence != nil }
+    private var hasFacts: Bool {
+        session.startedAt != nil || adherence != nil || session.programPosition != nil
+    }
 
     /// The facts themselves, laid out by whichever of the two stacks fits.
     @ViewBuilder private var facts: some View {
@@ -66,6 +68,16 @@ struct SessionSummaryLine: View {
             fact(
                 LoggingStrings.sessionStarted,
                 Text(startedAt, format: AppFormat.time(locale: locale))
+            )
+        }
+        if let position = session.programPosition {
+            // FR-16.8.3 / DOD-16.1: read off the session's own columns, which is what lets a
+            // session note stop carrying the week and the day as prose.
+            fact(
+                LoggingStrings.sessionProgramLabel,
+                Text(
+                    LoggingStrings.sessionProgramWeekAndDay(
+                        week: position.week, day: position.day))
             )
         }
         if let adherence {

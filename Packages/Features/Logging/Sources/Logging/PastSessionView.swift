@@ -197,8 +197,10 @@ public struct PastSessionView: View {
         }
     }
 
-    /// A session that resolved: `FR-1.2.9`'s note, then its exercises.
+    /// A session that resolved: which week and day of a program it was, `FR-1.2.9`'s note, then
+    /// its exercises.
     @ViewBuilder private var loaded: some View {
+        programPosition
         SessionNotesSection(
             draft: $noteDraft,
             hasFailed: state.noteWriteFailure != nil,
@@ -209,6 +211,22 @@ public struct PastSessionView: View {
         .onChange(of: noteDraft.text) { state.noteWriteFailure = nil }
         exercises
         saveAsRoutineSection
+    }
+
+    /// Which week and day of a program this session was started from (`FR-16.8.3`, `DOD-16.1`).
+    ///
+    /// **Read off the session's own columns, which is the whole point of them**: before they
+    /// existed a lifter following a plan had to type "W2D1" into the note, and that prose is what
+    /// this line retires. Absent, not blank, on a workout started outside a program.
+    ///
+    /// **Above the note rather than in the title**, unlike the training day: the title is one line
+    /// on a pushed screen and the day is already in it.
+    @ViewBuilder private var programPosition: some View {
+        if let position = state.session?.programPosition {
+            Text(LoggingStrings.sessionProgramWeekAndDay(week: position.week, day: position.day))
+                .font(Typography.metricContext.font)
+                .foregroundStyle(ColorToken.textSecondary)
+        }
     }
 
     /// `FR-15.2.6`'s command, at the foot of the screen and only where there is a workout to save.

@@ -43,11 +43,31 @@ public struct TrainingHomeView: View {
     /// discarded with the screen, which is the right lifetime for a choice the store never saw.
     @State private var day = Date.now
 
-    /// Builds the screen over the store it reads.
+    /// The program in force, and the two commands that move it (`FR-16.8.2`, `FR-16.8.4`).
     ///
-    /// - Parameter store: The workout in progress. One per app, built where the repositories are.
-    public init(store: ActiveSessionStore) {
+    /// **Screen-lifetime, unlike ``store``**, which is `TR-1.2`'s split doing its own work: the
+    /// workout in progress outlives every screen that shows it, where the program's next day is one
+    /// screen's read of three tables and is re-read on every appearance.
+    @State private var program: ProgramNextUpState
+
+    /// Builds the screen over the store it reads and the repositories the program is assembled
+    /// from.
+    ///
+    /// - Parameters:
+    ///   - store: The workout in progress. One per app, built where the repositories are.
+    ///   - programs: The programs, their days and the run in force (`FR-16.8`).
+    ///   - routines: The routines those days name — also where **Start next week** writes.
+    ///   - workouts: The sessions **Start next week** reads back (`FR-16.8.4`).
+    public init(
+        store: ActiveSessionStore,
+        programs: any ProgramRepository,
+        routines: any RoutineRepository,
+        workouts: any WorkoutRepository
+    ) {
         self.store = store
+        _program = State(
+            initialValue: ProgramNextUpState(
+                programs: programs, routines: routines, workouts: workouts))
     }
 
     /// Whichever of the screen's four states is current, then the two things that are true in all of
@@ -59,6 +79,7 @@ public struct TrainingHomeView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl.points) {
+                nextUp
                 content
                 libraryLink
                 routinesLink
@@ -72,6 +93,51 @@ public struct TrainingHomeView: View {
             // failure it may leave behind is attributed to the read that produced it.
             startWasAttempted = false
             await store.resume()
+            // After the resume, not beside it: the card is drawn only where no workout is in
+            // progress, and a read racing that answer would draw it over one.
+            await program.load()
+        }
+    }
+
+    /// `FR-16.8.2`'s Next-up card, where a program is in force and nothing is being logged.
+    ///
+    /// **Suppressed while a workout is in progress**, which is the whole of the condition: the
+    /// screen already says what is being logged, and a second **Start** beside it would offer a
+    /// workout the store would refuse. Suppressed before the store has answered for the same
+    /// reason — see ``TrainingHomeState/loading``.
+    @ViewBuilder private var nextUp: some View {
+        if store.hasCheckedForSession, store.session == nil {
+            ProgramNextUpSection(
+                state: program,
+                advanceFailure: store.programAdvanceFailure,
+                start: startProgramDay)
+        }
+    }
+
+    /// Starts the program's next day and opens it (`FR-16.8.2`, `FR-16.8.3`, `NFR-15.3`).
+    ///
+    /// **The day the workout belongs to is the one this screen is offering**, not `.now`: a lifter
+    /// logging Saturday's session on Sunday backdates it here exactly as they would an unplanned
+    /// one, and the program's day index is a position in the week rather than a date.
+    ///
+    /// The push happens only when the store took a workout, on ``startWorkout()``'s rule.
+    ///
+    /// - Parameters:
+    ///   - index: The `ProgramDay.order` being started.
+    ///   - routineID: The routine that day names.
+    private func startProgramDay(at index: Int, fromRoutineID routineID: UUID) {
+        guard let nextUp = program.nextUp else { return }
+        Task {
+            startWasAttempted = true
+            let started = await store.start(
+                on: day,
+                in: ProgramSessionStamp(
+                    runID: nextUp.runID, weekNumber: nextUp.weekNumber, dayIndex: index),
+                fromRoutineID: routineID,
+                using: program.routines)
+            guard started, store.isActive else { return }
+            startWasAttempted = false
+            navigation?.navigate(to: .training(.activeSession))
         }
     }
 
@@ -128,7 +194,12 @@ public struct TrainingHomeView: View {
             symbolName: "figure.strengthtraining.traditional",
             headline: Text(LoggingStrings.trainEmptyHeadline),
             message: Text(LoggingStrings.trainEmptyMessage),
-            action: StateAction(Text(LoggingStrings.trainStartAction)) {
+            action: StateAction(
+                Text(LoggingStrings.trainStartAction),
+                // FR-16.6.4: one filled accent per screen. Where the program's card is offering a
+                // day, that is the screen's primary action and this is the way past it.
+                emphasis: program.nextUp?.spendsAccent == true ? .secondary : .primary
+            ) {
                 Task { await startWorkout() }
             }
         )
