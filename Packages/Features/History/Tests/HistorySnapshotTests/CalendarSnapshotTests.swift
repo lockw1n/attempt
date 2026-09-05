@@ -72,7 +72,7 @@
             // printing the same day twice.
             try assertSnapshots(named: "Calendar-day-card") {
                 SessionSummaryCard(
-                    summary: CalendarFixtures.session, unit: .kilograms, showsDate: false
+                    summary: CalendarFixtures.session, unit: .kilograms, date: .hidden
                 )
                 .environment(\.locale, CalendarFixtures.locale)
                 // The card's own date is drawn through `Text(_:format:)` even though this reference

@@ -18,6 +18,17 @@ extension LoggingStrings {
     /// said "loading" would still say it over a read that is never coming back.
     static let plateRowUnknown = resource("logging.session.plate.row.unknown")
 
+    /// The row's line for a lifter who has set no gym up (`FR-16.6.5`).
+    ///
+    /// **It says so rather than inviting a tap.** The line above names a tap because a tap is what
+    /// resolves it; there is nothing here for one to resolve, and sending a lifter mid-workout to an
+    /// empty screen to find that out is worse than telling them.
+    ///
+    /// **Its own key, reading the same words as ``plateNoEquipmentHeadline``**, on this file's rule
+    /// of a key per surface: a field's line and an empty state's headline agree today and are free
+    /// to stop agreeing — a headline has a line to itself where this shares a row with its label.
+    static let plateRowNoEquipment = resource("logging.session.plate.row.no-equipment")
+
     /// The row's line for a weight that will not go on the bar (`FR-1.4.4`). The two nearest
     /// weights are the screen's, not the row's.
     static let plateRowNotLoadable = resource("logging.session.plate.row.not-loadable")
@@ -120,7 +131,8 @@ extension LoggingStrings {
     /// The plate calculator's copy, for ``LoggingStrings/all``.
     static var allPlateStrings: [LocalizedStringResource] {
         [
-            plateRowLabel, plateRowUnknown, plateRowNotLoadable, plateTitle, plateDoneAction,
+            plateRowLabel, plateRowUnknown, plateRowNoEquipment, plateRowNotLoadable,
+            plateTitle, plateDoneAction,
             plateTargetLabel, plateExactSection, plateBelowSection, plateAboveSection,
             plateBelowNoneHeadline, plateBelowNoneMessage, plateAboveNoneHeadline,
             plateAboveNoneMessage, plateBareBar, platePerSideLabel, plateEquipmentSection,

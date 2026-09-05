@@ -160,6 +160,48 @@ struct AppFormatTests {
         #expect(moment.formatted(englishStyle) != moment.formatted(AppFormat.date(locale: english)))
     }
 
+    @Test("A month heading is the locale's own month, in the locale's own shape")
+    func monthHeadingIsLocalised() {
+        // `FR-16.6.3`'s session-list heading, in the app's two shipped locales (`G-3.4`). A heading
+        // built by interpolating a month name would write English into Ukrainian, and one built from
+        // an English template would still write the year the English way.
+        //
+        // SEPTEMBER 2026 IS `вересень 2026 р.` IN UKRAINIAN, NOT `вересень 2026`. The trailing
+        // `р.` — *року*, "of the year" — is how that locale writes a bare year, and it is the
+        // locale's to write. Asserting the truncated form would be asserting that this app knows
+        // better than CLDR does; asserting it in full is what pins the whole string.
+        let september = Date(timeIntervalSince1970: 1_789_000_000)
+        var englishStyle = AppFormat.month(locale: english)
+        englishStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        var ukrainianStyle = AppFormat.month(locale: Locale(identifier: "uk_UA"))
+        ukrainianStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        #expect(september.formatted(englishStyle) == "September 2026")
+        // Escaped rather than written out, and the escape is what caught it: the space before the
+        // year marker is U+202F, a *narrow* no-break space, which is invisible beside an ordinary one
+        // in every editor and terminal this was checked in.
+        let ukrainianSeptember =
+            "\u{0432}\u{0435}\u{0440}\u{0435}\u{0441}\u{0435}\u{043D}\u{044C} 2026\u{202F}\u{0440}."
+        #expect(september.formatted(ukrainianStyle) == ukrainianSeptember)
+    }
+
+    @Test("A day under a month heading drops the month and the year, and keeps the weekday")
+    func weekdayAndDayIsTheShortForm() {
+        // `FR-16.6.3`'s session-list row, which sits under a heading naming the month and the year.
+        // The separator and the order are the locale's — English writes `Tue 14`, Ukrainian
+        // `вт, 14` — which is the half an interpolated `"\(weekday) \(day)"` would get wrong.
+        let moment = Date(timeIntervalSince1970: 1_700_000_000)
+        var englishStyle = AppFormat.weekdayAndDay(locale: english)
+        englishStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        var ukrainianStyle = AppFormat.weekdayAndDay(locale: Locale(identifier: "uk_UA"))
+        ukrainianStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        #expect(moment.formatted(englishStyle) == "Tue 14")
+        #expect(moment.formatted(ukrainianStyle) == "\u{0432}\u{0442}, 14")
+        // And it is genuinely shorter than the standalone date, which is the whole reason it exists.
+        #expect(
+            moment.formatted(englishStyle).count
+                < moment.formatted(AppFormat.date(locale: english)).count)
+    }
+
     @Test("A grid cell is the day's number alone, and the digits are the locale's")
     func dayOfMonthIsTheNumberAlone() {
         let moment = Date(timeIntervalSince1970: 1_700_000_000)

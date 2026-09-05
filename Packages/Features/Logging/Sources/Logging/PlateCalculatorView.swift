@@ -28,6 +28,15 @@ struct PlateLoadingRow: View {
     /// What that weight loads to, or `nil` when there is no equipment to load against.
     let result: PlateLoadingResult?
 
+    /// Why there is no loading, where there is none (`FR-16.6.5`).
+    ///
+    /// **The store's state rather than a `hasEquipment` flag, because the row has to tell two
+    /// absences apart.** A lifter who has configured no gym is told so and offered nothing; a read
+    /// that has not answered yet, or one that failed, is offered the tap that resolves it. A flag
+    /// would report the first of those for the frame before the read comes back, which is every set
+    /// editor's first frame.
+    let state: PlateEquipmentState
+
     /// The unit the plates are drawn in (`G-3.1`).
     let unit: MassUnit
 
@@ -39,36 +48,71 @@ struct PlateLoadingRow: View {
 
     /// The row: a label, the line, and a chevron — the modifiers row's shape, because it is the same
     /// kind of control (a summary that opens the screen it summarises).
+    ///
+    /// **Except where there is no gym, which is a reading and not a control** (`FR-16.6.5`). A tap
+    /// that leads to an empty-state screen is a tap that answers a question the row could have
+    /// answered itself, and inviting one is worse than saying so: the way to set a gym up is on the
+    /// equipment screen either way, and the set editor is not where a lifter mid-workout wants to be
+    /// sent for it.
     var body: some View {
         FieldRow(label: Text(LoggingStrings.plateRowLabel), hint: nil) {
-            Button(action: open) {
-                HStack(spacing: Spacing.sm.points) {
-                    Text(verbatim: summary)
-                        .font(Typography.body.font)
-                        .foregroundStyle(ColorToken.textPrimary)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: Spacing.sm.points)
-                    Image(systemName: "chevron.right")
-                        .font(Typography.caption.font)
-                        .foregroundStyle(ColorToken.textTertiary)
-                        .accessibilityHidden(true)
-                }
-                .frame(maxWidth: .infinity, minHeight: TouchTarget.logging.points)
-                .padding(.horizontal, Spacing.md.points)
-                .background(
-                    ColorToken.surfaceRaised, in: .rect(cornerRadius: CornerRadius.control.points)
-                )
-                .contentShape(.rect)
+            if state == .noEquipment {
+                noGym
+            } else {
+                control
             }
-            .buttonStyle(.plain)
+        }
+    }
+
+    /// The line as a reading: no gym has been set up, and nothing here opens one.
+    private var noGym: some View {
+        Text(LoggingStrings.plateRowNoEquipment)
+            .font(Typography.body.font)
+            .foregroundStyle(ColorToken.textSecondary)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(
+                maxWidth: .infinity, minHeight: TouchTarget.logging.points, alignment: .leading
+            )
+            .padding(.horizontal, Spacing.md.points)
+            .background(
+                ColorToken.surfaceRaised, in: .rect(cornerRadius: CornerRadius.control.points)
+            )
             .accessibilityElement(children: .combine)
             .accessibilityLabel(Text(LoggingStrings.plateRowLabel))
-            // The line as a *value* and not as the label, on the modifiers row's argument (`G-4.2`):
-            // combining the children builds a label from them and a label written here replaces it,
-            // so what the bar actually takes would be announced nowhere.
-            .accessibilityValue(Text(verbatim: summary))
+            .accessibilityValue(Text(LoggingStrings.plateRowNoEquipment))
+    }
+
+    /// The line as the control it is everywhere else: the loading, or the tap that resolves why
+    /// there is none.
+    private var control: some View {
+        Button(action: open) {
+            HStack(spacing: Spacing.sm.points) {
+                Text(verbatim: summary)
+                    .font(Typography.body.font)
+                    .foregroundStyle(ColorToken.textPrimary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: Spacing.sm.points)
+                Image(systemName: "chevron.right")
+                    .font(Typography.caption.font)
+                    .foregroundStyle(ColorToken.textTertiary)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, minHeight: TouchTarget.logging.points)
+            .padding(.horizontal, Spacing.md.points)
+            .background(
+                ColorToken.surfaceRaised, in: .rect(cornerRadius: CornerRadius.control.points)
+            )
+            .contentShape(.rect)
         }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(LoggingStrings.plateRowLabel))
+        // The line as a *value* and not as the label, on the modifiers row's argument (`G-4.2`):
+        // combining the children builds a label from them and a label written here replaces it,
+        // so what the bar actually takes would be announced nowhere.
+        .accessibilityValue(Text(verbatim: summary))
     }
 
     /// The line: the per-side plates, the refusal, or — before the equipment has been read — the

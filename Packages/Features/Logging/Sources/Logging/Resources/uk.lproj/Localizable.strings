@@ -10,6 +10,7 @@
 "logging.train.date.hint" = "Сьогодні, якщо ви не записуєте тренування з попереднього дня.";
 
 "logging.train.in-progress.section" = "Триває";
+"logging.train.planned.section" = "Заплановано";
 "logging.train.in-progress.day" = "Тренувальний день";
 "logging.train.in-progress.started" = "Початок";
 "logging.train.in-progress.resume" = "Продовжити тренування";
@@ -173,6 +174,7 @@
 
 "logging.session.plate.row.label" = "Набір дисків";
 "logging.session.plate.row.unknown" = "Торкніться, щоб перевірити ваше обладнання";
+"logging.session.plate.row.no-equipment" = "Зал не налаштовано";
 "logging.session.plate.row.not-loadable" = "Точно не набирається";
 "logging.session.plate.title" = "Набір дисків";
 "logging.session.plate.done.action" = "Готово";

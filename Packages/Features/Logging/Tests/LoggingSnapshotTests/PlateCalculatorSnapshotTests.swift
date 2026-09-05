@@ -77,6 +77,42 @@
                     PlateLoadingRow(
                         target: Weight(grams: 102_500),
                         result: try? Self.calculator().loading(for: Weight(grams: 102_500)),
+                        state: .ready,
+                        unit: .kilograms,
+                        open: {}
+                    )
+                }
+            }
+        }
+
+        @Test func editorRowWithNoGym() throws {
+            // FR-16.6.5. The same row for a lifter who has configured nothing: it says so, and it is
+            // not a control — no chevron, and the line sits in `textSecondary` rather than in the
+            // colour a value reads in. The picture is the whole of the claim, since what a snapshot
+            // cannot see is the tap that is no longer there.
+            try assertSnapshots(named: "Plate-row-no-gym") {
+                fixedEnvironment {
+                    PlateLoadingRow(
+                        target: Weight(grams: 102_500),
+                        result: nil,
+                        state: .noEquipment,
+                        unit: .kilograms,
+                        open: {}
+                    )
+                }
+            }
+        }
+
+        @Test func editorRowBeforeTheEquipmentIsRead() throws {
+            // The other absence, and the one FR-16.6.5 leaves alone: the read has not answered, so
+            // the row still names the tap that resolves it. Its own reference because the two lines
+            // are one pixel apart in the tree and worlds apart in what they offer.
+            try assertSnapshots(named: "Plate-row-unknown") {
+                fixedEnvironment {
+                    PlateLoadingRow(
+                        target: Weight(grams: 102_500),
+                        result: nil,
+                        state: .loading,
                         unit: .kilograms,
                         open: {}
                     )

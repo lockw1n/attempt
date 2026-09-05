@@ -118,6 +118,22 @@ public enum AppFormat {
         .dateTime.month(.abbreviated).day().locale(locale)
     }
 
+    /// A day inside a month something else has already named — "Tue 14".
+    ///
+    /// **Neither the month nor the year, and both are dropped on purpose.** This is the day a row
+    /// carries under a heading that says the month and the year (`FR-16.6.3`), so repeating them
+    /// would spend two thirds of the line on what the heading above it just said. The weekday stays
+    /// because it is the one thing the heading cannot supply and the one a lifter reads a log by.
+    ///
+    /// Anywhere a date has to stand on its own — a search result, a record, a training max —
+    /// ``date(locale:)`` is the style.
+    ///
+    /// - Parameter locale: The locale to render for.
+    /// - Returns: The style.
+    public static func weekdayAndDay(locale: Locale) -> Date.FormatStyle {
+        .dateTime.weekday(.abbreviated).day().locale(locale)
+    }
+
     /// A time of day on its own — when a workout that is still on screen was started.
     ///
     /// **The day is the caller's to have said already.** A bare time is only unambiguous beside the

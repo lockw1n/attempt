@@ -176,7 +176,7 @@ public struct CalendarView: View {
                     // Without its own date: the heading above the section already carries the day,
                     // and every card under it is that same day.
                     SessionSummaryCard(
-                        summary: summary, unit: state.displayUnit, showsDate: false)
+                        summary: summary, unit: state.displayUnit, date: .hidden)
                 }
                 .buttonStyle(.plain)
             }

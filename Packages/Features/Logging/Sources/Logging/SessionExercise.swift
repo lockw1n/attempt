@@ -81,9 +81,19 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
     /// set is not complete but *unstarted*, which is the case a bare `allSatisfy` reports backwards
     /// — an empty collection satisfies everything, so a card the user has just added would collapse
     /// itself the moment it appeared.
+    ///
+    /// **And the plan has to be exhausted, where there is one** (`FR-16.6.5`). Every logged set
+    /// completed says the work *so far* went well; it says nothing about the two sets the routine
+    /// still prescribes, and a card that folded itself over them would hide the prescription at the
+    /// moment the lifter is about to perform it. An exercise nobody planned has no such clause to
+    /// satisfy — ``nextPlannedGroup`` is `nil` for it — so this is exactly Phase 1's rule everywhere
+    /// a plan is absent.
+    ///
+    /// **A pending set keeps the card open by the first clause, not this one** (`FR-16.4.1`): a set
+    /// nobody has attempted carries `isCompleted == false`, which no `allSatisfy` over it passes.
     public var isComplete: Bool {
         let working = sets.filter { !$0.isWarmup }
-        return !working.isEmpty && working.allSatisfy(\.isCompleted)
+        return !working.isEmpty && working.allSatisfy(\.isCompleted) && nextPlannedGroup == nil
     }
 
     /// Whether any of the work proper has been logged yet — what `FR-1.2.14`'s warmup group folds

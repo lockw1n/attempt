@@ -60,7 +60,7 @@
         @Test func workoutInProgress() throws {
             try assertSnapshots(named: "Train-in-progress") {
                 fixedEnvironment {
-                    SessionInProgressSection(session: Fixtures.session)
+                    SessionInProgressSection(session: Fixtures.session, lifecycle: .inProgress)
                 }
             }
         }

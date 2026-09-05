@@ -17,6 +17,9 @@
 "logging.train.date.hint" = "Today, unless you are logging a workout from an earlier day.";
 
 "logging.train.in-progress.section" = "In progress";
+/* FR-16.6.5 — the same card over a workout dated ahead of today. It has been written and not
+   performed, and "In progress" over it would say the lifter is mid-workout. */
+"logging.train.planned.section" = "Planned";
 "logging.train.in-progress.day" = "Training day";
 "logging.train.in-progress.started" = "Started";
 /* FR-1.2.11: the way back into a workout the app came back to. "Resume" rather than "Open", because
@@ -323,6 +326,9 @@
    than the wait — the tap resolves both, where "loading" would go on saying so over a read that is
    never coming back. */
 "logging.session.plate.row.unknown" = "Tap to check your equipment";
+/* FR-16.6.5 — no gym has been configured at all. A statement rather than an invitation: the line
+   above names a tap because a tap resolves it, and there is nothing here for one to resolve. */
+"logging.session.plate.row.no-equipment" = "No gym set up";
 /* A weight that will not go on the bar. The two nearest weights are the screen's job (FR-1.4.4);
    this row is one line inside a sheet already at NFR-1.10's ceiling. */
 "logging.session.plate.row.not-loadable" = "Not exactly loadable";

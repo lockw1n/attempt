@@ -96,6 +96,49 @@
             }
         }
 
+        // MARK: - FR-16.6.3: the list itself, under its month headings
+
+        @Test func monthSections() throws {
+            // The list as a lifter reads it: two months, a heading each, and the rows inside one
+            // card per month rather than one card per row. That is where the height comes from —
+            // a card's inset is paid once per heading here and was paid once per row before.
+            try assertSnapshots(named: "SessionList-months") {
+                Fixtures.list(Fixtures.twoMonths)
+            }
+        }
+
+        @Test func sixSessionsFitTheFirstScreen() throws {
+            // FR-16.6.3's own number, asserted on the rendering's height rather than by eye —
+            // T-16.03's above-the-fold budget, one screen over.
+            //
+            // THE BUDGET. The smallest device this app supports is the one with the smallest screen
+            // still running its deployment target: 375 × 667 pt. This screen is a tab root inside
+            // `RootTabView`'s `TabView`, so it loses the status bar (20 pt), a navigation bar
+            // (44 pt) and the tab bar (49 pt) — that device having a home button rather than a home
+            // indicator, so the tab bar is its full 49 and there is no inset under it.
+            //
+            // THE NAVIGATION BAR IS THE COLLAPSED ONE, AND THAT IS THE CLAIM. A tab root takes a
+            // large title, and this screen carries `.searchable` under it: at rest the chrome is
+            // some 150 pt rather than 44, and no list of six real rows fits under that on a 667 pt
+            // screen. Both collapse on the first scroll and neither comes back until the list is
+            // scrolled to its top, so "six sessions per screen" is a claim about the screen a lifter
+            // browses their log on, which is the scrolled one.
+            //
+            // WHAT IS SUBTRACTED FROM THE MEASUREMENT. `Snapshot.render` pads every subject by
+            // `Spacing.lg` on all four sides; the screen's own padding is the same measure, so the
+            // vertical 32 pt is counted once rather than twice. The horizontal 32 pt is left where
+            // it is and is why this stays conservative: the content renders 32 pt narrower than the
+            // device would, so more lines wrap here than there.
+            let budget = 667.0 - 20.0 - 44.0 - 49.0
+            let rendered = try Snapshot.render(
+                Fixtures.list(Fixtures.twoMonths), appearance: .light, typeSize: .default)
+            let points = Double(rendered.height) / Snapshot.scale - 2 * Spacing.lg.points
+            print("FR-16.6.3 six-session height: \(points) pt against a \(budget) pt budget")
+            #expect(Fixtures.twoMonths.reduce(0) { $0 + $1.summaries.count } == 6)
+            #expect(Fixtures.twoMonths.count == 2)
+            #expect(points < budget)
+        }
+
         @Test func nothingLoggedYet() throws {
             try assertSnapshots(named: "SessionList-empty") {
                 EmptyStateView(
@@ -137,8 +180,12 @@
         static func card(
             _ summary: SessionSummary, unit: MassUnit = .kilograms, finishes: Bool = false
         ) -> some View {
+            // `.dayOfMonth`, because these are the LIST's rows: each pictures one thing a row can
+            // say, and in the list a row sits under a heading that has named the month and the year
+            // (`FR-16.6.3`). A surface rather than a heading around it, so each reference is one
+            // row's content and nothing else — the list's own shape is `SessionList-months`.
             SessionSummaryCard(
-                summary: summary, unit: unit, finish: finishes ? {} : nil
+                summary: summary, unit: unit, date: .dayOfMonth, finish: finishes ? {} : nil
             )
             .environment(\.locale, Locale(identifier: "en_US"))
             // The date goes through `Text(_:format:)`, which resolves its time zone from the
@@ -146,6 +193,73 @@
             // instant happens to fall on one day in every zone. This one does; pinning is what
             // stops the next fixture from depending on that.
             .environment(\.timeZone, .gmt)
+        }
+
+        /// The list itself, rendered for the locale and calendar every reference here is recorded
+        /// in.
+        ///
+        /// **The calendar is pinned as well as the zone**, and it has to be: the month a row falls
+        /// under is cut in it, and a reference recorded a month either side of a boundary is a
+        /// reference nothing else can reproduce.
+        ///
+        /// - Parameters:
+        ///   - months: The sections to draw.
+        ///   - unit: The unit the tonnages read in (`G-3.1`).
+        /// - Returns: The list.
+        static func list(_ months: [SessionMonthSection], unit: MassUnit = .kilograms) -> some View {
+            SessionMonthList(months: months, unit: unit)
+                .environment(\.locale, Locale(identifier: "en_US"))
+                .environment(\.timeZone, .gmt)
+                .environment(\.calendar, gmt)
+        }
+
+        /// Six workouts across two months, cut into sections the way the screen cuts them.
+        ///
+        /// **Through `SessionMonths.sections` rather than hand-built**, so the picture and the
+        /// budget both render what the screen would: a fixture that assembled its own sections could
+        /// disagree with the grouping and neither assertion would notice.
+        ///
+        /// **Six, because `FR-16.6.3` says six**, and spread three-and-three so the heading is paid
+        /// twice — a fixture that put all six under one heading would measure the cheaper layout.
+        static let twoMonths: [SessionMonthSection] = SessionMonths.sections(
+            [
+                everyday(10, daysBefore: 0, ["Back Squat", "Bench Press"], sets: 8, kilos: 7_240),
+                everyday(11, daysBefore: 3, ["Deadlift", "Barbell Row"], sets: 6, kilos: 6_120),
+                everyday(12, daysBefore: 9, ["Overhead Press", "Chin-Up"], sets: 9, kilos: 3_480),
+                everyday(13, daysBefore: 20, ["Back Squat", "Bench Press"], sets: 8, kilos: 7_010),
+                everyday(14, daysBefore: 25, ["Deadlift"], sets: 5, kilos: 5_900),
+                everyday(15, daysBefore: 30, ["Bench Press", "Chin-Up"], sets: 7, kilos: 2_950),
+            ],
+            calendar: gmt
+        )
+
+        /// The calendar the list references are cut and drawn in.
+        static let gmt: Calendar = {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = .gmt
+            return calendar
+        }()
+
+        /// One ordinary finished workout, `daysBefore` days back from ``day``.
+        ///
+        /// - Parameters:
+        ///   - index: Which row — its identity.
+        ///   - daysBefore: How many days before the fixed day it was trained.
+        ///   - names: What was trained.
+        ///   - sets: Working sets performed.
+        ///   - kilos: The tonnage, in whole kilograms.
+        /// - Returns: The row.
+        static func everyday(
+            _ index: Int, daysBefore: Int, _ names: [String], sets: Int, kilos: Int
+        ) -> SessionSummary {
+            SessionSummary(
+                id: identifier(index),
+                date: day.addingTimeInterval(-Double(daysBefore) * 86_400),
+                exerciseNames: names,
+                setCount: sets,
+                tonnage: Weight(grams: kilos * 1_000),
+                notes: ""
+            )
         }
 
         /// A day that looks like most days: two exercises, a round number of sets, no note.
@@ -231,7 +345,7 @@
         )
 
         /// The day every reference is dated, so no image depends on when it was rendered.
-        private static let day = Date(timeIntervalSince1970: 1_700_000_000)
+        static let day = Date(timeIntervalSince1970: 1_700_000_000)
 
         /// A stable identifier for a reference's row. Nothing draws it; a row needs one to exist.
         ///

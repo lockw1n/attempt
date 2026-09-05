@@ -29,6 +29,12 @@ public struct TrainingHomeView: View {
     /// closure, and a preview or a snapshot has no shell above it.
     @Environment(NavigationState.self) private var navigation: NavigationState?
 
+    /// The calendar the held workout's training day is read against (`FR-16.4.3`).
+    ///
+    /// The device's own until something replaces it — `AppFormat.resolved(_:in:)`'s rule, and the
+    /// same one the history row's state word follows.
+    @Environment(\.calendar) private var calendar
+
     /// Whether the failure the store is carrying, if any, came from this screen's start command.
     ///
     /// **The store has one ``ActiveSessionStore/failure`` and this screen issues two kinds of
@@ -170,7 +176,8 @@ public struct TrainingHomeView: View {
         case .loading:
             LoadingStateView()
         case .inProgress(let session):
-            SessionInProgressSection(session: session)
+            SessionInProgressSection(
+                session: session, lifecycle: session.lifecycle(on: .now, calendar: calendar))
         case .readFailed:
             ErrorStateView(
                 headline: Text(LoggingStrings.trainErrorHeadline),
@@ -339,12 +346,19 @@ struct SessionInProgressSection: View {
     /// The workout being logged.
     let session: WorkoutSession
 
+    /// Which kind of open workout it is, on the day the screen is being drawn (`FR-16.6.5`).
+    ///
+    /// **Passed in rather than computed here**, on this type's own rule about taking the record: a
+    /// section that read `Date.now` would render differently on every day a reference was recorded,
+    /// and the day the comparison is made against is the caller's fact.
+    let lifecycle: SessionLifecycle
+
     /// Which locale the day and the time are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
     /// The day, when it was started, and the way back in.
     var body: some View {
-        GroupedSection(Text(LoggingStrings.trainInProgressSection)) {
+        GroupedSection(Text(LoggingStrings.trainSessionSection(lifecycle))) {
             SessionFactRow(
                 label: LoggingStrings.trainInProgressDay,
                 value: Text(session.date, format: AppFormat.date(locale: locale))
