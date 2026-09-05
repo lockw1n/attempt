@@ -61,7 +61,8 @@ Packages/
 │   │                        action
 │   ├── Settings/            Preferences, data portability, sync, the bodyweight log
 │   └── Routines/            Authoring a routine — its exercises in order and their target
-│                            groups — managing the library, and starting a workout from one
+│                            groups — managing the library, starting a workout from one, and
+│                            authoring the programs that order routines into a week
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
 Attempt/
 ├── App/                     App entry point and DI wiring
