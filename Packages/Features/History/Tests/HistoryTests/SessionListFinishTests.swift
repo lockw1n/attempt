@@ -121,6 +121,30 @@ struct SessionListFinishTests {
         #expect(all.count == 2)
     }
 
+    /// A tap that quietly does nothing is the one outcome a lifter cannot act on, so a read or a
+    /// write that fails leaves a diagnostic behind — which is what `FR-1.13.1`'s error component
+    /// above the rows is drawn from.
+    @Test("A Finish that will not write says so rather than doing nothing")
+    func aFailedFinishIsReported() async throws {
+        let log = TrainingLog()
+        let stale = try await log.session(daysAgo: 1, isFinished: false)
+        let state = log.listState(workouts: FailingWorkoutRepository())
+
+        await state.beginFinish(sessionID: stale.id)
+        #expect(state.finishFailure != nil)
+        #expect(state.pendingPrompt == nil)
+
+        // And the answer to the question fails the same way rather than silently.
+        let refusing = log.listState(workouts: FailingWorkoutRepository())
+        await refusing.finish(sessionID: stale.id, resolving: .keepAsFailed)
+        #expect(refusing.finishFailure != nil)
+
+        // The workout is untouched by either refusal.
+        let held = try #require(
+            try await log.repositories.workouts.session(id: stale.id, includingDeleted: false))
+        #expect(held.endedAt == nil)
+    }
+
     @Test("A workout with nothing pending is ended by the first tap")
     func nothingPendingEndsStraightAway() async throws {
         let log = TrainingLog()

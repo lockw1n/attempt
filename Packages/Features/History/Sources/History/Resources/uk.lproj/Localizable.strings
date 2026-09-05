@@ -54,3 +54,5 @@
 "history.list.session.pending.remove" = "Видалити";
 "history.list.session.pending.keep" = "Залишити невиконаними";
 "history.list.session.pending.cancel" = "Залишити відкритим";
+
+"history.list.session.finish-error" = "Не вдалося завершити це тренування. Спробуйте ще раз.";

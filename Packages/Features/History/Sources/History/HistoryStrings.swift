@@ -154,6 +154,9 @@ enum HistoryStrings {
     /// `FR-16.4.4`'s way out of a workout left open past its own training day.
     static let sessionFinish = resource("history.list.session.finish")
 
+    /// The workout would not end. Copy, not the diagnostic behind it (`G-3.4`).
+    static let sessionFinishError = resource("history.list.session.finish-error")
+
     /// How many sets nobody attempted, as the title of the question that ends such a workout.
     ///
     /// The count is in the sentence because the verb agrees with it — see the plural table.
@@ -194,7 +197,7 @@ enum HistoryStrings {
             calendarDayTrained(date: ""), calendarDayUntrained(date: ""),
             metricsSummary(sets: 1, volume: ""),
             programWeekAndDay(week: 2, day: 1),
-            sessionFinish, sessionPendingTitle(1), sessionPendingTitle(3),
+            sessionFinish, sessionFinishError, sessionPendingTitle(1), sessionPendingTitle(3),
             sessionPendingMessage, sessionPendingRemove, sessionPendingKeep, sessionPendingCancel,
         ]
             + [SessionLifecycle.inProgress, .planned].compactMap(sessionState)

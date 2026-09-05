@@ -15,8 +15,23 @@ struct FeedPosition: Comparable {
 
     /// The position of an entry whose session row is not there. Last, not first — see
     /// ``SwiftDataWorkoutRepository/sets(forExerciseID:includingDeleted:)``.
-    static let unplaced = FeedPosition(
-        sessionDate: .distantFuture, sessionStart: .distantFuture, entryOrder: .max)
+    ///
+    /// **It keeps the entry's own order.** The session is what is missing, not the entry, and two
+    /// entries of one absent session still happened in a known order; collapsing them onto a single
+    /// position would sort a foreign session's sets by set order across its entries, which is an
+    /// answer nothing measured.
+    ///
+    /// **Unreachable through the repository API, and kept correct anyway.** `save(_:)` refuses an
+    /// entry whose `sessionID` names no session (`danglingReference`) and the session lookup above
+    /// includes deleted rows, so nothing this app writes can land here — only a row it did not,
+    /// which is what the branch exists for, so no test can turn it red.
+    ///
+    /// - Parameter entryOrder: The entry's position within the session that is not there.
+    /// - Returns: The position.
+    static func unplaced(entryOrder: Int) -> FeedPosition {
+        FeedPosition(
+            sessionDate: .distantFuture, sessionStart: .distantFuture, entryOrder: entryOrder)
+    }
 
     static func < (lhs: FeedPosition, rhs: FeedPosition) -> Bool {
         (lhs.sessionDate, lhs.sessionStart, lhs.entryOrder)
@@ -220,7 +235,7 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
         for (id, duplicates) in Dictionary(grouping: entries, by: \.id) {
             guard let entry = resolved(duplicates) else { continue }
             guard let session = sessions[entry.sessionID] else {
-                orderingKey[id] = .unplaced
+                orderingKey[id] = .unplaced(entryOrder: entry.order)
                 continue
             }
             if !session.isFinished { openSessions[id] = session }
@@ -241,7 +256,7 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
             // fetched *by* the ids `orderingKey` was built from, so a miss would mean the store
             // answered a `contains` with a row outside the list. A mutation probe confirmed no test
             // can turn it red, which is the reason it is written down rather than trusted.
-            let position = orderingKey[set.entryID] ?? .unplaced
+            let position = orderingKey[set.entryID] ?? .unplaced(entryOrder: .max)
             return FeedSortKey(position: position, setOrder: set.order, setID: set.id.uuidString)
         }
         .map(\.record)

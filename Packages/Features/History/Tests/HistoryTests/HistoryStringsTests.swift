@@ -1,4 +1,5 @@
 import Foundation
+import RepositoryInterface
 import Testing
 
 @testable import History
@@ -65,6 +66,38 @@ struct HistoryStringsTests {
         #expect(
             String(localized: HistoryStrings.metricsSummary(sets: 0, volume: "0 kg"))
                 == "0 working sets, 0 kg")
+    }
+
+    /// `FR-16.4.4`'s alert asked from the history card, whose copy is the whole of the design and
+    /// which no reference can hold: an alert is presented by the system, and `ImageRenderer` draws
+    /// the view under it.
+    @Test("Finishing from a card asks about pending sets by name, with both answers and a way back")
+    func theFinishQuestionIsAsked() {
+        #expect(
+            String(localized: HistoryStrings.sessionPendingTitle(3)) == "3 sets were not logged")
+        // The plural is why this key is in the stringsdict rather than the table: the verb agrees
+        // with the count, so one set cannot be spelled by substituting a numeral.
+        #expect(
+            String(localized: HistoryStrings.sessionPendingTitle(1)) == "1 set was not logged")
+        #expect(String(localized: HistoryStrings.sessionPendingRemove) == "Remove them")
+        #expect(String(localized: HistoryStrings.sessionPendingKeep) == "Keep as failed")
+        // Naming what it keeps rather than saying "cancel". The word differs from the training
+        // tab's — there the way back is to the workout on screen, here it is to a row in a list.
+        #expect(String(localized: HistoryStrings.sessionPendingCancel) == "Leave it open")
+        #expect(String(localized: HistoryStrings.sessionFinish) == "Finish workout")
+    }
+
+    /// `FR-16.4.3`, and the half a reference cannot settle on its own: the two words are different
+    /// words, and neither of them is a set count.
+    @Test("An unfinished workout is named by its state, and planned is not in progress")
+    func anUnfinishedWorkoutIsNamedByItsState() throws {
+        let inProgress = String(localized: try #require(HistoryStrings.sessionState(.inProgress)))
+        let planned = String(localized: try #require(HistoryStrings.sessionState(.planned)))
+
+        #expect(inProgress == "In progress")
+        #expect(planned == "Planned")
+        // A finished workout has numbers to show, so it is answered with nothing at all.
+        #expect(HistoryStrings.sessionState(.finished) == nil)
     }
 
     @Test("Keys follow the convention: lowercase, dotted, module-prefixed")

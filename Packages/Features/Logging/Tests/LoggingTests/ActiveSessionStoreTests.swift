@@ -185,6 +185,7 @@ actor ScriptedWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     private let writeFailures: Int?
     private var writesRefused = 0
     private let deleteError: RepositoryError?
+    private let entryRows: [ExerciseEntry]?
 
     /// - Parameters:
     ///   - row: The one session this double holds, or none.
@@ -195,18 +196,24 @@ actor ScriptedWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     ///     to fail: a double that refuses both cannot tell "the second was never attempted" from
     ///     "the second was attempted and refused", which is the whole claim of the rule under test.
     ///   - deleteError: What a refused delete throws, or `nil` for deletes that behave.
+    ///   - entries: What the session holds, or `nil` — the default — to keep refusing the read.
+    ///     `FR-16.4.4` made Finish read the workout's sets before it ends it, so a test of a
+    ///     *write* failure has to be able to say the workout holds nothing; `nil` is still what
+    ///     makes this the double a failed exercise read is written against.
     init(
         row: WorkoutSession? = nil,
         readError: RepositoryError? = nil,
         writeError: RepositoryError? = nil,
         writeFailures: Int? = nil,
-        deleteError: RepositoryError? = nil
+        deleteError: RepositoryError? = nil,
+        entries: [ExerciseEntry]? = nil
     ) {
         self.row = row
         self.readError = readError
         self.writeError = writeError
         self.writeFailures = writeFailures
         self.deleteError = deleteError
+        self.entryRows = entries
     }
 
     func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
@@ -244,10 +251,13 @@ actor ScriptedWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
         row = nil
     }
 
-    /// Refused, always — which is what makes this the fake a failed *exercise* read is written
-    /// against. The store does call this one; see `SessionExercisesTests`.
+    /// Refused unless the test said what the session holds — which is what makes this the fake a
+    /// failed *exercise* read is written against. The store calls this one; see
+    /// `SessionExercisesTests`.
     func entries(forSessionID sessionID: UUID, includingDeleted: Bool) async throws -> [ExerciseEntry] {
-        throw unsupported
+        guard let entryRows else { throw unsupported }
+        if let readError { throw readError }
+        return entryRows.filter { $0.sessionID == sessionID }
     }
 
     func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? { throw unsupported }
@@ -256,7 +266,13 @@ actor ScriptedWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
 
     func deleteExerciseEntry(id: UUID) async throws { throw unsupported }
 
-    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] { throw unsupported }
+    /// The sets under one of ``entries(forSessionID:includingDeleted:)``' rows. There are none:
+    /// every test configuring this double describes a workout with nothing logged into it.
+    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        guard entryRows != nil else { throw unsupported }
+        if let readError { throw readError }
+        return []
+    }
 
     func save(_ set: SetEntry) async throws { throw unsupported }
 

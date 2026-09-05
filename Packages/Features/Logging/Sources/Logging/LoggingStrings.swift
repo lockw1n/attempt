@@ -124,6 +124,7 @@ enum LoggingStrings {
     /// The command that finishes the workout (`FR-1.2.11`).
     static let sessionFinishAction = resource("logging.session.finish.action")
 
+    /// The command that discards it (`FR-1.2.12`).
     static let sessionDiscardAction = resource("logging.session.discard.action")
 
     /// The confirmation's question (`FR-1.2.12`).
@@ -365,23 +366,6 @@ enum LoggingStrings {
         isWarmup
             ? resource("logging.session.set.mark-working")
             : resource("logging.session.set.mark-warmup")
-    }
-
-    /// What a set's outcome is (`FR-1.2.5`, `FR-16.4.1`), as VoiceOver's label for the glyph that
-    /// says it.
-    ///
-    /// **The word the glyph stands for**, which is what keeps the outcome off the tint alone
-    /// (`G-4.5`): the row draws a check, a cross or a hollow circle, and this is the same fact in a
-    /// sentence. A pending set says *pending* rather than *failed* — the whole of `FR-16.4.1`.
-    ///
-    /// - Parameter outcome: Which of the three the set is.
-    /// - Returns: The outcome, as a word.
-    static func setOutcome(_ outcome: SetOutcome) -> LocalizedStringResource {
-        switch outcome {
-        case .completed: resource("logging.session.set.outcome.completed")
-        case .failed: resource("logging.session.set.outcome.failed")
-        case .pending: resource("logging.session.set.outcome.pending")
-        }
     }
 
     /// What tapping that glyph does (`FR-1.2.5`), as VoiceOver's hint on it.

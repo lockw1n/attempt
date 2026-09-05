@@ -109,3 +109,8 @@
 "history.list.session.pending.remove" = "Remove them";
 "history.list.session.pending.keep" = "Keep as failed";
 "history.list.session.pending.cancel" = "Leave it open";
+
+/* FR-16.4.4. The workout would not end — a write that did not land, or a row that went away
+   underneath the list. Copy rather than the diagnostic behind it (`G-3.4`); the list stays on
+   screen beside it and the retry is another tap on the row's own command. */
+"history.list.session.finish-error" = "That workout could not be finished. Try again.";

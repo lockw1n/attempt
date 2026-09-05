@@ -77,6 +77,22 @@
             }
         }
 
+        @Test func pendingSetsExpanded() throws {
+            // The run opened (`FR-16.1.3`). T-16.01's trap in its own reference: a per-set
+            // annotation drawn only on the collapsed line is invisible on the member rows, and one
+            // drawn only on the member rows is invisible until the run is asked for. Pending is on
+            // both, so this is what proves the second half — three hollow circles under the line
+            // that already carries one.
+            try assertSnapshots(named: "Session-set-pending-expanded") {
+                fixedEnvironment {
+                    groupRows(
+                        Fixtures.pendingSets,
+                        expanded: Set(Fixtures.pendingSets.suffix(3).map(\.id)),
+                        isSessionOpen: true)
+                }
+            }
+        }
+
         @Test func pendingSetsAfterFinish() throws {
             // The same sets in a workout that has ended — the one column that changed is the
             // session's, and every uncompleted set is now a failed one. The pair with the picture

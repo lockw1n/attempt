@@ -16,8 +16,8 @@
         /// cues rather than one — the hollow circle against the enclosed cross, and the tertiary
         /// ramp against the negative — and neither is legible in a fixture holding only one of them.
         ///
-        /// The pending run is three identical sets, so the collapsed line carries the state as well
-        /// as the rows underneath do.
+        /// The pending run is three identical sets, so it has both a collapsed line and member rows
+        /// — which is what lets one fixture settle that the state is drawn on each of them.
         static let pendingSets: [SetEntry] = [
             loggedSet(index: 40, weight: Weight(grams: 60_000), reps: 5, rpe: nil, isWarmup: true),
             loggedSet(index: 41, weight: Weight(grams: 100_000), reps: 5, rpe: 8),

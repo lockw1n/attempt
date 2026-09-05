@@ -235,7 +235,8 @@ struct SessionNoteTests {
         // The other side of the rule above, over the same double with nothing refusing: the note is
         // written and the finish runs on, so one tap ends the workout.
         let session = WorkoutSession.fixture()
-        let store = ActiveSessionStore.overWorkouts(ScriptedWorkoutRepository(row: session))
+        let store = ActiveSessionStore.overWorkouts(
+            ScriptedWorkoutRepository(row: session, entries: []))
         await store.adopt(sessionID: session.id)
 
         await store.finish(saving: "bar felt fast")

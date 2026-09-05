@@ -10,9 +10,20 @@ struct FeedPosition: Comparable {
     let sessionStart: Date
     let entryOrder: Int
 
-    /// The position of an entry whose session row is not there. Last, not first.
-    static let unplaced = FeedPosition(
-        sessionDate: .distantFuture, sessionStart: .distantFuture, entryOrder: .max)
+    /// The position of an entry whose session row is not there. Last, not first, and keeping the
+    /// entry's own order: the session is what is missing, not the entry.
+    ///
+    /// **Unreachable through the repository API, and kept correct anyway.** `save(_:)` refuses an
+    /// entry whose `sessionID` names no session (`danglingReference`) and the session lookup above
+    /// includes deleted rows, so nothing this app writes can land here — only a row it did not,
+    /// which is what the branch exists for, so no test can turn it red.
+    ///
+    /// - Parameter entryOrder: The entry's position within the session that is not there.
+    /// - Returns: The position.
+    static func unplaced(entryOrder: Int) -> FeedPosition {
+        FeedPosition(
+            sessionDate: .distantFuture, sessionStart: .distantFuture, entryOrder: entryOrder)
+    }
 
     static func < (lhs: FeedPosition, rhs: FeedPosition) -> Bool {
         (lhs.sessionDate, lhs.sessionStart, lhs.entryOrder)
@@ -264,7 +275,7 @@ extension InMemoryRepositoryStore {
         var openSessions: [UUID: WorkoutSession] = [:]
         for entry in matching {
             guard let session = sessions[entry.sessionID] else {
-                orderingKey[entry.id] = .unplaced
+                orderingKey[entry.id] = .unplaced(entryOrder: entry.order)
                 continue
             }
             if !session.isFinished { openSessions[entry.id] = session }
@@ -280,7 +291,7 @@ extension InMemoryRepositoryStore {
                 // Unreachable, and an expression rather than a `!`: the filter above admitted only
                 // sets whose entry is in `orderingKey`. Same verdict the store side reached about
                 // the same `??`.
-                let position = orderingKey[set.entryID] ?? .unplaced
+                let position = orderingKey[set.entryID] ?? .unplaced(entryOrder: .max)
                 return FeedSortKey(
                     position: position, setOrder: set.order, setID: set.id.uuidString)
             }

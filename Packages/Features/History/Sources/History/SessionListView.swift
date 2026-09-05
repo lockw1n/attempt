@@ -193,6 +193,14 @@ public struct SessionListView: View {
     /// The rows, and whatever the next page has to say.
     private var sessions: some View {
         LazyVStack(spacing: Spacing.md.points) {
+            if state.finishFailure != nil {
+                // `FR-1.13.1`'s shared component, with the list left standing beside it: a workout
+                // that would not end costs this screen nothing, and the retry is another tap on the
+                // row's own **Finish workout**. Above the rows because that is where a lifter who
+                // has just tapped one is looking.
+                ErrorStateView(message: Text(HistoryStrings.sessionFinishError))
+            }
+
             ForEach(state.summaries) { summary in
                 // The card carries its own link rather than sitting inside one, because a row that
                 // offers `FR-16.4.4`'s Finish has two controls in it — and a button nested in a
@@ -428,15 +436,35 @@ struct SessionSummaryCard: View {
     /// and a bare numeral each. The pattern is the dashboard's, where a number is the content; here
     /// it is a footnote on a row whose content is the day. One sentence is also one VoiceOver stop
     /// (`G-4.2`), so no accessibility override is needed to make it read properly.
-    private var metrics: some View {
-        // A running total drawn as a finished one is the reading a row like this invites, and over
-        // a session dated next week `0 sets, 0 kg` describes a workout that was missed rather than
-        // one that has not happened yet.
-        Text(HistoryStrings.sessionState(summary.lifecycle) ?? metricsSummary)
-            .font(Typography.numericValue.font)
-            .foregroundStyle(
-                summary.lifecycle == .finished
-                    ? ColorToken.textPrimary : ColorToken.textSecondary)
+    @ViewBuilder private var metrics: some View {
+        if let state = HistoryStrings.sessionState(summary.lifecycle) {
+            // A running total drawn as a finished one is the reading a row like this invites, and
+            // over a session dated next week `0 sets, 0 kg` describes a workout that was missed
+            // rather than one that has not happened yet. So the state word takes the line the two
+            // numbers hold on a finished row.
+            VStack(alignment: .leading, spacing: Spacing.xs.points) {
+                Text(state)
+                    .font(Typography.numericValue.font)
+                    .foregroundStyle(ColorToken.textSecondary)
+
+                if summary.setCount > 0 {
+                    // **And the running total stays**, one step further back, under the word rather
+                    // than instead of it: what has been logged so far is a fact about the day, and
+                    // dropping it would answer `FR-16.4.3` by telling the lifter less than the row
+                    // knows. A workout with nothing in it says only the word — there is no total.
+                    Text(metricsSummary)
+                        .font(Typography.caption.font)
+                        .foregroundStyle(ColorToken.textTertiary)
+                }
+            }
+            // Two lines, one claim about the workout — and so one VoiceOver stop (`G-4.2`), as the
+            // finished row's single sentence already is.
+            .accessibilityElement(children: .combine)
+        } else {
+            Text(metricsSummary)
+                .font(Typography.numericValue.font)
+                .foregroundStyle(ColorToken.textPrimary)
+        }
     }
 
     /// The finished row's two numbers.

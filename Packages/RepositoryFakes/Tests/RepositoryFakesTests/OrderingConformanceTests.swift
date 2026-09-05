@@ -263,27 +263,32 @@ struct OrderingConformanceTests {
     ///
     /// **Two workouts on one training day.** `date` is the day rather than an instant, so the first
     /// set of each ties on the day and the entry order; without `startedAt` the two fall through to
-    /// a minted identifier, which says nothing about which came first. The earlier session is given
-    /// the *higher* id, so a fall-through fails loudly rather than by luck.
+    /// the last clause of the key, which says nothing about which came first.
+    ///
+    /// **The ids that have to be controlled are the *sets'*, not the sessions'** — the key ends in
+    /// `set.id.uuidString`, and a session id is not in it at any position. So the morning's set is
+    /// given the higher id: a fall-through puts the evening's 110 first and the assertion fails
+    /// every run, where ids left to `UUID()` would have made it a coin flip. See ``SortedIDs``,
+    /// which exists for exactly this.
     @Test("Two workouts on one day are ordered by when they started", arguments: Subject.all)
     func sameDayWorkoutsOrderByStart(_ subject: Subject) async throws {
         let repositories = try subject.make()
         let exerciseID = UUID()
         let morning = try await repositories.timeline(
             exerciseID: exerciseID,
-            sessionID: SortedIDs.third,
             date: fixtureCreatedAt,
             startedAt: fixtureCreatedAt)
         let evening = try await repositories.timeline(
             exerciseID: exerciseID,
-            sessionID: SortedIDs.first,
             date: fixtureCreatedAt,
             startedAt: fixtureCreatedAt + fixtureDay / 2)
 
         try await repositories.workouts.save(
-            setRecord(entryID: evening.entryID, order: 0, grams: 110_000))
+            setRecord(
+                id: SortedIDs.first, entryID: evening.entryID, order: 0, grams: 110_000))
         try await repositories.workouts.save(
-            setRecord(entryID: morning.entryID, order: 0, grams: 100_000))
+            setRecord(
+                id: SortedIDs.third, entryID: morning.entryID, order: 0, grams: 100_000))
 
         let feed = try await repositories.workouts.sets(
             forExerciseID: exerciseID, includingDeleted: false)

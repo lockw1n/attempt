@@ -49,7 +49,30 @@ struct SessionPendingSetTests {
         #expect(SetOutcome.of(isCompleted: false, isSessionOpen: true) == .pending)
         #expect(SetOutcome.of(isCompleted: false, isSessionOpen: false) == .failed)
         #expect(SetOutcome.of(isCompleted: true, isSessionOpen: true) == .completed)
-        #expect(workout.store.pendingSets.map(\.id) == [setID])
+        #expect(try await workout.store.pendingSets().map(\.id) == [setID])
+    }
+
+    /// The read the refusal rests on is the repository's, not the cards' — so it still answers
+    /// while this store is holding a workout whose cards it has dropped.
+    ///
+    /// **`adopt(sessionID:)` is that window in one call**: it holds the session and ends with
+    /// `forgetExercises()`. A count taken off ``ActiveSessionStore/exercises`` reads zero here, and
+    /// a Finish built on it would end the workout silently — `FR-16.4.4`'s one prohibition.
+    @Test("Pending sets are counted with the cards dropped, and Finish still refuses")
+    func pendingSetsSurviveTheCardsBeingDropped() async throws {
+        let pending = try await workoutWithOnePendingSet()
+        let (workout, setID) = (pending.workout, pending.set)
+        let sessionID = try #require(workout.store.session?.id)
+
+        await workout.store.adopt(sessionID: sessionID)
+
+        #expect(workout.store.exercises.isEmpty)
+        #expect(try await workout.store.pendingSets().map(\.id) == [setID])
+
+        await workout.store.finish()
+
+        #expect(workout.store.session?.endedAt == nil)
+        #expect(workout.store.pendingSetCount == 1)
     }
 
     @Test("A pending set is drawn in the tertiary ramp, a failed one in the negative")
@@ -80,6 +103,8 @@ struct SessionPendingSetTests {
         // refusal true whichever screen asked.
         #expect(workout.store.session != nil)
         #expect(workout.store.session?.endedAt == nil)
+        // And the screen is told what to ask about, by the same read that declined.
+        #expect(workout.store.pendingSetCount == 1)
         let stored = try await workout.repositories.workouts.sets(
             forEntryID: entry, includingDeleted: false)
         #expect(stored.count == 1)
@@ -130,26 +155,59 @@ struct SessionPendingSetTests {
             values: SetEntryValues(
                 weight: Weight(grams: 100_000), reps: 5, rpe: nil, isWarmup: false, notes: ""))
 
-        #expect(workout.store.pendingSets.isEmpty)
+        #expect(try await workout.store.pendingSets().isEmpty)
         await workout.store.finish()
 
         #expect(workout.store.session == nil)
+        #expect(workout.store.pendingSetCount == 0)
     }
 
     // MARK: - FR-15.3.3
 
-    @Test("Adherence counts the plan, not the log, so a pending set does not move it")
+    /// **Over a workout that has a plan**, because the claim is about a ratio rather than about its
+    /// absence: a fixture prescribing nothing gives `nil` before and `nil` after, which any
+    /// implementation satisfies.
+    ///
+    /// `RoutineFixture` prescribes seven sets — a squat top set, three backoffs, and three bench —
+    /// of which one is performed as prescribed and one is left pending. **Remove them** deletes the
+    /// pending row, and the figure does not move: the denominator is the plan, and the plan did not
+    /// change.
+    @Test("Adherence counts the plan, not the log, so resolving a pending set does not move it")
     func pendingSetsDoNotMoveAdherence() async throws {
-        let workout = try await workoutWithOnePendingSet().workout
-        let withPending = workout.store.adherence
+        let fixture = try await RoutineFixture()
+        let store = ActiveSessionStore.over(fixture.stack)
+        await store.start(
+            on: fixture.today, fromRoutineID: fixture.routineID, in: fixture.stack.routines)
+        await store.loadExercises()
+        let squat = try #require(store.exercises.first)
+        for (grams, reps) in [(100_000, 5), (85_000, 8)] {
+            let values = SetEntryValues(
+                weight: Weight(grams: grams),
+                reps: reps,
+                rpe: nil,
+                isWarmup: false,
+                notes: ""
+            )
+            await store.addSet(toEntryID: squat.id, values: values)
+        }
+        let backoff = try #require(store.exercises.first?.sets.last)
+        await store.markSet(id: backoff.id, inEntryID: squat.id, isCompleted: false)
 
-        await workout.store.finish(resolving: .keepAsFailed)
-        await workout.store.resume()
-        await workout.store.loadExercises()
+        let sessionID = try #require(store.session?.id)
+        let before = try #require(store.adherence)
+        // Anchored to literals: the plan's seven, and the one set that was both completed and on
+        // target. The pending set is in neither number.
+        #expect(before.prescribed == 7)
+        #expect(before.asPrescribed == 1)
 
-        // Nothing planned this workout, so there is no adherence either way — which is the claim:
-        // resolving a pending set is not a change to the plan.
-        #expect(withPending == nil)
-        #expect(workout.store.adherence == nil)
+        await store.finish(resolving: .remove)
+        #expect(store.session == nil)
+
+        // The same workout read back, now finished and one row lighter.
+        let after = ActiveSessionStore.over(fixture.stack)
+        await after.adopt(sessionID: sessionID)
+        await after.loadExercises()
+        let resolved = try #require(after.adherence)
+        #expect(resolved == before)
     }
 }

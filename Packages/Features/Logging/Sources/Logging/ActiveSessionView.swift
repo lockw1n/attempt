@@ -67,10 +67,11 @@ public struct ActiveSessionView: View {
 
     /// How many sets the workout still holds that nobody has attempted.
     ///
-    /// Read at draw time rather than captured with the alert, so a set logged while the question is
-    /// open is not counted in it — the alert is dismissed by either answer, and the count is right
-    /// each time it opens.
-    var pendingSetCount: Int { store.pendingSets.count }
+    /// **The store's own count, from the read that refused to finish** — not a projection of the
+    /// cards on screen, which would be a second answer to the question the alert is asking. It is
+    /// set by the tap that opened the question and cleared by the answer, so the number in the
+    /// title is always the one the resolution will act on.
+    var pendingSetCount: Int { store.pendingSetCount }
 
     /// Which cards the user has folded or unfolded by hand, keyed on the entry (`FR-1.2.13`).
     ///

@@ -90,6 +90,14 @@ public final class ActiveSessionStore {
     /// **Save** beside the field rather than **Finish** at the foot of the screen.
     var noteWriteFailure: String?
 
+    /// How many sets the workout still holds that nobody has attempted (`FR-16.4.4`) — `0` where
+    /// there is nothing to answer for.
+    ///
+    /// **Set by ``finish(resolving:)`` from the read that declined to end the workout**, so the
+    /// number in the alert and the rows it is about are one answer; see ``pendingSets()`` for why a
+    /// projection of ``exercises`` is not.
+    public private(set) var pendingSetCount = 0
+
     /// Why the program's day cursor did not move when the last workout was finished
     /// (`FR-16.8.4`), or `nil`.
     ///
@@ -469,11 +477,17 @@ public final class ActiveSessionStore {
         failure = nil
     }
 
+    /// Records what ``finish(resolving:)``'s read found, so the screen can ask about it.
+    ///
+    /// - Parameter count: The sets nobody attempted, or `0` once nothing is owed an answer.
+    func notePendingSets(_ count: Int) { pendingSetCount = count }
+
     /// Lets go of the workout that has just ended or been discarded, and of everything drawn from
     /// it.
     func releaseHeldSession() {
         session = nil
         failure = nil
+        pendingSetCount = 0
         forgetExercises()
     }
 

@@ -117,6 +117,9 @@ final class SessionListState {
 
     /// Why the last attempt to end a workout failed, or `nil`. A **diagnostic**, not copy
     /// (`G-3.4`); the list is unchanged either way, so the retry is another tap at the command.
+    ///
+    /// Drawn by ``SessionListView`` as `FR-1.13.1`'s error component above the rows, with the list
+    /// left standing beside it — a workout that would not end costs the screen nothing.
     private(set) var finishFailure: String?
 
     @ObservationIgnored private let workouts: any WorkoutRepository
@@ -151,12 +154,16 @@ final class SessionListState {
     /// **A session with no pending sets is finished on the first tap.** The requirement is that a
     /// pending set is never converted silently, not that Finish is always two taps.
     ///
+    /// **A read that fails is reported rather than swallowed.** The row is on screen because a
+    /// session was read for it, so one that cannot be read back is a store that moved underneath
+    /// the list — and a tap that quietly does nothing is the one outcome a lifter cannot act on.
+    ///
     /// - Parameter sessionID: The workout to end.
     func beginFinish(sessionID: UUID) async {
         finishFailure = nil
-        guard let session = try? await workouts.session(id: sessionID, includingDeleted: false)
-        else { return }
         do {
+            guard let session = try await workouts.session(id: sessionID, includingDeleted: false)
+            else { throw RepositoryError.recordNotFound(id: sessionID) }
             let pending = try await finisher.pendingSets(in: session)
             guard !pending.isEmpty else {
                 await finish(sessionID: sessionID, resolving: .keepAsFailed)
@@ -178,9 +185,9 @@ final class SessionListState {
     ///   - resolution: What to do with the sets nobody attempted.
     func finish(sessionID: UUID, resolving resolution: SessionFinish.Resolution) async {
         pendingPrompt = nil
-        guard let session = try? await workouts.session(id: sessionID, includingDeleted: false)
-        else { return }
         do {
+            guard let session = try await workouts.session(id: sessionID, includingDeleted: false)
+            else { throw RepositoryError.recordNotFound(id: sessionID) }
             try await finisher.finish(session, at: .now, resolving: resolution)
             finishFailure = nil
         } catch {
