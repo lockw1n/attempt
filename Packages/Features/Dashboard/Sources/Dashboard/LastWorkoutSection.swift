@@ -162,7 +162,7 @@ struct LastWorkoutReading: View {
                 .foregroundStyle(ColorToken.textPrimary)
             Text(
                 isInProgress
-                    ? DashboardStrings.lastWorkoutInProgress
+                    ? DashboardStrings.lastWorkoutState(summary.lifecycle)
                     : DashboardStrings.lastWorkoutSets(summary.workingSetCount)
             )
             .font(Typography.metricLabel.font)

@@ -64,23 +64,31 @@ cd "$(dirname "$0")/.."
 # notice nothing the parity check does not. Set it above that count where such tests exist, and at
 # the suite's own count where they do not — the latter is a floor that adds nothing, which is the
 # honest setting rather than a number chosen to look like the former.
-#   DesignSystem:    27 tests, 15 reference-backed, 12 harness probes  -> 20, above the 15.
-#   ExerciseLibrary: 29 tests, all of them reference-backed, no probes -> 29, its own count.
-#   Logging:         59 tests, 58 reference-backed, one width probe    -> 59, above the 58.
-#   History:         19 tests, all of them reference-backed, no probes -> 19, its own count.
-#   Dashboard:       10 tests, all of them reference-backed, no probes -> 10, its own count.
+#   DesignSystem:    29 tests, 17 reference-backed, 12 harness probes  -> 22, above the 17.
+#   ExerciseLibrary: 35 tests, all of them reference-backed, no probes -> 35, its own count.
+#   Logging:         79 tests, 76 reference-backed, a width probe and two layout budgets
+#                                                                    -> 79, its own count.
+#   History:         23 tests, all of them reference-backed, no probes -> 23, its own count.
+#   Dashboard:       18 tests, all of them reference-backed, no probes -> 18, its own count.
 #   Settings:        45 tests, all of them reference-backed, no probes -> 45, its own count.
-#   Routines:         8 tests, all of them reference-backed, no probes ->  8, its own count.
+#   Routines:        12 tests, all of them reference-backed, no probes -> 12, its own count.
 # A screen suite added later is the ExerciseLibrary case unless it brings probes of its own, and a
 # screen added to an existing package raises that package's floor rather than adding a row.
+#
+# THE FLOOR DRIFTS SILENTLY AND NOTHING BUT THIS COMMENT NOTICES. A suite that gains a test and
+# not its floor still passes — the parity check counts references, which move together, and the
+# floor is what covers the tests no reference backs. Three of these were stale when T-16.06's
+# review counted them (ExerciseLibrary 29 against 34, Logging 59 against 63, Dashboard 10 against
+# 15), each drifting one task at a time. `git grep -c '@Test' -- <suite>` is the count to set it
+# from, and a task that adds a snapshot test owes this list the same edit it owes __Snapshots__.
 SUITES=(
-    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|20"
-    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|29"
-    "Packages/Features/Logging|Logging|LoggingSnapshotTests|59"
-    "Packages/Features/History|History|HistorySnapshotTests|19"
-    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|10"
+    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|22"
+    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|35"
+    "Packages/Features/Logging|Logging|LoggingSnapshotTests|79"
+    "Packages/Features/History|History|HistorySnapshotTests|23"
+    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|18"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|45"
-    "Packages/Features/Routines|Routines|RoutinesSnapshotTests|8"
+    "Packages/Features/Routines|Routines|RoutinesSnapshotTests|12"
 )
 
 # The iOS version the committed references were rendered on. See the header: bump it only when

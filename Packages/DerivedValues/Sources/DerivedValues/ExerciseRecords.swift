@@ -43,6 +43,43 @@ public struct DatedRepMax: Sendable, Hashable {
     }
 }
 
+/// A scheme record, with the set that holds it and the day it was set (`FR-16.2.1`, `TR-16.1`).
+///
+/// **``DatedRepMax`` is the `sets == 1` case of this**, not a different record. The rep-max type
+/// stays because `FR-1.6.x`'s readers ask a one-dimensional question and a screen that draws ten
+/// rows should not have to filter sixty; both are read off the same cached table.
+public struct DatedSchemeRecord: Sendable, Hashable {
+    /// The cell this is the record for.
+    public let scheme: RecordScheme
+
+    /// The record itself. Its `sourceSetID` is the record-setting run's **first** set — see
+    /// ``RepositoryInterface/PersonalRecordCache/sourceSetID``.
+    public let record: DatedRecord
+
+    /// The load this record beat at this scheme, or `nil` where it is a baseline (`FR-16.2.3`).
+    public let previous: Weight?
+
+    /// How far the load moved, or `nil` for a baseline (`FR-16.3.3`).
+    ///
+    /// Strictly positive wherever it is not `nil`, and for ``EstimatedMax/delta``'s reason: a cell
+    /// only moves on a strict improvement, so there is a rise or nothing. The type stays signed for
+    /// that property's reason too.
+    public var delta: Weight? {
+        guard let previous else { return nil }
+        return record.weight - previous
+    }
+
+    /// Whether this scheme had never been performed for this exercise before (`FR-16.3.4`).
+    public var isBaseline: Bool { previous == nil }
+
+    /// Creates a dated scheme record.
+    public init(scheme: RecordScheme, record: DatedRecord, previous: Weight?) {
+        self.scheme = scheme
+        self.record = record
+        self.previous = previous
+    }
+}
+
 /// Why there is no estimated one-rep maximum (`FR-1.7.1`, `FR-1.13.3`).
 ///
 /// **Three reasons, and only one of them is "nothing has been logged".** The other two are the ones
@@ -66,29 +103,22 @@ public enum EstimateAbsence: Sendable, Hashable {
 
 /// `FR-1.7.1`'s answer for one exercise: the estimate, or the reason there is none.
 ///
-/// **Exactly one of the three contents holds.** A number with no explanation and an explanation
+/// **Exactly one of the two contents holds.** A number with no explanation and an explanation
 /// with no number are states a screen has to draw, and pairing independent optionals would add
 /// combinations it cannot.
 ///
 /// ``formula`` and ``lookback`` travel with it because a computed number means nothing without
 /// them: the same sets estimate differently under Brzycki, and "no set in the window" is a
-/// different sentence at thirty days than at ninety. **They travel with a manual override too, and
-/// took no part in it** — they are what the exercise returns to when the override is cleared
-/// (`FR-1.7.5`), the same way a manual training max keeps the percentage it is not computed from
-/// (`FR-1.5.1.5`).
+/// different sentence at thirty days than at ninety. **They travel with an absence too**, which is
+/// what lets the screen name the window a refusal was measured over.
+///
+/// **Every value here is observed** (`D-16.1`). The one number a lifter enters is the training max,
+/// which is a record of its own and never this one.
 public struct EstimatedMax: Sendable, Hashable {
-    /// The number, or the reason there is none — exactly one of the three.
+    /// The number, or the reason there is none — exactly one of the two.
     public enum Content: Sendable, Hashable {
         /// The heaviest estimate any in-window set produced.
         case record(DatedRecord)
-
-        /// The number the user entered by hand, which outranks whatever the sets say (`FR-1.7.5`).
-        ///
-        /// **A `Weight` rather than a ``DatedRecord``, because there is no source set.** A record
-        /// names the set that holds it — what `FR-1.7.4` navigates to — and an override has none;
-        /// carrying one would mean minting an identifier that resolves to nothing, which is a link
-        /// that navigates to a missing session rather than a number that admits it has no source.
-        case manual(Weight)
 
         /// Why neither of the above.
         case absence(EstimateAbsence)
@@ -100,10 +130,9 @@ public struct EstimatedMax: Sendable, Hashable {
     /// What this number replaced: the best estimate the exercise held before the day the current one
     /// was set, or `nil` when there is no earlier one (`FR-1.9.1`).
     ///
-    /// **`nil` for a manual override and for an absence, and not because it could not be computed.**
-    /// An override is a number the user typed, so nothing about the sets is what it moved from
-    /// (`FR-1.7.5`); an absence has no number to have moved. A screen therefore never draws a delta
-    /// beside either, which is the same rule the provenance line already follows.
+    /// **`nil` for an absence, and not because it could not be computed.** An absence has no number
+    /// to have moved, so a screen never draws a delta beside one — the same rule the provenance line
+    /// already follows.
     ///
     /// See ``PersonalRecordRecomputer`` for why the comparison excludes the current record's whole
     /// day rather than only its set.
@@ -115,17 +144,11 @@ public struct EstimatedMax: Sendable, Hashable {
     /// The window it was produced over (`FR-1.7.1`).
     public let lookback: E1RMLookback
 
-    /// The **computed** estimate, or `nil` — a manual override is not one, and asking this is how
-    /// a caller finds the set `FR-1.7.4` links to.
+    /// The estimate, or `nil` where there is none — and asking this is how a caller finds the set
+    /// `FR-1.7.4` links to.
     public var record: DatedRecord? {
         guard case .record(let record) = content else { return nil }
         return record
-    }
-
-    /// The manual override, or `nil` when the number is computed or absent (`FR-1.7.5`).
-    public var manual: Weight? {
-        guard case .manual(let weight) = content else { return nil }
-        return weight
     }
 
     /// Why there is none, or `nil` when there is one.
@@ -134,23 +157,9 @@ public struct EstimatedMax: Sendable, Hashable {
         return absence
     }
 
-    /// The number this exercise's e1RM currently *is*, however it was arrived at, or `nil` when
-    /// there is none.
-    ///
-    /// **What a caller wanting the value rather than its provenance reads.** ``record`` alone
-    /// silently answers `nil` for an exercise that has an e1RM — the overridden one — which is the
-    /// bypass `FR-1.7.5` exists to prevent.
-    public var weight: Weight? {
-        switch content {
-        case .record(let record): record.weight
-        case .manual(let weight): weight
-        case .absence: nil
-        }
-    }
-
-    /// Whether the number came from the user rather than from their sets — `FR-1.7.5`'s "clearly
-    /// marked as manual", as a screen asks it.
-    public var isManual: Bool { manual != nil }
+    /// The number this exercise's e1RM currently is, or `nil` when there is none — what a caller
+    /// wanting the value rather than the set behind it reads.
+    public var weight: Weight? { record?.weight }
 
     /// How far the computed number moved, or `nil` where there is nothing to compare (`FR-1.9.1`).
     ///
@@ -180,11 +189,6 @@ public struct EstimatedMax: Sendable, Hashable {
     ) {
         self.init(
             content: .record(record), previous: previous, formula: formula, lookback: lookback)
-    }
-
-    /// A manual override.
-    public init(manual: Weight, formula: E1RMFormulaID, lookback: E1RMLookback) {
-        self.init(content: .manual(manual), formula: formula, lookback: lookback)
     }
 
     /// The absence of one.
@@ -223,22 +227,41 @@ public struct ExerciseRecords: Sendable, Hashable {
 
     /// The N-rep maxes, ascending by ``DatedRepMax/reps``. An N no set reached is **absent**, not
     /// present at zero — `Weight` is signed, so zero is a real load.
+    ///
+    /// The `sets == 1` column of ``schemeRecords``, and nothing else (`FR-16.2.1`).
     public let repMaxes: [DatedRepMax]
+
+    /// Every cell of `FR-16.2.1`'s table this exercise holds, ascending by
+    /// ``DatedSchemeRecord/scheme``. A cell no run reached is absent, on ``repMaxes``' rule.
+    public let schemeRecords: [DatedSchemeRecord]
 
     /// The current estimated one-rep maximum, or why there is none.
     public let estimate: EstimatedMax
 
-    /// The estimate's computed record alone, for a caller that has already established there is
-    /// one. **A manual override answers `nil` here** — see ``EstimatedMax/record``.
+    /// The estimate's record alone, for a caller that has already established there is one — see
+    /// ``EstimatedMax/record``.
     public var bestE1RM: DatedRecord? { estimate.record }
 
     /// The formula the estimate was produced under.
     public var formula: E1RMFormulaID { estimate.formula }
 
     /// Creates one exercise's records.
-    public init(exerciseID: UUID, repMaxes: [DatedRepMax], estimate: EstimatedMax) {
+    ///
+    /// - Parameters:
+    ///   - exerciseID: The exercise.
+    ///   - repMaxes: `FR-1.6.1`'s ten rows.
+    ///   - schemeRecords: `FR-16.2.1`'s table. Defaults to empty, for a caller that only has the
+    ///     rep maxes to state.
+    ///   - estimate: `FR-1.7.1`'s number, or the reason there is none.
+    public init(
+        exerciseID: UUID,
+        repMaxes: [DatedRepMax],
+        schemeRecords: [DatedSchemeRecord] = [],
+        estimate: EstimatedMax
+    ) {
         self.exerciseID = exerciseID
         self.repMaxes = repMaxes
+        self.schemeRecords = schemeRecords
         self.estimate = estimate
     }
 
@@ -247,6 +270,16 @@ public struct ExerciseRecords: Sendable, Hashable {
     /// A lookup, not a guard: it finds whatever ``repMaxes`` holds.
     public func repMax(forReps reps: Int) -> DatedRecord? {
         repMaxes.first { $0.reps == reps }?.record
+    }
+
+    /// The record for one cell, or `nil` when no run reached it.
+    ///
+    /// A lookup, not a guard: it finds whatever ``schemeRecords`` holds.
+    ///
+    /// - Parameter scheme: The cell.
+    /// - Returns: The record, or `nil`.
+    public func schemeRecord(for scheme: RecordScheme) -> DatedSchemeRecord? {
+        schemeRecords.first { $0.scheme == scheme }
     }
 }
 

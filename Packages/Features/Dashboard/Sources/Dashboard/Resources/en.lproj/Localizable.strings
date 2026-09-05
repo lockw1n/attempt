@@ -17,12 +17,20 @@
 "dashboard.recent-records.error" = "Recent personal records could not be read.";
 /* Opens the full list behind the dashboard's card. */
 "dashboard.recent-records.see-all" = "See all";
-/* One entry's label. The single-N form and the range form are separate keys rather than one with an
-   optional half: a set that beat the 1RM through the 3RM in one go reads "1–3-rep max", and a
-   language that words a range differently needs to be able to say so. Neither needs a plural rule —
-   the number sits inside the compound before "max", so "1-rep max" is already correct. */
-"dashboard.recent-records.rep-max %lld" = "%lld-rep max";
-"dashboard.recent-records.rep-max.range %lld %lld" = "%1$lld–%2$lld-rep max";
+/* FR-16.3.3: one entry's label, at its two shapes. A rep max names the top N the run took at a
+   single set and nothing below it — a set of eight that beat every N up to eight is "8RM", where
+   the retired "1–8-rep max" stated eight claims for one performance. A run that set no rep max at
+   all is named by its scheme instead. Neither needs a plural rule: the numeral sits inside the
+   compound, "RM" and "×" being notation rather than nouns that agree with it. */
+"dashboard.recent-records.rep-max %lld" = "%lldRM";
+"dashboard.recent-records.scheme %lld %lld" = "%1$lld × %2$lld";
+
+/* FR-16.3.3: the set the record came from, written the way the log writes it. */
+"dashboard.recent-records.set %@ %@" = "%1$@ × %2$@";
+"dashboard.recent-records.run %@ %@ %@" = "%1$@ × %2$@ × %3$@";
+
+/* FR-16.3.4: what stands where the delta would, the first time a scheme is performed. */
+"dashboard.recent-records.baseline" = "First";
 /* VoiceOver's hint on a feed entry. It opens the exercise, not the session — see RecentRecordRow. */
 "dashboard.recent-records.exercise-hint" = "Shows this exercise's personal records.";
 
@@ -56,7 +64,6 @@
 "dashboard.tiles.none.message" = "Choose the lifts you want an estimate for.";
 /* FR-1.7.5's manual mark, where a delta would otherwise be. A manual number has nothing it moved
    from, so this line replaces the delta rather than sitting beside it. */
-"dashboard.tiles.manual" = "Entered manually";
 /* FR-1.9.1's delta has nothing to compare against: this is the first estimate inside the window. */
 "dashboard.tiles.no-previous" = "No earlier estimate to compare";
 "dashboard.tiles.choose.action" = "Choose lifts";
@@ -101,3 +108,46 @@
    load is negative, so summing it would make the total fall as more work was done. */
 "dashboard.week.unweighed" = "Nothing this week carries a load to weigh — bodyweight and assisted sets add no volume.";
 "dashboard.week.error" = "This week's training could not be read.";
+
+/* FR-16.3.4's empty feed under a narrowed configuration. It is not "no records yet": the records
+   exist and the settings are what hide them, so the sentence names the settings rather than one of
+   them — the scope, the first-time flag and a chosen scheme list can each empty the feed alone, and
+   a sentence naming only the lifts would be wrong for the other two. The button offers the widest
+   of all three, a control rather than a sentence pointing at Settings. */
+"dashboard.recent-records.none-in-scope" = "No recent personal records match your Recent PRs settings.";
+"dashboard.recent-records.show-every" = "Show everything";
+
+/* FR-16.3's configuration screen, reached from Settings. The title matches the feed's own: it is
+   the same feature, and a second name would read as a second one. */
+"dashboard.recent-records.settings.title" = "Recent PRs";
+"dashboard.recent-records.settings.error" = "Your Recent PRs settings could not be read.";
+"dashboard.recent-records.settings.write-error" = "That change could not be saved.";
+
+/* FR-16.3.1's scope. The detail names where the first option's list comes from, because that is the
+   whole point of it: one selection, obeyed by the dashboard tiles and by this feed. */
+"dashboard.recent-records.scope.title" = "Which lifts";
+"dashboard.recent-records.scope.dashboard-lifts" = "Dashboard";
+"dashboard.recent-records.scope.every-exercise" = "Everything";
+"dashboard.recent-records.scope.chosen" = "Chosen";
+"dashboard.recent-records.scope.detail" = "Dashboard follows the lifts you tile an estimated 1RM for, so one choice covers both.";
+"dashboard.recent-records.exercises.title" = "Lifts in this feed";
+"dashboard.recent-records.exercises.empty" = "No exercises to choose from";
+
+/* FR-16.3.2. "Derived" is stated as the threshold rather than as a word, since three is the whole
+   rule and a lifter cannot guess it. The list under the toggle offers the schemes their own records
+   are held at — the full table is sixty cells, which is not a control. */
+"dashboard.recent-records.schemes.title" = "Which schemes";
+"dashboard.recent-records.schemes.derived" = "Follow my training";
+"dashboard.recent-records.schemes.detail" = "Shows records at any rep-and-set scheme you have trained at least three times. Turn it off to pick the schemes yourself.";
+"dashboard.recent-records.schemes.empty" = "No records to choose a scheme from yet.";
+
+/* FR-16.3.4. The label says what a baseline is rather than naming it: "baseline" is our word for it,
+   and the lifter's is "the first time". */
+"dashboard.recent-records.baselines.title" = "First-time records";
+"dashboard.recent-records.baselines.label" = "Show first-time records";
+"dashboard.recent-records.baselines.detail" = "The first time you perform a scheme it sets a record with nothing to compare against. Off by default, so a new accessory lift does not fill the feed.";
+"dashboard.tiles.training-max %@" = "Training max %@";
+
+/* FR-16.4.3. A workout dated ahead of today: nothing has been logged against it and nothing is
+   being logged now, so neither "In progress" nor a set count of zero is true of it. */
+"dashboard.last-workout.planned" = "Planned";

@@ -80,28 +80,59 @@ struct OrderingConformanceTests {
         // Saved oldest-effective first, so `updatedAt` runs with `effectiveFrom` rather than
         // against it — the ordering claim is about `effectiveFrom` and must not be satisfiable by
         // insertion order alone, which the id clause below is what pins.
-        try await repositories.exercises.saveTrainingMax(
-            trainingMaxRecord(exerciseID: exerciseID, effectiveFrom: fixtureCreatedAt, grams: 150_000))
-        try await repositories.exercises.saveTrainingMax(
-            trainingMaxRecord(
+        try await repositories.trainingMaxes.save(
+            trainingMaxHistoryRecord(exerciseID: exerciseID, effectiveFrom: fixtureCreatedAt, grams: 150_000))
+        try await repositories.trainingMaxes.save(
+            trainingMaxHistoryRecord(
                 id: SortedIDs.second,
                 exerciseID: exerciseID,
                 effectiveFrom: fixtureCreatedAt + fixtureDay,
                 grams: 160_000))
-        try await repositories.exercises.saveTrainingMax(
-            trainingMaxRecord(
+        try await repositories.trainingMaxes.save(
+            trainingMaxHistoryRecord(
                 id: SortedIDs.third,
                 exerciseID: exerciseID,
                 effectiveFrom: fixtureCreatedAt + fixtureDay,
                 grams: 170_000))
 
-        let history = try await repositories.exercises.trainingMaxHistory(
+        let history = try await repositories.trainingMaxes.history(
             forExerciseID: exerciseID, includingDeleted: false)
 
         #expect(
-            history.map(\.manualWeight) == [
+            history.map(\.newWeight) == [
                 Weight(grams: 170_000), Weight(grams: 160_000), Weight(grams: 150_000),
             ])
+        #expect(history.prefix(2).map(\.id) == [SortedIDs.third, SortedIDs.second])
+    }
+
+    /// The same claim on the other table. `configurationHistory` sorts in its own code in both
+    /// implementations, so the case above does not reach it.
+    @Test("Training-max configurations come back newest effective first", arguments: Subject.all)
+    func configurationsAreOrderedByEffectiveDateDescending(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let exerciseID = UUID()
+        try await repositories.exercises.save(exerciseRecord(id: exerciseID))
+        // Saved oldest-effective first, for the case above's reason.
+        try await repositories.trainingMaxes.saveConfiguration(
+            trainingMaxRecord(
+                exerciseID: exerciseID, effectiveFrom: fixtureCreatedAt, percentage: 0.80))
+        try await repositories.trainingMaxes.saveConfiguration(
+            trainingMaxRecord(
+                id: SortedIDs.second,
+                exerciseID: exerciseID,
+                effectiveFrom: fixtureCreatedAt + fixtureDay,
+                percentage: 0.85))
+        try await repositories.trainingMaxes.saveConfiguration(
+            trainingMaxRecord(
+                id: SortedIDs.third,
+                exerciseID: exerciseID,
+                effectiveFrom: fixtureCreatedAt + fixtureDay,
+                percentage: 0.95))
+
+        let history = try await repositories.trainingMaxes.configurationHistory(
+            forExerciseID: exerciseID, includingDeleted: false)
+
+        #expect(history.map(\.percentage) == [0.95, 0.85, 0.80])
         #expect(history.prefix(2).map(\.id) == [SortedIDs.third, SortedIDs.second])
     }
 
@@ -190,6 +221,79 @@ struct OrderingConformanceTests {
                 Weight(grams: 30_000),  // session 1, entry 1, set 1
                 Weight(grams: 40_000),  // session 2
             ])
+    }
+
+    /// `FR-16.4.2`: an uncompleted set inside a workout that has not ended is one nobody has
+    /// attempted, and it is not history.
+    ///
+    /// **The same fixture as the filter test above, with one column moved.** A session's `endedAt`
+    /// is the whole difference between "the feed passes incomplete sets through" and this, which is
+    /// what makes the exclusion a property of the session rather than of the set.
+    ///
+    /// The warmup and the completed set stay, so this cannot pass by dropping the entry.
+    @Test(
+        "A pending set is not in the feed; the same set in a finished workout is",
+        arguments: Subject.all)
+    func theFeedExcludesPendingSets(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let exerciseID = UUID()
+        let timeline = try await repositories.timeline(exerciseID: exerciseID, endedAt: nil)
+        try await repositories.workouts.save(
+            setRecord(entryID: timeline.entryID, order: 0, grams: 60_000, isWarmup: true))
+        try await repositories.workouts.save(
+            setRecord(entryID: timeline.entryID, order: 1, grams: 100_000, isCompleted: false))
+        try await repositories.workouts.save(
+            setRecord(entryID: timeline.entryID, order: 2, grams: 110_000))
+
+        let open = try await repositories.workouts.sets(
+            forExerciseID: exerciseID, includingDeleted: false)
+        #expect(open.map(\.weight) == [Weight(grams: 60_000), Weight(grams: 110_000)])
+
+        // The row is untouched — it is the session ending that puts it back, as a failed set.
+        try await repositories.workouts.save(
+            sessionRecord(id: timeline.sessionID, endedAt: fixtureCreatedAt))
+        let finished = try await repositories.workouts.sets(
+            forExerciseID: exerciseID, includingDeleted: false)
+        #expect(
+            finished.map(\.weight)
+                == [Weight(grams: 60_000), Weight(grams: 100_000), Weight(grams: 110_000)])
+    }
+
+    /// `TR-0.2.8`'s tie-break, at the one key `date` cannot decide.
+    ///
+    /// **Two workouts on one training day.** `date` is the day rather than an instant, so the first
+    /// set of each ties on the day and the entry order; without `startedAt` the two fall through to
+    /// the last clause of the key, which says nothing about which came first.
+    ///
+    /// **The ids that have to be controlled are the *sets'*, not the sessions'** — the key ends in
+    /// `set.id.uuidString`, and a session id is not in it at any position. So the morning's set is
+    /// given the higher id: a fall-through puts the evening's 110 first and the assertion fails
+    /// every run, where ids left to `UUID()` would have made it a coin flip. See ``SortedIDs``,
+    /// which exists for exactly this.
+    @Test("Two workouts on one day are ordered by when they started", arguments: Subject.all)
+    func sameDayWorkoutsOrderByStart(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let exerciseID = UUID()
+        let morning = try await repositories.timeline(
+            exerciseID: exerciseID,
+            date: fixtureCreatedAt,
+            startedAt: fixtureCreatedAt)
+        let evening = try await repositories.timeline(
+            exerciseID: exerciseID,
+            date: fixtureCreatedAt,
+            startedAt: fixtureCreatedAt + fixtureDay / 2)
+
+        try await repositories.workouts.save(
+            setRecord(
+                id: SortedIDs.first, entryID: evening.entryID, order: 0, grams: 110_000))
+        try await repositories.workouts.save(
+            setRecord(
+                id: SortedIDs.third, entryID: morning.entryID, order: 0, grams: 100_000))
+
+        let feed = try await repositories.workouts.sets(
+            forExerciseID: exerciseID, includingDeleted: false)
+
+        #expect(feed.map(\.weight) == [Weight(grams: 100_000), Weight(grams: 110_000)])
     }
 
     @Test("The feed passes warmups and incomplete sets through", arguments: Subject.all)

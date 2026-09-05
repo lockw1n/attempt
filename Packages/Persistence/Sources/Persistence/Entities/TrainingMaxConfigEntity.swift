@@ -5,8 +5,14 @@ import SwiftData
 
 /// How one exercise's training max is computed, from a given date (`TR-0.3.6`, `FR-1.5.1.1`).
 ///
+/// **The number is not here.** A manual training max is a ``TrainingMaxHistoryEntity`` row, dated
+/// and annotated (`FR-1.5.1.4`, `FR-16.7.2`), and this table says only how a number is arrived at. A
+/// value column beside the history would be a value that can disagree with it, which is exactly what
+/// `G-1.4` refuses; the in-force read is a lookup over the history and never a read of a stored
+/// answer.
+///
 /// **``sourceRawValue`` is the only column that says which of the others took part in the number.**
-/// A manual training max is the weight the user entered, with neither ``percentage`` nor the two
+/// A manual training max is the weight the lifter entered, with neither ``percentage`` nor the two
 /// rounding columns applied (`FR-1.5.1.5`) — but all three are still written, still read back, and
 /// hold values indistinguishable from a derived row's. That is deliberate rather than untidy:
 ///
@@ -25,9 +31,9 @@ import SwiftData
 /// training max by one step per read: it is `FR-1.5.1.3`'s block-completion progression, which a
 /// resolution carries and never applies.
 ///
-/// Which payload column is meaningful also follows from ``sourceRawValue``, and nothing here
-/// enforces the pairing — a `.manual` row with no ``manualWeightGrams`` is a repository concern
-/// (`TR-0.4.3`), as every cross-column invariant in this schema is.
+/// Whether ``sourceRepCount`` is meaningful also follows from ``sourceRawValue``, and nothing here
+/// enforces the pairing — a `.percentOfRepMax` row with none is a repository concern (`TR-0.4.3`),
+/// as every cross-column invariant in this schema is.
 @Model
 final class TrainingMaxConfigEntity: StoredEntity {
     var id: UUID = UUID()
@@ -46,9 +52,6 @@ final class TrainingMaxConfigEntity: StoredEntity {
     /// Not in `TR-0.3.6`'s field list, which gives the manual source a payload column and the
     /// rep-max source none — so a user configuring "90% of my best 3-rep max" had nowhere for the 3.
     var sourceRepCount: Int?
-
-    /// The training max as entered, in grams (`G-1.1`), for a manual source and `nil` otherwise.
-    var manualWeightGrams: Int?
 
     /// The fraction of the source weight to take, as a **ratio**: `0.9` is 90%.
     ///
@@ -88,7 +91,6 @@ final class TrainingMaxConfigEntity: StoredEntity {
         roundingStrategy: RoundingStrategy,
         effectiveFrom: Date,
         sourceRepCount: Int? = nil,
-        manualWeightGrams: Int? = nil,
         incrementGrams: Int? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now
@@ -101,7 +103,6 @@ final class TrainingMaxConfigEntity: StoredEntity {
         self.roundingStrategyRawValue = roundingStrategy.rawValue
         self.effectiveFrom = effectiveFrom
         self.sourceRepCount = sourceRepCount
-        self.manualWeightGrams = manualWeightGrams
         self.incrementGrams = incrementGrams
         self.createdAt = createdAt
         self.updatedAt = updatedAt

@@ -62,7 +62,6 @@ func makeTrainingMaxConfig(
     roundingStrategy: RoundingStrategy = .down,
     effectiveFrom: Date = Date(timeIntervalSince1970: 1_700_000_000),
     sourceRepCount: Int? = nil,
-    manualWeightGrams: Int? = nil,
     incrementGrams: Int? = nil
 ) -> TrainingMaxConfigEntity {
     TrainingMaxConfigEntity(
@@ -73,8 +72,24 @@ func makeTrainingMaxConfig(
         roundingStrategy: roundingStrategy,
         effectiveFrom: effectiveFrom,
         sourceRepCount: sourceRepCount,
-        manualWeightGrams: manualWeightGrams,
         incrementGrams: incrementGrams
+    )
+}
+
+/// A training-max history row, defaulted to the shape `FR-16.7.2` writes.
+func makeTrainingMaxHistory(
+    exerciseID: UUID = UUID(),
+    effectiveFrom: Date = Date(timeIntervalSince1970: 1_700_000_000),
+    newGrams: Int = 140_000,
+    oldGrams: Int? = nil,
+    reason: String = "coach"
+) -> TrainingMaxHistoryEntity {
+    TrainingMaxHistoryEntity(
+        exerciseID: exerciseID,
+        effectiveFrom: effectiveFrom,
+        newGrams: newGrams,
+        reason: reason,
+        oldGrams: oldGrams
     )
 }
 
@@ -88,17 +103,21 @@ func makeInventory(_ denominations: [(grams: Int, pairs: Int)]) throws -> PlateI
 func makeCachedRecord(
     exerciseID: UUID,
     repCount: Int,
+    setCount: Int = 1,
     weightGrams: Int,
     sourceSetID: UUID = UUID(),
     achievedAt: Date = Date(timeIntervalSince1970: 1_700_000_000),
+    previousWeightGrams: Int? = nil,
     computationVersion: Int = PersonalRecordCalculator.computationVersion
 ) -> PersonalRecordCacheEntity {
     PersonalRecordCacheEntity(
         exerciseID: exerciseID,
         repCount: repCount,
+        setCount: setCount,
         weightGrams: weightGrams,
         sourceSetID: sourceSetID,
         achievedAt: achievedAt,
+        previousWeightGrams: previousWeightGrams,
         computationVersion: computationVersion
     )
 }

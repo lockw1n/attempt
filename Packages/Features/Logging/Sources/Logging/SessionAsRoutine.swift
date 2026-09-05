@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -58,23 +59,21 @@ struct SessionAsRoutine: Equatable {
 
     /// Compresses one exercise's sets into target groups.
     ///
-    /// **Consecutive equal sets collapse into one group; a change of load or reps opens the next.**
-    /// A top set followed by three backoffs is two groups and not four, which is how a routine
-    /// writes it (`FR-15.2.1`'s amendment) — and *consecutive* rather than merely equal, because a
-    /// wave back up to the opening load is a third group in the plan rather than a bigger first one.
+    /// **``DerivedValues/SetGrouping``'s rule at its prescribing grain, not a second one.** Every
+    /// surface that reads sets groups them (`FR-16.1.1`), and a routine is that same run of
+    /// consecutive equal sets written as a target: a top set followed by three backoffs is two
+    /// groups and not four, which is how a routine writes it (`FR-15.2.1`'s amendment).
+    ///
+    /// **The grain is `loadAndReps`, and that is what keeps the two agreeing rather than identical.**
+    /// A rating or a note that changed mid-run is a second line on the card and the same line in the
+    /// plan — a routine has nowhere to put either, so breaking on them would prescribe `100×6×1`
+    /// four times over.
     ///
     /// - Parameter sets: The sets logged against one entry, in order.
     /// - Returns: The groups, in that order.
     static func targets(from sets: [SetEntry]) -> [Target] {
-        var groups: [Target] = []
-        for set in sets where !set.isWarmup && set.isCompleted {
-            if let last = groups.last, last.weight == set.weight, last.reps == set.reps {
-                groups[groups.count - 1] = Target(
-                    weight: last.weight, reps: last.reps, sets: last.sets + 1)
-            } else {
-                groups.append(Target(weight: set.weight, reps: set.reps, sets: 1))
-            }
-        }
-        return groups
+        SetGrouping
+            .groups(sets.filter { !$0.isWarmup && $0.isCompleted }, at: .loadAndReps)
+            .map { Target(weight: $0.weight, reps: $0.reps, sets: $0.count) }
     }
 }

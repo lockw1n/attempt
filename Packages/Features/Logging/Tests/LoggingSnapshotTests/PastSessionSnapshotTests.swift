@@ -18,8 +18,10 @@
     // itself: the screen owns a `.task` that reads a store and `ImageRenderer` has no way to run one.
     // What the card's reference is *for* is the one thing this screen draws that no other reference
     // covers — a `SetRow` with its two marking controls absent, which is a past session's row. The
-    // note section is already pictured by `SessionNoteSnapshotTests`, this screen drawing exactly the
-    // same component.
+    // note section is pictured HERE, and that is `FR-16.6.1`'s doing: the workout in progress folds
+    // its note at the foot (`SessionNotesFold`, pictured by `SessionAboveFoldSnapshotTests`) while
+    // this screen keeps the headed section, so the two are no longer one component and this is the
+    // only screen `SessionNotesSection` is drawn on.
     //
     // These are a regression baseline; the colours and the controls are what the simulator run checks
     // (`docs/phase-1/tasks.md` §2).
@@ -42,6 +44,8 @@
                         unit: .kilograms,
                         areWarmupsExpanded: false,
                         toggleWarmups: {},
+                        expandedGroups: [],
+                        toggleGroup: { _ in },
                         edit: { _ in }
                     )
                 }
@@ -58,6 +62,28 @@
                         unit: .kilograms,
                         areWarmupsExpanded: true,
                         toggleWarmups: {},
+                        expandedGroups: [],
+                        toggleGroup: { _ in },
+                        edit: { _ in }
+                    )
+                }
+            }
+        }
+
+        @Test func exerciseCardWithGroups() throws {
+            // `FR-16.1.1` on the past session: four identical sets as one line, and the set that
+            // broke the run as a row beneath it. Its own reference rather than a variant of the
+            // card above, because that fixture has no run in it at all — which is the state this
+            // screen was in before the grouping and is worth keeping a picture of.
+            try assertSnapshots(named: "Past-session-card-groups") {
+                fixedEnvironment {
+                    PastSessionExerciseCard(
+                        item: PastFixtures.groupedExercise,
+                        unit: .kilograms,
+                        areWarmupsExpanded: false,
+                        toggleWarmups: {},
+                        expandedGroups: [],
+                        toggleGroup: { _ in },
                         edit: { _ in }
                     )
                 }
@@ -104,6 +130,38 @@
             }
         }
 
+        // MARK: - FR-1.2.9's note, in the shape this screen keeps (FR-16.6.1)
+
+        @Test func notesSection() throws {
+            // The headed section, which is the whole of what `SessionNotesSection` adds to the
+            // editor inside it: nothing competes for the first screen of a session that is over, so
+            // the note is not folded here and the heading is a heading rather than a control.
+            //
+            // The field itself rasterises as `ImageRenderer`'s placeholder, the way every
+            // `TextField` in this package does — so what this compares is the heading, the section
+            // around it, and the field's height at three-to-ten lines, not the text in it.
+            try assertSnapshots(named: "Past-session-notes") {
+                fixedEnvironment {
+                    SessionNotesSection(
+                        draft: .constant(Fixtures.storedNote), hasFailed: false, save: {})
+                }
+            }
+        }
+
+        @Test func notesSectionUnsavedAndFailed() throws {
+            // An edit that has not been stored, and a write that failed: **Save note**, **Discard
+            // changes** and the shared error beneath them. The same three the fold pictures, and
+            // worth its own reference because the wrapper is not the same one — a `GroupedSection`
+            // is narrower than a `Card`, so `accessibility3` reaches the point where `ViewThatFits`
+            // drops the commands into a column at a different width here.
+            try assertSnapshots(named: "Past-session-notes-editing") {
+                fixedEnvironment {
+                    SessionNotesSection(
+                        draft: .constant(Fixtures.editedNote), hasFailed: true, save: {})
+                }
+            }
+        }
+
         @Test func sessionWithNothingLogged() throws {
             // A workout that was started and never logged into. No action: a past session is a
             // record, and there is nothing to add to it from here.
@@ -145,6 +203,33 @@
                     set(entryID: entryID, order: 1, grams: 80_000, reps: 3, isWarmup: true),
                     set(entryID: entryID, order: 2, grams: 102_500, reps: 5, rpe: 8),
                     set(entryID: entryID, order: 3, grams: 102_500, reps: 3, isCompleted: false),
+                ]
+            )
+        }
+
+        /// The same exercise performed as a run: a warmup, then four identical working sets and a
+        /// fifth a rep short (`FR-16.1.1`).
+        static var groupedExercise: SessionExercise {
+            let entryID = UUID()
+            return SessionExercise(
+                entry: ExerciseEntry(
+                    id: entryID,
+                    createdAt: stamp,
+                    updatedAt: stamp,
+                    deletedAt: nil,
+                    sessionID: UUID(),
+                    exerciseID: UUID(),
+                    order: 0,
+                    notes: ""
+                ),
+                exercise: catalogueRow,
+                sets: [
+                    set(entryID: entryID, order: 0, grams: 60_000, reps: 5, isWarmup: true),
+                    set(entryID: entryID, order: 1, grams: 100_000, reps: 6, rpe: 8),
+                    set(entryID: entryID, order: 2, grams: 100_000, reps: 6, rpe: 8),
+                    set(entryID: entryID, order: 3, grams: 100_000, reps: 6, rpe: 8),
+                    set(entryID: entryID, order: 4, grams: 100_000, reps: 6, rpe: 8),
+                    set(entryID: entryID, order: 5, grams: 100_000, reps: 5, rpe: 9),
                 ]
             )
         }

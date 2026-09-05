@@ -211,25 +211,6 @@ struct DuplicateIDRepository: ExerciseRepository {
     func save(_ exercise: Exercise) async throws {
         try await base.save(exercise)
     }
-
-    func trainingMax(
-        forExerciseID exerciseID: UUID,
-        on date: Date
-    ) async throws -> TrainingMaxEntry? {
-        try await base.trainingMax(forExerciseID: exerciseID, on: date)
-    }
-
-    func trainingMaxHistory(
-        forExerciseID exerciseID: UUID,
-        includingDeleted: Bool
-    ) async throws -> [TrainingMaxEntry] {
-        try await base.trainingMaxHistory(
-            forExerciseID: exerciseID, includingDeleted: includingDeleted)
-    }
-
-    func saveTrainingMax(_ entry: TrainingMaxEntry) async throws {
-        try await base.saveTrainingMax(entry)
-    }
 }
 
 /// An exercise the user authored (`FR-1.1.3`), which no import may overwrite.

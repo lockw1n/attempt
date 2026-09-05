@@ -1,5 +1,6 @@
 import DerivedValues
 import Foundation
+import PowerliftingCore
 import RepositoryInterface
 
 /// Why a backup file cannot be restored — the refusals, in the shape the screen draws them.
@@ -91,8 +92,11 @@ struct BackupSummary: Equatable, Sendable {
 /// stays deleted however the file has it. `TR-1.14`'s purge and a writer that can set the column are
 /// what would close them; neither exists yet.
 struct StoreRestore {
-    /// The catalogue, and each exercise's training-max history.
+    /// The catalogue.
     let exercises: any ExerciseRepository
+
+    /// Each exercise's training-max configuration and history (`TR-16.3`).
+    let trainingMaxes: any TrainingMaxRepository
 
     /// Sessions, entries, sets — and what a routine planned for those slots (`FR-15.2.4`).
     ///
@@ -109,6 +113,9 @@ struct StoreRestore {
 
     /// The routines, their slots and their target groups (`FR-15.2`).
     let routines: any RoutineRepository
+
+    /// The programs, their days and the runs through them (`FR-16.8`).
+    let programs: any ProgramRepository
 
     /// The preferences row — written through the restore's own entry point, not through a save.
     let settings: any SettingsRepository
@@ -199,6 +206,7 @@ struct StoreRestore {
     func restore(_ archive: TrainingLogArchive) async throws -> BackupSummary {
         try await restoreCatalogue(archive)
         try await restoreRoutines(archive)
+        try await restorePrograms(archive)
         try await restoreLog(archive)
         if let restored = archive.settings {
             try await settings.restorePreferences(from: restored)
@@ -210,6 +218,11 @@ struct StoreRestore {
 
     /// Writes what the log's rows refer to: the catalogue, its training maxes, and the gyms.
     ///
+    /// **Both training-max sections, and both after the catalogue** — each save checks that the
+    /// exercise it names is stored, the same edge the configurations have always had. A file from
+    /// format 3 carries no history section and restores with it empty, which is what that file
+    /// holds.
+    ///
     /// **The default gym is reinstated after the profiles rather than by them** (`FR-1.10.3`). No
     /// save writes `isDefault` — "exactly one default" is a cross-row invariant that no single
     /// row's write can hold, so an insert clears the flag and an update leaves the stored row's
@@ -218,11 +231,23 @@ struct StoreRestore {
     /// repository reserves to itself — and losing it silently, since a profile that is not the
     /// default is indistinguishable from one that never was.
     ///
+    /// **The catalogue is a self-referencing table, and its own order is not the file's**
+    /// (`FR-1.1.7`). A variation names another exercise, `save` refuses a foreign key naming a row
+    /// that is not stored yet, and a backup lists the rows in whatever order the store read them —
+    /// so a walk of `archive.exercises` as written fails on the first variation listed above its
+    /// parent. Whether a given file has one is a property of that lifter's catalogue, which is why
+    /// a fixture of two exercises can restore for as long as it likes without saying anything about
+    /// it. ``PowerliftingCore/ParentOrdering/parentsFirst(_:id:parentID:)`` is the same answer the
+    /// seed importer needs for the same table.
+    ///
     /// - Parameter archive: The file.
     /// - Throws: Whatever a repository throws.
     private func restoreCatalogue(_ archive: TrainingLogArchive) async throws {
-        for exercise in archive.exercises { try await exercises.save(exercise) }
-        for entry in archive.trainingMaxes { try await exercises.saveTrainingMax(entry) }
+        let catalogue = ParentOrdering.parentsFirst(
+            archive.exercises, id: \.id, parentID: \.parentExerciseID)
+        for exercise in catalogue { try await exercises.save(exercise) }
+        for entry in archive.trainingMaxes { try await trainingMaxes.saveConfiguration(entry) }
+        for entry in archive.trainingMaxHistory { try await trainingMaxes.save(entry) }
         for profile in archive.equipment { try await equipment.save(profile) }
         if let defaulted = Self.defaultProfile(in: archive.equipment) {
             try await equipment.makeDefault(profileID: defaulted.id)
@@ -255,6 +280,27 @@ struct StoreRestore {
         for routine in archive.routines { try await routines.save(routine) }
         for slot in archive.routineExercises { try await routines.save(slot) }
         for group in archive.routineTargetGroups { try await routines.save(group) }
+    }
+
+    /// Writes the three program tables, parents first (`FR-16.8`).
+    ///
+    /// **After the routines and before the log, and both halves are the referential rule.** A day
+    /// names a routine, so the routines have to be stored first; a session names a run, so the runs
+    /// have to be stored before ``restoreLog(_:)`` writes one.
+    ///
+    /// **The runs go in through ``RepositoryInterface/ProgramRepository/save(_:)-(ProgramRun)``
+    /// rather than through `startRun`.** The file already says which pass was open — at most one
+    /// carries no `endedAt` — and `startRun` would close every run it met before the next one, so
+    /// restoring a lifter's history through it would end each pass at the following pass's start
+    /// and, on the last write, leave whichever run happened to be listed last as the current one.
+    /// A restore reinstates the store; it does not re-decide it.
+    ///
+    /// - Parameter archive: The file.
+    /// - Throws: Whatever the program repository throws.
+    private func restorePrograms(_ archive: TrainingLogArchive) async throws {
+        for program in archive.programs { try await programs.save(program) }
+        for day in archive.programDays { try await programs.save(day) }
+        for run in archive.programRuns { try await programs.save(run) }
     }
 
     /// Writes what the lifter logged, and what a routine had planned for it.

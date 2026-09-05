@@ -46,7 +46,6 @@ struct TrainingHistory {
                 repository: repositories.workouts,
                 records: PersonalRecordRecomputer(
                     workouts: repositories.workouts,
-                    exercises: repositories.exercises,
                     cache: repositories.personalRecords)),
             entries: entries,
             sets: sets

@@ -1,3 +1,4 @@
+import DerivedValues
 import DesignSystem
 import Foundation
 import Localization
@@ -83,24 +84,41 @@ struct PreviousPerformanceStrip: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// The previous session's working sets as one line.
+    /// The previous session's working sets as one line, grouped (`FR-16.1.1`).
     ///
     /// **A list in the user's locale rather than a joined string**, on the modifiers row's rule: the
     /// separator between two items is not a comma in every language. The **narrow** width is what
     /// makes it a sequence rather than a conjunction — three sets are three sets, not two sets *and*
     /// a third.
     ///
+    /// **Grouped at ``DerivedValues/SetGrouping/Grain/loadAndReps``, which is exactly what this line
+    /// draws.** The warmups and the failures are dropped before it, so the two fields left are the
+    /// two shown — and four back-off sets read as `105 kg × 4 × 4` rather than as the same phrase
+    /// four times.
+    ///
+    /// **Over ``PreviousPerformance/workingRuns`` rather than ``PreviousPerformance/workingSets``**:
+    /// a dropped set ends the run it stood in the middle of, so the counts are of sets that were
+    /// consecutive on the day rather than of sets the filter made adjacent.
+    ///
     /// - Parameter performance: The previous session's performance.
     /// - Returns: The line.
     private func summary(of performance: PreviousPerformance) -> String {
-        performance.workingSets
-            .map {
-                String(
-                    localized: LoggingStrings.sessionPreviousSet(
-                        weight: AppFormat.weight(
-                            WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale
-                        ).format($0.weight),
-                        reps: $0.reps.formatted(AppFormat.count(locale: locale))
+        performance.workingRuns
+            .flatMap { SetGrouping.groups($0, at: .loadAndReps) }
+            .map { group in
+                let weight = AppFormat.weight(
+                    WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale
+                ).format(group.weight)
+                let reps = group.reps.formatted(AppFormat.count(locale: locale))
+                guard !group.isSingle else {
+                    return String(
+                        localized: LoggingStrings.sessionPreviousSet(weight: weight, reps: reps))
+                }
+                return String(
+                    localized: LoggingStrings.sessionPreviousGroup(
+                        weight: weight,
+                        reps: reps,
+                        sets: group.count.formatted(AppFormat.count(locale: locale))
                     ))
             }
             .formatted(.list(type: .and, width: .narrow).locale(locale))

@@ -45,6 +45,7 @@ enum SchemaV1: VersionedSchema {
             SetEntryEntity.self,
             BodyweightEntryEntity.self,
             TrainingMaxConfigEntity.self,
+            TrainingMaxHistoryEntity.self,
             EquipmentProfileEntity.self,
             UserSettingsEntity.self,
             PersonalRecordCacheEntity.self,
@@ -52,6 +53,9 @@ enum SchemaV1: VersionedSchema {
             RoutineExerciseEntity.self,
             RoutineTargetGroupEntity.self,
             PlannedTargetGroupEntity.self,
+            ProgramEntity.self,
+            ProgramDayEntity.self,
+            ProgramRunEntity.self,
         ]
     }
     // audited-models:end

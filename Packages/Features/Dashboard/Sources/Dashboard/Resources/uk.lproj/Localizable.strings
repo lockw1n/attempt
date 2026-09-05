@@ -7,8 +7,11 @@
 "dashboard.recent-records.none" = "Виконайте робочий підхід — і особисті рекорди, які він встановить, з’являться тут. Підхід, у якому не вдалося досягти цілі, рекорду не встановлює, навіть на тій кількості повторень, яку ви зробили.";
 "dashboard.recent-records.error" = "Не вдалося прочитати нові особисті рекорди.";
 "dashboard.recent-records.see-all" = "Показати всі";
-"dashboard.recent-records.rep-max %lld" = "%lld-повторний максимум";
-"dashboard.recent-records.rep-max.range %lld %lld" = "%1$lld–%2$lld-повторний максимум";
+"dashboard.recent-records.rep-max %lld" = "%lldПМ";
+"dashboard.recent-records.scheme %lld %lld" = "%1$lld × %2$lld";
+"dashboard.recent-records.set %@ %@" = "%1$@ × %2$@";
+"dashboard.recent-records.run %@ %@ %@" = "%1$@ × %2$@ × %3$@";
+"dashboard.recent-records.baseline" = "Уперше";
 "dashboard.recent-records.exercise-hint" = "Показує особисті рекорди цієї вправи.";
 
 "dashboard.start.action" = "Почати тренування";
@@ -27,7 +30,6 @@
 "dashboard.tiles.error" = "Не вдалося прочитати ваші орієнтовні максимуми.";
 "dashboard.tiles.none.headline" = "На головному екрані немає вправ";
 "dashboard.tiles.none.message" = "Виберіть вправи, для яких потрібна оцінка.";
-"dashboard.tiles.manual" = "Введено вручну";
 "dashboard.tiles.no-previous" = "Немає попередньої оцінки для порівняння";
 "dashboard.tiles.choose.action" = "Вибрати вправи";
 "dashboard.tiles.choose.title" = "Вправи на головному екрані";
@@ -52,3 +54,30 @@
 "dashboard.week.none" = "Цього тижня ще не записано жодного робочого підходу.";
 "dashboard.week.unweighed" = "Ніщо цього тижня не несе ваги, яку можна зважити, — підходи з власною вагою та з допомогою не додають обсягу.";
 "dashboard.week.error" = "Не вдалося прочитати тренування цього тижня.";
+
+"dashboard.recent-records.none-in-scope" = "Жоден свіжий особистий рекорд не відповідає вашим налаштуванням свіжих рекордів.";
+"dashboard.recent-records.show-every" = "Показати все";
+
+"dashboard.recent-records.settings.title" = "Свіжі рекорди";
+"dashboard.recent-records.settings.error" = "Не вдалося прочитати налаштування свіжих рекордів.";
+"dashboard.recent-records.settings.write-error" = "Не вдалося зберегти цю зміну.";
+
+"dashboard.recent-records.scope.title" = "Які вправи";
+"dashboard.recent-records.scope.dashboard-lifts" = "Головний екран";
+"dashboard.recent-records.scope.every-exercise" = "Усі";
+"dashboard.recent-records.scope.chosen" = "Вибрані";
+"dashboard.recent-records.scope.detail" = "«Головний екран» бере ті самі вправи, для яких ви показуєте орієнтовний 1ПМ, — один вибір працює для обох.";
+"dashboard.recent-records.exercises.title" = "Вправи в цій стрічці";
+"dashboard.recent-records.exercises.empty" = "Немає вправ для вибору";
+
+"dashboard.recent-records.schemes.title" = "Які схеми";
+"dashboard.recent-records.schemes.derived" = "За моїми тренуваннями";
+"dashboard.recent-records.schemes.detail" = "Показує рекорди в будь-якій схемі «повторення × підходи», яку ви виконували щонайменше тричі. Вимкніть, щоб вибрати схеми самостійно.";
+"dashboard.recent-records.schemes.empty" = "Поки немає рекордів, з яких можна вибрати схему.";
+
+"dashboard.recent-records.baselines.title" = "Перші рекорди";
+"dashboard.recent-records.baselines.label" = "Показувати перші рекорди";
+"dashboard.recent-records.baselines.detail" = "Коли ви виконуєте схему вперше, вона встановлює рекорд, який немає з чим порівняти. Вимкнено за замовчуванням, щоб нова допоміжна вправа не заповнювала стрічку.";
+"dashboard.tiles.training-max %@" = "Тренувальний максимум %@";
+
+"dashboard.last-workout.planned" = "Заплановано";

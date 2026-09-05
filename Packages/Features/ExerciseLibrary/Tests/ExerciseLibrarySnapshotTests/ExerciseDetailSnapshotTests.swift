@@ -81,6 +81,18 @@
             }
         }
 
+        @Test func historyGroups() throws {
+            // `FR-16.1.1` on this section: a run of identical sets is one line with the count after
+            // it, and the set that broke the run is a line of its own. Its own reference rather than
+            // a wider fixture above, because that one exists to put the four row *variants* side by
+            // side and a run in it would picture two things at once.
+            try assertSnapshots(named: "ExerciseDetail-history-groups") {
+                ExerciseHistoryGroupView(group: DetailFixtures.groupedDay, unit: .kilograms)
+                    .environment(\.locale, DetailFixtures.locale)
+                    .environment(\.timeZone, .gmt)
+            }
+        }
+
         @Test func personalRecords() throws {
             // FR-1.6.2's list, at the shape the section draws when the disclosure is closed and again
             // when it is open. Rendered as rows rather than as `ExerciseRecordsSection`, on the
@@ -100,6 +112,15 @@
                         ExerciseRecordRow(repMax: repMax, unit: .kilograms, sessionID: nil)
                     }
                     RecordDisclosureHeader(isExpanded: false) {}
+                    // FR-16.2.4: the diagonal beneath the rep-max row, and the way to the rest of
+                    // the table. `1 × 1` is absent from it deliberately — the 1RM above is that
+                    // cell, and drawing it twice under two spellings reads as two records.
+                    ForEach(DetailFixtures.diagonal, id: \.scheme) { record in
+                        ExerciseSchemeRow(record: record, unit: .kilograms, sessionID: nil)
+                    }
+                    Text(ExerciseLibraryStrings.recordsAllSchemes)
+                        .font(Typography.actionLabel.font)
+                        .foregroundStyle(ColorToken.brandAccent)
                 }
                 .environment(\.locale, DetailFixtures.locale)
                 .environment(\.timeZone, .gmt)
@@ -147,10 +168,7 @@
                         days: 90,
                         sessionID: nil),
                     unit: .kilograms,
-                    draft: .constant(nil),
-                    hasFailedWrite: false,
-                    retry: {},
-                    commit: { _ in }
+                    retry: {}
                 )
                 .environment(\.locale, DetailFixtures.locale)
                 .environment(\.timeZone, .gmt)
@@ -167,56 +185,8 @@
                 ExerciseEstimateReading(
                     state: .insufficient(.refused(.repsOutOfRange), days: 90),
                     unit: .kilograms,
-                    draft: .constant(nil),
-                    hasFailedWrite: false,
-                    retry: {},
-                    commit: { _ in }
+                    retry: {}
                 )
-            }
-        }
-
-        @Test func estimateOverridden() throws {
-            // FR-1.7.5's two halves in one reference: the badge that replaces the provenance line,
-            // and the command that is the way back. At `accessibility3` the badge and the number
-            // are what this gates — a manual estimate that reads as a computed one is the failure
-            // the requirement's "clearly marked" names.
-            try assertSnapshots(named: "ExerciseDetail-estimate-manual") {
-                ExerciseEstimateReading(
-                    state: .manual(Weight(grams: 140_000)),
-                    unit: .kilograms,
-                    draft: .constant(nil),
-                    hasFailedWrite: false,
-                    retry: {},
-                    commit: { _ in }
-                )
-                .environment(\.locale, DetailFixtures.locale)
-            }
-        }
-
-        @Test func estimateOverrideEditor() throws {
-            // The field open, over a computed number, with the failed write beneath it: the two
-            // commands wrap at `accessibility3` and the banner has to stay legible under them.
-            // **The field itself renders as the unsupported-view placeholder**, a `TextField`
-            // being UIKit-backed — the harness's own limit, the same one the loading state's
-            // reference is a picture of. What this gates is everything around it.
-            try assertSnapshots(named: "ExerciseDetail-estimate-override-editor") {
-                ExerciseEstimateReading(
-                    state: .ready(
-                        DatedRecord(
-                            weight: Weight(grams: 116_667),
-                            sourceSetID: UUID(),
-                            achievedAt: DetailFixtures.recordDay),
-                        formula: .epley,
-                        days: 90,
-                        sessionID: nil),
-                    unit: .kilograms,
-                    draft: .constant("140"),
-                    hasFailedWrite: true,
-                    retry: {},
-                    commit: { _ in }
-                )
-                .environment(\.locale, DetailFixtures.locale)
-                .environment(\.timeZone, .gmt)
             }
         }
 
@@ -273,6 +243,67 @@
 
         static let pauseSquat = Fixtures.exercise(id: 3, name: "Pause Squat", movement: .squat)
 
+        /// Three changes to one exercise's training max, newest first — the order the repository
+        /// returns and the section draws.
+        ///
+        /// The oldest carries no ``RepositoryInterface/TrainingMaxHistoryEntry/oldWeight``, which is
+        /// the case the row's copy branches on; the middle one carries no note, which is the other.
+        static let trainingMaxes: [TrainingMaxHistoryEntry] = [
+            trainingMax(id: 11, kilos: 180, from: 0, replacing: 172.5, reason: "coach, block 3"),
+            trainingMax(id: 12, kilos: 172.5, from: -28, replacing: 160),
+            trainingMax(id: 13, kilos: 160, from: -70, reason: "coach"),
+        ]
+
+        /// Two changes, both dated ahead of ``recordDay`` — the exercise whose training max is
+        /// entered and not yet in force.
+        static let futureTrainingMaxes: [TrainingMaxHistoryEntry] = [
+            trainingMax(id: 15, kilos: 190, from: 28, replacing: 185, reason: "coach, block 4"),
+            trainingMax(id: 16, kilos: 185, from: 7),
+        ]
+
+        /// What the change sheet holds mid-entry: a number typed, a day chosen, a note written.
+        static let trainingMaxDraft: TrainingMaxDraft = {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = .gmt
+            var draft = TrainingMaxDraft(
+                unit: .kilograms,
+                locale: locale,
+                calendar: calendar,
+                day: recordDay,
+                newEntryID: Fixtures.identifier(14))
+            draft.weightText = "182.5"
+            draft.reason = "coach"
+            return draft
+        }()
+
+        /// One change to a training max, dated relative to ``recordDay``.
+        ///
+        /// - Parameters:
+        ///   - id: Its stable identifier, so a reference does not change by run.
+        ///   - kilos: What it becomes.
+        ///   - days: How many days from ``recordDay`` it takes effect — negative is earlier.
+        ///   - old: What it replaced, or `nil` for the first entry an exercise ever had.
+        ///   - reason: The note, or empty.
+        /// - Returns: The entry.
+        private static func trainingMax(
+            id: Int,
+            kilos: Double,
+            from days: Int,
+            replacing old: Double? = nil,
+            reason: String = ""
+        ) -> TrainingMaxHistoryEntry {
+            TrainingMaxHistoryEntry(
+                id: Fixtures.identifier(id),
+                createdAt: recordDay,
+                updatedAt: recordDay,
+                deletedAt: nil,
+                exerciseID: backSquat.id,
+                effectiveFrom: recordDay.addingTimeInterval(Double(days) * 86_400),
+                oldWeight: old.map { Weight(grams: Int($0 * 1000)) },
+                newWeight: Weight(grams: Int(kilos * 1000)),
+                reason: reason)
+        }
+
         /// ``backSquat`` and ``frontSquat`` with Ukrainian names, for the reference that shows a
         /// translated parent over a mixed list of variations (`FR-1.14.2`).
         static let ukrainianBackSquat = Fixtures.exercise(
@@ -315,6 +346,21 @@
             ]
         )
 
+        /// The same day performed as a run: a warmup, four identical working sets and a fifth a
+        /// rep short (`FR-16.1.1`).
+        static let groupedDay = ExerciseSessionHistory(
+            id: UUID(),
+            date: Date(timeIntervalSince1970: 1_700_000_000),
+            sets: [
+                loggedSet(order: 0, kilos: 60, reps: 5, isWarmup: true),
+                loggedSet(order: 1, kilos: 100, reps: 6, rpe: 8),
+                loggedSet(order: 2, kilos: 100, reps: 6, rpe: 8),
+                loggedSet(order: 3, kilos: 100, reps: 6, rpe: 8),
+                loggedSet(order: 4, kilos: 100, reps: 6, rpe: 8),
+                loggedSet(order: 5, kilos: 100, reps: 5, rpe: 9),
+            ]
+        )
+
         /// One exercise's records, one at every N the two references have to picture.
         ///
         /// **Five N's, not ten**, and the gaps are the point: an N no set reached is absent rather
@@ -326,6 +372,34 @@
             repMax(reps: 8, kilos: 95, daysAgo: 28),
             repMax(reps: 10, kilos: 85, daysAgo: 63),
         ]
+
+        /// `FR-16.2.4`'s glance: the schemes whose reps and sets match, as the detail section draws
+        /// them under the rep-max row.
+        static let diagonal: [DatedSchemeRecord] = ExerciseSchemeTable([
+            schemeRecord(reps: 2, sets: 2, kilos: 130, daysAgo: 21),
+            schemeRecord(reps: 3, sets: 3, kilos: 120, daysAgo: 10),
+            schemeRecord(reps: 5, sets: 5, kilos: 100, daysAgo: 3),
+            // Off the diagonal, so the picture also shows what the section leaves to the table.
+            schemeRecord(reps: 5, sets: 3, kilos: 110, daysAgo: 3),
+        ]).diagonal
+
+        /// One cell, on ``repMax(reps:kilos:daysAgo:)``'s terms.
+        static func schemeRecord(
+            reps: Int, sets: Int, kilos: Double, daysAgo: Int, previous: Double? = nil
+        ) -> DatedSchemeRecord {
+            DatedSchemeRecord(
+                scheme: RecordScheme(reps: reps, sets: sets),
+                record: DatedRecord(
+                    weight: Weight(grams: Int(kilos * 1000)),
+                    sourceSetID: UUID(
+                        uuidString:
+                            "0F5A1E24-9B7D-4C31-8E62-00000000\(String(format: "%02d%02d", reps, sets))"
+                    ) ?? UUID(),
+                    achievedAt: Date(timeIntervalSince1970: 1_700_000_000)
+                        .addingTimeInterval(-Double(daysAgo) * 86_400)
+                ),
+                previous: previous.map { Weight(grams: Int($0 * 1000)) })
+        }
 
         /// One record, spelled out once so a field nothing in the picture turns on is not repeated.
         ///
@@ -356,12 +430,17 @@
             isCompleted: Bool = true
         ) -> SetEntry {
             let stamp = Date(timeIntervalSince1970: 1_700_000_000)
+            // One entry for the whole day, because a run never crosses a boundary between two
+            // (`NFR-16.2`). A fresh identifier per set would quietly make every group a group of
+            // one, and `ExerciseDetail-history-groups` would picture the reading it exists to
+            // rule out.
+            let entry = UUID(uuidString: "0BE10000-0000-4000-8000-00000000DE70") ?? UUID()
             return SetEntry(
                 id: UUID(),
                 createdAt: stamp,
                 updatedAt: stamp,
                 deletedAt: nil,
-                entryID: UUID(),
+                entryID: entry,
                 order: order,
                 weight: Weight(grams: Int(kilos * 1000)),
                 reps: reps,

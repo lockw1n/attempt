@@ -210,8 +210,8 @@ struct TrainingLogArchiveTests {
         let archive = Self.awkwardArchive()
         let json = try #require(String(data: archive.encoded(), encoding: .utf8))
         #expect(json.contains("\"formatVersion\""))
-        #expect(try TrainingLogArchive.decoded(from: archive.encoded()).formatVersion == 3)
-        #expect(TrainingLogArchive.currentFormatVersion == 3)
+        #expect(try TrainingLogArchive.decoded(from: archive.encoded()).formatVersion == 5)
+        #expect(TrainingLogArchive.currentFormatVersion == 5)
     }
 
     @Test("The file is written to be looked at: pretty, and its sections in a fixed order")

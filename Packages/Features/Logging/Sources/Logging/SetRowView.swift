@@ -86,11 +86,15 @@ struct SetRow: View {
     /// The unit the load is shown in (`G-3.1`).
     let unit: MassUnit
 
-    /// The rep counts this set holds the record at, ascending, or none (`FR-1.6.3`).
+    /// The schemes this set holds the record at, or none (`FR-1.6.3`, `FR-16.2.4`).
     ///
     /// **A list rather than a flag**, because one set can hold several: the heaviest five-rep set may
     /// be the record at every N up to five. Empty is the ordinary case and draws nothing.
-    let recordReps: [Int]
+    ///
+    /// **A single set's cells are not all in the one-set column.** This row also draws the members of
+    /// an expanded run, and the run's first set carries every cell the run took — so what the badge
+    /// names is the maximal one, not the highest N.
+    let recordSchemes: [RecordScheme]
 
     /// Marks this set as a warmup or as working (`FR-1.2.4`) — the set, then which it becomes, or
     /// `nil` where the row does not offer it.
@@ -111,6 +115,24 @@ struct SetRow: View {
 
     /// Opens `FR-1.2.7`'s editor over this set.
     let edit: (SetEntry) -> Void
+
+    /// The training max in force on this session's training day, or `nil` (`FR-16.7.1`).
+    var trainingMax: Weight?
+
+    /// Whether this row states its own share, or the line above it already did (`FR-16.7.1`).
+    ///
+    /// **`false` for a member of a run.** Every member of a group carries the same load by
+    /// construction — that is what makes it a group — so the collapsed line's share *is* this row's
+    /// share, and repeating it under the line that just said it puts one percentage on screen four
+    /// times. A group of one has no such line, so it draws its own.
+    var statesTrainingMaxShare = true
+
+    /// Whether the session holding this set has yet to end (`FR-16.4.1`).
+    ///
+    /// **What turns an uncompleted set from failed into pending** — see ``SetOutcome``. `false` is
+    /// the safe default: a row drawn without an answer is drawn as a finished session's, which is
+    /// what every surface but the workout in progress shows.
+    var isSessionOpen = false
 
     /// What a routine planned for this set, or `nil` (`FR-15.3.1`).
     ///
@@ -212,6 +234,7 @@ struct SetRow: View {
                     rating
                 }
                 recordMark
+                trainingMaxShare
                 modifiers
                 plannedTarget
             }
@@ -279,10 +302,8 @@ struct SetRow: View {
     /// only one. Enclosing the pair makes the outcome a mark of its own rather than a second
     /// operator, and it reads as a pair with the check.
     ///
-    /// **A completed set is drawn quietly and a failed one is not.** Every set logged here is
-    /// completed, so a green tick per row would be a colour the reader has to look past on the way
-    /// to the one row that is different — `G-7.3` reserves the semantic palette for what it
-    /// distinguishes, and the distinguishing case is the failure.
+    /// **A completed set is drawn quietly, a failed one is not, and a pending one is quieter
+    /// still** — see ``SetOutcome``, which owns the three glyphs and their tints.
     ///
     /// At the standard touch target rather than the logging one, for the badge's reason: marking a
     /// set failed is a correction between efforts, not one of `NFR-1.3`'s counted taps.
@@ -295,7 +316,7 @@ struct SetRow: View {
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Text(LoggingStrings.setOutcome(isCompleted: numbered.isCompleted)))
+            .accessibilityLabel(Text(LoggingStrings.setOutcome(outcomeState)))
             .accessibilityHint(
                 Text(LoggingStrings.setOutcomeAction(isCompleted: numbered.isCompleted)))
         } else {
@@ -303,16 +324,22 @@ struct SetRow: View {
             // an outcome the row reports whether or not this surface can change it.
             outcomeLabel
                 .accessibilityElement()
-                .accessibilityLabel(
-                    Text(LoggingStrings.setOutcome(isCompleted: numbered.isCompleted)))
+                .accessibilityLabel(Text(LoggingStrings.setOutcome(outcomeState)))
         }
+    }
+
+    /// Which of the three states this set is in — see ``SetOutcome``.
+    ///
+    /// Not `outcome`: that name is the control at the end of the row.
+    private var outcomeState: SetOutcome {
+        SetOutcome.of(isCompleted: numbered.isCompleted, isSessionOpen: isSessionOpen)
     }
 
     /// The outcome as it is drawn, tappable or not.
     private var outcomeLabel: some View {
-        Image(systemName: numbered.isCompleted ? "checkmark.circle" : "xmark.circle")
+        Image(systemName: outcomeState.glyph)
             .font(Typography.caption.font)
-            .foregroundStyle(numbered.isCompleted ? ColorToken.textTertiary : ColorToken.negative)
+            .foregroundStyle(outcomeState.tint)
             .frame(minWidth: TouchTarget.standard.points, minHeight: TouchTarget.standard.points)
     }
 
@@ -345,17 +372,13 @@ struct SetRow: View {
         numbered.isWarmup ? Typography.caption.font : Typography.numericValue.font
     }
 
-    /// Their place in the colour ramp.
+    /// Their place in the colour ramp — ``SetOutcome/valueColour(isWarmup:)``, which the group's
+    /// line shares.
     ///
-    /// **A failed set is red wherever it sits in that ramp** (`G-7.3`, and the requirement's own
-    /// words are "failure and missed lifts"), so the outcome outranks the warmup de-emphasis rather
-    /// than compounding with it — a failed warmup is a missed lift too.
-    ///
-    /// `G-4.5`'s rule holds through both cases, and by two different cues: the numbering says
-    /// *warmup* in words, and the glyph at the end of the row says *failed* in a shape.
+    /// `G-4.5`'s rule holds through every case, and by two different cues: the numbering says
+    /// *warmup* in words, and the glyph at the end of the row says the outcome in a shape.
     private var valueColour: ColorToken {
-        guard numbered.isCompleted else { return ColorToken.negative }
-        return numbered.isWarmup ? ColorToken.textSecondary : ColorToken.textPrimary
+        outcomeState.valueColour(isWarmup: numbered.isWarmup)
     }
 
     /// `FR-1.6.3`'s badge, where this set holds a record.
@@ -370,25 +393,17 @@ struct SetRow: View {
     /// tinted load would not be; and the semantic palette stays reserved for `G-7.3`'s distinctions —
     /// a record is a highlight, not an outcome.
     ///
-    /// **Two characters visible, the whole claim in the label.** Which N's this set holds is what a
-    /// lifter actually wants and what will not fit on the row, so VoiceOver is given it in full.
+    /// **The scheme visible, the whole claim in the label.** Which cell this set holds is what a
+    /// lifter actually wants; the badge names the maximal one and VoiceOver says it in words.
     @ViewBuilder private var recordMark: some View {
-        if !recordReps.isEmpty {
-            Text(LoggingStrings.setPersonalRecord)
+        if let badge = RecordBadge(schemes: recordSchemes) {
+            Text(badge.text)
                 .font(Typography.metricLabel.font)
                 .foregroundStyle(ColorToken.onBrandAccent)
                 .padding(.horizontal, Spacing.sm.points)
                 .padding(.vertical, Spacing.xxs.points)
                 .background(ColorToken.brandAccent, in: .capsule)
-                .accessibilityLabel(
-                    Text(
-                        LoggingStrings.setPersonalRecordLabel(
-                            recordReps.map { $0.formatted(AppFormat.count(locale: locale)) }
-                                .formatted(.list(type: .and).locale(locale)),
-                            isSingleRep: recordReps == [1]
-                        )
-                    )
-                )
+                .accessibilityLabel(Text(badge.label))
         }
     }
 
@@ -417,6 +432,33 @@ struct SetRow: View {
         }
     }
 
+    /// `FR-16.7.1`'s annotation: what was lifted, as a share of the training max in force.
+    ///
+    /// **Below the values rather than beside them**, on ``modifiers``' measured rule and for its
+    /// reason — and inside the values button, because the load and what it is a share of are one
+    /// fact about one set, so VoiceOver reads them as one element.
+    ///
+    /// **Warmups carry it too.** A ramp is loaded off the same number the work is, and a lifter
+    /// checking whether they opened at 50% is asking about exactly those rows.
+    @ViewBuilder private var trainingMaxShare: some View {
+        if let percent = ownShare {
+            Text(TrainingMaxShare.annotation(percent, locale: locale))
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// This set's own share, or `nil` where there is none to draw — see ``trainingMaxShare``.
+    ///
+    /// The suppression rule lives in ``TrainingMaxShare/rowShare(for:planned:against:)``, so the
+    /// collapsed group line applies the same one.
+    private var ownShare: Int? {
+        guard statesTrainingMaxShare else { return nil }
+        return TrainingMaxShare.rowShare(
+            for: numbered.record.weight, planned: target?.targetWeight, against: trainingMax)
+    }
+
     /// `FR-15.3.1`'s target and `FR-15.3.2`'s deviation, where a routine planned this set.
     ///
     /// **Inside the values button and below them**, on ``modifiers``' measured rule: the line is
@@ -428,7 +470,8 @@ struct SetRow: View {
             PlannedTargetLine(
                 target: target,
                 comparison: PlannedTargetComparison(set: numbered.record, target: target),
-                unit: unit
+                unit: unit,
+                trainingMax: trainingMax
             )
         }
     }

@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryFakes
@@ -89,9 +90,13 @@ struct TrainingLog {
     /// - Returns: The record.
     @discardableResult
     func session(
-        daysAgo day: Int, notes: String = "", isFinished: Bool = true
+        daysAgo day: Int,
+        notes: String = "",
+        isFinished: Bool = true,
+        program: (week: Int, dayIndex: Int)? = nil
     ) async throws -> WorkoutSession {
-        let session = Self.session(daysAgo: day, notes: notes, isFinished: isFinished)
+        let session = Self.session(
+            daysAgo: day, notes: notes, isFinished: isFinished, program: program)
         try await repositories.workouts.save(session)
         return session
     }
@@ -106,7 +111,11 @@ struct TrainingLog {
     ///   - isFinished: Whether it was ever ended.
     /// - Returns: The value.
     static func session(
-        id: UUID = UUID(), daysAgo day: Int, notes: String = "", isFinished: Bool = true
+        id: UUID = UUID(),
+        daysAgo day: Int,
+        notes: String = "",
+        isFinished: Bool = true,
+        program: (week: Int, dayIndex: Int)? = nil
     ) -> WorkoutSession {
         let date = epoch.addingTimeInterval(-Double(day) * 86_400)
         return WorkoutSession(
@@ -119,8 +128,10 @@ struct TrainingLog {
             endedAt: isFinished ? date.addingTimeInterval(3_600) : nil,
             notes: notes,
             bodyweight: nil,
-            programRunID: nil,
-            scheduledWorkoutID: nil
+            programRunID: program == nil ? nil : UUID(),
+            scheduledWorkoutID: nil,
+            weekNumber: program?.week,
+            dayIndex: program?.dayIndex
         )
     }
 
@@ -313,14 +324,23 @@ struct TrainingLog {
             from: DateComponents(year: year, month: month, day: day, hour: hour)) ?? epoch
     }
 
+    /// The app's one recompute actor, over these fakes — what a workout ended here announces to.
+    var records: PersonalRecordRecomputer {
+        PersonalRecordRecomputer(
+            workouts: repositories.workouts, cache: repositories.personalRecords)
+    }
+
     /// The state under test, over this store.
     ///
+    /// - Parameter workouts: The workout repository to read through, for the cases that need one
+    ///   that refuses. Defaults to this store's own.
     /// - Returns: A fresh state that has read nothing yet.
-    func listState() -> SessionListState {
+    func listState(workouts: (any WorkoutRepository)? = nil) -> SessionListState {
         SessionListState(
-            workouts: repositories.workouts,
+            workouts: workouts ?? repositories.workouts,
             exercises: repositories.exercises,
-            settings: repositories.settings
+            settings: repositories.settings,
+            records: records
         )
     }
 

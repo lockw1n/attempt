@@ -32,14 +32,15 @@ struct RestoreTests {
     static func restore(into stack: FixtureRepositories) -> StoreRestore {
         StoreRestore(
             exercises: stack.exercises,
+            trainingMaxes: stack.trainingMaxes,
             workouts: stack.workouts,
             bodyweight: stack.bodyweight,
             equipment: stack.equipment,
             routines: stack.routines,
+            programs: stack.programs,
             settings: stack.settings,
             records: PersonalRecordRecomputer(
                 workouts: stack.workouts,
-                exercises: stack.exercises,
                 cache: stack.personalRecords))
     }
 
@@ -63,10 +64,12 @@ struct RestoreTests {
 
         let reread = try await FullBackup(
             exercises: target.exercises,
+            trainingMaxes: target.trainingMaxes,
             workouts: target.workouts,
             bodyweight: target.bodyweight,
             equipment: target.equipment,
             routines: target.routines,
+            programs: target.programs,
             settings: target.settings
         ).archive(takenAt: ExportLog.epoch)
 
@@ -121,10 +124,12 @@ struct RestoreTests {
 
         let reread = try await FullBackup(
             exercises: target.exercises,
+            trainingMaxes: target.trainingMaxes,
             workouts: target.workouts,
             bodyweight: target.bodyweight,
             equipment: target.equipment,
             routines: target.routines,
+            programs: target.programs,
             settings: target.settings
         ).archive(takenAt: ExportLog.epoch)
         #expect(reread.deletedCount == 0)
@@ -168,9 +173,13 @@ struct RestoreTests {
                 bodyweight: [],
                 equipment: [],
                 trainingMaxes: [],
+                trainingMaxHistory: [],
                 routines: [],
                 routineExercises: [],
                 routineTargetGroups: [],
+                programs: [],
+                programDays: [],
+                programRuns: [],
                 plannedTargets: [],
                 settings: try await target.repositories.settings.settings()))
 
@@ -201,9 +210,13 @@ struct RestoreTests {
                 bodyweight: [],
                 equipment: [],
                 trainingMaxes: [],
+                trainingMaxHistory: [],
                 routines: [],
                 routineExercises: [],
                 routineTargetGroups: [],
+                programs: [],
+                programDays: [],
+                programRuns: [],
                 plannedTargets: [],
                 settings: try await target.repositories.settings.settings()))
 

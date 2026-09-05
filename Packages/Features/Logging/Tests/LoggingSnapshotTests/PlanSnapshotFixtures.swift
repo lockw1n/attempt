@@ -74,7 +74,12 @@
                     PlanSetSpec(grams: 100_000, reps: 5, isCompleted: true),
                     PlanSetSpec(grams: 85_000, reps: 7, isCompleted: false),
                     PlanSetSpec(grams: 87_500, reps: 8, isCompleted: true),
-                ]
+                ],
+                // `FR-16.7.1` on both surfaces at once: 125 kg is the training max, so the target
+                // line reads 80% and the set rows 80%, 68% and 70% — and the second card, which
+                // has none, draws no share at all. That contrast is the reference's whole claim
+                // about absence, and it is only visible with the two side by side.
+                trainingMaxKilos: 125
             ),
             card(
                 index: 6,
@@ -133,7 +138,8 @@
             name: String,
             plan: [PlanGroupSpec],
             sets: [PlanSetSpec],
-            isMarkedDone: Bool = false
+            isMarkedDone: Bool = false,
+            trainingMaxKilos: Int? = nil
         ) -> SessionExercise {
             let entryID = Fixtures.identifier("B\(index)")
             let exerciseID = Fixtures.identifier("C\(index)")
@@ -171,7 +177,8 @@
                         targetReps: group.reps,
                         targetSets: group.sets
                     )
-                }
+                },
+                trainingMax: trainingMaxKilos.map { Weight(grams: $0 * 1000) }
             )
         }
 

@@ -47,9 +47,10 @@ Packages/
 ├── Localization/            The key convention every module's catalogue follows, plus
 │                            locale-explicit FormatStyles for numbers, weights, dates and percentages.
 ├── DerivedValues/           Background actor recomputing personal records and estimated max on set
-│                            mutation, behind its own cache repository, plus the shared tonnage
-│                            arithmetic every screen totalling logged load reads. Not a feature
-│                            module — four of the six below read it, so it cannot live inside any
+│                            mutation, behind its own cache repository, plus the pure read-side
+│                            values every screen shares: the tonnage arithmetic, and the grouping
+│                            that reads a run of identical sets as one line. Not a feature
+│                            module — five of the six below read it, so it cannot live inside any
 │                            one of them.
 ├── Features/                Feature modules, one level deeper — the level is load-bearing:
 │                            .swiftlint.yml scopes the no-raw-values rules to this path.
@@ -60,7 +61,8 @@ Packages/
 │   │                        action
 │   ├── Settings/            Preferences, data portability, sync, the bodyweight log
 │   └── Routines/            Authoring a routine — its exercises in order and their target
-│                            groups — managing the library, and starting a workout from one
+│                            groups — managing the library, starting a workout from one, and
+│                            authoring the programs that order routines into a week
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -87,11 +89,14 @@ no `DesignSystem`, no `AppNavigation`, since nothing in it renders, and no
 `Packages/Features/` sit at the top: each depends on `PowerliftingCore`,
 `RepositoryInterface`, `DesignSystem`, `AppNavigation` and `Localization`, and
 never on `Persistence` — a feature reaches storage through the protocols
-alone. Four of the six also depend on `DerivedValues`. One exception, and it is
+alone. Five of the six also depend on `DerivedValues`; `Routines` is the one
+that does not. One exception, and it is
 the shape `RepositoryFakes` already has: `Settings`' *test* target depends on
 `Persistence`, because `DOD-1.3`'s export → wipe → restore has to name the
 backup reader and writer and the real store in one test, and `Persistence` may
-not depend on a feature. The `Settings` library is unaffected; `import
+not depend on a feature. It is also why the record pipeline's real-store
+measurement lives there: `DerivedValues` declares no `Persistence` dependency, so
+`Settings`' test target is the only existing place that can reach both. The `Settings` library is unaffected; `import
 Persistence` from a source file there still does not resolve.
 Two constraints are load-bearing rather than stylistic:
 
@@ -122,21 +127,21 @@ places a row is refused on account of what it says are the projections in
 two are named in one file.
 
 `PersistenceStack` is how you get a store. It opens one container and hands back
-the seven repositories as existentials:
+the nine repositories as existentials:
 
 ```swift
 let stack = try PersistenceStack(location: .inMemory)   // or .applicationDefault, .file(url)
 let exercises = try await stack.exercises.exercises(includingDeleted: false)
 ```
 
-It is the only public type in `Persistence`. The seven implementations and the
+It is the only public type in `Persistence`. The nine implementations and the
 `ModelContainer` are `internal`, so nothing outside the module can name a
 SwiftData-backed type. Repository reads and writes live in
 `Packages/Persistence/Sources/Persistence/Repositories/`; start with
 `RowResolution.swift`, which carries the one shape every read has and the reason it
 is not a `FetchDescriptor`.
 
-`InMemoryRepositoryStack()` is the same seven repositories without a store file, for
+`InMemoryRepositoryStack()` is the same nine repositories without a store file, for
 previews and for tests of code that consumes them:
 
 ```swift
@@ -249,8 +254,8 @@ path to work on one in isolation (`./scripts/build-packages.sh Packages/Powerlif
 Note that a bare `swift build` does **not** fail on warnings — that gate lives in
 the script, not in the manifests.
 
-Every package outside `Packages/Features/` has a Swift Testing target (`@Test` / `#expect`, not
-XCTest); the feature modules get theirs as their first screens land. The app target has no
+Every package has a Swift Testing target (`@Test` / `#expect`, not XCTest) — the feature modules
+included, each with a unit suite and a snapshot suite. The app target has no
 tests; it is a composition root, and the Xcode project has no test target for it (Q-1.3) — anything
 that needs a unit test lives under `Packages/` instead.
 
@@ -279,6 +284,15 @@ through the hand-rolled `Encoder`/`Decoder` in
 thing not to assert with it: **key order**. It emits keys in per-process hash
 order, so the order differs between runs; assert key spelling and the set of keys
 instead, as `RecordCodingTests` does.
+
+One suite is **off unless you name a file**. `SettingsTests`' `RealLogRecomputeTests`
+measures the record pipeline over a real training log restored into a real file
+store, and its subject is one lifter's own history, which is never committed. It
+skips with a message saying how to supply one; point it at a backup the app wrote:
+
+```bash
+ATTEMPT_REAL_BACKUP=/path/to/backup.json swift test --package-path Packages/Features/Settings
+```
 
 `PowerliftingCore` is held to ≥ 90% line coverage. The script counts only files
 under the package's `Sources/`, and requires `python3`:
@@ -315,6 +329,10 @@ deletes the references, records them again and verifies what it wrote:
 ```bash
 ./scripts/snapshot-tests.sh --record
 ```
+
+Each suite also has a **minimum test count** in `scripts/snapshot-tests.sh`, so a suite that
+silently stops running is a failure rather than a green zero. Adding a snapshot test means raising
+that number in the same commit; `git grep -c '@Test' -- <suite>` is what to set it from.
 
 The references are committed beside each suite's tests — for example
 `Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__` and

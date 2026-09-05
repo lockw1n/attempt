@@ -114,24 +114,6 @@ struct EstimateDeltaTests {
         #expect(estimate.previous == nil)
     }
 
-    /// `FR-1.7.5`: a number the user typed has no history behind it, so a tile draws the manual mark
-    /// where a delta would be.
-    @Test("A manual override carries no previous value and no delta")
-    func amanualOverrideHasNoDelta() async throws {
-        let log = TrainingLog()
-        let exerciseID = try await log.exercise()
-        try await log.session(of: exerciseID, on: weeksAgo(4), sets: [working(100_000, 5)])
-        try await log.session(of: exerciseID, on: weeksAgo(1), sets: [working(110_000, 5)])
-        let subject = recomputer(over: log)
-        try await subject.setManualEstimate(Weight(grams: 150_000), forExerciseID: exerciseID)
-
-        let estimate = try await subject.estimatedMax(forExerciseID: exerciseID)
-
-        #expect(estimate.manual == Weight(grams: 150_000))
-        #expect(estimate.previous == nil)
-        #expect(estimate.delta == nil)
-    }
-
     @Test("An absent estimate carries no delta")
     func anabsentEstimateHasNoDelta() async throws {
         let log = TrainingLog()
@@ -149,7 +131,6 @@ struct EstimateDeltaTests {
     private func recomputer(over log: TrainingLog) -> PersonalRecordRecomputer {
         PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
     }

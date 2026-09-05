@@ -217,7 +217,6 @@ struct RefusedSetEditingTests {
             repository: scripted,
             records: PersonalRecordRecomputer(
                 workouts: scripted,
-                exercises: InMemoryRepositoryStack().exercises,
                 cache: InMemoryRepositoryStack().personalRecords))
 
         await #expect(throws: RepositoryError.self) {

@@ -61,14 +61,19 @@ struct EstimatedMaxTilesSection: View {
     ///   - records: The app's one recompute actor (`TR-1.6`).
     ///   - catalogue: The exercises.
     ///   - settings: The settings row, for the selection and the unit.
+    ///   - trainingMaxes: Where `FR-15.1.8`'s number under each tile comes from.
     init(
         records: PersonalRecordRecomputer,
         catalogue: any ExerciseRepository,
-        settings: any SettingsRepository
+        settings: any SettingsRepository,
+        trainingMaxes: any TrainingMaxRepository
     ) {
         _state = State(
             initialValue: EstimatedMaxTilesState(
-                records: records, catalogue: catalogue, settings: settings))
+                records: records,
+                catalogue: catalogue,
+                settings: settings,
+                trainingMaxes: trainingMaxes))
     }
 
     /// The tiles and the picker link, plus the two tasks that keep them current — a read that
@@ -159,18 +164,25 @@ struct EstimatedMaxTileView: View {
     /// the unit's own factory step stands.
     @Environment(\.displayPrecision) private var displayPrecision
 
-    /// Whichever of the estimate's three contents this tile holds.
+    /// Whichever of the estimate's two contents this tile holds.
     @ViewBuilder var body: some View {
         switch tile.estimate.content {
         case .record(let record):
-            metric(record.weight) { delta }
-        case .manual(let weight):
-            metric(weight) { Text(DashboardStrings.tileManual) }
+            metric(record.weight) {
+                delta
+                trainingMax
+            }
         case .absence(let absence):
-            InsufficientDataView(
-                headline: Text(verbatim: tile.name),
-                message: Text(
-                    DashboardStrings.tileAbsence(absence, days: tile.estimate.lookback.days)))
+            VStack(alignment: .leading, spacing: Spacing.sm.points) {
+                InsufficientDataView(
+                    headline: Text(verbatim: tile.name),
+                    message: Text(
+                        DashboardStrings.tileAbsence(absence, days: tile.estimate.lookback.days)))
+                trainingMax
+                    .font(Typography.metricContext.font)
+                    .foregroundStyle(ColorToken.textSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -186,6 +198,28 @@ struct EstimatedMaxTileView: View {
                     WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale)),
             context: context
         )
+    }
+
+    /// `FR-15.1.8`'s training max, where the exercise has one.
+    ///
+    /// **One line, secondary, and labelled by a word.** The two numbers are different claims about
+    /// the same lift — one observed, one set by a coach — and a second bare numeral under the first
+    /// would be unreadable as either. Where there is none the line is absent: no zero, no dash.
+    ///
+    /// **Drawn under the refusal as well as under the estimate**, because `FR-15.1.8`'s second
+    /// sentence is that the training max must not be invisible — and an exercise the app cannot
+    /// estimate is exactly the one a coach has just handed a number for. It sits *beneath* the
+    /// insufficient-data view rather than inside it: the explanation is about the estimate, and
+    /// this is a separate statement about a number that does exist.
+    @ViewBuilder private var trainingMax: some View {
+        if let trainingMax = tile.trainingMax {
+            Text(
+                DashboardStrings.tileTrainingMax(
+                    trainingMax.formatted(
+                        AppFormat.weight(
+                            WeightDisplay(unit: unit, resolving: displayPrecision),
+                            locale: locale))))
+        }
     }
 
     /// `FR-1.9.1`'s delta, or the line that says there is nothing to compare against.

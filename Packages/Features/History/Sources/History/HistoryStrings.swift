@@ -1,4 +1,5 @@
 import Foundation
+import RepositoryInterface
 
 /// This module's copy (`G-3.4`), and the only place a history string literal is written.
 ///
@@ -123,6 +124,61 @@ enum HistoryStrings {
         resource("history.list.metrics.summary \(sets) \(volume)")
     }
 
+    /// Which week and day of a program a session was started from (`FR-16.8.3`, `DOD-16.1`).
+    ///
+    /// **A key of this module's own**, on the rule the two sentences above follow: a history row
+    /// describes a workout that happened, and it is free to diverge from the line Train draws over
+    /// a plan that has not.
+    ///
+    /// - Parameters:
+    ///   - week: The week the session was started under.
+    ///   - day: Its day's position, counting from one.
+    /// - Returns: The line.
+    static func programWeekAndDay(week: Int, day: Int) -> LocalizedStringResource {
+        resource("history.list.program.week-day \(week) \(day)")
+    }
+
+    /// What a row says in place of its two numbers while the workout has not ended (`FR-16.4.3`).
+    ///
+    /// - Parameter lifecycle: Which kind of open the session is. A finished one has numbers to show
+    ///   and is answered with `nil`.
+    /// - Returns: The word, or `nil` where the row keeps its metrics.
+    static func sessionState(_ lifecycle: SessionLifecycle) -> LocalizedStringResource? {
+        switch lifecycle {
+        case .finished: nil
+        case .inProgress: resource("history.list.session.in-progress")
+        case .planned: resource("history.list.session.planned")
+        }
+    }
+
+    /// `FR-16.4.4`'s way out of a workout left open past its own training day.
+    static let sessionFinish = resource("history.list.session.finish")
+
+    /// The workout would not end. Copy, not the diagnostic behind it (`G-3.4`).
+    static let sessionFinishError = resource("history.list.session.finish-error")
+
+    /// How many sets nobody attempted, as the title of the question that ends such a workout.
+    ///
+    /// The count is in the sentence because the verb agrees with it — see the plural table.
+    ///
+    /// - Parameter count: The pending sets.
+    /// - Returns: The title.
+    static func sessionPendingTitle(_ count: Int) -> LocalizedStringResource {
+        resource("history.list.session.pending.title \(count)")
+    }
+
+    /// What those sets are, and the question the two answers below settle.
+    static let sessionPendingMessage = resource("history.list.session.pending.message")
+
+    /// The answer that deletes them (`G-1.3`, so they are soft-deleted).
+    static let sessionPendingRemove = resource("history.list.session.pending.remove")
+
+    /// The answer that keeps them, which ending the session makes failed.
+    static let sessionPendingKeep = resource("history.list.session.pending.keep")
+
+    /// The way out, naming what it keeps rather than saying "cancel".
+    static let sessionPendingCancel = resource("history.list.session.pending.cancel")
+
     /// Every key this module can show, for the resolution test.
     ///
     /// The plural is included at one arbitrary count: what the test asks is whether the key resolves
@@ -140,7 +196,11 @@ enum HistoryStrings {
             calendarErrorHeadline, calendarErrorMessage, calendarDayError,
             calendarDayTrained(date: ""), calendarDayUntrained(date: ""),
             metricsSummary(sets: 1, volume: ""),
+            programWeekAndDay(week: 2, day: 1),
+            sessionFinish, sessionFinishError, sessionPendingTitle(1), sessionPendingTitle(3),
+            sessionPendingMessage, sessionPendingRemove, sessionPendingKeep, sessionPendingCancel,
         ]
+            + [SessionLifecycle.inProgress, .planned].compactMap(sessionState)
     }
 
     /// Binds a key to this module's catalogue.

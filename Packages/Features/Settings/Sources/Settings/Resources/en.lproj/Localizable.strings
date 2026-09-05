@@ -31,6 +31,12 @@
 "settings.landing.estimator.wathan" = "Wathan";
 "settings.landing.estimator.rpebased" = "RPE-based";
 
+/* FR-16.3's row, opening a Dashboard screen through a Settings route. The label matches the feed's
+   own heading — one feature, one name — and the detail names the default that makes the row worth
+   opening rather than listing the four controls behind it. */
+"settings.landing.recent-records.row" = "Recent PRs";
+"settings.landing.recent-records.detail" = "Which lifts and schemes the recent-PR feed reports on. It follows your dashboard lifts to begin with.";
+
 /* G-3.3: how many decimals a weight READS as. "Automatic" is the absence of a choice, not a
    value — the factory step depends on the unit (0.5 kg but 1 lb), so a stored number would become
    half-pound steps the moment the unit moved. The detail line says what this is NOT, because the

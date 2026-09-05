@@ -15,19 +15,25 @@ struct FullBackupTests {
         // Anchored to counts rather than to `!isEmpty`: a reader that returned one row per section
         // would satisfy emptiness and lose the rest, and the two training maxes are the case that
         // says the *history* is carried rather than what is in force.
-        #expect(archive.exercises.count == 2)
-        #expect(archive.sessions.count == 4)
-        #expect(archive.entries.count == 3)
-        #expect(archive.sets.count == 5)
+        #expect(archive.exercises.count == 3)
+        #expect(archive.sessions.count == 5)
+        #expect(archive.entries.count == 4)
+        #expect(archive.sets.count == 6)
         #expect(archive.bodyweight.count == 2)
         #expect(archive.equipment.count == 2)
         #expect(archive.trainingMaxes.count == 2)
         // FR-15.2's four tables. The two target groups under one slot are this section's version of
         // the two training maxes above: a walk that stopped at the first would still read one.
-        #expect(archive.routines.count == 2)
-        #expect(archive.routineExercises.count == 2)
-        #expect(archive.routineTargetGroups.count == 4)
+        #expect(archive.routines.count == 4)
+        #expect(archive.routineExercises.count == 4)
+        #expect(archive.routineTargetGroups.count == 8)
         #expect(archive.plannedTargets.count == 2)
+        // FR-16.8's three tables. Two days rather than one for the target groups' reason, and two
+        // runs because `endedAt` has two states and a section carrying only the open one would
+        // agree with a reader that dropped the column.
+        #expect(archive.programs.count == 1)
+        #expect(archive.programDays.count == 2)
+        #expect(archive.programRuns.count == 2)
         #expect(archive.settings != nil)
     }
 
@@ -61,12 +67,17 @@ struct FullBackupTests {
         #expect(backup.routineTargetGroups.count { $0.deletedAt != nil } == 2)
         #expect(export.equipment.isEmpty)
         #expect(export.bodyweight.count == 1)
-        #expect(export.sessions.count == 3)
-        #expect(export.entries.count == 2)
-        #expect(export.sets.count == 4)
-        // The export carries none of the four, whatever their state: they are configuration.
+        #expect(export.sessions.count == 4)
+        #expect(export.entries.count == 3)
+        #expect(export.sets.count == 5)
+        // The export carries none of the four, whatever their state: they are configuration. The
+        // three program tables are the same reading one level out — a program is what the lifter
+        // trains from, so `FR-1.11.1`'s log leaves it out.
         #expect(export.routines.isEmpty)
         #expect(export.plannedTargets.isEmpty)
+        #expect(export.programs.isEmpty)
+        #expect(export.programDays.isEmpty)
+        #expect(export.programRuns.isEmpty)
     }
 
     @Test("A deleted set is carried with the date it was deleted on, not merely present")
@@ -129,41 +140,49 @@ struct FullBackupTests {
         let log = try await ExportLog.wholeStore()
         let backup = FullBackup(
             exercises: log.repositories.exercises,
+            trainingMaxes: log.repositories.trainingMaxes,
             workouts: log.repositories.workouts,
             bodyweight: log.repositories.bodyweight,
             equipment: FailingEquipmentReads(),
             routines: log.repositories.routines,
+            programs: log.repositories.programs,
             settings: log.repositories.settings)
         await #expect(throws: RepositoryError.self) {
             _ = try await backup.archive(takenAt: ExportLog.epoch)
         }
     }
 
-    @Test("The catalogue and its training-max history are asked for deleted rows too")
+    @Test("The catalogue and both training-max tables are asked for deleted rows too")
     func asksTheCatalogueForDeletedRows() async throws {
-        // A double rather than the fakes, and the reason is a finding: `ExerciseRepository` offers
-        // no delete for an exercise or for a training-max entry — `FR-1.1.5` archives instead — so
-        // no fixture written through the real store can produce one of those rows soft-deleted.
-        // Without this, `includingDeleted: true` on those two reads is a flag nothing can falsify.
+        // Doubles rather than the fakes, and the reason is a finding: neither protocol offers a
+        // delete for an exercise or for a training-max configuration — `FR-1.1.5` archives instead
+        // — so no fixture written through the real store can produce one of those rows
+        // soft-deleted. Without these, `includingDeleted: true` on those reads is a flag nothing
+        // can falsify.
         let log = ExportLog()
         let catalogue = FlaggedExerciseReads(stamp: ExportLog.epoch)
+        let maxes = FlaggedTrainingMaxReads(exerciseID: catalogue.live.id, stamp: ExportLog.epoch)
         let backup = FullBackup(
             exercises: catalogue,
+            trainingMaxes: maxes,
             workouts: log.repositories.workouts,
             bodyweight: log.repositories.bodyweight,
             equipment: log.repositories.equipment,
             routines: log.repositories.routines,
+            programs: log.repositories.programs,
             settings: log.repositories.settings)
         let archive = try await backup.archive(takenAt: ExportLog.epoch)
         #expect(archive.exercises.count == 2)
         #expect(archive.exercises.count { $0.deletedAt != nil } == 1)
         #expect(archive.trainingMaxes.count == 2)
         #expect(archive.trainingMaxes.count { $0.deletedAt != nil } == 1)
+        #expect(archive.trainingMaxHistory.count == 2)
+        #expect(archive.trainingMaxHistory.count { $0.deletedAt != nil } == 1)
     }
 }
 
-/// An exercise repository holding one live row and one soft-deleted row in each of its two tables,
-/// handing back the second only when a read asks for deleted rows.
+/// An exercise repository holding one live row and one soft-deleted row, handing back the second
+/// only when a read asks for deleted rows.
 ///
 /// It answers the flag rather than counting calls: a spy on the parameter would pass for a reader
 /// that asked correctly and then dropped what came back.
@@ -173,9 +192,6 @@ private struct FlaggedExerciseReads: ExerciseRepository {
 
     /// The one that is not.
     let removed: Exercise
-
-    /// One standing training-max entry against ``live``, and one that was removed.
-    let maxes: [TrainingMaxEntry]
 
     /// Builds the four rows, all stamped from one instant.
     ///
@@ -208,13 +224,53 @@ private struct FlaggedExerciseReads: ExerciseRepository {
             isArchived: gone.isArchived,
             notes: gone.notes,
             manualE1RM: gone.manualE1RM)
-        maxes = [
-            Self.trainingMax(for: live.id, at: stamp, byte: 0x03, deletedAt: nil),
-            Self.trainingMax(for: live.id, at: stamp, byte: 0x04, deletedAt: stamp),
+    }
+
+    func exercises(includingDeleted: Bool) async throws -> [Exercise] {
+        includingDeleted ? [live, removed] : [live]
+    }
+    func exercise(id: UUID, includingDeleted: Bool) async throws -> Exercise? {
+        try await exercises(includingDeleted: includingDeleted).first { $0.id == id }
+    }
+    func save(_ exercise: Exercise) async throws {}
+}
+
+/// A training-max repository holding one live row and one soft-deleted row in each of its two
+/// tables, handing back the second only when a read asks for deleted rows.
+///
+/// It answers the flag rather than counting calls, for ``FlaggedExerciseReads``' reason — and it
+/// exists for that type's reason too: `TrainingMaxRepository` offers no delete for a configuration,
+/// so no fixture written through the real store can produce one of those rows soft-deleted, and
+/// `includingDeleted: true` on that read is otherwise a flag nothing can falsify.
+private struct FlaggedTrainingMaxReads: TrainingMaxRepository {
+    /// The exercise both tables hang off.
+    let exerciseID: UUID
+
+    /// One standing configuration and one that was removed.
+    let configurations: [TrainingMaxEntry]
+
+    /// One standing change and one that was removed.
+    let changes: [TrainingMaxHistoryEntry]
+
+    /// Builds the four rows, all stamped from one instant.
+    ///
+    /// - Parameters:
+    ///   - exerciseID: What they hang off.
+    ///   - stamp: When every row here was written.
+    @MainActor
+    init(exerciseID: UUID, stamp: Date) {
+        self.exerciseID = exerciseID
+        configurations = [
+            Self.configuration(for: exerciseID, at: stamp, byte: 0x03, deletedAt: nil),
+            Self.configuration(for: exerciseID, at: stamp, byte: 0x04, deletedAt: stamp),
+        ]
+        changes = [
+            Self.change(for: exerciseID, at: stamp, byte: 0x05, deletedAt: nil),
+            Self.change(for: exerciseID, at: stamp, byte: 0x06, deletedAt: stamp),
         ]
     }
 
-    /// One training-max entry.
+    /// One training-max configuration.
     ///
     /// - Parameters:
     ///   - exerciseID: What it configures.
@@ -223,7 +279,7 @@ private struct FlaggedExerciseReads: ExerciseRepository {
     ///   - deletedAt: When it was removed, or `nil` where it stands.
     /// - Returns: The record.
     @MainActor
-    private static func trainingMax(
+    private static func configuration(
         for exerciseID: UUID,
         at stamp: Date,
         byte: UInt8,
@@ -237,7 +293,6 @@ private struct FlaggedExerciseReads: ExerciseRepository {
             exerciseID: exerciseID,
             source: .percentOfE1RM,
             sourceRepCount: nil,
-            manualWeight: nil,
             percentage: 0.9,
             roundingIncrement: Weight(grams: 2_500),
             roundingStrategy: .down,
@@ -245,27 +300,62 @@ private struct FlaggedExerciseReads: ExerciseRepository {
             effectiveFrom: stamp)
     }
 
-    func exercises(includingDeleted: Bool) async throws -> [Exercise] {
-        includingDeleted ? [live, removed] : [live]
+    /// One change to a training max.
+    ///
+    /// - Parameters:
+    ///   - exerciseID: Whose training max moved.
+    ///   - stamp: When it was written.
+    ///   - byte: What varies its identifier.
+    ///   - deletedAt: When it was removed, or `nil` where it stands.
+    /// - Returns: The record.
+    @MainActor
+    private static func change(
+        for exerciseID: UUID,
+        at stamp: Date,
+        byte: UInt8,
+        deletedAt: Date?
+    ) -> TrainingMaxHistoryEntry {
+        TrainingMaxHistoryEntry(
+            id: ExportRecords.id(byte),
+            createdAt: stamp,
+            updatedAt: stamp,
+            deletedAt: deletedAt,
+            exerciseID: exerciseID,
+            effectiveFrom: stamp,
+            oldWeight: Weight(grams: 137_500),
+            newWeight: Weight(grams: 142_500),
+            reason: "coach")
     }
-    func exercise(id: UUID, includingDeleted: Bool) async throws -> Exercise? {
-        try await exercises(includingDeleted: includingDeleted).first { $0.id == id }
-    }
-    func save(_ exercise: Exercise) async throws {}
-    func trainingMax(
+
+    func configuration(
         forExerciseID exerciseID: UUID,
         on date: Date
     ) async throws -> TrainingMaxEntry? {
         nil
     }
-    func trainingMaxHistory(
+    func configurationHistory(
         forExerciseID exerciseID: UUID,
         includingDeleted: Bool
     ) async throws -> [TrainingMaxEntry] {
-        guard exerciseID == live.id else { return [] }
-        return includingDeleted ? maxes : maxes.filter { $0.deletedAt == nil }
+        guard exerciseID == self.exerciseID else { return [] }
+        return includingDeleted ? configurations : configurations.filter { $0.deletedAt == nil }
     }
-    func saveTrainingMax(_ entry: TrainingMaxEntry) async throws {}
+    func saveConfiguration(_ entry: TrainingMaxEntry) async throws {}
+    func trainingMax(
+        forExerciseID exerciseID: UUID,
+        on date: Date
+    ) async throws -> TrainingMaxHistoryEntry? {
+        nil
+    }
+    func history(
+        forExerciseID exerciseID: UUID,
+        includingDeleted: Bool
+    ) async throws -> [TrainingMaxHistoryEntry] {
+        guard exerciseID == self.exerciseID else { return [] }
+        return includingDeleted ? changes : changes.filter { $0.deletedAt == nil }
+    }
+    func save(_ entry: TrainingMaxHistoryEntry) async throws {}
+    func deleteEntry(id: UUID) async throws {}
 }
 
 /// An equipment repository whose reads throw — one table failing under a backup.

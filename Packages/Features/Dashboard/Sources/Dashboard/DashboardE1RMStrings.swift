@@ -20,8 +20,17 @@ extension DashboardStrings {
     /// What to do about it. The control itself is the link directly beneath.
     static let tilesNoneChosenMessage = resource("dashboard.tiles.none.message")
 
-    /// `FR-1.7.5`'s "clearly marked as manual", in the context line a delta would otherwise hold.
-    static let tileManual = resource("dashboard.tiles.manual")
+    /// `FR-15.1.8`'s line under the estimate: the coach's number, named by a word so the two are
+    /// never read as one (`G-4.5`).
+    ///
+    /// **The load arrives already rendered**, on ``tileAbsence(_:days:)``'s rule: a weight formatted
+    /// here would be formatted twice.
+    ///
+    /// - Parameter weight: The training max in force, rendered for the reader.
+    /// - Returns: The line.
+    static func tileTrainingMax(_ weight: String) -> LocalizedStringResource {
+        resource("dashboard.tiles.training-max \(weight)")
+    }
 
     /// There is a number but nothing earlier to compare it with — a first estimate, or the only one
     /// inside the window.

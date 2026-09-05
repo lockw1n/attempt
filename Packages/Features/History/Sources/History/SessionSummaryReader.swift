@@ -21,14 +21,32 @@ struct SessionSummaryReader {
     /// What each exercise is called, keyed by its identifier.
     private let names: [UUID: String]
 
+    /// The day an open session is read against (`FR-16.4.3`).
+    ///
+    /// **Passed rather than read at each row**, so every row of one screen answers "is this
+    /// planned" against the same day — and so a reference image is a fact rather than a date.
+    private let today: Date
+
+    /// The calendar the two days are compared in (`G-3.4`).
+    private let calendar: Calendar
+
     /// Builds a reader over one screen's already-read catalogue.
     ///
     /// - Parameters:
     ///   - workouts: The sessions' entries and sets.
     ///   - names: The name lookup, as ``SessionListState/names(in:as:)`` builds it.
-    init(workouts: any WorkoutRepository, names: [UUID: String]) {
+    ///   - today: The day an open session is read against.
+    ///   - calendar: The calendar the two days are compared in.
+    init(
+        workouts: any WorkoutRepository,
+        names: [UUID: String],
+        today: Date = .now,
+        calendar: Calendar = .current
+    ) {
         self.workouts = workouts
         self.names = names
+        self.today = today
+        self.calendar = calendar
     }
 
     /// One session's row: its exercises, its working sets and what they weighed.
@@ -79,7 +97,10 @@ struct SessionSummaryReader {
             exerciseNames: exerciseNames,
             setCount: setCount,
             tonnage: tonnage,
-            notes: session.notes
+            notes: session.notes,
+            programPosition: session.programPosition,
+            lifecycle: session.lifecycle(on: today, calendar: calendar),
+            canFinish: session.isStale(on: today, calendar: calendar)
         )
         return IndexedSession(summary: summary, setNotes: setNotes)
     }

@@ -35,6 +35,19 @@ final class WorkoutSessionEntity: StoredEntity {
     /// See ``programRunID``.
     var scheduledWorkoutID: UUID?
 
+    /// The week and the day this session was started under, or `nil` where it was not started from
+    /// a program (`FR-16.8.3`). Written once, at start; a program edited afterwards never reaches
+    /// them.
+    ///
+    /// **Optional rather than defaulted, and that is `SchemaV1`'s first rule** — they are columns
+    /// added after v1's declaration was written, so every session already on a lifter's device
+    /// backfills from one frozen value, and `nil` is the only value that is not a claim about a
+    /// workout logged before programs existed.
+    var weekNumber: Int?
+
+    /// See ``weekNumber``.
+    var dayIndex: Int?
+
     init(
         id: UUID = UUID(),
         date: Date,
@@ -44,6 +57,8 @@ final class WorkoutSessionEntity: StoredEntity {
         bodyweightGrams: Int? = nil,
         programRunID: UUID? = nil,
         scheduledWorkoutID: UUID? = nil,
+        weekNumber: Int? = nil,
+        dayIndex: Int? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
@@ -55,6 +70,8 @@ final class WorkoutSessionEntity: StoredEntity {
         self.bodyweightGrams = bodyweightGrams
         self.programRunID = programRunID
         self.scheduledWorkoutID = scheduledWorkoutID
+        self.weekNumber = weekNumber
+        self.dayIndex = dayIndex
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

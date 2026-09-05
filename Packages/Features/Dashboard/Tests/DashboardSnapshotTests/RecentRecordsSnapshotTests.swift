@@ -27,10 +27,12 @@
     @Suite("Recent records snapshots")
     struct RecentRecordsSnapshotTests {
         @Test func feed() throws {
-            // One picture with every row variant in it: a set that took several N's at once, a set
-            // that took one, and a record whose exercise the catalogue would not name. Four
-            // references over three rows rather than three suites — what each variant does to the
-            // row is a label and a line, and they are only comparable side by side.
+            // One picture with every row variant in it: a rep max that beat a standing one, a rep
+            // max set for the first time — which says **First** where the delta would be
+            // (`FR-16.3.4`) — and a run that set no rep max at all, whose exercise the catalogue
+            // would not name either. Four references over three rows rather than three suites: what
+            // each variant does to the row is a label, a reading and a delta, and they are only
+            // comparable side by side.
             try assertSnapshots(named: "RecentRecords-feed") {
                 GroupedSection(Text(DashboardStrings.recentRecordsTitle)) {
                     ForEach(FeedFixtures.entries, id: \.self) { record in
@@ -78,25 +80,63 @@
         /// no name still has to render.
         static let names: [UUID: String] = [squat: "Back Squat", bench: "Bench Press"]
 
+        /// `FR-16.3.3`'s row at each of its shapes: a rep max that improved on one, a rep max set
+        /// for the first time, and a run that set no rep max at all.
+        ///
+        /// **The first row's label is `3RM` and not `1–3-rep max`** — the retired form (see
+        /// ``Dashboard/DashboardStrings/recentRecordsRepMax(_:)``), and the reference is where that
+        /// is visible rather than argued.
         static let entries: [RecentRecord] = [
-            entry(exerciseID: squat, reps: 1...3, kilos: 142.5, daysAgo: 2),
+            entry(exerciseID: squat, reps: 1...3, kilos: 142.5, daysAgo: 2, beating: 140),
             entry(exerciseID: bench, reps: 5...5, kilos: 102.5, daysAgo: 9),
-            entry(exerciseID: retired, reps: 8...10, kilos: 85, daysAgo: 30),
+            run(exerciseID: retired, reps: 5, sets: 5, kilos: 100, daysAgo: 30, beating: 95),
         ]
 
-        /// One entry, spelled out once so a field nothing in the picture turns on is not repeated.
+        /// One rep-max entry, spelled out once so a field nothing in the picture turns on is not
+        /// repeated.
         private static func entry(
-            exerciseID: UUID, reps: ClosedRange<Int>, kilos: Double, daysAgo: Int
+            exerciseID: UUID,
+            reps: ClosedRange<Int>,
+            kilos: Double,
+            daysAgo: Int,
+            beating: Double? = nil
         ) -> RecentRecord {
             RecentRecord(
                 exerciseID: exerciseID,
-                reps: reps,
+                scheme: RecordScheme(reps: reps.upperBound, sets: 1),
+                repMaxReps: reps,
                 weight: Weight(grams: Int(kilos * 1000)),
-                sourceSetID: UUID(
-                    uuidString: "0F5A1E24-9B7D-4C31-8E62-0000000000\(String(format: "%02d", daysAgo))"
-                ) ?? UUID(),
-                achievedAt: day.addingTimeInterval(-Double(daysAgo) * 86_400)
+                sourceSetID: sourceSetID(daysAgo),
+                achievedAt: day.addingTimeInterval(-Double(daysAgo) * 86_400),
+                previous: beating.map { Weight(grams: Int($0 * 1000)) }
             )
+        }
+
+        /// One entry for a run that set no rep max — `FR-16.2.1`'s second dimension on the feed.
+        private static func run(
+            exerciseID: UUID,
+            reps: Int,
+            sets: Int,
+            kilos: Double,
+            daysAgo: Int,
+            beating: Double? = nil
+        ) -> RecentRecord {
+            RecentRecord(
+                exerciseID: exerciseID,
+                scheme: RecordScheme(reps: reps, sets: sets),
+                repMaxReps: nil,
+                weight: Weight(grams: Int(kilos * 1000)),
+                sourceSetID: sourceSetID(daysAgo),
+                achievedAt: day.addingTimeInterval(-Double(daysAgo) * 86_400),
+                previous: beating.map { Weight(grams: Int($0 * 1000)) }
+            )
+        }
+
+        /// A fixed identifier per entry, so a reference does not move between runs.
+        private static func sourceSetID(_ daysAgo: Int) -> UUID {
+            UUID(
+                uuidString: "0F5A1E24-9B7D-4C31-8E62-0000000000\(String(format: "%02d", daysAgo))"
+            ) ?? UUID()
         }
     }
 

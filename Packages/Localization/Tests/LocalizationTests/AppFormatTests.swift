@@ -122,6 +122,31 @@ struct AppFormatTests {
         #expect(moment.formatted(style) == "Nov 14, 2023 at 10:13\u{202F}PM")
     }
 
+    @Test("A title's day drops the year and keeps the locale's own order")
+    func dayAndMonthDropsTheYear() {
+        let moment = Date(timeIntervalSince1970: 1_700_000_000)
+        var englishStyle = AppFormat.dayAndMonth(locale: english)
+        englishStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        var germanStyle = AppFormat.dayAndMonth(locale: german)
+        germanStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        #expect(moment.formatted(englishStyle) == "Nov 14")
+        #expect(moment.formatted(germanStyle) == "14. Nov.")
+        // The year is the whole difference from `date(locale:)`, and dropping it is the point.
+        #expect(!moment.formatted(englishStyle).contains("2023"))
+    }
+
+    @Test("A bare time carries no date at all")
+    func timeIsTheTimeAlone() {
+        let moment = Date(timeIntervalSince1970: 1_700_000_000)
+        var style = AppFormat.time(locale: english)
+        style.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        // The same narrow no-break space `dateAndTime` renders, and nothing before the hour.
+        #expect(moment.formatted(style) == "10:13\u{202F}PM")
+        var germanStyle = AppFormat.time(locale: german)
+        germanStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        #expect(moment.formatted(germanStyle) == "22:13")
+    }
+
     @Test("The calendar's heading names the month in full, in the locale's own order")
     func monthIsSpelledOut() {
         let moment = Date(timeIntervalSince1970: 1_700_000_000)

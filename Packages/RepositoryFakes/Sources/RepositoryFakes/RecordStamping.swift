@@ -10,7 +10,7 @@ import RepositoryInterface
 /// immutable records cannot obey that without a way to put the four columns back.
 ///
 /// **One implementation per record type, and no shortcut.** A record's properties are `let`, so
-/// each conformance restates the whole memberwise initialiser — thirteen of them, mechanical and
+/// each conformance restates the whole memberwise initialiser — fourteen of them, mechanical and
 /// verbose, and the alternative is a mutable mirror of every record shape, which is a second place
 /// for a column to go missing. `RecordStampingTests` proves this of every conformance on its list;
 /// ``RepositoryInterface/PersonalRecordCache``'s is the one not on it.
@@ -51,12 +51,27 @@ extension TrainingMaxEntry: AuditStamped {
             exerciseID: exerciseID,
             source: source,
             sourceRepCount: sourceRepCount,
-            manualWeight: manualWeight,
             percentage: percentage,
             roundingIncrement: roundingIncrement,
             roundingStrategy: roundingStrategy,
             progressionIncrement: progressionIncrement,
             effectiveFrom: effectiveFrom
+        )
+    }
+}
+
+extension TrainingMaxHistoryEntry: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> TrainingMaxHistoryEntry {
+        TrainingMaxHistoryEntry(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            exerciseID: exerciseID,
+            effectiveFrom: effectiveFrom,
+            oldWeight: oldWeight,
+            newWeight: newWeight,
+            reason: reason
         )
     }
 }
@@ -74,7 +89,52 @@ extension WorkoutSession: AuditStamped {
             notes: notes,
             bodyweight: bodyweight,
             programRunID: programRunID,
-            scheduledWorkoutID: scheduledWorkoutID
+            scheduledWorkoutID: scheduledWorkoutID,
+            weekNumber: weekNumber,
+            dayIndex: dayIndex
+        )
+    }
+}
+
+extension Program: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> Program {
+        Program(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            name: name,
+            notes: notes
+        )
+    }
+}
+
+extension ProgramDay: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> ProgramDay {
+        ProgramDay(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            programID: programID,
+            routineID: routineID,
+            order: order
+        )
+    }
+}
+
+extension ProgramRun: AuditStamped {
+    func stamped(createdAt: Date, updatedAt: Date, deletedAt: Date?) -> ProgramRun {
+        ProgramRun(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            programID: programID,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            weekNumber: weekNumber,
+            nextDayIndex: nextDayIndex
         )
     }
 }
@@ -289,9 +349,11 @@ extension PersonalRecordCache: AuditStamped {
             deletedAt: deletedAt,
             exerciseID: exerciseID,
             repCount: repCount,
+            setCount: setCount,
             weight: weight,
             sourceSetID: sourceSetID,
             achievedAt: achievedAt,
+            previousWeight: previousWeight,
             computationVersion: computationVersion
         )
     }

@@ -252,6 +252,15 @@
         /// One exercise, with fixed dates and a fixed identifier so a rendering never moves — and
         /// with `id` a parameter, because `ForEach` keys the rows on it and two rows sharing one is
         /// a rendering that silently loses a row.
+        /// A stable identifier, so a reference does not change by run.
+        ///
+        /// The same scheme ``exercise(id:name:ukrainianName:movement:equipment:isCustom:isArchived:laterality:barType:)``
+        /// uses, so a fixture's rows and the exercise they hang off cannot collide.
+        static func identifier(_ index: Int) -> UUID {
+            UUID(uuidString: "0F5A1E24-9B7D-4C31-8E62-0000000000\(String(format: "%02d", index))")
+                ?? UUID()
+        }
+
         static func exercise(
             id: Int,
             name: String,

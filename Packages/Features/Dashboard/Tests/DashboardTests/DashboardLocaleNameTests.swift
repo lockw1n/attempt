@@ -25,7 +25,8 @@ struct DashboardLocaleNameTests {
         let state = EstimatedMaxTilesState(
             records: fixture.records,
             catalogue: fixture.repositories.exercises,
-            settings: fixture.repositories.settings)
+            settings: fixture.repositories.settings,
+            trainingMaxes: fixture.repositories.trainingMaxes)
         state.nameLanguage = .ukrainian
         await state.load()
 
@@ -85,7 +86,8 @@ struct DashboardLocaleNameTests {
         let state = EstimatedMaxTilesState(
             records: fixture.records,
             catalogue: fixture.repositories.exercises,
-            settings: fixture.repositories.settings)
+            settings: fixture.repositories.settings,
+            trainingMaxes: fixture.repositories.trainingMaxes)
         state.nameLanguage = .ukrainian
         await state.load()
 

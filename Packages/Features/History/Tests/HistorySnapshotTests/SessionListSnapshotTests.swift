@@ -3,6 +3,7 @@
     import DesignSystem
     import Foundation
     import PowerliftingCore
+    import RepositoryInterface
     import SnapshotTesting
     import SwiftUI
     import Testing
@@ -46,6 +47,44 @@
             // this is the picture that shows the two zeros reading as facts rather than as a fault.
             try assertSnapshots(named: "SessionList-row-empty-session") {
                 Fixtures.card(Fixtures.emptyDay)
+            }
+        }
+
+        @Test func summaryRowInProgress() throws {
+            // `FR-16.4.3`. A workout being logged has a running total, and a running total drawn as
+            // a finished one is the reading a row like this invites — so the state word stands
+            // where the two numbers do, one step back in the ramp because it is not a measurement.
+            try assertSnapshots(named: "SessionList-row-in-progress") {
+                Fixtures.card(Fixtures.inProgressDay)
+            }
+        }
+
+        @Test func summaryRowPlanned() throws {
+            // The same rule at the other end: a workout dated ahead of today carries the zeros the
+            // empty-session row above carries, and they mean the opposite thing. This is the
+            // reference that settles that the two rows cannot be confused.
+            try assertSnapshots(named: "SessionList-row-planned") {
+                Fixtures.card(Fixtures.plannedDay)
+            }
+        }
+
+        @Test func summaryRowOfferingFinish() throws {
+            // `FR-16.4.4`'s way out of a workout left open past its own day. Secondary rather than
+            // filled (`FR-16.6.4`): a history row is something to read, and twenty accents down a
+            // list is a list with none. At `accessibility3` it is also where the command has to
+            // survive under a state word that has taken the width.
+            try assertSnapshots(named: "SessionList-row-finish") {
+                Fixtures.card(Fixtures.staleDay, finishes: true)
+            }
+        }
+
+        @Test func summaryRowFromAProgram() throws {
+            // `FR-16.8.3`'s week and day, read off the session's own columns. Its own reference
+            // because it is the line that retires the structure a note used to carry
+            // (`DOD-16.1`) — the row above this one in the same suite is the note it replaces, and
+            // the two have to be legible as different claims about the same workout.
+            try assertSnapshots(named: "SessionList-row-program") {
+                Fixtures.card(Fixtures.programDay)
             }
         }
 
@@ -95,14 +134,18 @@
         ///   - summary: The row.
         ///   - unit: The unit its tonnage reads in (`G-3.1`).
         /// - Returns: The card.
-        static func card(_ summary: SessionSummary, unit: MassUnit = .kilograms) -> some View {
-            SessionSummaryCard(summary: summary, unit: unit)
-                .environment(\.locale, Locale(identifier: "en_US"))
-                // The date goes through `Text(_:format:)`, which resolves its time zone from the
-                // environment — so an unpinned reference is only reproducible while the fixture's
-                // instant happens to fall on one day in every zone. This one does; pinning is what
-                // stops the next fixture from depending on that.
-                .environment(\.timeZone, .gmt)
+        static func card(
+            _ summary: SessionSummary, unit: MassUnit = .kilograms, finishes: Bool = false
+        ) -> some View {
+            SessionSummaryCard(
+                summary: summary, unit: unit, finish: finishes ? {} : nil
+            )
+            .environment(\.locale, Locale(identifier: "en_US"))
+            // The date goes through `Text(_:format:)`, which resolves its time zone from the
+            // environment — so an unpinned reference is only reproducible while the fixture's
+            // instant happens to fall on one day in every zone. This one does; pinning is what
+            // stops the next fixture from depending on that.
+            .environment(\.timeZone, .gmt)
         }
 
         /// A day that looks like most days: two exercises, a round number of sets, no note.
@@ -128,6 +171,17 @@
             notes: "Long meet-week session — everything felt fast until the third deadlift single."
         )
 
+        /// A day of a program: the same session as ``squatDay``, started from week 2 day 1.
+        static let programDay = SessionSummary(
+            id: Fixtures.identifier(3),
+            date: day,
+            exerciseNames: ["Back Squat", "Bench Press"],
+            setCount: 8,
+            tonnage: Weight(grams: 7_240_000),
+            notes: "",
+            programPosition: ProgramPosition(week: 2, day: 1)
+        )
+
         /// A session that was started, then finished with nothing in it.
         static let emptyDay = SessionSummary(
             id: Fixtures.identifier(2),
@@ -136,6 +190,44 @@
             setCount: 0,
             tonnage: .zero,
             notes: ""
+        )
+
+        /// A workout being logged right now: the row has a running total and says so instead
+        /// (`FR-16.4.3`).
+        static let inProgressDay = SessionSummary(
+            id: Fixtures.identifier(3),
+            date: day,
+            exerciseNames: ["Back Squat"],
+            setCount: 3,
+            tonnage: Weight(grams: 1_500_000),
+            notes: "",
+            lifecycle: .inProgress
+        )
+
+        /// A workout dated ahead of today, its sets written and none of them attempted.
+        ///
+        /// **The numbers are the zeros a planned day really carries**, which is the point: the
+        /// reference is what settles that the row says *Planned* rather than `0 sets, 0 kg`.
+        static let plannedDay = SessionSummary(
+            id: Fixtures.identifier(4),
+            date: day,
+            exerciseNames: ["Back Squat", "Bench Press"],
+            setCount: 0,
+            tonnage: .zero,
+            notes: "",
+            lifecycle: .planned
+        )
+
+        /// A workout left open past its own training day — the one row that offers a way out.
+        static let staleDay = SessionSummary(
+            id: Fixtures.identifier(5),
+            date: day,
+            exerciseNames: ["Deadlift"],
+            setCount: 2,
+            tonnage: Weight(grams: 1_000_000),
+            notes: "",
+            lifecycle: .inProgress,
+            canFinish: true
         )
 
         /// The day every reference is dated, so no image depends on when it was rendered.

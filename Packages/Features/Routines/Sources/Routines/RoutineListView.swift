@@ -59,6 +59,7 @@ public struct RoutineListView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.lg.points) {
+                programsLink
                 content
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -114,6 +115,34 @@ public struct RoutineListView: View {
         } message: { _ in
             Text(RoutinesStrings.listArchiveMessage)
         }
+    }
+
+    /// The way into the programs (`FR-16.8.1`).
+    ///
+    /// **On this screen rather than beside it on Train**, and the reason is what a program is made
+    /// of: an ordered list of these routines. A lifter reaching for one is already looking at the
+    /// parts, and Train's root is a workout surface with two cards on it already.
+    ///
+    /// **Above the list rather than in the toolbar**, where **New routine** already is: two
+    /// toolbar commands on a pushed screen is one more than the back button leaves room for at
+    /// `accessibility3`.
+    private var programsLink: some View {
+        NavigationLink(value: Route.routines(.programList)) {
+            Card {
+                HStack(spacing: Spacing.sm.points) {
+                    Text(RoutinesStrings.programsLink)
+                        .font(Typography.actionLabel.font)
+                        .foregroundStyle(ColorToken.textPrimary)
+                    Spacer(minLength: Spacing.sm.points)
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(ColorToken.textTertiary)
+                        // The chevron says "pushes"; the label says where to (`G-4.2`).
+                        .accessibilityHidden(true)
+                }
+                .frame(minHeight: TouchTarget.standard.points)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     /// The screen's four states (`FR-1.13.1`), each one of T-1.09's shared components.

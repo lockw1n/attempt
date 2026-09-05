@@ -105,9 +105,12 @@ struct SoftDeleteConformanceTests {
         #expect(all.count == 2)
     }
 
-    /// **All five deletes, not one.** Covering this on `bodyweight` alone left a probe alive on
+    /// **All six deletes, not one.** Covering this on `bodyweight` alone left a probe alive on
     /// `deleteExerciseEntry`: "a deleted row is not there to delete" is the kind of rule that gets
     /// implemented for the members somebody happened to think of.
+    /// `TrainingMaxRepository.deleteEntry(id:)` is the sixth, and it arrived with no case here at
+    /// all — its refusal was held against the SwiftData store alone, which is a one-sided
+    /// guarantee of exactly the kind this suite exists to close.
     @Test("A second delete of the same row is refused — it is no longer there", arguments: Subject.all)
     func aDeletedRowIsNotThereToDelete(_ subject: Subject) async throws {
         let repositories = try subject.make()
@@ -151,6 +154,54 @@ struct SoftDeleteConformanceTests {
         await #expect(throws: RepositoryError.recordNotFound(id: timeline.sessionID)) {
             try await repositories.workouts.deleteSession(id: timeline.sessionID)
         }
+
+        // The training-max history's own delete, on a row this call put in that state.
+        let change = trainingMaxHistoryRecord(
+            exerciseID: timeline.exerciseID, effectiveFrom: fixtureCreatedAt)
+        try await repositories.trainingMaxes.save(change)
+        try await repositories.trainingMaxes.deleteEntry(id: change.id)
+        await #expect(throws: RepositoryError.recordNotFound(id: change.id)) {
+            try await repositories.trainingMaxes.deleteEntry(id: change.id)
+        }
+    }
+
+    /// `deleteEntry` on the training-max history, held to `aDeleteIsSoft`'s three claims.
+    ///
+    /// The number a lifter withdrew has to leave the in-force lookup and the default history while
+    /// staying behind the flag — `G-1.3`, and the reason `trainingMax(forExerciseID:on:)` takes no
+    /// `includingDeleted:` at all.
+    @Test("A deleted training max leaves both reads and is still there behind the flag", arguments: Subject.all)
+    func aTrainingMaxDeleteIsSoft(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let exerciseID = UUID()
+        try await repositories.exercises.save(exerciseRecord(id: exerciseID))
+        let change = trainingMaxHistoryRecord(
+            exerciseID: exerciseID, effectiveFrom: fixtureCreatedAt, grams: 150_000)
+        try await repositories.trainingMaxes.save(change)
+        // Anchored before the delete, so the absences below are the delete's doing rather than a
+        // save that never landed.
+        #expect(
+            try await repositories.trainingMaxes.trainingMax(
+                forExerciseID: exerciseID, on: fixtureCreatedAt)?.newWeight
+                == Weight(grams: 150_000))
+
+        try await repositories.trainingMaxes.deleteEntry(id: change.id)
+
+        #expect(
+            try await repositories.trainingMaxes.trainingMax(
+                forExerciseID: exerciseID, on: fixtureCreatedAt) == nil)
+        #expect(
+            try await repositories.trainingMaxes.history(
+                forExerciseID: exerciseID, includingDeleted: false
+            ).isEmpty)
+        let kept = try #require(
+            try await repositories.trainingMaxes.history(
+                forExerciseID: exerciseID, includingDeleted: true
+            ).first)
+        #expect(kept.deletedAt != nil)
+        #expect(kept.newWeight == Weight(grams: 150_000))
+        // A delete is a write, so it stamps — `aDeleteIsSoft`'s reason, on `G-2.4`'s conflict key.
+        #expect(kept.updatedAt == kept.deletedAt)
     }
 
     @Test("Deleting a session sweeps its entries and their sets", arguments: Subject.all)

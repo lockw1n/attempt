@@ -1,4 +1,5 @@
 import Foundation
+import RepositoryInterface
 
 /// This module's copy (`G-3.4`), and the only place a dashboard string literal is written.
 ///
@@ -27,29 +28,140 @@ enum DashboardStrings {
     /// The control that opens the full list from the card.
     static let recentRecordsSeeAll = resource("dashboard.recent-records.see-all")
 
-    /// What one entry is the record for, where the set holds a single N.
+    /// What one entry is the record for, where the run set a rep max — `8RM` (`FR-16.3.3`).
     ///
-    /// - Parameter reps: The N.
+    /// **The top of what it took, never the span of it.** A set of eight that beat every N up to
+    /// eight is an 8RM; writing it "1–8-rep max" states eight claims where the lifter made one, and
+    /// the seven below it are the arithmetic rather than the achievement. That label is retired.
+    ///
+    /// **The compound carries no plural**, so no rule file is needed: the numeral sits inside `8RM`.
+    ///
+    /// - Parameter reps: The highest N the run holds at a single set.
     /// - Returns: The label.
     static func recentRecordsRepMax(_ reps: Int) -> LocalizedStringResource {
         resource("dashboard.recent-records.rep-max \(reps)")
     }
 
-    /// What one entry is the record for, where the set holds several N's at once.
+    /// What one entry is the record for, where the run set no single-set rep max at all
+    /// (`FR-16.2.1`).
     ///
-    /// **A range rather than a plural**, so no rule file is needed: the noun is "max" and both
-    /// numbers sit inside the compound before it, which reads the same at every count.
+    /// **The lifter's own notation, `reps × sets`**, rather than a sentence: a run whose records all
+    /// stand at two sets and up has no N-rep max to name, and "5 × 5" is what the training log it
+    /// came from calls it. The compound carries no plural, so no rule file is needed.
     ///
     /// - Parameters:
-    ///   - lowest: The lowest N the set holds.
-    ///   - highest: The highest.
+    ///   - reps: The maximal scheme's repetitions.
+    ///   - sets: How many consecutive sets it asks for.
     /// - Returns: The label.
-    static func recentRecordsRepMaxRange(_ lowest: Int, _ highest: Int) -> LocalizedStringResource {
-        resource("dashboard.recent-records.rep-max.range \(lowest) \(highest)")
+    static func recentRecordsScheme(_ reps: Int, _ sets: Int) -> LocalizedStringResource {
+        resource("dashboard.recent-records.scheme \(reps) \(sets)")
     }
+
+    /// The set that produced a record, as `FR-16.3.3`'s row names it — `145 kg × 8`.
+    ///
+    /// **The load and the numbers arrive already rendered**, on
+    /// ``Logging/LoggingStrings/setRPE(_:)``' rule: they are formatted for the locale by the caller's
+    /// own formatter (`G-3.4`), and what this string owns is the punctuation between them.
+    ///
+    /// - Parameters:
+    ///   - load: The record load, formatted.
+    ///   - reps: The repetitions, formatted.
+    /// - Returns: The reading.
+    static func recentRecordsSet(_ load: String, _ reps: String) -> LocalizedStringResource {
+        resource("dashboard.recent-records.set \(load) \(reps)")
+    }
+
+    /// The same, where the record stands over a run of sets — `100 kg × 5 × 5`.
+    ///
+    /// - Parameters:
+    ///   - load: The record load, formatted.
+    ///   - reps: The repetitions, formatted.
+    ///   - sets: How many consecutive sets, formatted.
+    /// - Returns: The reading.
+    static func recentRecordsRun(
+        _ load: String, _ reps: String, _ sets: String
+    ) -> LocalizedStringResource {
+        resource("dashboard.recent-records.run \(load) \(reps) \(sets)")
+    }
+
+    /// What stands where the delta would, for a scheme performed for the first time (`FR-16.3.4`).
+    ///
+    /// **A word rather than a blank.** A baseline and a record whose delta could not be worked out
+    /// would otherwise look the same, and the first time a lifter performs a scheme is the one
+    /// occasion there is nothing to have beaten — which is worth saying.
+    static let recentRecordsBaseline = resource("dashboard.recent-records.baseline")
 
     /// What tapping a feed entry does.
     static let recentRecordsExerciseHint = resource("dashboard.recent-records.exercise-hint")
+
+    /// Why the feed is empty under a scope narrower than every exercise (`FR-16.3.4`).
+    ///
+    /// **A different sentence from ``recentRecordsNone``, not a variant of it.** That one explains
+    /// what a set has to be before it sets a record, which is the wrong thing to tell a lifter whose
+    /// records exist and are outside the scope they chose.
+    static let recentRecordsNoneInScope = resource("dashboard.recent-records.none-in-scope")
+
+    /// `FR-16.3.4`'s offer: the widest configuration, as the button that takes it.
+    static let recentRecordsShowEverything = resource("dashboard.recent-records.show-every")
+
+    /// The configuration screen's title (`FR-16.3.1`), and the Settings row that opens it.
+    static let recentRecordsSettingsTitle = resource("dashboard.recent-records.settings.title")
+
+    /// The configuration could not be read.
+    static let recentRecordsSettingsError = resource("dashboard.recent-records.settings.error")
+
+    /// A change to it could not be stored. Nothing moved.
+    static let recentRecordsSettingsWriteError = resource(
+        "dashboard.recent-records.settings.write-error")
+
+    /// `FR-16.3.1`'s heading.
+    static let recentRecordsScopeTitle = resource("dashboard.recent-records.scope.title")
+
+    /// What choosing a narrower scope does, and where the first option's list comes from.
+    static let recentRecordsScopeDetail = resource("dashboard.recent-records.scope.detail")
+
+    /// One scope's name (`FR-16.3.1`).
+    ///
+    /// **A function over the vocabulary rather than three constants**, on
+    /// ``Settings/SettingsStrings/themeName(for:)``' rule: the enum is the list the picker draws, so
+    /// a case added without a name is a compile error rather than a blank row.
+    ///
+    /// - Parameter scope: The scope.
+    /// - Returns: Its name.
+    static func recentRecordsScopeName(for scope: RecentRecordsScope) -> LocalizedStringResource {
+        switch scope {
+        case .dashboardLifts: resource("dashboard.recent-records.scope.dashboard-lifts")
+        case .everyExercise: resource("dashboard.recent-records.scope.every-exercise")
+        case .chosen: resource("dashboard.recent-records.scope.chosen")
+        }
+    }
+
+    /// The heading over the chosen scope's own exercise list.
+    static let recentRecordsExercisesTitle = resource("dashboard.recent-records.exercises.title")
+
+    /// The catalogue holds nothing to choose from.
+    static let recentRecordsExercisesEmpty = resource("dashboard.recent-records.exercises.empty")
+
+    /// `FR-16.3.2`'s heading.
+    static let recentRecordsSchemesTitle = resource("dashboard.recent-records.schemes.title")
+
+    /// The switch between derived and chosen schemes.
+    static let recentRecordsSchemesDerived = resource("dashboard.recent-records.schemes.derived")
+
+    /// What "derived" means, in the threshold the requirement names.
+    static let recentRecordsSchemesDetail = resource("dashboard.recent-records.schemes.detail")
+
+    /// The scope holds no record to choose a scheme from.
+    static let recentRecordsSchemesEmpty = resource("dashboard.recent-records.schemes.empty")
+
+    /// `FR-16.3.4`'s heading.
+    static let recentRecordsBaselinesTitle = resource("dashboard.recent-records.baselines.title")
+
+    /// The toggle itself.
+    static let recentRecordsBaselinesLabel = resource("dashboard.recent-records.baselines.label")
+
+    /// Why it is off to begin with.
+    static let recentRecordsBaselinesDetail = resource("dashboard.recent-records.baselines.detail")
 
     /// `FR-1.9.4`'s primary action, which navigates to Train rather than logging anything here.
     ///
@@ -104,6 +216,22 @@ enum DashboardStrings {
     /// The repeat could not be started. Nothing was written.
     static let lastWorkoutRepeatError = resource("dashboard.last-workout.repeat-error")
 
+    /// What an open workout says where a finished one shows its set count (`FR-16.4.3`).
+    ///
+    /// **A workout dated ahead of today is planned, not in progress.** Nothing has been logged
+    /// against it and nothing is being logged now, and a card claiming otherwise would report work
+    /// that has not happened.
+    ///
+    /// - Parameter lifecycle: Which kind of open the workout is. A finished one shows numbers, so
+    ///   it falls back to the in-progress word this card never draws for it.
+    /// - Returns: The word.
+    static func lastWorkoutState(_ lifecycle: SessionLifecycle) -> LocalizedStringResource {
+        lifecycle == .planned ? lastWorkoutPlanned : lastWorkoutInProgress
+    }
+
+    /// A workout whose training day has not arrived (`FR-16.4.3`).
+    static let lastWorkoutPlanned = resource("dashboard.last-workout.planned")
+
     /// How much work a finished session holds.
     ///
     /// - Parameter count: The working sets — completed, and not warmups (`G-1.8`).
@@ -116,16 +244,29 @@ enum DashboardStrings {
     static var all: [LocalizedStringResource] {
         [
             recentRecordsTitle, recentRecordsNone, recentRecordsError, recentRecordsSeeAll,
-            recentRecordsRepMax(3), recentRecordsRepMaxRange(1, 3), recentRecordsExerciseHint,
+            recentRecordsRepMax(3), recentRecordsScheme(5, 5),
+            recentRecordsSet("145 kg", "8"), recentRecordsRun("100 kg", "5", "5"),
+            recentRecordsBaseline, recentRecordsExerciseHint,
+            recentRecordsNoneInScope, recentRecordsShowEverything,
+            recentRecordsSettingsTitle, recentRecordsSettingsError,
+            recentRecordsSettingsWriteError,
+            recentRecordsScopeTitle, recentRecordsScopeDetail,
+            recentRecordsExercisesTitle, recentRecordsExercisesEmpty,
+            recentRecordsSchemesTitle, recentRecordsSchemesDerived, recentRecordsSchemesDetail,
+            recentRecordsSchemesEmpty,
+            recentRecordsBaselinesTitle, recentRecordsBaselinesLabel,
+            recentRecordsBaselinesDetail,
             startWorkout, lastWorkoutTitle, lastWorkoutNone, lastWorkoutNoneMessage,
             lastWorkoutError, lastWorkoutInProgress, lastWorkoutResume, lastWorkoutRepeat,
-            lastWorkoutRepeatError, lastWorkoutSets(4),
+            lastWorkoutRepeatError, lastWorkoutSets(4), lastWorkoutPlanned,
             firstLaunchHeadline, firstLaunchMessage,
             weekTitle, weekWorkouts, weekVolume, weekNone, weekUnweighed, weekError,
-            tilesTitle, tilesError, tilesNoneChosen, tilesNoneChosenMessage, tileManual,
+            tilesTitle, tilesError, tilesNoneChosen, tilesNoneChosenMessage,
+            tileTrainingMax("180 kg"),
             tileNoPrevious, tilesChooseAction, tilesChooseTitle, tilesChooseEmpty,
             tilesChooseError, tilesChooseWriteError,
         ] + absences.map { tileAbsence($0, days: 90) }
+            + RecentRecordsScope.allCases.map { recentRecordsScopeName(for: $0) }
     }
 
     /// Binds a key to this module's catalogue.

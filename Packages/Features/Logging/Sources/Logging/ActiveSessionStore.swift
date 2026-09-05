@@ -90,6 +90,25 @@ public final class ActiveSessionStore {
     /// **Save** beside the field rather than **Finish** at the foot of the screen.
     var noteWriteFailure: String?
 
+    /// How many sets the workout still holds that nobody has attempted (`FR-16.4.4`) — `0` where
+    /// there is nothing to answer for.
+    ///
+    /// **Set by ``finish(resolving:)`` from the read that declined to end the workout**, so the
+    /// number in the alert and the rows it is about are one answer; see ``pendingSets()`` for why a
+    /// projection of ``exercises`` is not.
+    public private(set) var pendingSetCount = 0
+
+    /// Why the program's day cursor did not move when the last workout was finished
+    /// (`FR-16.8.4`), or `nil`.
+    ///
+    /// A **diagnostic**, not copy (`G-3.4`): the workout *was* stored, and the screen that can say
+    /// what was not is the one drawing the program's next day. **Not cleared by
+    /// ``forgetExercises()``**, being set after that workout has been let go of; retired by
+    /// ``retryProgramAdvance()``, the only thing that knows whether the cursor has since moved.
+    public internal(set) var programAdvanceFailure: String?
+
+    /// The finished workout the report above is owed to, held so it can be retried at all.
+    var unadvancedSession: WorkoutSession?
     /// What each card's "last time" strip is drawn from (`FR-1.2.10`).
     ///
     /// One value rather than three properties — see ``PreviousPerformances``.
@@ -150,6 +169,14 @@ public final class ActiveSessionStore {
 
     private let settings: any SettingsRepository
 
+    /// Where `FR-16.7.1`'s training max comes from — see ``SessionTrainingMax``.
+    let trainingMaxes: any TrainingMaxRepository
+
+    /// The programs, their days and the run in force (`FR-16.8`) — **stored rather than passed in
+    /// like ``start(on:fromRoutineID:in:)``'s routines**, the cursor moving at ``finish(resolving:)``, which
+    /// every screen calls with no program in its hands.
+    let programs: any ProgramRepository
+
     /// The chain every command in `ActiveSessionCommands.swift` runs in.
     ///
     /// **Two taps are two writes, not one.** Each command re-reads what it is about to extend when
@@ -176,16 +203,22 @@ public final class ActiveSessionStore {
     ///   - records: The app's one recompute actor (`TR-1.6`). Not a repository: what a set changing
     ///     owes is a recomputation, and handing this store the cache instead would make it the
     ///     second thing in the app that knows how a personal record is derived.
+    ///   - trainingMaxes: Where `FR-16.7.1`'s training max is stored — see ``SessionTrainingMax``.
+    ///   - programs: The programs and the run in force (`FR-16.8`) — see ``programs``.
     public init(
         repository: any WorkoutRepository & PlannedTargetRepository,
         catalogue: any ExerciseRepository,
         settings: any SettingsRepository,
-        records: PersonalRecordRecomputer
+        records: PersonalRecordRecomputer,
+        trainingMaxes: any TrainingMaxRepository,
+        programs: any ProgramRepository
     ) {
         self.repository = repository
         self.catalogue = catalogue
         self.settings = settings
         self.records = records
+        self.trainingMaxes = trainingMaxes
+        self.programs = programs
     }
 
     /// Reads the unit a load is entered and shown in (`G-3.1`, `G-3.2`).
@@ -298,6 +331,17 @@ public final class ActiveSessionStore {
     ///
     /// - Parameter day: The training day the workout belongs to. Today, unless the user backdated.
     public func start(on day: Date) async {
+        await start(on: day, stampedWith: nil)
+    }
+
+    /// ``start(on:)``, with the program run the workout belongs to written into the row it creates
+    /// (`FR-16.8.3`) — at creation rather than in a second write, because a workout that existed
+    /// for one write without its week is one a force-quit leaves belonging to none (`NFR-1.8`).
+    ///
+    /// - Parameters:
+    ///   - day: The training day the workout belongs to.
+    ///   - stamp: The run, week and day index, or `nil` outside a program.
+    func start(on day: Date, stampedWith stamp: ProgramSessionStamp?) async {
         guard session == nil else { return }
         let now = Date.now
         let started = WorkoutSession(
@@ -310,8 +354,10 @@ public final class ActiveSessionStore {
             endedAt: nil,
             notes: "",
             bodyweight: nil,
-            programRunID: nil,
-            scheduledWorkoutID: nil
+            programRunID: stamp?.runID,
+            scheduledWorkoutID: nil,
+            weekNumber: stamp?.weekNumber,
+            dayIndex: stamp?.dayIndex
         )
         do {
             try await persist(started)
@@ -321,44 +367,6 @@ public final class ActiveSessionStore {
         }
         hasCheckedForSession = true
         forgetExercises()
-    }
-
-    /// Finishes the workout in progress (`FR-1.2.11`).
-    ///
-    /// The row stays: finishing is what `endedAt` records, and a finished session is the history
-    /// every later track reads. What ends is this store holding it — ``resume()`` will not find it
-    /// again, which is the whole of "incomplete sessions resume on next launch".
-    ///
-    /// A write that fails keeps the workout held and reports the failure, so the next tap is another
-    /// attempt at the same command rather than a lost session.
-    public func finish() async {
-        guard let current = session, current.endedAt == nil else { return }
-        await update(Self.ended(current, at: .now))
-        guard failure == nil else { return }
-        session = nil
-        forgetExercises()
-    }
-
-    /// Discards the workout in progress (`FR-1.2.12`).
-    ///
-    /// **Soft, like every deletion here** (`G-1.3`): the repository stamps `deletedAt` and cascades
-    /// to the entries and sets underneath, and nothing is removed from the store until an explicit
-    /// purge runs. The confirmation `FR-1.2.12` asks for is the screen's — a store cannot ask.
-    ///
-    /// **The cascade is why this announces** (`FR-1.6.4`). Every set the workout logged stops
-    /// standing at once without a single set column being written, so none of ``setWriter``'s five
-    /// hooks fires and a record the discarded work set would survive its own source set.
-    public func discard() async {
-        guard let current = session else { return }
-        do {
-            try await repository.deleteSession(id: current.id)
-            await records.sessionDidChange(id: current.id)
-            session = nil
-            failure = nil
-            forgetExercises()
-        } catch {
-            failure = String(describing: error)
-        }
     }
 
     /// Reads the workout's exercises, their sets and the catalogue rows they name (`FR-1.2.2`).
@@ -393,7 +401,9 @@ public final class ActiveSessionStore {
                         exercise: try await catalogue.exercise(id: entry.exerciseID, includingDeleted: false),
                         sets: try await repository.sets(forEntryID: entry.id, includingDeleted: false),
                         planned: try await repository.plannedTargets(
-                            forEntryID: entry.id, includingDeleted: false)
+                            forEntryID: entry.id, includingDeleted: false),
+                        trainingMax: try await SessionTrainingMax.inForce(
+                            trainingMaxes, forExerciseID: entry.exerciseID, on: current.date)
                     )
                 )
             }
@@ -407,21 +417,6 @@ public final class ActiveSessionStore {
         }
         hasLoadedExercises = true
     }
-
-    /// Whether a workout is in progress — what the screen-wake policy and every entry point read.
-    public var isActive: Bool { session != nil }
-
-    /// How far through the workout the user is (`FR-1.2.13`).
-    public var progress: SessionProgress { SessionProgress(exercises) }
-
-    /// How much of what a routine prescribed has been performed as prescribed (`FR-15.3.3`), or
-    /// `nil` for a workout nobody planned.
-    ///
-    /// **Recomputed off the held exercises on every read, like ``progress``**, which is what makes
-    /// an adjustment show up in it for free: every command that changes a set ends in
-    /// ``loadExercises()``, so the next read of this sees the corrected set with nothing to
-    /// invalidate.
-    public var adherence: SessionAdherence? { SessionAdherence(exercises) }
 
     /// Drops the exercise list, because the workout it belonged to is no longer the one held.
     ///
@@ -470,24 +465,36 @@ public final class ActiveSessionStore {
         self.session = stored
     }
 
-    /// `session` with `endedAt` set, and every other field untouched.
+    /// Adopts the row a write made elsewhere in this module produced, and retires the diagnostic.
     ///
-    /// Rebuilt rather than mutated because the record is a value with `let` properties, and the
-    /// three timestamps are carried across because the write path is an upsert that stamps
-    /// `updatedAt` itself.
-    private static func ended(_ session: WorkoutSession, at moment: Date) -> WorkoutSession {
-        WorkoutSession(
-            id: session.id,
-            createdAt: session.createdAt,
-            updatedAt: session.updatedAt,
-            deletedAt: session.deletedAt,
-            date: session.date,
-            startedAt: session.startedAt,
-            endedAt: moment,
-            notes: session.notes,
-            bodyweight: session.bodyweight,
-            programRunID: session.programRunID,
-            scheduledWorkoutID: session.scheduledWorkoutID
-        )
+    /// **Here rather than a wider setter on ``session``**, which is `private(set)` deliberately: one
+    /// object with one writer is what keeps two screens from holding two versions of a workout.
+    /// These two name the transitions another file in this module needs, and nothing else.
+    ///
+    /// - Parameter stored: The session as the store holds it.
+    func adopt(stored: WorkoutSession) {
+        session = stored
+        failure = nil
+    }
+
+    /// Records what ``finish(resolving:)``'s read found, so the screen can ask about it.
+    ///
+    /// - Parameter count: The sets nobody attempted, or `0` once nothing is owed an answer.
+    func notePendingSets(_ count: Int) { pendingSetCount = count }
+
+    /// Lets go of the workout that has just ended or been discarded, and of everything drawn from
+    /// it.
+    func releaseHeldSession() {
+        session = nil
+        failure = nil
+        pendingSetCount = 0
+        forgetExercises()
+    }
+
+    /// Reports a write that did not land. The held workout is left alone; see ``update(_:)``.
+    ///
+    /// - Parameter error: What the store said.
+    func report(_ error: any Error) {
+        failure = String(describing: error)
     }
 }

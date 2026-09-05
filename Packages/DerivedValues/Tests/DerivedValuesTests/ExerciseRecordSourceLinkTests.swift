@@ -26,7 +26,6 @@ struct ExerciseRecordSourceLinkTests {
             of: exerciseID, on: weeksAgo(1), sets: [working(120_000, 5)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)
@@ -57,7 +56,6 @@ struct ExerciseRecordSourceLinkTests {
             of: exerciseID, on: weeksAgo(2), sets: [working(100_000, 5)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         let state = ExerciseRecordsState(exerciseID: exerciseID, recomputer: recomputer)

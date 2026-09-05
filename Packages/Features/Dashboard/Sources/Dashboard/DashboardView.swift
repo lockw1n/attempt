@@ -69,6 +69,9 @@ public struct DashboardView: View {
     /// The settings row: the tile selection (`FR-1.9.1`) and the display unit (`G-3.1`).
     private let settings: any SettingsRepository
 
+    /// Where `FR-15.1.8`'s training max under each tile comes from.
+    private let trainingMaxes: any TrainingMaxRepository
+
     /// Starts a workout holding a past one's exercises. See ``LastWorkoutSection``.
     private let repeatSession: @MainActor (UUID) async -> Bool
 
@@ -92,6 +95,7 @@ public struct DashboardView: View {
     ///   - catalogue: The exercises.
     ///   - workouts: The sessions and what is under them.
     ///   - settings: The settings row.
+    ///   - trainingMaxes: Where `FR-15.1.8`'s training max under each tile is stored.
     ///   - repeatSession: Starts a fresh workout holding a past one's exercises, reporting whether
     ///     one is now in progress.
     public init(
@@ -99,12 +103,14 @@ public struct DashboardView: View {
         catalogue: any ExerciseRepository,
         workouts: any WorkoutRepository,
         settings: any SettingsRepository,
+        trainingMaxes: any TrainingMaxRepository,
         repeatSession: @escaping @MainActor (UUID) async -> Bool
     ) {
         self.records = records
         self.catalogue = catalogue
         self.workouts = workouts
         self.settings = settings
+        self.trainingMaxes = trainingMaxes
         self.repeatSession = repeatSession
         _week = State(initialValue: WeekSummaryState(workouts: workouts))
     }
@@ -138,7 +144,11 @@ public struct DashboardView: View {
             workouts: workouts, catalogue: catalogue, repeatSession: repeatSession)
         WeekSummarySection(state: week, settings: settings)
         RecentRecordsSection(records: records, catalogue: catalogue, settings: settings)
-        EstimatedMaxTilesSection(records: records, catalogue: catalogue, settings: settings)
+        EstimatedMaxTilesSection(
+            records: records,
+            catalogue: catalogue,
+            settings: settings,
+            trainingMaxes: trainingMaxes)
     }
 
     /// `FR-1.13.2`'s guided state, wired to the shell.

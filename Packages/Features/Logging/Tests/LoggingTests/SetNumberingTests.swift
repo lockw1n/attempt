@@ -163,6 +163,160 @@ struct SetNumberingTests {
     }
 }
 
+/// `FR-16.1.1`'s groups carrying `FR-1.2.14`'s numbers.
+@Suite("Numbered set groups")
+struct NumberedSetGroupTests {
+    @Test("A group is numbered by its first set and its last")
+    func aGroupSpansARange() {
+        let sets = (0..<4).map { _ in SetEntry.numbering(isWarmup: false, reps: 6) }
+        let groups = SetNumbering.grouped(SetNumbering.numbered(sets))
+
+        #expect(groups.count == 1)
+        #expect(groups[0].numbers == 1...4)
+        #expect(groups[0].count == 4)
+        #expect(!groups[0].isSingle)
+    }
+
+    @Test("A group of one spans one number")
+    func aLoneSetIsItsOwnRange() {
+        let groups = SetNumbering.grouped(
+            SetNumbering.numbered([SetEntry.numbering(isWarmup: false, reps: 6)]))
+
+        #expect(groups[0].numbers == 1...1)
+        #expect(groups[0].isSingle)
+    }
+
+    @Test("Every number survives the grouping, in order")
+    func theNumbersAreNeitherLostNorReordered() {
+        // Grouping is a partition of the numbered list, so the members read back as `1, 2, 3, 4, 5`
+        // however the runs fall — which is what makes the badge a range rather than a fifth number.
+        let sets = [
+            SetEntry.numbering(isWarmup: false, reps: 6),
+            SetEntry.numbering(isWarmup: false, reps: 6),
+            SetEntry.numbering(isWarmup: false, reps: 3),
+            SetEntry.numbering(isWarmup: false, reps: 6),
+            SetEntry.numbering(isWarmup: false, reps: 6),
+        ]
+
+        let groups = SetNumbering.grouped(SetNumbering.numbered(sets))
+
+        #expect(groups.map(\.count) == [2, 1, 2])
+        #expect(groups.flatMap { $0.members.map(\.number) } == [1, 2, 3, 4, 5])
+        #expect(groups.map(\.numbers) == [1...2, 3...3, 4...5])
+    }
+
+    @Test("The card groups at the displayed grain: a rating, a note or an outcome breaks a run")
+    func theCardBreaksOnEveryFieldARowDraws() {
+        // `FR-16.1.2` is what separates this partition from `FR-15.2.6`'s coarser one, and the two
+        // agree on every field but these three. Without them the grain the card asks for is
+        // unpinned: the load and the reps are compared either way, so a fixture that only ever
+        // breaks on reps would group identically under both.
+        let rating = SetNumbering.grouped(
+            SetNumbering.numbered([
+                SetEntry.numbering(isWarmup: false, reps: 6, rpe: 8),
+                SetEntry.numbering(isWarmup: false, reps: 6, rpe: 9),
+            ]))
+        let note = SetNumbering.grouped(
+            SetNumbering.numbered([
+                SetEntry.numbering(isWarmup: false, reps: 6),
+                SetEntry.numbering(isWarmup: false, reps: 6, notes: "belt on"),
+            ]))
+        let outcome = SetNumbering.grouped(
+            SetNumbering.numbered([
+                SetEntry.numbering(isWarmup: false, reps: 6),
+                SetEntry.numbering(isWarmup: false, reps: 6, isCompleted: false),
+            ]))
+
+        #expect(rating.map(\.count) == [1, 1])
+        #expect(note.map(\.count) == [1, 1])
+        #expect(outcome.map(\.count) == [1, 1])
+        // The negative half: the same pair with nothing varied is one group, so the three above
+        // fail because of the field they vary rather than because nothing ever groups here.
+        #expect(
+            SetNumbering.grouped(
+                SetNumbering.numbered([
+                    SetEntry.numbering(isWarmup: false, reps: 6),
+                    SetEntry.numbering(isWarmup: false, reps: 6),
+                ])
+            ).map(\.count) == [2])
+    }
+
+    @Test("FR-16.1.3: expanding a group yields every member's own row, and collapsing yields none")
+    func everyMemberIsOneTapAway() throws {
+        // The rows a group draws beneath its line are what carries the per-set controls — `SetRow`
+        // is built once per member and takes the marking and editing callbacks unconditionally — so
+        // "nothing a set carries is hidden by grouping" is this list being every member.
+        let sets = (0..<4).map { _ in SetEntry.numbering(isWarmup: false, reps: 6) }
+        let group = try #require(SetNumbering.grouped(SetNumbering.numbered(sets)).first)
+
+        #expect(group.memberRows(isExpanded: false).isEmpty)
+        #expect(group.memberRows(isExpanded: true).map(\.id) == sets.map(\.id))
+        #expect(group.memberRows(isExpanded: true).map(\.number) == [1, 2, 3, 4])
+
+        // A group of one is its own row and folds nothing away, so it opens onto nothing.
+        let lone = try #require(
+            SetNumbering.grouped(
+                SetNumbering.numbered([SetEntry.numbering(isWarmup: false, reps: 6)])
+            ).first)
+        #expect(lone.memberRows(isExpanded: true).isEmpty)
+    }
+
+    @Test("FR-15.3.1: a collapsed group names a target only where every member shares one")
+    func aTargetIsDrawnOnlyWhenTheWholeRunSharesIt() throws {
+        let sets = (0..<3).map { _ in SetEntry.numbering(isWarmup: false, reps: 6) }
+        let group = try #require(SetNumbering.grouped(SetNumbering.numbered(sets)).first)
+        let first = plannedGroup(order: 0)
+        let second = plannedGroup(order: 1)
+
+        #expect(group.sharedTarget { _ in first }?.id == first.id)
+        // Two planned groups can prescribe the same load and reps, so an identical run can straddle
+        // them — and one member's target drawn under all three would name a plan two of them were
+        // not logged against.
+        #expect(group.sharedTarget { $0 == sets[2].id ? second : first } == nil)
+        // Planned for none is shared too, and is the absence rather than a disagreement.
+        #expect(group.sharedTarget { _ in nil } == nil)
+        // Half-planned is a disagreement, not an absence.
+        #expect(group.sharedTarget { $0 == sets[0].id ? first : nil } == nil)
+    }
+
+    /// One prescription, with only its place in the exercise varied.
+    ///
+    /// - Parameter order: Its position among the exercise's planned groups.
+    /// - Returns: The record.
+    private func plannedGroup(order: Int) -> PlannedTargetGroup {
+        PlannedTargetGroup(
+            id: UUID(),
+            createdAt: .distantPast,
+            updatedAt: .distantPast,
+            deletedAt: nil,
+            exerciseEntryID: UUID(),
+            order: order,
+            targetWeight: Weight(grams: 100_000),
+            targetReps: 6,
+            targetSets: 3
+        )
+    }
+
+    @Test("A warmup group is numbered in the warmups' own sequence")
+    func warmupsKeepTheirOwnRange() {
+        // The card partitions before it groups, so a warmup group's range is `W1–2` and the working
+        // group beside it still starts at 1.
+        let numbered = SetNumbering.numbered([
+            SetEntry.numbering(isWarmup: true, reps: 5),
+            SetEntry.numbering(isWarmup: true, reps: 5),
+            SetEntry.numbering(isWarmup: false, reps: 6),
+            SetEntry.numbering(isWarmup: false, reps: 6),
+        ])
+
+        let warmups = SetNumbering.grouped(numbered.filter(\.isWarmup))
+        let working = SetNumbering.grouped(numbered.filter { !$0.isWarmup })
+
+        #expect(warmups.map(\.numbers) == [1...2])
+        #expect(warmups.map(\.isWarmup) == [true])
+        #expect(working.map(\.numbers) == [1...2])
+    }
+}
+
 extension SetEntry {
     /// A set with every field fixed but the three these tests vary.
     ///
@@ -170,26 +324,43 @@ extension SetEntry {
     ///   - isWarmup: Which sequence it belongs to.
     ///   - reps: Something to tell one set from another by, where the id is not convenient.
     ///   - order: The stored position. Zero unless a test is about the gap one leaves.
+    ///   - rpe: The rating, which the card draws and a routine cannot say — so a test that drifts
+    ///     it is asking which grain the card groups at.
+    ///   - notes: `FR-1.2.3`'s note, likewise.
+    ///   - isCompleted: `FR-1.2.5`'s outcome, likewise.
     /// - Returns: The set.
-    fileprivate static func numbering(isWarmup: Bool, reps: Int, order: Int = 0) -> SetEntry {
+    fileprivate static func numbering(
+        isWarmup: Bool,
+        reps: Int,
+        order: Int = 0,
+        rpe: Double? = nil,
+        notes: String = "",
+        isCompleted: Bool = true
+    ) -> SetEntry {
         let stamp = Date(timeIntervalSince1970: 1_700_000_000)
+        // One entry, because a run never crosses a boundary between two — see
+        // `DerivedValues/SetGrouping`. A fresh identifier per set would make every group a group of
+        // one and every grouping test here vacuous; a fixed one is what keeps them meaning
+        // something, and the unvaried pair in `theCardBreaksOnEveryFieldARowDraws` is what would
+        // fail if this stopped resolving.
+        let entry = UUID(uuidString: "0BE10000-0000-4000-8000-00000000E1D1") ?? UUID()
         return SetEntry(
             id: UUID(),
             createdAt: stamp,
             updatedAt: stamp,
             deletedAt: nil,
-            entryID: UUID(),
+            entryID: entry,
             order: order,
             weight: Weight(grams: 100_000),
             reps: reps,
-            rpe: nil,
+            rpe: rpe,
             rir: nil,
             isWarmup: isWarmup,
-            isCompleted: true,
+            isCompleted: isCompleted,
             targetWeight: nil,
             targetReps: nil,
             modifiers: [],
-            notes: "",
+            notes: notes,
             completedAt: nil
         )
     }

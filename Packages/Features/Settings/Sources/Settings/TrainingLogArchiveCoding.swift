@@ -70,11 +70,11 @@ extension TrainingLogArchive {
     /// `RecordCoding.swift` says an absent value is an omitted key, and this reads the sections that
     /// way: absent means the section is empty, which for a file that never carried one is true.
     ///
-    /// **The four routine sections are read the same way, so a version 2 backup decodes here with
-    /// four empty sections** — which is what that file holds. That is what rule 3 buys, and it is
-    /// only ever about reading an older file: it is not the reason
-    /// ``TrainingLogArchive/currentFormatVersion`` moved to 3, which is about the other direction
-    /// and argued there.
+    /// **Every backup-only section is read the same way, so a version 2 backup decodes here with
+    /// four empty sections, a version 3 one with five and a version 4 one with three** — which is
+    /// what those files hold. That is what rule 3 buys, and it is only ever about reading an older
+    /// file: it is not the reason ``TrainingLogArchive/currentFormatVersion`` moved to 3, then 4,
+    /// then 5, which is about the other direction and argued there.
     ///
     /// **``TrainingLogArchive/formatVersion`` is carried as written rather than replaced with the
     /// current one.** It is what `FR-1.11.4`'s restore refuses a future file on, and a reader that
@@ -98,11 +98,18 @@ extension TrainingLogArchive {
                 ?? [],
             trainingMaxes: try container.decodeIfPresent(
                 [TrainingMaxEntry].self, forKey: .trainingMaxes) ?? [],
+            trainingMaxHistory: try container.decodeIfPresent(
+                [TrainingMaxHistoryEntry].self, forKey: .trainingMaxHistory) ?? [],
             routines: try container.decodeIfPresent([Routine].self, forKey: .routines) ?? [],
             routineExercises: try container.decodeIfPresent(
                 [RoutineExercise].self, forKey: .routineExercises) ?? [],
             routineTargetGroups: try container.decodeIfPresent(
                 [RoutineTargetGroup].self, forKey: .routineTargetGroups) ?? [],
+            programs: try container.decodeIfPresent([Program].self, forKey: .programs) ?? [],
+            programDays: try container.decodeIfPresent(
+                [ProgramDay].self, forKey: .programDays) ?? [],
+            programRuns: try container.decodeIfPresent(
+                [ProgramRun].self, forKey: .programRuns) ?? [],
             plannedTargets: try container.decodeIfPresent(
                 [PlannedTargetGroup].self, forKey: .plannedTargets) ?? [],
             settings: try container.decodeIfPresent(UserSettings.self, forKey: .settings))
@@ -156,6 +163,9 @@ extension TrainingLogArchive {
         try container.encode(bodyweight, forKey: .bodyweight)
         if !equipment.isEmpty { try container.encode(equipment, forKey: .equipment) }
         if !trainingMaxes.isEmpty { try container.encode(trainingMaxes, forKey: .trainingMaxes) }
+        if !trainingMaxHistory.isEmpty {
+            try container.encode(trainingMaxHistory, forKey: .trainingMaxHistory)
+        }
         if !routines.isEmpty { try container.encode(routines, forKey: .routines) }
         if !routineExercises.isEmpty {
             try container.encode(routineExercises, forKey: .routineExercises)
@@ -163,6 +173,9 @@ extension TrainingLogArchive {
         if !routineTargetGroups.isEmpty {
             try container.encode(routineTargetGroups, forKey: .routineTargetGroups)
         }
+        if !programs.isEmpty { try container.encode(programs, forKey: .programs) }
+        if !programDays.isEmpty { try container.encode(programDays, forKey: .programDays) }
+        if !programRuns.isEmpty { try container.encode(programRuns, forKey: .programRuns) }
         if !plannedTargets.isEmpty { try container.encode(plannedTargets, forKey: .plannedTargets) }
         try container.encodeIfPresent(settings, forKey: .settings)
     }

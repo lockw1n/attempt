@@ -167,20 +167,29 @@
         /// matches next year.
         static let day = Date(timeIntervalSince1970: 1_700_000_000)
 
-        /// Four tiles: up, first, manual, refused — every variant the pipeline can reach.
+        /// Four tiles: up with a training max under it, first without one, up again, refused *with*
+        /// one — every variant the pipeline can reach.
+        ///
+        /// **`FR-15.1.8`'s pair is the first tile, and the second is what makes it legible.** The
+        /// squat carries both numbers, one under the other and each named by a word; the deadlift
+        /// carries only the estimate, because most exercises have no training max and an absence
+        /// drawn as a zero or a dash is the failure this arrangement is a picture of.
+        ///
+        /// **The row is the fourth tile's whole point: "the training max must not be invisible"
+        /// applies to an exercise the app cannot estimate.** That is not a corner — it is the
+        /// exercise a coach has just handed a number for and the lifter has not trained yet. The
+        /// number sits beneath the insufficient-data view rather than inside it, so the explanation
+        /// stays about the estimate.
         static let tiles: [EstimatedMaxTile] = [
-            tile("Back Squat", kilos: 182.5, previousKilos: 175),
+            tile("Back Squat", kilos: 182.5, previousKilos: 175, trainingMaxKilos: 175),
             tile("Deadlift", kilos: 210, previousKilos: nil),
-            EstimatedMaxTile(
-                exerciseID: id(4),
-                name: "Overhead Press",
-                estimate: EstimatedMax(
-                    manual: Weight(grams: 70_000), formula: .epley, lookback: .default)),
+            tile("Overhead Press", kilos: 72.5, previousKilos: 70, trainingMaxKilos: 67.5),
             EstimatedMaxTile(
                 exerciseID: id(5),
                 name: "Barbell Row",
                 estimate: EstimatedMax(
-                    absence: .refused(.repsOutOfRange), formula: .epley, lookback: .default)),
+                    absence: .refused(.repsOutOfRange), formula: .epley, lookback: .default),
+                trainingMax: Weight(grams: 100_000)),
         ]
 
         /// A week's load: 12,400 kg, enough digits that a grouping separator shows.
@@ -211,7 +220,7 @@
 
         /// One computed tile, with or without something to compare against.
         private static func tile(
-            _ name: String, kilos: Double, previousKilos: Double?
+            _ name: String, kilos: Double, previousKilos: Double?, trainingMaxKilos: Double? = nil
         ) -> EstimatedMaxTile {
             EstimatedMaxTile(
                 exerciseID: id(name.count),
@@ -220,7 +229,8 @@
                     record: record(kilos, daysAgo: 3),
                     previous: previousKilos.map { record($0, daysAgo: 20) },
                     formula: .epley,
-                    lookback: .default))
+                    lookback: .default),
+                trainingMax: trainingMaxKilos.map { Weight(grams: Int($0 * 1000)) })
         }
 
         /// One dated record.

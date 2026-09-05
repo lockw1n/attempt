@@ -6,11 +6,13 @@ import PowerliftingCore
 /// One entry in the history `FR-1.5.1.4` keeps, not a mutable setting: a change appends a row, and
 /// a lookup reads the latest row effective on or before the date it asks about.
 ///
-/// **The payload columns are not paired with ``source`` by anything.** A `.manual` entry with no
-/// ``manualWeight``, or a `.percentOfRepMax` one with no ``sourceRepCount``, is representable and
-/// is what a defaulted foreign row looks like — the schema's default source is `.manual` precisely
-/// so such a row fails visibly instead of quietly resolving to 90% of the user's e1RM. It is
-/// returned intact here and refuses when something asks to interpret it (T-0.41).
+/// **The number itself is not here.** A manual training max is a ``TrainingMaxHistoryEntry``, and
+/// this record says only that the source *is* manual — a value stored beside the history is a value
+/// that can disagree with it (`G-1.4`). ``configuration(manualWeight:)`` is handed the one in force.
+///
+/// **The remaining payload column is not paired with ``source`` by anything.** A `.percentOfRepMax`
+/// entry with no ``sourceRepCount`` is representable and is what a defaulted foreign row looks like;
+/// it is returned intact here and refuses when something asks to interpret it.
 ///
 /// **``percentage`` and the two rounding properties are written whatever the source, and their
 /// values disclose nothing.** A manual training max is the weight the user entered with neither
@@ -39,9 +41,6 @@ public struct TrainingMaxEntry: StoredRecord {
     /// The N of a "% of best N-rep max" source, or `nil` for the other two. Within 1…10 when the
     /// source is `.percentOfRepMax`; unchecked here.
     public let sourceRepCount: Int?
-
-    /// The training max as entered, for a manual source and `nil` otherwise.
-    public let manualWeight: Weight?
 
     /// The fraction of the source weight to take, as a **ratio**: `0.9` is 90%, not `90`.
     ///
@@ -75,7 +74,6 @@ public struct TrainingMaxEntry: StoredRecord {
         exerciseID: UUID,
         source: TrainingMaxSourceKind,
         sourceRepCount: Int?,
-        manualWeight: Weight?,
         percentage: Double,
         roundingIncrement: Weight,
         roundingStrategy: RoundingStrategy,
@@ -89,7 +87,6 @@ public struct TrainingMaxEntry: StoredRecord {
         self.exerciseID = exerciseID
         self.source = source
         self.sourceRepCount = sourceRepCount
-        self.manualWeight = manualWeight
         self.percentage = percentage
         self.roundingIncrement = roundingIncrement
         self.roundingStrategy = roundingStrategy
@@ -110,7 +107,6 @@ extension TrainingMaxEntry {
         case exerciseID
         case source
         case sourceRepCount
-        case manualWeight
         case percentage
         case roundingIncrement
         case roundingStrategy
@@ -120,9 +116,9 @@ extension TrainingMaxEntry {
 
     /// Decodes the keyed shape on ``CodingKeys``.
     ///
-    /// ``source`` and ``roundingStrategy`` resolve rather than throw, and the payload columns are
-    /// not checked against ``source`` — a `.manual` entry with no ``manualWeight`` decodes, and
-    /// refuses at ``TrainingMaxEntry/configuration()``.
+    /// ``source`` and ``roundingStrategy`` resolve rather than throw, and ``sourceRepCount`` is not
+    /// checked against ``source`` — a `.percentOfRepMax` entry with none decodes, and refuses at
+    /// ``TrainingMaxEntry/configuration(manualWeight:)``.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
@@ -134,7 +130,6 @@ extension TrainingMaxEntry {
             source: try container.decodeVocabulary(
                 TrainingMaxSourceKind.self, forKey: .source, or: RecordVocabulary.trainingMaxSource),
             sourceRepCount: try container.decodeIfPresent(Int.self, forKey: .sourceRepCount),
-            manualWeight: try container.decodeIfPresent(Weight.self, forKey: .manualWeight),
             percentage: try container.decode(Double.self, forKey: .percentage),
             roundingIncrement: try container.decode(Weight.self, forKey: .roundingIncrement),
             roundingStrategy: try container.decodeVocabulary(
@@ -144,7 +139,7 @@ extension TrainingMaxEntry {
         )
     }
 
-    /// Writes the thirteen keys in declaration order.
+    /// Writes the twelve keys in declaration order.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -154,7 +149,6 @@ extension TrainingMaxEntry {
         try container.encode(exerciseID, forKey: .exerciseID)
         try container.encodeVocabulary(source, forKey: .source)
         try container.encodeIfPresent(sourceRepCount, forKey: .sourceRepCount)
-        try container.encodeIfPresent(manualWeight, forKey: .manualWeight)
         try container.encode(percentage, forKey: .percentage)
         try container.encode(roundingIncrement, forKey: .roundingIncrement)
         try container.encodeVocabulary(roundingStrategy, forKey: .roundingStrategy)

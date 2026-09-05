@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -106,6 +107,47 @@ struct SessionAsRoutineTests {
         #expect(plan.slots.allSatisfy { $0.groups.isEmpty })
     }
 
+    @Test("The routine's groups are the display grouping, coarsened rather than recomputed")
+    func theTwoGroupingsAgree() {
+        // `FR-16.1.1` and `FR-15.2.6` read the same runs at two grains, and this is the claim that
+        // there is one rule behind both: over a workout holding a warmup, a failure and a rating
+        // that drifts, the targets are exactly the load-and-reps grouping of the sets a routine
+        // keeps. A second walk anywhere would show up here — and so would the display grain, which
+        // would split the three kept sets into three targets on the ratings alone.
+        // The ratings drift across the run on purpose: they are the field the two grains disagree
+        // about, so without them the assertion below holds whichever grain the conversion asks for
+        // — which is a test that cannot fail at the one thing it exists to check.
+        let sets = [
+            set(order: 0, grams: 60_000, reps: 5, isWarmup: true),
+            set(order: 1, grams: 100_000, reps: 5, rpe: 7),
+            set(order: 2, grams: 100_000, reps: 5, rpe: 8),
+            set(order: 3, grams: 100_000, reps: 5, isCompleted: false, rpe: 10),
+            set(order: 4, grams: 100_000, reps: 5, rpe: 9),
+            set(order: 5, grams: 90_000, reps: 8, rpe: 9),
+        ]
+
+        let expected =
+            SetGrouping
+            .groups(sets.filter { !$0.isWarmup && $0.isCompleted }, at: .loadAndReps)
+            .map { SessionAsRoutine.Target(weight: $0.weight, reps: $0.reps, sets: $0.count) }
+
+        #expect(SessionAsRoutine.targets(from: sets) == expected)
+        // Anchored against the literal as well, so the assertion cannot pass by both sides being
+        // wrong in the same way — the shape a comparison of two reads has otherwise.
+        #expect(
+            SessionAsRoutine.targets(from: sets) == [
+                SessionAsRoutine.Target(weight: Weight(grams: 100_000), reps: 5, sets: 3),
+                SessionAsRoutine.Target(weight: Weight(grams: 90_000), reps: 8, sets: 1),
+            ])
+    }
+
+    /// The entry every set here belongs to.
+    ///
+    /// One of them, because a run never crosses a boundary between two — see
+    /// `DerivedValues/SetGrouping`. A fresh identifier per set would make every target a group of
+    /// one and every assertion in this suite vacuous.
+    private let entryID = UUID()
+
     /// One logged set, with only the fields this conversion reads spelled out.
     ///
     /// - Parameters:
@@ -114,20 +156,27 @@ struct SessionAsRoutineTests {
     ///   - reps: The repetitions.
     ///   - isWarmup: Whether it was a ramp.
     ///   - isCompleted: Whether it was performed.
+    ///   - rpe: The rating, which a routine has nowhere to put — so a test that drifts it is
+    ///     asking whether the coarser grain is the one being used.
     /// - Returns: The set.
     private func set(
-        order: Int, grams: Int, reps: Int, isWarmup: Bool = false, isCompleted: Bool = true
+        order: Int,
+        grams: Int,
+        reps: Int,
+        isWarmup: Bool = false,
+        isCompleted: Bool = true,
+        rpe: Double? = nil
     ) -> SetEntry {
         SetEntry(
             id: UUID(),
             createdAt: .distantPast,
             updatedAt: .distantPast,
             deletedAt: nil,
-            entryID: UUID(),
+            entryID: entryID,
             order: order,
             weight: Weight(grams: grams),
             reps: reps,
-            rpe: nil,
+            rpe: rpe,
             rir: nil,
             isWarmup: isWarmup,
             isCompleted: isCompleted,

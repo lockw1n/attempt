@@ -7,12 +7,20 @@ import PowerliftingCore
 import RepositoryInterface
 import SwiftUI
 
-/// Which of the feed's four states is current (`FR-1.13.1`, `FR-1.13.3`).
+/// Which of the feed's five states is current (`FR-1.13.1`, `FR-1.13.3`).
 ///
-/// **Four, and there is no empty and no offline one.** The records are computed from local rows, so
+/// **Five, and there is no empty and no offline one.** The records are computed from local rows, so
 /// there is no fetch to be offline for; and a feed with nothing in it is `FR-1.13.3`'s
-/// insufficient-data case rather than an emptied list — nothing was filtered away, the sets that
-/// would produce a record have not been logged.
+/// insufficient-data case rather than an emptied list.
+///
+/// **The fifth is the one `FR-16.3.4` added, and it is a different sentence rather than a
+/// decoration on the fourth.** Under `FR-16.3`'s defaults the feed reports on the dashboard lifts
+/// alone and hides baselines, so an empty one no longer means "nothing has produced a record" — it
+/// usually means the records are somewhere the configuration excludes, and saying "log a working
+/// set" to a lifter who has logged four hundred of them is wrong. What separates the two is
+/// whether anything was narrowed at all — the scope, the baseline flag or a chosen scheme list,
+/// any one of which can empty the feed on its own — so `nothingYet` is reachable only at the
+/// widest setting, where it really is a log with no records in it.
 ///
 /// **Nor is there the pair the per-exercise list has.** That screen tells "nothing logged against
 /// this exercise" from "logged, but nothing that counts" by counting the exercise's sets; globally
@@ -24,6 +32,10 @@ enum RecentRecordsScreenState: Equatable {
 
     /// It answered, and no set this build counts has produced a record.
     case nothingYet
+
+    /// It answered, nothing survived a configuration narrower than the widest, and relaxing it is
+    /// the offer (`FR-16.3.4`).
+    case nothingInScope
 
     /// There are records to show.
     case ready
@@ -42,14 +54,15 @@ enum RecentRecordsScreenState: Equatable {
     static func current(_ state: RecentRecordsState) -> Self {
         if state.failure != nil { return .failed }
         guard state.hasLoaded else { return .loading }
-        return state.records.isEmpty ? .nothingYet : .ready
+        guard state.records.isEmpty else { return .ready }
+        return state.isNarrowed ? .nothingInScope : .nothingYet
     }
 }
 
 /// `FR-1.6.5`'s global feed of recent personal records, across every exercise.
 ///
 /// **A read of the cache and never a recompute** — see
-/// ``DerivedValues/PersonalRecordRecomputer/recentRecords(limit:)``, which is where the reason it
+/// ``DerivedValues/PersonalRecordRecomputer/recentRecords(limit:filter:)``, which is where the reason it
 /// may not walk the catalogue is written.
 ///
 /// **It subscribes as well as reads** (`TR-1.5`), so a set logged in another tab appears here
@@ -62,21 +75,12 @@ struct RecentRecordsFeed: View {
     /// before its read.
     @Environment(\.locale) private var locale
 
-    /// The unit the loads are shown in (`G-3.1`).
-    ///
-    /// The screen's own read, and kilograms until it lands — a record reads no setting, which is
-    /// what lets `TR-0.3.9` cache it, so the unit is not the state's to carry.
-    @State private var unit: MassUnit = .kilograms
-
-    /// Where the display unit comes from.
-    private let settings: any SettingsRepository
-
     /// Builds the feed.
     ///
     /// - Parameters:
     ///   - records: The app's one recompute actor (`TR-1.6`).
     ///   - catalogue: The exercises, for the name on each entry.
-    ///   - settings: The settings row, for the unit the loads are shown in.
+    ///   - settings: The settings row — `FR-16.3`'s configuration and `G-3.1`'s unit.
     ///   - limit: How many entries to draw.
     init(
         records: PersonalRecordRecomputer,
@@ -84,13 +88,18 @@ struct RecentRecordsFeed: View {
         settings: any SettingsRepository,
         limit: Int
     ) {
-        self.settings = settings
         _state = State(
             initialValue: RecentRecordsState(
-                recomputer: records, catalogue: catalogue, limit: limit))
+                recomputer: records,
+                catalogue: catalogue,
+                settings: settings,
+                limit: limit,
+                // FR-16.3.1's default scope is FR-1.9.1's selection, and where the lifter has made
+                // none it is this module's rule that says which three lifts those are.
+                defaultDashboardExerciseIDs: DashboardDefaults.exerciseIDs(in:)))
     }
 
-    /// Whichever of the four states is current.
+    /// Whichever of the five states is current.
     ///
     /// Two tasks, because they have different lifetimes: the first is a read that finishes, the
     /// second runs until the screen goes away.
@@ -99,7 +108,6 @@ struct RecentRecordsFeed: View {
             .task {
                 state.nameLanguage = ExerciseNameLanguage(locale)
                 await state.load()
-                if let stored = try? await settings.settings().displayUnit { unit = stored }
             }
             .task { await state.observeChanges() }
     }
@@ -111,6 +119,15 @@ struct RecentRecordsFeed: View {
             LoadingStateView()
         case .nothingYet:
             InsufficientDataView(message: Text(DashboardStrings.recentRecordsNone))
+        case .nothingInScope:
+            // FR-16.3.4's offer, and a button rather than a sentence pointing at Settings: the
+            // remedy is a setting, so making the reader go and find it is the dead end the
+            // requirement is written against.
+            InsufficientDataView(
+                message: Text(DashboardStrings.recentRecordsNoneInScope),
+                action: StateAction(Text(DashboardStrings.recentRecordsShowEverything)) {
+                    Task { await state.showEverything() }
+                })
         case .failed:
             ErrorStateView(
                 message: Text(DashboardStrings.recentRecordsError),
@@ -121,14 +138,15 @@ struct RecentRecordsFeed: View {
                 RecentRecordRow(
                     record: record,
                     exerciseName: state.exerciseNames[record.exerciseID],
-                    unit: unit
+                    unit: state.displayUnit
                 )
             }
         }
     }
 }
 
-/// One PR-setting set: the exercise, what it was the record for, the load, and when (`FR-1.6.5`).
+/// One PR-setting run: the exercise, the scheme, the set behind it, the delta and the day
+/// (`FR-1.6.5`, `FR-16.3.3`).
 ///
 /// **The whole row links to the exercise's detail, not to the source set** — which is where this
 /// row differs from `FR-1.6.2`'s, and it is a decision rather than an omission. Locating a set
@@ -180,7 +198,8 @@ struct RecentRecordRow: View {
         .accessibilityHint(Text(DashboardStrings.recentRecordsExerciseHint))
     }
 
-    /// What the row says: the exercise, then what it is the record for, the load and the day.
+    /// What the row says: the exercise, then `FR-16.3.3`'s four — the scheme, the set that produced
+    /// it, how far the load moved, and the day.
     private var reading: some View {
         VStack(alignment: .leading, spacing: Spacing.xxs.points) {
             if let exerciseName {
@@ -188,21 +207,10 @@ struct RecentRecordRow: View {
                     .font(Typography.cardTitle.font)
                     .foregroundStyle(ColorToken.textPrimary)
             }
-            layout {
-                Text(label)
-                    .font(Typography.metricLabel.font)
-                    .foregroundStyle(ColorToken.textSecondary)
-                Spacer(minLength: Spacing.sm.points)
-                Text(
-                    record.weight,
-                    format: AppFormat.weight(
-                        WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale)
-                )
-                .font(Typography.numericValue.font)
-                .foregroundStyle(ColorToken.textPrimary)
-                Text(record.achievedAt, format: AppFormat.date(locale: locale))
-                    .font(Typography.caption.font)
-                    .foregroundStyle(ColorToken.textTertiary)
+            if dynamicTypeSize.isAccessibilitySize {
+                stacked
+            } else {
+                paired
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -210,21 +218,101 @@ struct RecentRecordRow: View {
         .contentShape(.rect)
     }
 
-    /// What this entry is the record for — one N, or the span a single set took in one go.
-    private var label: LocalizedStringResource {
-        record.reps.lowerBound == record.reps.upperBound
-            ? DashboardStrings.recentRecordsRepMax(record.reps.lowerBound)
-            : DashboardStrings.recentRecordsRepMaxRange(
-                record.reps.lowerBound, record.reps.upperBound)
+    /// `FR-16.3.3`'s four as two lines: what was lifted and how far it moved, then what record that
+    /// is and when.
+    ///
+    /// **Two lines rather than one, because four readings do not fit on one at the *default* size.**
+    /// `ExerciseRecordRow`'s single line carries three and this row carries four; measured at 320
+    /// points, the fourth breaks the load from its rep count and the date from its year — a wrap
+    /// mid-number, which is the failure `SchemeGrid`'s `.fixedSize` exists to prevent one screen
+    /// over. Neither layout priorities nor a `Spacer` fix it: the content is wider than the row.
+    ///
+    /// **The pairing is what the reader compares.** The delta belongs beside the load it moved, and
+    /// the date beside the record it dates; splitting them the other way puts a number next to a
+    /// number it says nothing about.
+    private var paired: some View {
+        VStack(alignment: .leading, spacing: Spacing.xxs.points) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.sm.points) {
+                loadReading
+                movement
+                Spacer(minLength: 0)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.sm.points) {
+                schemeLabel
+                Spacer(minLength: Spacing.sm.points)
+                dateReading
+            }
+        }
     }
 
-    /// The line, or the stack — `ExerciseRecordRow`'s measured switch, for its reason: at
-    /// `accessibility3` a date pushed to the trailing edge takes the width the load needs.
-    private var layout: AnyLayout {
-        dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Spacing.xxs.points))
-            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Spacing.sm.points))
+    /// The same four stacked, one per line — `NFR-1.10`'s largest sizes, where even a pair is wider
+    /// than the row.
+    private var stacked: some View {
+        VStack(alignment: .leading, spacing: Spacing.xxs.points) {
+            schemeLabel
+            loadReading
+            movement
+            dateReading
+        }
     }
+
+    /// What this entry is the record for — `8RM`, `5 × 5`.
+    private var schemeLabel: some View {
+        Text(label)
+            .font(Typography.metricLabel.font)
+            .foregroundStyle(ColorToken.textSecondary)
+    }
+
+    /// The set or run that produced it.
+    private var loadReading: some View {
+        Text(sourceGroup)
+            .font(Typography.numericValue.font)
+            .foregroundStyle(ColorToken.textPrimary)
+    }
+
+    /// The day it was set.
+    private var dateReading: some View {
+        Text(record.achievedAt, format: AppFormat.date(locale: locale))
+            .font(Typography.caption.font)
+            .foregroundStyle(ColorToken.textTertiary)
+    }
+
+    /// How far the load moved, or the word that stands where it would (`FR-16.3.3`, `FR-16.3.4`).
+    ///
+    /// **An increase or nothing.** A cell only moves on a strict improvement, so
+    /// ``DerivedValues/RecentRecord/delta`` is positive wherever it is not `nil` — the indicator's
+    /// other two directions are unreachable here, and the arrow and the sign are what carry that
+    /// without colour (`G-4.5`).
+    @ViewBuilder private var movement: some View {
+        if let delta = record.delta {
+            DeltaIndicator(.increase, value: weightStyle.format(delta))
+        } else {
+            Text(DashboardStrings.recentRecordsBaseline)
+                .font(Typography.metricContext.font)
+                .foregroundStyle(ColorToken.textSecondary)
+        }
+    }
+
+    /// What this entry is the record for — see ``RecentRecord/feedLabel``.
+    private var label: LocalizedStringResource { record.feedLabel }
+
+    /// The set or run that produced it — see ``RecentRecord/sourceReading(load:reps:sets:)``.
+    ///
+    /// The numbers are rendered here and the choice between the two readings is not, on ``label``'s
+    /// rule: what the row owns is the locale its formatters run in (`G-3.4`).
+    private var sourceGroup: LocalizedStringResource {
+        record.sourceReading(
+            load: weightStyle.format(record.weight),
+            reps: record.scheme.reps.formatted(AppFormat.count(locale: locale)),
+            sets: record.scheme.sets.formatted(AppFormat.count(locale: locale))
+        )
+    }
+
+    /// The one weight formatter this row uses, so the load and the delta are rendered alike.
+    private var weightStyle: WeightStyle {
+        AppFormat.weight(WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale)
+    }
+
 }
 
 /// The full recent-PR list, behind the dashboard's card (`FR-1.6.5`, `DashboardRoute`).
@@ -334,5 +422,51 @@ public struct RecentRecordsSection: View {
             }
             .buttonStyle(.plain)
         }
+    }
+}
+
+extension RecentRecord {
+    /// What one feed row is the record for — the top N it took at a single set, or the scheme itself
+    /// where the run set no rep max at all (`FR-1.6.5`, `FR-16.2.1`).
+    ///
+    /// **Two cases, where there were three.** The span a set took in one go is not a third label: a
+    /// set of eight that beat every N up to eight is an **8RM**, and the seven records below it are
+    /// the dominance rule rather than the achievement — see
+    /// ``Dashboard/DashboardStrings/recentRecordsRepMax(_:)``, where "1–8-rep max" is retired.
+    ///
+    /// **The scheme case is not a widening of the rep-max one.** A rep max is a claim about a single
+    /// set, and a run whose records all stand at two sets and up — a `100 × 5 × 5` performed after a
+    /// heavier set of five — set none; labelling it with an N would name records the lifter's own
+    /// history contradicts, at a lighter load than the one that holds them.
+    ///
+    /// **Off the `View` deliberately.** The choice between the two sentences is the claim worth
+    /// testing, and a claim that lives inside a `View` body can only be closed by a picture.
+    var feedLabel: LocalizedStringResource {
+        guard let reps = repMaxReps else {
+            return DashboardStrings.recentRecordsScheme(scheme.reps, scheme.sets)
+        }
+        return DashboardStrings.recentRecordsRepMax(reps.upperBound)
+    }
+
+    /// The set or run that produced it — `145 kg × 8`, `100 kg × 5 × 5` (`FR-16.3.3`).
+    ///
+    /// **Off the `View` for ``feedLabel``'s reason.** Which of the two readings a row gets is
+    /// decided by the record's set count alone, and a claim that lives inside a `View` body can only
+    /// be closed by a picture.
+    ///
+    /// **The record's own scheme, which is the run's shape clamped to the table's bounds.** The
+    /// cache stores a cell rather than a performance, so a set taken to twelve reps reads `× 10`
+    /// here: what the row states is the record it set, and the twelve-rep set is one tap away on the
+    /// exercise's own screen.
+    ///
+    /// - Parameters:
+    ///   - load: The record load, formatted for the row's locale.
+    ///   - reps: Its repetitions, likewise.
+    ///   - sets: How many consecutive sets, likewise — unused where the record stands at one.
+    /// - Returns: The reading.
+    func sourceReading(load: String, reps: String, sets: String) -> LocalizedStringResource {
+        scheme.sets > 1
+            ? DashboardStrings.recentRecordsRun(load, reps, sets)
+            : DashboardStrings.recentRecordsSet(load, reps)
     }
 }

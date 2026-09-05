@@ -19,6 +19,20 @@ struct ExerciseLibraryStringsTests {
         }
     }
 
+    /// `FR-16.2.4`'s table copy. The cell label is the one that has to be asserted rather than
+    /// merely resolved: the cell draws neither of its headings, so `G-4.2`'s reading is the only
+    /// place its scheme is spoken at all, and "by" rather than "×" is the whole point of it.
+    @Test("The table's headings, its notation and the cell VoiceOver reads")
+    func theSchemeTableCopyReads() {
+        #expect(String(localized: ExerciseLibraryStrings.recordsRepsHeader) == "reps")
+        #expect(String(localized: ExerciseLibraryStrings.recordsSetColumn(5)) == "× 5")
+        #expect(String(localized: ExerciseLibraryStrings.recordsScheme(5, 5)) == "5 × 5")
+        #expect(
+            String(
+                localized: ExerciseLibraryStrings.recordsCellLabel(
+                    reps: 5, sets: 5, load: "100 kg", date: "1 May")) == "5 by 5, 100 kg, 1 May")
+    }
+
     @Test("The catalogue is this module's, not the app's")
     func copyComesFromTheModuleBundle() {
         #expect(Bundle.module.localizations.sorted() == ["en", "uk"])
@@ -43,16 +57,38 @@ struct ExerciseLibraryStringsTests {
 
     @Test("The catalogue and the accessors name exactly the same keys")
     func catalogueAndAccessorsAgree() throws {
+        // Two files, one catalogue, on `LoggingStrings`' shape: `FR-16.1.1`'s set count is a plural,
+        // which only the `.stringsdict` can express, and a key in one file must not also be in the
+        // other.
+        let strings = try Self.keys(inCatalogueNamed: "strings")
+        let plurals = try Self.keys(inCatalogueNamed: "stringsdict")
+        #expect(strings.isDisjoint(with: plurals))
+        #expect(strings.union(plurals) == Set(ExerciseLibraryStrings.all.map(\.key)))
+        #expect(!strings.isEmpty)
+        #expect(!plurals.isEmpty)
+    }
+
+    @Test("A history row's set count pluralises, which a .strings format could not")
+    func theSetCountPluralises() {
+        // The reason this module gained a `.stringsdict`. A run of two would otherwise read
+        // "2 set", and the numeral is the one the noun agrees with (`G-3.4`).
+        #expect(String(localized: ExerciseLibraryStrings.historySets(2)) == "2 sets")
+        #expect(String(localized: ExerciseLibraryStrings.historySets(1)) == "1 set")
+    }
+
+    /// Every key in one of this module's two catalogue files.
+    ///
+    /// - Parameter ext: `strings` or `stringsdict`.
+    /// - Returns: The keys it declares.
+    private static func keys(inCatalogueNamed ext: String) throws -> Set<String> {
         let url = try #require(
             Bundle.module.url(
                 forResource: "Localizable",
-                withExtension: "strings",
+                withExtension: ext,
                 subdirectory: nil,
                 localization: "en"
             ))
-        let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
-        #expect(Set(catalogue.keys) == Set(ExerciseLibraryStrings.all.map(\.key)))
-        #expect(!catalogue.isEmpty)
+        return Set(try #require(NSDictionary(contentsOf: url) as? [String: Any]).keys)
     }
 
     @Test("Keys follow the convention: lowercase, dotted, module-prefixed")

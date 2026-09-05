@@ -84,7 +84,9 @@ extension WorkoutSessionEntity: RecordMappable {
             notes: notes,
             bodyweight: bodyweightGrams.map(Weight.init(grams:)),
             programRunID: programRunID,
-            scheduledWorkoutID: scheduledWorkoutID
+            scheduledWorkoutID: scheduledWorkoutID,
+            weekNumber: weekNumber,
+            dayIndex: dayIndex
         )
     }
 
@@ -99,6 +101,8 @@ extension WorkoutSessionEntity: RecordMappable {
             bodyweightGrams: record.bodyweight?.grams,
             programRunID: record.programRunID,
             scheduledWorkoutID: record.scheduledWorkoutID,
+            weekNumber: record.weekNumber,
+            dayIndex: record.dayIndex,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt
         )
@@ -113,6 +117,8 @@ extension WorkoutSessionEntity: RecordMappable {
         bodyweightGrams = record.bodyweight?.grams
         programRunID = record.programRunID
         scheduledWorkoutID = record.scheduledWorkoutID
+        weekNumber = record.weekNumber
+        dayIndex = record.dayIndex
     }
 }
 

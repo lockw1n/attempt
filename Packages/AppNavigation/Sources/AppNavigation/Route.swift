@@ -93,6 +93,17 @@ public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
     /// of truth for it (`G-1.4`).
     case exerciseDetail(exerciseID: UUID)
 
+    /// One exercise's whole record table, by scheme (`FR-16.2.4`).
+    ///
+    /// **A screen of its own rather than a taller section on ``exerciseDetail(exerciseID:)``**: the
+    /// table is up to ten rep counts by six set counts, which is more than a section on a screen
+    /// that already carries facts, history, records and an estimate can hold — the detail keeps the
+    /// diagonal and the rep-max row, which is what a lifter reads at a glance, and this is where the
+    /// rest of the cells live.
+    ///
+    /// Carries the identifier and not the records, for ``exerciseDetail(exerciseID:)``'s reason.
+    case exerciseRecords(exerciseID: UUID)
+
     /// The form that authors a new custom exercise (`FR-1.1.3`).
     ///
     /// **A case of its own rather than ``exerciseEdit(exerciseID:)`` with no identifier.** An
@@ -168,6 +179,29 @@ public enum RoutinesRoute: Hashable, Sendable, Codable {
     /// have no case at all: this screen writes nothing until the lifter saves, so a restored stack
     /// opens it on what the store holds rather than on what was half-typed in another session.
     case routineEdit(routineID: UUID)
+
+    /// Every program the lifter has authored (`FR-16.8.1`).
+    ///
+    /// **Under routines rather than under a namespace of its own**, and the reason is what a
+    /// program *is*: an ordered list of routines. It is reached from the routine list, which is
+    /// reached from Train — so the two screens share an area, an entry point and a repository
+    /// pairing, and a third sub-enum would only make `Route`'s own switch longer.
+    ///
+    /// Pushed onto Train's stack, for ``routineList``'s reason.
+    case programList
+
+    /// The editor over one program: its name, its note, and the days it is made of (`FR-16.8.1`).
+    ///
+    /// **No `programCreate` beside it**, which is where this parts company with
+    /// ``routineCreate``/``routineEdit(routineID:)``. A routine is authored in the editor from
+    /// nothing, so the editor genuinely has two modes; a program is a *name* and then a list of
+    /// days, so the list writes the row from a one-field prompt — the shape `FR-15.2.5`'s rename
+    /// already uses — and this screen only ever opens on a program that exists. One case, one
+    /// screen, and the inventory keys off the case.
+    ///
+    /// Carries the identifier and not the record, for
+    /// ``ExerciseLibraryRoute/exerciseDetail(exerciseID:)``'s reason.
+    case programEdit(programID: UUID)
 }
 
 /// Destinations pushed from history (`FR-1.5`).
@@ -275,4 +309,18 @@ public enum SettingsRoute: Hashable, Sendable, Codable {
     /// confirmation over a file they chose in another session — possibly one they have since
     /// replaced. A restored stack opens this screen with nothing chosen, the same as a fresh push.
     case restore
+
+    /// What the recent-PR feed reports on — the lifts, the schemes and whether baselines show
+    /// (`FR-16.3.1`, `FR-16.3.2`, `FR-16.3.4`).
+    ///
+    /// **A Settings route over a screen the dashboard module owns**, which is
+    /// ``equipmentProfiles``' join in the other direction: the screen configures `FR-1.6.5`'s feed
+    /// and reuses that module's picker row and its default-lifts rule, `TR-1.3` keeps the two
+    /// feature modules apart, and the app target composes them.
+    ///
+    /// **Pushed rather than presented**, on ``DashboardRoute/estimatedMaxExercises``' rule: every
+    /// control here is written straight through, so the screen holds no unsaved draft and is a place
+    /// the app can legitimately be restored to. It carries no selection for the same reason that one
+    /// does — what is configured is a stored row, not a parameter of a push.
+    case recentRecords
 }

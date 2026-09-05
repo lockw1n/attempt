@@ -31,6 +31,9 @@ struct AppDependencies {
         /// The exercise catalogue (`FR-1.1`).
         let exercises: any ExerciseRepository
 
+        /// Each exercise's training-max configuration and history (`FR-16.7`, `TR-16.3`).
+        let trainingMaxes: any TrainingMaxRepository
+
         /// Sessions, the exercises in them, their sets (`FR-1.2`) — and what a routine planned for
         /// those slots (`FR-15.2.4`).
         ///
@@ -51,6 +54,9 @@ struct AppDependencies {
 
         /// Routines, their exercise slots and their target groups (`FR-15.2`).
         let routines: any RoutineRepository
+
+        /// Programs, their days and the runs through them (`TR-16.2`, `FR-16.8`).
+        let programs: any ProgramRepository
     }
 
     /// The app-lifetime stores (`TR-1.2`), built over the repositories beside them.
@@ -150,23 +156,26 @@ struct AppDependencies {
             let stack = try PersistenceStack(location: location, sync: syncMode)
             let records = PersonalRecordRecomputer(
                 workouts: stack.workouts,
-                exercises: stack.exercises,
                 cache: stack.personalRecords)
             state = .open(
                 Repositories(
                     settings: stack.settings,
                     exercises: stack.exercises,
+                    trainingMaxes: stack.trainingMaxes,
                     workouts: stack.workouts,
                     bodyweight: stack.bodyweight,
                     equipment: stack.equipment,
-                    routines: stack.routines
+                    routines: stack.routines,
+                    programs: stack.programs
                 ),
                 Stores(
                     activeSession: ActiveSessionStore(
                         repository: stack.workouts,
                         catalogue: stack.exercises,
                         settings: stack.settings,
-                        records: records
+                        records: records,
+                        trainingMaxes: stack.trainingMaxes,
+                        programs: stack.programs
                     ),
                     records: records,
                     screenWake: ScreenWakePreference(),

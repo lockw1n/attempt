@@ -42,6 +42,12 @@ public struct PastSessionView: View {
     /// condition already met — see ``SessionExerciseList/defaultWarmupExpansion(for:)``.
     @State private var warmupExpansion: [UUID: Bool] = [:]
 
+    /// Which set groups the user has opened (`FR-16.1.3`), keyed on the group — which is its first
+    /// set's id.
+    ///
+    /// Collapsed by default, on ``SessionExerciseList/groupExpansion``'s rule and for its reason.
+    @State private var groupExpansion: Set<UUID> = []
+
     /// Which set the editor is open over, or `nil` (`FR-1.2.7`).
     ///
     /// The screen's, and it carries no route, on `ActiveSessionView`'s argument: a half-corrected
@@ -79,6 +85,7 @@ public struct PastSessionView: View {
     ///   - records: The app's one recompute actor (`TR-1.6`) — an edit here moves a personal record
     ///     as much as one made during the workout does.
     ///   - routines: Where `FR-15.2.6`'s routine is written.
+    ///   - trainingMaxes: Where `FR-16.7.1`'s training max is stored, read at this session's day.
     public init(
         sessionID: UUID,
         workouts: any WorkoutRepository,
@@ -87,7 +94,8 @@ public struct PastSessionView: View {
         vocabulary: SetModifierVocabulary,
         equipment: PlateCalculatorStore,
         records: PersonalRecordRecomputer,
-        routines: any RoutineRepository
+        routines: any RoutineRepository,
+        trainingMaxes: any TrainingMaxRepository
     ) {
         _state = State(
             initialValue: PastSessionState(
@@ -96,7 +104,8 @@ public struct PastSessionView: View {
                 catalogue: catalogue,
                 settings: settings,
                 records: records,
-                routines: routines))
+                routines: routines,
+                trainingMaxes: trainingMaxes))
         self.vocabulary = vocabulary
         self.equipment = equipment
     }
@@ -188,8 +197,10 @@ public struct PastSessionView: View {
         }
     }
 
-    /// A session that resolved: `FR-1.2.9`'s note, then its exercises.
+    /// A session that resolved: which week and day of a program it was, `FR-1.2.9`'s note, then
+    /// its exercises.
     @ViewBuilder private var loaded: some View {
+        programPosition
         SessionNotesSection(
             draft: $noteDraft,
             hasFailed: state.noteWriteFailure != nil,
@@ -200,6 +211,22 @@ public struct PastSessionView: View {
         .onChange(of: noteDraft.text) { state.noteWriteFailure = nil }
         exercises
         saveAsRoutineSection
+    }
+
+    /// Which week and day of a program this session was started from (`FR-16.8.3`, `DOD-16.1`).
+    ///
+    /// **Read off the session's own columns, which is the whole point of them**: before they
+    /// existed a lifter following a plan had to type "W2D1" into the note, and that prose is what
+    /// this line retires. Absent, not blank, on a workout started outside a program.
+    ///
+    /// **Above the note rather than in the title**, unlike the training day: the title is one line
+    /// on a pushed screen and the day is already in it.
+    @ViewBuilder private var programPosition: some View {
+        if let position = state.session?.programPosition {
+            Text(LoggingStrings.sessionProgramWeekAndDay(week: position.week, day: position.day))
+                .font(Typography.metricContext.font)
+                .foregroundStyle(ColorToken.textSecondary)
+        }
     }
 
     /// `FR-15.2.6`'s command, at the foot of the screen and only where there is a workout to save.
@@ -241,7 +268,16 @@ public struct PastSessionView: View {
                         toggleWarmups: {
                             warmupExpansion[item.id] = !(warmupExpansion[item.id] ?? false)
                         },
-                        edit: { editing = ActiveSessionView.target(editing: $0) }
+                        expandedGroups: groupExpansion,
+                        toggleGroup: { setID in
+                            if groupExpansion.contains(setID) {
+                                groupExpansion.remove(setID)
+                            } else {
+                                groupExpansion.insert(setID)
+                            }
+                        },
+                        edit: { editing = ActiveSessionView.target(editing: $0) },
+                        isSessionOpen: state.session?.isFinished == false
                     )
                 }
             }
@@ -308,108 +344,6 @@ public struct PastSessionView: View {
         guard let setID = target.editing else { return }
         editing = nil
         Task { await state.deleteSet(id: setID, inEntryID: target.entryID) }
-    }
-}
-
-/// One exercise as it was performed, in a session that is over.
-///
-/// **The live card's contents without its commands.** `SessionExerciseCard` carries `FR-1.2.2`'s
-/// reorder, `FR-1.2.6`'s repeat and `FR-1.2.3`'s add — three things a past session does not offer —
-/// and `FR-1.2.13`'s fold, which exists so a lifter mid-workout can get past what they have already
-/// done. What is shared is the part that matters: ``SetRow`` and ``SetNumbering``, so a set reads
-/// identically wherever it is drawn.
-///
-/// Taking the exercise and the unit rather than the state, so a reference can render it without a
-/// repository behind it.
-struct PastSessionExerciseCard: View {
-    /// The exercise, its entry and its sets.
-    let item: SessionExercise
-
-    /// The locale this card resolves its exercise's name in (`FR-1.14.2`).
-    @Environment(\.locale) private var locale
-
-    /// The unit this card's loads are shown in (`G-3.1`).
-    let unit: MassUnit
-
-    /// Whether this card's warmup group is open (`FR-1.2.14`).
-    let areWarmupsExpanded: Bool
-
-    /// Opens or closes it.
-    let toggleWarmups: () -> Void
-
-    /// Opens `FR-1.2.7`'s editor over one of this card's sets.
-    let edit: (SetEntry) -> Void
-
-    /// The exercise's name, then its sets.
-    var body: some View {
-        Card {
-            VStack(alignment: .leading, spacing: Spacing.sm.points) {
-                name
-                    .font(Typography.cardTitle.font)
-                    .foregroundStyle(ColorToken.textPrimary)
-                if item.sets.isEmpty {
-                    // The set list's own copy, shared with the live card because it is one component
-                    // drawn on two screens rather than two screens saying the same thing.
-                    Text(LoggingStrings.setListEmpty)
-                        .font(Typography.body.font)
-                        .foregroundStyle(ColorToken.textSecondary)
-                } else {
-                    warmupGroup
-                    ForEach(workingSets) { row(for: $0) }
-                }
-            }
-        }
-    }
-
-    /// `FR-1.2.14`'s warmups, folded by default: see ``PastSessionView/warmupExpansion``.
-    @ViewBuilder private var warmupGroup: some View {
-        if !warmups.isEmpty {
-            WarmupSectionHeader(
-                count: warmups.count, isExpanded: areWarmupsExpanded, toggle: toggleWarmups)
-            if areWarmupsExpanded {
-                ForEach(warmups) { row(for: $0) }
-            }
-        }
-    }
-
-    /// One set's row, with the two marking controls absent — see ``SetRow/mark``.
-    ///
-    /// - Parameter numbered: The set and its number.
-    /// - Returns: The row.
-    private func row(for numbered: NumberedSet) -> some View {
-        // No record badge here. `FR-1.6.3` puts it on the set "at the moment it is logged", which is
-        // the workout in progress; a past session would need the workout's map read for a screen that
-        // is not logging, and marking an old set as a record it may since have lost is worse than not
-        // marking it. Whichever task first wants records on this screen owns that read.
-        // No target: `FR-15.3.1`'s line belongs to the workout in progress, and this screen has no
-        // planned-target read wired up. Drawing one would need that read; drawing nothing is what a
-        // past session has always shown.
-        SetRow(
-            numbered: numbered,
-            unit: unit,
-            recordReps: [],
-            mark: nil,
-            markCompleted: nil,
-            edit: edit,
-            target: nil
-        )
-    }
-
-    /// This card's sets, each carrying its number within its own sequence (`FR-1.2.14`).
-    private var numberedSets: [NumberedSet] { SetNumbering.numbered(item.sets) }
-
-    /// The warmups among them, in the order they were logged.
-    private var warmups: [NumberedSet] { numberedSets.filter(\.isWarmup) }
-
-    /// The work proper, likewise.
-    private var workingSets: [NumberedSet] { numberedSets.filter { !$0.isWarmup } }
-
-    /// The exercise's name, or a sentence in place of one — see ``SessionExercise/exercise``.
-    private var name: Text {
-        guard let exercise = item.exercise else {
-            return Text(LoggingStrings.sessionExerciseMissing)
-        }
-        return Text(verbatim: exercise.displayName(for: locale))
     }
 }
 

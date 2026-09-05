@@ -2,7 +2,7 @@ import Foundation
 import RepositoryInterface
 import SwiftData
 
-/// `ExerciseRepository` over SwiftData (`TR-0.4.2`, `FR-1.1`, `FR-1.5.1`).
+/// `ExerciseRepository` over SwiftData (`TR-0.4.2`, `FR-1.1`).
 ///
 /// **`internal`, like the four beside it.** `PersistenceStack` hands out `any ExerciseRepository`,
 /// so nothing outside this module can name a SwiftData-backed type — `TR-0.1.2` held by the
@@ -46,45 +46,6 @@ actor SwiftDataExerciseRepository: ExerciseRepository {
                 ExerciseEntity.self, id: parentID, from: exercise.id)
         }
         try modelContext.upsert(exercise, as: ExerciseEntity.self)
-        try modelContext.saveStamped()
-    }
-
-    /// The configuration in force, by the latest ``TrainingMaxConfigEntity/effectiveFrom`` at or
-    /// before `date`.
-    ///
-    /// **Two entries may share an effective date**, so the pick is `effectiveFrom` first and then
-    /// rule 2's own order — the same total key, with the lookup's key in front of it. Nothing here
-    /// leans on a unique constraint: `FR-1.5.1.4` keeps every change, and `G-2.5` forbids the
-    /// constraint that would make one of them impossible.
-    func trainingMax(forExerciseID exerciseID: UUID, on date: Date) throws -> TrainingMaxEntry? {
-        let inForce = try modelContext.rows(
-            TrainingMaxConfigEntity.self,
-            matching: #Predicate { $0.exerciseID == exerciseID && $0.effectiveFrom <= date },
-            includingDeleted: false
-        )
-        return inForce.max {
-            ($0.effectiveFrom, $0.updatedAt, $0.id.uuidString)
-                < ($1.effectiveFrom, $1.updatedAt, $1.id.uuidString)
-        }?.record
-    }
-
-    func trainingMaxHistory(
-        forExerciseID exerciseID: UUID,
-        includingDeleted: Bool
-    ) throws -> [TrainingMaxEntry] {
-        try modelContext.rows(
-            TrainingMaxConfigEntity.self,
-            matching: #Predicate { $0.exerciseID == exerciseID },
-            includingDeleted: includingDeleted
-        )
-        .sortedDeterministically(by: { ($0.effectiveFrom, $0.id.uuidString) }, descending: true)
-        .map(\.record)
-    }
-
-    func saveTrainingMax(_ entry: TrainingMaxEntry) throws {
-        try modelContext.requireReferenced(
-            ExerciseEntity.self, id: entry.exerciseID, from: entry.id)
-        try modelContext.upsert(entry, as: TrainingMaxConfigEntity.self)
         try modelContext.saveStamped()
     }
 }

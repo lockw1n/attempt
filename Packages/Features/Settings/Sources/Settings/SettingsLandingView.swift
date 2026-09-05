@@ -66,6 +66,7 @@ public struct SettingsLandingView: View {
                 case .failed:
                     failure
                 }
+                recentRecords
                 equipment
                 bodyweight
                 data
@@ -76,6 +77,21 @@ public struct SettingsLandingView: View {
         }
         .background(ColorToken.background)
         .task { await state.load() }
+    }
+
+    /// `FR-16.3`'s way into what the recent-PR feed reports on.
+    ///
+    /// **Directly under the preferences form**, whose last section is `FR-1.7`'s estimator: the two
+    /// are the derived-value settings, and the feed's scope is the one of them that could not fit in
+    /// a picker. Outside the phase switch, for ``equipment``'s reason — the screen it opens reads the
+    /// settings row for itself, so a failed read here says nothing about whether it can be shown.
+    private var recentRecords: some View {
+        GroupedSection(Text(SettingsStrings.recentRecordsRow)) {
+            SettingsLinkRow(
+                route: .settings(.recentRecords),
+                label: SettingsStrings.recentRecordsRow,
+                detail: SettingsStrings.recentRecordsDetail)
+        }
     }
 
     /// `FR-1.10.3`'s way into the gyms.

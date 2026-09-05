@@ -125,6 +125,9 @@ final class PastSessionState {
     /// is the History-side half of the trigger `LoggedSetWriter` carries.
     @ObservationIgnored private let records: PersonalRecordRecomputer
 
+    /// Where `FR-16.7.1`'s training max comes from — read at the session's own day.
+    @ObservationIgnored private let trainingMaxes: any TrainingMaxRepository
+
     /// Builds the state over the session it is about and the three repositories it reads.
     ///
     /// - Parameters:
@@ -135,13 +138,15 @@ final class PastSessionState {
     ///   - settings: The single settings row, for the unit the loads are shown in.
     ///   - records: The app's one recompute actor (`TR-1.6`).
     ///   - routines: Where `FR-15.2.6`'s routine is written.
+    ///   - trainingMaxes: Where `FR-16.7.1`'s training max is stored.
     init(
         sessionID: UUID,
         workouts: any WorkoutRepository,
         catalogue: any ExerciseRepository,
         settings: any SettingsRepository,
         records: PersonalRecordRecomputer,
-        routines: any RoutineRepository
+        routines: any RoutineRepository,
+        trainingMaxes: any TrainingMaxRepository
     ) {
         self.sessionID = sessionID
         self.workouts = workouts
@@ -149,6 +154,7 @@ final class PastSessionState {
         self.settings = settings
         self.records = records
         self.routines = routines
+        self.trainingMaxes = trainingMaxes
     }
 
     /// Reads the session, its exercises and the display unit.
@@ -180,7 +186,7 @@ final class PastSessionState {
                 phase = .missing
                 return
             }
-            exercises = try await readExercises()
+            exercises = try await readExercises(on: session.date)
             phase = .loaded(session)
         } catch {
             exercises = []
@@ -251,8 +257,11 @@ final class PastSessionState {
             writeFailure = String(describing: error)
             return
         }
+        // No session, nothing to re-read: the screen is already showing `missing` or `failed`, and
+        // the day is what every training max here is resolved at.
+        guard let day = session?.date else { return }
         do {
-            exercises = try await readExercises()
+            exercises = try await readExercises(on: day)
         } catch {
             exercises = []
             phase = .failed(String(describing: error))
@@ -264,7 +273,11 @@ final class PastSessionState {
     ///
     /// `includingDeleted: false` at every call site, which is what keeps a soft-deleted entry or set
     /// off this screen and agrees with what the session list already counted (`G-1.3`).
-    private func readExercises() async throws -> [SessionExercise] {
+    /// - Parameter day: The session's training day, which `FR-16.7.1`'s annotation is resolved at
+    ///   — not today, so a training max raised since does not rewrite what this workout's loads
+    ///   were a share of.
+    /// - Returns: The join.
+    private func readExercises(on day: Date) async throws -> [SessionExercise] {
         let entries = try await workouts.entries(forSessionID: sessionID, includingDeleted: false)
         var loaded: [SessionExercise] = []
         loaded.reserveCapacity(entries.count)
@@ -274,7 +287,9 @@ final class PastSessionState {
                     entry: entry,
                     exercise: try await catalogue.exercise(
                         id: entry.exerciseID, includingDeleted: false),
-                    sets: try await workouts.sets(forEntryID: entry.id, includingDeleted: false)
+                    sets: try await workouts.sets(forEntryID: entry.id, includingDeleted: false),
+                    trainingMax: try await SessionTrainingMax.inForce(
+                        trainingMaxes, forExerciseID: entry.exerciseID, on: day)
                 )
             )
         }

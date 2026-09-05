@@ -84,6 +84,42 @@ final class UserSettingsEntity: StoredEntity {
     /// leaves a dangling id, which the dashboard drops rather than resolving to a row.
     var dashboardExerciseIDs: [UUID]?
 
+    /// ``RepositoryInterface/RecentRecordsScope``'s raw value — which exercises `FR-1.6.5`'s feed
+    /// reports on (`FR-16.3.1`).
+    ///
+    /// **The first column in this module added after schema v1, and it takes the branch `SchemaV1`'s
+    /// second rule allows.** A backfilled row asserts the dashboard lifts, which is a claim about
+    /// what the app does next rather than about training that happened — the same ground
+    /// ``keepScreenAwake`` stands on — and it is `FR-16.3.1`'s own default, so a migrated row and a
+    /// fresh install agree.
+    var recentRecordsScopeRawValue: String = SchemaDefaults.recentRecordsScope
+
+    /// The exercises the feed reports on under
+    /// ``RepositoryInterface/RecentRecordsScope/chosen``, or `nil` where the lifter never chose.
+    ///
+    /// Optional and identifiers rather than a relationship, both for ``dashboardExerciseIDs``'
+    /// reasons — and optional is what `SchemaV1`'s first rule asks of a column added later anyway.
+    var recentRecordsExerciseIDs: [UUID]?
+
+    /// The repetition half of the chosen schemes (`FR-16.3.2`), or `nil` where they are derived.
+    ///
+    /// **A pair of parallel arrays rather than one column of pairs**, which is
+    /// `EquipmentProfileEntity`'s plate inventory again: SwiftData stores an array of scalars and
+    /// `G-2.5` forbids the relationship that would carry a struct, so a `(reps, sets)` list is two
+    /// columns written together. `nil` on both is the derived case — see
+    /// ``RepositoryInterface/RecentRecordsSchemes/stored(reps:sets:)``, which is the only reader.
+    var recentRecordsSchemeReps: [Int]?
+
+    /// The set-count half of the same pair. See ``recentRecordsSchemeReps``.
+    var recentRecordsSchemeSets: [Int]?
+
+    /// Whether the feed shows a scheme's first-ever record (`FR-16.3.4`).
+    ///
+    /// A defaulted `Bool` added after v1, which `SchemaV1`'s second rule warns about — and it is
+    /// ``keepScreenAwake``'s answer: the flag decides what a screen draws next rather than making a
+    /// claim about a set that was logged before the column existed.
+    var recentRecordsShowsBaselines: Bool = SchemaDefaults.recentRecordsShowsBaselines
+
     init(
         id: UUID = UUID(),
         userID: UUID,
@@ -96,6 +132,11 @@ final class UserSettingsEntity: StoredEntity {
         e1RMLookbackDays: Int = SchemaDefaults.e1RMLookbackDays,
         keepScreenAwake: Bool = SchemaDefaults.keepScreenAwake,
         dashboardExerciseIDs: [UUID]? = nil,
+        recentRecordsScope: RecentRecordsScope = .dashboardLifts,
+        recentRecordsExerciseIDs: [UUID]? = nil,
+        recentRecordsSchemeReps: [Int]? = nil,
+        recentRecordsSchemeSets: [Int]? = nil,
+        recentRecordsShowsBaselines: Bool = SchemaDefaults.recentRecordsShowsBaselines,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
@@ -110,6 +151,11 @@ final class UserSettingsEntity: StoredEntity {
         self.defaultRoundingIncrementGrams = defaultRoundingIncrementGrams
         self.defaultRoundingStrategyRawValue = defaultRoundingStrategy.rawValue
         self.dashboardExerciseIDs = dashboardExerciseIDs
+        self.recentRecordsScopeRawValue = recentRecordsScope.rawValue
+        self.recentRecordsExerciseIDs = recentRecordsExerciseIDs
+        self.recentRecordsSchemeReps = recentRecordsSchemeReps
+        self.recentRecordsSchemeSets = recentRecordsSchemeSets
+        self.recentRecordsShowsBaselines = recentRecordsShowsBaselines
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

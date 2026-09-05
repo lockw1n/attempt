@@ -39,8 +39,7 @@
 "logging.train.start-error.message" = "That workout could not be started. Try again.";
 
 "logging.session.title" = "Workout";
-"logging.session.summary.section" = "This workout";
-"logging.session.day" = "Training day";
+"logging.session.title.day %@" = "Workout · %@";
 "logging.session.started" = "Started";
 "logging.session.adherence" = "Adherence";
 
@@ -97,6 +96,10 @@
    multiplication sign is a character of this language, and the order of the two is not fixed in
    every language — which is why this is a format string and not an interpolation. */
 "logging.session.previous.set %@ %@" = "%1$@ × %2$@";
+/* FR-16.1.1: the same line for a run of identical sets, which is what four back-off sets look like
+   when they are read rather than counted. A third argument rather than a repetition of the line
+   above — the second multiplication sign is punctuation of this language too. */
+"logging.session.previous.group %@ %@ %@" = "%1$@ × %2$@ × %3$@";
 /* FR-1.13.3, not FR-1.13.1's empty: there is history here and none of it is about this exercise, so
    the message says what would make a comparison possible rather than what to create. */
 "logging.session.previous.empty.headline" = "No previous session";
@@ -174,6 +177,23 @@
 /* A logged set's rating. The number arrives already rendered, so it is the locale's. */
 "logging.session.set.rpe %@" = "RPE %@";
 
+/* FR-16.1.1's set groups: consecutive identical sets read as one line. */
+/* The badge a group leads with — the numbers of its first and last set. Both arrive already
+   rendered, so a range is drawn in the same style as the bare numeral on the row beside it, and the
+   separator is punctuation this catalogue owns rather than a dash written in Swift. */
+"logging.session.set.number-range %@ %@" = "%1$@–%2$@";
+/* VoiceOver's label for that badge. Never "1–4": read aloud, a dash is not a word. */
+"logging.session.set.position-range %lld %lld" = "Sets %1$lld to %2$lld";
+/* The same for a warmup group's badge. */
+"logging.session.set.warmup.position-range %lld %lld" = "Warmup sets %1$lld to %2$lld";
+/* What a tap on a collapsed group does (FR-16.1.3). The rows it opens carry every per-set control,
+   so the hint promises the sets themselves rather than "more". */
+"logging.session.set.group.hint" = "Shows each set";
+/* FR-16.1.4's one-tap append, on the last group of an exercise. "Next" rather than "another": the
+   line above it ticks from × 3 to × 4, so the command is naming the set that follows the run rather
+   than offering a second copy of it. */
+"logging.session.set.group.log-next" = "Log next set";
+
 /* FR-1.2.4 and FR-1.2.14: warmups, marked and numbered apart from the work. */
 /* The badge a warmup row leads with. "W1" rather than "1" is the requirement's own spelling, and it
    is a string rather than a "W" glued to a numeral so a language that prefixes differently — or
@@ -187,14 +207,16 @@
    happen, and "Mark as warmup" on a set that already is one is the opposite instruction. */
 "logging.session.set.mark-warmup" = "Mark as warmup";
 "logging.session.set.mark-working" = "Mark as working";
-/* FR-1.6.3's badge, and what VoiceOver reads in its place. Two characters on the row because the
-   line is already spending its width on the load and two 44pt controls; the label carries the whole
-   claim. Two forms of the label, chosen on the rep counts themselves rather than on how many there
-   are: a set holding only the 1RM is the one case English wants a singular for, and a lone 6RM is
-   not. */
-"logging.session.set.record" = "PR";
-"logging.session.set.record.label %@" = "Personal record for %@ reps";
-"logging.session.set.record.label.one %@" = "Personal record for %@ rep";
+/* FR-1.6.3's and FR-16.2.4's badge, and what VoiceOver reads in its place. Short on the row
+   because the line is already spending its width on the load and two 44pt controls; the label
+   carries the whole claim. Two spellings of one badge, chosen on the set count rather than on how
+   many cells the set holds: the one-set column is a rep max and a lifter writes it "8RM", every
+   other cell is a scheme and they write it "5×5". Neither spelling needs a plural rule — the
+   numeral sits inside the compound in both. */
+"logging.session.set.record.scheme %lld %lld" = "PR %1$lld×%2$lld";
+"logging.session.set.record.rep-max %lld" = "PR %lldRM";
+"logging.session.set.record.scheme.label %lld %lld" = "Personal record, %1$lld by %2$lld";
+"logging.session.set.record.rep-max.label %lld" = "Personal record, %lld-rep max";
 /* FR-1.2.14's collapsible group. A label beside a numeral, so it stays a count in every language
    rather than needing a plural rule. */
 "logging.session.set.warmup.section" = "Warmups";
@@ -435,3 +457,54 @@
 /* Where it went: nothing on this screen changes when a routine is written, so the confirmation is
    the only thing that says the command did anything. */
 "logging.past-session.save-routine.saved %@" = "Saved “%@” to your routines.";
+"logging.set.training-max-share %@" = "%@ of TM";
+
+/* FR-16.8.2's Next-up card on Train: the program in force, where it has got to, and the one tap
+   that starts it. The week and the day are positional so a translation can reorder them. */
+"logging.train.program.section" = "Next up";
+"logging.train.program.week-day %lld %lld" = "Week %1$lld · Day %2$lld";
+"logging.train.program.start" = "Start";
+"logging.train.program.skip" = "Skip day";
+
+/* FR-15.2.5's archive reaching a program day: the row is kept and the routine behind it is gone,
+   so the card says which of the two ways past it the lifter has. */
+"logging.train.program.archived.headline" = "This day's routine was archived";
+"logging.train.program.archived.message" = "Point the day at another routine in the program, or skip it and carry on.";
+
+"logging.train.program.no-days.headline" = "This program has no days yet";
+"logging.train.program.no-days.message" = "Add a day to it, and the routine you pick is what Train offers next.";
+
+/* FR-16.8.4. The message is said before the command is tapped rather than in a confirmation after
+   it: what next week's loads are, that nothing is fixed, and that this week is archived and not
+   deleted, are the three things a lifter needs in order to decide — not to be told afterwards. */
+"logging.train.program.week-complete.headline %lld" = "Week %lld is done";
+"logging.train.program.week-complete.message" = "Next week starts from what you lifted this week. Every load stays editable, and this week's routines are archived rather than lost.";
+"logging.train.program.next-week" = "Start next week";
+
+"logging.train.program.error.message" = "Could not read your program. Try again.";
+"logging.train.program.skip-error.message" = "Could not skip the day. Try again.";
+"logging.train.program.next-week-error.message" = "Could not start next week. Nothing was changed — try again.";
+
+/* The workout itself was finished and stored; only the program's cursor did not move. The sentence
+   says both halves, because a lifter who reads "could not finish" would go looking for the workout. */
+"logging.train.program.advance-error.message" = "Your workout was saved, but the program still shows this day. Skip it or try finishing again.";
+
+/* FR-16.8.3 / DOD-16.1: the week and day are read off the session's own columns, so a session note
+   no longer has to carry them. */
+"logging.session.program.week-day %lld %lld" = "Week %1$lld · Day %2$lld";
+"logging.session.program.label" = "Program";
+
+/* FR-16.4.1's third outcome, as VoiceOver's word for the hollow circle: a set inside a workout that
+   has not ended and that nobody has attempted. NOT "failed" — that is the word for a lift that was
+   missed, and a planned set nobody has reached is not one. */
+"logging.session.set.outcome.pending" = "Pending";
+
+/* FR-16.4.4's one question at Finish, asked only when the workout still holds sets nobody
+   attempted. The message says what they are before it says what can be done with them, because the
+   two answers only make sense once the lifter knows which sets are meant.
+   The third button names what it keeps rather than saying "cancel": leaving the alert leaves the
+   workout open, which is the one outcome the other two do not offer. */
+"logging.session.finish.pending.message" = "They were never attempted. Remove them, or keep them as missed lifts?";
+"logging.session.finish.pending.remove" = "Remove them";
+"logging.session.finish.pending.keep" = "Keep as failed";
+"logging.session.finish.pending.cancel" = "Back to the workout";

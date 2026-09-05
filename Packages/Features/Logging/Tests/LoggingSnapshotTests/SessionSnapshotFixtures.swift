@@ -159,6 +159,48 @@
             loggedSet(index: 6, weight: Weight(grams: 102_500), reps: 5, rpe: nil),
         ]
 
+        /// `FR-16.1.1`'s own example: two identical warmups, four identical working sets, and a
+        /// fifth that fell a rep short.
+        ///
+        /// **The fifth set is the point of the fixture rather than decoration.** A card that held
+        /// nothing but one run could not show that a group ends — and it is the shape `DOD-16.5`
+        /// describes after the edit it names.
+        static let groupedSets: [SetEntry] = [
+            loggedSet(index: 30, weight: Weight(grams: 60_000), reps: 5, rpe: nil, isWarmup: true),
+            loggedSet(index: 31, weight: Weight(grams: 60_000), reps: 5, rpe: nil, isWarmup: true),
+            loggedSet(index: 32, weight: Weight(grams: 100_000), reps: 6, rpe: 8),
+            loggedSet(index: 33, weight: Weight(grams: 100_000), reps: 6, rpe: 8),
+            loggedSet(index: 34, weight: Weight(grams: 100_000), reps: 6, rpe: 8),
+            loggedSet(index: 35, weight: Weight(grams: 100_000), reps: 6, rpe: 8),
+            loggedSet(index: 36, weight: Weight(grams: 100_000), reps: 5, rpe: 9),
+        ]
+
+        /// ``groupedSets`` with the short set carried on into a run of its own, so the **last**
+        /// working group is a `× 3` rather than a set of one (`FR-16.1.4`).
+        ///
+        /// **A separate fixture because `FR-16.1.4`'s claim is about a line that ticks**, and
+        /// ``groupedSets`` ends in a group of one — where **Log next set** and `FR-1.2.6`'s
+        /// **Repeat set** would write the same set and the count has no `× n` to move. This shape
+        /// still holds two working groups, so the picture also settles that the command is on the
+        /// last of them and on no other.
+        static let groupedSetsEndingInARun: [SetEntry] =
+            groupedSets + [
+                loggedSet(index: 37, weight: Weight(grams: 100_000), reps: 5, rpe: 9),
+                loggedSet(index: 38, weight: Weight(grams: 100_000), reps: 5, rpe: 9),
+            ]
+
+        /// Which cells each of ``groupedSets``' sets holds a record at (`FR-16.2.4`).
+        ///
+        /// **Keyed on the run's first set**, which is what the cache does: the four-set run is named
+        /// by set 32 and holds every cell up to `6 × 4`; the lone fifth set holds the one-set column
+        /// up to `5 × 1`. The warmups hold nothing, which is the ordinary case and draws no badge.
+        static let recordSchemes: [UUID: [RecordScheme]] = [
+            groupedSets[2].id: (1...6).flatMap { reps in
+                (1...4).map { RecordScheme(reps: reps, sets: $0) }
+            },
+            groupedSets[6].id: (1...5).map { RecordScheme(reps: $0, sets: 1) },
+        ]
+
         /// `FR-1.2.5`'s outcome, pictured: a working set that fell short between two that did not,
         /// and a warmup that did too.
         ///
@@ -236,13 +278,14 @@
 
         /// `FR-1.6.3`'s badge, pictured on the rows.
         ///
-        /// **One set holding one record and one holding five**, which is the pair the badge's label
-        /// has to render: "Personal record for 3 reps" against "…for 1, 2, 3, 4 and 5 reps". `E1` is
-        /// the second of ``loggedSets`` and `E4` the first working set of ``rampedSets``.
+        /// **Both sets hold the one-set column and nothing else**, which is what a lone set can hold
+        /// — so both badges are `FR-16.2.4`'s rep-max spelling, `PR 3RM` and `PR 5RM`, at the two
+        /// ends of the numeral's width. `E1` is the second of ``loggedSets`` and `E4` the first
+        /// working set of ``rampedSets``.
         static let personalRecords = SessionRecordMarks(
             bySetID: [
-                identifier("E1"): [3],
-                identifier("E4"): [1, 2, 3, 4, 5],
+                identifier("E1"): [RecordScheme(reps: 3, sets: 1)],
+                identifier("E4"): (1...5).map { RecordScheme(reps: $0, sets: 1) },
             ],
             hasLoaded: true
         )

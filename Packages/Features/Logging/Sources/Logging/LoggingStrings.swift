@@ -67,11 +67,20 @@ enum LoggingStrings {
     /// is no tab whose name it could contradict.
     static let sessionTitle = resource("logging.session.title")
 
-    /// The heading over the workout's own facts.
-    static let sessionSummarySection = resource("logging.session.summary.section")
-
-    /// The training day this workout belongs to.
-    static let sessionDay = resource("logging.session.day")
+    /// The same title once a workout is held — the screen's name and the training day, together
+    /// (`FR-16.6.1`).
+    ///
+    /// **The day arrives already rendered**, for ``setWarmupNumber(_:)``'s reason: the style is
+    /// `AppFormat.dayAndMonth`, bound to the view's locale, and a date formatted here instead would
+    /// be the one date in this module not going through it. The separator is inside the value
+    /// rather than interpolated at the call site, so a language that joins the two differently has
+    /// somewhere to say so.
+    ///
+    /// - Parameter day: The training day, already rendered.
+    /// - Returns: The title.
+    static func sessionTitleDay(_ day: String) -> LocalizedStringResource {
+        resource("logging.session.title.day \(day)")
+    }
 
     /// When it was started.
     static let sessionStarted = resource("logging.session.started")
@@ -359,20 +368,6 @@ enum LoggingStrings {
             : resource("logging.session.set.mark-warmup")
     }
 
-    /// Whether a set was completed or failed (`FR-1.2.5`), as VoiceOver's label for the glyph that
-    /// says it.
-    ///
-    /// **The word the glyph stands for**, which is what keeps the outcome off the tint alone
-    /// (`G-4.5`): the row draws a check or a cross, and this is the same fact in a sentence.
-    ///
-    /// - Parameter isCompleted: Whether the set was completed.
-    /// - Returns: The outcome, as a word.
-    static func setOutcome(isCompleted: Bool) -> LocalizedStringResource {
-        isCompleted
-            ? resource("logging.session.set.outcome.completed")
-            : resource("logging.session.set.outcome.failed")
-    }
-
     /// What tapping that glyph does (`FR-1.2.5`), as VoiceOver's hint on it.
     ///
     /// The action rather than the state, for ``setMarkAction(isWarmup:)``'s reason.
@@ -444,9 +439,11 @@ enum LoggingStrings {
             trainInProgressStarted, trainInProgressResume, trainLibraryAction,
             trainRoutinesAction,
             trainErrorHeadline,
-            trainErrorMessage, trainStartErrorMessage, sessionTitle, sessionSummarySection,
-            sessionDay, sessionStarted, sessionEmptyHeadline, sessionEmptyMessage,
-            sessionFinishAction, sessionDiscardAction, sessionDiscardConfirmTitle,
+            trainErrorMessage, trainStartErrorMessage, sessionTitle, sessionTitleDay("Sep 4"),
+            sessionStarted, sessionEmptyHeadline, sessionEmptyMessage,
+            sessionFinishAction, sessionFinishPendingTitle(1), sessionFinishPendingTitle(3),
+            sessionFinishPendingMessage, sessionFinishPendingRemove, sessionFinishPendingKeep,
+            sessionFinishPendingCancel, sessionDiscardAction, sessionDiscardConfirmTitle,
             sessionDiscardConfirmMessage, sessionDiscardConfirmAction, sessionDiscardConfirmCancel,
             sessionErrorHeadline, sessionErrorMessage, sessionEndedHeadline, sessionEndedMessage,
             sessionWriteErrorMessage, sessionExercisesSection, sessionAddExerciseAction,
@@ -469,10 +466,11 @@ enum LoggingStrings {
             setWarmupNumber("1"), setWarmupPosition(1), setWarmupSection, setWarmupLabel,
             setWarmupHint,
         ] + allModifierStrings + allPlateStrings + allEquipmentStrings + allPastSessionStrings
-            + allRecordStrings + allPlanStrings
+            + allRecordStrings + allPlanStrings + allSetGroupStrings
+            + allProgramStrings
             + MassUnit.allCases.map(setUnitSymbol(for:))
             + [true, false].map(setMarkAction(isWarmup:))
-            + [true, false].map(setOutcome(isCompleted:))
+            + [SetOutcome.completed, .failed, .pending].map(setOutcome)
             + [true, false].map(setOutcomeAction(isCompleted:))
     }
 

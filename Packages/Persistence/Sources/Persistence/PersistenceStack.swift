@@ -31,8 +31,11 @@ public enum StoreLocation: Sendable {
 /// returns — so nothing here needs a shared context, and a repository cannot see another's
 /// half-finished transaction.
 public struct PersistenceStack: Sendable {
-    /// The exercise catalogue and each exercise's training-max history.
+    /// The exercise catalogue.
     public let exercises: any ExerciseRepository
+
+    /// Each exercise's training-max configuration and history (`TR-16.3`, `FR-16.7`).
+    public let trainingMaxes: any TrainingMaxRepository
 
     /// Sessions, entries, sets — and the targets a routine planned for them (`TR-15.3`).
     ///
@@ -57,6 +60,9 @@ public struct PersistenceStack: Sendable {
     /// Routines, their exercise slots and target groups (`FR-15.2`).
     public let routines: any RoutineRepository
 
+    /// Programs, their days and the runs through them (`TR-16.2`, `FR-16.8`).
+    public let programs: any ProgramRepository
+
     /// `G-1.3`'s hard deletes, reached through ``purge(_:)`` rather than named directly.
     let purgeRoutine: StorePurge
 
@@ -76,12 +82,14 @@ public struct PersistenceStack: Sendable {
     /// The repositories over a container the caller already has — the seam the tests use.
     init(container: ModelContainer) {
         exercises = SwiftDataExerciseRepository(modelContainer: container)
+        trainingMaxes = SwiftDataTrainingMaxRepository(modelContainer: container)
         workouts = SwiftDataWorkoutRepository(modelContainer: container)
         settings = SwiftDataSettingsRepository(modelContainer: container)
         bodyweight = SwiftDataBodyweightRepository(modelContainer: container)
         equipment = SwiftDataEquipmentRepository(modelContainer: container)
         personalRecords = SwiftDataPersonalRecordCacheRepository(modelContainer: container)
         routines = SwiftDataRoutineRepository(modelContainer: container)
+        programs = SwiftDataProgramRepository(modelContainer: container)
         purgeRoutine = StorePurge(modelContainer: container)
     }
 }

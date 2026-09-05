@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -21,6 +22,18 @@ struct ExerciseSessionHistory: Identifiable, Equatable, Sendable {
     /// ramp belongs in what is being read is the reader's question, and a value that had already
     /// dropped them could not be asked it.
     let sets: [SetEntry]
+
+    /// `FR-16.1.1`'s runs, as the section draws them — one line per run of identical sets.
+    ///
+    /// **At ``DerivedValues/SetGrouping/Grain/displayed``, which is `FR-16.1.2` rather than a
+    /// default taken.** A history row draws the load, the reps, the rating, the warmup word and the
+    /// failed mark, so a run that merged across any of them would be a line asserting one member's
+    /// fact about all of them — a warmup and a working set at the same load being the plainest.
+    ///
+    /// **A run stops at an entry boundary, which this reader is the reason for.** ``sets`` runs two
+    /// entries together where the exercise was performed twice in the day, and those sets were not
+    /// adjacent in the session; the grouping compares the entry, so the boundary is kept.
+    var groups: [SetGroup] { SetGrouping.groups(sets, at: .displayed) }
 }
 
 /// The exercise-detail screen's history section, and the walk behind it (`FR-1.5.2`).

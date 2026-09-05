@@ -12,10 +12,10 @@ import SwiftUI
 /// for the same reason — `TR-1.12`'s harness renders through `ImageRenderer`, which draws a
 /// placeholder for anything UIKit-backed, so a `List` here would snapshot as a grey box.
 ///
-/// **All three of its derived sections now read for themselves**, each with its own store, its own
+/// **All four of its derived sections read for themselves**, each with its own store, its own
 /// `.task` and its own states — so a value that cannot be computed costs the reader that section
-/// and never `FR-1.1.6`'s movement, equipment and notes. The estimate's is also the screen's second
-/// write: `FR-1.7.5`'s override is entered there.
+/// and never `FR-1.1.6`'s movement, equipment and notes. The training max's is also the screen's
+/// second write: `FR-16.7.2`'s change is entered in a sheet it presents.
 public struct ExerciseDetailView: View {
     @State private var state: ExerciseDetailState
 
@@ -36,6 +36,9 @@ public struct ExerciseDetailView: View {
     /// The app's one recompute actor (`TR-1.6`), which the records section reads through.
     private let records: PersonalRecordRecomputer
 
+    /// Where `FR-15.1`'s training max and its history come from.
+    private let trainingMaxes: any TrainingMaxRepository
+
     /// Builds the screen over the identifier the route carried.
     ///
     /// - Parameters:
@@ -48,17 +51,22 @@ public struct ExerciseDetailView: View {
     ///   - settings: The settings row, for the unit those loads are shown in (`G-3.1`).
     ///   - records: The app's one recompute actor (`TR-1.6`), for `FR-1.6.2`'s personal records — a
     ///     set logged in another tab moves one on this screen, which is what a shared actor buys.
+    ///   - trainingMaxes: Where `FR-15.1`'s training max and its history are stored. A repository of
+    ///     its own rather than the catalogue's, because the number is a dated history rather than a
+    ///     column on the exercise (`G-1.4`).
     public init(
         exerciseID: UUID,
         repository: any ExerciseRepository,
         workouts: any WorkoutRepository,
         settings: any SettingsRepository,
-        records: PersonalRecordRecomputer
+        records: PersonalRecordRecomputer,
+        trainingMaxes: any TrainingMaxRepository
     ) {
         self.exerciseID = exerciseID
         self.workouts = workouts
         self.settings = settings
         self.records = records
+        self.trainingMaxes = trainingMaxes
         _state = State(
             initialValue: ExerciseDetailState(
                 exerciseID: exerciseID,
@@ -137,7 +145,7 @@ public struct ExerciseDetailView: View {
         }
     }
 
-    /// The seven sections: the record's own fields, then the one thing here the user can change,
+    /// The eight sections: the record's own fields, then the one thing here the user can change,
     /// then `FR-1.1.7`'s relationships, and `FR-1.1.6`'s three derived values — where they stay now
     /// that the first of them holds real data, since a screen opened to check a cue should not be
     /// scrolled past a training history to reach the notes.
@@ -170,6 +178,15 @@ public struct ExerciseDetailView: View {
             hasLoggedSets: detail.hasLoggedSets,
             records: records,
             settings: settings
+        )
+        // Above the estimate, and that pairing is the point: the coach's number and the observed
+        // one are two claims about the same lift, and reading them in that order is what stops
+        // either being taken for the other (`FR-15.1.5`).
+        TrainingMaxSection(
+            exerciseID: exerciseID,
+            trainingMaxes: trainingMaxes,
+            settings: settings,
+            records: records
         )
         ExerciseEstimateSection(exerciseID: exerciseID, records: records, settings: settings)
         ExerciseArchiveSection(

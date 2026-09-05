@@ -304,18 +304,60 @@
 
 /* FR-1.7.5. It stands where the formula and window line stands for a computed number, because that
    is exactly what it replaces: neither took part in this one. */
-"exerciselibrary.detail.e1rm.manual" = "Entered manually";
 
 /* The override's five commands. "Use computed value" rather than "Clear" or "Remove": what the tap
    does is name where the number comes back from, and a lifter who has forgotten what they typed
    should not have to work out what clearing it leaves behind. */
-"exerciselibrary.detail.e1rm.override.action" = "Set manually";
-"exerciselibrary.detail.e1rm.override.field" = "Manual 1RM";
-"exerciselibrary.detail.e1rm.override.save" = "Save";
-"exerciselibrary.detail.e1rm.override.cancel" = "Cancel";
-"exerciselibrary.detail.e1rm.override.edit" = "Edit manual value";
-"exerciselibrary.detail.e1rm.override.revert" = "Use computed value";
 
 /* The write failed. Nothing was stored and the number on screen is unchanged, so the retry is
    another tap at the same command. */
-"exerciselibrary.detail.e1rm.override.error" = "This manual estimate could not be saved.";
+
+/* FR-16.2.4: the whole record table, on a screen of its own. The title names what the table is
+   keyed by rather than repeating the exercise, whose name the navigation bar already carries. */
+"exerciselibrary.records.title" = "Records by scheme";
+
+/* The control on the detail section that opens it, and what it opens. */
+"exerciselibrary.detail.records.all" = "All schemes";
+"exerciselibrary.detail.records.all.hint" = "Shows every rep and set count this exercise holds a record at.";
+
+/* The table's headings. A column is a number of consecutive sets and a row is a rep count, so the
+   column carries the multiplication sign and the row carries the noun. */
+"exerciselibrary.records.column %lld" = "× %lld";
+"exerciselibrary.records.reps-header" = "reps";
+
+/* FR-16.2.1: one scheme, written the way a lifter writes it. */
+"exerciselibrary.records.scheme %lld %lld" = "%1$lld × %2$lld";
+
+/* G-4.2: one cell, read aloud. The cell draws neither of its headings, so the label carries both —
+   "by" rather than the multiplication sign, which VoiceOver would announce as punctuation or not
+   at all. */
+"exerciselibrary.records.cell %lld %lld %@ %@" = "%1$lld by %2$lld, %3$@, %4$@";
+/* T-16.13 — FR-15.1.4, FR-15.1.5, FR-16.7.2: the coach's number and its history. */
+"exerciselibrary.detail.training-max.section" = "Training max";
+"exerciselibrary.detail.training-max.value" = "Training max";
+"exerciselibrary.detail.training-max.since %@" = "In force since %@";
+"exerciselibrary.detail.training-max.since-note %@ %@" = "In force since %1$@ · %2$@";
+"exerciselibrary.detail.training-max.none" = "No training max yet. Set one and a logged load can be read as a percentage of it.";
+"exerciselibrary.detail.training-max.not-yet" = "No training max in force yet. The changes below all take effect on a later date.";
+"exerciselibrary.detail.training-max.error" = "This exercise's training max could not be read.";
+"exerciselibrary.detail.training-max.write-error" = "This training max could not be saved.";
+"exerciselibrary.detail.training-max.set-action" = "Set training max";
+"exerciselibrary.detail.training-max.change-action" = "Change training max";
+"exerciselibrary.detail.training-max.history" = "History";
+"exerciselibrary.detail.training-max.history.expanded" = "Shown";
+"exerciselibrary.detail.training-max.history.collapsed" = "Hidden";
+"exerciselibrary.detail.training-max.change %@ %@" = "%1$@ → %2$@";
+"exerciselibrary.detail.training-max.first %@" = "Set to %@";
+"exerciselibrary.detail.training-max.form.title" = "Training max";
+"exerciselibrary.detail.training-max.form.weight" = "Training max";
+"exerciselibrary.detail.training-max.form.date" = "In force from";
+"exerciselibrary.detail.training-max.form.date-hint" = "A logged load is read against the training max in force on the day of the workout.";
+"exerciselibrary.detail.training-max.form.note" = "Note";
+"exerciselibrary.detail.training-max.form.note-prompt" = "coach";
+"exerciselibrary.detail.training-max.form.save" = "Save";
+"exerciselibrary.detail.training-max.form.cancel" = "Cancel";
+"exerciselibrary.detail.training-max.form.refusal.not-a-weight" = "Enter the training max as a number.";
+"exerciselibrary.detail.training-max.form.refusal.not-positive" = "A training max has to be above zero.";
+"exerciselibrary.detail.training-max.form.unit.kilograms" = "kg";
+"exerciselibrary.detail.training-max.form.unit.pounds" = "lb";
+"exerciselibrary.detail.training-max.row-note %@ %@" = "%1$@ · %2$@";

@@ -109,3 +109,62 @@
 /* What a copy is called. The original's name is the argument and is never looked up — it is the
    lifter's own words. */
 "routines.list.duplicate.name %@" = "%@ (copy)";
+
+/* FR-16.8.1's programs — an ordered list of the routines above. The link sits on the routine list
+   because that is where a lifter is already looking at the parts a program is made of. */
+"routines.programs.link" = "Programs";
+"routines.programs.title" = "Programs";
+"routines.programs.new" = "New program";
+"routines.programs.new.title" = "New program";
+"routines.programs.new.prompt" = "Name";
+"routines.programs.new.create" = "Create";
+
+/* FR-1.13.2's first launch. It says what a program IS, as the routine list's does, because nothing
+   else in the app has introduced one. */
+"routines.programs.empty.headline" = "No programs yet";
+"routines.programs.empty.message" = "A program is a week of training: the routines you run, in order. Train offers the next one.";
+
+"routines.programs.error.headline" = "Could not load your programs";
+"routines.programs.error.message" = "Something went wrong reading them. Try again.";
+
+"routines.programs.name-required.message" = "Give the program a name first.";
+"routines.programs.write-error.message" = "Could not save the program. Try again.";
+
+/* FR-16.8.1: one program may be current, and that is what Train draws. */
+"routines.programs.current" = "Current";
+"routines.programs.row.unnamed" = "Unnamed program";
+
+/* FR-16.8.1's editor. The name may be cleared here, unlike a routine's — see saveDetails(). */
+"routines.program-editor.title" = "Program";
+"routines.program-editor.name.label" = "Name";
+"routines.program-editor.name.prompt" = "Name";
+"routines.program-editor.note.label" = "Note";
+"routines.program-editor.note.prompt" = "Anything worth remembering about this program";
+"routines.program-editor.save" = "Save";
+
+"routines.program-editor.days.section" = "Days";
+"routines.program-editor.days.empty.headline" = "No days yet";
+"routines.program-editor.days.empty.message" = "Pick a routine below and it becomes this program's first day.";
+
+"routines.program-editor.add.section" = "Add a day";
+"routines.program-editor.add.empty.headline" = "No routines to add";
+"routines.program-editor.add.empty.message" = "A program is made of routines. Write one first, and it will appear here.";
+
+"routines.program-editor.day.remove" = "Remove day";
+"routines.program-editor.day.up" = "Move day earlier";
+"routines.program-editor.day.down" = "Move day later";
+"routines.program-editor.day.number %lld" = "Day %lld";
+
+/* FR-15.2.5's archive reaching a program day: the day survives its routine, and the editor is
+   where it is repointed. */
+"routines.program-editor.day.archived" = "Archived routine";
+
+/* FR-16.8.2: making a program current is what puts its next day on Train. */
+"routines.program-editor.make-current" = "Make current";
+"routines.program-editor.is-current" = "This is your current program";
+
+"routines.program-editor.missing.headline" = "This program is gone";
+"routines.program-editor.missing.message" = "It was deleted. Go back to the list to pick another.";
+"routines.program-editor.error.headline" = "Could not load this program";
+"routines.program-editor.error.message" = "Something went wrong reading it. Try again.";
+"routines.program-editor.write-error.message" = "Could not save the change. Try again.";

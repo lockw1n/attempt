@@ -104,6 +104,51 @@ struct BackupRoundTripTests {
         #expect(before.sets[0].updatedAt > ExportLog.epoch)
     }
 
+    // MARK: - The catalogue's own order
+
+    @Test func aVariationListedAboveItsParentRestores() async throws {
+        // FR-1.1.7's variations make `exercises` a SELF-REFERENCING table, and a backup lists its
+        // rows in whatever order the store read them — so which side of its parent a variation
+        // lands on is a property of the lifter's own catalogue. `save` refuses a
+        // `parentExerciseID` naming a row that is not stored yet, so a restore that walked the
+        // section as written threw `danglingReference` and stopped, with the rows above it already
+        // written. Found by T-16.16 against a real backup: thirteen of that catalogue's
+        // seventy-one variations were listed above their parent, so no such file could be restored
+        // at all — and every fixture in this suite has a catalogue too small to have one.
+        let stack = try PersistenceStack(location: .inMemory)
+        let parent = ExportRecords.exercise(name: "Overhead Press", at: ExportLog.epoch)
+        let child = ExportRecords.exercise(
+            name: "Arnold Press", at: ExportLog.epoch, parentExerciseID: parent.id)
+        let settings = try await stack.settings.settings()
+
+        // Reversed, which is the order the file had it in: the child first.
+        let file = TrainingLogArchive(
+            takenAt: ExportLog.epoch,
+            exercises: [child, parent],
+            sessions: [],
+            entries: [],
+            sets: [],
+            bodyweight: [],
+            equipment: [],
+            trainingMaxes: [],
+            trainingMaxHistory: [],
+            routines: [],
+            routineExercises: [],
+            routineTargetGroups: [],
+            programs: [],
+            programDays: [],
+            programRuns: [],
+            plannedTargets: [],
+            settings: settings)
+        try await Self.restore(into: stack).restore(file)
+
+        let restored = try await stack.exercises.exercises(includingDeleted: false)
+        // Both rows, and the link intact — a restore that dropped the variation rather than
+        // refusing it would satisfy a count of one.
+        #expect(restored.count == 2)
+        #expect(restored.first { $0.id == child.id }?.parentExerciseID == parent.id)
+    }
+
     // MARK: - What the wipe has to leave alone
 
     @Test func restoringOntoAMintedIdentityKeepsItAndTakesThePreferences() async throws {
@@ -144,13 +189,22 @@ struct BackupRoundTripTests {
     /// Moves every preference off the value a first-launch row holds, so a restore that wrote
     /// nothing is visible in each column rather than in one.
     ///
-    /// **The dashboard selection names an exercise that is in the fixture**, which is the one
-    /// preference whose value is a join key; the rest are scalars and any distinct value does.
+    /// **Two of these are join keys and they name *different* exercises in the fixture** — the
+    /// dashboard selection and, since `FR-16.3.1`, the recent-PR feed's own list. A fixture sharing
+    /// one exercise between them would pass for a restore that wrote either column into both; the
+    /// rest are scalars and any distinct value does.
+    ///
+    /// **A column left at its default is compared, agrees, and means nothing.** That is why every
+    /// preference here is moved — including `FR-16.3`'s five, whose defaults are what a
+    /// first-launch row already holds, and whose three optional columns are absent from the wire
+    /// entirely until something writes them.
     ///
     /// - Parameter stack: The store to configure.
     /// - Throws: Whatever the repository throws.
     static func configureEveryPreference(of stack: PersistenceStack) async throws {
-        let tiled = try #require(try await stack.exercises.exercises(includingDeleted: false).first)
+        let catalogue = try await stack.exercises.exercises(includingDeleted: false)
+        let tiled = try #require(catalogue.first)
+        let scoped = try #require(catalogue.dropFirst().first)
         var configured = try await stack.settings.settings()
         configured.displayUnit = .pounds
         configured.displayPrecision = DisplayPrecision(milliUnits: 100)
@@ -161,6 +215,12 @@ struct BackupRoundTripTests {
         configured.defaultRoundingIncrement = Weight(grams: 1134)
         configured.defaultRoundingStrategy = .down
         configured.dashboardExerciseIDs = [tiled.id]
+        configured.recentRecordsScope = .chosen
+        configured.recentRecordsExerciseIDs = [scoped.id]
+        configured.recentRecordsSchemes = .chosen([
+            RecordScheme(reps: 5, sets: 5), RecordScheme(reps: 3, sets: 1),
+        ])
+        configured.recentRecordsShowsBaselines = true
         try await stack.settings.save(configured)
     }
 
@@ -173,10 +233,12 @@ struct BackupRoundTripTests {
     static func backup(over stack: PersistenceStack) -> FullBackup {
         FullBackup(
             exercises: stack.exercises,
+            trainingMaxes: stack.trainingMaxes,
             workouts: stack.workouts,
             bodyweight: stack.bodyweight,
             equipment: stack.equipment,
             routines: stack.routines,
+            programs: stack.programs,
             settings: stack.settings)
     }
 
@@ -187,14 +249,15 @@ struct BackupRoundTripTests {
     static func restore(into stack: PersistenceStack) -> StoreRestore {
         StoreRestore(
             exercises: stack.exercises,
+            trainingMaxes: stack.trainingMaxes,
             workouts: stack.workouts,
             bodyweight: stack.bodyweight,
             equipment: stack.equipment,
             routines: stack.routines,
+            programs: stack.programs,
             settings: stack.settings,
             records: PersonalRecordRecomputer(
                 workouts: stack.workouts,
-                exercises: stack.exercises,
                 cache: stack.personalRecords))
     }
 
@@ -248,12 +311,17 @@ struct BackupRoundTripTests {
         try expectSameRows(before.bodyweight, after.bodyweight, "bodyweight", &compared)
         try expectSameRows(before.equipment, after.equipment, "equipment", &compared)
         try expectSameRows(before.trainingMaxes, after.trainingMaxes, "trainingMaxes", &compared)
+        try expectSameRows(
+            before.trainingMaxHistory, after.trainingMaxHistory, "trainingMaxHistory", &compared)
         try expectSameRows(before.routines, after.routines, "routines", &compared)
         try expectSameRows(
             before.routineExercises, after.routineExercises, "routineExercises", &compared)
         try expectSameRows(
             before.routineTargetGroups, after.routineTargetGroups, "routineTargetGroups", &compared)
         try expectSameRows(before.plannedTargets, after.plannedTargets, "plannedTargets", &compared)
+        try expectSameRows(before.programs, after.programs, "programs", &compared)
+        try expectSameRows(before.programDays, after.programDays, "programDays", &compared)
+        try expectSameRows(before.programRuns, after.programRuns, "programRuns", &compared)
         if settingsIdentityMoved {
             compared.insert("settings")
             try expectSamePreferences(before.settings, after.settings)

@@ -14,8 +14,11 @@ import RepositoryInterface
 /// stores that could drift, and the drift would be invisible: the round trip would still pass, over
 /// a store shaped differently from the one every other assertion in this suite is made against.
 struct FixtureRepositories {
-    /// The exercise catalogue and each exercise's training-max history.
+    /// The exercise catalogue.
     let exercises: any ExerciseRepository
+
+    /// Each exercise's training-max configuration and history.
+    let trainingMaxes: any TrainingMaxRepository
 
     /// Sessions, entries, sets and their planned targets.
     let workouts: any WorkoutRepository & PlannedTargetRepository
@@ -35,17 +38,22 @@ struct FixtureRepositories {
     /// Routines, their exercise slots and target groups (`FR-15.2`).
     let routines: any RoutineRepository
 
+    /// Programs, their days and the runs through them (`FR-16.8`).
+    let programs: any ProgramRepository
+
     /// The fakes.
     ///
     /// - Parameter stack: The in-memory stack.
     init(_ stack: InMemoryRepositoryStack) {
         exercises = stack.exercises
+        trainingMaxes = stack.trainingMaxes
         workouts = stack.workouts
         settings = stack.settings
         bodyweight = stack.bodyweight
         equipment = stack.equipment
         personalRecords = stack.personalRecords
         routines = stack.routines
+        programs = stack.programs
     }
 
     /// The real store.
@@ -53,12 +61,14 @@ struct FixtureRepositories {
     /// - Parameter stack: The SwiftData stack.
     init(_ stack: PersistenceStack) {
         exercises = stack.exercises
+        trainingMaxes = stack.trainingMaxes
         workouts = stack.workouts
         settings = stack.settings
         bodyweight = stack.bodyweight
         equipment = stack.equipment
         personalRecords = stack.personalRecords
         routines = stack.routines
+        programs = stack.programs
     }
 }
 
@@ -92,10 +102,16 @@ struct ExportLog {
     /// - Parameters:
     ///   - name: What it is called.
     ///   - id: Its identifier.
+    ///   - parentExerciseID: The exercise this is a variation of (`FR-1.1.7`), or `nil` for a root.
     /// - Returns: The record.
     @discardableResult
-    func exercise(named name: String, id: UUID = UUID()) async throws -> Exercise {
-        let exercise = ExportRecords.exercise(id: id, name: name, at: Self.epoch)
+    func exercise(
+        named name: String,
+        id: UUID = UUID(),
+        parentExerciseID: UUID? = nil
+    ) async throws -> Exercise {
+        let exercise = ExportRecords.exercise(
+            id: id, name: name, at: Self.epoch, parentExerciseID: parentExerciseID)
         try await repositories.exercises.save(exercise)
         return exercise
     }
@@ -106,17 +122,26 @@ struct ExportLog {
     ///   - days: How many days before the epoch it was trained.
     ///   - id: Its identifier.
     ///   - notes: The session note.
+    ///   - programRunID: The run it was started under (`FR-16.8.3`), or `nil`.
+    ///   - weekNumber: The week it was started under, or `nil`.
+    ///   - dayIndex: The day it was started from, or `nil`.
     /// - Returns: The record.
     @discardableResult
     func session(
         daysAgo days: Int,
         id: UUID = UUID(),
-        notes: String = ""
+        notes: String = "",
+        programRunID: UUID? = nil,
+        weekNumber: Int? = nil,
+        dayIndex: Int? = nil
     ) async throws -> WorkoutSession {
         let session = ExportRecords.session(
             id: id,
             at: Self.epoch.addingTimeInterval(-Double(days) * 86_400),
-            notes: notes)
+            notes: notes,
+            programRunID: programRunID,
+            weekNumber: weekNumber,
+            dayIndex: dayIndex)
         try await repositories.workouts.save(session)
         return session
     }
@@ -249,8 +274,14 @@ enum ExportRecords {
     ///   - id: Its identifier.
     ///   - name: What it is called.
     ///   - at: When it was written.
+    ///   - parentExerciseID: The exercise this is a variation of (`FR-1.1.7`), or `nil`.
     /// - Returns: The record.
-    static func exercise(id: UUID = UUID(), name: String, at stamp: Date) -> Exercise {
+    static func exercise(
+        id: UUID = UUID(),
+        name: String,
+        at stamp: Date,
+        parentExerciseID: UUID? = nil
+    ) -> Exercise {
         Exercise(
             id: id,
             createdAt: stamp,
@@ -259,7 +290,7 @@ enum ExportRecords {
             name: name,
             ukrainianName: nil,
             movement: .squat,
-            parentExerciseID: nil,
+            parentExerciseID: parentExerciseID,
             equipment: .barbell,
             laterality: .bilateral,
             barType: .standard,
@@ -277,7 +308,14 @@ enum ExportRecords {
     ///   - at: The training day, which is also when the row was written.
     ///   - notes: The session note.
     /// - Returns: The record.
-    static func session(id: UUID = UUID(), at date: Date, notes: String = "") -> WorkoutSession {
+    static func session(
+        id: UUID = UUID(),
+        at date: Date,
+        notes: String = "",
+        programRunID: UUID? = nil,
+        weekNumber: Int? = nil,
+        dayIndex: Int? = nil
+    ) -> WorkoutSession {
         WorkoutSession(
             id: id,
             createdAt: date,
@@ -288,8 +326,10 @@ enum ExportRecords {
             endedAt: date.addingTimeInterval(3_600),
             notes: notes,
             bodyweight: nil,
-            programRunID: nil,
-            scheduledWorkoutID: nil)
+            programRunID: programRunID,
+            scheduledWorkoutID: nil,
+            weekNumber: weekNumber,
+            dayIndex: dayIndex)
     }
 
     /// One exercise slot.
