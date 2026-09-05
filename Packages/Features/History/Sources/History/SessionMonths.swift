@@ -7,14 +7,32 @@ import Foundation
 /// a snapshot's.
 struct SessionMonthSection: Identifiable, Equatable {
     /// The first instant of the month, in the calendar the section was built in — the heading's
-    /// subject and the section's identity.
+    /// subject.
     let start: Date
 
     /// That month's rows, in the order they arrived: newest first.
     let summaries: [SessionSummary]
 
-    /// See ``start``.
-    var id: Date { start }
+    /// The section's identity: its first row's.
+    ///
+    /// **Not ``start``, and ``SessionMonths/sections(_:calendar:)``'s own argument is why.** That
+    /// function cuts *runs* rather than keying on the month, so a month reached twice is two
+    /// sections — and two sections sharing an identity is not a `ForEach` drawing two headings, it
+    /// is a `ForEach` told the same row is in two places, which draws undefined results and says so
+    /// in the console. A session appears in exactly one run, so its identifier separates them.
+    let id: UUID
+
+    /// Builds the section, taking its identity from the first row.
+    ///
+    /// - Parameters:
+    ///   - start: The month's first instant.
+    ///   - summaries: The month's rows, newest first and never empty — a run exists because a row
+    ///     opened it.
+    init(start: Date, summaries: [SessionSummary]) {
+        self.start = start
+        self.summaries = summaries
+        self.id = summaries.first?.id ?? UUID()
+    }
 }
 
 /// How the session list's rows become `FR-16.6.3`'s month sections.

@@ -14,6 +14,7 @@
 "logging.train.in-progress.day" = "Тренувальний день";
 "logging.train.in-progress.started" = "Початок";
 "logging.train.in-progress.resume" = "Продовжити тренування";
+"logging.train.planned.open" = "Відкрити тренування";
 
 "logging.train.library.action" = "Переглянути вправи";
 "logging.train.routines.action" = "Програми";

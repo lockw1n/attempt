@@ -63,6 +63,29 @@ extension LoggingStrings {
     /// The way back into the workout in progress (`FR-1.2.11`).
     static let trainInProgressResume = resource("logging.train.in-progress.resume")
 
+    /// The same way in, for a workout whose training day has not arrived (`FR-16.6.5`).
+    ///
+    /// **"Resume" is a claim about the past and there is none to make.** A planned workout has not
+    /// been begun — its `startedAt` is `nil` and the card draws no start time — so offering to
+    /// resume it says the lifter is mid-workout, which is the reading the **Planned** heading one
+    /// line above was written to stop. Not "Start" either: `FR-1.2.1`'s ``trainStartAction`` writes
+    /// a new session, and this one already exists.
+    static let trainPlannedOpen = resource("logging.train.planned.open")
+
+    /// What Train's card calls the way into the workout it is holding.
+    ///
+    /// The heading's counterpart — see ``trainSessionSection(_:)`` for why a finished session
+    /// cannot reach here.
+    ///
+    /// - Parameter lifecycle: Which kind of workout the card is holding.
+    /// - Returns: The label.
+    static func trainSessionResume(_ lifecycle: SessionLifecycle) -> LocalizedStringResource {
+        switch lifecycle {
+        case .planned: trainPlannedOpen
+        case .inProgress, .finished: trainInProgressResume
+        }
+    }
+
     /// The way into the exercise library from the session surface.
     static let trainLibraryAction = resource("logging.train.library.action")
 

@@ -370,7 +370,7 @@ struct SessionInProgressSection: View {
                 )
             }
             NavigationLink(value: Route.training(.activeSession)) {
-                Text(LoggingStrings.trainInProgressResume)
+                Text(LoggingStrings.trainSessionResume(lifecycle))
                     .font(Typography.actionLabel.font)
                     .foregroundStyle(ColorToken.textPrimary)
                     .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points)

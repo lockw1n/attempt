@@ -25,6 +25,10 @@
 /* FR-1.2.11: the way back into a workout the app came back to. "Resume" rather than "Open", because
    the workout was interrupted — by a relaunch, a force-quit or a walk to the rack. */
 "logging.train.in-progress.resume" = "Resume workout";
+/* FR-16.6.5 — the same link over a workout dated ahead of today. "Resume" would claim it had
+   been begun; "Start workout" is FR-1.2.1's command, which writes a session that already
+   exists here. */
+"logging.train.planned.open" = "Open workout";
 
 "logging.train.library.action" = "Browse exercises";
 /* FR-15.2.1, beside the library. "Routines" rather than "Plans": a routine is one training day,

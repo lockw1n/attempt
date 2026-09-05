@@ -390,7 +390,7 @@ enum LoggingStrings {
             trainEmptyHeadline, trainEmptyMessage, trainStartAction, trainDateSection,
             trainDatePicker, trainDateHint, trainInProgressSection, trainPlannedSection,
             trainInProgressDay,
-            trainInProgressStarted, trainInProgressResume, trainLibraryAction,
+            trainInProgressStarted, trainInProgressResume, trainPlannedOpen, trainLibraryAction,
             trainRoutinesAction,
             trainErrorHeadline,
             trainErrorMessage, trainStartErrorMessage, sessionTitle, sessionTitleDay("Sep 4"),

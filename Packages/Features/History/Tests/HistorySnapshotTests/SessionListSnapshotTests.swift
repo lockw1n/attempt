@@ -129,6 +129,9 @@
             // vertical 32 pt is counted once rather than twice. The horizontal 32 pt is left where
             // it is and is why this stays conservative: the content renders 32 pt narrower than the
             // device would, so more lines wrap here than there.
+            //
+            // The list's paging foot is counted rather than subtracted: it is 1 pt and a gap, and
+            // it is on the screen a lifter sees.
             let budget = 667.0 - 20.0 - 44.0 - 49.0
             let rendered = try Snapshot.render(
                 Fixtures.list(Fixtures.twoMonths), appearance: .light, typeSize: .default)
@@ -184,9 +187,21 @@
             // say, and in the list a row sits under a heading that has named the month and the year
             // (`FR-16.6.3`). A surface rather than a heading around it, so each reference is one
             // row's content and nothing else — the list's own shape is `SessionList-months`.
-            SessionSummaryCard(
-                summary: summary, unit: unit, date: .dayOfMonth, finish: finishes ? {} : nil
-            )
+            //
+            // THE ROW ON A `Card` RATHER THAN A `SessionSummaryCard`, and the pixels are the same
+            // either way: a month section is `Card { VStack { rows } }`, so a lone row under a
+            // heading renders exactly this. What differs is the claim. `SessionSummaryCard` is drawn
+            // at `.full` by a search result and at `.hidden` by a calendar day and nowhere else, so
+            // a reference calling it at `.dayOfMonth` would picture a call site the app does not
+            // have — and would go on matching if the card and the section ever stopped agreeing.
+            Card {
+                SessionSummaryRow(
+                    summary: summary,
+                    unit: unit,
+                    date: .dayOfMonth,
+                    finish: finishes ? {} : nil
+                )
+            }
             .environment(\.locale, Locale(identifier: "en_US"))
             // The date goes through `Text(_:format:)`, which resolves its time zone from the
             // environment — so an unpinned reference is only reproducible while the fixture's

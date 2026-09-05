@@ -216,15 +216,12 @@ public struct SessionListView: View {
             SessionMonthList(
                 months: months,
                 unit: state.displayUnit,
-                // The paging trigger: the last row appearing is the list running out, which is the
-                // only signal a `LazyVStack` gives. It is answered here rather than in the list
-                // because a month's last row is not the log's. It fires once per row —
-                // `loadMore()` refuses a second caller and refuses to run at all once the rows are
-                // exhausted.
-                appeared: { summary in
-                    guard summary.id == state.summaries.last?.id else { return }
-                    Task { await state.loadMore() }
-                },
+                // The paging trigger: the foot of the list coming into view is the list running
+                // out, which is the only signal a `LazyVStack` gives. It is asked of the foot
+                // rather than of the last row because a section builds its rows eagerly — see
+                // ``SessionMonthList/reachedEnd``. `loadMore()` refuses a second caller and refuses
+                // to run at all once the rows are exhausted, so firing it again costs nothing.
+                reachedEnd: { Task { await state.loadMore() } },
                 finish: { summary in
                     Task { await state.beginFinish(sessionID: summary.id) }
                 }

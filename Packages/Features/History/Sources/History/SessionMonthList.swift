@@ -23,12 +23,16 @@ struct SessionMonthList: View {
     /// The unit every tonnage here is shown in (`G-3.1`).
     let unit: MassUnit
 
-    /// Called as a row appears, so the caller can page (`NFR-1.5`).
+    /// Called when the foot of the list comes into view, so the caller can page (`NFR-1.5`).
     ///
-    /// **The list reports, and the caller decides.** Whether a given row is the last one in the log
-    /// is the state's knowledge, not this view's: a month's last row is not the list's last row, and
-    /// a section that thought otherwise would page on every month boundary.
-    var appeared: (SessionSummary) -> Void = { _ in }
+    /// **The foot rather than the last row, and a section is why.** ``DesignSystem/GroupedSection``
+    /// builds its content eagerly, so a month realised by the `LazyVStack` realises every row under
+    /// it at once — and a trigger hung on the last row would fire while that row was still a
+    /// screenful below the fold. On a log whose first page shares a month, that is the list paging
+    /// itself to the end of history without anyone scrolling, which is the eager load `NFR-1.5`
+    /// cannot survive. The only child of this stack whose appearance still means *the reader has
+    /// reached the bottom* is one placed after the last section.
+    var reachedEnd: () -> Void = {}
 
     /// Ends the workout a row describes (`FR-16.4.4`), where that row offers it.
     var finish: (SessionSummary) -> Void = { _ in }
@@ -62,10 +66,22 @@ struct SessionMonthList: View {
                             destination: Route.history(.session(sessionID: summary.id)),
                             finish: summary.canFinish ? { finish(summary) } : nil
                         )
-                        .onAppear { appeared(summary) }
                     }
                 }
             }
+
+            // The paging trigger (`NFR-1.5`), and the only lazily realised thing in this stack that
+            // is *below* the rows. Keyed on the last row so a page landing while the foot is still
+            // on screen — a log shorter than one screen, which is the case a short first page makes
+            // — replaces this view and asks again, rather than leaving a trigger that has already
+            // fired sitting where it can never fire twice.
+            //
+            // The smallest token there is, because the foot is not a thing to see: `Color` is
+            // greedy without a height and would take the rest of the stack.
+            Color.clear
+                .frame(height: Spacing.xxs.points)
+                .id(months.last?.summaries.last?.id)
+                .onAppear(perform: reachedEnd)
         }
     }
 }

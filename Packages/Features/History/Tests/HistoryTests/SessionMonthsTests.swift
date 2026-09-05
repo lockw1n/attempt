@@ -58,6 +58,10 @@ struct SessionMonthsTests {
             calendar: Self.calendar
         )
         #expect(sections.count == 3)
+        // And three sections a `ForEach` can tell apart. Keying identity on the month would give
+        // the two September runs the same one, which is not "two headings in the wrong place" —
+        // it is a `ForEach` told one row is in two places, which draws undefined results.
+        #expect(Set(sections.map(\.id)).count == 3)
     }
 
     @Test("The month boundary is the caller's calendar, not the machine's")
