@@ -29,7 +29,9 @@
             try assertSnapshots(named: "RecentRecords-settings") {
                 RecentRecordsSettingsForm(
                     settings: SettingsFixtures.row,
-                    exercises: SettingsFixtures.exercises,
+                    exerciseSearchText: .constant(""),
+                    exerciseSections: SettingsFixtures.exerciseSections,
+                    hasExercises: true,
                     schemes: SettingsFixtures.schemes,
                     hasFailedWrite: false,
                     apply: { _ in },
@@ -50,7 +52,9 @@
             try assertSnapshots(named: "RecentRecords-settings-chosen") {
                 RecentRecordsSettingsForm(
                     settings: configured,
-                    exercises: SettingsFixtures.exercises,
+                    exerciseSearchText: .constant(""),
+                    exerciseSections: SettingsFixtures.exerciseSections,
+                    hasExercises: true,
                     schemes: SettingsFixtures.chosenSchemes,
                     hasFailedWrite: false,
                     apply: { _ in },
@@ -87,11 +91,22 @@
             defaultRoundingIncrement: Weight(grams: 2500),
             defaultRoundingStrategy: .nearest)
 
-        /// One ticked and one not, so a row's two states are in one picture.
+        /// One ticked and one not, so a row's two states are in one picture — and one trained and
+        /// one untrained, so the `.chosen` list draws both of `FR-16.5.3`'s
+        /// sections and the date under a name is in the picture.
         static let exercises = [
-            TiledExerciseChoice(exerciseID: UUID(), name: "Back Squat", isTiled: true),
-            TiledExerciseChoice(exerciseID: UUID(), name: "Triceps Kickback", isTiled: false),
+            TiledExerciseChoice(
+                exerciseID: UUID(), name: "Back Squat", isTiled: true, lastTrained: trainedDay),
+            TiledExerciseChoice(
+                exerciseID: UUID(), name: "Triceps Kickback", isTiled: false, lastTrained: nil),
         ]
+
+        /// The day the trained row was last performed. Fixed, so a reference committed today still
+        /// matches next year.
+        static let trainedDay = Date(timeIntervalSince1970: 1_700_000_000)
+
+        /// Those rows as the screen draws them (`FR-16.5.3`).
+        static let exerciseSections = ExerciseChoiceSections.sections(exercises, matching: "")
 
         /// The derived case: cells the log offers, none of them the lifter's own choice.
         static let schemes = [

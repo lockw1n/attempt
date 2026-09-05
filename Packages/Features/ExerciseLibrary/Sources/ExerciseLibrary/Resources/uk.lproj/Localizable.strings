@@ -11,6 +11,8 @@
 
 "exerciselibrary.list.filter.all" = "Усі";
 
+"exerciselibrary.list.filter.filters" = "Фільтри";
+"exerciselibrary.list.filter.filters.hint" = "Показує та приховує параметри фільтрів.";
 "exerciselibrary.list.filter.recently-used" = "Нещодавні";
 "exerciselibrary.list.filter.recently-used.hint" = "Стане доступним, щойно ви запишете тренування.";
 "exerciselibrary.list.filter.recently-used.available %lld" = "Вправи, які ви тренували за останні %lld днів";

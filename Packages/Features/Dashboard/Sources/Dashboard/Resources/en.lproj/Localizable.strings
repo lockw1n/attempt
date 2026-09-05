@@ -163,3 +163,26 @@
 /* FR-16.4.3. A workout dated ahead of today: nothing has been logged against it and nothing is
    being logged now, so neither "In progress" nor a set count of zero is true of it. */
 "dashboard.last-workout.planned" = "Planned";
+
+/* FR-16.5.3: the two exercise pickers — the dashboard's tiled lifts and the recent-PR feed's chosen
+   scope — are one list, so their copy is one set of keys. "Exercise picker" is not a screen name:
+   it is the list both screens draw, which is what the middle segment names here. */
+"dashboard.exercise-picker.search.prompt" = "Search exercises";
+
+/* The trained section is first and is what the requirement is for: a lifter choosing lifts should
+   start from the ones they actually train. "Everything else" rather than "All": the section is the
+   remainder, and a heading saying "All" over a list the trained rows have been taken out of would
+   be false. */
+"dashboard.exercise-picker.section.trained" = "Trained";
+"dashboard.exercise-picker.section.everything-else" = "Everything else";
+
+/* Under a trained row's name. The date arrives rendered, so the sentence carries no format of its
+   own and cannot disagree with the one the screen is using. */
+"dashboard.exercise-picker.row.last-trained %@" = "Last trained %@";
+
+/* A search that matched nothing. The search field stays on screen above this, so the message names
+   the query as the cause rather than the catalogue — and the action is the same clearing the field
+   would do, offered again where the reader is looking. */
+"dashboard.exercise-picker.no-matches.headline" = "No exercises match";
+"dashboard.exercise-picker.no-matches.message" = "Try a different search, or clear it to see every exercise.";
+"dashboard.exercise-picker.no-matches.action" = "Clear search";

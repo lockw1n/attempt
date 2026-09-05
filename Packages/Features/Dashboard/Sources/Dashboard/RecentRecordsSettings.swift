@@ -40,6 +40,17 @@ final class RecentRecordsSettingsState {
     /// a second read runs.
     private(set) var exerciseChoices: [TiledExerciseChoice] = []
 
+    /// What the user typed into the `.chosen` list's search field (`FR-16.5.3`).
+    var exerciseSearchText = ""
+
+    /// The `.chosen` list as it is drawn: trained first, then the rest, narrowed by the search.
+    ///
+    /// The same split the tile picker gets, from the same function — sharing it is what stops this
+    /// screen from growing its own idea of what "trained" means.
+    var exerciseSections: [ExerciseChoiceSection] {
+        ExerciseChoiceSections.sections(exerciseChoices, matching: exerciseSearchText)
+    }
+
     /// The schemes in scope, and which are ticked.
     private(set) var schemeChoices: [RecentRecordsSchemeChoice] = []
 
@@ -96,12 +107,14 @@ final class RecentRecordsSettingsState {
                 DashboardDefaults.exerciseIDs(
                     in: exercises, mostTrained: try await recomputer.mostTrainedExerciseIDs())
             }
+            let trained = try await recomputer.lastTrainedDates()
             settings = stored
             exerciseChoices = ExerciseDisplayOrder.sorted(exercises, in: nameLanguage).map {
                 TiledExerciseChoice(
                     exerciseID: $0.id,
                     name: $0.displayName(in: nameLanguage),
-                    isTiled: chosen.contains($0.id))
+                    isTiled: chosen.contains($0.id),
+                    lastTrained: trained[$0.id])
             }
             schemeChoices = try await schemes(inScope: scope, chosen: stored.recentRecordsSchemes)
             failure = nil

@@ -35,6 +35,13 @@ enum ExerciseLibraryStrings {
     /// The unset position of every filter row — "no narrowing", not "everything selected".
     static let filterAll = resource("exerciselibrary.list.filter.all")
 
+    /// The control that opens `FR-16.5.4`'s folded filter row.
+    static let filtersLabel = resource("exerciselibrary.list.filter.filters")
+
+    /// What that control does, for VoiceOver — the chip itself says only "Filters", which names the
+    /// subject and not the act (`G-4.2`).
+    static let filtersHint = resource("exerciselibrary.list.filter.filters.hint")
+
     /// The recency filter (`FR-1.1.2`).
     static let recentlyUsedFilter = resource("exerciselibrary.list.filter.recently-used")
 
@@ -372,6 +379,24 @@ enum ExerciseLibraryStrings {
         }
     }
 
+    /// One narrowing in force, as the folded row's chip names it (`FR-16.5.4`).
+    ///
+    /// **It delegates to the four labels rather than owning six more keys.** A chip in the folded
+    /// row and the chip inside the facet row are the same filter, so a second spelling would be a
+    /// second thing to translate and one more way for the two to disagree about what is selected.
+    ///
+    /// - Parameter facet: The narrowing.
+    /// - Returns: Its label.
+    static func label(for facet: ExerciseListFacet) -> LocalizedStringResource {
+        switch facet {
+        case .movement(let movement): label(for: movement)
+        case .equipment(let equipment): label(for: equipment)
+        case .origin(let origin): label(for: origin)
+        case .recentlyUsed: recentlyUsedFilter
+        case .archived: showArchivedFilter
+        }
+    }
+
     /// How many sides a rep works, as a word (`TR-0.3.1`).
     ///
     /// - Parameter laterality: The value to label.
@@ -409,6 +434,7 @@ enum ExerciseLibraryStrings {
     static var all: [LocalizedStringResource] {
         [
             title, searchPrompt, movementFilter, equipmentFilter, originFilter, filterAll,
+            filtersLabel, filtersHint,
             recentlyUsedFilter, recentlyUsedUnavailable,
             recentlyUsedAvailable(days: 30), customBadge,
             showArchivedFilter, archivedBadge, pickerTitle, archivedOnlyPickerMessage,

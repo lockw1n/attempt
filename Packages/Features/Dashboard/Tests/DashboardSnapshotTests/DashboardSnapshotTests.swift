@@ -174,9 +174,31 @@
         }
 
         @Test func tilePicker() throws {
+            // FR-16.5.3: the search field, the trained section with a date under each name, and the
+            // remainder under its own heading. One picture, because the claim is the order of the
+            // two sections relative to each other.
             try assertSnapshots(named: "Dashboard-tile-picker") {
                 TiledExerciseSelectionReading(
-                    state: .ready(DashboardFixtures.choices),
+                    state: .ready(DashboardFixtures.pickerSections),
+                    searchText: .constant(""),
+                    hasFailedWrite: false,
+                    retry: {},
+                    toggle: { _ in }
+                )
+                .environment(\.locale, DashboardFixtures.locale)
+                .environment(\.timeZone, .gmt)
+            }
+        }
+
+        @Test func tilePickerSearchMatchedNothing() throws {
+            // The negative of the reference above, and it pins two things a picture is the only
+            // check for: the field keeps the query that caused the state — so the reader can see the
+            // cause — and it is still on screen above the message, which is what makes replacing the
+            // rows recoverable here (see `ExerciseChoiceList`'s own note).
+            try assertSnapshots(named: "Dashboard-tile-picker-no-matches") {
+                TiledExerciseSelectionReading(
+                    state: .ready([]),
+                    searchText: .constant("hack squat"),
                     hasFailedWrite: false,
                     retry: {},
                     toggle: { _ in }
@@ -248,10 +270,22 @@
 
         /// The picker's rows, two of them ticked.
         static let choices: [TiledExerciseChoice] = [
-            TiledExerciseChoice(exerciseID: id(1), name: "Back Squat", isTiled: true),
-            TiledExerciseChoice(exerciseID: id(2), name: "Bench Press", isTiled: true),
-            TiledExerciseChoice(exerciseID: id(3), name: "Deadlift", isTiled: false),
+            TiledExerciseChoice(
+                exerciseID: id(1),
+                name: "Back Squat",
+                isTiled: true,
+                lastTrained: day.addingTimeInterval(-2 * 86_400)),
+            TiledExerciseChoice(
+                exerciseID: id(2),
+                name: "Bench Press",
+                isTiled: true,
+                lastTrained: day.addingTimeInterval(-9 * 86_400)),
+            TiledExerciseChoice(
+                exerciseID: id(3), name: "Deadlift", isTiled: false, lastTrained: nil),
         ]
+
+        /// Those rows split as `FR-16.5.3` draws them: two trained, one not.
+        static let pickerSections = ExerciseChoiceSections.sections(choices, matching: "")
 
         /// One computed tile, with or without something to compare against.
         private static func tile(

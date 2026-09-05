@@ -240,6 +240,48 @@ enum DashboardStrings {
         resource("dashboard.last-workout.sets \(count)")
     }
 
+    /// The exercise pickers' search field prompt (`FR-16.5.3`).
+    ///
+    /// One string for both pickers, because both search the same catalogue — a second copy would be
+    /// a second thing to translate and a chance for the two to disagree.
+    static let exerciseSearchPrompt = resource("dashboard.exercise-picker.search.prompt")
+
+    /// The heading over a search that matched nothing.
+    static let exerciseSearchNoMatchesHeadline = resource(
+        "dashboard.exercise-picker.no-matches.headline")
+
+    /// What to do about it.
+    static let exerciseSearchNoMatchesMessage = resource(
+        "dashboard.exercise-picker.no-matches.message")
+
+    /// The one tap back to the full list.
+    static let exerciseSearchClearAction = resource("dashboard.exercise-picker.no-matches.action")
+
+    /// A row's last-trained day (`FR-16.5.3`).
+    ///
+    /// **The date arrives already rendered**, `ExerciseLibraryStrings.trainingMaxSince(_:)`'s rule:
+    /// a date formatted here would be formatted twice, and the caller is the one holding the locale
+    /// the screen is drawing in.
+    ///
+    /// - Parameter date: The day, rendered for the reader.
+    /// - Returns: The caption under the row's name.
+    static func exerciseLastTrained(_ date: String) -> LocalizedStringResource {
+        resource("dashboard.exercise-picker.row.last-trained \(date)")
+    }
+
+    /// One of the picker's two section headings (`FR-16.5.3`).
+    ///
+    /// - Parameter kind: Which section.
+    /// - Returns: Its heading.
+    static func exerciseSectionTitle(
+        for kind: ExerciseChoiceSection.Kind
+    ) -> LocalizedStringResource {
+        switch kind {
+        case .trained: resource("dashboard.exercise-picker.section.trained")
+        case .everythingElse: resource("dashboard.exercise-picker.section.everything-else")
+        }
+    }
+
     /// Every string this module owns, for the test that asserts each one resolves.
     static var all: [LocalizedStringResource] {
         [
@@ -265,6 +307,10 @@ enum DashboardStrings {
             tileTrainingMax("180 kg"),
             tileNoPrevious, tilesChooseAction, tilesChooseTitle, tilesChooseEmpty,
             tilesChooseError, tilesChooseWriteError, tilesNoEstimates,
+            exerciseSearchPrompt, exerciseSearchNoMatchesHeadline,
+            exerciseSearchNoMatchesMessage, exerciseSearchClearAction,
+            exerciseLastTrained("4 Sep 2026"),
+            exerciseSectionTitle(for: .trained), exerciseSectionTitle(for: .everythingElse),
         ] + absences.map { tileAbsence($0, days: 90) }
             + absences.map { tileAbsenceShort($0, days: 90) }
             + RecentRecordsScope.allCases.map { recentRecordsScopeName(for: $0) }

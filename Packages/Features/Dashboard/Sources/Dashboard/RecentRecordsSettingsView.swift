@@ -68,7 +68,8 @@ public struct RecentRecordsSettingsView: View {
 
     /// The three states, and the read that fills them.
     public var body: some View {
-        ScrollView {
+        @Bindable var state = state
+        return ScrollView {
             VStack(alignment: .leading, spacing: Spacing.lg.points) {
                 switch RecentRecordsSettingsScreenState.current(state) {
                 case .loading:
@@ -80,7 +81,9 @@ public struct RecentRecordsSettingsView: View {
                 case .ready(let settings):
                     RecentRecordsSettingsForm(
                         settings: settings,
-                        exercises: state.exerciseChoices,
+                        exerciseSearchText: $state.exerciseSearchText,
+                        exerciseSections: state.exerciseSections,
+                        hasExercises: !state.exerciseChoices.isEmpty,
                         schemes: state.schemeChoices,
                         hasFailedWrite: state.writeFailure != nil,
                         apply: { change in Task { await state.apply(change) } },
@@ -110,8 +113,18 @@ struct RecentRecordsSettingsForm: View {
     /// The row every control reads its selection from.
     let settings: UserSettings
 
-    /// The exercises the chosen scope can name.
-    let exercises: [TiledExerciseChoice]
+    /// What the user typed into the `.chosen` list's search field.
+    @Binding var exerciseSearchText: String
+
+    /// The exercises the chosen scope can name, as `FR-16.5.3`'s two sections.
+    let exerciseSections: [ExerciseChoiceSection]
+
+    /// Whether the catalogue holds anything to choose among at all.
+    ///
+    /// **Measured on the catalogue rather than on ``exerciseSections``**, because a search that
+    /// matched nothing and a store with nothing in it are different facts wanting different
+    /// answers — the first has a query to clear, which ``ExerciseChoiceList`` offers itself.
+    let hasExercises: Bool
 
     /// The schemes in scope, and which are ticked.
     let schemes: [RecentRecordsSchemeChoice]
@@ -164,15 +177,18 @@ struct RecentRecordsSettingsForm: View {
     ///
     /// **Inline rather than a screen of its own**, unlike `FR-1.9.1`'s tile picker: this list is
     /// meaningful only under one of three scopes, and a row leading to a chooser that the current
-    /// scope ignores is the dead end `SettingsLandingView` hides the Health row to avoid.
-    private var chosenExercises: some View {
-        GroupedSection(Text(DashboardStrings.recentRecordsExercisesTitle)) {
-            if exercises.isEmpty {
+    /// scope ignores is the dead end `SettingsLandingView` hides the Health row to avoid. T-16.09
+    /// re-examined that and kept it — what it shared was the *view*, ``ExerciseChoiceList``, so the
+    /// two lists search and section alike without this one being pushed.
+    @ViewBuilder private var chosenExercises: some View {
+        if hasExercises {
+            ExerciseChoiceList(
+                searchText: $exerciseSearchText,
+                sections: exerciseSections,
+                toggle: toggleExercise)
+        } else {
+            GroupedSection(Text(DashboardStrings.recentRecordsExercisesTitle)) {
                 EmptyStateView(headline: Text(DashboardStrings.recentRecordsExercisesEmpty))
-            } else {
-                ForEach(exercises) { choice in
-                    TiledExerciseRow(choice: choice, toggle: toggleExercise)
-                }
             }
         }
     }

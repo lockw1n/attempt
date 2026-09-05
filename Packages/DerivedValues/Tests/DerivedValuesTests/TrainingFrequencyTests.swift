@@ -6,7 +6,8 @@ import Testing
 
 @testable import DerivedValues
 
-/// `FR-16.5.1`'s ranking: which exercises the lifter has actually been doing lately, most first.
+/// The two questions about one bounded walk: `FR-16.5.1`'s ranking — which exercises the lifter has
+/// actually been doing lately, most first — and `FR-16.5.3`'s dates, when each was last trained.
 @Suite("Training frequency")
 struct TrainingFrequencyTests {
     @Test("The ranking counts completed working sets, not sessions")
@@ -92,6 +93,58 @@ struct TrainingFrequencyTests {
         try await log.exercise(named: "Back Squat")
 
         #expect(try await recomputer(over: log).mostTrainedExerciseIDs().isEmpty)
+    }
+
+    @Test("The date is the most recent day an exercise was trained on, not the first")
+    func thedateIsTheMostRecentDay() async throws {
+        let log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        try await log.session(of: squat, on: weeksAgo(6), sets: [working(100_000, 5)])
+        try await log.session(of: squat, on: weeksAgo(1), sets: [working(105_000, 5)])
+        try await log.session(of: squat, on: weeksAgo(3), sets: [working(102_500, 5)])
+
+        #expect(try await recomputer(over: log).lastTrainedDates() == [squat: weeksAgo(1)])
+    }
+
+    /// The same population ``mostTrainedExerciseIDs()`` counts: an exercise warmed up and abandoned
+    /// was not trained, so it has no last-trained day and falls to the picker's remainder.
+    @Test("An exercise with no completed working set has no date")
+    func anuntrainedExerciseHasNoDate() async throws {
+        let log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        let bench = try await log.exercise(named: "Bench Press")
+        try await log.session(of: squat, on: weeksAgo(1), sets: [working(100_000, 5)])
+        try await log.session(
+            of: bench,
+            on: weeksAgo(1),
+            sets: [
+                LoggedSet(grams: 60_000, reps: 10, isWarmup: true, isCompleted: true),
+                LoggedSet(grams: 100_000, reps: 5, isWarmup: false, isCompleted: false),
+            ])
+
+        let dated = try await recomputer(over: log).lastTrainedDates()
+
+        #expect(dated == [squat: weeksAgo(1)])
+        #expect(dated[bench] == nil)
+    }
+
+    @Test("The window is the lookback, so an exercise dropped months ago carries no date")
+    func thedatesAreBoundedByTheLookbackWindow() async throws {
+        let log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        let retired = try await log.exercise(named: "Good Morning")
+        try await log.session(of: squat, on: weeksAgo(1), sets: [working(100_000, 5)])
+        try await log.session(of: retired, on: weeksAgo(52), sets: [working(60_000, 5)])
+
+        #expect(try await recomputer(over: log).lastTrainedDates() == [squat: weeksAgo(1)])
+    }
+
+    @Test("An empty log dates nothing")
+    func anemptyLogDatesNothing() async throws {
+        let log = TrainingLog()
+        try await log.exercise(named: "Back Squat")
+
+        #expect(try await recomputer(over: log).lastTrainedDates().isEmpty)
     }
 
     // MARK: - Fixtures

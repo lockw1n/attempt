@@ -2,7 +2,8 @@ import DerivedValues
 import Foundation
 import RepositoryInterface
 
-/// One row of the picker: an exercise, and whether it is tiled (`FR-1.9.1`).
+/// One row of the picker: an exercise, whether it is tiled, and when it was last trained
+/// (`FR-1.9.1`, `FR-16.5.3`).
 struct TiledExerciseChoice: Identifiable, Sendable, Equatable {
     /// The exercise. Also the row's identity.
     let exerciseID: UUID
@@ -12,6 +13,19 @@ struct TiledExerciseChoice: Identifiable, Sendable, Equatable {
 
     /// Whether it currently has a tile.
     let isTiled: Bool
+
+    /// The day this exercise was last trained inside the lookback window, or `nil` where it was not
+    /// trained in it at all (`FR-16.5.3`).
+    ///
+    /// **Presence is what puts the row in the Trained section**, so this is one fact rather than a
+    /// flag and a date that could disagree. `nil` means "not in the window", never "trained on an
+    /// unknown day": ``DerivedValues/PersonalRecordRecomputer/lastTrainedDates()`` answers with a
+    /// date or with nothing.
+    ///
+    /// **No default.** A caller that has not decided whether its rows carry dates has not decided
+    /// which section they land in, and a defaulted `nil` would silently put every row in
+    /// **Everything else**.
+    let lastTrained: Date?
 
     /// See `Identifiable`.
     var id: UUID { exerciseID }
@@ -29,8 +43,19 @@ struct TiledExerciseChoice: Identifiable, Sendable, Equatable {
 /// hiding it would leave a tile the user could see and not remove.
 @Observable
 final class TiledExerciseSelectionState {
-    /// Every choice, ordered by name.
+    /// Every choice, ordered by name (`FR-1.14.2`) — the population ``sections`` splits.
     private(set) var choices: [TiledExerciseChoice] = []
+
+    /// What the user typed into the search field (`FR-16.5.3`).
+    ///
+    /// Here rather than in the view, for the exercise list's reason: a claim about what a search
+    /// returns is testable only where the results are computed.
+    var searchText = ""
+
+    /// The rows the screen draws: trained first, then the rest, both narrowed by ``searchText``.
+    var sections: [ExerciseChoiceSection] {
+        ExerciseChoiceSections.sections(choices, matching: searchText)
+    }
 
     /// Which exercises are tiled, in the order they are drawn.
     private(set) var selection: [UUID] = []
@@ -81,6 +106,12 @@ final class TiledExerciseSelectionState {
     /// The selection defaults exactly as the tiles do — ``DashboardDefaults`` — so the picker opens
     /// showing the three the user can already see, rather than nothing ticked under three tiles.
     ///
+    /// **Two reads of the same bounded walk, and they answer different questions** (`FR-16.5.3`):
+    /// ``EstimatedMaxTilesState/selection(_:in:from:)`` asks which lifts a lifter who has chosen
+    /// nothing gets, and ``DerivedValues/PersonalRecordRecomputer/lastTrainedDates()`` asks when
+    /// each exercise was last trained. The second runs whatever the first answered — a configured
+    /// dashboard still wants its **Trained** section.
+    ///
     /// **A fresh read retires ``writeFailure``**, the rule ``LastWorkoutState/load()`` states: a
     /// failed toggle is reported beside the rows it did not change, and those rows are exactly what
     /// this replaces.
@@ -91,6 +122,7 @@ final class TiledExerciseSelectionState {
             let exercises = try await catalogue.exercises(includingDeleted: false)
             let chosen = try await EstimatedMaxTilesState.selection(
                 stored, in: exercises, from: records)
+            let trained = try await records.lastTrainedDates()
             let tiled = Set(chosen)
             selection = chosen
             choices = ExerciseDisplayOrder.sorted(
@@ -100,7 +132,8 @@ final class TiledExerciseSelectionState {
                 TiledExerciseChoice(
                     exerciseID: $0.id,
                     name: $0.displayName(in: nameLanguage),
-                    isTiled: tiled.contains($0.id))
+                    isTiled: tiled.contains($0.id),
+                    lastTrained: trained[$0.id])
             }
             failure = nil
         } catch {

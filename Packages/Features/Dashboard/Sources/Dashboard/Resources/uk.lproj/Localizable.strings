@@ -92,3 +92,11 @@
 "dashboard.tiles.training-max %@" = "Тренувальний максимум %@";
 
 "dashboard.last-workout.planned" = "Заплановано";
+
+"dashboard.exercise-picker.search.prompt" = "Пошук вправ";
+"dashboard.exercise-picker.section.trained" = "Тренували";
+"dashboard.exercise-picker.section.everything-else" = "Решта";
+"dashboard.exercise-picker.row.last-trained %@" = "Востаннє: %@";
+"dashboard.exercise-picker.no-matches.headline" = "Нічого не знайдено";
+"dashboard.exercise-picker.no-matches.message" = "Спробуйте інший запит або очистіть пошук, щоб побачити всі вправи.";
+"dashboard.exercise-picker.no-matches.action" = "Очистити пошук";

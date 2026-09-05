@@ -110,6 +110,10 @@ let package = Package(
             name: "ExerciseLibrarySnapshotTests",
             dependencies: [
                 "ExerciseLibrary",
+                // FR-16.5.4's filter bar binds to `ExerciseListState`, which reads two
+                // repositories — so picturing the bar means building one. The shape Logging's and
+                // Settings' snapshot targets already have.
+                "RepositoryFakes",
                 .product(name: "SnapshotTesting", package: "DesignSystem"),
             ],
             exclude: ["__Snapshots__"],

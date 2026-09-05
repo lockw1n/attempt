@@ -64,12 +64,12 @@ cd "$(dirname "$0")/.."
 # notice nothing the parity check does not. Set it above that count where such tests exist, and at
 # the suite's own count where they do not — the latter is a floor that adds nothing, which is the
 # honest setting rather than a number chosen to look like the former.
-#   DesignSystem:    29 tests, 17 reference-backed, 12 harness probes  -> 22, above the 17.
-#   ExerciseLibrary: 37 tests, all of them reference-backed, no probes -> 37, its own count.
+#   DesignSystem:    30 tests, 18 reference-backed, 12 harness probes  -> 23, above the 18.
+#   ExerciseLibrary: 40 tests, all of them reference-backed, no probes -> 40, its own count.
 #   Logging:         82 tests, 79 reference-backed, a width probe and two layout budgets
 #                                                                    -> 82, its own count.
 #   History:         25 tests, 24 reference-backed, one layout budget -> 25, above the 24.
-#   Dashboard:       19 tests, all of them reference-backed, no probes -> 19, its own count.
+#   Dashboard:       20 tests, all of them reference-backed, no probes -> 20, its own count.
 #   Settings:        45 tests, all of them reference-backed, no probes -> 45, its own count.
 #   Routines:        12 tests, all of them reference-backed, no probes -> 12, its own count.
 # A screen suite added later is the ExerciseLibrary case unless it brings probes of its own, and a
@@ -82,11 +82,11 @@ cd "$(dirname "$0")/.."
 # 15), each drifting one task at a time. `git grep -c '@Test' -- <suite>` is the count to set it
 # from, and a task that adds a snapshot test owes this list the same edit it owes __Snapshots__.
 SUITES=(
-    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|22"
-    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|37"
+    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|23"
+    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|40"
     "Packages/Features/Logging|Logging|LoggingSnapshotTests|82"
     "Packages/Features/History|History|HistorySnapshotTests|25"
-    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|19"
+    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|20"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|45"
     "Packages/Features/Routines|Routines|RoutinesSnapshotTests|12"
 )

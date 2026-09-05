@@ -14,6 +14,12 @@
    unset position is the one that narrows it by nothing. */
 "exerciselibrary.list.filter.all" = "All";
 
+/* FR-16.5.4: the three facet rows and the archived control fold behind this one, and the chips
+   beside it are whatever is narrowing the list right now. "Filters" names the group, so the hint
+   carries the act — a chip's label is read on its own by VoiceOver. */
+"exerciselibrary.list.filter.filters" = "Filters";
+"exerciselibrary.list.filter.filters.hint" = "Shows and hides the filter options.";
+
 "exerciselibrary.list.filter.recently-used" = "Recently used";
 /* Shown beside the recency filter while it is disabled, which is until something has been trained
    inside the window. It says what would enable it, not what is missing from the app. The chip is

@@ -77,14 +77,38 @@ public final class ExerciseListState {
     /// (`FR-1.14.3`). Set by the view, on ``RepositoryInterface/ExerciseNameLanguage``'s rule.
     public var nameLanguage: ExerciseNameLanguage = .english
 
+    /// The four narrowing controls, and the only thing written to ``ExerciseListFilterMemory``.
+    ///
+    /// **Stored as one value with four computed faces over it**, rather than four stored properties,
+    /// so that every write goes through one place that also records the choice. `@Observable` does
+    /// not carry property observers onto the stored properties it rewrites, so a `didSet` on each of
+    /// the four would be four chances for one of them to stop being remembered.
+    private var facets = ExerciseListFacets()
+
     /// Show only this movement, or every movement (`FR-1.1.2`).
-    public var movementFilter: Movement?
+    public var movementFilter: Movement? {
+        get { facets.movement }
+        set { choose { $0.movement = newValue } }
+    }
 
     /// Show only exercises performed with this, or every one (`FR-1.1.2`).
-    public var equipmentFilter: Equipment?
+    public var equipmentFilter: Equipment? {
+        get { facets.equipment }
+        set { choose { $0.equipment = newValue } }
+    }
 
     /// Show only built-in or only custom exercises, or both (`FR-1.1.2`).
-    public var originFilter: ExerciseOrigin?
+    public var originFilter: ExerciseOrigin? {
+        get { facets.origin }
+        set { choose { $0.origin = newValue } }
+    }
+
+    /// Whether the folded filter row is open (`FR-16.5.4`).
+    ///
+    /// **On the state rather than in the view**, so the snapshot can photograph both halves of the
+    /// one conditional this screen gained — a reference set in which the row is never folded would
+    /// gate nothing.
+    public var areFiltersExpanded = false
 
     /// Whether archived exercises are shown alongside the rest (`FR-1.1.5`).
     ///
@@ -101,7 +125,14 @@ public final class ExerciseListState {
     ///
     /// One of the four narrowing controls, so ``clearFilters()`` turns it off — unlike
     /// ``showsArchived``, which widens.
-    public var showsRecentOnly = false
+    ///
+    /// **`FR-16.5.4`'s default lands here and not through this setter**: a list opening on
+    /// **Recently used** is the app's guess, not the lifter's choice, and stamping it into the
+    /// memory would make it indistinguishable from one.
+    public var showsRecentOnly: Bool {
+        get { facets.showsRecentOnly }
+        set { choose { $0.showsRecentOnly = newValue } }
+    }
 
     /// The exercises trained inside the recency window, or `nil` when the read has not answered.
     ///
@@ -134,6 +165,11 @@ public final class ExerciseListState {
 
     private let repository: any ExerciseRepository
     private let workouts: any WorkoutRepository
+    private let memory: ExerciseListFilterMemory
+
+    /// Whether the facets have been settled for this visit — the memory read, or the default
+    /// applied. Read once per state, not once per load.
+    private var hasSettledFacets = false
 
     /// Builds the state over the two repositories it reads through.
     ///
@@ -143,9 +179,81 @@ public final class ExerciseListState {
     ///     second protocol rather than a dependency on `Logging`, which this module must not have
     ///     (`TR-1.3`) — both modules already depend on `RepositoryInterface`, and the app target
     ///     composes them.
-    public init(repository: any ExerciseRepository, workouts: any WorkoutRepository) {
+    ///   - memory: Where this launch's facet choices are kept (`FR-16.5.4`). The app's one memory
+    ///     by default; a test builds its own, which is what keeps two tests from remembering each
+    ///     other's filters.
+    public init(
+        repository: any ExerciseRepository,
+        workouts: any WorkoutRepository,
+        memory: ExerciseListFilterMemory = .shared
+    ) {
         self.repository = repository
         self.workouts = workouts
+        self.memory = memory
+    }
+
+    /// Moves one facet and records the whole set as the lifter's choice (`FR-16.5.4`).
+    ///
+    /// **Recording happens even where the change clears a facet**, which is the point of the memory
+    /// holding an optional: a lifter who turns **Recently used** off has chosen, and reopening the
+    /// list on it again would be the app overruling them.
+    ///
+    /// - Parameter change: What to move.
+    private func choose(_ change: (inout ExerciseListFacets) -> Void) {
+        change(&facets)
+        hasSettledFacets = true
+        memory.remember(facets)
+    }
+
+    /// Every narrowing in force, in the order the folded row lists them (`FR-16.5.4`).
+    ///
+    /// The order is the filter rows' own, so a chip does not move when a different facet is set —
+    /// and ``ExerciseListFacet/archived`` trails, being the one that widens.
+    public var activeFacets: [ExerciseListFacet] {
+        var active: [ExerciseListFacet] = []
+        if let movement = facets.movement { active.append(.movement(movement)) }
+        if let equipment = facets.equipment { active.append(.equipment(equipment)) }
+        if let origin = facets.origin { active.append(.origin(origin)) }
+        if facets.showsRecentOnly { active.append(.recentlyUsed) }
+        if showsArchived { active.append(.archived) }
+        return active
+    }
+
+    /// Turns one facet off — what tapping its chip in the folded row does (`FR-16.5.4`).
+    ///
+    /// - Parameter facet: The narrowing to drop. Its value is ignored: a chip is only ever drawn
+    ///   for the value that is set, so "clear the movement" and "clear *this* movement" cannot
+    ///   disagree.
+    public func clear(_ facet: ExerciseListFacet) {
+        switch facet {
+        case .movement: movementFilter = nil
+        case .equipment: equipmentFilter = nil
+        case .origin: originFilter = nil
+        case .recentlyUsed: showsRecentOnly = false
+        case .archived: showsArchived = false
+        }
+    }
+
+    /// Applies `FR-16.5.4`'s opening facets once the recency read has answered.
+    ///
+    /// **The memory outranks the default, and both run once per state.** A lifter who has already
+    /// narrowed this launch gets what they set; one who has not gets **Recently used** where the log
+    /// can supply it, and everything where it cannot. Running it on every ``refresh()`` would undo a
+    /// filter every time the screen was returned to.
+    ///
+    /// The default is written to ``facets`` directly rather than through the setters, so the app's
+    /// own guess is never recorded as the lifter's choice.
+    private func settleFacets() {
+        guard !hasSettledFacets else { return }
+        hasSettledFacets = true
+        if let remembered = memory.facets {
+            facets = remembered
+            // A remembered recency filter cannot outlive the history that makes it available — the
+            // window moves on, and a filter in force behind a disabled chip is one nothing clears.
+            if !isRecencyFilterAvailable { facets.showsRecentOnly = false }
+            return
+        }
+        facets.showsRecentOnly = isRecencyFilterAvailable
     }
 
     /// Reads the catalogue, on first appearance and on every retry.
@@ -237,8 +345,10 @@ public final class ExerciseListState {
             recentExerciseIDs = nil
         }
         // One clause for both endings, because they are one fact: a filter cannot stay in force
-        // while the chip that would clear it is disabled.
-        if !isRecencyFilterAvailable { showsRecentOnly = false }
+        // while the chip that would clear it is disabled. Written to `facets` rather than through
+        // the setter: turning a filter off because it stopped being available is not a choice.
+        if !isRecencyFilterAvailable { facets.showsRecentOnly = false }
+        settleFacets()
     }
 
     /// The exercises the list may show, before the search text and the filters.
@@ -344,9 +454,11 @@ public final class ExerciseListState {
     /// ``showsArchived`` is untouched; see its own note for why it is not one of these.
     public func clearFilters() {
         searchText = ""
-        movementFilter = nil
-        equipmentFilter = nil
-        originFilter = nil
-        showsRecentOnly = false
+        choose {
+            $0.movement = nil
+            $0.equipment = nil
+            $0.origin = nil
+            $0.showsRecentOnly = false
+        }
     }
 }

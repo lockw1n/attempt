@@ -20,3 +20,8 @@
 "designsystem.offline.message" = "This needs a connection. Everything you have logged is on this device and still works.";
 
 "designsystem.insufficient-data.headline" = "Not enough data yet";
+
+/* SearchField's clear control is a glyph, so this is the whole of what VoiceOver has to announce
+   (G-4.2). It is here rather than in a screen's catalogue because clearing a field is the same act
+   whatever the field searches. */
+"designsystem.search.clear.accessibility-label" = "Clear search";

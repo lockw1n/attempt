@@ -9,12 +9,20 @@ import RepositoryInterface
 /// been logged, which only `FR-1.1.2`'s recency filter touches. The recency tests build the state
 /// directly and hand it a repository they have written into; everything else goes through here and
 /// gets one nothing has trained against.
+///
+/// **And a memory of its own, which is the part that is not a convenience.**
+/// `FR-16.5.4`'s facet memory is process-lifetime, so a state built on
+/// ``ExerciseLibrary/ExerciseListFilterMemory/shared`` inside a suite Swift Testing runs in parallel
+/// would open on whatever another test last narrowed to.
 extension ExerciseListState {
     /// A list state over `repository`, with nothing logged behind it.
     ///
     /// - Parameter repository: The catalogue under test.
     /// - Returns: The state.
     static func overCatalogue(_ repository: any ExerciseRepository) -> ExerciseListState {
-        ExerciseListState(repository: repository, workouts: InMemoryRepositoryStack().workouts)
+        ExerciseListState(
+            repository: repository,
+            workouts: InMemoryRepositoryStack().workouts,
+            memory: ExerciseListFilterMemory())
     }
 }

@@ -184,6 +184,22 @@
                 InsufficientDataView(message: Text(verbatim: "Log two more sets to see a trend."))
             }
         }
+
+        // FR-16.5.4's field, in both of the states it has. The empty one is the whole of what the
+        // requirement asks for — a search affordance visible without a gesture — and the filled one
+        // is the only picture of the clear control, which is drawn only when there is something to
+        // clear. One reference, because the pair is the claim.
+        //
+        // The prompt is `verbatim` and not this module's copy: a component must not know a screen's
+        // words, which is why the caller supplies them.
+        @Test func searchField() throws {
+            try assertSnapshots(named: "SearchField") {
+                VStack(alignment: .leading, spacing: Spacing.md.points) {
+                    SearchField(text: .constant(""), prompt: "Search exercises")
+                    SearchField(text: .constant("front squat"), prompt: "Search exercises")
+                }
+            }
+        }
     }
 
 #endif

@@ -35,11 +35,14 @@ nonisolated enum DesignSystemStrings {
     /// The fallback heading over a derived value that cannot be computed yet (`FR-1.13.3`).
     static let insufficientDataHeadline = resource("designsystem.insufficient-data.headline")
 
+    /// What VoiceOver calls ``SearchField``'s clear control. A glyph carries no text of its own.
+    static let searchClear = resource("designsystem.search.clear.accessibility-label")
+
     /// Every string this module can show, for the test that proves each one resolves.
     static var all: [LocalizedStringResource] {
         [
             errorHeadline, retry, loadingLabel, offlineHeadline, offlineMessage,
-            insufficientDataHeadline,
+            insufficientDataHeadline, searchClear,
         ]
     }
 
