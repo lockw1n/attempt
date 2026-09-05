@@ -104,7 +104,12 @@ public final class RecentRecordsState {
     /// competition lifts resolved by movement, equipment and name against the rows actually
     /// installed — and that rule belongs to the dashboard feature one layer up. This module would
     /// otherwise hold a second copy of it.
-    @ObservationIgnored private let defaultDashboardExerciseIDs: ([Exercise]) -> [UUID]
+    ///
+    /// **It takes the training ranking as well as the catalogue** (`FR-16.5.1`): a default lift the
+    /// lifter has never performed is replaced by one they train, and this feed's default scope is
+    /// *the dashboard's lifts* — so a copy of the rule that stopped short of the replacement would
+    /// scope the feed to three lifts the tiles above it are not even showing.
+    @ObservationIgnored private let defaultDashboardExerciseIDs: ([Exercise], [UUID]) -> [UUID]
 
     /// The read a publish belongs to — ``ExerciseRecordsState/read``'s gate, for its reason.
     @ObservationIgnored private var read = 0
@@ -122,7 +127,7 @@ public final class RecentRecordsState {
         catalogue: any ExerciseRepository,
         settings: any SettingsRepository,
         limit: Int,
-        defaultDashboardExerciseIDs: @escaping ([Exercise]) -> [UUID]
+        defaultDashboardExerciseIDs: @escaping ([Exercise], [UUID]) -> [UUID]
     ) {
         self.recomputer = recomputer
         self.catalogue = catalogue
@@ -201,7 +206,9 @@ public final class RecentRecordsState {
     /// already carries the identifiers on the row.
     private func resolvedFilter(_ stored: UserSettings) async throws -> RecentRecordsFilter {
         let exerciseIDs = try await RecentRecordsFilter.scope(of: stored) {
-            defaultDashboardExerciseIDs(try await catalogue.exercises(includingDeleted: false))
+            defaultDashboardExerciseIDs(
+                try await catalogue.exercises(includingDeleted: false),
+                try await recomputer.mostTrainedExerciseIDs())
         }
         return RecentRecordsFilter(
             exerciseIDs: exerciseIDs,

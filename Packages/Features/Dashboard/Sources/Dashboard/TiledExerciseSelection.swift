@@ -50,14 +50,24 @@ final class TiledExerciseSelectionState {
     /// The settings row, which carries the selection.
     private let settings: any SettingsRepository
 
+    /// The recompute actor, for the ranking `FR-16.5.1`'s defaults fall back to. Read only where
+    /// the lifter has chosen nothing — see ``EstimatedMaxTilesState/selection(_:in:from:)``.
+    private let records: PersonalRecordRecomputer
+
     /// Builds the state.
     ///
     /// - Parameters:
     ///   - catalogue: The exercises to choose among.
     ///   - settings: Where the selection is stored.
-    init(catalogue: any ExerciseRepository, settings: any SettingsRepository) {
+    ///   - records: The app's one recompute actor, for the defaults' fallback ranking.
+    init(
+        catalogue: any ExerciseRepository,
+        settings: any SettingsRepository,
+        records: PersonalRecordRecomputer
+    ) {
         self.catalogue = catalogue
         self.settings = settings
+        self.records = records
     }
 
     /// Which of an exercise's two names a row shows, and orders by (`FR-1.14.2`).
@@ -79,7 +89,8 @@ final class TiledExerciseSelectionState {
         do {
             let stored = try await settings.settings()
             let exercises = try await catalogue.exercises(includingDeleted: false)
-            let chosen = stored.dashboardExerciseIDs ?? DashboardDefaults.exerciseIDs(in: exercises)
+            let chosen = try await EstimatedMaxTilesState.selection(
+                stored, in: exercises, from: records)
             let tiled = Set(chosen)
             selection = chosen
             choices = ExerciseDisplayOrder.sorted(

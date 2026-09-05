@@ -37,6 +37,43 @@ struct AppFormatTests {
                 == weight.formatted(AppFormat.weight(in: .pounds, locale: english)))
     }
 
+    /// `FR-16.5.2`, and the string in its own "done when": the dashboard's week tile drew
+    /// `8 240,0 kg` where History drew `8 240 kg`, because the two spelled "whole" out separately
+    /// and one of them stopped. The fraction is what made the difference two extra glyphs and a
+    /// second line of wrap at the largest Dynamic Type size.
+    @Test("A tonnage is whole in every locale — never 8 240,0 kg")
+    func atonnageIsWholeInEveryLocale() throws {
+        let ukrainian = Locale(identifier: "uk_UA")
+        let week = Weight(grams: 8_240_000)
+
+        // Each locale checked against its OWN decimal separator, not against a literal comma: the
+        // separator and the grouping mark swap places between these three, so a literal would pass
+        // in en for the grouping mark it is not looking at.
+        for locale in [english, german, ukrainian] {
+            let rendered = week.formatted(AppFormat.tonnage(in: .kilograms, locale: locale))
+            let separator = try #require(locale.decimalSeparator)
+            #expect(!rendered.contains(separator), "\(rendered) carries a fraction")
+        }
+
+        #expect(week.formatted(AppFormat.tonnage(in: .kilograms, locale: english)) == "8,240 kg")
+        // Ukrainian groups with a non-breaking space rather than a comma, which is the other half
+        // of why this figure had to be asserted in a second locale at all.
+        #expect(week.formatted(AppFormat.tonnage(in: .kilograms, locale: ukrainian)) != "8 240,0 kg")
+    }
+
+    /// The two callers are one rule: a session row and a week tile render the same total.
+    @Test("A tonnage is the whole-unit weight style, not a second rounding")
+    func atonnageIsTheWholeUnitStyle() {
+        let total = Weight(grams: 8_240_500)
+        #expect(
+            total.formatted(AppFormat.tonnage(in: .kilograms, locale: english))
+                == total.formatted(
+                    AppFormat.weight(in: .kilograms, precision: .whole, locale: english)))
+        #expect(
+            total.formatted(AppFormat.tonnage(in: .kilograms, locale: english))
+                != total.formatted(AppFormat.weight(in: .kilograms, locale: english)))
+    }
+
     @Test("A weight carries the locale's decimal separator")
     func weightSeparatorFollowsLocale() {
         let weight = Weight(grams: 102_500)

@@ -183,9 +183,11 @@ struct RealLogRecomputeTests {
         // Read off the settings row the file restored, not restated here: the criterion is a claim
         // about what ships, so a filter this test wrote itself would prove nothing about it.
         let stored = try await stack.settings.settings()
+        let mostTrained = try await recomputer.mostTrainedExerciseIDs()
         let scope = await RecentRecordsFilter.scope(of: stored) {
-            RealLogBackup.defaultDashboardExerciseIDs(in: catalogue)
+            RealLogBackup.defaultDashboardExerciseIDs(in: catalogue, mostTrained: mostTrained)
         }
+        try expectTheDefaultTilesAreAllTrained(catalogue, mostTrained)
         let filter = RecentRecordsFilter(
             exerciseIDs: scope,
             schemes: stored.recentRecordsSchemes,
@@ -208,6 +210,32 @@ struct RealLogRecomputeTests {
         #expect(feed.count == Self.feedLimit)
         #expect(feed.allSatisfy { $0.previous != nil })
         #expect(feed.allSatisfy { !$0.isBaseline })
+    }
+
+    /// `FR-16.5.1` over a real log: every default tile names a lift the lifter actually trains.
+    ///
+    /// **The claim is "no tile is empty", not "the tiles are these three names."** The author's log
+    /// holds a bench press and no barbell squat or deadlift, so the seeded three would draw one
+    /// number and two apologies — which is review finding 04 and the reason this requirement
+    /// exists. Asserting the two replacements by name would be asserting the shape of one person's
+    /// training, which changes; asserting that each resolved tile has history is the requirement.
+    ///
+    /// - Parameters:
+    ///   - catalogue: The restored exercises.
+    ///   - mostTrained: The ranking the defaults fall back to.
+    /// - Throws: Nothing; `throws` for the assertion helpers' sake.
+    private func expectTheDefaultTilesAreAllTrained(
+        _ catalogue: [Exercise], _ mostTrained: [UUID]
+    ) throws {
+        let tiled = RealLogBackup.defaultDashboardExerciseIDs(
+            in: catalogue, mostTrained: mostTrained)
+        let named = Dictionary(catalogue.map { ($0.id, $0.name) }) { first, _ in first }
+        print("FR-16.5.1 default tiles: \(tiled.compactMap { named[$0] })")
+
+        #expect(tiled.count == 3)
+        #expect(Set(tiled).count == 3)
+        // The whole of finding 04: a log this size cannot leave a default tile with no history.
+        #expect(tiled.allSatisfy(Set(mostTrained).contains))
     }
 }
 
@@ -300,17 +328,24 @@ enum RealLogBackup {
 
     /// `FR-1.9.1`'s selection for a lifter who has made none, which `.dashboardLifts` resolves to.
     ///
-    /// **A mirror of `DashboardDefaults.exerciseIDs(in:)` and not a second decision.** That type is
-    /// `internal` to the `Dashboard` feature, and a feature package may not depend on another one —
-    /// so the rule cannot be shared with this target without a dependency `T-16.16`'s scope
-    /// forbids. It is copied rather than reinvented: root exercise, barbell, from the seed, not
-    /// archived, name breaking the tie. If the two ever disagree, this measurement is scoped to
-    /// something the dashboard does not tile, and the fix is to move the rule down a layer.
+    /// **A mirror of `DashboardDefaults.exerciseIDs(in:mostTrained:)` and not a second decision.**
+    /// That type is `internal` to the `Dashboard` feature, and a feature package may not depend on
+    /// another one — so the rule cannot be shared with this target without a dependency `T-16.16`'s
+    /// scope forbids. It is copied rather than reinvented: root exercise, barbell, from the seed,
+    /// not archived, name breaking the tie — and, since `FR-16.5.1`, a candidate the lifter has no
+    /// history for replaced by the exercise they train most. If the two ever disagree, this
+    /// measurement is scoped to something the dashboard does not tile, and the fix is to move the
+    /// rule down a layer.
     ///
-    /// - Parameter catalogue: The exercises to choose from.
+    /// - Parameters:
+    ///   - catalogue: The exercises to choose from.
+    ///   - mostTrained: Every exercise with a completed working set in the lookback window,
+    ///     most-trained first.
     /// - Returns: One identifier per movement that had a candidate.
-    static func defaultDashboardExerciseIDs(in catalogue: [Exercise]) -> [UUID] {
-        [Movement.squat, .bench, .deadlift].compactMap { movement in
+    static func defaultDashboardExerciseIDs(
+        in catalogue: [Exercise], mostTrained: [UUID]
+    ) -> [UUID] {
+        let candidates = [Movement.squat, .bench, .deadlift].map { movement in
             catalogue
                 .filter {
                     $0.movement == movement && $0.parentExerciseID == nil
@@ -318,6 +353,20 @@ enum RealLogBackup {
                 }
                 .min { $0.name < $1.name }?
                 .id
+        }
+        let trained = Set(mostTrained)
+        let kept = candidates.map { candidate -> UUID? in
+            guard let candidate, trained.contains(candidate) else { return nil }
+            return candidate
+        }
+        let reserved = Set(kept.compactMap { $0 })
+        let tileable = Set(catalogue.filter { !$0.isArchived }.map(\.id))
+        var replacements = mostTrained.filter {
+            !reserved.contains($0) && tileable.contains($0)
+        }[...]
+        return zip(kept, candidates).compactMap { keptLift, candidate in
+            if let keptLift { return keptLift }
+            return replacements.popFirst() ?? candidate
         }
     }
 }

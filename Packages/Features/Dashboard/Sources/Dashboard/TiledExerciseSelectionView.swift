@@ -1,3 +1,4 @@
+import DerivedValues
 import DesignSystem
 import Foundation
 import RepositoryInterface
@@ -52,9 +53,15 @@ public struct TiledExerciseSelectionView: View {
     /// - Parameters:
     ///   - catalogue: The exercises to choose among.
     ///   - settings: Where the selection is stored.
-    public init(catalogue: any ExerciseRepository, settings: any SettingsRepository) {
+    ///   - records: The app's one recompute actor, for `FR-16.5.1`'s fallback ranking.
+    public init(
+        catalogue: any ExerciseRepository,
+        settings: any SettingsRepository,
+        records: PersonalRecordRecomputer
+    ) {
         _state = State(
-            initialValue: TiledExerciseSelectionState(catalogue: catalogue, settings: settings))
+            initialValue: TiledExerciseSelectionState(
+                catalogue: catalogue, settings: settings, records: records))
     }
 
     /// The list, and the read that fills it.

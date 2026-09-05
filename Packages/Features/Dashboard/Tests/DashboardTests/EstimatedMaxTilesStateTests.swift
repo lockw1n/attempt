@@ -99,7 +99,9 @@ struct EstimatedMaxTilesStateTests {
         let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
         let bench = try await fixture.exercise(named: "Bench Press", movement: .bench)
         let picker = TiledExerciseSelectionState(
-            catalogue: fixture.repositories.exercises, settings: fixture.repositories.settings)
+            catalogue: fixture.repositories.exercises,
+            settings: fixture.repositories.settings,
+            records: fixture.records)
         await picker.load()
 
         await picker.toggle(squat)
@@ -118,7 +120,9 @@ struct EstimatedMaxTilesStateTests {
         let fixture = DashboardFixture()
         let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
         let picker = TiledExerciseSelectionState(
-            catalogue: fixture.repositories.exercises, settings: fixture.repositories.settings)
+            catalogue: fixture.repositories.exercises,
+            settings: fixture.repositories.settings,
+            records: fixture.records)
         await picker.load()
 
         await picker.toggle(squat)
@@ -162,7 +166,7 @@ struct EstimatedMaxTilesStateTests {
         #expect(state.unit == .pounds)
     }
 
-    // MARK: - The section's four states
+    // MARK: - The section's five states
 
     @Test("A failed read outranks the tiles it leaves behind")
     func afailedReadOutranksStaleTiles() async throws {
@@ -171,7 +175,9 @@ struct EstimatedMaxTilesStateTests {
         try await fixture.tile([squat])
         let state = tiles(over: fixture)
         await state.load()
-        #expect(EstimatedMaxTilesScreenState.current(state) == .ready(state.tiles))
+        // Not `.ready`: nothing is logged against the squat, so this store is `FR-16.5.2`'s
+        // all-empty section. What matters here is only that it is not the failure below.
+        #expect(EstimatedMaxTilesScreenState.current(state) == .noEstimates)
 
         // The same state after a read that failed still holds the tiles; the diagnostic wins.
         let failed = tiles(over: DashboardFixture(), failing: true)
@@ -248,6 +254,78 @@ struct EstimatedMaxTilesStateTests {
 
     /// `TR-1.5`: the sheet is on another tab, so the write reaches this screen through the app's one
     /// announcement channel rather than through a read this screen would have to be told to make.
+    /// `FR-16.5.2`: three tiles each apologising for itself is one thing said three times, so the
+    /// section says it once. The store the app is installed onto is exactly this state.
+    @Test("A store with nothing logged is the section's one insufficient-data state")
+    func astoreWithNothingLoggedIsOneInsufficientDataState() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        let bench = try await fixture.exercise(named: "Bench Press", movement: .bench)
+        let deadlift = try await fixture.exercise(named: "Deadlift", movement: .deadlift)
+
+        let state = tiles(over: fixture)
+        await state.load()
+
+        // The seeded three stand, because nothing trained can replace them (`FR-16.5.1`).
+        #expect(state.selection == [squat, bench, deadlift])
+        #expect(state.tiles.count == 3)
+        #expect(state.tiles.allSatisfy { !$0.hasEstimate })
+        #expect(EstimatedMaxTilesScreenState.current(state) == .noEstimates)
+    }
+
+    /// One tile with a number is enough to keep the tiles on screen; the ones without are the one
+    /// line each `FR-16.5.2` asks for, not a block.
+    @Test("One estimate among three keeps every tile drawn")
+    func oneEstimateAmongThreeKeepsEveryTileDrawn() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        let bench = try await fixture.exercise(named: "Bench Press", movement: .bench)
+        try await fixture.tile([squat, bench])
+        try await fixture.session(
+            on: weeksAgo(1), exercises: [(bench, [LoggedSet(grams: 100_000, reps: 5)])])
+
+        let state = tiles(over: fixture)
+        await state.load()
+
+        #expect(state.tiles.map(\.hasEstimate) == [false, true])
+        #expect(EstimatedMaxTilesScreenState.current(state) == .ready(state.tiles))
+    }
+
+    /// `FR-16.5.1` through the state rather than through the rule: what the lifter trains replaces
+    /// the lifts they do not, and the picker behind the tiles opens on the same three.
+    @Test("An untrained default is replaced by the most-trained exercise, in the picker too")
+    func anuntrainedDefaultIsReplacedEverywhere() async throws {
+        let fixture = DashboardFixture()
+        let bench = try await fixture.exercise(named: "Bench Press", movement: .bench)
+        try await fixture.exercise(named: "Back Squat", movement: .squat)
+        let deadlift = try await fixture.exercise(named: "Deadlift", movement: .deadlift)
+        let chins = try await fixture.exercise(
+            named: "Chin-Up", movement: .row, equipment: .bodyweight)
+        try await fixture.session(
+            on: weeksAgo(1),
+            exercises: [
+                (chins, (0..<4).map { _ in LoggedSet(grams: 0, reps: 8, isWarmup: false) }),
+                (bench, [LoggedSet(grams: 100_000, reps: 5)]),
+            ])
+
+        let state = tiles(over: fixture)
+        await state.load()
+        // The squat's slot takes the chin-ups; the bench keeps its own; and the deadlift's slot has
+        // nothing left to take, so it keeps the seeded lift rather than vanishing.
+        #expect(state.selection == [chins, bench, deadlift])
+
+        let picker = TiledExerciseSelectionState(
+            catalogue: fixture.repositories.exercises,
+            settings: fixture.repositories.settings,
+            records: fixture.records)
+        await picker.load()
+
+        // The picker opens on exactly what is tiled — its own contract — which is what stops a
+        // lifter ticking a fourth exercise and silently replacing the fallback with the seeded
+        // three.
+        #expect(picker.selection == state.selection)
+    }
+
     @Test("A training max written elsewhere reaches the tile without the tab being revisited")
     func atrainingMaxWrittenElsewhereReachesTheTile() async throws {
         let fixture = DashboardFixture()

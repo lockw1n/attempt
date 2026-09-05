@@ -38,6 +38,14 @@ public struct MetricTile<Context: View>: View {
             value
                 .font(Typography.metricNumeral.font)
                 .foregroundStyle(ColorToken.textPrimary)
+                // G-7.5: the numeral is the anchor, and an anchor broken over three lines is not
+                // one. A five-digit tonnage at the largest Dynamic Type size is wider than any
+                // phone, so the only two outcomes are wrapping and scaling — and a number read
+                // across three lines reads as three numbers. It shrinks to half before it wraps;
+                // below that the label and the context line beside it are unreadable anyway, so
+                // there is nothing a smaller floor would save.
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
             context
                 .font(Typography.metricContext.font)
                 .foregroundStyle(ColorToken.textSecondary)

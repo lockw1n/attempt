@@ -119,7 +119,7 @@ struct WeekSummaryReading: View {
                     MetricTile(
                         label: Text(DashboardStrings.weekVolume),
                         value: Text(
-                            summary.tonnage, format: AppFormat.weight(in: unit, locale: locale)))
+                            summary.tonnage, format: AppFormat.tonnage(in: unit, locale: locale)))
                 }
             }
         }

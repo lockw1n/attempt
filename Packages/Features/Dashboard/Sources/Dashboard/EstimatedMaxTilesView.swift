@@ -7,12 +7,15 @@ import PowerliftingCore
 import RepositoryInterface
 import SwiftUI
 
-/// Which of the section's four states is current (`FR-1.13.1`, `FR-1.13.3`).
+/// Which of the section's five states is current (`FR-1.13.1`, `FR-1.13.3`, `FR-16.5.2`).
 ///
-/// **Four, and the empty one is a real state rather than a degenerate list.** A lifter who removes
+/// **Five, and the empty one is a real state rather than a degenerate list.** A lifter who removes
 /// every tile has configured something, and a screen that answered that with a blank band would be
 /// the outcome `FR-1.13.1` exists to rule out. The individual refusals are *not* states here — they
-/// are a tile's, one per tile, so a squat with an estimate sits beside a bench without one.
+/// are a tile's, one per tile, so a squat with an estimate sits beside a bench without one — until
+/// *no* tile has one, which is ``noEstimates`` and is the section's own state rather than a tile's
+/// (`FR-16.5.2`). A refusal repeated on every row of a section says one thing, and says it in the
+/// place a reader has to assemble it from three.
 ///
 /// No offline state: the numbers are computed from local rows, so there is no fetch to be offline
 /// for (`G-2.1`).
@@ -24,8 +27,12 @@ enum EstimatedMaxTilesScreenState: Equatable {
     /// exercise the catalogue no longer holds.
     case noneTiled
 
-    /// There are tiles to draw.
+    /// There are tiles to draw, and at least one of them has a number.
     case ready([EstimatedMaxTile])
+
+    /// Exercises are tiled and not one of them has an estimate — a new install, or a lifter who has
+    /// tiled three lifts they do not train.
+    case noEstimates
 
     /// They could not be read; a retry may work.
     case failed
@@ -41,7 +48,9 @@ enum EstimatedMaxTilesScreenState: Equatable {
     static func current(_ state: EstimatedMaxTilesState) -> Self {
         if state.failure != nil { return .failed }
         guard state.hasLoaded else { return .loading }
-        return state.tiles.isEmpty ? .noneTiled : .ready(state.tiles)
+        guard !state.tiles.isEmpty else { return .noneTiled }
+        guard state.tiles.contains(where: \.hasEstimate) else { return .noEstimates }
+        return .ready(state.tiles)
     }
 }
 
@@ -123,6 +132,8 @@ struct EstimatedMaxTilesReading: View {
                     message: Text(DashboardStrings.tilesNoneChosenMessage))
             case .failed:
                 ErrorStateView(message: Text(DashboardStrings.tilesError), retry: retry)
+            case .noEstimates:
+                InsufficientDataView(message: Text(DashboardStrings.tilesNoEstimates))
             case .ready(let tiles):
                 ForEach(tiles) { tile in
                     EstimatedMaxTileView(tile: tile, unit: unit)
@@ -173,16 +184,42 @@ struct EstimatedMaxTileView: View {
                 trainingMax
             }
         case .absence(let absence):
-            VStack(alignment: .leading, spacing: Spacing.sm.points) {
-                InsufficientDataView(
-                    headline: Text(verbatim: tile.name),
-                    message: Text(
-                        DashboardStrings.tileAbsence(absence, days: tile.estimate.lookback.days)))
+            VStack(alignment: .leading, spacing: Spacing.xs.points) {
+                unestimated(absence)
                 trainingMax
                     .font(Typography.metricContext.font)
                     .foregroundStyle(ColorToken.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            // The line is short so the tile can be one line; the sentence it was shortened from is
+            // what a reader who cannot see the layout gets (`G-4.2`). A hint rather than a label,
+            // so the name and the short reason still read first.
+            .accessibilityHint(
+                Text(DashboardStrings.tileAbsence(absence, days: tile.estimate.lookback.days)))
+        }
+    }
+
+    /// A tile with no estimate: the exercise and, beside it, why there is no number
+    /// (`FR-16.5.2`).
+    ///
+    /// **One line, not an empty-state block.** Three exercises the app cannot estimate used to be
+    /// three icons and three sentences stacked where three numbers belong, which is a screen
+    /// apologising at the size of the thing it is apologising for. The reason is still named — the
+    /// short form of the same seven — and the sentence is still what VoiceOver reads, above.
+    ///
+    /// **The name keeps `metricLabel`, so it lines up with the tiles that do have numbers.** A tile
+    /// without an estimate is the same tile, one line shorter.
+    private func unestimated(_ absence: EstimateAbsence) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.sm.points) {
+            Text(verbatim: tile.name)
+                .font(Typography.metricLabel.font)
+                .foregroundStyle(ColorToken.textSecondary)
+            Spacer(minLength: Spacing.sm.points)
+            Text(DashboardStrings.tileAbsenceShort(absence, days: tile.estimate.lookback.days))
+                .font(Typography.metricContext.font)
+                .foregroundStyle(ColorToken.textTertiary)
+                .multilineTextAlignment(.trailing)
         }
     }
 

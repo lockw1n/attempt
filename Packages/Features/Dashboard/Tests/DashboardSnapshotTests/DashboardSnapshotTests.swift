@@ -29,6 +29,10 @@
             // nothing to compare against, a manual override, and a refusal. They are only
             // comparable side by side, which is why this is one reference rather than four.
             //
+            // THE FOURTH TILE IS FR-16.5.2's one-liner, beside three that have numbers — which is
+            // what makes this reference the negative of `Dashboard-tiles-no-estimates` as well as
+            // the picture of a refusal.
+            //
             // NO FALLING TILE, and its absence is the point rather than an omission.
             // `EstimatedMax.delta` is strictly positive wherever it is not nil — see its own doc
             // comment — so a reference picturing a decline would be a committed image of a state
@@ -47,6 +51,17 @@
             // — nothing failed to compute, there is nothing to compute.
             try assertSnapshots(named: "Dashboard-tiles-none") {
                 EstimatedMaxTilesReading(state: .noneTiled, unit: .kilograms, retry: {})
+            }
+        }
+
+        @Test func noTileHasAnEstimate() throws {
+            // FR-16.5.2's section-level half, and the state a fresh install's dashboard is in:
+            // three tiles that would each say their own version of "nothing yet" say it once.
+            //
+            // ITS NEGATIVE IS `Dashboard-tiles`, which holds three estimates and one refusal — so
+            // the conditional that chooses between them is pictured true here and false there.
+            try assertSnapshots(named: "Dashboard-tiles-no-estimates") {
+                EstimatedMaxTilesReading(state: .noEstimates, unit: .kilograms, retry: {})
             }
         }
 

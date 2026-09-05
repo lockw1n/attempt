@@ -96,7 +96,7 @@ struct RecentRecordsFeed: View {
                 limit: limit,
                 // FR-16.3.1's default scope is FR-1.9.1's selection, and where the lifter has made
                 // none it is this module's rule that says which three lifts those are.
-                defaultDashboardExerciseIDs: DashboardDefaults.exerciseIDs(in:)))
+                defaultDashboardExerciseIDs: DashboardDefaults.exerciseIDs(in:mostTrained:)))
     }
 
     /// Whichever of the five states is current.

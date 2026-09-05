@@ -264,8 +264,9 @@ enum DashboardStrings {
             tilesTitle, tilesError, tilesNoneChosen, tilesNoneChosenMessage,
             tileTrainingMax("180 kg"),
             tileNoPrevious, tilesChooseAction, tilesChooseTitle, tilesChooseEmpty,
-            tilesChooseError, tilesChooseWriteError,
+            tilesChooseError, tilesChooseWriteError, tilesNoEstimates,
         ] + absences.map { tileAbsence($0, days: 90) }
+            + absences.map { tileAbsenceShort($0, days: 90) }
             + RecentRecordsScope.allCases.map { recentRecordsScopeName(for: $0) }
     }
 

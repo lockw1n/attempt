@@ -37,6 +37,17 @@
 "dashboard.tiles.choose.error" = "Не вдалося прочитати ваші вправи.";
 "dashboard.tiles.choose.write-error" = "Не вдалося зберегти цю зміну.";
 
+"dashboard.tiles.no-estimates" = "Запишіть завершений робочий підхід для однієї з цих вправ — і тут з’явиться оцінка.";
+
+/* FR-16.5.2 */
+"dashboard.tiles.short.none" = "Ще немає підходів";
+"dashboard.tiles.short.stale %lld" = "Нічого за %lld днів";
+"dashboard.tiles.short.warmups" = "Лише розминка";
+"dashboard.tiles.short.incomplete" = "Немає завершених";
+"dashboard.tiles.short.high-reps" = "Понад десять повторень";
+"dashboard.tiles.short.assisted" = "Лише з допомогою";
+"dashboard.tiles.short.no-effort" = "Без RPE чи RIR";
+
 "dashboard.tiles.absence.none" = "Запишіть завершений робочий підхід — і тут з’явиться оцінка.";
 "dashboard.tiles.absence.stale %lld" = "За останні %lld днів тут нічого не записано. Оцінка враховує лише свіжі тренування.";
 "dashboard.tiles.absence.warmups %lld" = "За останні %lld днів були лише розминкові підходи. Оцінка береться з робочих підходів.";

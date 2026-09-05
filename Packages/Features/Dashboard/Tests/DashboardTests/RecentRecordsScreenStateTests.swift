@@ -22,7 +22,7 @@ struct RecentRecordsScreenStateTests {
             catalogue: repositories.exercises,
             settings: repositories.settings,
             limit: limit,
-            defaultDashboardExerciseIDs: DashboardDefaults.exerciseIDs(in:))
+            defaultDashboardExerciseIDs: DashboardDefaults.exerciseIDs(in:mostTrained:))
     }
 
     @Test("Before the first read it is loading, not empty")
@@ -175,7 +175,7 @@ private final class TrainingLogFixture {
             catalogue: repositories.exercises,
             settings: repositories.settings,
             limit: limit,
-            defaultDashboardExerciseIDs: DashboardDefaults.exerciseIDs(in:))
+            defaultDashboardExerciseIDs: DashboardDefaults.exerciseIDs(in:mostTrained:))
     }
 
     /// Turns `FR-16.3`'s filters off, for the tests that are about the state mapping rather than

@@ -125,7 +125,7 @@ struct RecentRecordsSettingsStateTests {
             catalogue: fixture.repositories.exercises,
             settings: fixture.repositories.settings,
             limit: 5,
-            defaultDashboardExerciseIDs: DashboardDefaults.exerciseIDs(in:))
+            defaultDashboardExerciseIDs: DashboardDefaults.exerciseIDs(in:mostTrained:))
         await feed.load()
         #expect(feed.records.isEmpty)
 

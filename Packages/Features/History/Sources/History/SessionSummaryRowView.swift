@@ -312,13 +312,10 @@ struct SessionSummaryRow: View {
         HistoryStrings.metricsSummary(sets: summary.setCount, volume: renderedTonnage)
     }
 
-    /// The tonnage, to the whole unit.
-    ///
-    /// **Whole, not `G-3.3`'s default step.** A half-kilogram on a session total is noise on a
-    /// four-digit number, and the step exists for a load a lifter has to put on a bar.
+    /// The tonnage, to the whole unit — the dashboard's week tile renders the same figure through
+    /// the same rule (`FR-16.5.2`).
     private var renderedTonnage: String {
-        summary.tonnage.formatted(
-            AppFormat.weight(in: unit, precision: .whole, locale: locale))
+        summary.tonnage.formatted(AppFormat.tonnage(in: unit, locale: locale))
     }
 }
 

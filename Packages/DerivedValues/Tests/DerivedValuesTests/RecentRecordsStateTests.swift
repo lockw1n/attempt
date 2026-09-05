@@ -8,7 +8,9 @@ import Testing
 
 /// `FR-1.9.1`'s default resolver for a test that is not about it: every exercise in the catalogue,
 /// so a scope left at `FR-16.3.1`'s default narrows nothing.
-func everyExercise(_ exercises: [Exercise]) -> [UUID] { exercises.map(\.id) }
+func everyExercise(_ exercises: [Exercise], _ mostTrained: [UUID]) -> [UUID] {
+    exercises.map(\.id)
+}
 
 /// The `@Observable` half of `FR-1.6.5`'s feed: what a screen sees, and when.
 @Suite("Recent records state")
@@ -69,7 +71,7 @@ struct RecentRecordsStateTests {
             catalogue: trained.log.repositories.exercises,
             settings: trained.log.repositories.settings,
             limit: 10,
-            defaultDashboardExerciseIDs: everyExercise(_:))
+            defaultDashboardExerciseIDs: everyExercise(_:_:))
 
         await state.load()
 
@@ -94,7 +96,7 @@ struct RecentRecordsStateTests {
             catalogue: log.repositories.exercises,
             settings: log.repositories.settings,
             limit: 10,
-            defaultDashboardExerciseIDs: everyExercise(_:))
+            defaultDashboardExerciseIDs: everyExercise(_:_:))
 
         #expect(!state.hasLoaded)
         await state.load()
@@ -113,7 +115,7 @@ struct RecentRecordsStateTests {
             catalogue: trained.log.repositories.exercises,
             settings: trained.log.repositories.settings,
             limit: 1,
-            defaultDashboardExerciseIDs: everyExercise(_:))
+            defaultDashboardExerciseIDs: everyExercise(_:_:))
 
         await state.load()
 
@@ -134,7 +136,7 @@ struct RecentRecordsStateTests {
             catalogue: InMemoryRepositoryStack().exercises,
             settings: InMemoryRepositoryStack().settings,
             limit: 10,
-            defaultDashboardExerciseIDs: everyExercise(_:))
+            defaultDashboardExerciseIDs: everyExercise(_:_:))
 
         await state.load()
 
@@ -154,7 +156,7 @@ struct RecentRecordsStateTests {
             catalogue: RefusingExercises(failure: .recordNotFound(id: UUID())),
             settings: trained.log.repositories.settings,
             limit: 10,
-            defaultDashboardExerciseIDs: everyExercise(_:))
+            defaultDashboardExerciseIDs: everyExercise(_:_:))
 
         await state.load()
 
@@ -171,7 +173,7 @@ struct RecentRecordsStateTests {
             catalogue: trained.log.repositories.exercises,
             settings: trained.log.repositories.settings,
             limit: 10,
-            defaultDashboardExerciseIDs: everyExercise(_:))
+            defaultDashboardExerciseIDs: everyExercise(_:_:))
         await state.load()
         #expect(state.records.first?.weight == Weight(grams: 100_000))
 
@@ -210,7 +212,7 @@ struct RecentRecordsStateTests {
             catalogue: log.repositories.exercises,
             settings: log.repositories.settings,
             limit: 10,
-            defaultDashboardExerciseIDs: everyExercise(_:))
+            defaultDashboardExerciseIDs: everyExercise(_:_:))
 
         // The first read takes the cache holding 100 kg, and is held before it can assign.
         let stale = Task { await state.load() }
@@ -255,7 +257,7 @@ struct RecentRecordsStateTests {
             catalogue: RetiredCatalogue(exerciseID: retired, name: "Bench Press"),
             settings: trained.log.repositories.settings,
             limit: 10,
-            defaultDashboardExerciseIDs: everyExercise(_:))
+            defaultDashboardExerciseIDs: everyExercise(_:_:))
 
         await state.load()
 
@@ -278,7 +280,7 @@ struct RecentRecordsStateTests {
             catalogue: trained.log.repositories.exercises,
             settings: trained.log.repositories.settings,
             limit: 10,
-            defaultDashboardExerciseIDs: everyExercise(_:))
+            defaultDashboardExerciseIDs: everyExercise(_:_:))
         await state.load()
         #expect(state.records.count == 2)
 
@@ -428,7 +430,7 @@ struct RecentRecordsLocaleNameTests {
             catalogue: log.repositories.exercises,
             settings: log.repositories.settings,
             limit: 10,
-            defaultDashboardExerciseIDs: everyExercise(_:))
+            defaultDashboardExerciseIDs: everyExercise(_:_:))
         state.nameLanguage = .ukrainian
         await state.load()
 

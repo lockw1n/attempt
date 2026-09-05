@@ -43,7 +43,9 @@ struct DashboardLocaleNameTests {
         try await fixture.exercise(named: "Barbell Row", movement: .row)
 
         let state = TiledExerciseSelectionState(
-            catalogue: fixture.repositories.exercises, settings: fixture.repositories.settings)
+            catalogue: fixture.repositories.exercises,
+            settings: fixture.repositories.settings,
+            records: fixture.records)
         state.nameLanguage = .ukrainian
         await state.load()
 

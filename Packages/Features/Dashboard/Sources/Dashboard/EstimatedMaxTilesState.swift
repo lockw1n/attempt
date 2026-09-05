@@ -27,6 +27,16 @@ struct EstimatedMaxTile: Identifiable, Sendable, Equatable {
     /// would report it on every tile of every first launch.
     let trainingMax: Weight?
 
+    /// Whether this tile has a number to draw, rather than a reason it has none.
+    ///
+    /// Here rather than at the switch that reads it, because the section's own state asks the same
+    /// question of every tile at once (`FR-16.5.2`) and a second spelling of it is how the two
+    /// start disagreeing.
+    var hasEstimate: Bool {
+        if case .record = estimate.content { return true }
+        return false
+    }
+
     /// See `Identifiable`.
     var id: UUID { exerciseID }
 }
@@ -123,7 +133,7 @@ final class EstimatedMaxTilesState {
             let today = now()
             let stored = try await settings.settings()
             let exercises = try await catalogue.exercises(includingDeleted: false)
-            let chosen = stored.dashboardExerciseIDs ?? DashboardDefaults.exerciseIDs(in: exercises)
+            let chosen = try await Self.selection(stored, in: exercises, from: records)
             let named = Dictionary(
                 exercises.map { ($0.id, $0.displayName(in: nameLanguage)) }
             ) { first, _ in first }
@@ -147,6 +157,26 @@ final class EstimatedMaxTilesState {
             failure = String(describing: error)
         }
         hasLoaded = true
+    }
+
+    /// Which exercises are tiled: the lifter's own, or `FR-16.5.1`'s defaults.
+    ///
+    /// **The training history is read only where the defaults are**, which is the whole of what
+    /// keeps ``DerivedValues/PersonalRecordRecomputer/mostTrainedExerciseIDs()``'s cross-exercise
+    /// walk off `NFR-1.6`'s path: a lifter who has opened the picker carries three identifiers on
+    /// the settings row and this asks the log nothing.
+    ///
+    /// - Parameters:
+    ///   - stored: The settings row.
+    ///   - exercises: The catalogue.
+    ///   - records: The recomputer, for the ranking the defaults fall back to.
+    /// - Returns: The identifiers to tile, in the order they are drawn.
+    static func selection(
+        _ stored: UserSettings, in exercises: [Exercise], from records: PersonalRecordRecomputer
+    ) async throws -> [UUID] {
+        if let chosen = stored.dashboardExerciseIDs { return chosen }
+        return DashboardDefaults.exerciseIDs(
+            in: exercises, mostTrained: try await records.mostTrainedExerciseIDs())
     }
 
     /// Re-reads whenever a set logged anywhere, or a formula chosen in Settings, moves a number

@@ -76,6 +76,18 @@
    equivalents key for key — the refusal is one fact carried up from E1RMCalculator, and two screens
    explaining it differently would be two accounts of it. Only the first may say "log a set"; the
    reason shown is the nearest miss among the sets inside the window, never the commonest one. */
+"dashboard.tiles.no-estimates" = "Log a completed working set for one of these lifts and an estimate appears here.";
+
+/* FR-16.5.2: the same seven reasons, in the words one line has room for. The sentences above
+   are what VoiceOver reads. */
+"dashboard.tiles.short.none" = "No sets yet";
+"dashboard.tiles.short.stale %lld" = "Nothing in %lld days";
+"dashboard.tiles.short.warmups" = "Warm-ups only";
+"dashboard.tiles.short.incomplete" = "None completed";
+"dashboard.tiles.short.high-reps" = "Past ten reps";
+"dashboard.tiles.short.assisted" = "Assisted only";
+"dashboard.tiles.short.no-effort" = "No RPE or RIR";
+
 "dashboard.tiles.absence.none" = "Log a completed working set and an estimate appears here.";
 "dashboard.tiles.absence.stale %lld" = "Nothing has been logged here in the last %lld days. An estimate reads recent training only.";
 "dashboard.tiles.absence.warmups %lld" = "Only warm-up sets in the last %lld days. An estimate comes from working sets.";

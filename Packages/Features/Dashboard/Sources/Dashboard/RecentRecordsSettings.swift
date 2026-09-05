@@ -92,8 +92,9 @@ final class RecentRecordsSettingsState {
             let stored = try await settingsRepository.settings()
             let exercises = try await catalogue.exercises(includingDeleted: false)
             let chosen = Set(stored.recentRecordsExerciseIDs ?? [])
-            let scope = await RecentRecordsFilter.scope(of: stored) {
-                DashboardDefaults.exerciseIDs(in: exercises)
+            let scope = try await RecentRecordsFilter.scope(of: stored) {
+                DashboardDefaults.exerciseIDs(
+                    in: exercises, mostTrained: try await recomputer.mostTrainedExerciseIDs())
             }
             settings = stored
             exerciseChoices = ExerciseDisplayOrder.sorted(exercises, in: nameLanguage).map {

@@ -89,4 +89,80 @@ struct DashboardDefaultsTests {
         #expect(DashboardDefaults.exerciseIDs(in: catalogue) == [deadlift])
         #expect(DashboardDefaults.exerciseIDs(in: catalogue.reversed()) == [deadlift])
     }
+
+    // MARK: - FR-16.5.1: a default with no history is replaced
+
+    /// Review finding 04, as a test: the log holds bench pressing and no barbell squat or deadlift,
+    /// so two of the three tiles were full empty-state blocks headed by lifts nobody performs.
+    @Test("A default lift with no history is replaced by what the lifter actually trains")
+    func adefaultWithNoHistoryIsReplaced() async throws {
+        let fixture = DashboardFixture()
+        let bench = try await fixture.exercise(named: "Bench Press", movement: .bench)
+        try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.exercise(named: "Deadlift", movement: .deadlift)
+        let chins = try await fixture.exercise(
+            named: "Chin-Up", movement: .row, equipment: .bodyweight)
+        let curls = try await fixture.exercise(
+            named: "Dumbbell Curl", movement: .row, equipment: .dumbbell)
+
+        let chosen = DashboardDefaults.exerciseIDs(
+            in: try await fixture.repositories.exercises.exercises(includingDeleted: false),
+            mostTrained: [bench, chins, curls])
+
+        // The bench keeps its own slot — it has history — and the squat and deadlift slots take the
+        // trained exercises in rank order. Nothing is filtered: a chin-up is neither a barbell lift
+        // nor a competition one, and it is what this lifter does.
+        #expect(chosen == [chins, bench, curls])
+    }
+
+    /// The store the app launches into. A ranking cannot replace anything here, and three named
+    /// tiles with no numbers yet is a better first screen than no tiles at all.
+    @Test("With nothing trained the seeded three stand, replaced by nothing")
+    func withNothingTrainedTheSeededThreeStand() async throws {
+        let fixture = DashboardFixture()
+        let bench = try await fixture.exercise(named: "Bench Press", movement: .bench)
+        let deadlift = try await fixture.exercise(named: "Deadlift", movement: .deadlift)
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+
+        let chosen = DashboardDefaults.exerciseIDs(
+            in: try await fixture.repositories.exercises.exercises(includingDeleted: false),
+            mostTrained: [])
+
+        #expect(chosen == [squat, bench, deadlift])
+    }
+
+    /// The trap the reservation exists for: the most-trained exercise is also a *later* movement's
+    /// own candidate, so filling the squat's gap with it would tile the bench press twice.
+    @Test("A replacement never takes a slot another default is about to keep")
+    func areplacementNeverDuplicatesAKeptDefault() async throws {
+        let fixture = DashboardFixture()
+        let bench = try await fixture.exercise(named: "Bench Press", movement: .bench)
+        try await fixture.exercise(named: "Back Squat", movement: .squat)
+        let rows = try await fixture.exercise(
+            named: "Barbell Row", movement: .row, equipment: .barbell)
+
+        let chosen = DashboardDefaults.exerciseIDs(
+            in: try await fixture.repositories.exercises.exercises(includingDeleted: false),
+            mostTrained: [bench, rows])
+
+        #expect(chosen == [rows, bench])
+    }
+
+    /// Archiving is how an exercise leaves the pickers (`FR-1.1.5`), and a tile is a picker's
+    /// output — so a lift trained often and then retired is not what a gap is filled with.
+    @Test("An archived exercise is never a replacement, however often it was trained")
+    func anarchivedExerciseIsNeverAReplacement() async throws {
+        let fixture = DashboardFixture()
+        try await fixture.exercise(named: "Back Squat", movement: .squat)
+        let retired = try await fixture.exercise(
+            named: "Old Machine Press", movement: .other, equipment: .machine, isArchived: true)
+        let dips = try await fixture.exercise(
+            named: "Dip", movement: .other, equipment: .bodyweight)
+
+        let chosen = DashboardDefaults.exerciseIDs(
+            in: try await fixture.repositories.exercises.exercises(includingDeleted: false),
+            mostTrained: [retired, dips])
+
+        #expect(chosen == [dips])
+    }
 }

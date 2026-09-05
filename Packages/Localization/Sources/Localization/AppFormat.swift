@@ -50,6 +50,23 @@ public enum AppFormat {
         WeightStyle(unit: unit, precision: .default(for: unit), locale: locale)
     }
 
+    /// A total moved across many sets, to the whole unit (`FR-16.5.2`, `FR-1.5.1`, `FR-1.9.5`).
+    ///
+    /// **Whole, and this exists so that "whole" has one home.** A half-kilogram on a four-digit
+    /// session total is noise, and `G-3.3`'s step is for a load a lifter has to put on a bar — but
+    /// the week tile and the history row are the same figure at two sizes, and the two spelled the
+    /// rule out separately until one of them stopped agreeing: `8 240,0 kg` on the dashboard beside
+    /// `8 240 kg` in History, in a locale whose decimal separator made the difference a whole extra
+    /// glyph and a second line of wrap.
+    ///
+    /// - Parameters:
+    ///   - unit: The display unit.
+    ///   - locale: The locale to render for.
+    /// - Returns: The style.
+    public static func tonnage(in unit: MassUnit, locale: Locale) -> WeightStyle {
+        WeightStyle(unit: unit, precision: .whole, locale: locale)
+    }
+
     /// A display step, rendered as the mass it is — `0.25 kg`, `1 lb` (`G-3.3`).
     ///
     /// **Not a ``PowerliftingCore/Weight``**, and that is why it does not go through

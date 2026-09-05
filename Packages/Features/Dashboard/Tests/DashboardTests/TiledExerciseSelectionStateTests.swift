@@ -105,7 +105,8 @@ struct TiledExerciseSelectionStateTests {
         let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
         let state = TiledExerciseSelectionState(
             catalogue: fixture.repositories.exercises,
-            settings: ReadOnlySettingsRepository(stored: fixture.repositories.settings))
+            settings: ReadOnlySettingsRepository(stored: fixture.repositories.settings),
+            records: fixture.records)
         await state.load()
 
         await state.toggle(squat)
@@ -124,7 +125,8 @@ struct TiledExerciseSelectionStateTests {
     func afailedReadIsTheErrorState() async {
         let state = TiledExerciseSelectionState(
             catalogue: FailingExerciseRepository(),
-            settings: DashboardFixture().repositories.settings)
+            settings: DashboardFixture().repositories.settings,
+            records: DashboardFixture().records)
         await state.load()
 
         #expect(TiledExerciseSelectionScreenState.current(state) == .failed)
@@ -143,6 +145,8 @@ struct TiledExerciseSelectionStateTests {
 
     private func picker(over fixture: DashboardFixture) -> TiledExerciseSelectionState {
         TiledExerciseSelectionState(
-            catalogue: fixture.repositories.exercises, settings: fixture.repositories.settings)
+            catalogue: fixture.repositories.exercises,
+            settings: fixture.repositories.settings,
+            records: fixture.records)
     }
 }

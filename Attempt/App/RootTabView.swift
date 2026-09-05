@@ -237,9 +237,11 @@ struct RootTabView: View {
     @ViewBuilder
     private var tiledExerciseSelectionRoot: some View {
         switch dependencies.state {
-        case .open(let repositories, _):
+        case .open(let repositories, let stores):
             TiledExerciseSelectionView(
-                catalogue: repositories.exercises, settings: repositories.settings)
+                catalogue: repositories.exercises,
+                settings: repositories.settings,
+                records: stores.records)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }
