@@ -57,8 +57,12 @@ struct AppFormatTests {
 
         #expect(week.formatted(AppFormat.tonnage(in: .kilograms, locale: english)) == "8,240 kg")
         // Ukrainian groups with a non-breaking space rather than a comma, which is the other half
-        // of why this figure had to be asserted in a second locale at all.
-        #expect(week.formatted(AppFormat.tonnage(in: .kilograms, locale: ukrainian)) != "8 240,0 kg")
+        // of why this figure had to be asserted in a second locale at all. Asserted as the string
+        // it *is*: `!= "8 240,0 kg"` would have passed for every wrong answer but one.
+        let grouping = try #require(ukrainian.groupingSeparator)
+        #expect(
+            week.formatted(AppFormat.tonnage(in: .kilograms, locale: ukrainian))
+                == "8\(grouping)240 кг")
     }
 
     /// The two callers are one rule: a session row and a week tile render the same total.

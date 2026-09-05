@@ -78,8 +78,11 @@ struct TrainingFrequencyTests {
         let once = try await recomputer(over: log).mostTrainedExerciseIDs()
         let twice = try await recomputer(over: log).mostTrainedExerciseIDs()
 
-        #expect(once == twice)
-        #expect(Set(once) == [first, second])
+        // The order, not merely the membership: `Set(once) == [first, second]` and `once == twice`
+        // are both true of a tiebreak that runs the other way, so neither of them tests the rule.
+        // `idA` sorts above `idB` as a string, which is the whole of what the rule promises.
+        #expect(once == [first, second])
+        #expect(twice == [first, second])
     }
 
     /// A store with nothing in it: no ranking, and so nothing a default tile could be replaced by.

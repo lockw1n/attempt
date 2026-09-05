@@ -177,7 +177,7 @@ struct EstimatedMaxTilesStateTests {
         await state.load()
         // Not `.ready`: nothing is logged against the squat, so this store is `FR-16.5.2`'s
         // all-empty section. What matters here is only that it is not the failure below.
-        #expect(EstimatedMaxTilesScreenState.current(state) == .noEstimates)
+        #expect(EstimatedMaxTilesScreenState.current(state) == .noEstimates(state.tiles))
 
         // The same state after a read that failed still holds the tiles; the diagnostic wins.
         let failed = tiles(over: DashboardFixture(), failing: true)
@@ -252,8 +252,6 @@ struct EstimatedMaxTilesStateTests {
         #expect(state.tiles.first?.trainingMax == Weight(grams: 180_000))
     }
 
-    /// `TR-1.5`: the sheet is on another tab, so the write reaches this screen through the app's one
-    /// announcement channel rather than through a read this screen would have to be told to make.
     /// `FR-16.5.2`: three tiles each apologising for itself is one thing said three times, so the
     /// section says it once. The store the app is installed onto is exactly this state.
     @Test("A store with nothing logged is the section's one insufficient-data state")
@@ -270,7 +268,9 @@ struct EstimatedMaxTilesStateTests {
         #expect(state.selection == [squat, bench, deadlift])
         #expect(state.tiles.count == 3)
         #expect(state.tiles.allSatisfy { !$0.hasEstimate })
-        #expect(EstimatedMaxTilesScreenState.current(state) == .noEstimates)
+        // The state carries the tiles, so the section can still draw their names and any training
+        // max under them — `FR-15.1.8` outlives an absent estimate.
+        #expect(EstimatedMaxTilesScreenState.current(state) == .noEstimates(state.tiles))
     }
 
     /// One tile with a number is enough to keep the tiles on screen; the ones without are the one
@@ -326,6 +326,30 @@ struct EstimatedMaxTilesStateTests {
         #expect(picker.selection == state.selection)
     }
 
+    /// The lifter a manual training max exists for: a coach hands over a number and the lift has
+    /// not been performed yet, so the tile that carries it is the one with no estimate — and every
+    /// other tile is in the same position, which is `FR-16.5.2`'s section state. `FR-15.1.8` says
+    /// the number must not be invisible, so the state that says "no estimates" carries the tiles
+    /// rather than replacing them.
+    @Test("A training max survives a section where nothing has an estimate")
+    func atrainingMaxSurvivesASectionWithNoEstimates() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.tile([squat])
+        try await fixture.trainingMax(squat, kilos: 180, weeksAgo: 1)
+
+        let state = tiles(over: fixture)
+        await state.load()
+
+        let screen = EstimatedMaxTilesScreenState.current(state)
+        #expect(screen == .noEstimates(state.tiles))
+        guard case .noEstimates(let carried) = screen else { return }
+        #expect(carried.map(\.trainingMax) == [Weight(grams: 180_000)])
+        #expect(carried.map(\.name) == ["Back Squat"])
+    }
+
+    /// `TR-1.5`: the sheet is on another tab, so the write reaches this screen through the app's one
+    /// announcement channel rather than through a read this screen would have to be told to make.
     @Test("A training max written elsewhere reaches the tile without the tab being revisited")
     func atrainingMaxWrittenElsewhereReachesTheTile() async throws {
         let fixture = DashboardFixture()

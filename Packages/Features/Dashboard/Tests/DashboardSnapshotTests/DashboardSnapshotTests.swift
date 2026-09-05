@@ -58,10 +58,22 @@
             // FR-16.5.2's section-level half, and the state a fresh install's dashboard is in:
             // three tiles that would each say their own version of "nothing yet" say it once.
             //
+            // THE TILES ARE STILL DRAWN, and the third is why (`FR-15.1.8`): it carries a training
+            // max the lifter typed, which the section's own sentence cannot hold. Each names its
+            // lift and nothing else, which is also what makes "one of these lifts" in that sentence
+            // point at something.
+            //
             // ITS NEGATIVE IS `Dashboard-tiles`, which holds three estimates and one refusal — so
             // the conditional that chooses between them is pictured true here and false there.
             try assertSnapshots(named: "Dashboard-tiles-no-estimates") {
-                EstimatedMaxTilesReading(state: .noEstimates, unit: .kilograms, retry: {})
+                EstimatedMaxTilesReading(
+                    state: .noEstimates(DashboardFixtures.untrainedTiles),
+                    unit: .kilograms,
+                    retry: {}
+                )
+                // The third tile renders a load, so this reference pins its locale like the rest —
+                // it did not have to before the tiles were drawn under the message.
+                .environment(\.locale, DashboardFixtures.locale)
             }
         }
 
@@ -226,6 +238,14 @@
             exerciseNames: ["Back Squat", "Bench Press"],
             workingSetCount: 4)
 
+        /// The section with nothing to estimate from: three lifts, the last of them carrying the
+        /// training max a coach handed over before any of it was trained (`FR-15.1.8`).
+        static let untrainedTiles: [EstimatedMaxTile] = [
+            untrained("Back Squat", absence: .noSetsLogged),
+            untrained("Bench Press", absence: .noSetsLogged),
+            untrained("Deadlift", absence: .refused(.warmup), trainingMaxKilos: 200),
+        ]
+
         /// The picker's rows, two of them ticked.
         static let choices: [TiledExerciseChoice] = [
             TiledExerciseChoice(exerciseID: id(1), name: "Back Squat", isTiled: true),
@@ -245,6 +265,17 @@
                     previous: previousKilos.map { record($0, daysAgo: 20) },
                     formula: .epley,
                     lookback: .default),
+                trainingMax: trainingMaxKilos.map { Weight(grams: Int($0 * 1000)) })
+        }
+
+        /// One tile the app cannot put a number on.
+        private static func untrained(
+            _ name: String, absence: EstimateAbsence, trainingMaxKilos: Double? = nil
+        ) -> EstimatedMaxTile {
+            EstimatedMaxTile(
+                exerciseID: id(name.count),
+                name: name,
+                estimate: EstimatedMax(absence: absence, formula: .epley, lookback: .default),
                 trainingMax: trainingMaxKilos.map { Weight(grams: Int($0 * 1000)) })
         }
 

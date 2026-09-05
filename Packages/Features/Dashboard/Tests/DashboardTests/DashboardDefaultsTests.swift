@@ -18,7 +18,8 @@ struct DashboardDefaultsTests {
         let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
 
         let chosen = DashboardDefaults.exerciseIDs(
-            in: try await fixture.repositories.exercises.exercises(includingDeleted: false))
+            in: try await fixture.repositories.exercises.exercises(includingDeleted: false),
+            mostTrained: [])
 
         #expect(chosen == [squat, bench, deadlift])
     }
@@ -32,7 +33,8 @@ struct DashboardDefaultsTests {
         let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
 
         let chosen = DashboardDefaults.exerciseIDs(
-            in: try await fixture.repositories.exercises.exercises(includingDeleted: false))
+            in: try await fixture.repositories.exercises.exercises(includingDeleted: false),
+            mostTrained: [])
 
         #expect(chosen == [squat])
     }
@@ -45,7 +47,8 @@ struct DashboardDefaultsTests {
             named: "A Low-Bar Back Squat", movement: .squat, parentExerciseID: squat)
 
         let chosen = DashboardDefaults.exerciseIDs(
-            in: try await fixture.repositories.exercises.exercises(includingDeleted: false))
+            in: try await fixture.repositories.exercises.exercises(includingDeleted: false),
+            mostTrained: [])
 
         #expect(chosen == [squat])
     }
@@ -58,7 +61,8 @@ struct DashboardDefaultsTests {
         let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
 
         let chosen = DashboardDefaults.exerciseIDs(
-            in: try await fixture.repositories.exercises.exercises(includingDeleted: false))
+            in: try await fixture.repositories.exercises.exercises(includingDeleted: false),
+            mostTrained: [])
 
         #expect(chosen == [squat])
     }
@@ -71,7 +75,8 @@ struct DashboardDefaultsTests {
         let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
 
         let chosen = DashboardDefaults.exerciseIDs(
-            in: try await fixture.repositories.exercises.exercises(includingDeleted: false))
+            in: try await fixture.repositories.exercises.exercises(includingDeleted: false),
+            mostTrained: [])
 
         #expect(chosen == [squat])
     }
@@ -86,8 +91,9 @@ struct DashboardDefaultsTests {
         try await fixture.exercise(named: "Hip Thrust", movement: .deadlift)
 
         let catalogue = try await fixture.repositories.exercises.exercises(includingDeleted: false)
-        #expect(DashboardDefaults.exerciseIDs(in: catalogue) == [deadlift])
-        #expect(DashboardDefaults.exerciseIDs(in: catalogue.reversed()) == [deadlift])
+        #expect(DashboardDefaults.exerciseIDs(in: catalogue, mostTrained: []) == [deadlift])
+        #expect(
+            DashboardDefaults.exerciseIDs(in: catalogue.reversed(), mostTrained: []) == [deadlift])
     }
 
     // MARK: - FR-16.5.1: a default with no history is replaced

@@ -76,15 +76,6 @@ enum DashboardDefaults {
         }
     }
 
-    /// Today's selection for a caller with no training history in hand — the seeded three, whether
-    /// or not they have ever been performed.
-    ///
-    /// - Parameter catalogue: The exercises to choose from.
-    /// - Returns: One identifier per movement that had a candidate, in ``movements``' order.
-    static func exerciseIDs(in catalogue: [Exercise]) -> [UUID] {
-        exerciseIDs(in: catalogue, mostTrained: [])
-    }
-
     /// The competition lift for one movement, by the four clauses and the name.
     private static func seededLift(for movement: Movement, in catalogue: [Exercise]) -> UUID? {
         catalogue
