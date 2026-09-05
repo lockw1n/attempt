@@ -12,10 +12,9 @@ import SwiftUI
 /// for the same reason — `TR-1.12`'s harness renders through `ImageRenderer`, which draws a
 /// placeholder for anything UIKit-backed, so a `List` here would snapshot as a grey box.
 ///
-/// **All four of its derived sections read for themselves**, each with its own store, its own
-/// `.task` and its own states — so a value that cannot be computed costs the reader that section
-/// and never `FR-1.1.6`'s movement, equipment and notes. The training max's is also the screen's
-/// second write: `FR-16.7.2`'s change is entered in a sheet it presents.
+/// What it draws once the read lands is ``ExerciseDetailSections``, which owns the order the
+/// sections come in. The training max's is the screen's second write: `FR-16.7.2`'s change is
+/// entered in a sheet it presents.
 public struct ExerciseDetailView: View {
     @State private var state: ExerciseDetailState
 
@@ -141,59 +140,15 @@ public struct ExerciseDetailView: View {
                 message: Text(ExerciseLibraryStrings.detailMissingMessage)
             )
         case .loaded(let detail):
-            loaded(detail)
-        }
-    }
-
-    /// The eight sections: the record's own fields, then the one thing here the user can change,
-    /// then `FR-1.1.7`'s relationships, and `FR-1.1.6`'s three derived values — where they stay now
-    /// that the first of them holds real data, since a screen opened to check a cue should not be
-    /// scrolled past a training history to reach the notes.
-    ///
-    /// **`FR-1.1.5`'s archive control is last, below all of them.** It is the one command here that
-    /// changes what the rest of the app shows, and the foot of a screen is where a command like that
-    /// is reached deliberately rather than in passing.
-    @ViewBuilder private func loaded(_ detail: ExerciseDetail) -> some View {
-        ExerciseFactsSection(exercise: detail.exercise)
-        ExerciseNotesSection(state: state)
-        if detail.hasRelationships {
-            ExerciseVariationsSection(parent: detail.parent, variations: detail.variations)
-        }
-        // The history reads for itself rather than off `detail`, and its heading is its own: it has
-        // four states where a section with nothing in it has one, and a workout store that cannot
-        // answer must not cost this screen the exercise. See `ExerciseHistorySection`.
-        ExerciseHistorySection(exerciseID: exerciseID, workouts: workouts, settings: settings)
-        // The records section reads for itself, and its heading is its own, on the history section's
-        // rule: it has four states where a section with nothing in it has one. The set count is
-        // still handed down, because it is what separates the two "nothing to show" sentences and
-        // this screen is the only place it has already been read.
-        //
-        // THE ESTIMATE IS NOT ONE OF THE TWO, and that is deliberate. A 12-rep set, assisted work
-        // and a set that targets ten and fails at eight each produce no estimate BY DESIGN, so a
-        // user can have logged sets and still correctly have no e1RM — a count cannot tell those
-        // apart from an exercise nothing has been logged against. The estimate's own section reads
-        // the reason from the pipeline instead; see `ExerciseEstimateScreenState`.
-        ExerciseRecordsSection(
-            exerciseID: exerciseID,
-            hasLoggedSets: detail.hasLoggedSets,
-            records: records,
-            settings: settings
-        )
-        // Above the estimate, and that pairing is the point: the coach's number and the observed
-        // one are two claims about the same lift, and reading them in that order is what stops
-        // either being taken for the other (`FR-15.1.5`).
-        TrainingMaxSection(
-            exerciseID: exerciseID,
-            trainingMaxes: trainingMaxes,
-            settings: settings,
-            records: records
-        )
-        ExerciseEstimateSection(exerciseID: exerciseID, records: records, settings: settings)
-        ExerciseArchiveSection(
-            isArchived: detail.exercise.isArchived,
-            hasFailed: state.archiveFailure != nil
-        ) {
-            Task { await state.setArchived(!detail.exercise.isArchived) }
+            ExerciseDetailSections(
+                detail: detail,
+                state: state,
+                exerciseID: exerciseID,
+                workouts: workouts,
+                settings: settings,
+                records: records,
+                trainingMaxes: trainingMaxes
+            )
         }
     }
 }
@@ -207,24 +162,12 @@ struct ExerciseFactsSection: View {
     /// The exercise these facts describe.
     let exercise: Exercise
 
-    /// The archived badge where it applies, then one row per field.
+    /// One row per field.
     ///
-    /// **The badge is here rather than beside the title** because the title is the navigation bar's,
-    /// and an archived exercise is still reachable from logged history (`FR-1.1.5`) — without it the
-    /// screen gives no reason for the exercise being absent from the list.
+    /// The archived mark is not here: it belongs at the head of the screen, above the sections this
+    /// one sits among. See ``ExerciseArchivedBadge``.
     var body: some View {
         GroupedSection(Text(ExerciseLibraryStrings.detailSection)) {
-            if exercise.isArchived {
-                Text(ExerciseLibraryStrings.detailArchivedBadge)
-                    .font(Typography.metricLabel.font)
-                    .foregroundStyle(ColorToken.textSecondary)
-                    .padding(.horizontal, Spacing.sm.points)
-                    .padding(.vertical, Spacing.xs.points)
-                    .background(
-                        ColorToken.surfaceRaised,
-                        in: .rect(cornerRadius: CornerRadius.control.points)
-                    )
-            }
             ExerciseFactRow(
                 label: ExerciseLibraryStrings.detailMovement,
                 value: ExerciseLibraryStrings.label(for: exercise.movement)

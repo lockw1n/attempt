@@ -42,6 +42,10 @@
         }
 
         @Test func archivedFacts() throws {
+            // A second vocabulary row set — machine, no bar, a bench movement — where the reference
+            // above draws a barbell squat's. The archived *mark* is not in this picture and no
+            // longer belongs to this section: it is drawn at the head of the screen, above every
+            // section, and `ExerciseDetail-section-order` is where it is gated.
             try assertSnapshots(named: "ExerciseDetail-facts-archived") {
                 ExerciseFactsSection(exercise: DetailFixtures.retired)
             }
