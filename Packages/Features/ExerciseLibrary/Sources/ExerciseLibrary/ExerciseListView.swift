@@ -48,7 +48,7 @@ public struct ExerciseListView: View {
     ///   - repository: Where the catalogue comes from. `Persistence`'s implementation in the app;
     ///     anything conforming in a test or a preview.
     ///   - workouts: What has been logged, for `FR-1.1.2`'s recency filter. See
-    ///     ``ExerciseListState/init(repository:workouts:)`` for why it is a second repository rather
+    ///     ``ExerciseListState/init(repository:workouts:memory:)`` for why it is a second repository rather
     ///     than a dependency on `Logging`.
     ///   - select: What choosing a row does, for the chooser (`FR-1.2.2`). Omitted, the screen
     ///     browses: rows push a detail, which is what `FR-1.1.1` asks for and what a chooser must
@@ -75,9 +75,12 @@ public struct ExerciseListView: View {
     /// affordance turned out to be here: SwiftUI places it in the enclosing navigation bar, this
     /// screen hides the bar behind a custom header, and the field ended up collapsed and reachable
     /// only by pulling the content down — a gesture nothing on screen advertises. A field the screen
-    /// draws is visible at rest, which is what the requirement asks for, and it stays out of the
-    /// navigation bar's way for the same `ImageRenderer` reason the rest of this screen avoids
-    /// UIKit-backed controls.
+    /// draws is visible at rest, which is what the requirement asks for.
+    ///
+    /// **It does not buy back what `ImageRenderer` cannot draw**, and the trade is worth stating:
+    /// `TextField` is UIKit-backed either way, so the field's text area records as the harness
+    /// placeholder. What changed is that the chrome around it is in this body at all — under
+    /// `.searchable` there was nothing here for a reference to picture.
     public var body: some View {
         @Bindable var state = state
         return ScrollView {

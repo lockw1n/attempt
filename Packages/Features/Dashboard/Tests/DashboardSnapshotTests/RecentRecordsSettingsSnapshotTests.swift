@@ -49,6 +49,10 @@
             configured.recentRecordsSchemes = .chosen([RecordScheme(reps: 5, sets: 5)])
             configured.recentRecordsShowsBaselines = true
 
+            // THE LOCALE AND THE TIME ZONE ARE PINNED, and only here: this is the one reference in
+            // the suite that renders a date — `FR-16.5.3`'s "last trained" under a chosen lift —
+            // and `SnapshotHarness` pins neither itself. Unpinned, the day 1_700_000_000 falls on
+            // moves east of UTC+2 and the format moves with the recording machine's own locale.
             try assertSnapshots(named: "RecentRecords-settings-chosen") {
                 RecentRecordsSettingsForm(
                     settings: configured,
@@ -60,7 +64,10 @@
                     apply: { _ in },
                     toggleExercise: { _ in },
                     setSchemesDerived: { _ in },
-                    toggleScheme: { _ in })
+                    toggleScheme: { _ in }
+                )
+                .environment(\.locale, SettingsFixtures.locale)
+                .environment(\.timeZone, .gmt)
             }
         }
 
@@ -102,8 +109,13 @@
         ]
 
         /// The day the trained row was last performed. Fixed, so a reference committed today still
-        /// matches next year.
+        /// matches next year — and rendered against ``locale`` and GMT, so it matches on another
+        /// machine too.
         static let trainedDay = Date(timeIntervalSince1970: 1_700_000_000)
+
+        /// The locale that day is rendered in. Every dated reference in this package pins one; the
+        /// harness does not.
+        static let locale = Locale(identifier: "en_US")
 
         /// Those rows as the screen draws them (`FR-16.5.3`).
         static let exerciseSections = ExerciseChoiceSections.sections(exercises, matching: "")

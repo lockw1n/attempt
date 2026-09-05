@@ -60,6 +60,9 @@ final class TiledExerciseSelectionState {
     /// Which exercises are tiled, in the order they are drawn.
     private(set) var selection: [UUID] = []
 
+    /// ``trainedDates()``' one answer for this visit, or `nil` while it has not been read.
+    private var lastTrained: [UUID: Date]?
+
     /// Whether the first read has answered.
     private(set) var hasLoaded = false
 
@@ -108,9 +111,9 @@ final class TiledExerciseSelectionState {
     ///
     /// **Two reads of the same bounded walk, and they answer different questions** (`FR-16.5.3`):
     /// ``EstimatedMaxTilesState/selection(_:in:from:)`` asks which lifts a lifter who has chosen
-    /// nothing gets, and ``DerivedValues/PersonalRecordRecomputer/lastTrainedDates()`` asks when
-    /// each exercise was last trained. The second runs whatever the first answered — a configured
-    /// dashboard still wants its **Trained** section.
+    /// nothing gets, and ``trainedDates()`` asks when each exercise was last trained. The second
+    /// runs whatever the first answered — a configured dashboard still wants its **Trained**
+    /// section — but only once per visit; see ``trainedDates()``.
     ///
     /// **A fresh read retires ``writeFailure``**, the rule ``LastWorkoutState/load()`` states: a
     /// failed toggle is reported beside the rows it did not change, and those rows are exactly what
@@ -122,7 +125,7 @@ final class TiledExerciseSelectionState {
             let exercises = try await catalogue.exercises(includingDeleted: false)
             let chosen = try await EstimatedMaxTilesState.selection(
                 stored, in: exercises, from: records)
-            let trained = try await records.lastTrainedDates()
+            let trained = try await trainedDates()
             let tiled = Set(chosen)
             selection = chosen
             choices = ExerciseDisplayOrder.sorted(
@@ -140,6 +143,27 @@ final class TiledExerciseSelectionState {
             failure = String(describing: error)
         }
         hasLoaded = true
+    }
+
+    /// When each exercise was last trained, read once per visit rather than once per load.
+    ///
+    /// **A toggle changes no session, so the dates a reload would fetch cannot have moved.**
+    /// ``toggle(_:)`` ends in ``load()``, and
+    /// ``DerivedValues/PersonalRecordRecomputer/lastTrainedDates()`` walks every session in the
+    /// lookback window and every set under each one — a walk this screen would otherwise pay on
+    /// every tap, on a screen a lifter taps several times in a row (`NFR-1.6`). Nothing can log a
+    /// workout while the picker is up, so one read per visit is the whole of what
+    /// `FR-16.5.3`'s **Trained** section needs.
+    ///
+    /// A read that throws leaves ``lastTrained`` unset and is retried with the rest of ``load()``,
+    /// so a cached answer is only ever one that succeeded.
+    ///
+    /// - Returns: The most recent session date per exercise, for exercises trained in the window.
+    private func trainedDates() async throws -> [UUID: Date] {
+        if let lastTrained { return lastTrained }
+        let dates = try await records.lastTrainedDates()
+        lastTrained = dates
+        return dates
     }
 
     /// Adds or removes one exercise's tile, and stores the result (`FR-1.9.1`).

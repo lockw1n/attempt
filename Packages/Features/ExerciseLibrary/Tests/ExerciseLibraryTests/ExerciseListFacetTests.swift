@@ -142,6 +142,10 @@ struct ExerciseListFacetTests {
 
     /// A screen returned to after a create or an edit re-reads (`FR-1.1.3`), and a refresh that
     /// re-applied the opening rule would drop the lifter's filter every time they came back.
+    ///
+    /// **The memory alone would satisfy this one** — a chosen facet is remembered, so re-settling
+    /// would restore the same value. The test below is the one the settle guard is load-bearing
+    /// for.
     @Test("A refresh does not re-apply the opening default")
     func arefreshDoesNotReapplyTheDefault() async throws {
         let gym = try await Gym.seeded()
@@ -153,5 +157,24 @@ struct ExerciseListFacetTests {
         await state.refresh()
 
         #expect(state.showsRecentOnly == false)
+    }
+
+    /// The case the memory cannot answer, because there is nothing in it: a lifter who has chosen
+    /// no facet has settled all the same, so history arriving under an open list is not a second
+    /// chance for the app to guess. Without the settle guard **Recently used** turns itself on here,
+    /// under a reader who is browsing everything and never asked.
+    @Test("History arriving under an open list does not turn its default on")
+    func historyArrivingDoesNotReapplyTheDefault() async throws {
+        let gym = try await Gym.seeded()
+        let state = gym.listState()
+        await state.load()
+        #expect(state.showsRecentOnly == false)
+
+        try await gym.train(gym.squat, daysAgo: 3)
+        await state.refresh()
+
+        #expect(state.isRecencyFilterAvailable == true)
+        #expect(state.showsRecentOnly == false)
+        #expect(state.activeFacets.isEmpty)
     }
 }

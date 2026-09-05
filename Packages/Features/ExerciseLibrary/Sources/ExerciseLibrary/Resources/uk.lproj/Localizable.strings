@@ -13,6 +13,8 @@
 
 "exerciselibrary.list.filter.filters" = "Фільтри";
 "exerciselibrary.list.filter.filters.hint" = "Показує та приховує параметри фільтрів.";
+"exerciselibrary.list.filter.clear.hint" = "Прибирає цей фільтр.";
+"exerciselibrary.list.filter.hide-archived.hint" = "Знову приховує архівовані вправи.";
 "exerciselibrary.list.filter.recently-used" = "Нещодавні";
 "exerciselibrary.list.filter.recently-used.hint" = "Стане доступним, щойно ви запишете тренування.";
 "exerciselibrary.list.filter.recently-used.available %lld" = "Вправи, які ви тренували за останні %lld днів";

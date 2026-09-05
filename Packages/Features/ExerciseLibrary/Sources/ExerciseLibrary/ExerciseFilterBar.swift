@@ -41,6 +41,8 @@ struct ExerciseFilterBar: View {
     ///
     /// **The active chips are tappable and clear their own facet**, so a reader who can see a
     /// narrowing can undo it without opening anything — which is what makes folding the rest safe.
+    /// Each carries a hint saying so: a chip labelled with the filter it names announces the
+    /// subject and not the act (`G-4.2`).
     /// They scroll horizontally rather than wrapping, on the facet rows' own rule: four narrowings
     /// at the largest Dynamic Type size would otherwise be four lines above the catalogue.
     private var summary: some View {
@@ -199,6 +201,7 @@ struct ExerciseFilterSummary: View {
                 ) {
                     clear(facet)
                 }
+                .accessibilityHint(Text(ExerciseLibraryStrings.clearHint(for: facet)))
             }
         }
     }

@@ -25,12 +25,13 @@ enum TiledExerciseSelectionScreenState: Equatable {
     /// Which state a load is in. The failure outranks a list already on screen, on the tiles
     /// section's rule.
     ///
-    /// - Parameter state: The picker's load.
-    /// - Returns: The state to draw.
     /// **`empty` is measured on the catalogue, not on the sections.** A search that matched nothing
     /// is not a catalogue with nothing in it: the first has a query to clear and the second has
     /// nothing to do at all, and ``ExerciseChoiceList`` draws the no-matches state itself, under the
     /// field that causes it.
+    ///
+    /// - Parameter state: The picker's load.
+    /// - Returns: The state to draw.
     static func current(_ state: TiledExerciseSelectionState) -> Self {
         if state.failure != nil { return .failed }
         guard state.hasLoaded else { return .loading }

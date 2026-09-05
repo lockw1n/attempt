@@ -20,6 +20,13 @@
 "exerciselibrary.list.filter.filters" = "Filters";
 "exerciselibrary.list.filter.filters.hint" = "Shows and hides the filter options.";
 
+/* The chips beside "Filters" are the narrowings in force, and tapping one turns it off — a label
+   naming the filter says what it is, never what the tap does. "Show archived" is the exception the
+   row itself is: it widens where the other four narrow, so clearing it takes rows away rather than
+   giving them back, and one hint over both would be wrong about it. */
+"exerciselibrary.list.filter.clear.hint" = "Removes this filter.";
+"exerciselibrary.list.filter.hide-archived.hint" = "Hides archived exercises again.";
+
 "exerciselibrary.list.filter.recently-used" = "Recently used";
 /* Shown beside the recency filter while it is disabled, which is until something has been trained
    inside the window. It says what would enable it, not what is missing from the app. The chip is

@@ -54,6 +54,9 @@ final class RecentRecordsSettingsState {
     /// The schemes in scope, and which are ticked.
     private(set) var schemeChoices: [RecentRecordsSchemeChoice] = []
 
+    /// ``trainedDates()``' one answer for this visit, or `nil` while it has not been read.
+    private var lastTrained: [UUID: Date]?
+
     /// Whether the first read has answered.
     private(set) var hasLoaded = false
 
@@ -97,6 +100,10 @@ final class RecentRecordsSettingsState {
     /// **A fresh read retires ``writeFailure``**, `TiledExerciseSelectionState/load()`'s rule: a
     /// failed change is reported beside the controls it did not move, and those controls are exactly
     /// what this replaces.
+    ///
+    /// The last-trained dates come from ``trainedDates()`` rather than the recomputer directly, so
+    /// every control on this screen does not re-walk the log to answer a question none of them
+    /// moved.
     func load() async {
         writeFailure = nil
         do {
@@ -107,7 +114,7 @@ final class RecentRecordsSettingsState {
                 DashboardDefaults.exerciseIDs(
                     in: exercises, mostTrained: try await recomputer.mostTrainedExerciseIDs())
             }
-            let trained = try await recomputer.lastTrainedDates()
+            let trained = try await trainedDates()
             settings = stored
             exerciseChoices = ExerciseDisplayOrder.sorted(exercises, in: nameLanguage).map {
                 TiledExerciseChoice(
@@ -122,6 +129,21 @@ final class RecentRecordsSettingsState {
             failure = String(describing: error)
         }
         hasLoaded = true
+    }
+
+    /// When each exercise was last trained, read once per visit rather than once per load.
+    ///
+    /// ``TiledExerciseSelectionState/trainedDates()``' reason, on the screen it bites harder:
+    /// ``apply(_:)`` and ``toggleExercise(_:)`` both end in ``load()``, so every scope change,
+    /// scheme tick and baseline switch would otherwise walk every session in the lookback window
+    /// and every set under it (`NFR-1.6`). None of those controls changes what was trained when.
+    ///
+    /// - Returns: The most recent session date per exercise, for exercises trained in the window.
+    private func trainedDates() async throws -> [UUID: Date] {
+        if let lastTrained { return lastTrained }
+        let dates = try await recomputer.lastTrainedDates()
+        lastTrained = dates
+        return dates
     }
 
     /// Moves one field on the stored row and re-reads (`FR-16.3.1`, `FR-16.3.2`, `FR-16.3.4`).

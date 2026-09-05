@@ -141,8 +141,6 @@ struct TiledExerciseSelectionStateTests {
         #expect(TiledExerciseSelectionScreenState.current(state) == .empty)
     }
 
-    // MARK: - Fixtures
-
     @Test("A row carries the day the exercise was last trained, and the sections follow it")
     func rowsCarryTheLastTrainedDay() async throws {
         let fixture = DashboardFixture()
@@ -223,6 +221,8 @@ struct TiledExerciseSelectionStateTests {
         #expect(state.searchText == "squat")
         #expect(state.sections.flatMap { $0.choices.map(\.name) } == ["Back Squat"])
     }
+
+    // MARK: - Fixtures
 
     private func picker(over fixture: DashboardFixture) -> TiledExerciseSelectionState {
         TiledExerciseSelectionState(

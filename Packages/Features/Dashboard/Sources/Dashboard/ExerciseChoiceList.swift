@@ -16,6 +16,15 @@ import SwiftUI
 /// and its argument still holds: a row leading to a chooser that the current scope ignores is a dead
 /// end. Sharing the *view* was the part that was owed, not a push.
 struct ExerciseChoiceList: View {
+    /// What this list is, or `nil` where the screen has already said.
+    ///
+    /// **A heading rather than one more ``DesignSystem/GroupedSection``**: the sections below are
+    /// cards already, and wrapping them in another would draw a surface around a surface. The tile
+    /// picker passes nothing — the screen it fills is titled — where `settings.recentRecords`
+    /// reveals this list between three other headed sections, and two unlabelled cards there say
+    /// nothing about which scope they belong to.
+    var title: LocalizedStringResource?
+
     /// What the user has typed, bound to whichever state holds it.
     @Binding var searchText: String
 
@@ -33,6 +42,11 @@ struct ExerciseChoiceList: View {
     /// field the message sits under is one tap from bringing every one of them back. A search the
     /// user typed is a cause they can see; the tiles' empty state had neither.
     var body: some View {
+        if let title {
+            Text(title)
+                .font(Typography.sectionHeading.font)
+                .foregroundStyle(ColorToken.textPrimary)
+        }
         SearchField(text: $searchText, prompt: DashboardStrings.exerciseSearchPrompt)
         if sections.isEmpty {
             EmptyStateView(

@@ -177,12 +177,18 @@ struct RecentRecordsSettingsForm: View {
     ///
     /// **Inline rather than a screen of its own**, unlike `FR-1.9.1`'s tile picker: this list is
     /// meaningful only under one of three scopes, and a row leading to a chooser that the current
-    /// scope ignores is the dead end `SettingsLandingView` hides the Health row to avoid. T-16.09
-    /// re-examined that and kept it — what it shared was the *view*, ``ExerciseChoiceList``, so the
-    /// two lists search and section alike without this one being pushed.
+    /// scope ignores is the dead end `SettingsLandingView` hides the Health row to avoid. What was
+    /// shared with `FR-1.9.1`'s picker is the *view*, ``ExerciseChoiceList``, so the two lists
+    /// search and section alike without this one being pushed.
+    ///
+    /// **It keeps its own heading over the shared view.** The sections inside are headed
+    /// **Trained** and **Everything else**, which say how the rows are ordered and not what the
+    /// list is for — and this screen's other three sections are all named, so two unnamed cards
+    /// between the scope picker and the schemes would read as belonging to neither.
     @ViewBuilder private var chosenExercises: some View {
         if hasExercises {
             ExerciseChoiceList(
+                title: DashboardStrings.recentRecordsExercisesTitle,
                 searchText: $exerciseSearchText,
                 sections: exerciseSections,
                 toggle: toggleExercise)
