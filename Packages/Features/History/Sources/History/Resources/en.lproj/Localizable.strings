@@ -85,3 +85,8 @@
    can put the date last. */
 "history.calendar.day.trained %@" = "%1$@, trained";
 "history.calendar.day.untrained %@" = "%1$@, no training";
+
+/* Which week and day of a program a session was started from, on the list row. Read off the
+   session's own columns rather than out of its note — the structure a note used to carry.
+   Positional, so a translation can order the two numbers as its grammar wants. */
+"history.list.program.week-day %lld %lld" = "Week %1$lld · Day %2$lld";

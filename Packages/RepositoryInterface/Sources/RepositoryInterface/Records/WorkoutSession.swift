@@ -148,3 +148,38 @@ extension WorkoutSession {
         try container.encodeIfPresent(dayIndex, forKey: .dayIndex)
     }
 }
+
+/// Which week and day of a program a session was started from (`FR-16.8.3`).
+///
+/// **The day is counted from one**, unlike ``ProgramDay/order``, which is the cursor's own unit: a
+/// lifter reads "Day 2" and a `nextDayIndex` reads 1, and the conversion has one home rather than
+/// one per screen that draws it.
+public struct ProgramPosition: Equatable, Sendable {
+    /// The week the run was on when the workout was started.
+    public let week: Int
+
+    /// Which day of that week it was, counted from one.
+    public let day: Int
+
+    /// Builds the position.
+    ///
+    /// - Parameters:
+    ///   - week: The run's week number.
+    ///   - day: The day, counted from one.
+    public init(week: Int, day: Int) {
+        self.week = week
+        self.day = day
+    }
+}
+
+extension WorkoutSession {
+    /// Where in a program this session was started, or `nil` where it was not started from one.
+    ///
+    /// **Both columns or neither.** They are written together at start, and a row carrying one
+    /// without the other describes a position nothing can be drawn from — so a half-filled row
+    /// reads here as no position at all rather than as a week with an invented day.
+    public var programPosition: ProgramPosition? {
+        guard let weekNumber, let dayIndex else { return nil }
+        return ProgramPosition(week: weekNumber, day: dayIndex + 1)
+    }
+}

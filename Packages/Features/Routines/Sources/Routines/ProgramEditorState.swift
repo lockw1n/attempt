@@ -234,9 +234,6 @@ public final class ProgramEditorState {
             writeFailed = true
             return
         }
-        // Dropped here rather than left to the read: ``renumber()`` walks this list, and a row that
-        // is gone from the store but still in it would leave a hole in the orders it writes.
-        days.removeAll { $0.id == dayID }
         await renumber()
     }
 

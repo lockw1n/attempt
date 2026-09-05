@@ -254,6 +254,17 @@ struct SessionSummaryCard: View {
                         .foregroundStyle(ColorToken.textPrimary)
                 }
 
+                if let position = summary.programPosition {
+                    // `FR-16.8.3` read off the session's own columns. Above the exercises because
+                    // it says which workout this was rather than what was in it — and this is the
+                    // row a lifter used to read "W2D1" off the note below (`DOD-16.1`).
+                    Text(
+                        HistoryStrings.programWeekAndDay(week: position.week, day: position.day)
+                    )
+                    .font(Typography.metricContext.font)
+                    .foregroundStyle(ColorToken.textSecondary)
+                }
+
                 exercises
 
                 if !summary.notes.isEmpty {

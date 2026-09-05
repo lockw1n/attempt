@@ -79,16 +79,37 @@ extension ActiveSessionStore {
             guard let run = try await programs.run(id: runID, includingDeleted: false), run.isOpen,
                 run.nextDayIndex <= dayIndex
             else {
-                programAdvanceFailure = nil
+                clearProgramAdvanceFailure()
                 return
             }
             try await programs.save(run.movedTo(nextDayIndex: dayIndex + 1))
-            programAdvanceFailure = nil
+            clearProgramAdvanceFailure()
         } catch {
             // The workout is finished and stored either way. What is left undone is the cursor,
             // and the screen that draws the next day is where that is reported and retried.
             programAdvanceFailure = String(describing: error)
+            unadvancedSession = session
         }
+    }
+
+    /// Tries the cursor write again, over the workout it was owed to (`FR-16.8.4`).
+    ///
+    /// **The retry is what makes the report actionable, and it also retires it.** A lifter who got
+    /// past the stalled day another way — **Skip day**, or the store simply coming back — needs the
+    /// banner gone, and the only thing that can tell is the write itself: ``advanceProgramRun(after:)``
+    /// clears the failure both when it moves the cursor and when it finds the cursor already past
+    /// the day.
+    ///
+    /// Nothing to retry is not a failure: the report has already been retired.
+    public func retryProgramAdvance() async {
+        guard let session = unadvancedSession else { return }
+        await advanceProgramRun(after: session)
+    }
+
+    /// Retires the report and the workout held behind it, which are only ever set together.
+    private func clearProgramAdvanceFailure() {
+        programAdvanceFailure = nil
+        unadvancedSession = nil
     }
 }
 
@@ -135,19 +156,5 @@ extension ProgramRun {
             endedAt: endedAt,
             weekNumber: weekNumber + 1,
             nextDayIndex: 0)
-    }
-}
-
-extension WorkoutSession {
-    /// Which week and day of a program this session was started from, or `nil` where it was not
-    /// started from one (`FR-16.8.3`).
-    ///
-    /// **Both columns or neither.** They are written together at start and a row carrying one
-    /// without the other describes a position nothing can be drawn from — see
-    /// ``Logging/ProgramSessionStamp``. The day is returned counted from one, which is how a lifter reads
-    /// it and what every caller here wants.
-    var programPosition: (week: Int, day: Int)? {
-        guard let weekNumber, let dayIndex else { return nil }
-        return (weekNumber, dayIndex + 1)
     }
 }

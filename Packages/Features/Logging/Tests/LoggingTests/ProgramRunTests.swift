@@ -113,7 +113,10 @@ struct ProgramRunTests {
         let nextUp = fixture.nextUpState()
         await nextUp.load()
         let reading = try #require(nextUp.nextUp)
-        guard case .next(let index, let routineID, _) = reading.day else { return }
+        guard case .next(let index, let routineID, _) = reading.day else {
+            Issue.record("expected day 0 to be next")
+            return
+        }
         await store.start(
             on: fixture.today,
             in: ProgramSessionStamp(
@@ -191,6 +194,99 @@ struct ProgramRunTests {
 
         let run = try #require(try await fixture.stack.programs.currentRun())
         #expect(run.nextDayIndex == 2)
+    }
+
+    /// `DOD-16.1`'s third thing, beside the program and the three routines: the week's own
+    /// training max, held by the app rather than written into a note (`FR-15.1.4`).
+    @Test("The week's training max is in the store, at 140 kg")
+    func theWeeksTrainingMaxIsHeld() async throws {
+        let fixture = try await ProgramFixture()
+
+        let inForce = try await fixture.stack.trainingMaxes.trainingMax(
+            forExerciseID: fixture.squat, on: fixture.today)
+        #expect(inForce?.newWeight.grams == 140_000)
+        #expect(inForce?.newWeight.grams == ProgramFixture.trainingMaxGrams)
+        let configuration = try await fixture.stack.trainingMaxes.configuration(
+            forExerciseID: fixture.squat, on: fixture.today)
+        #expect(configuration?.source == .manual)
+    }
+
+    /// The cursor only moves forward here too: **Skip day** over a day the run is already past
+    /// would otherwise drag the plan backwards, exactly as a re-finished session would.
+    @Test("Skipping a day already past does not move the cursor back")
+    func skippingAPastDayDoesNothing() async throws {
+        let fixture = try await ProgramFixture()
+        let store = fixture.store()
+        // Two days trained, so the cursor is at 2 and day 0 is *two* behind it. One behind would
+        // not tell the guard from its absence: `index + 1` would land on the cursor either way.
+        try await fixture.train(day: 0, through: store, grams: 100_000)
+        try await fixture.train(day: 1, through: store, grams: 100_000)
+        let state = fixture.nextUpState()
+        await state.load()
+
+        await state.skipDay(at: 0)
+
+        #expect(state.commandFailure == nil)
+        let run = try #require(try await fixture.stack.programs.currentRun())
+        #expect(run.nextDayIndex == 2)
+    }
+
+    /// A finish whose cursor write refuses: the workout is stored, the report is raised, and the
+    /// run is where it was.
+    @Test("A cursor write that refuses is reported and leaves the run alone")
+    func aRefusedAdvanceIsReported() async throws {
+        let fixture = try await ProgramFixture()
+        let store = fixture.store(refusingRunSaves: true)
+        let sessionID = try await fixture.train(day: 0, through: store, grams: 100_000)
+
+        #expect(store.programAdvanceFailure != nil)
+        let stored = try #require(
+            try await fixture.stack.workouts.session(id: sessionID, includingDeleted: false))
+        #expect(stored.endedAt != nil)
+        #expect(try await fixture.stack.programs.currentRun()?.nextDayIndex == 0)
+    }
+
+    /// The report is actionable rather than only readable: the retry writes the cursor and retires
+    /// it.
+    @Test("Retrying the advance moves the cursor and retires the report")
+    func retryingTheAdvanceMovesTheCursor() async throws {
+        let fixture = try await ProgramFixture()
+        var programs = RefusingProgramRepository(wrapped: fixture.stack.programs)
+        programs.refusesRunSave = true
+        let store = ActiveSessionStore.over(fixture.stack, programs: programs)
+        try await fixture.train(day: 0, through: store, grams: 100_000)
+        #expect(store.programAdvanceFailure != nil)
+
+        // The store the retry runs against is the one that no longer refuses.
+        let recovered = ActiveSessionStore.over(fixture.stack)
+        recovered.programAdvanceFailure = store.programAdvanceFailure
+        recovered.unadvancedSession = store.unadvancedSession
+        await recovered.retryProgramAdvance()
+
+        #expect(recovered.programAdvanceFailure == nil)
+        #expect(try await fixture.stack.programs.currentRun()?.nextDayIndex == 1)
+    }
+
+    /// The other way past it: the lifter skips the stalled day, and the retry finds the cursor
+    /// already beyond it. Nothing is written twice and the banner goes.
+    @Test("A skip past the stalled day retires the report on the next retry")
+    func aSkipRetiresTheReport() async throws {
+        let fixture = try await ProgramFixture()
+        let store = fixture.store(refusingRunSaves: true)
+        try await fixture.train(day: 0, through: store, grams: 100_000)
+        #expect(store.programAdvanceFailure != nil)
+
+        let state = fixture.nextUpState()
+        await state.load()
+        await state.skipDay(at: 0)
+        let recovered = ActiveSessionStore.over(fixture.stack)
+        recovered.programAdvanceFailure = store.programAdvanceFailure
+        recovered.unadvancedSession = store.unadvancedSession
+        await recovered.retryProgramAdvance()
+
+        #expect(recovered.programAdvanceFailure == nil)
+        // Still 1: the skip moved it, and the retry did not move it again.
+        #expect(try await fixture.stack.programs.currentRun()?.nextDayIndex == 1)
     }
 
     @Test("Skip day moves the cursor without writing a session")

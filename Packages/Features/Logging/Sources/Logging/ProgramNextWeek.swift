@@ -35,6 +35,10 @@ extension ProgramNextUpState {
         do {
             try await rebuildWeek()
         } catch {
+            // The read first, then the claim: a rollback may have left days re-pointed, and a card
+            // still drawing the pre-rebuild week would contradict the store. `load()` retires
+            // `commandFailure`, so the failure is set after it rather than before.
+            await load()
             commandFailure = .nextWeekFailed
             return
         }
@@ -99,8 +103,12 @@ extension ProgramNextUpState {
     /// Each day of the week read back as the routine it would prescribe.
     ///
     /// **Finished sessions only, and the latest one where a day carries two.** A workout still in
-    /// progress is not what the week did, and the repository's own order is newest first — so a day
-    /// logged twice contributes the later attempt.
+    /// progress is not what the week did, and a day trained twice contributes the later attempt.
+    ///
+    /// **Ordered here rather than taken from the repository's own order**, which is by training
+    /// *day* and breaks its ties on a minted identifier: two attempts at one day of the week
+    /// commonly share a date, and "the later one" would then be whichever `UUID` sorted higher.
+    /// `startedAt` is what actually separates them.
     ///
     /// - Parameters:
     ///   - runID: The run whose sessions to read.
@@ -112,6 +120,7 @@ extension ProgramNextUpState {
             try await workouts
             .sessions(in: Date.distantPast...Date.distantFuture, includingDeleted: false)
             .filter { $0.programRunID == runID && $0.weekNumber == week && $0.endedAt != nil }
+            .sorted { ($0.startedAt ?? $0.date) > ($1.startedAt ?? $1.date) }
         var plans: [Int: SessionAsRoutine] = [:]
         for session in sessions {
             guard let index = session.dayIndex, plans[index] == nil else { continue }

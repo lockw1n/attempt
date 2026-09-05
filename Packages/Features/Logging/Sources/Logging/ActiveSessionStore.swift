@@ -93,12 +93,14 @@ public final class ActiveSessionStore {
     /// Why the program's day cursor did not move when the last workout was finished
     /// (`FR-16.8.4`), or `nil`.
     ///
-    /// A **diagnostic**, not copy (`G-3.4`), and a fourth one on the rule the other three follow:
-    /// the workout *was* stored, so what did not happen is a write against a different table — and
-    /// the screen that can say so is the one drawing the program's next day. **Not cleared by
-    /// ``forgetExercises()``**: it is set after the workout it belongs to has been let go of.
+    /// A **diagnostic**, not copy (`G-3.4`): the workout *was* stored, and the screen that can say
+    /// what was not is the one drawing the program's next day. **Not cleared by
+    /// ``forgetExercises()``**, being set after that workout has been let go of; retired by
+    /// ``retryProgramAdvance()``, the only thing that knows whether the cursor has since moved.
     public internal(set) var programAdvanceFailure: String?
 
+    /// The finished workout the report above is owed to, held so it can be retried at all.
+    var unadvancedSession: WorkoutSession?
     /// What each card's "last time" strip is drawn from (`FR-1.2.10`).
     ///
     /// One value rather than three properties — see ``PreviousPerformances``.
@@ -162,11 +164,9 @@ public final class ActiveSessionStore {
     /// Where `FR-16.7.1`'s training max comes from — see ``SessionTrainingMax``.
     let trainingMaxes: any TrainingMaxRepository
 
-    /// The programs, their days and the run in force (`FR-16.8`).
-    ///
-    /// **Stored rather than passed in like ``start(on:fromRoutineID:in:)``'s routines**: a routine
-    /// is read once by a caller that chose it, where the run's cursor moves at ``finish()`` — a
-    /// command every screen calls with no program in its hands.
+    /// The programs, their days and the run in force (`FR-16.8`) — **stored rather than passed in
+    /// like ``start(on:fromRoutineID:in:)``'s routines**, the cursor moving at ``finish()``, which
+    /// every screen calls with no program in its hands.
     let programs: any ProgramRepository
 
     /// The chain every command in `ActiveSessionCommands.swift` runs in.
@@ -375,8 +375,8 @@ public final class ActiveSessionStore {
         guard failure == nil, let finished = session else { return }
         session = nil
         forgetExercises()
-        // After the clear, not before: `forgetExercises()` retires every diagnostic, and this one
-        // is about the workout that has just ended rather than about the one now held (none).
+        // After the clear, which retires every diagnostic: this one is about the workout that
+        // has just ended rather than the one now held (none).
         await advanceProgramRun(after: finished)
     }
 

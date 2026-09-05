@@ -207,6 +207,9 @@ public final class ProgramNextUpState {
             }
             try await programs.save(run.movedTo(nextDayIndex: index + 1))
         } catch {
+            // The read first, then the claim, on ``startNextWeek()``'s rule: `load()` retires
+            // `commandFailure`, so a refusal reported before it would be cleared by it.
+            await load()
             commandFailure = .skipFailed
             return
         }

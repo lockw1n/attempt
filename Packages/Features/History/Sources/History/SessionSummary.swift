@@ -37,4 +37,12 @@ struct SessionSummary: Identifiable, Equatable, Sendable {
     /// has been stored since schema v1 with nothing showing it; the summary line is the first
     /// surface that does.
     let notes: String
+
+    /// Which week and day of a program the session was started from, or `nil` (`FR-16.8.3`).
+    ///
+    /// **This is what retires the structure a note used to carry** (`DOD-16.1`): the row above is
+    /// where a lifter browsing their log read "W2D1", and it read it out of ``notes`` because
+    /// nothing else held it. Defaulted so a row built before a program existed still compiles as
+    /// what it is — a session started outside one.
+    var programPosition: ProgramPosition?
 }

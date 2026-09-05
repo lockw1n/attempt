@@ -39,9 +39,14 @@ extension ActiveSessionStore {
     /// The form for a test that has already seeded a catalogue and a session into one stack, where
     /// ``overWorkouts(_:)``'s private catalogue would be the wrong one.
     ///
-    /// - Parameter stack: The fakes the workout is assembled from.
+    /// - Parameters:
+    ///   - stack: The fakes the workout is assembled from.
+    ///   - programs: The program store to use instead of the stack's own — for a test that needs
+    ///     the cursor write to refuse.
     /// - Returns: The store.
-    static func over(_ stack: InMemoryRepositoryStack) -> ActiveSessionStore {
+    static func over(
+        _ stack: InMemoryRepositoryStack, programs: (any ProgramRepository)? = nil
+    ) -> ActiveSessionStore {
         ActiveSessionStore(
             repository: stack.workouts,
             catalogue: stack.exercises,
@@ -50,6 +55,6 @@ extension ActiveSessionStore {
                 workouts: stack.workouts,
                 cache: stack.personalRecords),
             trainingMaxes: stack.trainingMaxes,
-            programs: stack.programs)
+            programs: programs ?? stack.programs)
     }
 }

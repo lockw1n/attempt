@@ -79,7 +79,8 @@ struct SessionSummaryReader {
             exerciseNames: exerciseNames,
             setCount: setCount,
             tonnage: tonnage,
-            notes: session.notes
+            notes: session.notes,
+            programPosition: session.programPosition
         )
         return IndexedSession(summary: summary, setNotes: setNotes)
     }

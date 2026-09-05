@@ -123,6 +123,20 @@ enum HistoryStrings {
         resource("history.list.metrics.summary \(sets) \(volume)")
     }
 
+    /// Which week and day of a program a session was started from (`FR-16.8.3`, `DOD-16.1`).
+    ///
+    /// **A key of this module's own**, on the rule the two sentences above follow: a history row
+    /// describes a workout that happened, and it is free to diverge from the line Train draws over
+    /// a plan that has not.
+    ///
+    /// - Parameters:
+    ///   - week: The week the session was started under.
+    ///   - day: Its day's position, counting from one.
+    /// - Returns: The line.
+    static func programWeekAndDay(week: Int, day: Int) -> LocalizedStringResource {
+        resource("history.list.program.week-day \(week) \(day)")
+    }
+
     /// Every key this module can show, for the resolution test.
     ///
     /// The plural is included at one arbitrary count: what the test asks is whether the key resolves
@@ -140,6 +154,7 @@ enum HistoryStrings {
             calendarErrorHeadline, calendarErrorMessage, calendarDayError,
             calendarDayTrained(date: ""), calendarDayUntrained(date: ""),
             metricsSummary(sets: 1, volume: ""),
+            programWeekAndDay(week: 2, day: 1),
         ]
     }
 

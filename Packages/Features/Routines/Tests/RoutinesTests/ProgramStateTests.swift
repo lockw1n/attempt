@@ -128,6 +128,78 @@ struct ProgramStateTests {
         #expect(stored.map(\.order) == [0, 1])
     }
 
+    /// A new day's order is one past the last, not the count — a soft-deleted day still holds its
+    /// order (`G-1.3`), and reusing it would put two days in one place.
+    @Test("A day added after a removal takes an order no deleted day holds")
+    func aNewDayDoesNotReuseADeletedOrder() async throws {
+        let (stack, routineIDs) = try await stackWithRoutines()
+        let list = ProgramListState(repository: stack.programs)
+        let programID = try #require(await list.create(named: "Course #2"))
+        let editor = ProgramEditorState(
+            programID: programID, repository: stack.programs, routines: stack.routines)
+        await editor.load()
+        await editor.addDay(routineID: routineIDs[0])
+        await editor.addDay(routineID: routineIDs[1])
+        // The *first* day goes: the renumber pulls the survivor down to order 0, and the
+        // soft-deleted row keeps order 0 as well. The row count is now 2 and the highest order 0,
+        // so "one past the last" and "the count" are different answers — which is what makes this
+        // assertion able to fail. Removing the last day instead leaves them equal.
+        await editor.removeDay(id: editor.days[0].id)
+
+        await editor.addDay(routineID: routineIDs[1])
+
+        let live = try await stack.programs.days(forProgramID: programID, includingDeleted: false)
+        #expect(live.map(\.order) == [0, 1])
+        #expect(editor.days.map(\.routineID) == [routineIDs[1], routineIDs[1]])
+    }
+
+    /// A write against a row nothing moved restamps `updatedAt`, which is `G-2.4`'s conflict key —
+    /// so the renumber has to skip the days already at their position.
+    @Test("Reordering leaves the days that did not move unwritten")
+    func reorderingSkipsTheDaysThatDidNotMove() async throws {
+        let (stack, routineIDs) = try await stackWithRoutines()
+        let list = ProgramListState(repository: stack.programs)
+        let programID = try #require(await list.create(named: "Course #2"))
+        let editor = ProgramEditorState(
+            programID: programID, repository: stack.programs, routines: stack.routines)
+        await editor.load()
+        for _ in 0..<3 { await editor.addDay(routineID: routineIDs[0]) }
+        let before = try await stack.programs.days(forProgramID: programID, includingDeleted: false)
+        let untouched = try #require(before.last)
+
+        // The first two swap; the third keeps the position it had.
+        await editor.moveDay(at: 0, by: 1)
+
+        let after = try await stack.programs.days(forProgramID: programID, includingDeleted: false)
+        #expect(after.map(\.order) == [0, 1, 2])
+        let stayed = try #require(after.first { $0.id == untouched.id })
+        #expect(stayed.updatedAt == untouched.updatedAt)
+        // And the pair that moved was written, so the assertion above is not vacuous.
+        let moved = try #require(after.first { $0.id == before[0].id })
+        #expect(moved.updatedAt != before[0].updatedAt)
+    }
+
+    /// The name is trimmed on the way in, at the third place one is typed.
+    @Test("Saving the details trims the name and stores the note as typed")
+    func savingTheDetailsTrimsTheName() async throws {
+        let (stack, _) = try await stackWithRoutines()
+        let list = ProgramListState(repository: stack.programs)
+        let programID = try #require(await list.create(named: "Course #2"))
+        let editor = ProgramEditorState(
+            programID: programID, repository: stack.programs, routines: stack.routines)
+        await editor.load()
+
+        editor.name = "  Course #3  "
+        editor.notes = "  deload in week 4  "
+        await editor.saveDetails()
+
+        let stored = try #require(
+            try await stack.programs.program(id: programID, includingDeleted: false))
+        #expect(stored.name == "Course #3")
+        // The note is the lifter's prose and is stored as typed — only the name is trimmed.
+        #expect(stored.notes == "  deload in week 4  ")
+    }
+
     /// The day survives its routine (`FR-15.2.5`), and the editor is where that is answered.
     @Test("A day whose routine was archived keeps its row and loses only its name")
     func anArchivedRoutineLeavesTheDay() async throws {

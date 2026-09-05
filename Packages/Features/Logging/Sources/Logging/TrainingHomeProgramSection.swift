@@ -23,6 +23,9 @@ struct ProgramNextUpSection: View {
     /// Starts the program's next day: its `ProgramDay.order`, and the routine it names.
     let start: (Int, UUID) -> Void
 
+    /// Tries the cursor write again — see ``ActiveSessionStore/retryProgramAdvance()``.
+    let retryAdvance: () -> Void
+
     /// Whichever of the card's states is current, or nothing.
     ///
     /// **A read that failed says so and a read that has not happened says nothing.** The loading
@@ -30,6 +33,10 @@ struct ProgramNextUpSection: View {
     /// has its own state below it, and a placeholder that appears for a frame and then vanishes on
     /// every appearance is worse than a card that arrives.
     var body: some View {
+        // Outside the switch, and outside the card's own `if let`: a cursor that did not move is a
+        // fact about the last workout, not about whether this read found a run to draw — and
+        // hidden behind either it would be a refusal nothing ever tells the lifter about.
+        diagnostics
         switch state.phase {
         case .idle, .loading:
             EmptyView()
@@ -39,7 +46,6 @@ struct ProgramNextUpSection: View {
                 retry: { Task { await state.load() } })
         case .ready:
             if let nextUp = state.nextUp {
-                diagnostics
                 ProgramNextUpCard(
                     nextUp: nextUp,
                     start: start,
@@ -53,10 +59,14 @@ struct ProgramNextUpSection: View {
     ///
     /// **The finish's own failure is here rather than on the session screen**, because that screen
     /// is gone by the time it is known: the workout was stored and the screen dismissed, and this is
-    /// the surface the lifter arrives at — the one drawing the day that did not move.
+    /// the surface the lifter arrives at — the one drawing the day that did not move. It carries a
+    /// **retry** for the same reason the read's own failure does: the write is repeatable and
+    /// nothing else retires the report.
     @ViewBuilder private var diagnostics: some View {
         if advanceFailure != nil {
-            ErrorStateView(message: Text(LoggingStrings.programAdvanceErrorMessage))
+            ErrorStateView(
+                message: Text(LoggingStrings.programAdvanceErrorMessage),
+                retry: retryAdvance)
         }
         switch state.commandFailure {
         case .skipFailed:

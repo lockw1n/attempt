@@ -110,7 +110,15 @@ public struct TrainingHomeView: View {
             ProgramNextUpSection(
                 state: program,
                 advanceFailure: store.programAdvanceFailure,
-                start: startProgramDay)
+                start: startProgramDay,
+                // The write, then the read: a retry that moved the cursor and did not redraw the
+                // card would clear the banner over a day that is still the wrong one.
+                retryAdvance: {
+                    Task {
+                        await store.retryProgramAdvance()
+                        await program.load()
+                    }
+                })
         }
     }
 

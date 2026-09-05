@@ -3,6 +3,7 @@
     import DesignSystem
     import Foundation
     import PowerliftingCore
+    import RepositoryInterface
     import SnapshotTesting
     import SwiftUI
     import Testing
@@ -46,6 +47,16 @@
             // this is the picture that shows the two zeros reading as facts rather than as a fault.
             try assertSnapshots(named: "SessionList-row-empty-session") {
                 Fixtures.card(Fixtures.emptyDay)
+            }
+        }
+
+        @Test func summaryRowFromAProgram() throws {
+            // `FR-16.8.3`'s week and day, read off the session's own columns. Its own reference
+            // because it is the line that retires the structure a note used to carry
+            // (`DOD-16.1`) — the row above this one in the same suite is the note it replaces, and
+            // the two have to be legible as different claims about the same workout.
+            try assertSnapshots(named: "SessionList-row-program") {
+                Fixtures.card(Fixtures.programDay)
             }
         }
 
@@ -126,6 +137,17 @@
             setCount: 23,
             tonnage: Weight(grams: 18_650_000),
             notes: "Long meet-week session — everything felt fast until the third deadlift single."
+        )
+
+        /// A day of a program: the same session as ``squatDay``, started from week 2 day 1.
+        static let programDay = SessionSummary(
+            id: Fixtures.identifier(3),
+            date: day,
+            exerciseNames: ["Back Squat", "Bench Press"],
+            setCount: 8,
+            tonnage: Weight(grams: 7_240_000),
+            notes: "",
+            programPosition: ProgramPosition(week: 2, day: 1)
         )
 
         /// A session that was started, then finished with nothing in it.

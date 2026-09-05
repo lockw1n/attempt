@@ -55,6 +55,13 @@ struct ProgramFixture {
     /// The week the run opens on — `#2` of the plan file (`DOD-16.1`).
     static let week = 2
 
+    /// The squat's training max, in grams — `DOD-16.1`'s 140 kg (`FR-15.1.4`, T-16.12).
+    ///
+    /// The third of the three things the exit criterion asks the app to hold, beside the program
+    /// and the routines: a week of a plan file is a set of days *and* the number its loads are
+    /// written against.
+    static let trainingMaxGrams = 140_000
+
     init() async throws {
         for (id, name) in [(squat, "Back Squat"), (bench, "Bench Press"), (deadlift, "Deadlift")] {
             try await stack.exercises.save(
@@ -100,6 +107,7 @@ struct ProgramFixture {
                     routineID: routineID,
                     order: index))
         }
+        try await writeTrainingMax()
         try await stack.programs.startRun(
             ProgramRun(
                 id: runID,
@@ -111,6 +119,38 @@ struct ProgramFixture {
                 endedAt: nil,
                 weekNumber: Self.week,
                 nextDayIndex: 0))
+    }
+
+    /// The squat's manual training max, configuration and history entry both (`FR-15.1.4`).
+    ///
+    /// Both rows, because they answer different questions: the configuration is *how* the number
+    /// is arrived at and the history entry is the number in force from a date.
+    private func writeTrainingMax() async throws {
+        try await stack.trainingMaxes.saveConfiguration(
+            TrainingMaxEntry(
+                id: UUID(),
+                createdAt: today,
+                updatedAt: today,
+                deletedAt: nil,
+                exerciseID: squat,
+                source: .manual,
+                sourceRepCount: nil,
+                percentage: 1,
+                roundingIncrement: Weight(grams: 2_500),
+                roundingStrategy: .nearest,
+                progressionIncrement: nil,
+                effectiveFrom: today))
+        try await stack.trainingMaxes.save(
+            TrainingMaxHistoryEntry(
+                id: UUID(),
+                createdAt: today,
+                updatedAt: today,
+                deletedAt: nil,
+                exerciseID: squat,
+                effectiveFrom: today,
+                oldWeight: nil,
+                newWeight: Weight(grams: Self.trainingMaxGrams),
+                reason: ""))
     }
 
     /// A one-exercise routine prescribing 100 kg × 5 × 3.
@@ -144,12 +184,27 @@ struct ProgramFixture {
     }
 
     /// A store over the fixture's stack.
-    func store() -> ActiveSessionStore { ActiveSessionStore.over(stack) }
+    ///
+    /// - Parameter refusingRunSaves: Whether the cursor write refuses, for the tests that need
+    ///   ``ActiveSessionStore/programAdvanceFailure`` to be reachable.
+    /// - Returns: The store.
+    func store(refusingRunSaves: Bool = false) -> ActiveSessionStore {
+        guard refusingRunSaves else { return ActiveSessionStore.over(stack) }
+        var programs = RefusingProgramRepository(wrapped: stack.programs)
+        programs.refusesRunSave = true
+        return ActiveSessionStore.over(stack, programs: programs)
+    }
 
     /// Train's reading of the run in force, over the fixture's stack.
-    func nextUpState() -> ProgramNextUpState {
+    ///
+    /// - Parameter programs: The program store to read and write through, or `nil` for the
+    ///   stack's own — a substitute is how a refused write is reached.
+    /// - Returns: The state.
+    func nextUpState(programs: (any ProgramRepository)? = nil) -> ProgramNextUpState {
         ProgramNextUpState(
-            programs: stack.programs, routines: stack.routines, workouts: stack.workouts)
+            programs: programs ?? stack.programs,
+            routines: stack.routines,
+            workouts: stack.workouts)
     }
 
     /// Starts the program's day `index`, logs `sets` sets of `grams` × `reps`, and finishes.
@@ -192,6 +247,66 @@ struct ProgramFixture {
         }
         await store.finish()
         return sessionID
+    }
+
+    /// Writes a finished session against `index`, with the identifier and start time given.
+    ///
+    /// **Written through the repository rather than through the store**, which is the point: the
+    /// store mints its own identifier, and this is how a suite pins the one the repository's
+    /// same-date tie-break would otherwise resolve on.
+    ///
+    /// - Parameters:
+    ///   - id: The session's identifier.
+    ///   - index: The `ProgramDay.order` it is stamped with.
+    ///   - startedAt: When it was started. Its training day is the fixture's, whatever this is.
+    ///   - grams: The load on its one set.
+    /// - Throws: Whatever the repository throws.
+    func logFinishedSession(id: UUID, day index: Int, startedAt: Date, grams: Int) async throws {
+        try await stack.workouts.save(
+            WorkoutSession(
+                id: id,
+                createdAt: startedAt,
+                updatedAt: startedAt,
+                deletedAt: nil,
+                date: today,
+                startedAt: startedAt,
+                endedAt: startedAt.addingTimeInterval(3_600),
+                notes: "",
+                bodyweight: nil,
+                programRunID: runID,
+                scheduledWorkoutID: nil,
+                weekNumber: Self.week,
+                dayIndex: index))
+        let entryID = UUID()
+        try await stack.workouts.save(
+            ExerciseEntry(
+                id: entryID,
+                createdAt: startedAt,
+                updatedAt: startedAt,
+                deletedAt: nil,
+                sessionID: id,
+                exerciseID: squat,
+                order: 0,
+                notes: ""))
+        try await stack.workouts.save(
+            SetEntry(
+                id: UUID(),
+                createdAt: startedAt,
+                updatedAt: startedAt,
+                deletedAt: nil,
+                entryID: entryID,
+                order: 0,
+                weight: Weight(grams: grams),
+                reps: 5,
+                rpe: nil,
+                rir: nil,
+                isWarmup: false,
+                isCompleted: true,
+                targetWeight: nil,
+                targetReps: nil,
+                modifiers: [],
+                notes: "",
+                completedAt: startedAt))
     }
 
     /// The targets one routine prescribes, flattened for comparison.

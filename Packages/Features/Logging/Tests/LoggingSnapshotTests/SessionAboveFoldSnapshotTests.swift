@@ -103,6 +103,42 @@
             #expect(points < budget)
         }
 
+        @Test func theFirstSetRowIsInsideTheFirstScreenFromAProgram() throws {
+            // THE SAME BUDGET OVER THE TALLER HEAD, and this is the case the assertion above cannot
+            // see. `SessionSummaryLine` draws a fact per column it finds, and a workout started
+            // outside a program has no week and no day — so `Fixtures.session`, whose two program
+            // columns are `nil`, measures a head one fact shorter than a program-started workout's.
+            // `DOD-16.3` is a claim about a *resumed* session, and a lifter following a plan
+            // resumes one of these.
+            //
+            // Everything else is `theFirstSetRowIsInsideTheFirstScreen`'s, including why the
+            // subject has to be a card that opens and what is subtracted from the measurement.
+            let budget = 667.0 - 20.0 - 44.0 - 49.0
+            let rendered = try Snapshot.render(
+                fixedEnvironment {
+                    aboveTheFold(
+                        adherence: nil,
+                        exercises: [Fixtures.exercises[1]],
+                        session: Fixtures.programSession)
+                },
+                appearance: .light,
+                typeSize: .default
+            )
+            let points = Double(rendered.height) / Snapshot.scale - 2 * Spacing.lg.points
+            print("DOD-16.3 above-the-fold height, program: \(points) pt against \(budget) pt")
+            #expect(points < budget)
+        }
+
+        /// The summary line with all three of its facts — the case `ViewThatFits` has to choose a
+        /// stack for, and the one the budget above is measured over.
+        @Test func summaryLineFromAProgram() throws {
+            try assertSnapshots(named: "Session-summary-program") {
+                SessionSummaryLine(
+                    session: Fixtures.programSession,
+                    adherence: SessionAdherence(PlanFixtures.completion))
+            }
+        }
+
         // MARK: - The foot: FR-1.2.9's note, folded beside Finish (FR-16.6.1)
 
         @Test func notesFoldedOverANote() throws {
@@ -167,12 +203,13 @@
         /// - Returns: The head of the screen.
         @ViewBuilder private func aboveTheFold(
             adherence: SessionAdherence?,
-            exercises: [SessionExercise]
+            exercises: [SessionExercise],
+            session: WorkoutSession = Fixtures.session
         ) -> some View {
             LazyVStack(alignment: .leading, pinnedViews: [.sectionHeaders]) {
                 Section {
                     VStack(alignment: .leading, spacing: Spacing.xl.points) {
-                        SessionSummaryLine(session: Fixtures.session, adherence: adherence)
+                        SessionSummaryLine(session: session, adherence: adherence)
                         VStack(alignment: .leading, spacing: Spacing.md.points) {
                             Text(LoggingStrings.sessionExercisesSection)
                                 .font(Typography.sectionHeading.font)
