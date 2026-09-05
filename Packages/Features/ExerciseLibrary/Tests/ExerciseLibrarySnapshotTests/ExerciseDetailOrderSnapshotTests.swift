@@ -23,9 +23,12 @@
     // exactly the claim under test. What each section looks like once it has read is its own
     // reference's.
     //
-    // The fixture is archived and carries a variation, so one picture holds every section this screen
-    // can draw: `FR-1.1.5`'s badge at the head, the four derived sections, the record's own fields,
-    // the notes, `FR-1.1.7`'s relationships, and the archive control at the foot.
+    // TWO REFERENCES, BECAUSE THE ORDER IS NOT THE ONLY CLAIM HERE. The first fixture is archived and
+    // carries a variation, so one picture holds every section this screen can draw: `FR-1.1.5`'s badge
+    // at the head, the four derived sections, the record's own fields, the notes, `FR-1.1.7`'s
+    // relationships, and the archive control at the foot. The second has neither, which is what gates
+    // the two `if`s — a picture in which every conditional is true cannot tell an `if` from an
+    // unconditional draw.
 
     @MainActor
     @Suite("Exercise detail section order")
@@ -45,6 +48,41 @@
                         workouts: SilentStore()
                     ),
                     exerciseID: DetailFixtures.retired.id,
+                    workouts: SilentStore(),
+                    settings: SilentStore(),
+                    records: PersonalRecordRecomputer(workouts: SilentStore(), cache: SilentStore()),
+                    trainingMaxes: SilentStore()
+                )
+                .environment(\.locale, DetailFixtures.locale)
+                .environment(\.timeZone, .gmt)
+            }
+        }
+
+        @Test func sectionOrderWithoutBadgeOrVariations() throws {
+            // The negative half, and it is the reference the reorder made necessary rather than a
+            // second picture of the same thing. Both of this screen's conditionals live in
+            // `ExerciseDetailSections` now, and the reference above has both of them TRUE — so an
+            // `if` deleted from either would still match it. Until T-16.10 the badge's own pair was
+            // `ExerciseDetail-facts` against `ExerciseDetail-facts-archived`; moving the badge out
+            // of `ExerciseFactsSection` left the true half here and the false half nowhere.
+            //
+            // An unarchived exercise with no parent and no variations: no badge at the head, no
+            // `FR-1.1.7` section between the notes and the archive control, and the archive control
+            // reading **Archive** rather than **Unarchive**.
+            try assertSnapshots(named: "ExerciseDetail-section-order-plain") {
+                ExerciseDetailSections(
+                    detail: ExerciseDetail(
+                        exercise: DetailFixtures.frontSquat,
+                        parent: nil,
+                        variations: [],
+                        hasLoggedSets: false
+                    ),
+                    state: ExerciseDetailState(
+                        exerciseID: DetailFixtures.frontSquat.id,
+                        repository: SilentStore(),
+                        workouts: SilentStore()
+                    ),
+                    exerciseID: DetailFixtures.frontSquat.id,
                     workouts: SilentStore(),
                     settings: SilentStore(),
                     records: PersonalRecordRecomputer(workouts: SilentStore(), cache: SilentStore()),

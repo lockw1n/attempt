@@ -41,12 +41,15 @@
             }
         }
 
-        @Test func archivedFacts() throws {
+        @Test func machineFacts() throws {
             // A second vocabulary row set — machine, no bar, a bench movement — where the reference
-            // above draws a barbell squat's. The archived *mark* is not in this picture and no
-            // longer belongs to this section: it is drawn at the head of the screen, above every
-            // section, and `ExerciseDetail-section-order` is where it is gated.
-            try assertSnapshots(named: "ExerciseDetail-facts-archived") {
+            // above draws a barbell squat's. NAMED FOR THE ROWS RATHER THAN THE FIXTURE: the record
+            // is still the archived one, but the archived *mark* is not in this picture and no
+            // longer belongs to this section — it is drawn at the head of the screen, above every
+            // section, and `ExerciseDetail-section-order` and its `-plain` pair are where it is
+            // gated. A reference called `-archived` would send the next reader here for a badge
+            // that is two files away.
+            try assertSnapshots(named: "ExerciseDetail-facts-machine") {
                 ExerciseFactsSection(exercise: DetailFixtures.retired)
             }
         }
