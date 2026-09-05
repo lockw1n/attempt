@@ -52,8 +52,11 @@ struct SetGroupRow: View {
 
     /// The training max in force on this session's training day, or `nil` (`FR-16.7.1`).
     ///
-    /// Handed to every member row and to the shared target line. The collapsed summary draws no
-    /// share of its own — see ``SetRow/trainingMax``.
+    /// **The collapsed line states the share, and its member rows do not.** A run is collapsed
+    /// until asked (`FR-16.1.1`), so a share drawn only on the rows underneath is a share nobody
+    /// sees on the ordinary logging screen — five sets at one load is the case a training max is
+    /// *for*. Every member carries that same load, so the line above them says it once and
+    /// ``SetRow/statesTrainingMaxShare`` keeps them quiet.
     var trainingMax: Weight?
 
     /// Appends a set equal to this group's last member (`FR-16.1.4`), or `nil` where the surface
@@ -183,6 +186,7 @@ struct SetGroupRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 rating
                 recordMark
+                trainingMaxShare
                 modifiers
                 plannedTarget
             }
@@ -294,6 +298,29 @@ struct SetGroupRow: View {
         }
     }
 
+    /// `FR-16.7.1`'s annotation for the whole run: its load, as a share of the training max in
+    /// force.
+    ///
+    /// **Below the values, on ``SetRow/trainingMaxShare``'s rule and inside the same button** — the
+    /// load and what it is a share of are one fact about one run, so VoiceOver reads them together.
+    /// Suppressed where ``plannedTarget`` beneath it already says the same percentage.
+    @ViewBuilder private var trainingMaxShare: some View {
+        if let percent = groupShare {
+            Text(TrainingMaxShare.annotation(percent, locale: locale))
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// The run's share, or `nil` where there is none to draw — see ``trainingMaxShare``.
+    private var groupShare: Int? {
+        TrainingMaxShare.rowShare(
+            for: group.record.weight,
+            planned: group.sharedTarget(target)?.targetWeight,
+            against: trainingMax)
+    }
+
     /// `FR-15.3.1`'s target, **only where every member was planned against the same group**.
     ///
     /// The plan is not a compared field, and it need not agree across a run: two planned groups can
@@ -342,6 +369,7 @@ struct SetGroupRow: View {
             markCompleted: markCompleted,
             edit: edit,
             trainingMax: trainingMax,
+            statesTrainingMaxShare: group.isSingle,
             target: target(numbered.id)
         )
     }

@@ -338,6 +338,7 @@
 "exerciselibrary.detail.training-max.since %@" = "In force since %@";
 "exerciselibrary.detail.training-max.since-note %@ %@" = "In force since %1$@ · %2$@";
 "exerciselibrary.detail.training-max.none" = "No training max yet. Set one and a logged load can be read as a percentage of it.";
+"exerciselibrary.detail.training-max.not-yet" = "No training max in force yet. The changes below all take effect on a later date.";
 "exerciselibrary.detail.training-max.error" = "This exercise's training max could not be read.";
 "exerciselibrary.detail.training-max.write-error" = "This training max could not be saved.";
 "exerciselibrary.detail.training-max.set-action" = "Set training max";

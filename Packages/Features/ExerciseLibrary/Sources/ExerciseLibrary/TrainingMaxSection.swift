@@ -21,8 +21,15 @@ enum TrainingMaxScreenState: Equatable {
     /// There is one, with everything `FR-15.1.5`'s indicator needs, and the history behind it.
     case ready(TrainingMaxHistoryEntry, history: [TrainingMaxHistoryEntry])
 
-    /// This exercise has never had one.
-    case none
+    /// Nothing is in force, and whatever has been entered anyway.
+    ///
+    /// **`history` is not always empty here, and that is the whole reason it is carried.** An
+    /// exercise that has never had a training max reports an empty one; an exercise whose changes
+    /// are every one of them dated ahead of today reports them, because they exist, the lifter
+    /// entered them, and a screen that answered "there is none" would be hiding a row it had just
+    /// written (`FR-15.1.4`). The change sheet's date is unbounded forward on purpose, so one save
+    /// reaches this.
+    case none(history: [TrainingMaxHistoryEntry])
 
     /// It could not be read; a retry may work.
     case failed
@@ -38,8 +45,40 @@ enum TrainingMaxScreenState: Equatable {
     static func current(_ state: TrainingMaxSectionState) -> Self {
         if state.readFailure != nil { return .failed }
         guard state.hasLoaded else { return .loading }
-        guard let current = state.current else { return .none }
+        guard let current = state.current else { return .none(history: state.history) }
         return .ready(current, history: state.history)
+    }
+}
+
+/// One history row and the entry it actually follows (`FR-15.1.4`).
+///
+/// **``replaced`` is derived from the list rather than read from
+/// ``RepositoryInterface/TrainingMaxHistoryEntry/oldWeight``**, which is `G-1.4` applied to a column
+/// that can go stale: a change backdated between two existing ones leaves the later one still naming
+/// what *it* replaced before the insert, so a history rendered off the stored value reads as a chain
+/// that does not connect — `180 ← 160` above `170 ← 160`. The column stays written, because
+/// `FR-15.1.4` asks for it and the archive round-trips it; what is drawn is recomputed.
+struct TrainingMaxHistoryReading: Identifiable, Equatable {
+    /// The change.
+    let entry: TrainingMaxHistoryEntry
+
+    /// What was in force immediately before it, or `nil` for the oldest entry an exercise has.
+    let replaced: Weight?
+
+    /// See `Identifiable`.
+    var id: UUID { entry.id }
+
+    /// Pairs each entry with the one it follows.
+    ///
+    /// - Parameter history: The exercise's changes, newest ``RepositoryInterface/TrainingMaxHistoryEntry/effectiveFrom``
+    ///   first — the order the repository returns and the section draws.
+    /// - Returns: One reading per entry, in the same order.
+    static func rows(_ history: [TrainingMaxHistoryEntry]) -> [TrainingMaxHistoryReading] {
+        history.indices.map { index in
+            TrainingMaxHistoryReading(
+                entry: history[index],
+                replaced: index + 1 < history.count ? history[index + 1].newWeight : nil)
+        }
     }
 }
 
@@ -153,19 +192,21 @@ struct TrainingMaxReading: View {
             case .ready(let current, let history):
                 inForce(current)
                 command(Text(ExerciseLibraryStrings.trainingMaxChangeAction))
-                if !history.isEmpty {
-                    TrainingMaxHistoryDisclosure(isExpanded: $showsHistory)
-                    if showsHistory {
-                        ForEach(history, id: \.id) { entry in
-                            TrainingMaxHistoryRow(entry: entry, unit: unit)
-                        }
-                    }
-                }
-            case .none:
+                disclosedHistory(history)
+            case .none(let history):
                 // T-1.09's insufficient-data view rather than its empty one: nothing was removed
                 // from a list here — a value the app cannot compute has simply never been given.
-                InsufficientDataView(message: Text(ExerciseLibraryStrings.trainingMaxNone))
-                command(Text(ExerciseLibraryStrings.trainingMaxSetAction))
+                InsufficientDataView(
+                    message: Text(
+                        history.isEmpty
+                            ? ExerciseLibraryStrings.trainingMaxNone
+                            : ExerciseLibraryStrings.trainingMaxNotYet))
+                command(
+                    Text(
+                        history.isEmpty
+                            ? ExerciseLibraryStrings.trainingMaxSetAction
+                            : ExerciseLibraryStrings.trainingMaxChangeAction))
+                disclosedHistory(history)
             case .failed:
                 ErrorStateView(message: Text(ExerciseLibraryStrings.trainingMaxError), retry: retry)
             }
@@ -173,6 +214,27 @@ struct TrainingMaxReading: View {
                 // No retry closure: nothing was stored and the sheet stayed open over it, so the
                 // way to try again is the command directly above this.
                 ErrorStateView(message: Text(ExerciseLibraryStrings.trainingMaxWriteError))
+            }
+        }
+    }
+
+    /// `FR-15.1.4`'s history behind its disclosure, where the exercise has any.
+    ///
+    /// **Drawn under both the number in force and its absence.** An exercise whose only changes are
+    /// dated ahead of today has no number in force and a history all the same, and that is the case
+    /// where hiding the list would hide a row the lifter had just written.
+    ///
+    /// - Parameter history: The changes, newest first.
+    /// - Returns: The disclosure and, while it is open, the rows.
+    @ViewBuilder private func disclosedHistory(
+        _ history: [TrainingMaxHistoryEntry]
+    ) -> some View {
+        if !history.isEmpty {
+            TrainingMaxHistoryDisclosure(isExpanded: $showsHistory)
+            if showsHistory {
+                ForEach(TrainingMaxHistoryReading.rows(history)) { reading in
+                    TrainingMaxHistoryRow(reading: reading, unit: unit)
+                }
             }
         }
     }
@@ -268,12 +330,15 @@ struct TrainingMaxHistoryDisclosure: View {
 
 /// One change: what it became, what it replaced, when, and why (`FR-15.1.4`, `FR-16.7.2`).
 ///
-/// **The first entry for an exercise has no left-hand side.**
-/// ``RepositoryInterface/TrainingMaxHistoryEntry/oldWeight`` is `nil` there, and a `0 → 140` in its
-/// place would report a number the lifter never had.
+/// **The oldest entry for an exercise has no left-hand side**, and a `0 → 140` in its place would
+/// report a number the lifter never had — see ``TrainingMaxHistoryReading``, which is also where
+/// the left-hand side comes from.
 struct TrainingMaxHistoryRow: View {
-    /// The change.
-    let entry: TrainingMaxHistoryEntry
+    /// The change, and what it follows.
+    let reading: TrainingMaxHistoryReading
+
+    /// The change itself.
+    private var entry: TrainingMaxHistoryEntry { reading.entry }
 
     /// The unit both loads are shown in (`G-3.1`).
     let unit: MassUnit
@@ -302,8 +367,11 @@ struct TrainingMaxHistoryRow: View {
     }
 
     /// `170 kg → 180 kg`, or `Set to 180 kg` for the first.
+    ///
+    /// Off ``TrainingMaxHistoryReading/replaced`` rather than the stored column — see that type for
+    /// the backdated change that makes the two disagree.
     private var change: LocalizedStringResource {
-        guard let old = entry.oldWeight else {
+        guard let old = reading.replaced else {
             return ExerciseLibraryStrings.trainingMaxFirst(rendered(entry.newWeight))
         }
         return ExerciseLibraryStrings.trainingMaxChange(

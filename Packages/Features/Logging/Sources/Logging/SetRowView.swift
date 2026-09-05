@@ -117,11 +117,15 @@ struct SetRow: View {
     let edit: (SetEntry) -> Void
 
     /// The training max in force on this session's training day, or `nil` (`FR-16.7.1`).
-    ///
-    /// **On the row rather than on the collapsed group line.** A run of four identical sets says
-    /// its share once, in the line every member shares — see ``SetGroupRow`` — and repeating it on
-    /// the summary as well would put the same percentage on screen twice.
     var trainingMax: Weight?
+
+    /// Whether this row states its own share, or the line above it already did (`FR-16.7.1`).
+    ///
+    /// **`false` for a member of a run.** Every member of a group carries the same load by
+    /// construction — that is what makes it a group — so the collapsed line's share *is* this row's
+    /// share, and repeating it under the line that just said it puts one percentage on screen four
+    /// times. A group of one has no such line, so it draws its own.
+    var statesTrainingMaxShare = true
 
     /// What a routine planned for this set, or `nil` (`FR-15.3.1`).
     ///
@@ -429,12 +433,6 @@ struct SetRow: View {
     ///
     /// **Warmups carry it too.** A ramp is loaded off the same number the work is, and a lifter
     /// checking whether they opened at 50% is asking about exactly those rows.
-    ///
-    /// **Not where the plan's own line below already says it.** A set that hit its target draws the
-    /// same percentage twice, two lines apart — measured in the reference, and it reads as a
-    /// stutter rather than as two facts. A set that *missed* draws both, which is the case the pair
-    /// is worth having: `70% of TM` above `68% of TM` is the size of the deviation in the units the
-    /// programme is written in.
     @ViewBuilder private var trainingMaxShare: some View {
         if let percent = ownShare {
             Text(TrainingMaxShare.annotation(percent, locale: locale))
@@ -445,15 +443,13 @@ struct SetRow: View {
     }
 
     /// This set's own share, or `nil` where there is none to draw — see ``trainingMaxShare``.
+    ///
+    /// The suppression rule lives in ``TrainingMaxShare/rowShare(for:planned:against:)``, so the
+    /// collapsed group line applies the same one.
     private var ownShare: Int? {
-        guard let percent = TrainingMaxShare.percent(for: numbered.record.weight, against: trainingMax)
-        else {
-            return nil
-        }
-        let planned = target?.targetWeight.flatMap {
-            TrainingMaxShare.percent(for: $0, against: trainingMax)
-        }
-        return percent == planned ? nil : percent
+        guard statesTrainingMaxShare else { return nil }
+        return TrainingMaxShare.rowShare(
+            for: numbered.record.weight, planned: target?.targetWeight, against: trainingMax)
     }
 
     /// `FR-15.3.1`'s target and `FR-15.3.2`'s deviation, where a routine planned this set.

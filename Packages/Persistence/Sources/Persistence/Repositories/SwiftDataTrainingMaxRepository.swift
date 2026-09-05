@@ -75,7 +75,14 @@ actor SwiftDataTrainingMaxRepository: TrainingMaxRepository {
             matching: #Predicate { $0.exerciseID == exerciseID },
             includingDeleted: includingDeleted
         )
-        .sortedDeterministically(by: { ($0.effectiveFrom, $0.id.uuidString) }, descending: true)
+        // The key `trainingMax(forExerciseID:on:)` maximises, reversed — so two changes dated the
+        // same day list in the order they resolve and the one in force is the one on top. Ordered
+        // on `(effectiveFrom, id)` alone, a same-day correction could list *under* the typo it
+        // replaced while outranking it in force.
+        .sorted {
+            ($0.effectiveFrom, $0.updatedAt, $0.id.uuidString)
+                > ($1.effectiveFrom, $1.updatedAt, $1.id.uuidString)
+        }
         .map(\.record)
     }
 

@@ -56,6 +56,10 @@ public protocol TrainingMaxRepository: Sendable {
 
     /// Every change to one exercise's training max, newest
     /// ``TrainingMaxHistoryEntry/effectiveFrom`` first — the history `FR-15.1.4` displays.
+    ///
+    /// **Two changes dated the same day list the way ``trainingMax(forExerciseID:on:)`` resolves
+    /// them**, so the one in force is the one on top. A correction entered against the day it
+    /// corrects would otherwise be listed under the figure it outranks.
     func history(
         forExerciseID exerciseID: UUID,
         includingDeleted: Bool

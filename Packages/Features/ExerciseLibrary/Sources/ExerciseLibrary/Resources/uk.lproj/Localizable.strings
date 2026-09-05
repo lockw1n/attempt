@@ -208,6 +208,7 @@
 "exerciselibrary.detail.training-max.since %@" = "Чинний із %@";
 "exerciselibrary.detail.training-max.since-note %@ %@" = "Чинний із %1$@ · %2$@";
 "exerciselibrary.detail.training-max.none" = "Тренувального максимуму ще немає. Задайте його, і записану вагу можна буде читати як відсоток від нього.";
+"exerciselibrary.detail.training-max.not-yet" = "Чинного тренувального максимуму ще немає. Усі зміни нижче набувають чинності пізніше.";
 "exerciselibrary.detail.training-max.error" = "Не вдалося прочитати тренувальний максимум цієї вправи.";
 "exerciselibrary.detail.training-max.write-error" = "Не вдалося зберегти цей тренувальний максимум.";
 "exerciselibrary.detail.training-max.set-action" = "Задати тренувальний максимум";

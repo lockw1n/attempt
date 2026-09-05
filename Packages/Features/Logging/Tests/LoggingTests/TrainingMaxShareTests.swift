@@ -70,17 +70,64 @@ struct TrainingMaxShareTests {
                 for: Weight(grams: 100_000), against: .zero, locale: english) == nil)
     }
 
+    // MARK: - What a set line states for itself
+
     /// The pair of numbers is worth drawing only when they disagree — a set that hit its target
     /// would otherwise say the same percentage twice, two lines apart.
-    @Test("A set that matched its target draws no share of its own")
-    func amatchedSetDrawsOneShare() {
+    @Test("A set that matched its target states no share of its own")
+    func amatchedSetStatesNoShare() {
         let trainingMax = Weight(grams: 125_000)
-        // The set and the plan agree at 80%, and disagree at 87.5 against 85.
+
         #expect(
-            TrainingMaxShare.percent(for: Weight(grams: 100_000), against: trainingMax)
-                == TrainingMaxShare.percent(for: Weight(grams: 100_000), against: trainingMax))
-        #expect(TrainingMaxShare.percent(for: Weight(grams: 87_500), against: trainingMax) == 70)
+            TrainingMaxShare.rowShare(
+                for: Weight(grams: 100_000),
+                planned: Weight(grams: 100_000),
+                against: trainingMax) == nil)
+    }
+
+    /// The case the pair earns its keep in: 70% over 68% is the size of the miss in the units the
+    /// programme is written in.
+    @Test("A set that missed its target states both shares")
+    func amissedSetStatesItsOwnShare() {
+        let trainingMax = Weight(grams: 125_000)
+
+        #expect(
+            TrainingMaxShare.rowShare(
+                for: Weight(grams: 87_500), planned: Weight(grams: 85_000), against: trainingMax)
+                == 70)
+        // And the target line beneath it still says what was asked for.
         #expect(TrainingMaxShare.percent(for: Weight(grams: 85_000), against: trainingMax) == 68)
+    }
+
+    /// Two loads a whole percent apart round to the same share, and then there is nothing to add:
+    /// the suppression is on the drawn number, not on the grams behind it.
+    @Test("A set within rounding distance of its target states no share either")
+    func aroundedMatchStatesNoShare() {
+        let trainingMax = Weight(grams: 200_000)
+
+        // 160.2 kg and 160.0 kg are both 80% once rounded.
+        #expect(
+            TrainingMaxShare.rowShare(
+                for: Weight(grams: 160_200),
+                planned: Weight(grams: 160_000),
+                against: trainingMax) == nil)
+    }
+
+    @Test("A set nothing planned states its own share")
+    func anunplannedSetStatesItsOwnShare() {
+        #expect(
+            TrainingMaxShare.rowShare(
+                for: Weight(grams: 100_000), planned: nil, against: Weight(grams: 125_000)) == 80)
+    }
+
+    @Test("With no training max a set line states nothing, planned or not")
+    func norowShareWithoutATrainingMax() {
+        #expect(
+            TrainingMaxShare.rowShare(
+                for: Weight(grams: 100_000), planned: Weight(grams: 100_000), against: nil) == nil)
+        #expect(
+            TrainingMaxShare.rowShare(
+                for: Weight(grams: 100_000), planned: nil, against: nil) == nil)
     }
 
     @Test("With no training max there is no share to compare")

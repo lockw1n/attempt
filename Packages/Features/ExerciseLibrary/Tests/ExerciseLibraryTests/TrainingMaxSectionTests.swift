@@ -27,7 +27,7 @@ struct TrainingMaxSectionTests {
 
         await state.load()
 
-        #expect(TrainingMaxScreenState.current(state) == TrainingMaxScreenState.none)
+        #expect(TrainingMaxScreenState.current(state) == .none(history: []))
         #expect(state.current == nil)
     }
 
@@ -67,6 +67,76 @@ struct TrainingMaxSectionTests {
         #expect(state.current?.newWeight == Weight(grams: 180_000))
         #expect(state.history.first?.id == next.id)
         #expect(state.history.count == 2)
+    }
+
+    /// A change dated ahead of today is not in force, and it is also not nothing: the sheet's date
+    /// is unbounded forward on purpose, so this is one save away. A state that reported an empty
+    /// history here would hide the row it had just written.
+    @Test("An exercise whose only change is dated ahead of today still shows that change")
+    func afutureOnlyChangeIsStillItsHistory() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        let next = try await fixture.writeTrainingMax(squat, kilos: 185, onDay: 7)
+        let state = fixture.trainingMax(of: squat, today: 0)
+
+        await state.load()
+
+        #expect(state.current == nil)
+        // By identity rather than by whole value, on ``theNumberCarriesItsIndicator``'s rule: the
+        // repository stamps `updatedAt` on the way in.
+        guard case .none(let history) = TrainingMaxScreenState.current(state) else {
+            Issue.record("Nothing is in force, so the section is not in its ready state.")
+            return
+        }
+        // Which is a different state from the exercise that has never had one, and the section
+        // reads it that way: the history is there to disclose.
+        #expect(history.map(\.id) == [next.id])
+    }
+
+    // MARK: - The history as it is drawn (FR-15.1.4)
+
+    /// `oldWeight` is written once and never revisited, so a change backdated between two existing
+    /// ones leaves the later one naming a figure it no longer follows. The rows are drawn off the
+    /// list instead, which is `G-1.4` on a column that can go stale.
+    @Test("A backdated change re-links the row above it rather than leaving a broken chain")
+    func abackdatedChangeRelinksTheRowAboveIt() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        try await fixture.writeTrainingMax(squat, kilos: 160, onDay: 0)
+        try await fixture.writeTrainingMax(squat, kilos: 180, onDay: 14, replacing: 160)
+        let state = fixture.trainingMax(of: squat, today: 20)
+        var draft = fixture.draft(onDay: 7)
+        draft.weightText = "170"
+
+        _ = await state.save(draft)
+        let rows = TrainingMaxHistoryReading.rows(state.history)
+
+        #expect(rows.map(\.entry.newWeight) == [180, 170, 160].map { Weight(grams: $0 * 1000) })
+        // 180 now follows 170, not the 160 its own column still names.
+        #expect(rows[0].replaced == Weight(grams: 170_000))
+        #expect(rows[0].entry.oldWeight == Weight(grams: 160_000))
+        #expect(rows[1].replaced == Weight(grams: 160_000))
+        // And the oldest still has no left-hand side, which is what stops it reading `0 → 160`.
+        #expect(rows[2].replaced == nil)
+    }
+
+    @Test("An exercise with one change has one row and nothing before it")
+    func aloneChangeHasNoPredecessor() {
+        let entry = TrainingMaxHistoryEntry(
+            id: UUID(),
+            createdAt: .now,
+            updatedAt: .now,
+            deletedAt: nil,
+            exerciseID: UUID(),
+            effectiveFrom: .now,
+            oldWeight: nil,
+            newWeight: Weight(grams: 180_000),
+            reason: "")
+
+        let rows = TrainingMaxHistoryReading.rows([entry])
+
+        #expect(rows.count == 1)
+        #expect(rows[0].replaced == nil)
     }
 
     @Test("A read that fails reports a failure rather than an absence")
@@ -173,7 +243,7 @@ struct TrainingMaxSectionTests {
 
         #expect(!saved)
         #expect(state.writeFailure != nil)
-        #expect(TrainingMaxScreenState.current(state) == TrainingMaxScreenState.none)
+        #expect(TrainingMaxScreenState.current(state) == .none(history: []))
     }
 
     @Test("A number in pounds is read in pounds")

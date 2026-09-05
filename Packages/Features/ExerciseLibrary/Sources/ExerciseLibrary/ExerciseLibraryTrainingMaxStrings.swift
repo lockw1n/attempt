@@ -37,6 +37,14 @@ extension ExerciseLibraryStrings {
     /// There is none, and what setting one buys (`FR-1.13.3`).
     static let trainingMaxNone = resource("exerciselibrary.detail.training-max.none")
 
+    /// There are changes, but every one of them is dated ahead of today.
+    ///
+    /// **A different sentence from ``trainingMaxNone``**, because it is a different statement: the
+    /// exercise *has* a training max the lifter entered, and what it has not got is one in force
+    /// yet. Saying "no training max yet" over a history of three would call the lifter's own
+    /// entries nothing.
+    static let trainingMaxNotYet = resource("exerciselibrary.detail.training-max.not-yet")
+
     /// The training max could not be read — a retry may fix it.
     static let trainingMaxError = resource("exerciselibrary.detail.training-max.error")
 
@@ -146,7 +154,8 @@ extension ExerciseLibraryStrings {
     /// arrives at the test without an edit.
     static var allTrainingMaxStrings: [LocalizedStringResource] {
         [
-            trainingMaxSection, trainingMaxValue, trainingMaxNone, trainingMaxError,
+            trainingMaxSection, trainingMaxValue, trainingMaxNone, trainingMaxNotYet,
+            trainingMaxError,
             trainingMaxWriteError, trainingMaxSetAction, trainingMaxChangeAction,
             trainingMaxHistory, trainingMaxHistoryExpanded, trainingMaxHistoryCollapsed,
             trainingMaxSince("1 May"), trainingMaxSince("1 May", note: "coach"),

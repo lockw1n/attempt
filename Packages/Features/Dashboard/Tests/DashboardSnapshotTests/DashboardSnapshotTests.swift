@@ -167,13 +167,19 @@
         /// matches next year.
         static let day = Date(timeIntervalSince1970: 1_700_000_000)
 
-        /// Four tiles: up with a training max under it, first without one, up again, refused —
-        /// every variant the pipeline can reach.
+        /// Four tiles: up with a training max under it, first without one, up again, refused *with*
+        /// one — every variant the pipeline can reach.
         ///
         /// **`FR-15.1.8`'s pair is the first tile, and the second is what makes it legible.** The
         /// squat carries both numbers, one under the other and each named by a word; the deadlift
         /// carries only the estimate, because most exercises have no training max and an absence
         /// drawn as a zero or a dash is the failure this arrangement is a picture of.
+        ///
+        /// **The row is the fourth tile's whole point: "the training max must not be invisible"
+        /// applies to an exercise the app cannot estimate.** That is not a corner — it is the
+        /// exercise a coach has just handed a number for and the lifter has not trained yet. The
+        /// number sits beneath the insufficient-data view rather than inside it, so the explanation
+        /// stays about the estimate.
         static let tiles: [EstimatedMaxTile] = [
             tile("Back Squat", kilos: 182.5, previousKilos: 175, trainingMaxKilos: 175),
             tile("Deadlift", kilos: 210, previousKilos: nil),
@@ -183,7 +189,7 @@
                 name: "Barbell Row",
                 estimate: EstimatedMax(
                     absence: .refused(.repsOutOfRange), formula: .epley, lookback: .default),
-                trainingMax: nil),
+                trainingMax: Weight(grams: 100_000)),
         ]
 
         /// A week's load: 12,400 kg, enough digits that a grouping separator shows.

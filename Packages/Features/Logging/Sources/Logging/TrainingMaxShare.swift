@@ -42,6 +42,24 @@ enum TrainingMaxShare {
         return load.percentOfTrainingMax(trainingMax)
     }
 
+    /// The share a set line states for itself, or `nil` where it has nothing of its own to add.
+    ///
+    /// **Not where the plan's own line already says it.** A set that hit its target would draw the
+    /// same percentage twice, two lines apart, and it reads as a stutter rather than as two facts.
+    /// A set that *missed* draws both, which is the case the pair is worth having: `70% of TM` above
+    /// `68% of TM` is the size of the deviation in the units the programme is written in.
+    ///
+    /// - Parameters:
+    ///   - load: The weight that was lifted.
+    ///   - planned: The load the plan named for it, or `nil` where nothing planned it.
+    ///   - trainingMax: The number in force on the session's training day, or `nil`.
+    /// - Returns: The whole percent, or `nil` where there is none to draw.
+    static func rowShare(for load: Weight, planned: Weight?, against trainingMax: Weight?) -> Int? {
+        guard let lifted = percent(for: load, against: trainingMax) else { return nil }
+        let target = planned.flatMap { percent(for: $0, against: trainingMax) }
+        return lifted == target ? nil : lifted
+    }
+
     /// One share, in words.
     ///
     /// - Parameters:
