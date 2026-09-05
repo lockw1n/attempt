@@ -96,12 +96,15 @@ func programDayRecord(
         order: order)
 }
 
-// The two `Int`s differ by default, and so do the two `Date`s: a run whose week and day agreed
-// would pass for a mapping that wrote either into both.
+// The two `Int`s differ by default, and so do all THREE `Date`s. A run whose week and day agreed
+// would pass for a mapping that wrote either into both; one whose `startedAt` sat on its own
+// `createdAt` would pass for a write that sourced the start from the audit column — and `startedAt`
+// is what `currentRun()` and `runs(forProgramID:)` both resolve on, so that one is the expensive
+// half. A week before the row was written is what a restored or backdated pass looks like.
 func programRunRecord(
     id: UUID = UUID(),
     programID: UUID,
-    startedAt: Date = fixtureCreatedAt,
+    startedAt: Date = fixtureCreatedAt - 7 * fixtureDay,
     endedAt: Date? = nil,
     weekNumber: Int = 2,
     nextDayIndex: Int = 1

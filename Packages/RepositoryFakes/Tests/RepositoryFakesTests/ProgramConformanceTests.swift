@@ -161,6 +161,44 @@ struct ProgramConformanceTests {
         #expect(current?.endedAt == nil)
     }
 
+    // `save(_:)`'s UPDATE half, which every case above reaches only on the insert: a run already
+    // stored is re-saved when the lifter advances it, and when `FR-1.11.4`'s file-wins restore
+    // writes over a row this store already holds. A write that carried the run's own columns in on
+    // the way in and dropped them on the way back through would keep every run it minted and lose
+    // the pass on the first advance.
+    //
+    // **All four of the run's own values move**, because a re-save carrying what is already stored
+    // agrees with an update that wrote none of them.
+    @Test("Re-saving a run writes its own four columns, not just its audit ones", arguments: Subject.all)
+    func resavingARunWritesItsOwnColumns(_ subject: Subject) async throws {
+        let repositories = try subject.make()
+        let program = programRecord()
+        try await repositories.programs.save(program)
+        let run = programRunRecord(programID: program.id)
+        try await repositories.programs.startRun(run)
+
+        try await repositories.programs.save(
+            programRunRecord(
+                id: run.id,
+                programID: program.id,
+                startedAt: fixtureCreatedAt + fixtureDay,
+                endedAt: fixtureCreatedAt + 3 * fixtureDay,
+                weekNumber: 5,
+                nextDayIndex: 0))
+
+        let stored = try await repositories.programs.run(id: run.id, includingDeleted: false)
+        #expect(stored?.startedAt == fixtureCreatedAt + fixtureDay)
+        #expect(stored?.endedAt == fixtureCreatedAt + 3 * fixtureDay)
+        #expect(stored?.weekNumber == 5)
+        #expect(stored?.nextDayIndex == 0)
+        // The row was updated rather than duplicated, and the correction closed it.
+        #expect(
+            try await repositories.programs.runs(
+                forProgramID: program.id, includingDeleted: false
+            ).map(\.id) == [run.id])
+        #expect(try await repositories.programs.currentRun() == nil)
+    }
+
     @Test("A closed run is not the current one, and is still there", arguments: Subject.all)
     func aClosedRunIsNotCurrent(_ subject: Subject) async throws {
         let repositories = try subject.make()
@@ -283,8 +321,10 @@ struct ProgramConformanceTests {
         #expect(program?.updatedAt != fixtureUpdatedAt)
         #expect(day?.updatedAt != fixtureUpdatedAt)
         #expect(stored?.updatedAt != fixtureUpdatedAt)
-        // And `startedAt` is not the audit path's to touch — it is the run's own column.
-        #expect(stored?.startedAt == fixtureCreatedAt)
+        // And `startedAt` is not the audit path's to touch — it is the run's own column, anchored
+        // to a literal that is NOT `fixtureCreatedAt`, so a write sourcing it from `createdAt`
+        // fails here rather than agreeing.
+        #expect(stored?.startedAt == fixtureCreatedAt - 7 * fixtureDay)
     }
 
     // MARK: - Fixture

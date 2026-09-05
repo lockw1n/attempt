@@ -123,9 +123,12 @@ actor SwiftDataProgramRepository: ProgramRepository {
 
     /// Closes every other open run at `run`'s start, then writes `run`.
     ///
-    /// **The closing loop asks whether the row is actually changing.** Assigning a `@Model` property
-    /// marks the row dirty whatever the value was, and `saveStamped` then restamps `updatedAt` —
-    /// which is `G-2.4`'s conflict key, so a no-op write here would outrank a real remote edit.
+    /// **The predicate is what keeps the loop from restamping a row that did not move**, and it is
+    /// doing the work the "did this change?" clause does elsewhere: assigning a `@Model` property
+    /// marks the row dirty whatever the value was, and `saveStamped` then moves `updatedAt` —
+    /// `G-2.4`'s conflict key — so a no-op write here would outrank a real remote edit. Matching
+    /// only `endedAt == nil` means every row the loop touches genuinely changes, which is why there
+    /// is no such clause in the body. Widen the predicate and the clause has to come back.
     func startRun(_ run: ProgramRun) throws {
         try modelContext.requireReferenced(ProgramEntity.self, id: run.programID, from: run.id)
 
@@ -136,10 +139,7 @@ actor SwiftDataProgramRepository: ProgramRepository {
             includingDeleted: false
         )
         let now = Date.now
-        for other in open {
-            other.endedAt = run.startedAt
-            other.updatedAt = now
-        }
+        for other in open { other.endedAt = run.startedAt }
         try modelContext.upsert(run, as: ProgramRunEntity.self)
         try modelContext.saveStamped(at: now)
     }

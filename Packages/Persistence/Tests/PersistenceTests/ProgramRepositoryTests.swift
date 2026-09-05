@@ -239,6 +239,43 @@ struct ProgramRepositoryTests {
         #expect(stored?.dayIndex == 1)
     }
 
+    // The UPDATE half of the same mapping, which the insert above does not reach. `save` upserts,
+    // so a session re-saved — finished, annotated, or written over by `FR-1.11.4`'s file-wins
+    // restore — goes through `update(from:)` rather than the initialiser. A mapping that wrote the
+    // two columns on the way in and dropped them there would stamp every session it minted and
+    // lose both numbers on the first edit.
+    //
+    // **The second save MOVES both numbers**, because a re-save carrying what is already stored
+    // agrees with an update that wrote neither — and it moves them to a pair that is neither the
+    // first pair nor a transposition of it.
+    @Test("Re-saving a session writes its week and its day through the update path")
+    func aResavedSessionKeepsItsProgramColumns() async throws {
+        let stack = try RepositoryHarness().stack
+        let program = programRecord()
+        try await stack.programs.save(program)
+        let run = programRunRecord(programID: program.id, startedAt: Self.base)
+        try await stack.programs.startRun(run)
+        let session = sessionRecord(
+            date: Self.base, programRunID: run.id, weekNumber: 2, dayIndex: 1)
+        try await stack.workouts.save(session)
+
+        try await stack.workouts.save(
+            sessionRecord(
+                id: session.id,
+                date: Self.base,
+                notes: "finished",
+                programRunID: run.id,
+                weekNumber: 3,
+                dayIndex: 0))
+
+        let stored = try await stack.workouts.session(id: session.id, includingDeleted: false)
+        #expect(stored?.weekNumber == 3)
+        #expect(stored?.dayIndex == 0)
+        // The neighbouring column, so the two above are an update rather than a second row.
+        #expect(stored?.notes == "finished")
+        #expect(stored?.programRunID == run.id)
+    }
+
     // `TR-15.3`'s posture applied to the plan: what a session was is a fact about the day it
     // happened. The program is edited in every way it can be after the session started — renamed, a
     // day reordered, a day removed, the run advanced — and none of it reaches the row.

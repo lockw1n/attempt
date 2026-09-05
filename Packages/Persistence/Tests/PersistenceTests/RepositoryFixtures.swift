@@ -233,10 +233,12 @@ func programDayRecord(
 // The four values are four different numbers on purpose — `weekNumber` and `nextDayIndex` are two
 // `Int`s on one row, so a default where they agreed would pass for a mapping that wrote either into
 // both.
+// The default `startedAt` is deliberately NOT `fixtureCreatedAt`: a run carries three dates, and one
+// sitting on its own `createdAt` passes for a mapping that sourced the start from the audit column.
 func programRunRecord(
     id: UUID = UUID(),
     programID: UUID,
-    startedAt: Date = fixtureCreatedAt,
+    startedAt: Date = fixtureCreatedAt - 7 * 86_400,
     endedAt: Date? = nil,
     weekNumber: Int = 2,
     nextDayIndex: Int = 1

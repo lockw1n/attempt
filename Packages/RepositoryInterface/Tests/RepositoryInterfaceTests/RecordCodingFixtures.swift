@@ -17,6 +17,12 @@ let codingDeletedAt = Date(timeIntervalSince1970: 1_700_007_200)
 let codingID = UUID(uuidString: "0f7b6a5c-1111-4222-8333-444455556666") ?? UUID()
 let codingJoinID = UUID(uuidString: "0f7b6a5c-7777-4888-8999-aaaabbbbcccc") ?? UUID()
 
+/// A second join key, for a record whose two joins are the same type and must not agree.
+///
+/// One id everywhere else is deliberate and cheap; it stops being safe the moment a coding pair
+/// could be crossed and still round-trip. ``codingProgramDay()`` is that record.
+let codingOtherJoinID = UUID(uuidString: "0f7b6a5c-dddd-4eee-8fff-000011112222") ?? UUID()
+
 func codingExercise() -> Exercise {
     Exercise(
         id: codingID,
@@ -248,7 +254,7 @@ func codingProgramDay() -> ProgramDay {
         updatedAt: codingUpdatedAt,
         deletedAt: codingDeletedAt,
         programID: codingJoinID,
-        routineID: codingJoinID,
+        routineID: codingOtherJoinID,
         order: 2
     )
 }
