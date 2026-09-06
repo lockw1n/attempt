@@ -33,7 +33,7 @@ extension SeedExercise {
 extension Exercise {
     /// A new row for a catalogue entry.
     ///
-    /// The six columns the payload has no opinion on are decided here: a seeded exercise is not
+    /// The four columns the payload has no opinion on are decided here: a seeded exercise is not
     /// custom, is not archived, carries no notes, and is live.
     /// ``Exercise/ukrainianName`` is the payload's, absent included — see ``Exercise/reseeded(from:)``
     /// for what a *later* revision may do to it.

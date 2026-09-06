@@ -237,9 +237,10 @@ public final class ExerciseDetailState {
     /// column it writes is a plain boolean the seed importer keeps rather than re-supplies — so
     /// nothing about the store makes it one-way.
     ///
-    /// Serialized behind the notes chain, for ``saveNotes()``'s reason: both writes rebuild the
-    /// whole record from the one the screen is showing, so an archive that overlapped a notes save
-    /// would store the record as it was before that save and undo it.
+    /// **Serialized behind the notes chain, because the re-read both writes do narrows that window
+    /// without closing it.** Two overlapping commands would each read the stored row before either
+    /// had written, and the second write would then store a record built before the first landed.
+    /// Running them in order is what makes each one's read see the write before it.
     ///
     /// - Parameter archived: What ``RepositoryInterface/Exercise/isArchived`` should become.
     public func setArchived(_ archived: Bool) async {

@@ -171,6 +171,21 @@ if [[ -z "$present" ]]; then
 fi
 ok "development schema" "$(wc -l <<<"$present" | tr -d ' ') record type(s)"
 
+# THE DECLARED SIDE NEEDS ITS OWN EMPTINESS GUARD, because the `|| true` above makes a parse that
+# matched nothing indistinguishable from a tree with no @Model in it. `$present` is answered by the
+# check just above; `$declared` was not, so a broken parse fell through every branch below to
+# "all @Model types present" — check 2 reporting ok while doing nothing, over the count `wc -l`
+# gives an empty string, which is 1. `check-cloudkit.sh` guards the same parse the same way. What
+# makes a wrong ok expensive here rather than merely wrong: Production is additive, so a partial
+# schema promoted on a green run cannot be taken back.
+if [[ -z "$declared" ]]; then
+    fail "entity coverage" "found no @Model under $ENTITY_DIR — the parse is broken, not the tree."
+    echo "        Nothing can be said about entity coverage until it is, and deploying on this" >&2
+    echo "        run would promote whatever Development happens to hold. The parse is the one" >&2
+    echo "        check-cloudkit.sh uses for DOD-0.4; fix it in both." >&2
+    exit 1
+fi
+
 missing="$(comm -23 <(printf '%s\n' "$declared") <(printf '%s\n' "$present"))"
 # An excuse is written as the entity (TrainingMaxConfigEntity) and matched as the record type.
 allowed="$(sed '/^$/d; s/^/CD_/' <<<"$allow_missing")"
