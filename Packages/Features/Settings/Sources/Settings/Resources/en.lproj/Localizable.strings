@@ -194,8 +194,8 @@
    newer or older than the binary it ships in, and it cannot go stale without the build going
    with it. Whichever task turns on sync, telemetry or an account owns rewriting it. */
 "settings.about.privacy.title" = "Privacy";
-"settings.about.privacy.storage" = "Your training log is stored on this device. If you turn on iCloud sync, a copy is also kept in your own private iCloud, where only you can read it. There is no account with us and no server of ours behind it — nothing you log is sent to Attempt.";
-"settings.about.privacy.health" = "Body mass is read from Health only after you allow it, and only when you ask for an import. Attempt writes nothing back to Health, and what it reads stays on this device.";
+"settings.about.privacy.storage" = "Your training log is stored on this device. iCloud sync is on unless you turn it off, and while it is on a copy is also kept in your own private iCloud, where only you can read it. There is no account with us and no server of ours behind it — nothing you log is sent to Attempt.";
+"settings.about.privacy.health" = "Body mass is read from Health only after you allow it, and only when you ask for an import. Attempt writes nothing back to Health. Each imported reading becomes a weigh-in in your log, kept and synced like everything else you record.";
 "settings.about.privacy.tracking" = "There is no analytics, no advertising and no tracking. No third party is told anything about you or your training.";
 "settings.about.privacy.currency" = "This policy describes the build named above. It ships inside the app, so it is never newer or older than the version you are running.";
 

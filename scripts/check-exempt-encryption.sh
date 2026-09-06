@@ -36,6 +36,18 @@ scan() {
     grep -rnE "$PATTERNS" --include="*.swift" "$@" 2>/dev/null || true
 }
 
+# THE POPULATION IS THE SHIPPING TREE: the app target and every package's `Sources`, the Feature
+# packages included. `Packages/*/Sources` on its own reads as "every package" and silently misses
+# `Packages/Features/*/Sources`, which is where most of the app's code lives — the first version
+# of this script shipped with exactly that hole, and its self-test could not see it because the
+# fixture is a directory of its own. Tests are deliberately out.
+shipping_roots() {
+    local root
+    for root in Attempt Packages/*/Sources Packages/Features/*/Sources; do
+        [[ -d "$root" ]] && printf '%s\n' "$root"
+    done
+}
+
 if [[ "${1:-}" == "--self-test" ]]; then
     # The gate is only worth having if it fires. Same argument as check-translations.sh's.
     fixture="$(mktemp -d)"
@@ -45,7 +57,20 @@ if [[ "${1:-}" == "--self-test" ]]; then
         echo "FAIL: the encryption gate did not fire on a file that imports CryptoKit." >&2
         exit 1
     fi
-    echo "ok — the encryption gate fires on non-exempt cryptography."
+    # Firing on a fixture proves the pattern, not the population. The population has to reach a
+    # Feature package, and every root has to hold at least one Swift file — an empty root is a
+    # glob that matched nothing.
+    if ! shipping_roots | grep -q '^Packages/Features/[^/]*/Sources$'; then
+        echo "FAIL: the shipping population does not reach Packages/Features/*/Sources." >&2
+        exit 1
+    fi
+    while IFS= read -r root; do
+        if [[ -z "$(find "$root" -name '*.swift' -print -quit)" ]]; then
+            echo "FAIL: $root is in the shipping population but holds no Swift source." >&2
+            exit 1
+        fi
+    done < <(shipping_roots)
+    echo "ok — the encryption gate fires on non-exempt cryptography, over $(shipping_roots | wc -l | tr -d ' ') shipping roots."
     exit 0
 fi
 
@@ -71,7 +96,9 @@ if [[ "$declared" != "false" ]]; then
     exit 0
 fi
 
-hits="$(scan Attempt Packages/*/Sources)"
+roots=()
+while IFS= read -r root; do roots+=("$root"); done < <(shipping_roots)
+hits="$(scan "${roots[@]}")"
 
 if [[ -n "$hits" ]]; then
     cat >&2 <<MSG

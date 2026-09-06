@@ -55,18 +55,20 @@ protocol StoredEntity: PersistentModel {
     //
     //     Fatal error: Couldn't find \ExerciseEntity.<computed 0x…(UUID)> on ExerciseEntity
     //
-    // on a background queue, before the first frame. Measured in T-1.72 against the four builds
-    // that separate the causes: Release crashes at either deployment target, Debug does not, and
+    // on a background queue, before the first frame. Measured against the four builds that
+    // separate the causes: Release crashes at either deployment target, Debug does not, and
     // Release with `-Onone` does not. It is the optimizer, not the SDK and not the schema.
     //
-    // THE TESTS CANNOT SEE THIS AND STILL CANNOT. `swift test` and every CI suite run unoptimized,
-    // so the whole suite is blind to this class of defect by construction — which is how it
-    // survived to the first Release build anyone ever ran. The guard is not a test: it is that
-    // these four have NO default implementation, so an entity added later does not compile until
-    // it supplies its own, beside itself in its own file. **Do not add a protocol extension
-    // providing them.** That would compile, satisfy every conformance at once, and reintroduce
-    // exactly this bug — the generic context is the fault, so a generic default is the fault
-    // wearing a different hat.
+    // THE UNOPTIMIZED SUITE CANNOT SEE THIS; THE OPTIMIZED ONE CAN. `swift test` and
+    // `build-packages.sh --test` run at `-Onone`, so every ordinary run is blind to this class of
+    // defect by construction — which is how it survived to the first Release build anyone ever
+    // ran. `scripts/test-optimized.sh` runs this package's tests at `-O`, where the generic
+    // predicate dies with the error above in the first suite that fetches (measured), and CI runs
+    // it. The compile-time half of the guard is that these four have NO default implementation,
+    // so an entity added later does not compile until it supplies its own, beside itself in its
+    // own file. **Do not add a protocol extension providing them.** That would compile, satisfy
+    // every conformance at once, and reintroduce exactly this bug — the generic context is the
+    // fault, so a generic default is the fault wearing a different hat.
 
     /// Rows carrying `id` — the plural case included, since two rows may (`G-2.4`).
     static func matchingID(_ id: UUID) -> Predicate<Self>

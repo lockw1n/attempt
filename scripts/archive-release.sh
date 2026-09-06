@@ -125,12 +125,19 @@ STILL TO DO BY HAND — none of it is a build step, and this script does none of
        SDK ships. scripts/check-no-third-party.sh proves it mechanically on
        every run of the verification chain.
      - HealthKit (G-5.4, T-1.51): body mass is READ, on device, only on an
-       explicit import, and never transmitted. Apple's definition of "collect"
-       is data transmitted off the device, so a read that stays local is not a
-       collection and is not declared.
-     - The anonymous user ID (TR-1.10): device-local. It is written into the
-       user's OWN private CloudKit database when sync is on, which Apple treats
-       as the user's storage rather than the developer's collection.
+       explicit import. An imported reading becomes a weigh-in row in the
+       lifter's own log, so with sync on (the default) it mirrors into the
+       lifter's OWN private CloudKit database — the same place, and the same
+       argument, as the anonymous ID below. It goes nowhere else. Apple's
+       "collect" is data transmitted to the developer or a third party; the
+       user's own iCloud is neither, so it is not declared. The in-app policy
+       and the Health usage description say the same thing — keep all three
+       in step, since a claim that Health data "stays on this device" was
+       false from the day sync went on by default.
+     - The anonymous user ID (TR-1.10): a column on the user's settings row.
+       With sync on it is written into the user's OWN private CloudKit
+       database, which Apple treats as the user's storage rather than the
+       developer's collection.
      - iCloud sync (FR-1.12.1): the private database is the user's. Attempt has
        no server, no account, and no way to read it.
 

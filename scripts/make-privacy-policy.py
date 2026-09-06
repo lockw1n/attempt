@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Renders Website/privacy.html from the in-app privacy copy.
+"""Renders the hosted privacy policy from the in-app privacy copy.
 
 WHY THIS IS GENERATED. App Store Connect requires a Privacy Policy URL on the listing, which an
 in-app screen cannot satisfy (T-1.63 drew the policy inside the app and deliberately produced no
 hosted document). That leaves two copies of one policy, and `G-5.3` is worse served by two copies
-that disagree than by either alone. So the hosted page is not written — it is rendered from
-`settings.about.privacy.*`, the same keys the About screen reads, and
-`scripts/check-privacy-policy.sh` fails if the tree's copy is not what this script produces.
+that disagree than by either alone. So the hosted page is neither written by hand nor committed —
+`.github/workflows/deploy-content.yml` renders it from `settings.about.privacy.*`, the same keys
+the About screen reads, on every deploy, and CI's `lint` job renders it to a throwaway path so a
+renamed key fails in review rather than on main. There is no copy in the tree to drift.
 
 WHAT IS NOT COPIED, AND WHY. `settings.about.privacy.currency` says the policy "describes the build
 named above" and "ships inside the app, so it is never newer or older than the version you are

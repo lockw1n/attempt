@@ -107,6 +107,13 @@ jobs:
       - name: Build and test all packages with warnings as errors
         run: ./scripts/build-packages.sh --test
 
+      # G-1.2 / DOD-1.4 (T-1.90). Everything above runs at -Onone. A `#Predicate` built in a
+      # generic context fetches correctly unoptimized and kills the process at -O, and the first
+      # Release build anyone ran was the first thing to see it. This is the only optimized run in
+      # CI; it covers the one package that fetches.
+      - name: Test the fetching packages optimized
+        run: ./scripts/test-optimized.sh
+
       # NFR-0.1: the core suite under 5 seconds. Runs after the step above, so the package is
       # already built and this measures execution rather than compilation.
       #
