@@ -121,3 +121,64 @@ func assertStoredEntityConventions<T: StoredEntity>(
         sourceLocation: sourceLocation
     )
 }
+
+// `StoredEntity` requires these per concrete type and provides no default — see
+// `StoredEntity`'s requirements for why a generic one would be the bug it guards. A fixture
+// entity is a real conformance, so it owes them too; this file failing to compile is that guard
+// working rather than an obstacle to route around.
+extension FixtureEntity {
+    static func matchingID(_ id: UUID) -> Predicate<FixtureEntity> {
+        #Predicate<FixtureEntity> { $0.id == id }
+    }
+
+    static var notDeleted: Predicate<FixtureEntity> {
+        #Predicate<FixtureEntity> { $0.deletedAt == nil }
+    }
+
+    static func notDeleted(
+        alsoMatching other: Predicate<FixtureEntity>
+    ) -> Predicate<FixtureEntity> {
+        #Predicate<FixtureEntity> { entity in
+            other.evaluate(entity) && entity.deletedAt == nil
+        }
+    }
+
+    static func softDeleted(onOrBefore cutoff: Date) -> Predicate<FixtureEntity> {
+        #Predicate<FixtureEntity> { entity in
+            if let deletedAt = entity.deletedAt {
+                return deletedAt <= cutoff
+            } else {
+                return false
+            }
+        }
+    }
+}
+
+// Same requirement, same reason — see the note on FixtureEntity above.
+extension FixtureCacheEntity {
+    static func matchingID(_ id: UUID) -> Predicate<FixtureCacheEntity> {
+        #Predicate<FixtureCacheEntity> { $0.id == id }
+    }
+
+    static var notDeleted: Predicate<FixtureCacheEntity> {
+        #Predicate<FixtureCacheEntity> { $0.deletedAt == nil }
+    }
+
+    static func notDeleted(
+        alsoMatching other: Predicate<FixtureCacheEntity>
+    ) -> Predicate<FixtureCacheEntity> {
+        #Predicate<FixtureCacheEntity> { entity in
+            other.evaluate(entity) && entity.deletedAt == nil
+        }
+    }
+
+    static func softDeleted(onOrBefore cutoff: Date) -> Predicate<FixtureCacheEntity> {
+        #Predicate<FixtureCacheEntity> { entity in
+            if let deletedAt = entity.deletedAt {
+                return deletedAt <= cutoff
+            } else {
+                return false
+            }
+        }
+    }
+}

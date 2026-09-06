@@ -64,3 +64,67 @@ struct ConventionsGateTests {
         #expect(violations.isEmpty)
     }
 }
+
+// `StoredEntity` requires these per concrete type and provides no default — see
+// `StoredEntity`'s requirements for why a generic one would be the bug it guards. A fixture
+// entity is a real conformance, so it owes them too; this file failing to compile is that guard
+// working rather than an obstacle to route around.
+extension SharedIDEntity {
+    static func matchingID(_ id: UUID) -> Predicate<SharedIDEntity> {
+        #Predicate<SharedIDEntity> { $0.id == id }
+    }
+
+    static var notDeleted: Predicate<SharedIDEntity> {
+        #Predicate<SharedIDEntity> { $0.deletedAt == nil }
+    }
+
+    static func notDeleted(
+        alsoMatching other: Predicate<SharedIDEntity>
+    ) -> Predicate<SharedIDEntity> {
+        #Predicate<SharedIDEntity> { entity in
+            other.evaluate(entity) && entity.deletedAt == nil
+        }
+    }
+
+    static func softDeleted(onOrBefore cutoff: Date) -> Predicate<SharedIDEntity> {
+        #Predicate<SharedIDEntity> { entity in
+            if let deletedAt = entity.deletedAt {
+                return deletedAt <= cutoff
+            } else {
+                return false
+            }
+        }
+    }
+}
+
+// `StoredEntity` requires these per concrete type and provides no default — see
+// `StoredEntity`'s requirements for why a generic one would be the bug it guards. A fixture
+// entity is a real conformance, so it owes them too; this file failing to compile is that guard
+// working rather than an obstacle to route around.
+extension BornDeletedEntity {
+    static func matchingID(_ id: UUID) -> Predicate<BornDeletedEntity> {
+        #Predicate<BornDeletedEntity> { $0.id == id }
+    }
+
+    static var notDeleted: Predicate<BornDeletedEntity> {
+        #Predicate<BornDeletedEntity> { $0.deletedAt == nil }
+    }
+
+    static func notDeleted(
+        alsoMatching other: Predicate<BornDeletedEntity>
+    ) -> Predicate<BornDeletedEntity> {
+        #Predicate<BornDeletedEntity> { entity in
+            other.evaluate(entity) && entity.deletedAt == nil
+        }
+    }
+
+    static func softDeleted(onOrBefore cutoff: Date) -> Predicate<BornDeletedEntity> {
+        #Predicate<BornDeletedEntity> { entity in
+            if let deletedAt = entity.deletedAt {
+                return deletedAt <= cutoff
+            } else {
+                return false
+            }
+        }
+    }
+}
