@@ -202,7 +202,11 @@ verbatim and runs the package's own `GenerateRemoteContent` executable to encode
 included, before writing any of them, so the run fails rather than publish a
 payload any of the three validators would refuse. `.github/workflows/deploy-content.yml`
 runs that script on every push to `main` touching these sources and publishes
-the result to GitHub Pages, at `PublishedContent.baseURL`.
+the result to GitHub Pages, at `PublishedContent.baseURL`. The same deploy
+publishes `privacy.html` there — the App Store listing's privacy policy —
+rendered by `scripts/make-privacy-policy.py` from the About screen's
+`settings.about.privacy.*` strings, so the hosted copy and the in-app copy
+cannot disagree. Nothing in the tree holds the rendered page.
 
 `RemoteFetch` is what an app actually calls: `ContentFetcher.resolve(_:)` answers
 synchronously from whatever is already cached or bundled, and `refresh(_:)` is
@@ -350,6 +354,20 @@ proof:
 ./scripts/audit-unchecked-sendable.sh
 ./scripts/check-suite-runtime.sh --self-test
 ```
+
+Everything above builds at `-Onone`. One class of SwiftData defect exists only
+under the optimizer — a `#Predicate` built in a generic context — so the
+packages that fetch are also tested at `-O`, in CI and in the local chain:
+
+```bash
+./scripts/test-optimized.sh                 # default: Packages/Persistence
+```
+
+**Release.** `scripts/archive-release.sh` archives the app for TestFlight
+(`--export` also exports the `.ipa`; `--allow-provisioning-updates` lets
+`xcodebuild` mint the distribution identity). It does not upload. The launch
+screen and the export-compliance declaration live in `Config/Info.plist`, a
+partial plist merged under the generated one.
 
 ## Conventions
 
@@ -523,6 +541,17 @@ mentioning it, and one added through Xcode never appears in a manifest:
 ./scripts/check-no-third-party.sh --self-test   # each spelling, in both directions
 ```
 
+`check-exempt-encryption.sh` keeps `Config/Info.plist`'s
+`ITSAppUsesNonExemptEncryption` declaration honest: while it is `false`, no
+shipping source — the app target and every package's `Sources`, Feature packages
+included — may reach for a cryptography implementation. Tests are ignored; the
+claim is about what ships.
+
+```bash
+./scripts/check-exempt-encryption.sh
+./scripts/check-exempt-encryption.sh --self-test
+```
+
 To lint on every build, add a **Run Script** build phase to the `Attempt` target
 with `if which swiftlint > /dev/null; then swiftlint; fi`, and untick "Based on
 dependency analysis".
@@ -534,9 +563,9 @@ dependency analysis".
 | Job | What it does |
 |---|---|
 | **Build** | audits the app target's build settings, checks the debug harness is excluded from the app (and that the check itself fires), then builds the app |
-| **Package tests** | `PowerliftingCore` with coverage, then every package built and tested with warnings as errors (discovered by glob), the runtime gate and its proof, the warnings-gate proof, the `@unchecked Sendable` audit |
+| **Package tests** | `PowerliftingCore` with coverage, then every package built and tested with warnings as errors (discovered by glob), the runtime gate and its proof, the warnings-gate proof, the `@unchecked Sendable` audit, then `Persistence`'s tests again at `-O` |
 | **Linux core build** | builds and tests `PowerliftingCore` and `RepositoryInterface` on `ubuntu-latest` in a Swift container |
-| **SwiftLint** | lint, lint-rule verification, format check, the app-target string and translation-completeness checks, the doc-ratio, doc-units and doc-links gates, and the CloudKit and third-party gates — sixteen steps, each gate followed by a self-test that proves it can fail |
+| **SwiftLint** | lint, lint-rule verification, format check, the app-target string and translation-completeness checks, the doc-ratio, doc-units and doc-links gates, and the CloudKit and third-party gates — sixteen steps, each gate followed by a self-test that proves it can fail, the export-compliance gate and a throwaway render of the hosted privacy policy |
 | **Component snapshots** | renders every snapshot suite (`DesignSystem`'s components and states, plus each feature module's screens) and compares it against a committed reference, light/dark × default/`accessibility3` |
 
 The first four are **required checks on `main`**, so a red run blocks the
