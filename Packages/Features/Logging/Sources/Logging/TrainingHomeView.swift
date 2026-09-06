@@ -185,7 +185,7 @@ public struct TrainingHomeView: View {
                 // The same step-down `start(showingStartFailure:)` makes, and for the same reason:
                 // the program's card is drawn *above* this switch, not inside it, so a failed read
                 // and a day on offer are on screen together (`FR-16.6.4`).
-                retryEmphasis: program.nextUp?.spendsAccent == true ? .secondary : .primary,
+                retryEmphasis: .trainCommand(under: program.nextUp),
                 retry: { Task { await store.resume() } }
             )
         case .start(let showingStartFailure):
@@ -217,7 +217,7 @@ public struct TrainingHomeView: View {
                 Text(LoggingStrings.trainStartAction),
                 // FR-16.6.4: one filled accent per screen. Where the program's card is offering a
                 // day, that is the screen's primary action and this is the way past it.
-                emphasis: program.nextUp?.spendsAccent == true ? .secondary : .primary
+                emphasis: .trainCommand(under: program.nextUp)
             ) {
                 Task { await startWorkout() }
             }

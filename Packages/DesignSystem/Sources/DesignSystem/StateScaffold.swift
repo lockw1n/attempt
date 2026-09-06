@@ -129,11 +129,12 @@ public struct StateAction {
 /// How much weight a state's action is drawn at (`FR-16.6.4`, `G-7.2`).
 ///
 /// **A state is not always the whole screen, which is the only reason this is a choice.** Where the
-/// placeholder *is* the screen its action genuinely is the primary one and the default holds. Where
-/// a section is empty inside a screen that still carries its own filled command — an active workout
-/// with no exercises in it yet, drawn above **Finish workout** — two accents would be two primary
-/// actions and no primary action, so that caller asks for the lighter one.
-public enum StateActionEmphasis: Sendable {
+/// placeholder *is* the screen, its action genuinely is the primary one. Where a section is empty
+/// inside a screen that still carries its own filled command — an active workout with no exercises
+/// in it yet, drawn above **Finish workout** — two accents would be two primary actions and no
+/// primary action, so that caller asks for the lighter one. There is no default either way: see
+/// ``StateAction/init(_:emphasis:handler:)``.
+public enum StateActionEmphasis: Equatable, Sendable {
     /// The screen's one filled accent.
     case primary
 

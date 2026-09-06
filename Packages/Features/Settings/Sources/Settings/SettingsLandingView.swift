@@ -202,7 +202,10 @@ public struct SettingsLandingView: View {
         ErrorStateView(
             headline: Text(SettingsStrings.loadErrorTitle),
             message: Text(SettingsStrings.loadErrorMessage),
-            retryEmphasis: .secondary,
+            // Primary: the retry is the only command this screen offers in the failed phase — the
+            // five sections below the switch are all links, and none of them spends the accent
+            // (`FR-16.6.4`).
+            retryEmphasis: .primary,
             retry: { Task { await state.load() } })
     }
 }

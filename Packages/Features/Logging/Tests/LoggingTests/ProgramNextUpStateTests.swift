@@ -1,3 +1,4 @@
+import DesignSystem
 import Foundation
 import RepositoryFakes
 import RepositoryInterface
@@ -112,6 +113,32 @@ struct ProgramNextUpStateTests {
             return
         }
         #expect(!diagnostic.isEmpty)
+    }
+
+    /// `FR-16.6.4` on the one screen where the accent moves between two views: the card decides,
+    /// and `TrainingHomeView` reads the decision rather than restating it.
+    ///
+    /// **The rule is asserted here because it cannot be asserted where it is used.** Both call
+    /// sites are inside a `View`, and the references that picture those states build their state
+    /// components by hand — so a literal written on the view would be pinned by nothing.
+    @Test("Train's own command steps down for exactly the two readings that draw a Start")
+    func trainStepsDownOnlyForACardThatSpendsTheAccent() {
+        func reading(_ day: ProgramNextUp.Day) -> ProgramNextUp {
+            ProgramNextUp(runID: UUID(), programName: "Course #2", weekNumber: 2, day: day)
+        }
+
+        let routineID = UUID()
+        #expect(
+            StateActionEmphasis.trainCommand(
+                under: reading(.next(index: 0, routineID: routineID, name: "Squat day")))
+                == .secondary)
+        #expect(StateActionEmphasis.trainCommand(under: reading(.weekComplete)) == .secondary)
+        #expect(
+            StateActionEmphasis.trainCommand(under: reading(.archivedRoutine(index: 0)))
+                == .primary)
+        #expect(StateActionEmphasis.trainCommand(under: reading(.noDays)) == .primary)
+        // No card at all, which is both the loading and the failed reading of the section above.
+        #expect(StateActionEmphasis.trainCommand(under: nil) == .primary)
     }
 }
 

@@ -191,3 +191,18 @@ extension ProgramNextUp {
         }
     }
 }
+
+extension StateActionEmphasis {
+    /// The weight one of `tab.train`'s own commands takes beside the program's card (`FR-16.6.4`).
+    ///
+    /// **One home for a rule two call sites share, and the only one either of them can be tested
+    /// through**: ``TrainingHomeView`` draws a failed read's retry and the start action in different
+    /// phases, and the card is drawn above both. Written on the view they would be two literals
+    /// nothing could ask a question of.
+    ///
+    /// - Parameter nextUp: The card's reading, or `nil` where no card is drawn at all.
+    /// - Returns: `.secondary` where the card spends the screen's accent, `.primary` otherwise.
+    static func trainCommand(under nextUp: ProgramNextUp?) -> StateActionEmphasis {
+        nextUp?.spendsAccent == true ? .secondary : .primary
+    }
+}
