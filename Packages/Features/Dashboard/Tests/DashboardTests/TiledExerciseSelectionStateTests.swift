@@ -105,7 +105,8 @@ struct TiledExerciseSelectionStateTests {
         let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
         let state = TiledExerciseSelectionState(
             catalogue: fixture.repositories.exercises,
-            settings: ReadOnlySettingsRepository(stored: fixture.repositories.settings))
+            settings: ReadOnlySettingsRepository(stored: fixture.repositories.settings),
+            records: fixture.records)
         await state.load()
 
         await state.toggle(squat)
@@ -124,7 +125,8 @@ struct TiledExerciseSelectionStateTests {
     func afailedReadIsTheErrorState() async {
         let state = TiledExerciseSelectionState(
             catalogue: FailingExerciseRepository(),
-            settings: DashboardFixture().repositories.settings)
+            settings: DashboardFixture().repositories.settings,
+            records: DashboardFixture().records)
         await state.load()
 
         #expect(TiledExerciseSelectionScreenState.current(state) == .failed)
@@ -139,10 +141,93 @@ struct TiledExerciseSelectionStateTests {
         #expect(TiledExerciseSelectionScreenState.current(state) == .empty)
     }
 
+    @Test("A row carries the day the exercise was last trained, and the sections follow it")
+    func rowsCarryTheLastTrainedDay() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        let press = try await fixture.exercise(named: "Bench Press", movement: .bench)
+        try await fixture.exercise(named: "Barbell Row", movement: .row)
+        try await fixture.session(
+            on: weeksAgo(3), exercises: [(squat, [LoggedSet(grams: 100_000, reps: 5)])])
+        try await fixture.session(
+            on: weeksAgo(1), exercises: [(press, [LoggedSet(grams: 80_000, reps: 5)])])
+
+        let state = picker(over: fixture)
+        await state.load()
+
+        #expect(state.sections.map(\.kind) == [.trained, .everythingElse])
+        #expect(state.sections[0].choices.map(\.name) == ["Bench Press", "Back Squat"])
+        #expect(state.sections[0].choices.map(\.lastTrained) == [weeksAgo(1), weeksAgo(3)])
+        #expect(state.sections[1].choices.map(\.name) == ["Barbell Row"])
+    }
+
+    /// An exercise warmed up and abandoned was not trained — `Tonnage.counts`' population, which is
+    /// the same one `FR-16.5.1` picks the default tiles from.
+    @Test("Warmups and failed sets do not date a row")
+    func warmupsDoNotDateARow() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.session(
+            on: weeksAgo(1),
+            exercises: [
+                (
+                    squat,
+                    [
+                        LoggedSet(grams: 60_000, reps: 5, isWarmup: true),
+                        LoggedSet(grams: 100_000, reps: 5, isCompleted: false),
+                    ]
+                )
+            ])
+
+        let state = picker(over: fixture)
+        await state.load()
+
+        #expect(state.choices.map(\.lastTrained) == [nil])
+        #expect(state.sections.map(\.kind) == [.everythingElse])
+    }
+
+    @Test("Searching narrows the rows the screen draws, and clearing it brings them back")
+    func searchingNarrowsTheRows() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.exercise(named: "Bench Press", movement: .bench)
+        try await fixture.session(
+            on: weeksAgo(1), exercises: [(squat, [LoggedSet(grams: 100_000, reps: 5)])])
+
+        let state = picker(over: fixture)
+        await state.load()
+        state.searchText = "bench"
+
+        #expect(state.sections.map(\.kind) == [.everythingElse])
+        #expect(state.sections[0].choices.map(\.name) == ["Bench Press"])
+
+        state.searchText = ""
+        #expect(state.sections.count == 2)
+    }
+
+    /// The rows are replaced on every toggle, and a search the user is in the middle of is not part
+    /// of what a write moved.
+    @Test("A toggle keeps the search the user typed")
+    func atoggleKeepsTheSearch() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.exercise(named: "Bench Press", movement: .bench)
+
+        let state = picker(over: fixture)
+        await state.load()
+        state.searchText = "squat"
+        await state.toggle(squat)
+
+        #expect(state.searchText == "squat")
+        #expect(state.sections.flatMap { $0.choices.map(\.name) } == ["Back Squat"])
+    }
+
     // MARK: - Fixtures
 
     private func picker(over fixture: DashboardFixture) -> TiledExerciseSelectionState {
         TiledExerciseSelectionState(
-            catalogue: fixture.repositories.exercises, settings: fixture.repositories.settings)
+            catalogue: fixture.repositories.exercises,
+            settings: fixture.repositories.settings,
+            records: fixture.records)
     }
 }

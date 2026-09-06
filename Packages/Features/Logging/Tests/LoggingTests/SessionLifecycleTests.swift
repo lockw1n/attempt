@@ -262,7 +262,10 @@ struct SessionLifecycleTests {
     func failedFinishKeepsTheWorkout() async throws {
         let failure = RepositoryError.danglingReference(recordID: UUID(), referencing: UUID())
         let session = WorkoutSession.fixture()
-        let repository = ScriptedWorkoutRepository(row: session, writeError: failure)
+        // `entries: []` says the workout holds nothing, so Finish's own pending-set read
+        // (`FR-16.4.4`) answers rather than refusing — the failure under test is the write.
+        let repository = ScriptedWorkoutRepository(
+            row: session, writeError: failure, entries: [])
         let store = ActiveSessionStore.overWorkouts(repository)
         await store.adopt(sessionID: session.id)
         try #require(store.session == session)

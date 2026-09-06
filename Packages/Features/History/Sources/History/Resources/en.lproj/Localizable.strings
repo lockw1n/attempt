@@ -85,3 +85,32 @@
    can put the date last. */
 "history.calendar.day.trained %@" = "%1$@, trained";
 "history.calendar.day.untrained %@" = "%1$@, no training";
+
+/* Which week and day of a program a session was started from, on the list row. Read off the
+   session's own columns rather than out of its note — the structure a note used to carry.
+   Positional, so a translation can order the two numbers as its grammar wants. */
+"history.list.program.week-day %lld %lld" = "Week %1$lld · Day %2$lld";
+
+/* FR-16.4.3. What a row says in place of its two numbers while the workout has not ended: a running
+   total shown as a finished one reads as a workout that went badly, and "0 sets, 0 kg" over a
+   session dated next Tuesday reads as one that was missed. "Planned" is the word for a training day
+   still ahead; "In progress" for one that has arrived. */
+"history.list.session.in-progress" = "In progress";
+"history.list.session.planned" = "Planned";
+
+/* FR-16.4.4's way out of a workout left open past its own day — imported, or abandoned. The command
+   is here because the training tab holds one workout at a time and this is not it. */
+"history.list.session.finish" = "Finish workout";
+
+/* The same question the training tab asks when a workout still holds sets nobody attempted, asked
+   where this one is being ended from. The third button names what it keeps: leaving the alert
+   leaves the session open, which neither other answer does. */
+"history.list.session.pending.message" = "They were never attempted. Remove them, or keep them as missed lifts?";
+"history.list.session.pending.remove" = "Remove them";
+"history.list.session.pending.keep" = "Keep as failed";
+"history.list.session.pending.cancel" = "Leave it open";
+
+/* FR-16.4.4. The workout would not end — a write that did not land, or a row that went away
+   underneath the list. Copy rather than the diagnostic behind it (`G-3.4`); the list stays on
+   screen beside it and the retry is another tap on the row's own command. */
+"history.list.session.finish-error" = "That workout could not be finished. Try again.";

@@ -105,7 +105,7 @@ struct WeekSummaryReading: View {
             case .quiet:
                 InsufficientDataView(message: Text(DashboardStrings.weekNone))
             case .failed:
-                ErrorStateView(message: Text(DashboardStrings.weekError), retry: retry)
+                ErrorStateView(message: Text(DashboardStrings.weekError), retryEmphasis: .secondary, retry: retry)
             case .unweighed(let workouts):
                 workoutTile(workouts)
                 // The volume in place rather than omitted: a card that showed a workout count and
@@ -119,7 +119,7 @@ struct WeekSummaryReading: View {
                     MetricTile(
                         label: Text(DashboardStrings.weekVolume),
                         value: Text(
-                            summary.tonnage, format: AppFormat.weight(in: unit, locale: locale)))
+                            summary.tonnage, format: AppFormat.tonnage(in: unit, locale: locale)))
                 }
             }
         }

@@ -30,9 +30,13 @@ struct BackupArchiveTests {
             bodyweight: log.bodyweight,
             equipment: [awkwardProfile()],
             trainingMaxes: [awkwardTrainingMax(log.exercises[0].id)],
+            trainingMaxHistory: [awkwardTrainingMaxChange(log.exercises[0].id)],
             routines: [awkwardRoutine()],
             routineExercises: [awkwardRoutineExercise(log.exercises[0].id)],
             routineTargetGroups: [awkwardTargetGroup()],
+            programs: [],
+            programDays: [],
+            programRuns: [],
             plannedTargets: [awkwardPlannedTarget(log.entries[0].id)],
             settings: awkwardSettings())
     }
@@ -121,12 +125,29 @@ struct BackupArchiveTests {
             exerciseID: exerciseID,
             source: .percentOfRepMax,
             sourceRepCount: 3,
-            manualWeight: Weight(grams: 150_000),
             percentage: 0.925,
             roundingIncrement: Weight(grams: 1_250),
             roundingStrategy: .nearest,
             progressionIncrement: Weight(grams: -5_000),
             effectiveFrom: stamp)
+    }
+
+    /// A change to a training max, with every column off its default: an old value present, a
+    /// reason that is not the empty string, and a new value that is neither.
+    ///
+    /// **``effectiveFrom`` is a day before ``stamp`` rather than equal to it**, so the two dates a
+    /// restore preserves cannot stand in for one another in a field-for-field comparison.
+    private static func awkwardTrainingMaxChange(_ exerciseID: UUID) -> TrainingMaxHistoryEntry {
+        TrainingMaxHistoryEntry(
+            id: ExportRecords.id(0x99),
+            createdAt: stamp,
+            updatedAt: stamp,
+            deletedAt: nil,
+            exerciseID: exerciseID,
+            effectiveFrom: stamp.addingTimeInterval(-86_400),
+            oldWeight: Weight(grams: 137_500),
+            newWeight: Weight(grams: 142_500),
+            reason: "coach, week 4")
     }
 
     /// A preferences row with the two optionals present.
@@ -171,14 +192,14 @@ struct BackupArchiveTests {
         #expect(json.contains("\"contents\" : \"fullBackup\""))
     }
 
-    @Test("A backup writes the seven extra keys and an export writes none of them")
+    @Test("A backup writes the eight extra keys and an export writes none of them")
     func onlyABackupCarriesTheConfiguration() throws {
         let backup = try #require(String(data: Self.awkwardBackup().encoded(), encoding: .utf8))
         #expect(
             TrainingLogArchiveTests.envelopeKeys(of: backup) == [
                 "bodyweight", "contents", "entries", "equipment", "exercises", "exportedAt",
                 "formatVersion", "plannedTargets", "routineExercises", "routineTargetGroups",
-                "routines", "sessions", "sets", "settings", "trainingMaxes",
+                "routines", "sessions", "sets", "settings", "trainingMaxHistory", "trainingMaxes",
             ])
         let export = try #require(String(data: TrainingLogArchiveTests.awkwardArchive().encoded(), encoding: .utf8))
         // An empty section is omitted rather than written as `[]`, so an export's bytes are what
@@ -186,8 +207,25 @@ struct BackupArchiveTests {
         #expect(!TrainingLogArchiveTests.envelopeKeys(of: export).contains("equipment"))
         #expect(!TrainingLogArchiveTests.envelopeKeys(of: export).contains("settings"))
         #expect(!TrainingLogArchiveTests.envelopeKeys(of: export).contains("trainingMaxes"))
+        #expect(
+            !TrainingLogArchiveTests.envelopeKeys(of: export).contains("trainingMaxHistory"))
         #expect(!TrainingLogArchiveTests.envelopeKeys(of: export).contains("routines"))
         #expect(!TrainingLogArchiveTests.envelopeKeys(of: export).contains("plannedTargets"))
+    }
+
+    /// `G-1.4` and `TR-16.1`: the personal-record cache is derived, so it is not a section — and a
+    /// restore recomputes it rather than reinstating an answer. `TR-16.1`'s two new columns are
+    /// therefore not a table added to the backup, which is why the format version does not move.
+    @Test("The derived record cache is not a section of the backup")
+    func theRecordCacheIsNotBackedUp() throws {
+        let backup = try #require(String(data: Self.awkwardBackup().encoded(), encoding: .utf8))
+        let sections = TrainingLogArchiveTests.envelopeKeys(of: backup)
+
+        #expect(!sections.contains("personalRecords"))
+        #expect(!sections.contains { $0.localizedCaseInsensitiveContains("personalRecord") })
+        // Anchored, so the three absences above cannot pass over an empty key list.
+        #expect(sections.contains("sets"))
+        #expect(TrainingLogArchive.currentFormatVersion == 5)
     }
 
     @Test("A file written before any of this still decodes, as the export it was")
@@ -291,5 +329,48 @@ struct BackupArchiveTests {
         #expect(throws: DecodingError.self) {
             try TrainingLogArchive.decoded(from: Data(json.utf8))
         }
+    }
+
+    @Test("A format-3 backup decodes with the training-max history empty")
+    func readsAFormatThreeBackup() throws {
+        // Version 3 predates `trainingMaxHistory`, so the key is simply absent — rule 3 read one
+        // level up, which is what lets the version move without breaking the files before it. The
+        // configuration row here also carries `manualWeight`, the column the number moved out of:
+        // an unknown key is dropped rather than refused, so the row still restores.
+        let json = """
+            {
+              "formatVersion" : 3,
+              "contents" : "fullBackup",
+              "exportedAt" : 773452800.1234567,
+              "exercises" : [],
+              "sessions" : [],
+              "entries" : [],
+              "sets" : [],
+              "bodyweight" : [],
+              "trainingMaxes" : [
+                {
+                  "id" : "0F5A1E24-9B7D-4C31-8E62-000000000008",
+                  "createdAt" : 0,
+                  "updatedAt" : 0,
+                  "exerciseID" : "0F5A1E24-9B7D-4C31-8E62-000000000009",
+                  "source" : "manual",
+                  "manualWeight" : 180000,
+                  "percentage" : 0.9,
+                  "roundingIncrement" : 2500,
+                  "roundingStrategy" : "nearest",
+                  "effectiveFrom" : 0
+                }
+              ]
+            }
+            """
+        let restored = try TrainingLogArchive.decoded(from: Data(json.utf8))
+
+        #expect(restored.trainingMaxHistory.isEmpty)
+        // Anchored, so the emptiness above is not simply a file this build failed to read: the
+        // section beside it came through whole.
+        #expect(restored.trainingMaxes.count == 1)
+        #expect(restored.trainingMaxes.first?.percentage == 0.9)
+        #expect(restored.formatVersion == 3)
+        #expect(restored.contents == .fullBackup)
     }
 }

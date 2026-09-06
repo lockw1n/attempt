@@ -117,5 +117,63 @@
 			<string>%lld sets</string>
 		</dict>
 	</dict>
+	<!-- FR-16.1.1's set count, read after the second multiplication sign — which is decorative
+	     and hidden, as the first one is. A group never holds one set, so the singular is
+	     unreachable in English; it is spelled anyway, because a plural entry with a wrong "one"
+	     is a trap for whichever language reaches it. -->
+	<key>logging.session.set.group.count %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@sets@</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld set</string>
+			<key>other</key>
+			<string>%lld sets</string>
+		</dict>
+	</dict>
+	<!-- G-4.2: what FR-16.1.4's button would write, for a reader who has already moved past the
+	     line above it. "Log next set" alone does not say what "next" is. The load arrives already
+	     rendered — AppFormat decides how a weight reads, and a catalogue cannot. -->
+	<key>logging.session.set.group.log-next.label %@ %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Log next set, %1$@, %2$#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
+	<!-- FR-16.4.4's alert title. Plural on the set count, which is the noun's number: a workout
+	     left with one reads "1 set was not logged", and a .strings entry can only ever say
+	     "1 sets were". The verb agrees with it too, so the whole clause is inside the variant. -->
+	<key>logging.session.finish.pending.title %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@sets@</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld set was not logged</string>
+			<key>other</key>
+			<string>%lld sets were not logged</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

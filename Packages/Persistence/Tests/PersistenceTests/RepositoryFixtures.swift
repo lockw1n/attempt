@@ -77,7 +77,10 @@ func exerciseRecord(
 func sessionRecord(
     id: UUID = UUID(),
     date: Date = fixtureCreatedAt,
-    notes: String = ""
+    notes: String = "",
+    programRunID: UUID? = nil,
+    weekNumber: Int? = nil,
+    dayIndex: Int? = nil
 ) -> WorkoutSession {
     WorkoutSession(
         id: id,
@@ -86,11 +89,15 @@ func sessionRecord(
         deletedAt: nil,
         date: date,
         startedAt: nil,
-        endedAt: nil,
+        // Finished, so an uncompleted set in a fixture is a *failed* one rather than a
+        // pending one (`FR-16.4.1`) — the ordering read drops pending sets.
+        endedAt: date,
         notes: notes,
         bodyweight: nil,
-        programRunID: nil,
-        scheduledWorkoutID: nil
+        programRunID: programRunID,
+        scheduledWorkoutID: nil,
+        weekNumber: weekNumber,
+        dayIndex: dayIndex
     )
 }
 
@@ -162,7 +169,7 @@ func trainingMaxRecord(
     id: UUID = UUID(),
     exerciseID: UUID,
     effectiveFrom: Date,
-    grams: Int = 180_000
+    percentage: Double = 0.9
 ) -> TrainingMaxEntry {
     TrainingMaxEntry(
         id: id,
@@ -172,12 +179,103 @@ func trainingMaxRecord(
         exerciseID: exerciseID,
         source: .manual,
         sourceRepCount: nil,
-        manualWeight: Weight(grams: grams),
-        percentage: 0.9,
+        percentage: percentage,
         roundingIncrement: Weight(grams: 2500),
         roundingStrategy: .nearest,
         progressionIncrement: nil,
         effectiveFrom: effectiveFrom
+    )
+}
+
+func routineRecord(
+    id: UUID = UUID(),
+    name: String = "Squat day"
+) -> Routine {
+    Routine(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: nil,
+        name: name
+    )
+}
+
+func programRecord(
+    id: UUID = UUID(),
+    name: String = "#2",
+    notes: String = "14.09.25"
+) -> Program {
+    Program(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: nil,
+        name: name,
+        notes: notes
+    )
+}
+
+func programDayRecord(
+    id: UUID = UUID(),
+    programID: UUID,
+    routineID: UUID,
+    order: Int = 0
+) -> ProgramDay {
+    ProgramDay(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: nil,
+        programID: programID,
+        routineID: routineID,
+        order: order
+    )
+}
+
+// The four values are four different numbers on purpose — `weekNumber` and `nextDayIndex` are two
+// `Int`s on one row, so a default where they agreed would pass for a mapping that wrote either into
+// both.
+// The default `startedAt` is deliberately NOT `fixtureCreatedAt`: a run carries three dates, and one
+// sitting on its own `createdAt` passes for a mapping that sourced the start from the audit column.
+func programRunRecord(
+    id: UUID = UUID(),
+    programID: UUID,
+    startedAt: Date = fixtureCreatedAt - 7 * 86_400,
+    endedAt: Date? = nil,
+    weekNumber: Int = 2,
+    nextDayIndex: Int = 1
+) -> ProgramRun {
+    ProgramRun(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: nil,
+        programID: programID,
+        startedAt: startedAt,
+        endedAt: endedAt,
+        weekNumber: weekNumber,
+        nextDayIndex: nextDayIndex
+    )
+}
+
+func trainingMaxHistoryRecord(
+    id: UUID = UUID(),
+    exerciseID: UUID,
+    effectiveFrom: Date,
+    grams: Int = 180_000,
+    oldGrams: Int? = nil,
+    reason: String = "coach"
+) -> TrainingMaxHistoryEntry {
+    TrainingMaxHistoryEntry(
+        id: id,
+        createdAt: fixtureCreatedAt,
+        updatedAt: fixtureUpdatedAt,
+        deletedAt: nil,
+        exerciseID: exerciseID,
+        effectiveFrom: effectiveFrom,
+        oldWeight: oldGrams.map(Weight.init(grams:)),
+        newWeight: Weight(grams: grams),
+        reason: reason
     )
 }
 

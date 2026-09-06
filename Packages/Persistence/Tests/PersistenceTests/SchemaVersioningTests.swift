@@ -85,7 +85,7 @@ struct SchemaVersioningTests {
     func everyModelConforms() {
         // The count guard first, for `everyModelPasses`'s reason: an empty list has no
         // non-conforming member and would pass by having nothing in it.
-        #expect(SchemaV1.models.count == 13)
+        #expect(SchemaV1.models.count == 17)
         #expect(nonConformingModels(in: SchemaV1.models) == [])
     }
 

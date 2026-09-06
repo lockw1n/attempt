@@ -104,9 +104,28 @@ extension LoggingStrings {
         resource("logging.session.adherence \(asPrescribed) \(prescribed)")
     }
 
+    // MARK: - A load as a share of the training max (FR-16.7.1)
+
+    /// A load read against the training max in force on the session's day.
+    ///
+    /// **`TM` rather than the words, and that is the requirement's own spelling.** It sits under a
+    /// load on a row already spending its width on two 44pt controls; "of the training max" at
+    /// `NFR-1.10`'s ceiling takes three lines to say what the reader already knows they are looking
+    /// at.
+    ///
+    /// **The percentage arrives already rendered**, on ``sessionPlanTarget(weight:reps:)``'s rule:
+    /// a number formatted here would be formatted twice, and the symbol's place is the locale's.
+    ///
+    /// - Parameter percentage: The share, rendered for the reader.
+    /// - Returns: The annotation.
+    static func setTrainingMaxShare(_ percentage: String) -> LocalizedStringResource {
+        resource("logging.set.training-max-share \(percentage)")
+    }
+
     /// This surface's copy, for ``LoggingStrings/all``.
     static var allPlanStrings: [LocalizedStringResource] {
         [
+            setTrainingMaxShare("88%"),
             sessionExerciseMarkedDone, sessionExerciseSkipped,
             sessionPlanNextHeading, sessionPlanLogAction, sessionPlanOnTarget,
             sessionPlanTarget(weight: "", reps: 0),

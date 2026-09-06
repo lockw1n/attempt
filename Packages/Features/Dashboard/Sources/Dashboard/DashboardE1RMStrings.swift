@@ -20,8 +20,17 @@ extension DashboardStrings {
     /// What to do about it. The control itself is the link directly beneath.
     static let tilesNoneChosenMessage = resource("dashboard.tiles.none.message")
 
-    /// `FR-1.7.5`'s "clearly marked as manual", in the context line a delta would otherwise hold.
-    static let tileManual = resource("dashboard.tiles.manual")
+    /// `FR-15.1.8`'s line under the estimate: the coach's number, named by a word so the two are
+    /// never read as one (`G-4.5`).
+    ///
+    /// **The load arrives already rendered**, on ``tileAbsence(_:days:)``'s rule: a weight formatted
+    /// here would be formatted twice.
+    ///
+    /// - Parameter weight: The training max in force, rendered for the reader.
+    /// - Returns: The line.
+    static func tileTrainingMax(_ weight: String) -> LocalizedStringResource {
+        resource("dashboard.tiles.training-max \(weight)")
+    }
 
     /// There is a number but nothing earlier to compare it with — a first estimate, or the only one
     /// inside the window.
@@ -41,6 +50,41 @@ extension DashboardStrings {
 
     /// A tile could not be added or removed. Nothing changed.
     static let tilesChooseWriteError = resource("dashboard.tiles.choose.write-error")
+
+    /// Every tiled lift is without an estimate, so the section says it once instead of three times
+    /// (`FR-16.5.2`, `FR-1.13.3`).
+    ///
+    /// **The per-exercise reason is dropped here on purpose.** Three one-line tiles each saying
+    /// their own version of "nothing yet" is the repetition `FR-16.5.2` shortened the tile for; when
+    /// none of them has a number there is one thing to say and one place to say it.
+    static let tilesNoEstimates = resource("dashboard.tiles.no-estimates")
+
+    /// The same seven reasons as ``tileAbsence(_:days:)``, in the words a tile has room for
+    /// (`FR-16.5.2`).
+    ///
+    /// **Short because the tile is one line, and paired rather than replacing.** The long sentence
+    /// stays as what VoiceOver reads (`G-4.2`) and as what the exercise detail screen shows — a
+    /// reader who cannot see the tile is not the one being saved space, and a phrase like
+    /// "Warm-ups only" read on its own says nothing about which exercise or which window.
+    ///
+    /// **Only the stale reason keeps the window's length.** It is the one whose meaning is the
+    /// window; the others name what the sets themselves were, which is true at any length.
+    ///
+    /// - Parameters:
+    ///   - absence: Why the estimate is missing.
+    ///   - days: The window's length.
+    /// - Returns: The phrase.
+    static func tileAbsenceShort(_ absence: EstimateAbsence, days: Int) -> LocalizedStringResource {
+        switch absence {
+        case .noSetsLogged: resource("dashboard.tiles.short.none")
+        case .noneInWindow: resource("dashboard.tiles.short.stale \(days)")
+        case .refused(.warmup): resource("dashboard.tiles.short.warmups")
+        case .refused(.incomplete): resource("dashboard.tiles.short.incomplete")
+        case .refused(.assisted): resource("dashboard.tiles.short.assisted")
+        case .refused(.repsOutOfRange): resource("dashboard.tiles.short.high-reps")
+        case .refused(.formulaDeclined): resource("dashboard.tiles.short.no-effort")
+        }
+    }
 
     /// Why a tiled exercise shows no number (`FR-1.13.3`).
     ///

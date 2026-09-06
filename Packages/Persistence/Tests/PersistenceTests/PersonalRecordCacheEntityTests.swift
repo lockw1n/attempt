@@ -17,9 +17,15 @@ struct PersonalRecordCacheEntityTests {
             makeCachedRecord(
                 exerciseID: exerciseID,
                 repCount: 3,
+                setCount: 4,
                 weightGrams: 180_000,
                 sourceSetID: sourceSetID,
-                achievedAt: achieved
+                achievedAt: achieved,
+                previousWeightGrams: 175_000,
+                // A literal that is nobody's shipped version, so the round trip asserts that the
+                // column carries what it was given rather than re-reading the constant the fixture
+                // wrote — and so a `TR-16.1`-shaped bump does not have to edit this line.
+                computationVersion: 7
             )
         )
         try context.saveStamped()
@@ -30,10 +36,64 @@ struct PersonalRecordCacheEntityTests {
 
         #expect(stored.exerciseID == exerciseID)
         #expect(stored.repCount == 3)
+        #expect(stored.setCount == 4)
         #expect(stored.weightGrams == 180_000)
         #expect(stored.sourceSetID == sourceSetID)
         #expect(stored.achievedAt == achieved)
-        #expect(stored.computationVersion == 1)
+        #expect(stored.previousWeightGrams == 175_000)
+        #expect(stored.computationVersion == 7)
+    }
+
+    // TR-16.1's second column, and the distinction FR-16.3.4 hides a feed row on: a baseline stores
+    // nothing here, and `Weight` is signed, so a beaten load of zero is a real one that must not
+    // read as a baseline.
+    @Test("A baseline stores no beaten load, and a beaten load of zero is not a baseline")
+    func aBaselineIsNotAZero() throws {
+        let context = try makeSupportingContext()
+        let exerciseID = UUID()
+        context.insert(
+            makeCachedRecord(exerciseID: exerciseID, repCount: 5, weightGrams: 100_000))
+        context.insert(
+            makeCachedRecord(
+                exerciseID: exerciseID,
+                repCount: 6,
+                weightGrams: 100_000,
+                previousWeightGrams: 0))
+        try context.saveStamped()
+
+        let stored = try context.fetch(
+            FetchDescriptor<PersonalRecordCacheEntity>.notDeleted(
+                sortBy: [SortDescriptor(\.repCount)]))
+
+        #expect(stored.map(\.previousWeightGrams) == [nil, 0])
+    }
+
+    // FR-16.2.1's key is the pair, so one run legitimately holds a whole rectangle of cells at one
+    // weight — the two-dimensional form of the row below.
+    @Test("One source set legitimately holds a rectangle of schemes")
+    func oneRunHoldsARectangle() throws {
+        let context = try makeSupportingContext()
+        let exerciseID = UUID()
+        let sourceSetID = UUID()
+        for repCount in 1...5 {
+            for setCount in 1...5 {
+                context.insert(
+                    makeCachedRecord(
+                        exerciseID: exerciseID,
+                        repCount: repCount,
+                        setCount: setCount,
+                        weightGrams: 160_000,
+                        sourceSetID: sourceSetID))
+            }
+        }
+        try context.saveStamped()
+
+        let stored = try context.fetch(
+            FetchDescriptor<PersonalRecordCacheEntity>.notDeleted())
+
+        #expect(stored.count == 25)
+        #expect(Set(stored.map(\.setCount)) == [1, 2, 3, 4, 5])
+        #expect(stored.allSatisfy { $0.sourceSetID == sourceSetID })
     }
 
     // G-1.5's done-when. A bump invalidates every cached row at the old version, and the rows are

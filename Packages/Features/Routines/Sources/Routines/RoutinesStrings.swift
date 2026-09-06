@@ -229,6 +229,7 @@ enum RoutinesStrings {
             + [1, 2].map(listExerciseCount)
             + [1, 2].map(editorGroupHeading)
             + MassUnit.allCases.map(unitSymbol(for:))
+            + allProgramStrings
     }
 
     /// Binds a key to this module's catalogue.

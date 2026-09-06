@@ -160,14 +160,15 @@ struct RestoreStateTests {
         let state = RestoreState(
             restore: StoreRestore(
                 exercises: FailingExerciseSave(),
+                trainingMaxes: stack.trainingMaxes,
                 workouts: stack.workouts,
                 bodyweight: stack.bodyweight,
                 equipment: stack.equipment,
                 routines: stack.routines,
+                programs: stack.programs,
                 settings: stack.settings,
                 records: PersonalRecordRecomputer(
                     workouts: stack.workouts,
-                    exercises: stack.exercises,
                     cache: stack.personalRecords)))
 
         await state.read(url)
@@ -191,14 +192,15 @@ struct RestoreStateTests {
         let state = RestoreState(
             restore: StoreRestore(
                 exercises: gated,
+                trainingMaxes: stack.trainingMaxes,
                 workouts: stack.workouts,
                 bodyweight: stack.bodyweight,
                 equipment: stack.equipment,
                 routines: stack.routines,
+                programs: stack.programs,
                 settings: stack.settings,
                 records: PersonalRecordRecomputer(
                     workouts: stack.workouts,
-                    exercises: stack.exercises,
                     cache: stack.personalRecords)))
         await state.read(url)
 

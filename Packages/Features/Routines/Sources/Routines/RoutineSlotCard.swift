@@ -26,7 +26,11 @@ struct RoutineSlotCard: View {
             } label: {
                 Text(RoutinesStrings.editorAddGroup)
             }
-            .buttonStyle(.primaryAction(.intrinsic))
+            // Secondary: this is drawn once per slot, so a three-exercise routine would otherwise
+            // put three filled accents on a screen that already has **Save** (`FR-16.6.4`).
+            // Intrinsic width is unchanged — `PrimaryActionWidth` chooses width and nothing else,
+            // which is why this call site was invisible to a grep for `.fill`.
+            .buttonStyle(.secondaryAction(.intrinsic))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Spacing.md.points)

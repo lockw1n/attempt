@@ -24,5 +24,23 @@
 			<string>%lld working sets</string>
 		</dict>
 	</dict>
+	<!-- FR-16.4.4's alert title, asked from the history card. Plural on the set count, which the
+	     verb agrees with: a session left with one reads "1 set was not logged". -->
+	<key>history.list.session.pending.title %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@sets@</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld set was not logged</string>
+			<key>other</key>
+			<string>%lld sets were not logged</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

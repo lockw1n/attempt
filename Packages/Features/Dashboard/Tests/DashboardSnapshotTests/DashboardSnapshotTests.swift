@@ -29,6 +29,10 @@
             // nothing to compare against, a manual override, and a refusal. They are only
             // comparable side by side, which is why this is one reference rather than four.
             //
+            // THE FOURTH TILE IS FR-16.5.2's one-liner, beside three that have numbers — which is
+            // what makes this reference the negative of `Dashboard-tiles-no-estimates` as well as
+            // the picture of a refusal.
+            //
             // NO FALLING TILE, and its absence is the point rather than an omission.
             // `EstimatedMax.delta` is strictly positive wherever it is not nil — see its own doc
             // comment — so a reference picturing a decline would be a committed image of a state
@@ -47,6 +51,29 @@
             // — nothing failed to compute, there is nothing to compute.
             try assertSnapshots(named: "Dashboard-tiles-none") {
                 EstimatedMaxTilesReading(state: .noneTiled, unit: .kilograms, retry: {})
+            }
+        }
+
+        @Test func noTileHasAnEstimate() throws {
+            // FR-16.5.2's section-level half, and the state a fresh install's dashboard is in:
+            // three tiles that would each say their own version of "nothing yet" say it once.
+            //
+            // THE TILES ARE STILL DRAWN, and the third is why (`FR-15.1.8`): it carries a training
+            // max the lifter typed, which the section's own sentence cannot hold. Each names its
+            // lift and nothing else, which is also what makes "one of these lifts" in that sentence
+            // point at something.
+            //
+            // ITS NEGATIVE IS `Dashboard-tiles`, which holds three estimates and one refusal — so
+            // the conditional that chooses between them is pictured true here and false there.
+            try assertSnapshots(named: "Dashboard-tiles-no-estimates") {
+                EstimatedMaxTilesReading(
+                    state: .noEstimates(DashboardFixtures.untrainedTiles),
+                    unit: .kilograms,
+                    retry: {}
+                )
+                // The third tile renders a load, so this reference pins its locale like the rest —
+                // it did not have to before the tiles were drawn under the message.
+                .environment(\.locale, DashboardFixtures.locale)
             }
         }
 
@@ -147,9 +174,31 @@
         }
 
         @Test func tilePicker() throws {
+            // FR-16.5.3: the search field, the trained section with a date under each name, and the
+            // remainder under its own heading. One picture, because the claim is the order of the
+            // two sections relative to each other.
             try assertSnapshots(named: "Dashboard-tile-picker") {
                 TiledExerciseSelectionReading(
-                    state: .ready(DashboardFixtures.choices),
+                    state: .ready(DashboardFixtures.pickerSections),
+                    searchText: .constant(""),
+                    hasFailedWrite: false,
+                    retry: {},
+                    toggle: { _ in }
+                )
+                .environment(\.locale, DashboardFixtures.locale)
+                .environment(\.timeZone, .gmt)
+            }
+        }
+
+        @Test func tilePickerSearchMatchedNothing() throws {
+            // The negative of the reference above, and it pins two things a picture is the only
+            // check for: the field keeps the query that caused the state — so the reader can see the
+            // cause — and it is still on screen above the message, which is what makes replacing the
+            // rows recoverable here (see `ExerciseChoiceList`'s own note).
+            try assertSnapshots(named: "Dashboard-tile-picker-no-matches") {
+                TiledExerciseSelectionReading(
+                    state: .ready([]),
+                    searchText: .constant("hack squat"),
                     hasFailedWrite: false,
                     retry: {},
                     toggle: { _ in }
@@ -167,20 +216,29 @@
         /// matches next year.
         static let day = Date(timeIntervalSince1970: 1_700_000_000)
 
-        /// Four tiles: up, first, manual, refused — every variant the pipeline can reach.
+        /// Four tiles: up with a training max under it, first without one, up again, refused *with*
+        /// one — every variant the pipeline can reach.
+        ///
+        /// **`FR-15.1.8`'s pair is the first tile, and the second is what makes it legible.** The
+        /// squat carries both numbers, one under the other and each named by a word; the deadlift
+        /// carries only the estimate, because most exercises have no training max and an absence
+        /// drawn as a zero or a dash is the failure this arrangement is a picture of.
+        ///
+        /// **The row is the fourth tile's whole point: "the training max must not be invisible"
+        /// applies to an exercise the app cannot estimate.** That is not a corner — it is the
+        /// exercise a coach has just handed a number for and the lifter has not trained yet. The
+        /// number sits beneath the insufficient-data view rather than inside it, so the explanation
+        /// stays about the estimate.
         static let tiles: [EstimatedMaxTile] = [
-            tile("Back Squat", kilos: 182.5, previousKilos: 175),
+            tile("Back Squat", kilos: 182.5, previousKilos: 175, trainingMaxKilos: 175),
             tile("Deadlift", kilos: 210, previousKilos: nil),
-            EstimatedMaxTile(
-                exerciseID: id(4),
-                name: "Overhead Press",
-                estimate: EstimatedMax(
-                    manual: Weight(grams: 70_000), formula: .epley, lookback: .default)),
+            tile("Overhead Press", kilos: 72.5, previousKilos: 70, trainingMaxKilos: 67.5),
             EstimatedMaxTile(
                 exerciseID: id(5),
                 name: "Barbell Row",
                 estimate: EstimatedMax(
-                    absence: .refused(.repsOutOfRange), formula: .epley, lookback: .default)),
+                    absence: .refused(.repsOutOfRange), formula: .epley, lookback: .default),
+                trainingMax: Weight(grams: 100_000)),
         ]
 
         /// A week's load: 12,400 kg, enough digits that a grouping separator shows.
@@ -202,16 +260,36 @@
             exerciseNames: ["Back Squat", "Bench Press"],
             workingSetCount: 4)
 
+        /// The section with nothing to estimate from: three lifts, the last of them carrying the
+        /// training max a coach handed over before any of it was trained (`FR-15.1.8`).
+        static let untrainedTiles: [EstimatedMaxTile] = [
+            untrained("Back Squat", absence: .noSetsLogged),
+            untrained("Bench Press", absence: .noSetsLogged),
+            untrained("Deadlift", absence: .refused(.warmup), trainingMaxKilos: 200),
+        ]
+
         /// The picker's rows, two of them ticked.
         static let choices: [TiledExerciseChoice] = [
-            TiledExerciseChoice(exerciseID: id(1), name: "Back Squat", isTiled: true),
-            TiledExerciseChoice(exerciseID: id(2), name: "Bench Press", isTiled: true),
-            TiledExerciseChoice(exerciseID: id(3), name: "Deadlift", isTiled: false),
+            TiledExerciseChoice(
+                exerciseID: id(1),
+                name: "Back Squat",
+                isTiled: true,
+                lastTrained: day.addingTimeInterval(-2 * 86_400)),
+            TiledExerciseChoice(
+                exerciseID: id(2),
+                name: "Bench Press",
+                isTiled: true,
+                lastTrained: day.addingTimeInterval(-9 * 86_400)),
+            TiledExerciseChoice(
+                exerciseID: id(3), name: "Deadlift", isTiled: false, lastTrained: nil),
         ]
+
+        /// Those rows split as `FR-16.5.3` draws them: two trained, one not.
+        static let pickerSections = ExerciseChoiceSections.sections(choices, matching: "")
 
         /// One computed tile, with or without something to compare against.
         private static func tile(
-            _ name: String, kilos: Double, previousKilos: Double?
+            _ name: String, kilos: Double, previousKilos: Double?, trainingMaxKilos: Double? = nil
         ) -> EstimatedMaxTile {
             EstimatedMaxTile(
                 exerciseID: id(name.count),
@@ -220,7 +298,19 @@
                     record: record(kilos, daysAgo: 3),
                     previous: previousKilos.map { record($0, daysAgo: 20) },
                     formula: .epley,
-                    lookback: .default))
+                    lookback: .default),
+                trainingMax: trainingMaxKilos.map { Weight(grams: Int($0 * 1000)) })
+        }
+
+        /// One tile the app cannot put a number on.
+        private static func untrained(
+            _ name: String, absence: EstimateAbsence, trainingMaxKilos: Double? = nil
+        ) -> EstimatedMaxTile {
+            EstimatedMaxTile(
+                exerciseID: id(name.count),
+                name: name,
+                estimate: EstimatedMax(absence: absence, formula: .epley, lookback: .default),
+                trainingMax: trainingMaxKilos.map { Weight(grams: Int($0 * 1000)) })
         }
 
         /// One dated record.

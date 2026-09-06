@@ -12,53 +12,6 @@ import PowerliftingCore
 /// string that both would show is still written twice, once per screen, because the two are free to
 /// diverge and a shared key is what stops them.
 enum LoggingStrings {
-    // MARK: - Train root (FR-1.2.1, FR-1.2.11, FR-1.13.2)
-
-    /// The heading when nothing is in progress and nothing has been logged into today yet.
-    static let trainEmptyHeadline = resource("logging.train.empty.headline")
-
-    /// What to do about it — `FR-1.13.2`'s guidance towards a first workout.
-    static let trainEmptyMessage = resource("logging.train.empty.message")
-
-    /// The command that starts a workout (`FR-1.2.1`).
-    static let trainStartAction = resource("logging.train.start.action")
-
-    /// The heading over the date control.
-    static let trainDateSection = resource("logging.train.date.section")
-
-    /// The date picker's own label — the backdating half of `FR-1.2.1`.
-    static let trainDatePicker = resource("logging.train.date.picker")
-
-    /// What the date control is for, where the label alone does not say it.
-    static let trainDateHint = resource("logging.train.date.hint")
-
-    /// The heading when a workout is in progress.
-    static let trainInProgressSection = resource("logging.train.in-progress.section")
-
-    /// The training day the workout in progress belongs to.
-    static let trainInProgressDay = resource("logging.train.in-progress.day")
-
-    /// When the workout in progress was started.
-    static let trainInProgressStarted = resource("logging.train.in-progress.started")
-
-    /// The way back into the workout in progress (`FR-1.2.11`).
-    static let trainInProgressResume = resource("logging.train.in-progress.resume")
-
-    /// The way into the exercise library from the session surface.
-    static let trainLibraryAction = resource("logging.train.library.action")
-
-    /// The way into the routines (`FR-15.2.1`), beside the library's.
-    static let trainRoutinesAction = resource("logging.train.routines.action")
-
-    /// The heading when the workouts could not be read.
-    static let trainErrorHeadline = resource("logging.train.error.headline")
-
-    /// What the user can understand about that failure — never the diagnostic.
-    static let trainErrorMessage = resource("logging.train.error.message")
-
-    /// A start that could not be written — a failed *write*, beside the command that issued it.
-    static let trainStartErrorMessage = resource("logging.train.start-error.message")
-
     // MARK: - The workout in progress (FR-1.2.11, FR-1.2.12)
 
     /// The screen's navigation title.
@@ -67,11 +20,20 @@ enum LoggingStrings {
     /// is no tab whose name it could contradict.
     static let sessionTitle = resource("logging.session.title")
 
-    /// The heading over the workout's own facts.
-    static let sessionSummarySection = resource("logging.session.summary.section")
-
-    /// The training day this workout belongs to.
-    static let sessionDay = resource("logging.session.day")
+    /// The same title once a workout is held — the screen's name and the training day, together
+    /// (`FR-16.6.1`).
+    ///
+    /// **The day arrives already rendered**, for ``setWarmupNumber(_:)``'s reason: the style is
+    /// `AppFormat.dayAndMonth`, bound to the view's locale, and a date formatted here instead would
+    /// be the one date in this module not going through it. The separator is inside the value
+    /// rather than interpolated at the call site, so a language that joins the two differently has
+    /// somewhere to say so.
+    ///
+    /// - Parameter day: The training day, already rendered.
+    /// - Returns: The title.
+    static func sessionTitleDay(_ day: String) -> LocalizedStringResource {
+        resource("logging.session.title.day \(day)")
+    }
 
     /// When it was started.
     static let sessionStarted = resource("logging.session.started")
@@ -359,20 +321,6 @@ enum LoggingStrings {
             : resource("logging.session.set.mark-warmup")
     }
 
-    /// Whether a set was completed or failed (`FR-1.2.5`), as VoiceOver's label for the glyph that
-    /// says it.
-    ///
-    /// **The word the glyph stands for**, which is what keeps the outcome off the tint alone
-    /// (`G-4.5`): the row draws a check or a cross, and this is the same fact in a sentence.
-    ///
-    /// - Parameter isCompleted: Whether the set was completed.
-    /// - Returns: The outcome, as a word.
-    static func setOutcome(isCompleted: Bool) -> LocalizedStringResource {
-        isCompleted
-            ? resource("logging.session.set.outcome.completed")
-            : resource("logging.session.set.outcome.failed")
-    }
-
     /// What tapping that glyph does (`FR-1.2.5`), as VoiceOver's hint on it.
     ///
     /// The action rather than the state, for ``setMarkAction(isWarmup:)``'s reason.
@@ -440,13 +388,16 @@ enum LoggingStrings {
     static var all: [LocalizedStringResource] {
         [
             trainEmptyHeadline, trainEmptyMessage, trainStartAction, trainDateSection,
-            trainDatePicker, trainDateHint, trainInProgressSection, trainInProgressDay,
-            trainInProgressStarted, trainInProgressResume, trainLibraryAction,
+            trainDatePicker, trainDateHint, trainInProgressSection, trainPlannedSection,
+            trainInProgressDay,
+            trainInProgressStarted, trainInProgressResume, trainPlannedOpen, trainLibraryAction,
             trainRoutinesAction,
             trainErrorHeadline,
-            trainErrorMessage, trainStartErrorMessage, sessionTitle, sessionSummarySection,
-            sessionDay, sessionStarted, sessionEmptyHeadline, sessionEmptyMessage,
-            sessionFinishAction, sessionDiscardAction, sessionDiscardConfirmTitle,
+            trainErrorMessage, trainStartErrorMessage, sessionTitle, sessionTitleDay("Sep 4"),
+            sessionStarted, sessionEmptyHeadline, sessionEmptyMessage,
+            sessionFinishAction, sessionFinishPendingTitle(1), sessionFinishPendingTitle(3),
+            sessionFinishPendingMessage, sessionFinishPendingRemove, sessionFinishPendingKeep,
+            sessionFinishPendingCancel, sessionDiscardAction, sessionDiscardConfirmTitle,
             sessionDiscardConfirmMessage, sessionDiscardConfirmAction, sessionDiscardConfirmCancel,
             sessionErrorHeadline, sessionErrorMessage, sessionEndedHeadline, sessionEndedMessage,
             sessionWriteErrorMessage, sessionExercisesSection, sessionAddExerciseAction,
@@ -469,10 +420,11 @@ enum LoggingStrings {
             setWarmupNumber("1"), setWarmupPosition(1), setWarmupSection, setWarmupLabel,
             setWarmupHint,
         ] + allModifierStrings + allPlateStrings + allEquipmentStrings + allPastSessionStrings
-            + allRecordStrings + allPlanStrings
+            + allRecordStrings + allPlanStrings + allSetGroupStrings
+            + allProgramStrings
             + MassUnit.allCases.map(setUnitSymbol(for:))
             + [true, false].map(setMarkAction(isWarmup:))
-            + [true, false].map(setOutcome(isCompleted:))
+            + [SetOutcome.completed, .failed, .pending].map(setOutcome)
             + [true, false].map(setOutcomeAction(isCompleted:))
     }
 

@@ -17,6 +17,12 @@ let codingDeletedAt = Date(timeIntervalSince1970: 1_700_007_200)
 let codingID = UUID(uuidString: "0f7b6a5c-1111-4222-8333-444455556666") ?? UUID()
 let codingJoinID = UUID(uuidString: "0f7b6a5c-7777-4888-8999-aaaabbbbcccc") ?? UUID()
 
+/// A second join key, for a record whose two joins are the same type and must not agree.
+///
+/// One id everywhere else is deliberate and cheap; it stops being safe the moment a coding pair
+/// could be crossed and still round-trip. ``codingProgramDay()`` is that record.
+let codingOtherJoinID = UUID(uuidString: "0f7b6a5c-dddd-4eee-8fff-000011112222") ?? UUID()
+
 func codingExercise() -> Exercise {
     Exercise(
         id: codingID,
@@ -49,7 +55,9 @@ func codingSession() -> WorkoutSession {
         notes: "hot gym",
         bodyweight: Weight(grams: 82_400),
         programRunID: codingJoinID,
-        scheduledWorkoutID: codingJoinID
+        scheduledWorkoutID: codingJoinID,
+        weekNumber: 2,
+        dayIndex: 1
     )
 }
 
@@ -115,12 +123,28 @@ func codingTrainingMaxEntry() -> TrainingMaxEntry {
         exerciseID: codingJoinID,
         source: .percentOfRepMax,
         sourceRepCount: 3,
-        manualWeight: Weight(grams: 180_000),
         percentage: 0.85,
         roundingIncrement: Weight(grams: 5000),
         roundingStrategy: .down,
         progressionIncrement: Weight(grams: 2500),
         effectiveFrom: codingCreatedAt
+    )
+}
+
+func codingTrainingMaxHistoryEntry() -> TrainingMaxHistoryEntry {
+    TrainingMaxHistoryEntry(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        exerciseID: codingJoinID,
+        // A day before `codingCreatedAt` rather than equal to it: this record carries three dates,
+        // and a fixture stamping two of them from one instant round-trips clean through a coder
+        // that wrote either key into both.
+        effectiveFrom: codingCreatedAt.addingTimeInterval(-86_400),
+        oldWeight: Weight(grams: 140_000),
+        newWeight: Weight(grams: 180_000),
+        reason: "coach"
     )
 }
 
@@ -167,9 +191,11 @@ func codingPersonalRecordCache() -> PersonalRecordCache {
         deletedAt: codingDeletedAt,
         exerciseID: codingJoinID,
         repCount: 3,
+        setCount: 4,
         weight: Weight(grams: 180_000),
         sourceSetID: codingJoinID,
         achievedAt: codingCreatedAt,
+        previousWeight: Weight(grams: 175_000),
         computationVersion: 1
     )
 }
@@ -207,6 +233,43 @@ func codingRoutineTargetGroup() -> RoutineTargetGroup {
         targetWeight: Weight(grams: 90_000),
         targetReps: 4,
         targetSets: 4
+    )
+}
+
+func codingProgram() -> Program {
+    Program(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        name: "#2",
+        notes: "14.09.25"
+    )
+}
+
+func codingProgramDay() -> ProgramDay {
+    ProgramDay(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        programID: codingJoinID,
+        routineID: codingOtherJoinID,
+        order: 2
+    )
+}
+
+func codingProgramRun() -> ProgramRun {
+    ProgramRun(
+        id: codingID,
+        createdAt: codingCreatedAt,
+        updatedAt: codingUpdatedAt,
+        deletedAt: codingDeletedAt,
+        programID: codingJoinID,
+        startedAt: codingCreatedAt,
+        endedAt: codingUpdatedAt,
+        weekNumber: 2,
+        nextDayIndex: 1
     )
 }
 

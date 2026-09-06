@@ -1,3 +1,4 @@
+import DerivedValues
 import DesignSystem
 import Foundation
 import RepositoryInterface
@@ -15,8 +16,8 @@ enum TiledExerciseSelectionScreenState: Equatable {
     /// The catalogue holds nothing that can be tiled.
     case empty
 
-    /// There are exercises to choose among.
-    case ready([TiledExerciseChoice])
+    /// There are exercises to choose among, split into `FR-16.5.3`'s two sections.
+    case ready([ExerciseChoiceSection])
 
     /// The catalogue could not be read; a retry may work.
     case failed
@@ -24,12 +25,17 @@ enum TiledExerciseSelectionScreenState: Equatable {
     /// Which state a load is in. The failure outranks a list already on screen, on the tiles
     /// section's rule.
     ///
+    /// **`empty` is measured on the catalogue, not on the sections.** A search that matched nothing
+    /// is not a catalogue with nothing in it: the first has a query to clear and the second has
+    /// nothing to do at all, and ``ExerciseChoiceList`` draws the no-matches state itself, under the
+    /// field that causes it.
+    ///
     /// - Parameter state: The picker's load.
     /// - Returns: The state to draw.
     static func current(_ state: TiledExerciseSelectionState) -> Self {
         if state.failure != nil { return .failed }
         guard state.hasLoaded else { return .loading }
-        return state.choices.isEmpty ? .empty : .ready(state.choices)
+        return state.choices.isEmpty ? .empty : .ready(state.sections)
     }
 }
 
@@ -52,17 +58,25 @@ public struct TiledExerciseSelectionView: View {
     /// - Parameters:
     ///   - catalogue: The exercises to choose among.
     ///   - settings: Where the selection is stored.
-    public init(catalogue: any ExerciseRepository, settings: any SettingsRepository) {
+    ///   - records: The app's one recompute actor, for `FR-16.5.1`'s fallback ranking.
+    public init(
+        catalogue: any ExerciseRepository,
+        settings: any SettingsRepository,
+        records: PersonalRecordRecomputer
+    ) {
         _state = State(
-            initialValue: TiledExerciseSelectionState(catalogue: catalogue, settings: settings))
+            initialValue: TiledExerciseSelectionState(
+                catalogue: catalogue, settings: settings, records: records))
     }
 
     /// The list, and the read that fills it.
     public var body: some View {
-        ScrollView {
+        @Bindable var state = state
+        return ScrollView {
             VStack(alignment: .leading, spacing: Spacing.lg.points) {
                 TiledExerciseSelectionReading(
                     state: TiledExerciseSelectionScreenState.current(state),
+                    searchText: $state.searchText,
                     hasFailedWrite: state.writeFailure != nil,
                     retry: { Task { await state.load() } },
                     toggle: { exerciseID in Task { await state.toggle(exerciseID) } }
@@ -85,6 +99,9 @@ struct TiledExerciseSelectionReading: View {
     /// Which of the four states to draw.
     let state: TiledExerciseSelectionScreenState
 
+    /// What the user typed, bound to the state that holds it.
+    @Binding var searchText: String
+
     /// Whether the last toggle failed to store. Nothing changed if it did.
     let hasFailedWrite: Bool
 
@@ -95,52 +112,28 @@ struct TiledExerciseSelectionReading: View {
     let toggle: (UUID) -> Void
 
     /// The state, and the failed write beneath it where there is one.
+    ///
+    /// **The three non-`ready` states keep the `Card`; `ready` does not.** `FR-16.5.3`'s sections
+    /// are ``DesignSystem/GroupedSection``s, which are cards already, and nesting them inside one
+    /// more would draw a surface around a surface. A message, a spinner or an error is a single
+    /// block and still wants one.
     @ViewBuilder var body: some View {
-        Card {
-            VStack(alignment: .leading, spacing: Spacing.sm.points) {
-                switch state {
-                case .loading:
-                    LoadingStateView()
-                case .empty:
-                    EmptyStateView(headline: Text(DashboardStrings.tilesChooseEmpty))
-                case .failed:
-                    ErrorStateView(message: Text(DashboardStrings.tilesChooseError), retry: retry)
-                case .ready(let choices):
-                    ForEach(choices) { choice in
-                        TiledExerciseRow(choice: choice, toggle: toggle)
-                    }
-                }
+        switch state {
+        case .loading:
+            Card { LoadingStateView() }
+        case .empty:
+            Card { EmptyStateView(headline: Text(DashboardStrings.tilesChooseEmpty)) }
+        case .failed:
+            Card {
+                ErrorStateView(message: Text(DashboardStrings.tilesChooseError), retryEmphasis: .primary, retry: retry)
             }
+        case .ready(let sections):
+            ExerciseChoiceList(searchText: $searchText, sections: sections, toggle: toggle)
         }
         if hasFailedWrite {
             // No retry closure: nothing was stored and the row is unchanged, so trying again is the
             // same tap on the same row.
             ErrorStateView(message: Text(DashboardStrings.tilesChooseWriteError))
         }
-    }
-}
-
-/// One exercise, and whether it is tiled.
-///
-/// **A `Toggle` rather than a tick and a tap target**, so the control announces its own state to
-/// VoiceOver (`G-4.2`) instead of leaving it to a glyph.
-struct TiledExerciseRow: View {
-    /// The exercise and its current membership.
-    let choice: TiledExerciseChoice
-
-    /// What flipping it does.
-    let toggle: (UUID) -> Void
-
-    /// The row.
-    var body: some View {
-        Toggle(
-            isOn: Binding(get: { choice.isTiled }, set: { _ in toggle(choice.exerciseID) })
-        ) {
-            Text(verbatim: choice.name)
-                .font(Typography.body.font)
-                .foregroundStyle(ColorToken.textPrimary)
-        }
-        .tint(ColorToken.brandAccent)
-        .frame(minHeight: TouchTarget.standard.points)
     }
 }

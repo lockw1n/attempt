@@ -33,6 +33,16 @@ enum SettingsStrings {
     /// What changing it does — `FR-1.7.3`'s retroactivity, said before it happens.
     static let estimatorDetail = resource("settings.landing.estimator.detail")
 
+    /// `FR-16.3`'s row: what the recent-PR feed reports on.
+    ///
+    /// **The row is this module's and the screen it opens is not** — `settings.recentRecords` is a
+    /// Settings route over a Dashboard screen, so the copy on the row lives here and the copy on the
+    /// screen lives there. Two catalogues, one feature, which is `FR-1.10.3`'s gyms again.
+    static let recentRecordsRow = resource("settings.landing.recent-records.row")
+
+    /// What that screen configures, in one line.
+    static let recentRecordsDetail = resource("settings.landing.recent-records.detail")
+
     /// What a failed read means, in the user's words rather than the store's.
     static let loadErrorMessage = resource("settings.landing.load-error.message")
 
@@ -176,6 +186,7 @@ enum SettingsStrings {
             unitsTitle, unitsPicker, writeErrorTitle, writeErrorMessage,
             loadErrorTitle, loadErrorMessage,
             loadErrorRetry, estimatorTitle, estimatorPicker, estimatorDetail,
+            recentRecordsRow, recentRecordsDetail,
             precisionPicker, precisionAutomatic, precisionDetail,
             lookbackPicker, lookbackDetail, lookbackDays(90),
             roundingTitle, roundingIncrement, roundingStrategy, roundingDetail,

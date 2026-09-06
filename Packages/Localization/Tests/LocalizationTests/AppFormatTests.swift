@@ -37,6 +37,47 @@ struct AppFormatTests {
                 == weight.formatted(AppFormat.weight(in: .pounds, locale: english)))
     }
 
+    /// `FR-16.5.2`, and the string in its own "done when": the dashboard's week tile drew
+    /// `8 240,0 kg` where History drew `8 240 kg`, because the two spelled "whole" out separately
+    /// and one of them stopped. The fraction is what made the difference two extra glyphs and a
+    /// second line of wrap at the largest Dynamic Type size.
+    @Test("A tonnage is whole in every locale — never 8 240,0 kg")
+    func atonnageIsWholeInEveryLocale() throws {
+        let ukrainian = Locale(identifier: "uk_UA")
+        let week = Weight(grams: 8_240_000)
+
+        // Each locale checked against its OWN decimal separator, not against a literal comma: the
+        // separator and the grouping mark swap places between these three, so a literal would pass
+        // in en for the grouping mark it is not looking at.
+        for locale in [english, german, ukrainian] {
+            let rendered = week.formatted(AppFormat.tonnage(in: .kilograms, locale: locale))
+            let separator = try #require(locale.decimalSeparator)
+            #expect(!rendered.contains(separator), "\(rendered) carries a fraction")
+        }
+
+        #expect(week.formatted(AppFormat.tonnage(in: .kilograms, locale: english)) == "8,240 kg")
+        // Ukrainian groups with a non-breaking space rather than a comma, which is the other half
+        // of why this figure had to be asserted in a second locale at all. Asserted as the string
+        // it *is*: `!= "8 240,0 kg"` would have passed for every wrong answer but one.
+        let grouping = try #require(ukrainian.groupingSeparator)
+        #expect(
+            week.formatted(AppFormat.tonnage(in: .kilograms, locale: ukrainian))
+                == "8\(grouping)240 кг")
+    }
+
+    /// The two callers are one rule: a session row and a week tile render the same total.
+    @Test("A tonnage is the whole-unit weight style, not a second rounding")
+    func atonnageIsTheWholeUnitStyle() {
+        let total = Weight(grams: 8_240_500)
+        #expect(
+            total.formatted(AppFormat.tonnage(in: .kilograms, locale: english))
+                == total.formatted(
+                    AppFormat.weight(in: .kilograms, precision: .whole, locale: english)))
+        #expect(
+            total.formatted(AppFormat.tonnage(in: .kilograms, locale: english))
+                != total.formatted(AppFormat.weight(in: .kilograms, locale: english)))
+    }
+
     @Test("A weight carries the locale's decimal separator")
     func weightSeparatorFollowsLocale() {
         let weight = Weight(grams: 102_500)
@@ -122,6 +163,31 @@ struct AppFormatTests {
         #expect(moment.formatted(style) == "Nov 14, 2023 at 10:13\u{202F}PM")
     }
 
+    @Test("A title's day drops the year and keeps the locale's own order")
+    func dayAndMonthDropsTheYear() {
+        let moment = Date(timeIntervalSince1970: 1_700_000_000)
+        var englishStyle = AppFormat.dayAndMonth(locale: english)
+        englishStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        var germanStyle = AppFormat.dayAndMonth(locale: german)
+        germanStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        #expect(moment.formatted(englishStyle) == "Nov 14")
+        #expect(moment.formatted(germanStyle) == "14. Nov.")
+        // The year is the whole difference from `date(locale:)`, and dropping it is the point.
+        #expect(!moment.formatted(englishStyle).contains("2023"))
+    }
+
+    @Test("A bare time carries no date at all")
+    func timeIsTheTimeAlone() {
+        let moment = Date(timeIntervalSince1970: 1_700_000_000)
+        var style = AppFormat.time(locale: english)
+        style.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        // The same narrow no-break space `dateAndTime` renders, and nothing before the hour.
+        #expect(moment.formatted(style) == "10:13\u{202F}PM")
+        var germanStyle = AppFormat.time(locale: german)
+        germanStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        #expect(moment.formatted(germanStyle) == "22:13")
+    }
+
     @Test("The calendar's heading names the month in full, in the locale's own order")
     func monthIsSpelledOut() {
         let moment = Date(timeIntervalSince1970: 1_700_000_000)
@@ -133,6 +199,48 @@ struct AppFormatTests {
         #expect(moment.formatted(englishStyle) == "November 2023")
         #expect(moment.formatted(germanStyle) == "November 2023")
         #expect(moment.formatted(englishStyle) != moment.formatted(AppFormat.date(locale: english)))
+    }
+
+    @Test("A month heading is the locale's own month, in the locale's own shape")
+    func monthHeadingIsLocalised() {
+        // `FR-16.6.3`'s session-list heading, in the app's two shipped locales (`G-3.4`). A heading
+        // built by interpolating a month name would write English into Ukrainian, and one built from
+        // an English template would still write the year the English way.
+        //
+        // SEPTEMBER 2026 IS `вересень 2026 р.` IN UKRAINIAN, NOT `вересень 2026`. The trailing
+        // `р.` — *року*, "of the year" — is how that locale writes a bare year, and it is the
+        // locale's to write. Asserting the truncated form would be asserting that this app knows
+        // better than CLDR does; asserting it in full is what pins the whole string.
+        let september = Date(timeIntervalSince1970: 1_789_000_000)
+        var englishStyle = AppFormat.month(locale: english)
+        englishStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        var ukrainianStyle = AppFormat.month(locale: Locale(identifier: "uk_UA"))
+        ukrainianStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        #expect(september.formatted(englishStyle) == "September 2026")
+        // Escaped rather than written out, and the escape is what caught it: the space before the
+        // year marker is U+202F, a *narrow* no-break space, which is invisible beside an ordinary one
+        // in every editor and terminal this was checked in.
+        let ukrainianSeptember =
+            "\u{0432}\u{0435}\u{0440}\u{0435}\u{0441}\u{0435}\u{043D}\u{044C} 2026\u{202F}\u{0440}."
+        #expect(september.formatted(ukrainianStyle) == ukrainianSeptember)
+    }
+
+    @Test("A day under a month heading drops the month and the year, and keeps the weekday")
+    func weekdayAndDayIsTheShortForm() {
+        // `FR-16.6.3`'s session-list row, which sits under a heading naming the month and the year.
+        // The separator and the order are the locale's — English writes `Tue 14`, Ukrainian
+        // `вт, 14` — which is the half an interpolated `"\(weekday) \(day)"` would get wrong.
+        let moment = Date(timeIntervalSince1970: 1_700_000_000)
+        var englishStyle = AppFormat.weekdayAndDay(locale: english)
+        englishStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        var ukrainianStyle = AppFormat.weekdayAndDay(locale: Locale(identifier: "uk_UA"))
+        ukrainianStyle.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        #expect(moment.formatted(englishStyle) == "Tue 14")
+        #expect(moment.formatted(ukrainianStyle) == "\u{0432}\u{0442}, 14")
+        // And it is genuinely shorter than the standalone date, which is the whole reason it exists.
+        #expect(
+            moment.formatted(englishStyle).count
+                < moment.formatted(AppFormat.date(locale: english)).count)
     }
 
     @Test("A grid cell is the day's number alone, and the digits are the locale's")

@@ -244,6 +244,13 @@ struct SetEditorFields: View {
             PlateLoadingRow(
                 target: target,
                 result: equipment.loading(for: target),
+                // The same resolver the calculator's own screen reads (`FR-16.6.5`): the row and the
+                // sheet it opens must not disagree about whether there is a gym.
+                state: PlateEquipmentState.current(
+                    hasLoaded: equipment.hasLoaded,
+                    hasEquipment: equipment.equipment != nil,
+                    failure: equipment.failure
+                ),
                 unit: draft.unit,
                 open: { isCalculating = true }
             )

@@ -48,3 +48,19 @@ public enum TrainingMaxSourceKind: String, Sendable, Hashable, CaseIterable {
     /// The weight in the row's manual-weight column, taken as entered (`FR-1.5.1.5`).
     case manual
 }
+
+/// Which exercises `FR-1.6.5`'s feed reports on (`FR-16.3.1`).
+///
+/// **A discriminator, not a selection.** ``chosen`` names its exercises in a column of their own and
+/// ``dashboardLifts`` names none at all — it reads `FR-1.9.1`'s selection, which is the point of the
+/// case existing: one place to say which lifts matter, obeyed by the tiles and by the feed.
+public enum RecentRecordsScope: String, Sendable, Hashable, CaseIterable {
+    /// `FR-1.9.1`'s dashboard selection, whatever it currently is. The default.
+    case dashboardLifts
+
+    /// Every exercise that holds a record.
+    case everyExercise
+
+    /// A list kept for the feed alone.
+    case chosen
+}

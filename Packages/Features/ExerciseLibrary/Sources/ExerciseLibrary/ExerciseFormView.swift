@@ -84,6 +84,7 @@ public struct ExerciseFormView: View {
             ErrorStateView(
                 headline: Text(ExerciseLibraryStrings.formErrorHeadline),
                 message: Text(ExerciseLibraryStrings.formErrorMessage),
+                retryEmphasis: .primary,
                 retry: { Task { await state.load() } }
             )
         case .missing:
@@ -135,6 +136,7 @@ public struct ExerciseFormView: View {
             // beside it — `SettingsLandingState`'s rule that a failed write costs the screen nothing.
             ErrorStateView(
                 message: Text(ExerciseLibraryStrings.formWriteError),
+                retryEmphasis: .secondary,
                 retry: { Task { await state.save() } }
             )
         }

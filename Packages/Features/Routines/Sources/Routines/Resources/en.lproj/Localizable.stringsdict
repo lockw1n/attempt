@@ -21,5 +21,23 @@
 			<string>%lld exercises</string>
 		</dict>
 	</dict>
+	<!-- FR-16.8.1's day count under a program's name. Plural for the reason the exercise count
+	     above is: a one-day program is a real plan, not an edge case. -->
+	<key>routines.programs.day-count %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@days@</string>
+		<key>days</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld day</string>
+			<key>other</key>
+			<string>%lld days</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

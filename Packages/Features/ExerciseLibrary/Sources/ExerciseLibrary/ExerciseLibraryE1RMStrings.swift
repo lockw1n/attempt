@@ -74,32 +74,6 @@ extension ExerciseLibraryStrings {
     /// estimate is not a record — it is a number computed *from* a set.
     static let e1rmSourceHint = resource("exerciselibrary.detail.e1rm.source-hint")
 
-    /// `FR-1.7.5`'s "clearly marked as manual", in place of the provenance line — a manual number
-    /// has no formula and no window behind it.
-    static let e1rmManualBadge = resource("exerciselibrary.detail.e1rm.manual")
-
-    /// The command that opens the override field.
-    static let e1rmOverrideAction = resource("exerciselibrary.detail.e1rm.override.action")
-
-    /// The override field's own name, which is also its placeholder.
-    static let e1rmOverrideField = resource("exerciselibrary.detail.e1rm.override.field")
-
-    /// Commits what was typed.
-    static let e1rmOverrideSave = resource("exerciselibrary.detail.e1rm.override.save")
-
-    /// Abandons it, leaving whatever was in force.
-    static let e1rmOverrideCancel = resource("exerciselibrary.detail.e1rm.override.cancel")
-
-    /// Re-opens the field over an override already in force, so adjusting one does not mean
-    /// clearing it first.
-    static let e1rmOverrideEdit = resource("exerciselibrary.detail.e1rm.override.edit")
-
-    /// `FR-1.7.5`'s way back: one tap, and the computed estimate returns.
-    static let e1rmOverrideRevert = resource("exerciselibrary.detail.e1rm.override.revert")
-
-    /// The override could not be stored. Nothing changed, so the retry is the same command.
-    static let e1rmOverrideError = resource("exerciselibrary.detail.e1rm.override.error")
-
     /// Every reason an estimate can be missing, so ``ExerciseLibraryStrings/all`` covers each
     /// sentence. Internal because the list it feeds lives in the other file.
     static var absences: [EstimateAbsence] {

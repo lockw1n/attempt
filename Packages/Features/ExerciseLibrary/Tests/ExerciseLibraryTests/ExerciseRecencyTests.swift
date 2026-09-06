@@ -19,10 +19,13 @@ struct ExerciseRecencyTests {
 
         #expect(state.isRecencyFilterAvailable == true)
         #expect(state.recentExerciseIDs == [gym.squat.id])
-        #expect(state.names.count == 3)
-
-        state.showsRecentOnly = true
+        // FR-16.5.4: a log with history opens on Recently used rather than All, so the narrowing is
+        // already in force here — the claim below is the same one, read from the opposite side.
+        #expect(state.showsRecentOnly == true)
         #expect(state.names == ["Back Squat"])
+
+        state.showsRecentOnly = false
+        #expect(state.names.count == 3)
     }
 
     @Test("A session outside the window is not recent, and the chip goes back to being unavailable")
@@ -113,7 +116,8 @@ struct ExerciseRecencyTests {
         let gym = try await Gym.seeded()
         let state = ExerciseListState(
             repository: gym.repositories.exercises,
-            workouts: FailingWorkoutRepository()
+            workouts: FailingWorkoutRepository(),
+            memory: ExerciseListFilterMemory()
         )
 
         await state.load()
@@ -133,7 +137,8 @@ struct ExerciseRecencyTests {
 
         let broken = ExerciseListState(
             repository: gym.repositories.exercises,
-            workouts: FailingWorkoutRepository()
+            workouts: FailingWorkoutRepository(),
+            memory: ExerciseListFilterMemory()
         )
         broken.showsRecentOnly = true
         await broken.load()
@@ -145,7 +150,7 @@ struct ExerciseRecencyTests {
 }
 
 /// A catalogue of three exercises and a place to have trained some of them.
-private struct Gym {
+struct Gym {
     let repositories: InMemoryRepositoryStack
     let squat: Exercise
     let bench: Exercise
@@ -214,9 +219,19 @@ private struct Gym {
         }
     }
 
-    /// A list state over this gym's two repositories.
-    func listState() -> ExerciseListState {
-        ExerciseListState(repository: repositories.exercises, workouts: repositories.workouts)
+    /// A list state over this gym's two repositories, with a memory of its own (`FR-16.5.4`).
+    ///
+    /// - Parameter memory: The facet memory to share, or a fresh one. A test that hands two states
+    ///   the *same* memory is testing what the list reopens on; every other test wants its own, or
+    ///   it opens on whatever a parallel test last narrowed to.
+    /// - Returns: The state.
+    func listState(
+        memory: ExerciseListFilterMemory = ExerciseListFilterMemory()
+    ) -> ExerciseListState {
+        ExerciseListState(
+            repository: repositories.exercises,
+            workouts: repositories.workouts,
+            memory: memory)
     }
 }
 

@@ -2,6 +2,7 @@
 
     import DesignSystem
     import PowerliftingCore
+    import RepositoryFakes
     import RepositoryInterface
     import SnapshotTesting
     import SwiftUI
@@ -13,11 +14,16 @@
     // — light and dark (`G-7.1`), default and `accessibility3` (`NFR-1.10`'s own ceiling).
     //
     // WHAT IS RENDERED AND WHAT IS NOT. The pieces, not `ExerciseListView` itself: the screen owns a
-    // `.task` that reads a store and a `.searchable` field the enclosing `NavigationStack` places,
-    // and `ImageRenderer` has neither. Between them these eight references cover every pixel the
-    // screen has of its own — the grouped catalogue with and without archived rows, the filter chips
-    // in all three of their states, the show-archived control in both of its, and the four
-    // placeholders it can show instead.
+    // `.task` that reads a store, and `ImageRenderer` cannot run one. Between them these references
+    // cover every pixel the screen has of its own — the grouped catalogue with and without archived
+    // rows, the filter chips in all three of their states, the show-archived control in both of its,
+    // the header in both of ITS (`FR-16.5.4` folds the facets, so a reference set that never folded
+    // them would gate nothing), and the four placeholders the list can show instead.
+    //
+    // THE SEARCH FIELD IS IN THE PICTURE NOW, which it could not be before: it was `.searchable`,
+    // placed by a `NavigationStack` this harness cannot render at all. That is the same fact as the
+    // requirement — a field the enclosing bar owns is a field nothing here, and nothing the reader
+    // does short of a pull gesture, can see.
     //
     // A ROW'S TEXT IS DIMMER HERE THAN IT IS IN THE APP, and that is the rendering rather than the
     // screen: a `NavigationLink` with no `NavigationStack` above it draws as though it led nowhere.
@@ -50,6 +56,66 @@
             try assertSnapshots(named: "ExerciseList-groups-uk") {
                 ExerciseGroupList(groups: Fixtures.ukrainianGroups)
                     .environment(\.locale, Fixtures.ukrainianLocale)
+            }
+        }
+
+        @Test func headerFolded() throws {
+            // FR-16.5.4 as one picture: the search field visible with no gesture, and the facets
+            // folded behind one row that names what is narrowing the list. The chip beside
+            // "Filters" is the movement filter in force — a reader can see the narrowing and undo it
+            // without opening anything, which is what makes folding the rest safe.
+            //
+            // THE FIELD'S TEXT AREA IS THE RENDERER'S PLACEHOLDER, the same yellow sign a `Toggle`
+            // draws in this harness: `TextField` is UIKit-backed. What this pins is the half the
+            // requirement is about — the field's chrome sits in the screen's own body, at rest,
+            // above the content. Under `.searchable` there was nothing here to picture at all.
+            try assertSnapshots(named: "ExerciseList-header") {
+                VStack(alignment: .leading, spacing: Spacing.lg.points) {
+                    SearchField(text: .constant(""), prompt: ExerciseLibraryStrings.searchPrompt)
+                    ExerciseFilterSummary(
+                        activeFacets: [.movement(.squat)],
+                        isExpanded: false,
+                        toggleFilters: {},
+                        clear: { _ in })
+                }
+            }
+        }
+
+        @Test func filterSummary() throws {
+            // The folded row in its three configurations, which is where `FR-16.5.4`'s claim
+            // actually lives: nothing in force, one narrowing, and everything at once with the
+            // control itself open. The "Filters" chip carries the fold's own state as its
+            // selection, so an expanded bar is legible from this row alone.
+            try assertSnapshots(named: "ExerciseList-filters-summary") {
+                VStack(alignment: .leading, spacing: Spacing.md.points) {
+                    ExerciseFilterSummary(
+                        activeFacets: [], isExpanded: false, toggleFilters: {}, clear: { _ in })
+                    ExerciseFilterSummary(
+                        activeFacets: [.recentlyUsed],
+                        isExpanded: false,
+                        toggleFilters: {},
+                        clear: { _ in })
+                    ExerciseFilterSummary(
+                        activeFacets: [.movement(.squat), .origin(.custom), .archived],
+                        isExpanded: true,
+                        toggleFilters: {},
+                        clear: { _ in })
+                }
+            }
+        }
+
+        @Test func headerExpanded() throws {
+            // The other side of the one conditional this screen gained. Without it a reference set
+            // would match a build in which the fold never opens — and the three facet rows plus the
+            // archived control are the 300 pt the requirement is about, so their height here
+            // against `ExerciseList-header`'s is the measurement.
+            //
+            // THE FACET CHIPS ARE NOT IN THIS PICTURE, and that is the harness rather than the
+            // screen: each facet row is a horizontal `ScrollView`, which rasterises as nothing. The
+            // chips have their own references above; what this one pins is that the rows appear at
+            // all, in order, under the row that opens them.
+            try assertSnapshots(named: "ExerciseList-header-expanded") {
+                ExerciseListHeaderFixture.expandedBar()
             }
         }
 
@@ -120,7 +186,7 @@
                     // The way into the create form, which this state gained once that screen
                     // existed (`FR-1.1.3`). A reference built without it pictures a screen the app
                     // no longer has, and passes while doing so.
-                    action: StateAction(Text(ExerciseLibraryStrings.createAction)) {}
+                    action: StateAction(Text(ExerciseLibraryStrings.createAction), emphasis: .primary) {}
                 )
             }
         }
@@ -159,7 +225,9 @@
                     symbolName: "archivebox",
                     headline: Text(ExerciseLibraryStrings.archivedOnlyHeadline),
                     message: Text(ExerciseLibraryStrings.archivedOnlyMessage),
-                    action: StateAction(Text(ExerciseLibraryStrings.showArchivedFilter)) {}
+                    action: StateAction(
+                        Text(ExerciseLibraryStrings.showArchivedFilter), emphasis: .primary
+                    ) {}
                 )
             }
         }
@@ -170,7 +238,7 @@
                     symbolName: "magnifyingglass",
                     headline: Text(ExerciseLibraryStrings.noMatchesHeadline),
                     message: Text(ExerciseLibraryStrings.noMatchesMessage),
-                    action: StateAction(Text(ExerciseLibraryStrings.noMatchesAction)) {}
+                    action: StateAction(Text(ExerciseLibraryStrings.noMatchesAction), emphasis: .primary) {}
                 )
             }
         }
@@ -180,9 +248,32 @@
                 ErrorStateView(
                     headline: Text(ExerciseLibraryStrings.errorHeadline),
                     message: Text(ExerciseLibraryStrings.errorMessage),
+                    retryEmphasis: .primary,
                     retry: {}
                 )
             }
+        }
+    }
+
+    /// The whole filter bar with its facets open — the one reference here that needs a state.
+    ///
+    /// `ExerciseFilterBar` binds to `ExerciseListState`, and the alternative — a second, value-only
+    /// copy of the bar — would be a reference of something the screen does not use. Nothing is
+    /// loaded, so the recency chip renders unavailable, which is what a lifter with no history sees.
+    @MainActor
+    enum ExerciseListHeaderFixture {
+        /// The bar, opened.
+        ///
+        /// - Returns: The bar.
+        static func expandedBar() -> some View {
+            let state = ExerciseListState(
+                repository: InMemoryRepositoryStack().exercises,
+                workouts: InMemoryRepositoryStack().workouts,
+                // Its own memory: the app's is process-lifetime, and a reference must not depend on
+                // what another test last narrowed to.
+                memory: ExerciseListFilterMemory())
+            state.areFiltersExpanded = true
+            return ExerciseFilterBar(state: state)
         }
     }
 
@@ -252,6 +343,15 @@
         /// One exercise, with fixed dates and a fixed identifier so a rendering never moves — and
         /// with `id` a parameter, because `ForEach` keys the rows on it and two rows sharing one is
         /// a rendering that silently loses a row.
+        /// A stable identifier, so a reference does not change by run.
+        ///
+        /// The same scheme ``exercise(id:name:ukrainianName:movement:equipment:isCustom:isArchived:laterality:barType:)``
+        /// uses, so a fixture's rows and the exercise they hang off cannot collide.
+        static func identifier(_ index: Int) -> UUID {
+            UUID(uuidString: "0F5A1E24-9B7D-4C31-8E62-0000000000\(String(format: "%02d", index))")
+                ?? UUID()
+        }
+
         static func exercise(
             id: Int,
             name: String,

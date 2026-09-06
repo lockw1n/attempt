@@ -103,15 +103,36 @@ struct RefusalConformanceTests {
     @Test("A training max needs its exercise", arguments: Subject.all)
     func aTrainingMaxNeedsItsExercise(_ subject: Subject) async throws {
         let repositories = try subject.make()
+        let entry = trainingMaxHistoryRecord(exerciseID: UUID(), effectiveFrom: fixtureCreatedAt)
+
+        await #expect(
+            throws: RepositoryError.danglingReference(
+                recordID: entry.id, referencing: entry.exerciseID)
+        ) { try await repositories.trainingMaxes.save(entry) }
+
+        #expect(
+            try await repositories.trainingMaxes.history(
+                forExerciseID: entry.exerciseID, includingDeleted: true
+            ).isEmpty)
+    }
+
+    /// The same edge on the other table, and it needs its own case: the two saves check the
+    /// reference separately in both implementations, so one test leaves the other guard unheld.
+    ///
+    /// The guard this names is the exercise check, and the arrangement reaches it — the store is
+    /// empty, so there is no earlier guard for the save to stop at.
+    @Test("A training-max configuration needs its exercise", arguments: Subject.all)
+    func aConfigurationNeedsItsExercise(_ subject: Subject) async throws {
+        let repositories = try subject.make()
         let entry = trainingMaxRecord(exerciseID: UUID(), effectiveFrom: fixtureCreatedAt)
 
         await #expect(
             throws: RepositoryError.danglingReference(
                 recordID: entry.id, referencing: entry.exerciseID)
-        ) { try await repositories.exercises.saveTrainingMax(entry) }
+        ) { try await repositories.trainingMaxes.saveConfiguration(entry) }
 
         #expect(
-            try await repositories.exercises.trainingMaxHistory(
+            try await repositories.trainingMaxes.configurationHistory(
                 forExerciseID: entry.exerciseID, includingDeleted: true
             ).isEmpty)
     }
@@ -164,7 +185,7 @@ struct RefusalConformanceTests {
         #expect(try await repositories.equipment.profile(id: id, includingDeleted: true) == nil)
         #expect(try await repositories.equipment.defaultProfile() == nil)
         #expect(
-            try await repositories.exercises.trainingMax(forExerciseID: id, on: fixtureCreatedAt)
+            try await repositories.trainingMaxes.trainingMax(forExerciseID: id, on: fixtureCreatedAt)
                 == nil)
     }
 

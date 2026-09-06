@@ -36,6 +36,18 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
     /// is not a state anything reports — the card simply has no target to show.
     public let planned: [PlannedTargetGroup]
 
+    /// The training max in force for this exercise on the session's training day, or `nil`
+    /// (`FR-16.7.1`).
+    ///
+    /// **The session's day, not today's.** A load is annotated with the number it was planned
+    /// against, so a training max raised after a workout does not rewrite what that workout's sets
+    /// were a percentage of. Resolved once per entry by the store that built this join —
+    /// ``RepositoryInterface/TrainingMaxRepository/trainingMax(forExerciseID:on:)`` is a lookup over
+    /// the history, not a walk of the sets.
+    ///
+    /// **`nil` is the common case and every surface draws nothing for it**: no zero, no dash.
+    public let trainingMax: Weight?
+
     /// The entry's id: one entry is one card, and the same exercise may be performed twice in a
     /// workout.
     public var id: UUID { entry.id }
@@ -47,16 +59,19 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
     ///   - exercise: The catalogue row it names, where there is one.
     ///   - sets: The sets logged against the entry.
     ///   - planned: The targets snapshotted from a routine, or none.
+    ///   - trainingMax: The number in force on the session's day, or `nil`.
     public init(
         entry: ExerciseEntry,
         exercise: Exercise?,
         sets: [SetEntry],
-        planned: [PlannedTargetGroup] = []
+        planned: [PlannedTargetGroup] = [],
+        trainingMax: Weight? = nil
     ) {
         self.entry = entry
         self.exercise = exercise
         self.sets = sets
         self.planned = planned
+        self.trainingMax = trainingMax
     }
 
     /// Whether this exercise is finished — what `FR-1.2.13` collapses a card for.
@@ -66,9 +81,19 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
     /// set is not complete but *unstarted*, which is the case a bare `allSatisfy` reports backwards
     /// — an empty collection satisfies everything, so a card the user has just added would collapse
     /// itself the moment it appeared.
+    ///
+    /// **And the plan has to be exhausted, where there is one** (`FR-16.6.5`). Every logged set
+    /// completed says the work *so far* went well; it says nothing about the two sets the routine
+    /// still prescribes, and a card that folded itself over them would hide the prescription at the
+    /// moment the lifter is about to perform it. An exercise nobody planned has no such clause to
+    /// satisfy — ``nextPlannedGroup`` is `nil` for it — so this is exactly Phase 1's rule everywhere
+    /// a plan is absent.
+    ///
+    /// **A pending set keeps the card open by the first clause, not this one** (`FR-16.4.1`): a set
+    /// nobody has attempted carries `isCompleted == false`, which no `allSatisfy` over it passes.
     public var isComplete: Bool {
         let working = sets.filter { !$0.isWarmup }
-        return !working.isEmpty && working.allSatisfy(\.isCompleted)
+        return !working.isEmpty && working.allSatisfy(\.isCompleted) && nextPlannedGroup == nil
     }
 
     /// Whether any of the work proper has been logged yet — what `FR-1.2.14`'s warmup group folds

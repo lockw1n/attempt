@@ -72,7 +72,7 @@
             // printing the same day twice.
             try assertSnapshots(named: "Calendar-day-card") {
                 SessionSummaryCard(
-                    summary: CalendarFixtures.session, unit: .kilograms, showsDate: false
+                    summary: CalendarFixtures.session, unit: .kilograms, date: .hidden
                 )
                 .environment(\.locale, CalendarFixtures.locale)
                 // The card's own date is drawn through `Text(_:format:)` even though this reference
@@ -102,7 +102,7 @@
                     symbolName: "calendar",
                     headline: Text(HistoryStrings.calendarEmptyHeadline),
                     message: Text(HistoryStrings.calendarEmptyMessage),
-                    action: StateAction(Text(HistoryStrings.calendarEmptyAction)) {}
+                    action: StateAction(Text(HistoryStrings.calendarEmptyAction), emphasis: .primary) {}
                 )
             }
         }
@@ -112,6 +112,7 @@
                 ErrorStateView(
                     headline: Text(HistoryStrings.calendarErrorHeadline),
                     message: Text(HistoryStrings.calendarErrorMessage),
+                    retryEmphasis: .primary,
                     retry: {}
                 )
             }
@@ -121,7 +122,7 @@
             // Under a grid that is still correct, so no headline — the picture the session list's
             // next-page failure has, for the same reason.
             try assertSnapshots(named: "Calendar-day-error") {
-                ErrorStateView(message: Text(HistoryStrings.calendarDayError), retry: {})
+                ErrorStateView(message: Text(HistoryStrings.calendarDayError), retryEmphasis: .secondary, retry: {})
             }
         }
     }

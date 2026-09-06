@@ -84,9 +84,9 @@ struct PastSession {
             settings: repositories.settings,
             records: PersonalRecordRecomputer(
                 workouts: reader,
-                exercises: InMemoryRepositoryStack().exercises,
                 cache: repositories.personalRecords),
-            routines: routines ?? repositories.routines
+            routines: routines ?? repositories.routines,
+            trainingMaxes: repositories.trainingMaxes
         )
     }
 

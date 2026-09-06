@@ -14,7 +14,11 @@ import SwiftData
 /// **``repCount`` is the N, not the reps the set was performed for.** A 5-rep set holds the 1RM
 /// through the 5RM, so one ``sourceSetID`` legitimately appears on five rows at the same
 /// ``weightGrams``. Anything treating `(exerciseID, sourceSetID)` as unique is wrong about the
-/// definition, not about the schema.
+/// definition, not about the schema — and with ``setCount`` a single run legitimately appears on up
+/// to sixty.
+///
+/// **A row is one cell of `FR-16.2.1`'s scheme table**, identified by `(exerciseID, repCount,
+/// setCount)`. `FR-1.6.1`'s rep max is the `setCount == 1` column.
 @Model
 final class PersonalRecordCacheEntity: CachedDerivedEntity {
     var id: UUID = UUID()
@@ -27,6 +31,16 @@ final class PersonalRecordCacheEntity: CachedDerivedEntity {
 
     /// The N this is the record for — within `PersonalRecords.repRange`, so zero records no N.
     var repCount: Int = 0
+
+    /// How many consecutive sets the scheme asks for — within `SchemeRecordCalculator.setRange`
+    /// (`FR-16.2.1`, `TR-16.1`).
+    ///
+    /// **Defaulted to 1, which is the only safe default for a column added after v1**: every row
+    /// written before it existed *was* an `FR-1.6.1` rep max, so the frozen value the migration
+    /// backfills is true of the history rather than a claim about it (see ``SchemaV1``'s three
+    /// rules). It is free either way — the `TR-16.1` rules-version bump drops every pre-existing row
+    /// before anything reads it (`G-1.5`).
+    var setCount: Int = 1
 
     /// The record weight, in grams (`G-1.1`). Signed: assisted work records a negative load.
     var weightGrams: Int = 0
@@ -41,6 +55,13 @@ final class PersonalRecordCacheEntity: CachedDerivedEntity {
     /// When the record was set, taken from the source set's session.
     var achievedAt: Date = SchemaDefaults.achievedAt
 
+    /// The load this record beat at this scheme, in grams, or `nil` for a baseline (`FR-16.2.3`).
+    ///
+    /// **Optional, and not only because a baseline has nothing to put here.** `Weight` is signed, so
+    /// a beaten load of zero is a real one — and `SchemaV1`'s rules make an optional the column a
+    /// later version can add without asserting anything about the rows that predate it.
+    var previousWeightGrams: Int?
+
     /// The rules version that produced this row (`G-1.5`). Zero means none was recorded and matches
     /// no real version; see ``CachedDerivedEntity``.
     var computationVersion: Int = 0
@@ -49,9 +70,11 @@ final class PersonalRecordCacheEntity: CachedDerivedEntity {
         id: UUID = UUID(),
         exerciseID: UUID,
         repCount: Int,
+        setCount: Int = 1,
         weightGrams: Int,
         sourceSetID: UUID,
         achievedAt: Date,
+        previousWeightGrams: Int? = nil,
         computationVersion: Int,
         createdAt: Date = .now,
         updatedAt: Date = .now
@@ -59,9 +82,11 @@ final class PersonalRecordCacheEntity: CachedDerivedEntity {
         self.id = id
         self.exerciseID = exerciseID
         self.repCount = repCount
+        self.setCount = setCount
         self.weightGrams = weightGrams
         self.sourceSetID = sourceSetID
         self.achievedAt = achievedAt
+        self.previousWeightGrams = previousWeightGrams
         self.computationVersion = computationVersion
         self.createdAt = createdAt
         self.updatedAt = updatedAt

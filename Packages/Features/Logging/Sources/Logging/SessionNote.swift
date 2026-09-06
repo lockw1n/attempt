@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import RepositoryInterface
 
@@ -73,6 +74,23 @@ struct SessionNoteDraft: Equatable, Sendable {
 
     /// Puts the record's text back, discarding the edit.
     mutating func discard() { text = stored }
+
+    /// The note's first line, for the folded header to show (`FR-16.6.1`) — empty when there is no
+    /// note.
+    ///
+    /// **``text`` rather than ``stored``**, so what the header shows is what is on screen: a note
+    /// typed and not yet saved is still the note this workout has, and a header quoting the stored
+    /// text instead would fold away over an edit and show the version that edit replaced.
+    ///
+    /// **Split on newlines only, and never trimmed to a length.** Where the line ends on screen is
+    /// the label's business — one `lineLimit` truncates for the width it actually has, in the
+    /// locale's own way, where a character count here would cut mid-word at a width nothing here
+    /// knows.
+    var firstLine: String {
+        text.split(separator: "\n", omittingEmptySubsequences: false)
+            .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .map(String.init) ?? ""
+    }
 }
 
 /// `FR-1.2.9`'s write. A file of its own on ``ActiveSessionCommands``' argument.
@@ -81,7 +99,7 @@ extension ActiveSessionStore {
     ///
     /// **Serialized behind every other command**, on the chain's own rule and for a sharper reason
     /// here than most: this write rebuilds the whole session record from the one being held, so a
-    /// note save overlapping ``finish()`` would store the workout as it was before it ended and put
+    /// note save overlapping ``finish(resolving:)`` would store the workout as it was before it ended and put
     /// `endedAt` back to `nil`.
     ///
     /// - Parameter text: What the field held when **Save** was tapped. Taken then rather than read
@@ -120,29 +138,39 @@ extension ActiveSessionStore {
         }
     }
 
-    /// `session` with its note replaced and every other field untouched.
+    /// Stores an unsaved note, then finishes the workout (`FR-1.2.9`, `FR-1.2.11`, `FR-16.6.1`).
     ///
-    /// Rebuilt rather than mutated, the record being a value with `let` properties; the three
-    /// timestamps are carried across because the write path is an upsert that stamps `updatedAt`
-    /// itself.
+    /// **This exists because the note moved next to Finish.** While the field sat at the top of the
+    /// screen, a note typed and left unsaved was several screens away from the command that ends
+    /// the workout, and losing it needed the user to scroll past **Save note** to reach **Finish**.
+    /// Folded at the foot the two are adjacent, so tapping **Finish** over a dirty field is the
+    /// ordinary path rather than a mistake, and silently dropping the text there would be the
+    /// screen throwing away the last thing the user wrote.
+    ///
+    /// **The note is written first, and that order is not a preference.** ``writeNote(_:)``
+    /// rebuilds the record from the one being held, and after ``finish(resolving:)`` nothing is held — a note
+    /// written second would be written against `nil` and dropped without a diagnostic.
+    ///
+    /// **A note that would not store holds the workout open**, and the alternative is what makes
+    /// this the rule rather than a preference: finishing over a failed note write ends the workout,
+    /// and ``finish(resolving:)`` clears every diagnostic on its way out — so the one ``writeNote(_:)`` just
+    /// set is not merely off-screen behind a dismissal, it is erased, and the last thing the user
+    /// wrote is gone with nothing anywhere to say so. That clearing is safe on its own terms —
+    /// nothing it drops belongs to a workout still on screen — and this is the one caller that
+    /// could put a live diagnostic in front of it. Holding the workout costs one more tap at a
+    /// command the user is already standing on, and the retry carries the text with it. The screen
+    /// unfolds the note when this returns a failure, the banner being inside the fold (see
+    /// ``ActiveSessionView``).
     ///
     /// - Parameters:
-    ///   - session: The workout.
-    ///   - text: Its new note.
-    /// - Returns: The record to store.
-    private static func noted(_ session: WorkoutSession, as text: String) -> WorkoutSession {
-        WorkoutSession(
-            id: session.id,
-            createdAt: session.createdAt,
-            updatedAt: session.updatedAt,
-            deletedAt: session.deletedAt,
-            date: session.date,
-            startedAt: session.startedAt,
-            endedAt: session.endedAt,
-            notes: text,
-            bodyweight: session.bodyweight,
-            programRunID: session.programRunID,
-            scheduledWorkoutID: session.scheduledWorkoutID
-        )
+    ///   - note: What the field held when **Finish** was tapped, or `nil` where it held nothing the
+    ///     record does not already have.
+    ///   - resolution: What to do with `FR-16.4.4`'s pending sets, or `nil` where there are none.
+    func finish(saving note: String?, resolving resolution: SessionFinish.Resolution? = nil) async {
+        if let note {
+            await saveNote(note)
+            guard noteWriteFailure == nil else { return }
+        }
+        await finish(resolving: resolution)
     }
 }

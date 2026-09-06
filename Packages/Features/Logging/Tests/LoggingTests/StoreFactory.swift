@@ -29,8 +29,9 @@ extension ActiveSessionStore {
             settings: fakes.settings,
             records: PersonalRecordRecomputer(
                 workouts: repository,
-                exercises: InMemoryRepositoryStack().exercises,
-                cache: fakes.personalRecords))
+                cache: fakes.personalRecords),
+            trainingMaxes: fakes.trainingMaxes,
+            programs: fakes.programs)
     }
 
     /// A store over a whole fake stack, recompute actor included.
@@ -38,16 +39,22 @@ extension ActiveSessionStore {
     /// The form for a test that has already seeded a catalogue and a session into one stack, where
     /// ``overWorkouts(_:)``'s private catalogue would be the wrong one.
     ///
-    /// - Parameter stack: The fakes the workout is assembled from.
+    /// - Parameters:
+    ///   - stack: The fakes the workout is assembled from.
+    ///   - programs: The program store to use instead of the stack's own — for a test that needs
+    ///     the cursor write to refuse.
     /// - Returns: The store.
-    static func over(_ stack: InMemoryRepositoryStack) -> ActiveSessionStore {
+    static func over(
+        _ stack: InMemoryRepositoryStack, programs: (any ProgramRepository)? = nil
+    ) -> ActiveSessionStore {
         ActiveSessionStore(
             repository: stack.workouts,
             catalogue: stack.exercises,
             settings: stack.settings,
             records: PersonalRecordRecomputer(
                 workouts: stack.workouts,
-                exercises: stack.exercises,
-                cache: stack.personalRecords))
+                cache: stack.personalRecords),
+            trainingMaxes: stack.trainingMaxes,
+            programs: programs ?? stack.programs)
     }
 }

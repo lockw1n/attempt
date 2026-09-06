@@ -58,16 +58,27 @@ extension EquipmentProfile {
 extension TrainingMaxEntry {
     /// How this row says a training max is computed, as the domain type that resolves one.
     ///
-    /// The payload columns are paired with ``TrainingMaxEntry/source`` here and nowhere else — the
-    /// row itself carries them independently, and the schema's default source is `.manual` so that
-    /// a row this app did not write refuses here rather than resolving to a plausible number.
+    /// **The manual weight is a parameter rather than a column**, which is the whole of `G-1.4` on
+    /// this record: the entered number is ``TrainingMaxHistoryEntry``'s, so a caller resolving a
+    /// manual configuration passes the value in force on the date it is asking about. A caller with
+    /// none passes `nil` and is refused, which is the same refusal a `.manual` row with no payload
+    /// used to raise — moved to where the payload now is rather than dropped.
     ///
+    /// The payloads are paired with ``TrainingMaxEntry/source`` here and nowhere else, and the
+    /// schema's default source is `.manual` so that a row this app did not write refuses here rather
+    /// than resolving to a plausible number.
+    ///
+    /// - Parameter manualWeight: The training max in force, for a manual source. Ignored for the
+    ///   other two — a derived source computes its own number, and a value passed alongside one
+    ///   would be a second answer this projection has no business preferring.
     /// - Returns: The configuration, with the percentage and rounding rule carried whatever the
     ///   source, since a manual training max keeps both as the configuration its one-tap
     ///   recalculation resumes with (`FR-1.5.1.5`).
     /// - Throws: A `RecordProjectionError` for a missing payload, an unusable percentage, or an
     ///   increment below one gram.
-    public func configuration() throws(RecordProjectionError) -> TrainingMaxConfiguration {
+    public func configuration(
+        manualWeight: Weight?
+    ) throws(RecordProjectionError) -> TrainingMaxConfiguration {
         let resolvedSource: TrainingMaxSource
         switch source {
         case .percentOfE1RM:

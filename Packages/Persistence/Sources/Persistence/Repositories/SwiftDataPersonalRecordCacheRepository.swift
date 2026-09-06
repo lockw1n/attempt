@@ -1,4 +1,5 @@
 import Foundation
+import PowerliftingCore
 import RepositoryInterface
 import SwiftData
 
@@ -16,7 +17,7 @@ actor SwiftDataPersonalRecordCacheRepository: PersonalRecordCacheRepository {
             matching: #Predicate { $0.exerciseID == exerciseID },
             includingDeleted: includingDeleted
         )
-        .sortedDeterministically { ($0.repCount, $0.id.uuidString) }
+        .sortedDeterministically { ($0.scheme, $0.id.uuidString) }
         .map(\.record)
     }
 
@@ -35,7 +36,7 @@ actor SwiftDataPersonalRecordCacheRepository: PersonalRecordCacheRepository {
 
     /// Makes the exercise's live rows say exactly what `values` says.
     ///
-    /// **Every duplicate of a rep count is rewritten, not just the tiebreak winner** — the same rule
+    /// **Every duplicate of a scheme is rewritten, not just the tiebreak winner** — the same rule
     /// a save follows everywhere in this module. Rewriting one of a duplicate pair would leave the
     /// other holding a record the recompute has already superseded, readable the next time it won.
     ///
@@ -50,19 +51,21 @@ actor SwiftDataPersonalRecordCacheRepository: PersonalRecordCacheRepository {
             matching: #Predicate { $0.exerciseID == exerciseID },
             includingDeleted: false
         )
-        let byRepCount = Dictionary(grouping: stored, by: \.repCount)
+        let byScheme = Dictionary(grouping: stored, by: \.scheme)
         let now = Date.now
         var changed = false
 
         for value in values {
-            guard let rows = byRepCount[value.repCount] else {
+            guard let rows = byScheme[value.scheme] else {
                 modelContext.insert(
                     PersonalRecordCacheEntity(
                         exerciseID: exerciseID,
                         repCount: value.repCount,
+                        setCount: value.setCount,
                         weightGrams: value.weight.grams,
                         sourceSetID: value.sourceSetID,
                         achievedAt: value.achievedAt,
+                        previousWeightGrams: value.previousWeight?.grams,
                         computationVersion: value.computationVersion,
                         createdAt: now,
                         updatedAt: now
@@ -76,8 +79,8 @@ actor SwiftDataPersonalRecordCacheRepository: PersonalRecordCacheRepository {
             }
         }
 
-        let held = Set(values.map(\.repCount))
-        for row in stored where !held.contains(row.repCount) {
+        let held = Set(values.map(\.scheme))
+        for row in stored where !held.contains(row.scheme) {
             row.markDeleted(at: now)
             changed = true
         }
@@ -87,23 +90,30 @@ actor SwiftDataPersonalRecordCacheRepository: PersonalRecordCacheRepository {
 }
 
 extension PersonalRecordCacheEntity {
+    /// The cell this row is the record for — its identity, with the exercise.
+    var scheme: RecordScheme { RecordScheme(reps: repCount, sets: setCount) }
+
     /// Whether this row already says what `values` says — every column but the audit four.
     ///
     /// `exerciseID` is not compared: the row was fetched *by* it.
     func states(_ values: PersonalRecordCacheValues) -> Bool {
         repCount == values.repCount
+            && setCount == values.setCount
             && weightGrams == values.weight.grams
             && sourceSetID == values.sourceSetID
             && achievedAt == values.achievedAt
+            && previousWeightGrams == values.previousWeight?.grams
             && computationVersion == values.computationVersion
     }
 
     /// Overwrites this row's computed columns from `values`.
     func apply(_ values: PersonalRecordCacheValues) {
         repCount = values.repCount
+        setCount = values.setCount
         weightGrams = values.weight.grams
         sourceSetID = values.sourceSetID
         achievedAt = values.achievedAt
+        previousWeightGrams = values.previousWeight?.grams
         computationVersion = values.computationVersion
     }
 }

@@ -34,6 +34,17 @@ struct SessionExerciseCard: View {
     /// Opens or closes it, independently of the card's own fold.
     let toggleWarmups: () -> Void
 
+    /// Which of this card's set groups the user has opened (`FR-16.1.3`), keyed on the group — which
+    /// is its first set's id.
+    ///
+    /// **Held above the card rather than inside it**, on ``areWarmupsExpanded``'s rule: a card is
+    /// rebuilt on every set written into the workout, and a fold kept in the view's own `@State`
+    /// would close every group each time one did.
+    let expandedGroups: Set<UUID>
+
+    /// Opens or closes one of them.
+    let toggleGroup: (UUID) -> Void
+
     /// Moves the named exercise by that many places (`FR-1.2.2`).
     let move: (UUID, Int) -> Void
 
@@ -68,6 +79,13 @@ struct SessionExerciseCard: View {
 
     /// Logs the next planned set exactly as prescribed (`NFR-15.3`).
     let logPlanned: (UUID) -> Void
+
+    /// Appends a set equal to the one named, against this exercise (`FR-16.1.4`) — the entry, then
+    /// the set to copy.
+    ///
+    /// **The set rather than the group**, because a group is recomputed on every read and holds no
+    /// identity past its first member's: what the write needs to name is the `SetEntry` it copies.
+    let logNext: (UUID, SetEntry) -> Void
 
     /// Which locale the numbers on this card are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
@@ -205,7 +223,16 @@ struct SessionExerciseCard: View {
                     .foregroundStyle(ColorToken.textSecondary)
             } else {
                 warmupGroup
-                ForEach(workingSets) { row(for: $0, target: targets[$0.id]) }
+                // Only the last of them carries `FR-16.1.4`'s append — see ``SetGroupRow/logNext``
+                // for why "next" is a claim about the last group rather than about any of them.
+                ForEach(workingGroups) { group in
+                    groupRow(
+                        for: group,
+                        targets: targets,
+                        logNext: group.id == workingGroups.last?.id
+                            ? { logNext(item.id, group.last.record) } : nil
+                    )
+                }
             }
             plannedNext
             setCommands
@@ -238,7 +265,9 @@ struct SessionExerciseCard: View {
     /// duplicate exactly where Phase 1 put it.
     @ViewBuilder private var plannedNext: some View {
         if let group = item.nextPlannedGroup {
-            PlannedNextSetSection(target: group, unit: unit) { logPlanned(item.id) }
+            PlannedNextSetSection(target: group, unit: unit, trainingMax: item.trainingMax) {
+                logPlanned(item.id)
+            }
         }
     }
 
@@ -258,28 +287,43 @@ struct SessionExerciseCard: View {
             WarmupSectionHeader(
                 count: warmups.count, isExpanded: areWarmupsExpanded, toggle: toggleWarmups)
             if areWarmupsExpanded {
-                // No target, and by construction rather than by lookup: a warmup consumes no
+                // No targets, and by construction rather than by lookup: a warmup consumes no
                 // planned set, so ``SessionExercise/plannedTargets`` never holds one.
-                ForEach(warmups) { row(for: $0, target: nil) }
+                ForEach(warmupGroups) { groupRow(for: $0, targets: [:], logNext: nil) }
             }
         }
     }
 
-    /// One set's row, wherever on the card it is drawn.
+    /// One group's line, wherever on the card it is drawn (`FR-16.1.1`).
+    ///
+    /// A group of one draws as the row it always was — see ``SetGroupRow``.
     ///
     /// - Parameters:
-    ///   - numbered: The set and its number.
-    ///   - target: What a routine planned for it, or `nil` (`FR-15.3.1`).
-    /// - Returns: The row.
-    private func row(for numbered: NumberedSet, target: PlannedTargetGroup?) -> some View {
-        SetRow(
-            numbered: numbered,
+    ///   - group: The run of identical sets, and their numbers.
+    ///   - targets: What a routine planned for each set, keyed on the set (`FR-15.3.1`).
+    ///   - logNext: `FR-16.1.4`'s append, on the one group that gets it, or `nil`.
+    /// - Returns: The line.
+    private func groupRow(
+        for group: NumberedSetGroup,
+        targets: [UUID: PlannedTargetGroup],
+        logNext: (() -> Void)?
+    ) -> some View {
+        SetGroupRow(
+            group: group,
             unit: unit,
-            recordReps: personalRecords.repCounts(forSetID: numbered.id),
+            isExpanded: expandedGroups.contains(group.id),
+            toggle: { toggleGroup(group.id) },
             mark: mark,
             markCompleted: markCompleted,
             edit: edit,
-            target: target
+            recordSchemes: { personalRecords.schemes(forSetID: $0) },
+            target: { targets[$0] },
+            trainingMax: item.trainingMax,
+            // Always, and it is a fact about the screen rather than a value passed down: this card
+            // draws the workout in progress, and `ActiveSessionStore` holds one only while it is
+            // open. So an uncompleted set here is one nobody has reached yet (`FR-16.4.1`).
+            isSessionOpen: true,
+            logNext: logNext
         )
     }
 
@@ -292,61 +336,87 @@ struct SessionExerciseCard: View {
     /// The work proper, likewise.
     private var workingSets: [NumberedSet] { numberedSets.filter { !$0.isWarmup } }
 
+    /// The work proper as `FR-16.1.1`'s groups.
+    ///
+    /// **Grouped after the partition, not before it.** The card draws the warmups above the work, so
+    /// a warmup logged between two identical working sets is not between them on screen — and two
+    /// groups of two where the reader sees four adjacent identical rows would be a split with
+    /// nothing visible behind it. ``SetNumbering`` makes the same argument about the numbering.
+    private var workingGroups: [NumberedSetGroup] { SetNumbering.grouped(workingSets) }
+
+    /// The warmups likewise, inside their own fold.
+    private var warmupGroups: [NumberedSetGroup] { SetNumbering.grouped(warmups) }
+
     /// `FR-1.2.6`'s duplicate, then `FR-1.2.3`'s blank form.
     ///
-    /// **Stacked rather than side by side**, which is `NFR-1.10` rather than taste: two commands
-    /// sharing a row at `accessibility3` are two commands with three characters each.
+    /// **Both secondary, and both the same weight** (`FR-16.6.4`, `G-7.2`). **Repeat set** was the
+    /// filled one, on the argument that it is the dominant logging action — which stopped being true
+    /// the moment `FR-16.1.4`'s **Log next set** went on the group above it, and was never
+    /// affordable at six cards: one accent used once per exercise is a screen with six primary
+    /// actions and no primary action. The one filled button on this screen is **Finish workout**.
+    ///
+    /// **Side by side, wrapping at `NFR-1.10`'s ceiling.** They were stacked because two commands
+    /// sharing a row at `accessibility3` are two commands with three characters each — which is the
+    /// same finding, answered by `ViewThatFits` rather than by giving up the row at every size.
     ///
     /// **Both carry the prescription for the next planned set**, which is what the sheet draws
     /// above the fields (`FR-15.3.1`): the seed is the plan applied, and the line is the plan still
     /// legible after the lifter has typed over it.
     ///
-    /// **Repeat is the filled one and comes first.** It is the dominant logging action — the whole
-    /// of `NFR-1.3`'s three taps is spent here — and it appears only once there is a set to repeat,
-    /// a control that promised to copy nothing being worse than one that is not there yet.
+    /// **Repeat comes first, and appears only once there is a set to repeat** — a control that
+    /// promised to copy nothing being worse than one that is not there yet.
     private var setCommands: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm.points) {
-            if let last = item.sets.last {
-                Button {
-                    logSet(
-                        SetEditorTarget(
-                            entryID: item.id,
-                            values: SetEntryValues(
-                                weight: last.weight,
-                                reps: last.reps,
-                                rpe: last.rpe,
-                                isWarmup: last.isWarmup
-                            ),
-                            prescribed: item.nextPlannedGroup
-                        )
-                    )
-                } label: {
-                    Text(LoggingStrings.setRepeatAction)
-                }
-                .buttonStyle(.primaryAction(.fill))
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Spacing.sm.points) {
+                repeatButton
+                addButton
             }
-            // The blank form opens filled in where a routine planned this set — `FR-15.2.3`, and
-            // what makes `NFR-15.3`'s two taps reachable at all.
+            VStack(alignment: .leading, spacing: Spacing.sm.points) {
+                repeatButton
+                addButton
+            }
+        }
+    }
+
+    /// `FR-1.2.6`'s duplicate — the editor opened over the last set logged on this card, wherever
+    /// it sat. See ``ActiveSessionStore/logNextSet(inEntryID:copying:)`` for how the two differ.
+    @ViewBuilder private var repeatButton: some View {
+        if let last = item.sets.last {
             Button {
                 logSet(
                     SetEditorTarget(
                         entryID: item.id,
-                        planned: item.plannedSeed,
+                        values: SetEntryValues(
+                            weight: last.weight,
+                            reps: last.reps,
+                            rpe: last.rpe,
+                            isWarmup: last.isWarmup
+                        ),
                         prescribed: item.nextPlannedGroup
                     )
                 )
             } label: {
-                Text(LoggingStrings.setAddAction)
-                    .font(Typography.actionLabel.font)
-                    .foregroundStyle(ColorToken.textPrimary)
-                    .frame(maxWidth: .infinity, minHeight: TouchTarget.logging.points)
-                    .background(
-                        ColorToken.surface,
-                        in: .rect(cornerRadius: CornerRadius.control.points)
-                    )
+                Text(LoggingStrings.setRepeatAction)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.secondaryAction(.fill, touch: .logging))
         }
+    }
+
+    /// `FR-1.2.3`'s blank form, which opens filled in where a routine planned this set —
+    /// `FR-15.2.3`, and what makes `NFR-15.3`'s two taps reachable at all.
+    private var addButton: some View {
+        Button {
+            logSet(
+                SetEditorTarget(
+                    entryID: item.id,
+                    planned: item.plannedSeed,
+                    prescribed: item.nextPlannedGroup
+                )
+            )
+        } label: {
+            Text(LoggingStrings.setAddAction)
+        }
+        .buttonStyle(.secondaryAction(.fill, touch: .logging))
     }
 
     /// The exercise's name, or a sentence in place of one.

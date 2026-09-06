@@ -139,9 +139,9 @@ struct StateViewWiringTests {
 
         let retryLabel = Text(DesignSystemStrings.retry)
         #expect(
-            ErrorStateView(message: Text(verbatim: "m"), retry: {}).scaffold.action?.label
+            ErrorStateView(message: Text(verbatim: "m"), retryEmphasis: .primary, retry: {}).scaffold.action?.label
                 == retryLabel)
-        #expect(OfflineStateView(retry: {}).scaffold.action?.label == retryLabel)
+        #expect(OfflineStateView(retryEmphasis: .primary, retry: {}).scaffold.action?.label == retryLabel)
     }
 
     /// The empty state is the one that takes a caller's glyph, and the default has to survive the

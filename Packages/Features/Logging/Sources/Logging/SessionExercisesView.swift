@@ -119,6 +119,14 @@ struct SessionExerciseList: View {
     /// not. Absent an entry, the group follows the exercise — see ``defaultWarmupExpansion(for:)``.
     @Binding var warmupExpansion: [UUID: Bool]
 
+    /// Which set groups the user has opened (`FR-16.1.3`), keyed on the group — which is its first
+    /// set's id.
+    ///
+    /// **One set across the whole workout rather than a dictionary per card**, because the key is a
+    /// set's identifier and those are unique across every card in it. Absent, a group is collapsed:
+    /// `FR-16.1.1`'s whole point is that four identical sets read as one line until asked.
+    @Binding var groupExpansion: Set<UUID>
+
     /// Moves the named exercise by that many places (`FR-1.2.2`).
     let move: (UUID, Int) -> Void
 
@@ -157,6 +165,9 @@ struct SessionExerciseList: View {
     /// Logs the next planned set exactly as prescribed (`NFR-15.3`) — the entry.
     let logPlanned: (UUID) -> Void
 
+    /// Appends a set equal to the one named (`FR-16.1.4`) — the entry, then the set to copy.
+    let logNext: (UUID, SetEntry) -> Void
+
     /// One card per entry.
     var body: some View {
         LazyVStack(alignment: .leading, spacing: Spacing.md.points) {
@@ -172,6 +183,14 @@ struct SessionExerciseList: View {
                         warmupExpansion[item.id] =
                             !(warmupExpansion[item.id] ?? Self.defaultWarmupExpansion(for: item))
                     },
+                    expandedGroups: groupExpansion,
+                    toggleGroup: { setID in
+                        if groupExpansion.contains(setID) {
+                            groupExpansion.remove(setID)
+                        } else {
+                            groupExpansion.insert(setID)
+                        }
+                    },
                     move: move,
                     unit: unit,
                     previous: previous.state(forEntryID: item.id),
@@ -181,7 +200,8 @@ struct SessionExerciseList: View {
                     markCompleted: markCompleted,
                     edit: edit,
                     markDone: markDone,
-                    logPlanned: logPlanned
+                    logPlanned: logPlanned,
+                    logNext: logNext
                 )
             }
         }

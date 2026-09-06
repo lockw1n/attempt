@@ -29,6 +29,12 @@ public struct TrainingHomeView: View {
     /// closure, and a preview or a snapshot has no shell above it.
     @Environment(NavigationState.self) private var navigation: NavigationState?
 
+    /// The calendar the held workout's training day is read against (`FR-16.4.3`).
+    ///
+    /// The device's own until something replaces it — `AppFormat.resolved(_:in:)`'s rule, and the
+    /// same one the history row's state word follows.
+    @Environment(\.calendar) private var calendar
+
     /// Whether the failure the store is carrying, if any, came from this screen's start command.
     ///
     /// **The store has one ``ActiveSessionStore/failure`` and this screen issues two kinds of
@@ -43,11 +49,31 @@ public struct TrainingHomeView: View {
     /// discarded with the screen, which is the right lifetime for a choice the store never saw.
     @State private var day = Date.now
 
-    /// Builds the screen over the store it reads.
+    /// The program in force, and the two commands that move it (`FR-16.8.2`, `FR-16.8.4`).
     ///
-    /// - Parameter store: The workout in progress. One per app, built where the repositories are.
-    public init(store: ActiveSessionStore) {
+    /// **Screen-lifetime, unlike ``store``**, which is `TR-1.2`'s split doing its own work: the
+    /// workout in progress outlives every screen that shows it, where the program's next day is one
+    /// screen's read of three tables and is re-read on every appearance.
+    @State private var program: ProgramNextUpState
+
+    /// Builds the screen over the store it reads and the repositories the program is assembled
+    /// from.
+    ///
+    /// - Parameters:
+    ///   - store: The workout in progress. One per app, built where the repositories are.
+    ///   - programs: The programs, their days and the run in force (`FR-16.8`).
+    ///   - routines: The routines those days name — also where **Start next week** writes.
+    ///   - workouts: The sessions **Start next week** reads back (`FR-16.8.4`).
+    public init(
+        store: ActiveSessionStore,
+        programs: any ProgramRepository,
+        routines: any RoutineRepository,
+        workouts: any WorkoutRepository
+    ) {
         self.store = store
+        _program = State(
+            initialValue: ProgramNextUpState(
+                programs: programs, routines: routines, workouts: workouts))
     }
 
     /// Whichever of the screen's four states is current, then the two things that are true in all of
@@ -59,6 +85,7 @@ public struct TrainingHomeView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl.points) {
+                nextUp
                 content
                 libraryLink
                 routinesLink
@@ -72,6 +99,59 @@ public struct TrainingHomeView: View {
             // failure it may leave behind is attributed to the read that produced it.
             startWasAttempted = false
             await store.resume()
+            // After the resume, not beside it: the card is drawn only where no workout is in
+            // progress, and a read racing that answer would draw it over one.
+            await program.load()
+        }
+    }
+
+    /// `FR-16.8.2`'s Next-up card, where a program is in force and nothing is being logged.
+    ///
+    /// **Suppressed while a workout is in progress**, which is the whole of the condition: the
+    /// screen already says what is being logged, and a second **Start** beside it would offer a
+    /// workout the store would refuse. Suppressed before the store has answered for the same
+    /// reason — see ``TrainingHomeState/loading``.
+    @ViewBuilder private var nextUp: some View {
+        if store.hasCheckedForSession, store.session == nil {
+            ProgramNextUpSection(
+                state: program,
+                advanceFailure: store.programAdvanceFailure,
+                start: startProgramDay,
+                // The write, then the read: a retry that moved the cursor and did not redraw the
+                // card would clear the banner over a day that is still the wrong one.
+                retryAdvance: {
+                    Task {
+                        await store.retryProgramAdvance()
+                        await program.load()
+                    }
+                })
+        }
+    }
+
+    /// Starts the program's next day and opens it (`FR-16.8.2`, `FR-16.8.3`, `NFR-15.3`).
+    ///
+    /// **The day the workout belongs to is the one this screen is offering**, not `.now`: a lifter
+    /// logging Saturday's session on Sunday backdates it here exactly as they would an unplanned
+    /// one, and the program's day index is a position in the week rather than a date.
+    ///
+    /// The push happens only when the store took a workout, on ``startWorkout()``'s rule.
+    ///
+    /// - Parameters:
+    ///   - index: The `ProgramDay.order` being started.
+    ///   - routineID: The routine that day names.
+    private func startProgramDay(at index: Int, fromRoutineID routineID: UUID) {
+        guard let nextUp = program.nextUp else { return }
+        Task {
+            startWasAttempted = true
+            let started = await store.start(
+                on: day,
+                in: ProgramSessionStamp(
+                    runID: nextUp.runID, weekNumber: nextUp.weekNumber, dayIndex: index),
+                fromRoutineID: routineID,
+                using: program.routines)
+            guard started, store.isActive else { return }
+            startWasAttempted = false
+            navigation?.navigate(to: .training(.activeSession))
         }
     }
 
@@ -96,11 +176,16 @@ public struct TrainingHomeView: View {
         case .loading:
             LoadingStateView()
         case .inProgress(let session):
-            SessionInProgressSection(session: session)
+            SessionInProgressSection(
+                session: session, lifecycle: session.lifecycle(on: .now, calendar: calendar))
         case .readFailed:
             ErrorStateView(
                 headline: Text(LoggingStrings.trainErrorHeadline),
                 message: Text(LoggingStrings.trainErrorMessage),
+                // The same step-down `start(showingStartFailure:)` makes, and for the same reason:
+                // the program's card is drawn *above* this switch, not inside it, so a failed read
+                // and a day on offer are on screen together (`FR-16.6.4`).
+                retryEmphasis: .trainCommand(under: program.nextUp),
                 retry: { Task { await store.resume() } }
             )
         case .start(let showingStartFailure):
@@ -128,7 +213,12 @@ public struct TrainingHomeView: View {
             symbolName: "figure.strengthtraining.traditional",
             headline: Text(LoggingStrings.trainEmptyHeadline),
             message: Text(LoggingStrings.trainEmptyMessage),
-            action: StateAction(Text(LoggingStrings.trainStartAction)) {
+            action: StateAction(
+                Text(LoggingStrings.trainStartAction),
+                // FR-16.6.4: one filled accent per screen. Where the program's card is offering a
+                // day, that is the screen's primary action and this is the way past it.
+                emphasis: .trainCommand(under: program.nextUp)
+            ) {
                 Task { await startWorkout() }
             }
         )
@@ -260,12 +350,19 @@ struct SessionInProgressSection: View {
     /// The workout being logged.
     let session: WorkoutSession
 
+    /// Which kind of open workout it is, on the day the screen is being drawn (`FR-16.6.5`).
+    ///
+    /// **Passed in rather than computed here**, on this type's own rule about taking the record: a
+    /// section that read `Date.now` would render differently on every day a reference was recorded,
+    /// and the day the comparison is made against is the caller's fact.
+    let lifecycle: SessionLifecycle
+
     /// Which locale the day and the time are rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
     /// The day, when it was started, and the way back in.
     var body: some View {
-        GroupedSection(Text(LoggingStrings.trainInProgressSection)) {
+        GroupedSection(Text(LoggingStrings.trainSessionSection(lifecycle))) {
             SessionFactRow(
                 label: LoggingStrings.trainInProgressDay,
                 value: Text(session.date, format: AppFormat.date(locale: locale))
@@ -277,7 +374,7 @@ struct SessionInProgressSection: View {
                 )
             }
             NavigationLink(value: Route.training(.activeSession)) {
-                Text(LoggingStrings.trainInProgressResume)
+                Text(LoggingStrings.trainSessionResume(lifecycle))
                     .font(Typography.actionLabel.font)
                     .foregroundStyle(ColorToken.textPrimary)
                     .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points)

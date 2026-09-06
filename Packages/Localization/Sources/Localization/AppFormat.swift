@@ -50,6 +50,23 @@ public enum AppFormat {
         WeightStyle(unit: unit, precision: .default(for: unit), locale: locale)
     }
 
+    /// A total moved across many sets, to the whole unit (`FR-16.5.2`, `FR-1.5.1`, `FR-1.9.5`).
+    ///
+    /// **Whole, and this exists so that "whole" has one home.** A half-kilogram on a four-digit
+    /// session total is noise, and `G-3.3`'s step is for a load a lifter has to put on a bar — but
+    /// the week tile and the history row are the same figure at two sizes, and the two spelled the
+    /// rule out separately until one of them stopped agreeing: `8 240,0 kg` on the dashboard beside
+    /// `8 240 kg` in History, in a locale whose decimal separator made the difference a whole extra
+    /// glyph and a second line of wrap.
+    ///
+    /// - Parameters:
+    ///   - unit: The display unit.
+    ///   - locale: The locale to render for.
+    /// - Returns: The style.
+    public static func tonnage(in unit: MassUnit, locale: Locale) -> WeightStyle {
+        WeightStyle(unit: unit, precision: .whole, locale: locale)
+    }
+
     /// A display step, rendered as the mass it is — `0.25 kg`, `1 lb` (`G-3.3`).
     ///
     /// **Not a ``PowerliftingCore/Weight``**, and that is why it does not go through
@@ -102,6 +119,47 @@ public enum AppFormat {
     /// - Returns: The style.
     public static func date(locale: Locale) -> Date.FormatStyle {
         .dateTime.year().month(.abbreviated).day().locale(locale)
+    }
+
+    /// A training day as a screen title says it — "Sep 4", without the year.
+    ///
+    /// **The year is dropped on purpose, and only here.** This is the day a workout *in progress*
+    /// belongs to, which is today or a day the lifter backdated to from today (`FR-1.2.1`), so the
+    /// year is a constant the title would spend a third of its width on. Anywhere a date has to
+    /// stand on its own — a finished session, a record, a training max — ``date(locale:)`` is the
+    /// style, and it keeps the year.
+    ///
+    /// - Parameter locale: The locale to render for.
+    /// - Returns: The style.
+    public static func dayAndMonth(locale: Locale) -> Date.FormatStyle {
+        .dateTime.month(.abbreviated).day().locale(locale)
+    }
+
+    /// A day inside a month something else has already named — "Tue 14".
+    ///
+    /// **Neither the month nor the year, and both are dropped on purpose.** This is the day a row
+    /// carries under a heading that says the month and the year (`FR-16.6.3`), so repeating them
+    /// would spend two thirds of the line on what the heading above it just said. The weekday stays
+    /// because it is the one thing the heading cannot supply and the one a lifter reads a log by.
+    ///
+    /// Anywhere a date has to stand on its own — a search result, a record, a training max —
+    /// ``date(locale:)`` is the style.
+    ///
+    /// - Parameter locale: The locale to render for.
+    /// - Returns: The style.
+    public static func weekdayAndDay(locale: Locale) -> Date.FormatStyle {
+        .dateTime.weekday(.abbreviated).day().locale(locale)
+    }
+
+    /// A time of day on its own — when a workout that is still on screen was started.
+    ///
+    /// **The day is the caller's to have said already.** A bare time is only unambiguous beside the
+    /// date it belongs to; ``dateAndTime(locale:)`` is the style for anywhere that is not true.
+    ///
+    /// - Parameter locale: The locale to render for.
+    /// - Returns: The style.
+    public static func time(locale: Locale) -> Date.FormatStyle {
+        .dateTime.hour().minute().locale(locale)
     }
 
     /// The month and year a calendar grid is showing — "August 2026".

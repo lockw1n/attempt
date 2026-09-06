@@ -28,9 +28,20 @@ struct PersonalRecordBadgeTests {
         return (workout, card.id)
     }
 
-    /// The rep counts the store says `setID` holds the record at.
-    private func marks(_ workout: Workout, _ setID: UUID) -> [Int] {
-        workout.store.personalRecords.repCounts(forSetID: setID)
+    /// The schemes the store says `setID` holds the record at.
+    private func marks(_ workout: Workout, _ setID: UUID) -> [RecordScheme] {
+        workout.store.personalRecords.schemes(forSetID: setID)
+    }
+
+    /// The N's among them that stand at a single set — `FR-1.6.1`'s column of `FR-16.2.1`'s table,
+    /// which is what a lone set can hold.
+    private func repMaxMarks(_ workout: Workout, _ setID: UUID) -> [Int] {
+        marks(workout, setID).filter { $0.sets == 1 }.map(\.reps)
+    }
+
+    /// What the badge over `setID` says, or `nil` where none is drawn.
+    private func badge(_ workout: Workout, _ setID: UUID) -> RecordBadge? {
+        RecordBadge(schemes: marks(workout, setID))
     }
 
     /// The set logged at `position` under `entryID`.
@@ -53,7 +64,11 @@ struct PersonalRecordBadgeTests {
 
         // Nothing else is called: no reload, no navigation. The one command is the interaction.
         let logged = try await loggedSet(workout, entryID, at: 0)
-        #expect(marks(workout, logged.id) == [1, 2, 3, 4, 5])
+        #expect(repMaxMarks(workout, logged.id) == [1, 2, 3, 4, 5])
+        // `FR-16.2.4`: the badge names the maximal cell, which for a lone set is the top N — not
+        // the five it also holds, and not `5 × 1`, which is nobody's notation for a single set.
+        #expect(badge(workout, logged.id)?.scheme == RecordScheme(reps: 5, sets: 1))
+        #expect(String(localized: try #require(badge(workout, logged.id)).text) == "PR 5RM")
     }
 
     /// **The requirement's own example.** A set that beats an existing 3RM takes the badge, and the
@@ -67,7 +82,7 @@ struct PersonalRecordBadgeTests {
             values: SetEntryValues(
                 weight: Weight(grams: 100_000), reps: 3, rpe: nil, isWarmup: false))
         let first = try await loggedSet(workout, entryID, at: 0)
-        #expect(marks(workout, first.id) == [1, 2, 3])
+        #expect(repMaxMarks(workout, first.id) == [1, 2, 3])
 
         await workout.store.addSet(
             toEntryID: entryID,
@@ -75,7 +90,7 @@ struct PersonalRecordBadgeTests {
                 weight: Weight(grams: 110_000), reps: 3, rpe: nil, isWarmup: false))
 
         let heavier = try await loggedSet(workout, entryID, at: 1)
-        #expect(marks(workout, heavier.id) == [1, 2, 3])
+        #expect(repMaxMarks(workout, heavier.id) == [1, 2, 3])
         #expect(marks(workout, first.id).isEmpty)
     }
 
@@ -117,9 +132,53 @@ struct PersonalRecordBadgeTests {
     /// is what separates them — the distinction `PreviousPerformances` makes on the same screen.
     @Test("A store that has not read yet reports no marks rather than an answer")
     func anUnreadStoreClaimsNothing() async throws {
-        let marks = SessionRecordMarks(bySetID: [UUID(): [1]], hasLoaded: false)
+        let marks = SessionRecordMarks(
+            bySetID: [UUID(): [RecordScheme(reps: 1, sets: 1)]], hasLoaded: false)
 
-        #expect(marks.repCounts(forSetID: marks.bySetID.keys.first ?? UUID()).isEmpty)
+        #expect(marks.schemes(forSetID: marks.bySetID.keys.first ?? UUID()).isEmpty)
+    }
+
+    /// **`FR-16.2.4`'s own case: a run's badge names the run, not the heaviest single in it.** Three
+    /// consecutive equal sets hold cells up to `5 × 3`, and the badge on every one of them — the
+    /// cache names a run by its first set — is the corner rather than the `5 × 1` the same load also
+    /// took.
+    @Test("A run of three equal sets is badged with its maximal scheme")
+    func aRunIsBadgedWithItsMaximalScheme() async throws {
+        let (workout, entryID) = try await startedSquat()
+        for _ in 0..<3 {
+            await workout.store.addSet(
+                toEntryID: entryID,
+                values: SetEntryValues(
+                    weight: Weight(grams: 100_000), reps: 5, rpe: nil, isWarmup: false))
+        }
+
+        let first = try await loggedSet(workout, entryID, at: 0)
+        let mark = try #require(badge(workout, first.id))
+        #expect(mark.scheme == RecordScheme(reps: 5, sets: 3))
+        #expect(String(localized: mark.text) == "PR 5×3")
+        #expect(String(localized: mark.label) == "Personal record, 5 by 3")
+    }
+
+    /// **A run whose every cell stands at two sets and up still carries a badge**, which is the gap
+    /// `T-16.05` left open: read through `FR-1.6.1`'s one-set column this run holds nothing, because
+    /// a heavier single of five already stands there.
+    @Test("A run beaten at one set is still badged at the schemes it took")
+    func aRunBeatenAtOneSetKeepsItsSchemeBadge() async throws {
+        let (workout, entryID) = try await startedSquat()
+        await workout.store.addSet(
+            toEntryID: entryID,
+            values: SetEntryValues(
+                weight: Weight(grams: 120_000), reps: 5, rpe: nil, isWarmup: false))
+        for _ in 0..<2 {
+            await workout.store.addSet(
+                toEntryID: entryID,
+                values: SetEntryValues(
+                    weight: Weight(grams: 100_000), reps: 5, rpe: nil, isWarmup: false))
+        }
+
+        let runStart = try await loggedSet(workout, entryID, at: 1)
+        #expect(repMaxMarks(workout, runStart.id).isEmpty)
+        #expect(badge(workout, runStart.id)?.scheme == RecordScheme(reps: 5, sets: 2))
     }
 
     /// Dropping the workout drops the marks with it: a badge is a claim about the workout on screen.

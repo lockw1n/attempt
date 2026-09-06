@@ -86,6 +86,31 @@ public struct UserSettings: StoredRecord {
     /// header on validation.
     public var dashboardExerciseIDs: [UUID]?
 
+    /// Which exercises `FR-1.6.5`'s feed reports on (`FR-16.3.1`).
+    ///
+    /// **Defaulted rather than optional, which is the opposite of ``dashboardExerciseIDs``' choice
+    /// one property up, and for the reason that property gives.** "Never configured" and "chose the
+    /// dashboard lifts" are the same behaviour here — `FR-16.3.1` makes the dashboard lifts the
+    /// default — so one value says both, and there is nothing a screen would do differently.
+    public var recentRecordsScope: RecentRecordsScope
+
+    /// The exercises ``RecentRecordsScope/chosen`` names, or `nil` where the lifter has never
+    /// chosen (`FR-16.3.1`).
+    ///
+    /// **A second list rather than a second reading of ``dashboardExerciseIDs``**, and it is only
+    /// consulted under ``RecentRecordsScope/chosen``: the whole point of the default scope is one
+    /// place to say which lifts matter, and this is what a lifter who wants the two to differ uses.
+    public var recentRecordsExerciseIDs: [UUID]?
+
+    /// Which schemes that feed reports on (`FR-16.3.2`).
+    public var recentRecordsSchemes: RecentRecordsSchemes
+
+    /// Whether the feed shows records at a scheme performed for the first time (`FR-16.3.4`).
+    ///
+    /// `false`, from the requirement: a first-ever set of an accessory is a record by definition,
+    /// and a feed of them is what a lifter would otherwise read on the screen the app launches into.
+    public var recentRecordsShowsBaselines: Bool
+
     /// Creates a settings record. No property is validated; see this module's header.
     ///
     /// The three defaulted preferences are a convenience for a caller rebuilding a row, not the
@@ -104,7 +129,11 @@ public struct UserSettings: StoredRecord {
         displayPrecision: DisplayPrecision? = nil,
         e1RMLookbackDays: Int = UserSettings.defaultE1RMLookbackDays,
         keepScreenAwake: Bool = UserSettings.defaultKeepScreenAwake,
-        dashboardExerciseIDs: [UUID]? = nil
+        dashboardExerciseIDs: [UUID]? = nil,
+        recentRecordsScope: RecentRecordsScope = UserSettings.defaultRecentRecordsScope,
+        recentRecordsExerciseIDs: [UUID]? = nil,
+        recentRecordsSchemes: RecentRecordsSchemes = .derived,
+        recentRecordsShowsBaselines: Bool = UserSettings.defaultRecentRecordsShowsBaselines
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -120,6 +149,10 @@ public struct UserSettings: StoredRecord {
         self.defaultRoundingIncrement = defaultRoundingIncrement
         self.defaultRoundingStrategy = defaultRoundingStrategy
         self.dashboardExerciseIDs = dashboardExerciseIDs
+        self.recentRecordsScope = recentRecordsScope
+        self.recentRecordsExerciseIDs = recentRecordsExerciseIDs
+        self.recentRecordsSchemes = recentRecordsSchemes
+        self.recentRecordsShowsBaselines = recentRecordsShowsBaselines
     }
 
     /// `FR-1.7.1`'s default window, in days, and the only place that number is written.
@@ -127,6 +160,12 @@ public struct UserSettings: StoredRecord {
     /// Here rather than beside the window type: it is what a user who has never configured one
     /// gets, which makes it a preference default rather than a property of the window.
     public static let defaultE1RMLookbackDays = 90
+
+    /// `FR-16.3.1`'s default scope, and the only place it is written.
+    public static let defaultRecentRecordsScope = RecentRecordsScope.dashboardLifts
+
+    /// `FR-16.3.4` read as written: baselines are hidden until the lifter asks for them.
+    public static let defaultRecentRecordsShowsBaselines = false
 
     /// `NFR-1.9` read as written: the screen stays awake, and the toggle is the way out of it
     /// rather than the way in. A lifter's hands are chalked and the phone is on the floor.
@@ -173,7 +212,11 @@ public struct UserSettings: StoredRecord {
             displayPrecision: other.displayPrecision,
             e1RMLookbackDays: other.e1RMLookbackDays,
             keepScreenAwake: other.keepScreenAwake,
-            dashboardExerciseIDs: other.dashboardExerciseIDs)
+            dashboardExerciseIDs: other.dashboardExerciseIDs,
+            recentRecordsScope: other.recentRecordsScope,
+            recentRecordsExerciseIDs: other.recentRecordsExerciseIDs,
+            recentRecordsSchemes: other.recentRecordsSchemes,
+            recentRecordsShowsBaselines: other.recentRecordsShowsBaselines)
     }
 
     /// This row with a different dashboard tile selection (`FR-1.9.1`).
@@ -206,6 +249,11 @@ extension UserSettings {
         case defaultRoundingIncrement
         case defaultRoundingStrategy
         case dashboardExerciseIDs
+        case recentRecordsScope
+        case recentRecordsExerciseIDs
+        case recentRecordsSchemeReps
+        case recentRecordsSchemeSets
+        case recentRecordsShowsBaselines
     }
 
     /// ``displayPrecision``, or `nil` where the key is absent, holds something this version cannot
@@ -235,7 +283,7 @@ extension UserSettings {
     /// formula name from a newer version must not take the theme, the unit and the rounding
     /// defaults down with it, still less ``userID``.
     ///
-    /// The three keys this record gained after its first wire format are absent-tolerant, on the
+    /// The eight keys this record gained after its first wire format are absent-tolerant, on the
     /// same rule: a backup written before they existed restores every preference it does carry.
     /// ``displayPrecision`` is *value*-tolerant too — see ``decodedPrecision(from:)``.
     public init(from decoder: any Decoder) throws {
@@ -263,14 +311,28 @@ extension UserSettings {
             keepScreenAwake: try container.decodeIfPresent(Bool.self, forKey: .keepScreenAwake)
                 ?? UserSettings.defaultKeepScreenAwake,
             dashboardExerciseIDs: try container.decodeIfPresent(
-                [UUID].self, forKey: .dashboardExerciseIDs)
+                [UUID].self, forKey: .dashboardExerciseIDs),
+            recentRecordsScope: try container.decodeVocabulary(
+                RecentRecordsScope.self,
+                forKey: .recentRecordsScope,
+                ifPresentOr: RecordVocabulary.recentRecordsScope),
+            recentRecordsExerciseIDs: try container.decodeIfPresent(
+                [UUID].self, forKey: .recentRecordsExerciseIDs),
+            recentRecordsSchemes: RecentRecordsSchemes.stored(
+                reps: try container.decodeIfPresent([Int].self, forKey: .recentRecordsSchemeReps),
+                sets: try container.decodeIfPresent([Int].self, forKey: .recentRecordsSchemeSets)),
+            recentRecordsShowsBaselines: try container.decodeIfPresent(
+                Bool.self, forKey: .recentRecordsShowsBaselines)
+                ?? UserSettings.defaultRecentRecordsShowsBaselines
         )
     }
 
-    /// Writes the fourteen keys in declaration order. ``dashboardExerciseIDs`` and
+    /// Writes the nineteen keys in declaration order. The optional lists and
     /// ``displayPrecision`` are absent rather than null where the user has never chosen, on
     /// ``Exercise``'s rule: an omitted key and a null one decode alike, and the shorter of the two
-    /// is what a settings row that has never been configured actually is.
+    /// is what a settings row that has never been configured actually is. ``recentRecordsSchemes``
+    /// is written as the two parallel columns it is stored in, so the wire and the store carry one
+    /// shape rather than two — absent on both means derived.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -287,5 +349,13 @@ extension UserSettings {
         try container.encode(defaultRoundingIncrement, forKey: .defaultRoundingIncrement)
         try container.encodeVocabulary(defaultRoundingStrategy, forKey: .defaultRoundingStrategy)
         try container.encodeIfPresent(dashboardExerciseIDs, forKey: .dashboardExerciseIDs)
+        try container.encodeVocabulary(recentRecordsScope, forKey: .recentRecordsScope)
+        try container.encodeIfPresent(
+            recentRecordsExerciseIDs, forKey: .recentRecordsExerciseIDs)
+        try container.encodeIfPresent(
+            recentRecordsSchemes.chosenSchemes?.map(\.reps), forKey: .recentRecordsSchemeReps)
+        try container.encodeIfPresent(
+            recentRecordsSchemes.chosenSchemes?.map(\.sets), forKey: .recentRecordsSchemeSets)
+        try container.encode(recentRecordsShowsBaselines, forKey: .recentRecordsShowsBaselines)
     }
 }

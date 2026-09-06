@@ -1,5 +1,6 @@
 #if os(iOS)
 
+    import DesignTokens
     import SnapshotTesting
     import SwiftUI
     import Testing
@@ -94,6 +95,37 @@
             }
         }
 
+        // FR-16.6.4: the pair is the whole point — a secondary action is the primary one at the
+        // same size and the same shape, differing only in its fill, so a screen can carry three
+        // commands and still spend `G-7.2`'s one accent once. Snapshotted beside it rather than
+        // alone, because what has to stay true is the relationship.
+        @Test func secondaryActionFill() throws {
+            try assertSnapshots(named: "SecondaryAction-fill") {
+                VStack(spacing: Spacing.lg.points) {
+                    Button {
+                    } label: {
+                        Text(verbatim: "Finish workout")
+                    }
+                    .buttonStyle(.primaryAction(.fill))
+                    Button {
+                    } label: {
+                        Text(verbatim: "Log next set")
+                    }
+                    .buttonStyle(.secondaryAction(.fill))
+                }
+            }
+        }
+
+        @Test func secondaryActionIntrinsic() throws {
+            try assertSnapshots(named: "SecondaryAction-intrinsic") {
+                Button {
+                } label: {
+                    Text(verbatim: "Repeat set")
+                }
+                .buttonStyle(.secondaryAction)
+            }
+        }
+
         @Test(arguments: [DeltaDirection.increase, .decrease, .unchanged])
         func delta(_ direction: DeltaDirection) throws {
             try assertSnapshots(named: "Delta-\(direction)") {
@@ -110,7 +142,20 @@
                 EmptyStateView(
                     headline: Text(verbatim: "No exercises yet"),
                     message: Text(verbatim: "Add one to start logging."),
-                    action: StateAction(Text(verbatim: "Add exercise")) {}
+                    action: StateAction(Text(verbatim: "Add exercise"), emphasis: .primary) {}
+                )
+            }
+        }
+
+        // `FR-16.6.4`'s two weights, as a picture. The emphasis is compile-enforced now — the
+        // parameter has no default — but nothing else proves the secondary case is not the primary
+        // one drawn twice, and the choice is invisible from the call site's own type.
+        @Test func emptySecondaryAction() throws {
+            try assertSnapshots(named: "State-empty-secondary") {
+                EmptyStateView(
+                    headline: Text(verbatim: "No exercises yet"),
+                    message: Text(verbatim: "Add one to start logging."),
+                    action: StateAction(Text(verbatim: "Add exercise"), emphasis: .secondary) {}
                 )
             }
         }
@@ -129,7 +174,7 @@
 
         @Test func error() throws {
             try assertSnapshots(named: "State-error") {
-                ErrorStateView(message: Text(verbatim: "That could not be saved."), retry: {})
+                ErrorStateView(message: Text(verbatim: "That could not be saved."), retryEmphasis: .primary, retry: {})
             }
         }
 
@@ -143,13 +188,29 @@
 
         @Test func offline() throws {
             try assertSnapshots(named: "State-offline") {
-                OfflineStateView(retry: {})
+                OfflineStateView(retryEmphasis: .primary, retry: {})
             }
         }
 
         @Test func insufficientData() throws {
             try assertSnapshots(named: "State-insufficient-data") {
                 InsufficientDataView(message: Text(verbatim: "Log two more sets to see a trend."))
+            }
+        }
+
+        // FR-16.5.4's field, in both of the states it has. The empty one is the whole of what the
+        // requirement asks for — a search affordance visible without a gesture — and the filled one
+        // is the only picture of the clear control, which is drawn only when there is something to
+        // clear. One reference, because the pair is the claim.
+        //
+        // The prompt is `verbatim` and not this module's copy: a component must not know a screen's
+        // words, which is why the caller supplies them.
+        @Test func searchField() throws {
+            try assertSnapshots(named: "SearchField") {
+                VStack(alignment: .leading, spacing: Spacing.md.points) {
+                    SearchField(text: .constant(""), prompt: "Search exercises")
+                    SearchField(text: .constant("front squat"), prompt: "Search exercises")
+                }
             }
         }
     }

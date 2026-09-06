@@ -99,7 +99,9 @@ struct EstimatedMaxTilesStateTests {
         let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
         let bench = try await fixture.exercise(named: "Bench Press", movement: .bench)
         let picker = TiledExerciseSelectionState(
-            catalogue: fixture.repositories.exercises, settings: fixture.repositories.settings)
+            catalogue: fixture.repositories.exercises,
+            settings: fixture.repositories.settings,
+            records: fixture.records)
         await picker.load()
 
         await picker.toggle(squat)
@@ -118,7 +120,9 @@ struct EstimatedMaxTilesStateTests {
         let fixture = DashboardFixture()
         let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
         let picker = TiledExerciseSelectionState(
-            catalogue: fixture.repositories.exercises, settings: fixture.repositories.settings)
+            catalogue: fixture.repositories.exercises,
+            settings: fixture.repositories.settings,
+            records: fixture.records)
         await picker.load()
 
         await picker.toggle(squat)
@@ -162,7 +166,7 @@ struct EstimatedMaxTilesStateTests {
         #expect(state.unit == .pounds)
     }
 
-    // MARK: - The section's four states
+    // MARK: - The section's five states
 
     @Test("A failed read outranks the tiles it leaves behind")
     func afailedReadOutranksStaleTiles() async throws {
@@ -171,7 +175,9 @@ struct EstimatedMaxTilesStateTests {
         try await fixture.tile([squat])
         let state = tiles(over: fixture)
         await state.load()
-        #expect(EstimatedMaxTilesScreenState.current(state) == .ready(state.tiles))
+        // Not `.ready`: nothing is logged against the squat, so this store is `FR-16.5.2`'s
+        // all-empty section. What matters here is only that it is not the failure below.
+        #expect(EstimatedMaxTilesScreenState.current(state) == .noEstimates(state.tiles))
 
         // The same state after a read that failed still holds the tiles; the diagnostic wins.
         let failed = tiles(over: DashboardFixture(), failing: true)
@@ -203,6 +209,183 @@ struct EstimatedMaxTilesStateTests {
         #expect(EstimatedMaxTileView.direction(of: Weight(grams: 0)) == .unchanged)
     }
 
+    // MARK: - FR-15.1.8's training max, under the estimate
+
+    @Test("A tile carries the training max in force today, beside the estimate")
+    func atileCarriesTheTrainingMax() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.tile([squat])
+        try await fixture.trainingMax(squat, kilos: 180, weeksAgo: 1)
+
+        let state = tiles(over: fixture)
+        await state.load()
+
+        #expect(state.tiles.first?.trainingMax == Weight(grams: 180_000))
+    }
+
+    /// `nil` and not zero, which is the common case: nothing writes a training max until the
+    /// exercise detail's own section does.
+    @Test("An exercise with no training max carries none rather than a zero")
+    func notrainingMaxIsNil() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.tile([squat])
+
+        let state = tiles(over: fixture)
+        await state.load()
+
+        #expect(state.tiles.first?.trainingMax == nil)
+    }
+
+    @Test("A change dated after today is not yet the number under the tile")
+    func afutureTrainingMaxIsNotDrawn() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.tile([squat])
+        try await fixture.trainingMax(squat, kilos: 180, weeksAgo: 1)
+        try await fixture.trainingMax(squat, kilos: 200, weeksAgo: -1, replacing: 180)
+
+        let state = tiles(over: fixture)
+        await state.load()
+
+        #expect(state.tiles.first?.trainingMax == Weight(grams: 180_000))
+    }
+
+    /// `FR-16.5.2`: three tiles each apologising for itself is one thing said three times, so the
+    /// section says it once. The store the app is installed onto is exactly this state.
+    @Test("A store with nothing logged is the section's one insufficient-data state")
+    func astoreWithNothingLoggedIsOneInsufficientDataState() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        let bench = try await fixture.exercise(named: "Bench Press", movement: .bench)
+        let deadlift = try await fixture.exercise(named: "Deadlift", movement: .deadlift)
+
+        let state = tiles(over: fixture)
+        await state.load()
+
+        // The seeded three stand, because nothing trained can replace them (`FR-16.5.1`).
+        #expect(state.selection == [squat, bench, deadlift])
+        #expect(state.tiles.count == 3)
+        #expect(state.tiles.allSatisfy { !$0.hasEstimate })
+        // The state carries the tiles, so the section can still draw their names and any training
+        // max under them — `FR-15.1.8` outlives an absent estimate.
+        #expect(EstimatedMaxTilesScreenState.current(state) == .noEstimates(state.tiles))
+    }
+
+    /// One tile with a number is enough to keep the tiles on screen; the ones without are the one
+    /// line each `FR-16.5.2` asks for, not a block.
+    @Test("One estimate among three keeps every tile drawn")
+    func oneEstimateAmongThreeKeepsEveryTileDrawn() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        let bench = try await fixture.exercise(named: "Bench Press", movement: .bench)
+        try await fixture.tile([squat, bench])
+        try await fixture.session(
+            on: weeksAgo(1), exercises: [(bench, [LoggedSet(grams: 100_000, reps: 5)])])
+
+        let state = tiles(over: fixture)
+        await state.load()
+
+        #expect(state.tiles.map(\.hasEstimate) == [false, true])
+        #expect(EstimatedMaxTilesScreenState.current(state) == .ready(state.tiles))
+    }
+
+    /// `FR-16.5.1` through the state rather than through the rule: what the lifter trains replaces
+    /// the lifts they do not, and the picker behind the tiles opens on the same three.
+    @Test("An untrained default is replaced by the most-trained exercise, in the picker too")
+    func anuntrainedDefaultIsReplacedEverywhere() async throws {
+        let fixture = DashboardFixture()
+        let bench = try await fixture.exercise(named: "Bench Press", movement: .bench)
+        try await fixture.exercise(named: "Back Squat", movement: .squat)
+        let deadlift = try await fixture.exercise(named: "Deadlift", movement: .deadlift)
+        let chins = try await fixture.exercise(
+            named: "Chin-Up", movement: .row, equipment: .bodyweight)
+        try await fixture.session(
+            on: weeksAgo(1),
+            exercises: [
+                (chins, (0..<4).map { _ in LoggedSet(grams: 0, reps: 8, isWarmup: false) }),
+                (bench, [LoggedSet(grams: 100_000, reps: 5)]),
+            ])
+
+        let state = tiles(over: fixture)
+        await state.load()
+        // The squat's slot takes the chin-ups; the bench keeps its own; and the deadlift's slot has
+        // nothing left to take, so it keeps the seeded lift rather than vanishing.
+        #expect(state.selection == [chins, bench, deadlift])
+
+        let picker = TiledExerciseSelectionState(
+            catalogue: fixture.repositories.exercises,
+            settings: fixture.repositories.settings,
+            records: fixture.records)
+        await picker.load()
+
+        // The picker opens on exactly what is tiled — its own contract — which is what stops a
+        // lifter ticking a fourth exercise and silently replacing the fallback with the seeded
+        // three.
+        #expect(picker.selection == state.selection)
+    }
+
+    /// The lifter a manual training max exists for: a coach hands over a number and the lift has
+    /// not been performed yet, so the tile that carries it is the one with no estimate — and every
+    /// other tile is in the same position, which is `FR-16.5.2`'s section state. `FR-15.1.8` says
+    /// the number must not be invisible, so the state that says "no estimates" carries the tiles
+    /// rather than replacing them.
+    @Test("A training max survives a section where nothing has an estimate")
+    func atrainingMaxSurvivesASectionWithNoEstimates() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.tile([squat])
+        try await fixture.trainingMax(squat, kilos: 180, weeksAgo: 1)
+
+        let state = tiles(over: fixture)
+        await state.load()
+
+        let screen = EstimatedMaxTilesScreenState.current(state)
+        #expect(screen == .noEstimates(state.tiles))
+        guard case .noEstimates(let carried) = screen else { return }
+        #expect(carried.map(\.trainingMax) == [Weight(grams: 180_000)])
+        #expect(carried.map(\.name) == ["Back Squat"])
+    }
+
+    /// `TR-1.5`: the sheet is on another tab, so the write reaches this screen through the app's one
+    /// announcement channel rather than through a read this screen would have to be told to make.
+    @Test("A training max written elsewhere reaches the tile without the tab being revisited")
+    func atrainingMaxWrittenElsewhereReachesTheTile() async throws {
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat", movement: .squat)
+        try await fixture.tile([squat])
+        // One actor rather than two: only the one a state subscribed to announces to it.
+        let records = fixture.records
+        let state = EstimatedMaxTilesState(
+            records: records,
+            catalogue: fixture.repositories.exercises,
+            settings: fixture.repositories.settings,
+            trainingMaxes: fixture.repositories.trainingMaxes,
+            now: { fixtureNow })
+        await state.load()
+        #expect(state.tiles.first?.trainingMax == nil)
+
+        let subscription = Task { await state.observeChanges() }
+        defer { subscription.cancel() }
+        try await fixture.trainingMax(squat, kilos: 180, weeksAgo: 1)
+        await records.trainingMaxDidChange(forExerciseID: squat)
+
+        try await waitFor { state.tiles.first?.trainingMax == Weight(grams: 180_000) }
+    }
+
+    /// Polls the state until the subscription has delivered, rather than sleeping a fixed span: the
+    /// stream is delivered whenever the runtime gets to it.
+    ///
+    /// - Parameter condition: What the tile should end up saying.
+    private func waitFor(_ condition: () -> Bool) async throws {
+        for _ in 0..<200 {
+            if condition() { return }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        Issue.record("The tile never took the announced training max.")
+    }
+
     // MARK: - Fixtures
 
     private func tiles(
@@ -211,6 +394,11 @@ struct EstimatedMaxTilesStateTests {
         EstimatedMaxTilesState(
             records: fixture.records,
             catalogue: failing ? FailingExerciseRepository() : fixture.repositories.exercises,
-            settings: fixture.repositories.settings)
+            settings: fixture.repositories.settings,
+            trainingMaxes: fixture.repositories.trainingMaxes,
+            // "Now" is pinned, on `DashboardFixture/records`' rule: every fixture date is an offset
+            // from `fixtureNow`, and left at the real clock a change dated a week ahead of it would
+            // already be in force.
+            now: { fixtureNow })
     }
 }

@@ -87,22 +87,32 @@ enum SchemaDefaults {
     /// suppress a reading the user actually typed. A spurious manual entry is a row they can delete.
     static let bodyweightSource = BodyweightSource.manual.rawValue
 
-    /// The distant past, for a training-max configuration whose effective date was never written.
+    /// The distant past, for a training-max configuration or history row whose effective date was
+    /// never written.
     ///
     /// **The opposite direction from ``sessionDate`` and ``bodyweightDate``, because the lookup runs
-    /// the other way.** A configuration is read as "the latest one effective on or before today", so
-    /// the newest wins — and a row defaulting to *now* would displace the user's real configuration
-    /// from this moment on. Defaulting to the distant past loses every such contest and only ever
-    /// applies where the user has configured nothing.
+    /// the other way.** Both tables are read as "the latest row effective on or before today", so
+    /// the newest wins — and a row defaulting to *now* would displace the lifter's real
+    /// configuration, and their real training max, from this moment on. Defaulting to the distant
+    /// past loses every such contest and only ever applies where they have entered nothing.
     static let effectiveFrom = Date.distantPast
+
+    /// The distant past, for a program run whose start was never written.
+    ///
+    /// ``effectiveFrom``'s direction and a third argument for it: the open run in force is the one
+    /// with the latest ``ProgramRunEntity/startedAt``, so a row defaulting to *now* would displace
+    /// the pass the lifter is actually on and put `FR-16.8.2`'s Train tab on a program they never
+    /// started. Losing every contest is the only safe way to be wrong here.
+    static let runStartedAt = Date.distantPast
 
     /// ``RepositoryInterface/TrainingMaxSourceKind/manual``, for a configuration whose source was never written.
     ///
-    /// The one case that cannot quietly produce a plausible number: `manualWeightGrams` is `nil` on
-    /// such a row, so the configuration refuses to resolve and says so, where `.percentOfE1RM` would
-    /// silently hand back 90% of the user's e1RM as though they had asked for it. It is also
-    /// `FR-1.5.1.5`'s override — the state in which the derived pipeline is *not* running — which is
-    /// the right thing to say about a row this app did not write.
+    /// The one case that cannot quietly produce a plausible number: manual's value lives in
+    /// ``TrainingMaxHistoryEntity`` and a row this app did not write has none there, so the
+    /// configuration refuses to resolve and says so, where `.percentOfE1RM` would silently hand back
+    /// 90% of the user's e1RM as though they had asked for it. It is also `FR-1.5.1.5`'s override —
+    /// the state in which the derived pipeline is *not* running — which is the right thing to say
+    /// about a row this app did not write.
     static let trainingMaxSource = TrainingMaxSourceKind.manual.rawValue
 
     /// `FR-1.5.1.2`'s 90%, as the ratio the domain type uses.
@@ -142,6 +152,18 @@ enum SchemaDefaults {
 
     /// `NFR-1.9` read as written — see ``RepositoryInterface/UserSettings/defaultKeepScreenAwake``.
     static let keepScreenAwake = UserSettings.defaultKeepScreenAwake
+
+    /// ``RepositoryInterface/RecentRecordsScope/dashboardLifts``, read from the one place
+    /// `FR-16.3.1`'s default is written.
+    ///
+    /// **The first default here that a real migration will reach**, which is what the type's note
+    /// says stops being hypothetical at the first schema version to change this column set. It is
+    /// safe to reach: a backfilled row asserts the same scope a fresh install gets.
+    static let recentRecordsScope = UserSettings.defaultRecentRecordsScope.rawValue
+
+    /// `FR-16.3.4` read as written — see
+    /// ``RepositoryInterface/UserSettings/defaultRecentRecordsShowsBaselines``.
+    static let recentRecordsShowsBaselines = UserSettings.defaultRecentRecordsShowsBaselines
 
     /// The distant past, for a cached personal record whose date was never written.
     ///

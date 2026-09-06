@@ -53,7 +53,7 @@
                     symbolName: "magnifyingglass",
                     headline: Text(HistoryStrings.noMatchesHeadline),
                     message: Text(HistoryStrings.noMatchesMessage),
-                    action: StateAction(Text(HistoryStrings.noMatchesAction)) {}
+                    action: StateAction(Text(HistoryStrings.noMatchesAction), emphasis: .primary) {}
                 )
             }
         }

@@ -41,8 +41,31 @@ extension ActiveSessionStore {
     public func start(
         on day: Date, fromRoutineID routineID: UUID, in routines: any RoutineRepository
     ) async -> Bool {
+        await start(on: day, fromRoutineID: routineID, in: routines, stampedWith: nil)
+    }
+
+    /// ``start(on:fromRoutineID:in:)``, with the program run the workout belongs to written into
+    /// the session row (`FR-16.8.2`, `FR-16.8.3`).
+    ///
+    /// **One method with an optional stamp rather than two starts**, because everything after the
+    /// session row is written is identical: a program day *is* a routine, and the whole of what a
+    /// program adds to `FR-15.2.3`'s start is three columns on the row it creates.
+    ///
+    /// - Parameters:
+    ///   - day: The training day the new workout belongs to.
+    ///   - routineID: The routine the program day names.
+    ///   - routines: Where that routine is read from.
+    ///   - stamp: The run, week and day index to record, or `nil`.
+    /// - Returns: Whether a workout is now in progress.
+    @discardableResult
+    func start(
+        on day: Date,
+        fromRoutineID routineID: UUID,
+        in routines: any RoutineRepository,
+        stampedWith stamp: ProgramSessionStamp?
+    ) async -> Bool {
         guard session == nil else { return false }
-        await start(on: day)
+        await start(on: day, stampedWith: stamp)
         guard let current = session else { return false }
         do {
             try await populate(current, fromRoutineID: routineID, in: routines)

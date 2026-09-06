@@ -104,8 +104,11 @@ public struct HarnessScenario: Sendable {
                 updatedAt: date,
                 deletedAt: nil,
                 date: date,
+                // Finished, and that is not decoration: an open session's sets are excluded from
+                // every derived read (`FR-16.4.2`), so a demonstration log written open would
+                // report no records at all.
                 startedAt: date,
-                endedAt: nil,
+                endedAt: date,
                 notes: "",
                 bodyweight: nil,
                 programRunID: nil,

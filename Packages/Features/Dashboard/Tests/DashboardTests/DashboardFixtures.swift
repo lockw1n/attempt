@@ -18,7 +18,6 @@ struct DashboardFixture {
     var records: PersonalRecordRecomputer {
         PersonalRecordRecomputer(
             workouts: repositories.workouts,
-            exercises: repositories.exercises,
             cache: repositories.personalRecords,
             now: { fixtureNow })
     }
@@ -54,6 +53,30 @@ struct DashboardFixture {
                 notes: "",
                 manualE1RM: nil))
         return id
+    }
+
+    /// One training max, written straight to the store.
+    ///
+    /// - Parameters:
+    ///   - exerciseID: Whose training max.
+    ///   - kilos: What it becomes.
+    ///   - weeks: How many weeks before ``fixtureNow`` it takes effect. Negative dates it ahead,
+    ///     which is what a change announced for next week looks like.
+    ///   - old: What it replaced, in kilograms, or `nil` for the first entry.
+    func trainingMax(
+        _ exerciseID: UUID, kilos: Int, weeksAgo weeks: Int, replacing old: Int? = nil
+    ) async throws {
+        try await repositories.trainingMaxes.save(
+            TrainingMaxHistoryEntry(
+                id: UUID(),
+                createdAt: .distantPast,
+                updatedAt: .distantPast,
+                deletedAt: nil,
+                exerciseID: exerciseID,
+                effectiveFrom: weeksAgo(weeks),
+                oldWeight: old.map { Weight(grams: $0 * 1000) },
+                newWeight: Weight(grams: kilos * 1000),
+                reason: "coach"))
     }
 
     /// One session, and one entry per exercise given, with the sets each entry holds.

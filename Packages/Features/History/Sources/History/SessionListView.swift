@@ -1,4 +1,5 @@
 import AppNavigation
+import DerivedValues
 import DesignSystem
 import Localization
 import PowerliftingCore
@@ -23,6 +24,14 @@ public struct SessionListView: View {
     /// states before their reads.
     @Environment(\.locale) private var locale
 
+    /// The calendar `FR-16.6.3`'s month headings are cut and drawn in.
+    ///
+    /// **The device's own, read from the environment rather than defaulted**, on
+    /// ``Localization/AppFormat/resolved(_:in:)``'s rule: a month boundary computed in one calendar
+    /// and a heading rendered in another are a whole day apart, and binding to the environment is
+    /// also what lets a reference pin the calendar it was recorded in.
+    @Environment(\.calendar) private var calendar
+
     /// `FR-1.5.4`'s search over the same history, as a mode of this screen rather than a screen of
     /// its own — the field belongs to this list, and a pushed search would be a second place the
     /// History tab's sessions are listed.
@@ -40,14 +49,16 @@ public struct SessionListView: View {
     ///   - workouts: The sessions, their entries and their sets.
     ///   - exercises: The catalogue, for the names in a summary line.
     ///   - settings: The settings row, for the unit the tonnage is shown in.
+    ///   - records: The app's one recompute actor (`TR-1.6`), told when a workout is ended here.
     public init(
         workouts: any WorkoutRepository,
         exercises: any ExerciseRepository,
-        settings: any SettingsRepository
+        settings: any SettingsRepository,
+        records: PersonalRecordRecomputer
     ) {
         _state = State(
             initialValue: SessionListState(
-                workouts: workouts, exercises: exercises, settings: settings))
+                workouts: workouts, exercises: exercises, settings: settings, records: records))
         _search = State(
             initialValue: SessionSearchState(
                 workouts: workouts, exercises: exercises, settings: settings))
@@ -122,6 +133,7 @@ public struct SessionListView: View {
             ErrorStateView(
                 headline: Text(HistoryStrings.errorHeadline),
                 message: Text(HistoryStrings.errorMessage),
+                retryEmphasis: .primary,
                 retry: { Task { await state.load() } }
             )
         case .empty:
@@ -129,7 +141,9 @@ public struct SessionListView: View {
                 symbolName: "figure.strengthtraining.traditional",
                 headline: Text(HistoryStrings.emptyHeadline),
                 message: Text(HistoryStrings.emptyMessage),
-                action: StateAction(Text(HistoryStrings.emptyAction)) {
+                action: StateAction(
+                    Text(HistoryStrings.emptyAction), emphasis: .primary
+                ) {
                     // A tab switch that drops Train to its root, not a push — `D-8`'s one place a
                     // workout is logged.
                     navigation?.startWorkout()
@@ -154,6 +168,7 @@ public struct SessionListView: View {
             ErrorStateView(
                 headline: Text(HistoryStrings.searchErrorHeadline),
                 message: Text(HistoryStrings.searchErrorMessage),
+                retryEmphasis: .primary,
                 retry: { Task { await search.load() } }
             )
         case .empty:
@@ -161,7 +176,9 @@ public struct SessionListView: View {
                 symbolName: "magnifyingglass",
                 headline: Text(HistoryStrings.noMatchesHeadline),
                 message: Text(HistoryStrings.noMatchesMessage),
-                action: StateAction(Text(HistoryStrings.noMatchesAction)) {
+                action: StateAction(
+                    Text(HistoryStrings.noMatchesAction), emphasis: .primary
+                ) {
                     search.clear()
                 }
             )
@@ -187,176 +204,75 @@ public struct SessionListView: View {
         }
     }
 
-    /// The rows, and whatever the next page has to say.
+    /// The rows, cut into `FR-16.6.3`'s months, and whatever the next page has to say.
+    ///
+    /// The list itself is ``SessionMonthList`` — a type rather than a builder here, so a reference
+    /// can render exactly what this screen draws. What stays on the screen is the two failures that
+    /// stand beside it and the question `FR-16.4.4` asks.
     private var sessions: some View {
-        LazyVStack(spacing: Spacing.md.points) {
-            ForEach(state.summaries) { summary in
-                NavigationLink(value: Route.history(.session(sessionID: summary.id))) {
-                    SessionSummaryCard(summary: summary, unit: state.displayUnit)
-                }
-                .buttonStyle(.plain)
-                // The paging trigger: the last row appearing is the list running out, which is
-                // the only signal a `LazyVStack` gives. It fires once per row — `loadMore()`
-                // refuses a second caller and refuses to run at all once the rows are exhausted.
-                .onAppear {
-                    guard summary.id == state.summaries.last?.id else { return }
-                    Task { await state.loadMore() }
-                }
+        VStack(alignment: .leading, spacing: Spacing.lg.points) {
+            if state.finishFailure != nil {
+                // `FR-1.13.1`'s shared component, with the list left standing beside it: a workout
+                // that would not end costs this screen nothing, and the retry is another tap on the
+                // row's own **Finish workout**. Above the rows because that is where a lifter who
+                // has just tapped one is looking.
+                ErrorStateView(message: Text(HistoryStrings.sessionFinishError))
             }
+
+            SessionMonthList(
+                months: months,
+                unit: state.displayUnit,
+                // The paging trigger: the foot of the list coming into view is the list running
+                // out, which is the only signal a `LazyVStack` gives. It is asked of the foot
+                // rather than of the last row because a section builds its rows eagerly — see
+                // ``SessionMonthList/reachedEnd``. `loadMore()` refuses a second caller and refuses
+                // to run at all once the rows are exhausted, so firing it again costs nothing.
+                reachedEnd: { Task { await state.loadMore() } },
+                finish: { summary in
+                    Task { await state.beginFinish(sessionID: summary.id) }
+                }
+            )
+
             if state.extendFailure != nil {
                 // The shared error component beneath the rows rather than in place of them: the
                 // sessions that did load are still on screen and still correct, and the retry is
                 // another scroll at the same edge, so the button is the one that asks again.
                 ErrorStateView(
                     message: Text(HistoryStrings.moreErrorMessage),
+                    retryEmphasis: .secondary,
                     retry: { Task { await state.loadMore() } }
                 )
             }
         }
-    }
-}
-
-/// One session, as `FR-1.5.1`'s four facts: the day, what was trained, how many working sets, and
-/// what they weighed.
-///
-/// Takes the summary and the unit rather than the state, so a reference can render it without a
-/// repository behind it.
-struct SessionSummaryCard: View {
-    /// The row.
-    let summary: SessionSummary
-
-    /// The unit the tonnage is shown in (`G-3.1`).
-    let unit: MassUnit
-
-    /// Whether the card names its own day.
-    ///
-    /// **True in a list, false under a heading that already says it.** In the chronological list the
-    /// date is what identifies a row; in the calendar's day section it is the section's own heading,
-    /// and a card repeating it prints the same date twice in a row — on screen and to VoiceOver.
-    var showsDate = true
-
-    /// Why a search put this row on screen, or `nil` where the card is not a result (`FR-1.5.4`).
-    ///
-    /// An option on the list's own card rather than a wrapper around it, because the explanation
-    /// belongs *inside* the card: a caption floating beneath one reads as a caption on the next.
-    var match: SearchMatch?
-
-    /// Which locale the day, the names and the numbers are rendered for (`G-3.4`).
-    @Environment(\.locale) private var locale
-
-    /// The date, the exercises, the session's note where there is one, and the two metrics.
-    var body: some View {
-        Card {
-            VStack(alignment: .leading, spacing: Spacing.md.points) {
-                if showsDate {
-                    Text(summary.date, format: AppFormat.date(locale: locale))
-                        .font(Typography.cardTitle.font)
-                        .foregroundStyle(ColorToken.textPrimary)
-                }
-
-                exercises
-
-                if !summary.notes.isEmpty {
-                    // `FR-1.2.9`'s session note, readable for the first time. Clipped rather than
-                    // laid out in full: this is a summary, and a paragraph typed at the rack would
-                    // otherwise be the tallest thing in the list.
-                    Text(verbatim: summary.notes)
-                        .font(Typography.caption.font)
-                        .foregroundStyle(ColorToken.textTertiary)
-                        .lineLimit(2)
-                }
-
-                metrics
-
-                if let match {
-                    matched(match)
-                }
+        .alert(
+            Text(HistoryStrings.sessionPendingTitle(state.pendingPrompt?.count ?? 0)),
+            isPresented: Binding(
+                get: { state.pendingPrompt != nil },
+                set: { if !$0 { state.cancelFinish() } }),
+            presenting: state.pendingPrompt
+        ) { prompt in
+            Button(role: .destructive) {
+                Task { await state.finish(sessionID: prompt.sessionID, resolving: .remove) }
+            } label: {
+                Text(HistoryStrings.sessionPendingRemove)
             }
+            Button {
+                Task { await state.finish(sessionID: prompt.sessionID, resolving: .keepAsFailed) }
+            } label: {
+                Text(HistoryStrings.sessionPendingKeep)
+            }
+            Button(role: .cancel) {
+                state.cancelFinish()
+            } label: {
+                Text(HistoryStrings.sessionPendingCancel)
+            }
+        } message: { _ in
+            Text(HistoryStrings.sessionPendingMessage)
         }
     }
 
-    /// Where the query was found, as one line per field in a fixed order.
-    ///
-    /// **Lines rather than one run-together sentence**: three short labels wrap where a joined
-    /// sentence would break mid-phrase at the largest Dynamic Type size, and each is its own
-    /// VoiceOver stop. The set-note match carries the note itself, being the only one of the three
-    /// the card shows no other evidence of.
-    ///
-    /// **The block is `fixedSize`d vertically**, and the reference images are why: nested one level
-    /// deeper than the card's other rows, it was offered the height left over rather than the height
-    /// it wanted, and every line in it truncated to one — including the note, whose own two-line
-    /// limit never got to apply. A caption reading *Matched a set no…* explains nothing, which is
-    /// the whole of what this block is for.
-    ///
-    /// - Parameter match: Which fields matched, and the note behind a set-note match.
-    /// - Returns: The caption block.
-    @ViewBuilder private func matched(_ match: SearchMatch) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.xs.points) {
-            if match.fields.contains(.exerciseName) {
-                matchLabel(HistoryStrings.matchExercise)
-            }
-            if match.fields.contains(.sessionNote) {
-                matchLabel(HistoryStrings.matchSessionNote)
-            }
-            if match.fields.contains(.setNote) {
-                matchLabel(HistoryStrings.matchSetNote)
-                if let note = match.setNote {
-                    Text(verbatim: note)
-                        .font(Typography.caption.font)
-                        .foregroundStyle(ColorToken.textTertiary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// One "matched in" line.
-    ///
-    /// - Parameter text: Which field matched.
-    /// - Returns: The line.
-    private func matchLabel(_ text: LocalizedStringResource) -> some View {
-        Text(text)
-            .font(Typography.caption.font)
-            .foregroundStyle(ColorToken.textSecondary)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
-    /// What was trained, run together as one phrase in the locale's own list style.
-    @ViewBuilder private var exercises: some View {
-        if summary.exerciseNames.isEmpty {
-            Text(HistoryStrings.noExercises)
-                .font(Typography.body.font)
-                .foregroundStyle(ColorToken.textTertiary)
-        } else {
-            Text(verbatim: AppFormat.list(summary.exerciseNames, locale: locale))
-                .font(Typography.body.font)
-                .foregroundStyle(ColorToken.textSecondary)
-                .lineLimit(2)
-        }
-    }
-
-    /// The two numbers, as one line.
-    ///
-    /// **Not `G-7.5`'s metric tiles, and the reference images are why.** Two tiles side by side in a
-    /// list row wrap their numeral across three lines at the largest Dynamic Type size — a tonnage
-    /// broken over three lines reads as three numbers — and they read out to VoiceOver as a label
-    /// and a bare numeral each. The pattern is the dashboard's, where a number is the content; here
-    /// it is a footnote on a row whose content is the day. One sentence is also one VoiceOver stop
-    /// (`G-4.2`), so no accessibility override is needed to make it read properly.
-    private var metrics: some View {
-        Text(HistoryStrings.metricsSummary(sets: summary.setCount, volume: renderedTonnage))
-            .font(Typography.numericValue.font)
-            .foregroundStyle(ColorToken.textPrimary)
-    }
-
-    /// The tonnage, to the whole unit.
-    ///
-    /// **Whole, not `G-3.3`'s default step.** A half-kilogram on a session total is noise on a
-    /// four-digit number, and the step exists for a load a lifter has to put on a bar.
-    private var renderedTonnage: String {
-        summary.tonnage.formatted(
-            AppFormat.weight(in: unit, precision: .whole, locale: locale))
+    /// The rows the list is showing, cut into months (`FR-16.6.3`).
+    private var months: [SessionMonthSection] {
+        SessionMonths.sections(state.summaries, calendar: calendar)
     }
 }

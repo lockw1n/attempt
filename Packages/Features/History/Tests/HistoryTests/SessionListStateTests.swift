@@ -55,6 +55,30 @@ struct SessionListStateTests {
         #expect(row.notes == "Felt heavy.")
     }
 
+    /// `FR-16.8.3` on the list row: the week and the day come off the session's own columns, which
+    /// is what lets a note stop carrying them (`DOD-16.1`).
+    @Test("A row started from a program carries the week and the day, counted from one")
+    func summaryLineCarriesTheProgramPosition() async throws {
+        var log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        let planned = try await log.session(daysAgo: 0, program: (week: 2, dayIndex: 0))
+        let plannedEntry = try await log.entry(squat, in: planned, order: 0)
+        try await log.set(in: plannedEntry, order: 0, kilograms: 100, reps: 5)
+        let unplanned = try await log.session(daysAgo: 1)
+        let unplannedEntry = try await log.entry(squat, in: unplanned, order: 0)
+        try await log.set(in: unplannedEntry, order: 0, kilograms: 100, reps: 5)
+
+        let state = log.listState()
+        await state.load()
+
+        let rows = state.summaries
+        #expect(rows.count == 2)
+        // The day is the `ProgramDay.order` plus one, which is how a lifter reads it.
+        #expect(rows.first?.programPosition == ProgramPosition(week: 2, day: 1))
+        // Absent, not zeroed, on a workout started outside a program.
+        #expect(rows.last?.programPosition == nil)
+    }
+
     @Test("Exercises read in entry order, and one performed twice is named once")
     func exerciseNamesAreOrderedAndDeduplicated() async throws {
         var log = TrainingLog()
@@ -181,7 +205,8 @@ struct SessionListStateTests {
         let state = SessionListState(
             workouts: log.repositories.workouts,
             exercises: ForeignCatalogue(holding: [live, gone]),
-            settings: log.repositories.settings
+            settings: log.repositories.settings,
+            records: log.records
         )
         await state.load()
 
@@ -248,11 +273,7 @@ struct SessionListStateTests {
     @Test("A read that fails is the error state, and load() from there is the retry")
     func failedReadIsRecoverable() async throws {
         let log = TrainingLog()
-        let state = SessionListState(
-            workouts: FailingWorkoutRepository(),
-            exercises: log.repositories.exercises,
-            settings: log.repositories.settings
-        )
+        let state = log.listState(workouts: FailingWorkoutRepository())
         await state.load()
 
         #expect(SessionListScreenState.current(state.phase) == .failed)

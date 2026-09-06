@@ -30,6 +30,19 @@ struct TrainingLog {
     /// The fakes everything here is written to and read from.
     let repositories = InMemoryRepositoryStack()
 
+    /// Turns `FR-16.3`'s filters off, so a feed test asserts on the feed's own mechanics.
+    ///
+    /// **A fixture, not a default.** `FR-16.3.1` scopes a fresh row to the dashboard lifts and
+    /// `FR-16.3.4` hides baselines, so an unconfigured store draws almost nothing here — every
+    /// record a short fixture sets is the first of its scheme. A test about grouping, ordering or
+    /// subscription says so by calling this; a test about the filters configures them itself.
+    func showEveryRecord() async throws {
+        var stored = try await repositories.settings.settings()
+        stored.recentRecordsScope = .everyExercise
+        stored.recentRecordsShowsBaselines = true
+        try await repositories.settings.save(stored)
+    }
+
     /// An exercise in the catalogue.
     @discardableResult
     func exercise(
@@ -62,13 +75,33 @@ struct TrainingLog {
     ///   - exerciseID: The exercise trained.
     ///   - date: The session's training day, which is what a record is dated by.
     ///   - sets: The sets, in the order they were performed.
+    ///   - isFinished: Whether the workout has ended. `false` makes every uncompleted set in it a
+    ///     *pending* one (`FR-16.4.1`).
     /// - Returns: The entry's id, which is what a set-change trigger is given.
     @discardableResult
     func session(
         of exerciseID: UUID,
         on date: Date,
-        sets: [LoggedSet]
+        sets: [LoggedSet],
+        isFinished: Bool = true
     ) async throws -> UUID {
+        try await loggedSession(of: exerciseID, on: date, sets: sets, isFinished: isFinished).entry
+    }
+
+    /// The same, handing back the session as well as the entry — what a finish is run against.
+    ///
+    /// - Parameters:
+    ///   - exerciseID: The exercise trained.
+    ///   - date: The session's training day.
+    ///   - sets: The sets, in the order they were performed.
+    ///   - isFinished: Whether the workout has ended.
+    /// - Returns: Both ids.
+    func loggedSession(
+        of exerciseID: UUID,
+        on date: Date,
+        sets: [LoggedSet],
+        isFinished: Bool = true
+    ) async throws -> (session: UUID, entry: UUID) {
         let sessionID = UUID()
         try await repositories.workouts.save(
             WorkoutSession(
@@ -78,7 +111,10 @@ struct TrainingLog {
                 deletedAt: nil,
                 date: date,
                 startedAt: nil,
-                endedAt: nil,
+                // Finished by default, so an uncompleted set in a fixture is a *failed* one
+                // rather than a pending one (`FR-16.4.1`) — the read that feeds every derived
+                // value drops pending sets, and several tests here are about failed ones.
+                endedAt: isFinished ? date : nil,
                 notes: "",
                 bodyweight: nil,
                 programRunID: nil,
@@ -98,7 +134,7 @@ struct TrainingLog {
             try await repositories.workouts.save(
                 setEntry(entryID: entryID, order: order, on: date, set))
         }
-        return entryID
+        return (sessionID, entryID)
     }
 
     /// One logged set, with only the columns the calculators read varying.

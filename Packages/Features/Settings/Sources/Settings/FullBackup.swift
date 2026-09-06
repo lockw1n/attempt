@@ -13,8 +13,11 @@ import RepositoryInterface
 /// (`TR-0.1.2`). The store is local and synchronous (`G-2.2`), so the cost of walking it is the cost
 /// of the file.
 struct FullBackup {
-    /// The catalogue, and each exercise's training-max history.
+    /// The catalogue.
     let exercises: any ExerciseRepository
+
+    /// Each exercise's training-max configuration and history (`TR-16.3`).
+    let trainingMaxes: any TrainingMaxRepository
 
     /// Sessions, entries, sets — and what a routine planned for those slots (`FR-15.2.4`).
     ///
@@ -32,6 +35,9 @@ struct FullBackup {
 
     /// The routines, their slots and their target groups (`FR-15.2`).
     let routines: any RoutineRepository
+
+    /// The programs, their days and the runs through them (`FR-16.8`).
+    let programs: any ProgramRepository
 
     /// The preferences row.
     let settings: any SettingsRepository
@@ -62,6 +68,7 @@ struct FullBackup {
         let catalogue = try await exercises.exercises(includingDeleted: true)
         let workoutRows = try await self.workoutRows()
         let routineRows = try await self.routineRows()
+        let programRows = try await self.programRows()
         return TrainingLogArchive(
             takenAt: takenAt,
             exercises: catalogue,
@@ -70,10 +77,14 @@ struct FullBackup {
             sets: workoutRows.sets,
             bodyweight: try await bodyweight.entries(in: Self.allTime, includingDeleted: true),
             equipment: try await equipment.profiles(includingDeleted: true),
-            trainingMaxes: try await trainingMaxes(for: catalogue),
+            trainingMaxes: try await configurations(for: catalogue),
+            trainingMaxHistory: try await trainingMaxChanges(for: catalogue),
             routines: routineRows.routines,
             routineExercises: routineRows.exercises,
             routineTargetGroups: routineRows.targetGroups,
+            programs: programRows.programs,
+            programDays: programRows.days,
+            programRuns: programRows.runs,
             plannedTargets: workoutRows.plannedTargets,
             settings: try await settings.settings())
     }
@@ -133,7 +144,30 @@ struct FullBackup {
         return RoutineRows(routines: plans, exercises: slots, targetGroups: groups)
     }
 
-    /// Every training-max entry in the store (`TR-0.3.6`).
+    /// The programs and the two tables under them, walked the way the routines are.
+    ///
+    /// **Walked per program for the routines' reason** — the protocol offers a program's days and a
+    /// program's runs and no global fetch of either, so the program list is the enumeration. Both
+    /// reads ask for soft-deleted rows: a program the lifter deleted took its days and its runs with
+    /// it (`G-1.3`), and a backup dropping them would restore sessions whose `programRunID` names a
+    /// row that is not in the file.
+    ///
+    /// - Returns: Every program, every day in them and every run through them.
+    /// - Throws: Whatever the program repository throws.
+    private func programRows() async throws -> ProgramRows {
+        let plans = try await programs.programs(includingDeleted: true)
+        var days: [ProgramDay] = []
+        var runs: [ProgramRun] = []
+        for plan in plans {
+            days.append(
+                contentsOf: try await programs.days(forProgramID: plan.id, includingDeleted: true))
+            runs.append(
+                contentsOf: try await programs.runs(forProgramID: plan.id, includingDeleted: true))
+        }
+        return ProgramRows(programs: plans, days: days, runs: runs)
+    }
+
+    /// Every training-max configuration in the store (`TR-0.3.6`, `TR-16.3`).
     ///
     /// **Walked per exercise, because that is the only read there is.** The protocol offers a
     /// history for one exercise and no global fetch, so the catalogue — soft-deleted exercises
@@ -141,13 +175,34 @@ struct FullBackup {
     /// exercise against a local store, which is the shape the sets walk above already has.
     ///
     /// - Parameter catalogue: Every exercise, deleted ones included.
-    /// - Returns: Every entry, grouped by exercise in catalogue order.
-    /// - Throws: Whatever the exercise repository throws.
-    private func trainingMaxes(for catalogue: [Exercise]) async throws -> [TrainingMaxEntry] {
+    /// - Returns: Every configuration, grouped by exercise in catalogue order.
+    /// - Throws: Whatever the training-max repository throws.
+    private func configurations(for catalogue: [Exercise]) async throws -> [TrainingMaxEntry] {
         var entries: [TrainingMaxEntry] = []
         for exercise in catalogue {
             entries.append(
-                contentsOf: try await exercises.trainingMaxHistory(
+                contentsOf: try await trainingMaxes.configurationHistory(
+                    forExerciseID: exercise.id, includingDeleted: true))
+        }
+        return entries
+    }
+
+    /// Every change to every exercise's training max (`TR-16.3`, `FR-15.1.4`).
+    ///
+    /// **A second walk of the same catalogue rather than a second question inside the first.** The
+    /// two tables are read by two calls whatever the loop shape, and one loop returning two arrays
+    /// is the transposable pair `WorkoutRows` exists to avoid.
+    ///
+    /// - Parameter catalogue: Every exercise, deleted ones included.
+    /// - Returns: Every change, grouped by exercise in catalogue order.
+    /// - Throws: Whatever the training-max repository throws.
+    private func trainingMaxChanges(
+        for catalogue: [Exercise]
+    ) async throws -> [TrainingMaxHistoryEntry] {
+        var entries: [TrainingMaxHistoryEntry] = []
+        for exercise in catalogue {
+            entries.append(
+                contentsOf: try await trainingMaxes.history(
                     forExerciseID: exercise.id, includingDeleted: true))
         }
         return entries
@@ -170,6 +225,18 @@ private struct WorkoutRows {
 
     /// Every target a routine planned for one of those slots.
     let plannedTargets: [PlannedTargetGroup]
+}
+
+/// The three joined program tables, read together — ``WorkoutRows``' shape and its reason.
+private struct ProgramRows {
+    /// Every program, soft-deleted ones included.
+    let programs: [Program]
+
+    /// Every day in them.
+    let days: [ProgramDay]
+
+    /// Every pass through one.
+    let runs: [ProgramRun]
 }
 
 /// The three joined routine tables, read together — ``WorkoutRows``' shape and its reason.

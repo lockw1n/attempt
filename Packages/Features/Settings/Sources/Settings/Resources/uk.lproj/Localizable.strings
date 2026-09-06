@@ -30,6 +30,9 @@
 "settings.landing.estimator.wathan" = "Wathan";
 "settings.landing.estimator.rpebased" = "На основі RPE";
 
+"settings.landing.recent-records.row" = "Свіжі рекорди";
+"settings.landing.recent-records.detail" = "Які вправи та схеми показує стрічка свіжих рекордів. Спочатку вона бере вправи з головного екрана.";
+
 "settings.landing.precision.picker" = "Точність ваги";
 "settings.landing.precision.automatic" = "Автоматично";
 "settings.landing.precision.detail" = "Наскільки точно вага пишеться на екрані. Це не змінює ні того, що ви набираєте, ні того, що зберігається.";

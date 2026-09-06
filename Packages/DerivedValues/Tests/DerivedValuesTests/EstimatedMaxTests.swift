@@ -196,7 +196,6 @@ struct EstimatedMaxTests {
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let subject = PersonalRecordRecomputer(
             workouts: counting,
-            exercises: InMemoryRepositoryStack().exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         await counting.reset()
@@ -217,7 +216,6 @@ struct EstimatedMaxTests {
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let subject = PersonalRecordRecomputer(
             workouts: counting,
-            exercises: InMemoryRepositoryStack().exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         await counting.reset()
@@ -237,7 +235,6 @@ struct EstimatedMaxTests {
         let counting = CountingWorkouts(wrapped: log.repositories.workouts)
         let subject = PersonalRecordRecomputer(
             workouts: counting,
-            exercises: InMemoryRepositoryStack().exercises,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         await counting.reset()
@@ -283,7 +280,6 @@ struct EstimatedMaxTests {
     ) async throws -> PersonalRecordRecomputer {
         PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
-            exercises: log.repositories.exercises,
             cache: log.repositories.personalRecords,
             formula: formula,
             lookback: lookback,

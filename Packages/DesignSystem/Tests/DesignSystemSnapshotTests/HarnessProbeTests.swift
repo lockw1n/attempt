@@ -234,7 +234,7 @@
         @Test(arguments: SnapshotAppearance.allCases)
         func retryHandlerRendersAButton(_ appearance: SnapshotAppearance) throws {
             let withRetry = try Snapshot.render(
-                ErrorStateView(message: Text(verbatim: "That could not be saved."), retry: {}),
+                ErrorStateView(message: Text(verbatim: "That could not be saved."), retryEmphasis: .primary, retry: {}),
                 appearance: appearance,
                 typeSize: .default
             )
@@ -253,7 +253,10 @@
         /// The offline state offers the same retry, and it is the one whose copy the module owns
         /// outright — so a caller passing no handler must still get no button.
         @Test func offlineWithoutRetryRendersNoButton() throws {
-            let withRetry = try Snapshot.render(OfflineStateView(retry: {}), appearance: .dark, typeSize: .default)
+            let withRetry = try Snapshot.render(
+                OfflineStateView(retryEmphasis: .primary, retry: {}),
+                appearance: .dark,
+                typeSize: .default)
             let withoutRetry = try Snapshot.render(OfflineStateView(), appearance: .dark, typeSize: .default)
             #expect(withRetry.width == withoutRetry.width)
             // The same measure its sibling above uses, and for the same reason: any growth at all

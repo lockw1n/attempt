@@ -14,10 +14,12 @@ extension ExportLog {
     var backup: FullBackup {
         FullBackup(
             exercises: repositories.exercises,
+            trainingMaxes: repositories.trainingMaxes,
             workouts: repositories.workouts,
             bodyweight: repositories.bodyweight,
             equipment: repositories.equipment,
             routines: repositories.routines,
+            programs: repositories.programs,
             settings: repositories.settings)
     }
 
@@ -66,13 +68,55 @@ extension ExportLog {
             exerciseID: exercise.id,
             source: .percentOfE1RM,
             sourceRepCount: nil,
-            manualWeight: nil,
             percentage: percentage,
             roundingIncrement: Weight(grams: 2_500),
             roundingStrategy: .down,
             progressionIncrement: Weight(grams: 2_500),
             effectiveFrom: date)
-        try await repositories.exercises.saveTrainingMax(entry)
+        try await repositories.trainingMaxes.saveConfiguration(entry)
+        return entry
+    }
+
+    /// Appends one change to an exercise's training max (`FR-15.1.4`, `FR-16.7.2`).
+    ///
+    /// **The old value and the reason both differ per call**, because two rows agreeing on either
+    /// would pass for a restore that wrote one column into both — the trap `dashboardExerciseIDs`
+    /// and `recentRecordsExerciseIDs` sprang on this suite once already.
+    ///
+    /// **`effectiveFrom` is never the row's `createdAt`**, for the same reason one step further out.
+    /// This record carries three dates, and the two that survive a restore are `createdAt` and
+    /// `effectiveFrom` — so a fixture stamping both from one instant is written, compared, agreed,
+    /// and passes for a mapping that read `createdAt` into `effectiveFrom`. The row is typed at the
+    /// epoch and applies from `daysAgo` before it, which is also what the column means: the day the
+    /// number applies from, not the day it was entered.
+    ///
+    /// - Parameters:
+    ///   - exercise: Whose training max changed.
+    ///   - newGrams: What it becomes.
+    ///   - oldGrams: What it was, or `nil` for the first entry.
+    ///   - reason: Why.
+    ///   - daysAgo: How many days before the epoch it takes effect.
+    /// - Returns: The record.
+    @discardableResult
+    func trainingMaxChange(
+        for exercise: Exercise,
+        newGrams: Int,
+        oldGrams: Int?,
+        reason: String,
+        daysAgo: Int = 1
+    ) async throws -> TrainingMaxHistoryEntry {
+        let effective = Self.epoch.addingTimeInterval(-Double(daysAgo) * 86_400)
+        let entry = TrainingMaxHistoryEntry(
+            id: UUID(),
+            createdAt: Self.epoch,
+            updatedAt: Self.epoch,
+            deletedAt: nil,
+            exerciseID: exercise.id,
+            effectiveFrom: effective,
+            oldWeight: oldGrams.map(Weight.init(grams:)),
+            newWeight: Weight(grams: newGrams),
+            reason: reason)
+        try await repositories.trainingMaxes.save(entry)
         return entry
     }
 
@@ -133,6 +177,94 @@ extension ExportLog {
         return WrittenRoutine(routine: plan, slot: slot, targetGroups: groups)
     }
 
+    /// Writes one program with two days and one open run (`FR-16.8.1`, `FR-16.8.3`).
+    ///
+    /// **Two days naming two different routines, at two different orders**, because a program whose
+    /// days all name one routine leaves `routineID` agreeing with a restore that wrote either day's
+    /// into both — and a single day is the shape a walk reading only the first would still agree
+    /// with.
+    ///
+    /// **The run's four values are four different numbers.** `weekNumber` and `nextDayIndex` are
+    /// two `Int`s on one row and `startedAt` and `endedAt` two `Date`s, so a fixture where either
+    /// pair agrees is written, compared, agreed, and passes for a restore that wrote one column
+    /// into both. The run given here is open — `endedAt` is `nil` — which is the state
+    /// `currentRun()` reads; ``closedRun(for:)`` is the other one.
+    ///
+    /// - Parameters:
+    ///   - name: What the lifter calls it.
+    ///   - notes: The program note.
+    ///   - routines: The routines its days name, in order.
+    /// - Returns: The program, its days and its open run.
+    @discardableResult
+    func program(
+        named name: String,
+        notes: String,
+        days routines: [Routine]
+    ) async throws -> WrittenProgram {
+        let plan = Program(
+            id: UUID(),
+            createdAt: Self.epoch,
+            updatedAt: Self.epoch,
+            deletedAt: nil,
+            name: name,
+            notes: notes)
+        try await repositories.programs.save(plan)
+
+        var days: [ProgramDay] = []
+        for (index, routine) in routines.enumerated() {
+            let day = ProgramDay(
+                id: UUID(),
+                createdAt: Self.epoch,
+                updatedAt: Self.epoch,
+                deletedAt: nil,
+                programID: plan.id,
+                routineID: routine.id,
+                order: index)
+            try await repositories.programs.save(day)
+            days.append(day)
+        }
+
+        let run = ProgramRun(
+            id: UUID(),
+            createdAt: Self.epoch,
+            updatedAt: Self.epoch,
+            deletedAt: nil,
+            programID: plan.id,
+            startedAt: Self.epoch.addingTimeInterval(-14 * 86_400),
+            endedAt: nil,
+            weekNumber: 2,
+            nextDayIndex: 1)
+        try await repositories.programs.startRun(run)
+        return WrittenProgram(program: plan, days: days, run: run)
+    }
+
+    /// Writes one finished run of a program, so the section carries both states of `endedAt`.
+    ///
+    /// - Parameters:
+    ///   - program: What was run.
+    ///   - weekNumber: The week it reached.
+    ///   - nextDayIndex: The day cursor it stopped on.
+    /// - Returns: The record.
+    @discardableResult
+    func closedRun(
+        for program: Program,
+        weekNumber: Int = 4,
+        nextDayIndex: Int = 2
+    ) async throws -> ProgramRun {
+        let run = ProgramRun(
+            id: UUID(),
+            createdAt: Self.epoch,
+            updatedAt: Self.epoch,
+            deletedAt: nil,
+            programID: program.id,
+            startedAt: Self.epoch.addingTimeInterval(-60 * 86_400),
+            endedAt: Self.epoch.addingTimeInterval(-30 * 86_400),
+            weekNumber: weekNumber,
+            nextDayIndex: nextDayIndex)
+        try await repositories.programs.save(run)
+        return run
+    }
+
     /// Writes what a routine prescribed for one logged slot (`FR-15.2.4`).
     ///
     /// - Parameters:
@@ -174,6 +306,22 @@ extension ExportLog {
         let bench = try await log.exercise(named: "Bench Press")
         try await log.trainingMax(for: bench, percentage: 0.9, daysAgo: 30)
         try await log.trainingMax(for: bench, percentage: 0.95)
+        // FR-16.7.2's history, and the two rows differ in EVERY column rather than merely in the
+        // new weight. `oldWeight` and `newWeight` are two weights on one row, so a fixture whose
+        // second row repeats the first's old value is written, compared, agreed, and passes for a
+        // restore that wrote one column into both. The first row names no old value at all, which
+        // is the third distinct shape the column has.
+        try await log.trainingMaxChange(
+            for: bench, newGrams: 137_500, oldGrams: nil, reason: "starting point", daysAgo: 30)
+        try await log.trainingMaxChange(
+            for: bench, newGrams: 142_500, oldGrams: 137_500, reason: "coach, week 4")
+        // FR-1.1.7's variations make `exercises` a self-referencing table, and `parentExerciseID`
+        // is carried from the record like any other column — so a fixture whose exercises are all
+        // roots leaves it nil on both sides of every field-for-field comparison and agrees with a
+        // restore that dropped the link entirely. This says the column survives; it deliberately
+        // says nothing about the ORDER the section is written in, which is
+        // `aVariationListedAboveItsParentRestores`' subject and needs the child listed first.
+        try await log.exercise(named: "Close-grip Bench Press", parentExerciseID: bench.id)
         // FR-1.10.3's flag is written by `makeDefault(profileID:)` and by nothing else — no save
         // carries it — so a fixture that only wrote profiles would leave `isDefault` false on both
         // sides of every comparison and agree with a restore that had dropped the column.
@@ -211,8 +359,37 @@ extension ExportLog {
         _ = try await log.set(in: plannedEntry, order: 0, grams: 100_000, reps: 5)
         try await log.plannedTarget(for: plannedEntry, grams: 102_500, order: 0)
         try await log.plannedTarget(for: plannedEntry, grams: nil, order: 1)
+
+        // FR-16.8: a program the lifter is running, its days, and two passes through it — one
+        // finished and one open, so the file carries `endedAt` in both of its states rather than
+        // only in the one `currentRun()` reads.
+        let heavy = try await log.routine(named: "Week A day 1", for: bench)
+        let light = try await log.routine(named: "Week A day 2", for: bench)
+        let block = try await log.program(
+            named: "#2", notes: "14.09.25", days: [heavy.routine, light.routine])
+        try await log.closedRun(for: block.program)
+
+        // FR-16.8.3's two session columns, and they carry two DIFFERENT numbers: a session stamped
+        // week 2 day 2 would agree with a restore that read either column into both. The run is
+        // named as well, so the three columns are one fact rather than three unrelated ones.
+        let fromProgram = try await log.session(
+            daysAgo: 3, programRunID: block.run.id, weekNumber: 2, dayIndex: 1)
+        let programEntry = try await log.entry(bench, in: fromProgram)
+        _ = try await log.set(in: programEntry, order: 0, grams: 105_000, reps: 3)
         return log
     }
+}
+
+/// The rows one fixture program is — ``WrittenRoutine``'s shape and its reason.
+struct WrittenProgram {
+    /// The program itself.
+    let program: Program
+
+    /// Its days, in order.
+    let days: [ProgramDay]
+
+    /// The open run through it.
+    let run: ProgramRun
 }
 
 /// The three rows one fixture routine is — a type rather than a tuple, which is the lint rule's

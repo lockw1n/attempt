@@ -37,4 +37,27 @@ struct SessionSummary: Identifiable, Equatable, Sendable {
     /// has been stored since schema v1 with nothing showing it; the summary line is the first
     /// surface that does.
     let notes: String
+
+    /// Which week and day of a program the session was started from, or `nil` (`FR-16.8.3`).
+    ///
+    /// **This is what retires the structure a note used to carry** (`DOD-16.1`): the row above is
+    /// where a lifter browsing their log read "W2D1", and it read it out of ``notes`` because
+    /// nothing else held it. Defaulted so a row built before a program existed still compiles as
+    /// what it is — a session started outside one.
+    var programPosition: ProgramPosition?
+
+    /// Whether the workout has ended, and if not which kind of open it is (`FR-16.4.3`).
+    ///
+    /// **What the row says instead of its two numbers.** An open session's working-set count and
+    /// tonnage are zero until something is logged, and a row reading `0 sets, 0 kg` describes a
+    /// workout that failed rather than one that has not happened. Defaulted so a row built where
+    /// the distinction is not drawn still compiles as what it is.
+    var lifecycle: SessionLifecycle = .finished
+
+    /// Whether this row offers a way to end the workout (`FR-16.4.4`).
+    ///
+    /// **Only for a session left open past its own training day.** One started today is finished
+    /// where it is being logged, and a second command for it here would be two screens ending one
+    /// workout.
+    var canFinish = false
 }

@@ -60,11 +60,7 @@ struct SessionListPagingTests {
         // for: a screen full of sessions must not be replaced by "History unavailable".
         let flaky = FlakyWorkoutRepository(
             wrapping: log.repositories.workouts, failingAfter: SessionListState.pageSize)
-        let state = SessionListState(
-            workouts: flaky,
-            exercises: log.repositories.exercises,
-            settings: log.repositories.settings
-        )
+        let state = log.listState(workouts: flaky)
 
         await state.load()
         #expect(state.summaries.count == SessionListState.pageSize)
@@ -211,11 +207,7 @@ struct SessionListPagingTests {
     private static func state(
         over log: TrainingLog, workouts: any WorkoutRepository
     ) -> SessionListState {
-        SessionListState(
-            workouts: workouts,
-            exercises: log.repositories.exercises,
-            settings: log.repositories.settings
-        )
+        log.listState(workouts: workouts)
     }
 
     /// `count` sessions, one exercise and one working set in each, one day apart.

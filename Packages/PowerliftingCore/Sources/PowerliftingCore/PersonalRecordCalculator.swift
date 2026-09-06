@@ -46,7 +46,15 @@ public struct PersonalRecordCalculator: Sendable {
     ///
     /// The persistence layer must not declare a version of its own: a copy there is one nobody
     /// bumps when this file changes.
-    public static let computationVersion = 1
+    ///
+    /// **It versions ``SchemeRecordCalculator``'s rules too, because they are one cached table.**
+    /// `FR-16.2.1` makes the N-rep max the `sets == 1` row of the scheme table, so a second constant
+    /// would version half a row; the number lives here because this is where `G-1.5`'s reader
+    /// already looks.
+    ///
+    /// **2 since `TR-16.1`**: the cell key gained a set count and the row gained the load it beat, so
+    /// identical sets produce a different row from the one version 1 wrote.
+    public static let computationVersion = 2
 
     /// Every record `sets` holds.
     ///

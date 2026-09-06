@@ -60,7 +60,7 @@
         @Test func workoutInProgress() throws {
             try assertSnapshots(named: "Train-in-progress") {
                 fixedEnvironment {
-                    SessionInProgressSection(session: Fixtures.session)
+                    SessionInProgressSection(session: Fixtures.session, lifecycle: .inProgress)
                 }
             }
         }
@@ -74,7 +74,7 @@
                     symbolName: "figure.strengthtraining.traditional",
                     headline: Text(LoggingStrings.trainEmptyHeadline),
                     message: Text(LoggingStrings.trainEmptyMessage),
-                    action: StateAction(Text(LoggingStrings.trainStartAction)) {}
+                    action: StateAction(Text(LoggingStrings.trainStartAction), emphasis: .primary) {}
                 )
             }
         }
@@ -92,8 +92,8 @@
                 ErrorStateView(
                     headline: Text(LoggingStrings.trainErrorHeadline),
                     message: Text(LoggingStrings.trainErrorMessage),
-                    retry: {}
-                )
+                    retryEmphasis: .primary,
+                    retry: {})
             }
         }
 
@@ -110,12 +110,15 @@
 
         @Test func workoutSummary() throws {
             // `nil` adherence, which is `FR-1.13.3`'s half of `FR-15.3.3` and the commoner case by
-            // far: a workout started by hand prescribes nothing, so the section carries the day and
-            // the start time and no third row at all. The reference is unchanged by T-15.07, which
-            // is itself the claim — a figure that had appeared here would be a ratio over nothing.
+            // far: a workout started by hand prescribes nothing, so the line carries the start time
+            // and nothing else. A figure that had appeared here would be a ratio over nothing.
+            //
+            // The training day is not on it either, and that is `FR-16.6.1`: it is in the screen's
+            // navigation title now, which no reference in this package can picture — the harness
+            // renders a view, not a navigation stack.
             try assertSnapshots(named: "Session-summary") {
                 fixedEnvironment {
-                    SessionSummarySection(session: Fixtures.session, adherence: nil)
+                    SessionSummaryLine(session: Fixtures.session, adherence: nil)
                 }
             }
         }
@@ -143,7 +146,10 @@
                     symbolName: "list.bullet.rectangle",
                     headline: Text(LoggingStrings.sessionEmptyHeadline),
                     message: Text(LoggingStrings.sessionEmptyMessage),
-                    action: StateAction(Text(LoggingStrings.sessionAddExerciseAction)) {}
+                    // Secondary since T-16.02: **Finish workout** is the screen's one accent.
+                    action: StateAction(
+                        Text(LoggingStrings.sessionAddExerciseAction), emphasis: .secondary
+                    ) {}
                 )
             }
         }
@@ -161,6 +167,7 @@
                         exercises: Fixtures.exercises,
                         expansion: .constant([:]),
                         warmupExpansion: .constant([:]),
+                        groupExpansion: .constant([]),
                         move: { _, _ in },
                         unit: .kilograms,
                         previous: Fixtures.previousPerformances,
@@ -175,7 +182,8 @@
                         markCompleted: { _, _ in },
                         edit: { _ in },
                         markDone: { _, _ in },
-                        logPlanned: { _ in }
+                        logPlanned: { _ in },
+                        logNext: { _, _ in }
                     )
                 }
             }
@@ -395,8 +403,8 @@
                 ErrorStateView(
                     headline: Text(LoggingStrings.sessionExercisesErrorHeadline),
                     message: Text(LoggingStrings.sessionExercisesErrorMessage),
-                    retry: {}
-                )
+                    retryEmphasis: .secondary,
+                    retry: {})
             }
         }
 
@@ -408,8 +416,8 @@
                 ErrorStateView(
                     headline: Text(LoggingStrings.sessionErrorHeadline),
                     message: Text(LoggingStrings.sessionErrorMessage),
-                    retry: {}
-                )
+                    retryEmphasis: .primary,
+                    retry: {})
             }
         }
 
@@ -438,7 +446,7 @@
                     SetRow(
                         numbered: numbered,
                         unit: .kilograms,
-                        recordReps: records.repCounts(forSetID: numbered.id),
+                        recordSchemes: records.schemes(forSetID: numbered.id),
                         mark: { _, _ in },
                         markCompleted: { _, _ in },
                         edit: { _ in },

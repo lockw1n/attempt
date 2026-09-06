@@ -21,7 +21,6 @@ struct TrainingMaxConfigEntityTests {
                 roundingStrategy: .up,
                 effectiveFrom: effective,
                 sourceRepCount: 3,
-                manualWeightGrams: nil,
                 incrementGrams: 2_500
             )
         )
@@ -38,13 +37,13 @@ struct TrainingMaxConfigEntityTests {
         #expect(stored.roundingStrategyRawValue == "up")
         #expect(stored.effectiveFrom == effective)
         #expect(stored.sourceRepCount == 3)
-        #expect(stored.manualWeightGrams == nil)
         #expect(stored.incrementGrams == 2_500)
     }
 
     // Gap §17. Without this column one of FR-1.5.1.1's three sources is unstorable: "90% of my best
-    // 3-rep max" has nowhere for the 3, and manualWeightGrams is the other source's payload.
-    @Test("A rep-max source stores its N, and the manual payload column stays empty")
+    // 3-rep max" has nowhere for the 3. Manual's own payload is not here at all — it is a
+    // `TrainingMaxHistoryEntity` row, which is where `G-1.4` puts the number.
+    @Test("A rep-max source stores its N")
     func repMaxSourceStoresItsN() throws {
         let context = try makeSupportingContext()
         context.insert(makeTrainingMaxConfig(source: .percentOfRepMax, sourceRepCount: 3))
@@ -55,14 +54,13 @@ struct TrainingMaxConfigEntityTests {
         )
 
         #expect(stored.sourceRepCount == 3)
-        #expect(stored.manualWeightGrams == nil)
         #expect(stored.sourceRawValue == "percentOfRepMax")
     }
 
     // Gap §18, the half a schema can hold. A manual training max is the number entered, untouched by
     // the percentage and the rounding rule — and the two rows here prove that no column but `source`
-    // records that. Both carry the same percentage and the same rule; only the discriminator and the
-    // payload differ.
+    // records that. They are identical in every other column, which is the point: after the number
+    // moved to `TrainingMaxHistoryEntity` the discriminator is the *only* difference there is.
     @Test("Only the source column says whether the percentage and rounding took part")
     func onlyTheSourceColumnMarksParticipation() throws {
         let context = try makeSupportingContext()
@@ -76,8 +74,7 @@ struct TrainingMaxConfigEntityTests {
             source: .manual,
             percentage: 0.9,
             roundingIncrementGrams: 2_500,
-            roundingStrategy: .nearest,
-            manualWeightGrams: 102_400
+            roundingStrategy: .nearest
         )
         context.insert(derived)
         context.insert(manual)
@@ -95,7 +92,6 @@ struct TrainingMaxConfigEntityTests {
         #expect(stored.map(\.percentage) == [0.9, 0.9])
         #expect(stored.map(\.roundingIncrementGrams) == [2_500, 2_500])
         #expect(stored.map(\.roundingStrategyRawValue) == ["nearest", "nearest"])
-        #expect(stored.map(\.manualWeightGrams) == [102_400, nil])
     }
 
     // …and why the columns cannot carry that signal themselves. The two values a row could wear to
@@ -131,8 +127,7 @@ struct TrainingMaxConfigEntityTests {
                 source: .manual,
                 percentage: 0.85,
                 roundingIncrementGrams: 5_000,
-                roundingStrategy: .down,
-                manualWeightGrams: 102_400
+                roundingStrategy: .down
             )
         )
         try context.saveStamped()
@@ -146,7 +141,6 @@ struct TrainingMaxConfigEntityTests {
         #expect(stored.roundingIncrementGrams == 5_000)
         #expect(stored.roundingIncrementGrams != SchemaDefaults.roundingIncrementGrams)
         #expect(stored.roundingStrategyRawValue == "down")
-        #expect(stored.manualWeightGrams == 102_400)
     }
 
     // The query effectiveFrom exists for, and the one SchemaDefaults.effectiveFrom's *direction* is
@@ -179,8 +173,7 @@ struct TrainingMaxConfigEntityTests {
                 exerciseID: squat,
                 source: .manual,
                 percentage: 0.5,
-                effectiveFrom: SchemaDefaults.effectiveFrom,
-                manualWeightGrams: 100_000
+                effectiveFrom: SchemaDefaults.effectiveFrom
             )
         )
         // A second exercise at the winning date, so the predicate has to filter on both axes rather

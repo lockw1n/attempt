@@ -32,8 +32,9 @@ extension PastSessionState {
     /// name is typed into a prompt instead of a form: a routine stored under whitespace is the row
     /// the library draws **Unnamed routine** for.
     ///
-    /// **Written routine → slot → group**, the order the repository imposes rather than a
-    /// preference — `save(_:)` refuses a dangling reference per key.
+    /// **The write itself is ``SessionAsRoutineWriter``'s**, shared with `FR-16.8.4`'s
+    /// *Start next week* — including the rollback that keeps ``SaveAsRoutineOutcome/writeFailed``
+    /// meaning what it says.
     ///
     /// **Nothing on this screen is re-read afterwards.** The workout is untouched by this command;
     /// what it produced is in another tab, and the outcome is what says so.
@@ -46,72 +47,12 @@ extension PastSessionState {
             return
         }
         do {
-            try await write(SessionAsRoutine(exercises), named: trimmed)
+            try await SessionAsRoutineWriter(repository: routines)
+                .write(SessionAsRoutine(exercises), named: trimmed)
         } catch {
             saveAsRoutineOutcome = .writeFailed
             return
         }
         saveAsRoutineOutcome = .saved(trimmed)
-    }
-
-    /// Writes `plan` as a routine called `name`.
-    ///
-    /// **A write that fails part-way takes the routine back out**, which is what makes
-    /// ``SaveAsRoutineOutcome/writeFailed`` mean what it says. The routine row lands first by
-    /// necessity, so a store that refuses a slot would otherwise leave an empty routine in a tab
-    /// this screen never re-reads — reported as a failure here and visible as a routine there.
-    ///
-    /// - Parameters:
-    ///   - plan: The workout read as a routine.
-    ///   - name: Its name, already trimmed.
-    private func write(_ plan: SessionAsRoutine, named name: String) async throws {
-        let now = Date.now
-        let routineID = UUID()
-        try await routines.save(
-            Routine(id: routineID, createdAt: now, updatedAt: now, deletedAt: nil, name: name))
-        do {
-            try await write(plan, under: routineID, at: now)
-        } catch {
-            // The cascade takes whatever did land with it (`G-1.3`). A cleanup that fails too
-            // leaves what the caller is about to report anyway.
-            try? await routines.deleteRoutine(id: routineID)
-            throw error
-        }
-    }
-
-    /// Writes the plan's slots and their targets under the routine row that already landed.
-    ///
-    /// - Parameters:
-    ///   - plan: The workout read as a routine.
-    ///   - routineID: The routine they hang off.
-    ///   - now: The stamp every row written here carries.
-    private func write(_ plan: SessionAsRoutine, under routineID: UUID, at now: Date) async throws {
-        for (position, slot) in plan.slots.enumerated() {
-            let slotID = UUID()
-            try await routines.save(
-                RoutineExercise(
-                    id: slotID,
-                    createdAt: now,
-                    updatedAt: now,
-                    deletedAt: nil,
-                    routineID: routineID,
-                    exerciseID: slot.exerciseID,
-                    order: position))
-            for (index, group) in slot.groups.enumerated() {
-                try await routines.save(
-                    RoutineTargetGroup(
-                        id: UUID(),
-                        createdAt: now,
-                        updatedAt: now,
-                        deletedAt: nil,
-                        routineExerciseID: slotID,
-                        order: index,
-                        // Never blank: every target here is a load that was actually lifted, so
-                        // `FR-15.2.2`'s "decide it in the session" cannot arise from this path.
-                        targetWeight: group.weight,
-                        targetReps: group.reps,
-                        targetSets: group.sets))
-            }
-        }
     }
 }

@@ -42,7 +42,7 @@ struct RepositorySoftDeleteTests {
         try await stack.equipment.save(profile)
         let trainingMax = trainingMaxRecord(
             exerciseID: exercise.id, effectiveFrom: fixtureCreatedAt)
-        try await stack.exercises.saveTrainingMax(trainingMax)
+        try await stack.trainingMaxes.saveConfiguration(trainingMax)
 
         // Soft-delete every row that has a delete. The exercise and its training max have none, so
         // they are deleted through the store to check the *read* rather than the delete.
@@ -76,7 +76,7 @@ struct RepositorySoftDeleteTests {
         #expect(try await stack.exercises.exercises(includingDeleted: false).isEmpty)
         #expect(try await stack.exercises.exercise(id: ids.exercise, includingDeleted: false) == nil)
         #expect(
-            try await stack.exercises.trainingMaxHistory(
+            try await stack.trainingMaxes.configurationHistory(
                 forExerciseID: ids.exercise, includingDeleted: false
             ).isEmpty)
         #expect(try await stack.workouts.sessions(in: range, includingDeleted: false).isEmpty)
@@ -103,7 +103,7 @@ struct RepositorySoftDeleteTests {
         #expect(try await stack.exercises.exercises(includingDeleted: true).count == 1)
         #expect(try await stack.exercises.exercise(id: ids.exercise, includingDeleted: true) != nil)
         #expect(
-            try await stack.exercises.trainingMaxHistory(
+            try await stack.trainingMaxes.configurationHistory(
                 forExerciseID: ids.exercise, includingDeleted: true
             ).count == 1)
         #expect(try await stack.workouts.sessions(in: range, includingDeleted: true).count == 1)
@@ -130,16 +130,15 @@ struct RepositorySoftDeleteTests {
         let exercise = exerciseRecord()
         try await stack.exercises.save(exercise)
         let superseded = trainingMaxRecord(
-            exerciseID: exercise.id, effectiveFrom: fixtureCreatedAt, grams: 150_000)
-        try await stack.exercises.saveTrainingMax(superseded)
+            exerciseID: exercise.id, effectiveFrom: fixtureCreatedAt, percentage: 0.85)
+        try await stack.trainingMaxes.saveConfiguration(superseded)
         let profile = profileRecord()
         try await stack.equipment.save(profile)
         try await stack.equipment.makeDefault(profileID: profile.id)
 
         #expect(
-            try await stack.exercises.trainingMax(
-                forExerciseID: exercise.id, on: fixtureUpdatedAt)?.manualWeight
-                == Weight(grams: 150_000))
+            try await stack.trainingMaxes.configuration(
+                forExerciseID: exercise.id, on: fixtureUpdatedAt)?.percentage == 0.85)
         #expect(try await stack.equipment.defaultProfile()?.id == profile.id)
 
         let context = harness.store()
@@ -151,7 +150,7 @@ struct RepositorySoftDeleteTests {
 
         // A deleted configuration is one the user replaced; a deleted profile is a gym they left.
         #expect(
-            try await stack.exercises.trainingMax(
+            try await stack.trainingMaxes.configuration(
                 forExerciseID: exercise.id, on: fixtureUpdatedAt) == nil)
         #expect(try await stack.equipment.defaultProfile() == nil)
     }

@@ -69,6 +69,24 @@ extension KeyedDecodingContainer {
     ) throws -> T {
         RecordVocabulary.resolve(try decode(String.self, forKey: key), or: fallback)
     }
+
+    /// The same, for a vocabulary column a record gained after its first wire format.
+    ///
+    /// **An absent key and an unrecognised spelling resolve alike**, which is rule 5 meeting rule 4:
+    /// a backup written before the column existed carries no key, and refusing to decode the record
+    /// over a preference that did not exist would cost every other preference on it.
+    ///
+    /// - Parameters:
+    ///   - type: The vocabulary.
+    ///   - key: Its key.
+    ///   - fallback: What an absent or unreadable spelling becomes.
+    /// - Returns: The recognised value, or `fallback.value`.
+    func decodeVocabulary<T>(
+        _ type: T.Type, forKey key: Key, ifPresentOr fallback: RecordVocabulary.Fallback<T>
+    ) throws -> T {
+        guard let raw = try decodeIfPresent(String.self, forKey: key) else { return fallback.value }
+        return RecordVocabulary.resolve(raw, or: fallback)
+    }
 }
 
 extension KeyedEncodingContainer {
