@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The launch screen. Xcode has no INFOPLIST_KEY_* build setting for UILaunchScreen's
+	     contents — only for generating it empty — so this partial file is the one place the
+	     keys can be written. GENERATE_INFOPLIST_FILE stays YES and merges the rest on top,
+	     which is why nothing else T-0.03 pinned is repeated here. -->
+	<!-- G-5.3 / T-1.72: export compliance, declared once here rather than answered per upload.
+	     An unanswered question holds the build in TestFlight as "Missing Compliance", where it
+	     reaches no tester at all — and DOD-1.6's two-week clock only runs once testers have it.
+	
+	     THIS IS A LEGAL DECLARATION AND IT DECAYS SILENTLY. It says the app uses no encryption
+	     beyond what is exempt under Category 5 Part 2: HTTPS through system APIs (CloudKit and
+	     RemoteContent), and nothing else. It stops being true the moment any cryptography is
+	     implemented here, and no build failure would announce that.
+	     scripts/check-exempt-encryption.sh is what makes it announce itself: it reads this key
+	     and fails if the shipping sources contradict it. Do not flip this to <true/> to silence
+	     that script — a true value means an export-compliance filing, not a quieter build. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchMark</string>
+		<key>UIImageRespectsSafeAreaInsets</key>
+		<true/>
+	</dict>
+</dict>
+</plist>

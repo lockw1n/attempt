@@ -319,6 +319,23 @@ jobs:
       - name: Verify the translation gate fires
         run: ./scripts/check-translations.sh --self-test
 
+      # G-5.3 (T-1.72). Config/Info.plist declares the app uses only exempt encryption. That is a
+      # legal claim about the shipping binary which decays in a commit about something else, and
+      # no other step here can see it — check-no-third-party.sh proves only that no dependency
+      # brought crypto in, never that none was written.
+      - name: Check the export-compliance declaration
+        run: ./scripts/check-exempt-encryption.sh
+
+      - name: Verify the encryption gate fires
+        run: ./scripts/check-exempt-encryption.sh --self-test
+
+      # G-5.3 (T-1.72). The App Store listing's Privacy Policy URL is rendered from the About
+      # screen's strings at deploy time rather than committed, so nothing in the tree goes stale —
+      # but a renamed `settings.about.privacy.*` key would break the deploy on main instead of
+      # here. This runs the generator against a throwaway path to fail in review instead.
+      - name: Check the hosted privacy policy still renders
+        run: python3 scripts/make-privacy-policy.py --output "$RUNNER_TEMP/privacy.html"
+
       # TR-0.6.2's formatter half. `swift format` ships with the toolchain, so there is nothing to
       # install. Config is `.swift-format`: 4-space indent and a 120-column limit, matching
       # `.editorconfig` and SwiftLint's `line_length` rather than the tool's own defaults.

@@ -10,10 +10,16 @@
 // renders any resolution. Emits the three appearance variants AppIcon.appiconset declares.
 //
 // Usage:  swift scripts/make-app-icon.swift [output-dir] [--size 1024] [--transparent]
+//         swift scripts/make-app-icon.swift [output-dir] --launch-mark
 //
 // --transparent omits the background from the dark and tinted variants, letting the system
 // composite its own. Opaque is the default because it always renders; if Xcode's preview of
 // the dark or tinted slot looks wrong, re-run with the flag.
+//
+// --launch-mark renders the same geometry for LaunchMark.imageset instead: no background, one
+// light and one dark appearance, at 1x/2x/3x. The launch screen draws this mark over the
+// LaunchBackground colour, so the two must be the mark the icon uses — which is why this mode
+// lives here rather than in a script of its own. --size and --transparent do not apply to it.
 
 import CoreGraphics
 import Foundation
@@ -59,6 +65,20 @@ let variants = [
             background: transparentVariants ? nil : rgb(0x000000),
             plate: rgb(0xFFFFFF), shaft: rgb(0x8A8A90), outerPlateAlpha: 1.0),
 ]
+
+// The launch screen's mark. No background: it is composited over LaunchBackground, whose two
+// appearances are ColorToken.background. The plate takes brandAccent's value for the same
+// appearance; the shaft is one grey because it carries on both grounds.
+let launchVariants = [
+    Variant(filename: "LaunchMark.png",
+            background: nil, plate: rgb(0xB04400), shaft: rgb(0x6A6A72), outerPlateAlpha: 1.0),
+    Variant(filename: "LaunchMark-Dark.png",
+            background: nil, plate: rgb(0xFF7A1A), shaft: rgb(0x6A6A72), outerPlateAlpha: 1.0),
+]
+
+// 1x is the natural size the launch screen lays the mark out at, in points.
+let launchScales = [(suffix: "", scale: 1), (suffix: "@2x", scale: 2), (suffix: "@3x", scale: 3)]
+let launchBaseSize = 240
 
 // MARK: - Rendering
 
@@ -107,17 +127,19 @@ func render(_ variant: Variant, size: Int) -> CGImage? {
 
 // MARK: - Output
 
+let launchMarkMode = CommandLine.arguments.contains("--launch-mark")
 let positional = CommandLine.arguments.dropFirst().filter { !$0.hasPrefix("--") }
 let outputDirectory = positional.first(where: { Int($0) == nil })
-    ?? "Attempt/Assets.xcassets/AppIcon.appiconset"
-let size = parsedSize()
+    ?? (launchMarkMode
+        ? "Attempt/Assets.xcassets/LaunchMark.imageset"
+        : "Attempt/Assets.xcassets/AppIcon.appiconset")
 
-for variant in variants {
+func write(_ variant: Variant, size: Int, filename: String) {
     guard let image = render(variant, size: size) else {
-        FileHandle.standardError.write(Data("could not render \(variant.filename)\n".utf8))
+        FileHandle.standardError.write(Data("could not render \(filename)\n".utf8))
         exit(1)
     }
-    let url = URL(fileURLWithPath: outputDirectory).appendingPathComponent(variant.filename)
+    let url = URL(fileURLWithPath: outputDirectory).appendingPathComponent(filename)
     guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)
     else {
         FileHandle.standardError.write(Data("could not open \(url.path)\n".utf8))
@@ -129,4 +151,18 @@ for variant in variants {
         exit(1)
     }
     print("wrote \(url.path) (\(size)x\(size))")
+}
+
+if launchMarkMode {
+    for variant in launchVariants {
+        for (suffix, scale) in launchScales {
+            let filename = variant.filename.replacingOccurrences(of: ".png", with: "\(suffix).png")
+            write(variant, size: launchBaseSize * scale, filename: filename)
+        }
+    }
+} else {
+    let size = parsedSize()
+    for variant in variants {
+        write(variant, size: size, filename: variant.filename)
+    }
 }
