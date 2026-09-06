@@ -492,6 +492,25 @@ the other:
 ./scripts/check-cloudkit.sh --self-test   # each check, in both directions
 ```
 
+That one runs in CI. Its companion cannot, because it talks to CloudKit:
+`check-cloudkit-schema.sh` exports the container's Development and Production
+schemas with `cktool`, diffs them, and checks the record types found against the
+same `@Model` parse. Run it after deploying a schema from the CloudKit Console —
+the Console leaves no evidence, so this is what makes "the schema is deployed" a
+checkable claim rather than a memory. It needs a management token in the keychain
+(`xcrun cktool save-token --type management`), and it reads the container out of
+`Attempt.entitlements` and the team out of `project.pbxproj` rather than taking
+either as an argument:
+
+```bash
+./scripts/check-cloudkit-schema.sh
+./scripts/check-cloudkit-schema.sh --allow-missing TrainingMaxConfigEntity
+```
+
+`--allow-missing` names entities whose table nothing writes yet, so they cannot
+have a record type. It fails if a name given there turns out to be present — a
+stale excuse is worse than none.
+
 And one dependency gate: every package dependency is a local `path:` one, so no
 tracked `Package.swift` names a remote dependency, a registry package or a binary
 target, and no tracked `.pbxproj` or `.resolved` names a remote package reference
