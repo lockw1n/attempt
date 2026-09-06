@@ -114,11 +114,12 @@ public struct StateAction {
     /// - Parameters:
     ///   - label: The button's title, built by the caller so it is localized in the caller's
     ///     bundle — see ``GroupedSection`` for why.
-    ///   - emphasis: How much weight it is drawn at (`FR-16.6.4`).
+    ///   - emphasis: How much weight it is drawn at (`FR-16.6.4`). **No default**: a state that
+    ///     inherited one would be a filled accent nobody chose, which is how a screen that already
+    ///     spends its accent gains a second one silently. The caller is the only layer that can see
+    ///     what else is on the screen, so the caller answers.
     ///   - handler: What the button does.
-    public init(
-        _ label: Text, emphasis: StateActionEmphasis = .primary, handler: @escaping () -> Void
-    ) {
+    public init(_ label: Text, emphasis: StateActionEmphasis, handler: @escaping () -> Void) {
         self.label = label
         self.emphasis = emphasis
         self.handler = handler

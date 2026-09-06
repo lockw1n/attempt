@@ -185,6 +185,7 @@ public struct PastSessionView: View {
             ErrorStateView(
                 headline: Text(LoggingStrings.pastSessionErrorHeadline),
                 message: Text(LoggingStrings.pastSessionErrorMessage),
+                retryEmphasis: .primary,
                 retry: { Task { await state.load() } }
             )
         case .missing:

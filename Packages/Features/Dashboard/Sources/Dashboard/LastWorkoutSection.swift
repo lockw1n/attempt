@@ -134,7 +134,10 @@ struct LastWorkoutReading: View {
                     headline: Text(DashboardStrings.lastWorkoutNone),
                     message: Text(DashboardStrings.lastWorkoutNoneMessage))
             case .failed:
-                ErrorStateView(message: Text(DashboardStrings.lastWorkoutError), retry: retry)
+                ErrorStateView(
+                    message: Text(DashboardStrings.lastWorkoutError),
+                    retryEmphasis: .secondary,
+                    retry: retry)
             case .inProgress(let summary):
                 facts(summary, isInProgress: true)
                 command(Text(DashboardStrings.lastWorkoutResume), action: resume)

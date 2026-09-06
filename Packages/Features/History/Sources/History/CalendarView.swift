@@ -76,6 +76,7 @@ public struct CalendarView: View {
             ErrorStateView(
                 headline: Text(HistoryStrings.calendarErrorHeadline),
                 message: Text(HistoryStrings.calendarErrorMessage),
+                retryEmphasis: .primary,
                 retry: { Task { await state.load() } }
             )
         case .empty:
@@ -83,7 +84,9 @@ public struct CalendarView: View {
                 symbolName: "calendar",
                 headline: Text(HistoryStrings.calendarEmptyHeadline),
                 message: Text(HistoryStrings.calendarEmptyMessage),
-                action: StateAction(Text(HistoryStrings.calendarEmptyAction)) {
+                action: StateAction(
+                    Text(HistoryStrings.calendarEmptyAction), emphasis: .primary
+                ) {
                     // A tab switch that drops Train to its root, not a push — `D-8`'s one place a
                     // workout is logged.
                     navigation?.startWorkout()
@@ -185,6 +188,7 @@ public struct CalendarView: View {
             // day's rows are what failed, and the retry is the same tap that opened it.
             ErrorStateView(
                 message: Text(HistoryStrings.calendarDayError),
+                retryEmphasis: .secondary,
                 retry: { Task { await state.select(selected) } }
             )
         }

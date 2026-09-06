@@ -268,12 +268,15 @@ struct PlateCalculatorContent: View {
                 headline: Text(LoggingStrings.plateNoEquipmentHeadline),
                 message: Text(LoggingStrings.plateNoEquipmentMessage),
                 action: StateAction(
-                    Text(LoggingStrings.plateNoEquipmentAction), handler: chooseEquipment)
+                    Text(LoggingStrings.plateNoEquipmentAction),
+                    emphasis: .primary,
+                    handler: chooseEquipment)
             )
         case .readFailed:
             ErrorStateView(
                 headline: Text(LoggingStrings.plateErrorHeadline),
                 message: Text(LoggingStrings.plateErrorMessage),
+                retryEmphasis: .primary,
                 retry: retry
             )
         case .unusable:

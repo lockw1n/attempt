@@ -117,6 +117,7 @@ struct HealthAccessReading: View {
                 ErrorStateView(
                     headline: Text(SettingsStrings.healthUnknownHeadline),
                     message: Text(SettingsStrings.healthUnknownMessage),
+                    retryEmphasis: .primary,
                     retry: retry
                 )
             case .notAsked:

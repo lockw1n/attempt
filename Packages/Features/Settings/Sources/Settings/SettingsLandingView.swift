@@ -202,6 +202,7 @@ public struct SettingsLandingView: View {
         ErrorStateView(
             headline: Text(SettingsStrings.loadErrorTitle),
             message: Text(SettingsStrings.loadErrorMessage),
+            retryEmphasis: .secondary,
             retry: { Task { await state.load() } })
     }
 }

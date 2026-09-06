@@ -199,12 +199,14 @@ struct EquipmentProfilesContent: View {
                 symbolName: "dumbbell",
                 headline: Text(LoggingStrings.equipmentEmptyHeadline),
                 message: Text(LoggingStrings.equipmentEmptyMessage),
-                action: StateAction(Text(LoggingStrings.equipmentAddAction), handler: add)
+                action: StateAction(
+                    Text(LoggingStrings.equipmentAddAction), emphasis: .primary, handler: add)
             )
         case .failed:
             ErrorStateView(
                 headline: Text(LoggingStrings.equipmentErrorHeadline),
                 message: Text(LoggingStrings.equipmentErrorMessage),
+                retryEmphasis: .primary,
                 retry: retry
             )
         case .ready:

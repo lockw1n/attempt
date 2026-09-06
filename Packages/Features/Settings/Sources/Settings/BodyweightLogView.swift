@@ -140,12 +140,16 @@ struct BodyweightLogReading: View {
                     symbolName: "scalemass",
                     headline: Text(SettingsStrings.bodyweightEmptyHeadline),
                     message: Text(SettingsStrings.bodyweightEmptyMessage),
-                    action: StateAction(Text(SettingsStrings.bodyweightAddAction), handler: add)
+                    action: StateAction(
+                        Text(SettingsStrings.bodyweightAddAction),
+                        emphasis: .primary,
+                        handler: add)
                 )
             case .failed:
                 ErrorStateView(
                     headline: Text(SettingsStrings.bodyweightErrorHeadline),
                     message: Text(SettingsStrings.bodyweightErrorMessage),
+                    retryEmphasis: .primary,
                     retry: retry
                 )
             case .ready(let readings):

@@ -87,6 +87,7 @@ public struct RoutineEditorView: View {
             ErrorStateView(
                 headline: Text(RoutinesStrings.editorErrorHeadline),
                 message: Text(RoutinesStrings.editorErrorMessage),
+                retryEmphasis: .primary,
                 retry: { Task { await store.reload() } }
             )
         case .missing:
@@ -139,6 +140,7 @@ public struct RoutineEditorView: View {
             // beside it — a failed write costs the screen nothing.
             ErrorStateView(
                 message: Text(RoutinesStrings.editorWriteError),
+                retryEmphasis: .secondary,
                 retry: { Task { await store.save() } }
             )
         }
@@ -197,7 +199,9 @@ struct RoutineSlotsSection: View {
             NavigationLink(value: Route.exerciseLibrary(.routineExercisePicker)) {
                 Text(RoutinesStrings.editorAddExercise)
             }
-            .buttonStyle(.primaryAction(.fill))
+            // Secondary: **Save** is this screen's one filled accent (`FR-16.6.4`), and it is the
+            // command an editor exists for.
+            .buttonStyle(.secondaryAction(.fill))
         }
     }
 }

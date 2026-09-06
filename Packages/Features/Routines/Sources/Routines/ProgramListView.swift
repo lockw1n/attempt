@@ -85,6 +85,7 @@ public struct ProgramListView: View {
             ErrorStateView(
                 headline: Text(RoutinesStrings.programsErrorHeadline),
                 message: Text(RoutinesStrings.programsErrorMessage),
+                retryEmphasis: .primary,
                 retry: { Task { await state.load() } }
             )
         case .ready where state.programs.isEmpty:
@@ -94,7 +95,9 @@ public struct ProgramListView: View {
                 symbolName: "calendar",
                 headline: Text(RoutinesStrings.programsEmptyHeadline),
                 message: Text(RoutinesStrings.programsEmptyMessage),
-                action: StateAction(Text(RoutinesStrings.programsNew)) { openPrompt() }
+                action: StateAction(Text(RoutinesStrings.programsNew), emphasis: .primary) {
+                    openPrompt()
+                }
             )
         case .ready:
             refusals

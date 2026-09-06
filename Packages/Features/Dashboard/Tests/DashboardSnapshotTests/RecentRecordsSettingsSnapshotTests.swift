@@ -78,7 +78,9 @@
                 InsufficientDataView(
                     message: Text(DashboardStrings.recentRecordsNoneInScope),
                     action: StateAction(
-                        Text(DashboardStrings.recentRecordsShowEverything), handler: {}))
+                        Text(DashboardStrings.recentRecordsShowEverything),
+                        emphasis: .secondary,
+                        handler: {}))
             }
         }
     }

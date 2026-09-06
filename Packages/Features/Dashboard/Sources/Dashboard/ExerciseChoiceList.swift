@@ -53,7 +53,9 @@ struct ExerciseChoiceList: View {
                 symbolName: "magnifyingglass",
                 headline: Text(DashboardStrings.exerciseSearchNoMatchesHeadline),
                 message: Text(DashboardStrings.exerciseSearchNoMatchesMessage),
-                action: StateAction(Text(DashboardStrings.exerciseSearchClearAction)) {
+                action: StateAction(
+                    Text(DashboardStrings.exerciseSearchClearAction), emphasis: .primary
+                ) {
                     searchText = ""
                 }
             )

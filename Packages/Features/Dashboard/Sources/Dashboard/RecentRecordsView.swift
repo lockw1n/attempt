@@ -125,12 +125,17 @@ struct RecentRecordsFeed: View {
             // requirement is written against.
             InsufficientDataView(
                 message: Text(DashboardStrings.recentRecordsNoneInScope),
-                action: StateAction(Text(DashboardStrings.recentRecordsShowEverything)) {
+                // Secondary: this is a section of `tab.home`, which spends its one accent on
+                // `FR-1.9.4`'s **Start workout** above it (`FR-16.6.4`).
+                action: StateAction(
+                    Text(DashboardStrings.recentRecordsShowEverything), emphasis: .secondary
+                ) {
                     Task { await state.showEverything() }
                 })
         case .failed:
             ErrorStateView(
                 message: Text(DashboardStrings.recentRecordsError),
+                retryEmphasis: .secondary,
                 retry: { Task { await state.load() } }
             )
         case .ready:

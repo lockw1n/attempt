@@ -57,6 +57,7 @@ public struct ProgramEditorView: View {
             ErrorStateView(
                 headline: Text(RoutinesStrings.programEditorErrorHeadline),
                 message: Text(RoutinesStrings.programEditorErrorMessage),
+                retryEmphasis: .primary,
                 retry: { Task { await state.load() } }
             )
         case .missing:

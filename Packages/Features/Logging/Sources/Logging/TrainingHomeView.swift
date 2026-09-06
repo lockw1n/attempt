@@ -182,6 +182,10 @@ public struct TrainingHomeView: View {
             ErrorStateView(
                 headline: Text(LoggingStrings.trainErrorHeadline),
                 message: Text(LoggingStrings.trainErrorMessage),
+                // The same step-down `start(showingStartFailure:)` makes, and for the same reason:
+                // the program's card is drawn *above* this switch, not inside it, so a failed read
+                // and a day on offer are on screen together (`FR-16.6.4`).
+                retryEmphasis: program.nextUp?.spendsAccent == true ? .secondary : .primary,
                 retry: { Task { await store.resume() } }
             )
         case .start(let showingStartFailure):

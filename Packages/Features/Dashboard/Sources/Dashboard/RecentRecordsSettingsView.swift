@@ -77,6 +77,7 @@ public struct RecentRecordsSettingsView: View {
                 case .failed:
                     ErrorStateView(
                         message: Text(DashboardStrings.recentRecordsSettingsError),
+                        retryEmphasis: .primary,
                         retry: { Task { await state.load() } })
                 case .ready(let settings):
                     RecentRecordsSettingsForm(

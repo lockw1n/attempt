@@ -43,6 +43,7 @@ struct ProgramNextUpSection: View {
         case .failed:
             ErrorStateView(
                 message: Text(LoggingStrings.programErrorMessage),
+                retryEmphasis: .secondary,
                 retry: { Task { await state.load() } })
         case .ready:
             if let nextUp = state.nextUp {
@@ -66,6 +67,7 @@ struct ProgramNextUpSection: View {
         if advanceFailure != nil {
             ErrorStateView(
                 message: Text(LoggingStrings.programAdvanceErrorMessage),
+                retryEmphasis: .secondary,
                 retry: retryAdvance)
         }
         switch state.commandFailure {
@@ -158,7 +160,12 @@ struct ProgramNextUpCard: View {
             symbolName: "checkmark.seal",
             headline: Text(LoggingStrings.programWeekCompleteHeadline(week: nextUp.weekNumber)),
             message: Text(LoggingStrings.programWeekCompleteMessage),
-            action: StateAction(Text(LoggingStrings.programNextWeekAction), handler: startNextWeek))
+            // Primary: `ProgramNextUp/spendsAccent` reports this reading as accent-spending, and
+            // ``TrainingHomeView``'s own action steps down to make room for it.
+            action: StateAction(
+                Text(LoggingStrings.programNextWeekAction),
+                emphasis: .primary,
+                handler: startNextWeek))
     }
 
     /// Where the run has got to — `Week 3 · Day 2`, the day counted from one.

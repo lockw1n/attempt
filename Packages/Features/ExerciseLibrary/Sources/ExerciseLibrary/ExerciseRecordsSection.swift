@@ -169,6 +169,7 @@ struct ExerciseRecordsSection: View {
             case .failed:
                 ErrorStateView(
                     message: Text(ExerciseLibraryStrings.recordsError),
+                    retryEmphasis: .secondary,
                     retry: { Task { await reload() } }
                 )
             case .ready:

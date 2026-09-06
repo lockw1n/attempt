@@ -131,6 +131,7 @@ public struct ExerciseDetailView: View {
             ErrorStateView(
                 headline: Text(ExerciseLibraryStrings.detailErrorHeadline),
                 message: Text(ExerciseLibraryStrings.detailErrorMessage),
+                retryEmphasis: .primary,
                 retry: { Task { await state.load() } }
             )
         case .missing:
@@ -302,6 +303,7 @@ struct ExerciseNotesSection: View {
                 // screen nothing.
                 ErrorStateView(
                     message: Text(ExerciseLibraryStrings.notesError),
+                    retryEmphasis: .secondary,
                     retry: { Task { await state.saveNotes() } }
                 )
             }
@@ -433,6 +435,7 @@ struct ExerciseArchiveSection: View {
                 // beside it: nothing was stored, so the retry is another tap at the same command.
                 ErrorStateView(
                     message: Text(ExerciseLibraryStrings.archiveError),
+                    retryEmphasis: .secondary,
                     retry: toggle
                 )
             }

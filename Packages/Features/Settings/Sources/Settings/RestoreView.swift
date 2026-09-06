@@ -146,6 +146,7 @@ struct RestoreReading: View {
                 ErrorStateView(
                     headline: Text(SettingsStrings.restoreErrorHeadline),
                     message: Text(SettingsStrings.restoreErrorMessage),
+                    retryEmphasis: .primary,
                     retry: { isConfirming = true })
             }
         }
@@ -177,7 +178,8 @@ struct RestoreReading: View {
             symbolName: "arrow.down.document",
             headline: Text(SettingsStrings.restoreWaitingHeadline),
             message: Text(SettingsStrings.restoreWaitingMessage),
-            action: StateAction(Text(SettingsStrings.restoreChoose), handler: chooseFile))
+            action: StateAction(
+                Text(SettingsStrings.restoreChoose), emphasis: .primary, handler: chooseFile))
     }
 
     /// What the file holds, what writing it would do, and the two commands.

@@ -87,17 +87,42 @@ public struct ErrorStateView: View {
     private let headline: Text?
     private let message: Text
     private let retry: (() -> Void)?
+    private let retryEmphasis: StateActionEmphasis
 
-    /// Builds the state.
+    /// Builds the state with no retry, for a failure that running again would repeat.
     ///
     /// - Parameters:
     ///   - headline: What failed, in the screen's words. Omit it for this module's generic heading.
     ///   - message: What the user can understand about the failure — not a diagnostic string.
+    public init(headline: Text? = nil, message: Text) {
+        self.headline = headline
+        self.message = message
+        self.retry = nil
+        self.retryEmphasis = .secondary
+    }
+
+    /// Builds the state with a retry.
+    ///
+    /// **A separate initialiser, so the weight is answered exactly where a retry exists** and
+    /// nowhere else. `FR-16.6.4` allows one filled accent per screen, and this module cannot see
+    /// what else the screen draws — an error that replaced a whole screen has the accent to spend,
+    /// where one reporting a failed section sits beside a command that already spent it.
+    ///
+    /// - Parameters:
+    ///   - headline: What failed, in the screen's words. Omit it for this module's generic heading.
+    ///   - message: What the user can understand about the failure — not a diagnostic string.
+    ///   - retryEmphasis: How much weight the retry is drawn at (`FR-16.6.4`).
     ///   - retry: What to run again, where running it again could succeed.
-    public init(headline: Text? = nil, message: Text, retry: (() -> Void)? = nil) {
+    public init(
+        headline: Text? = nil,
+        message: Text,
+        retryEmphasis: StateActionEmphasis,
+        retry: @escaping () -> Void
+    ) {
         self.headline = headline
         self.message = message
         self.retry = retry
+        self.retryEmphasis = retryEmphasis
     }
 
     /// The scaffold this view configures. The fallback heading is the kind's.
@@ -107,7 +132,8 @@ public struct ErrorStateView: View {
             headline: headline,
             message: message,
             action: retry.map { handler in
-                StateAction(Text(DesignSystemStrings.retry), handler: handler)
+                StateAction(
+                    Text(DesignSystemStrings.retry), emphasis: retryEmphasis, handler: handler)
             }
         )
     }
@@ -127,12 +153,23 @@ public struct ErrorStateView: View {
 /// kind's, which is why this view passes none.
 public struct OfflineStateView: View {
     private let retry: (() -> Void)?
+    private let retryEmphasis: StateActionEmphasis
 
-    /// Builds the state.
+    /// Builds the state with no retry.
+    public init() {
+        self.retry = nil
+        self.retryEmphasis = .secondary
+    }
+
+    /// Builds the state with a retry, at the weight the screen has room for.
     ///
-    /// - Parameter retry: What to fetch again once a connection is back.
-    public init(retry: (() -> Void)? = nil) {
+    /// - Parameters:
+    ///   - retryEmphasis: How much weight the retry is drawn at (`FR-16.6.4`) — see
+    ///     ``ErrorStateView`` for why this module cannot answer it.
+    ///   - retry: What to fetch again once a connection is back.
+    public init(retryEmphasis: StateActionEmphasis, retry: @escaping () -> Void) {
         self.retry = retry
+        self.retryEmphasis = retryEmphasis
     }
 
     /// The scaffold this view configures. Both the heading and the message are the kind's.
@@ -140,7 +177,8 @@ public struct OfflineStateView: View {
         StateScaffold(
             kind: .offline,
             action: retry.map { handler in
-                StateAction(Text(DesignSystemStrings.retry), handler: handler)
+                StateAction(
+                    Text(DesignSystemStrings.retry), emphasis: retryEmphasis, handler: handler)
             }
         )
     }

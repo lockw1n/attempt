@@ -148,7 +148,7 @@
                     symbolName: "figure.strengthtraining.traditional",
                     headline: Text(HistoryStrings.emptyHeadline),
                     message: Text(HistoryStrings.emptyMessage),
-                    action: StateAction(Text(HistoryStrings.emptyAction)) {}
+                    action: StateAction(Text(HistoryStrings.emptyAction), emphasis: .primary) {}
                 )
             }
         }
@@ -158,6 +158,7 @@
                 ErrorStateView(
                     headline: Text(HistoryStrings.errorHeadline),
                     message: Text(HistoryStrings.errorMessage),
+                    retryEmphasis: .primary,
                     retry: {}
                 )
             }
@@ -167,7 +168,7 @@
             // Deliberately a different picture from the one above: this one sits *under* rows that
             // loaded, so it carries no headline and its message names the half that failed.
             try assertSnapshots(named: "SessionList-more-error") {
-                ErrorStateView(message: Text(HistoryStrings.moreErrorMessage), retry: {})
+                ErrorStateView(message: Text(HistoryStrings.moreErrorMessage), retryEmphasis: .secondary, retry: {})
             }
         }
     }

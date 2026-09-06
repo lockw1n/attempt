@@ -246,8 +246,12 @@ struct SessionNotesFold: View {
     }
 
     /// The field itself, and what can be done with what is in it.
+    ///
+    /// **Secondary**: this fold sits directly above **Finish workout**, which is the active
+    /// session's one filled accent (`FR-16.6.4`).
     @ViewBuilder private var editor: some View {
-        SessionNoteEditor(draft: $draft, hasFailed: hasFailed, save: save)
+        SessionNoteEditor(
+            draft: $draft, hasFailed: hasFailed, saveEmphasis: .secondary, save: save)
     }
 }
 
@@ -274,6 +278,14 @@ struct SessionNoteEditor: View {
     /// Whether the last attempt to store it failed. The typed text stays on screen either way, so
     /// the retry is another tap at the same command.
     let hasFailed: Bool
+
+    /// How much weight **Save note** is drawn at (`FR-16.6.4`).
+    ///
+    /// **The host answers, because the host is the only layer that knows what else the screen
+    /// draws.** This view has two of them and they differ: an active session spends its accent on
+    /// **Finish workout** below the fold, where a past session has no filled command of its own and
+    /// this is it.
+    let saveEmphasis: StateActionEmphasis
 
     /// Stores what the field holds.
     let save: () -> Void
@@ -330,12 +342,17 @@ struct SessionNoteEditor: View {
         }
     }
 
-    /// Commits the field.
-    private var saveButton: some View {
-        Button(action: save) {
-            Text(LoggingStrings.sessionNotesSave)
+    /// Commits the field, at the weight ``saveEmphasis`` asked for.
+    ///
+    /// **An open fold is not a sheet**, which is what settles the active session's answer:
+    /// `TrainingMaxEditorView`'s "a sheet is its own surface" exemption does not reach an inline
+    /// ``Card`` drawn a thumb's width above **Finish workout**.
+    @ViewBuilder private var saveButton: some View {
+        let button = Button(action: save) { Text(LoggingStrings.sessionNotesSave) }
+        switch saveEmphasis {
+        case .primary: button.buttonStyle(.primaryAction)
+        case .secondary: button.buttonStyle(.secondaryAction)
         }
-        .buttonStyle(.primaryAction)
     }
 
     /// Puts the stored note back.
@@ -358,6 +375,10 @@ struct SessionNoteEditor: View {
 /// screen of a session that is over — there is no set to log and no **Finish** to reach — so the
 /// note keeps the headed section it has always had, and ``SessionNotesFold`` is the other answer,
 /// for the screen where `NFR-16.3` is spending the same space on a set row.
+///
+/// **Its Save is `history.session`'s one filled accent** (`FR-16.6.4`): the screen draws no other
+/// filled command — a finished workout's own **Finish workout** is secondary — and this is the one
+/// thing on it that commits anything.
 struct SessionNotesSection: View {
     /// The field, and what it is being compared against.
     @Binding var draft: SessionNoteDraft
@@ -371,7 +392,8 @@ struct SessionNotesSection: View {
     /// The heading, then the field on a card beneath it.
     var body: some View {
         GroupedSection(Text(LoggingStrings.sessionNotesSection)) {
-            SessionNoteEditor(draft: $draft, hasFailed: hasFailed, save: save)
+            SessionNoteEditor(
+                draft: $draft, hasFailed: hasFailed, saveEmphasis: .primary, save: save)
         }
     }
 }

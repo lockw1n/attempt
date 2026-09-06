@@ -141,7 +141,7 @@ struct ExerciseEstimateReading: View {
                 InsufficientDataView(
                     message: Text(ExerciseLibraryStrings.e1rmAbsence(absence, days: days)))
             case .failed:
-                ErrorStateView(message: Text(ExerciseLibraryStrings.e1rmError), retry: retry)
+                ErrorStateView(message: Text(ExerciseLibraryStrings.e1rmError), retryEmphasis: .secondary, retry: retry)
             }
         }
     }

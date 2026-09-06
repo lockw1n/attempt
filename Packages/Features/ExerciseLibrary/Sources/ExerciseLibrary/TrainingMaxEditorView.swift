@@ -98,11 +98,8 @@ struct TrainingMaxEditorSheet: View {
         VStack(alignment: .leading, spacing: Spacing.md.points) {
             Divider().overlay(ColorToken.separator)
             if let writeFailure {
-                ErrorStateView(
-                    message: Text(ExerciseLibraryStrings.trainingMaxWriteError),
-                    retry: nil
-                )
-                .accessibilityValue(Text(verbatim: writeFailure))
+                ErrorStateView(message: Text(ExerciseLibraryStrings.trainingMaxWriteError))
+                    .accessibilityValue(Text(verbatim: writeFailure))
             }
             // Not while the field is still blank: a form nobody has typed into has done nothing
             // wrong, and an opening screen that refuses is a screen that scolds.

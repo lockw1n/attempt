@@ -92,6 +92,7 @@ struct BackupReading: View {
                 ErrorStateView(
                     headline: Text(SettingsStrings.backupErrorHeadline),
                     message: Text(SettingsStrings.backupErrorMessage),
+                    retryEmphasis: .primary,
                     retry: retry)
             }
         }

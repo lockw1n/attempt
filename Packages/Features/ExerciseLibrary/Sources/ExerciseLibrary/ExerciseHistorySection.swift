@@ -50,6 +50,7 @@ struct ExerciseHistorySection: View {
             case .failed:
                 ErrorStateView(
                     message: Text(ExerciseLibraryStrings.historyError),
+                    retryEmphasis: .secondary,
                     retry: { Task { await state.load() } }
                 )
             case .ready:
@@ -71,6 +72,7 @@ struct ExerciseHistorySection: View {
             // about the failure, is the worse of the two readings (`FR-1.13.1`).
             ErrorStateView(
                 message: Text(ExerciseLibraryStrings.historyMoreError),
+                retryEmphasis: .secondary,
                 retry: { Task { await state.loadMore() } }
             )
         } else if state.hasMore {

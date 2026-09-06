@@ -184,7 +184,8 @@ struct FirstLaunchReading: View {
             symbolName: "figure.strengthtraining.traditional",
             headline: Text(DashboardStrings.firstLaunchHeadline),
             message: Text(DashboardStrings.firstLaunchMessage),
-            action: StateAction(Text(DashboardStrings.startWorkout), handler: start)
+            action: StateAction(
+                Text(DashboardStrings.startWorkout), emphasis: .primary, handler: start)
         )
         .frame(maxWidth: .infinity)
     }

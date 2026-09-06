@@ -125,7 +125,7 @@ struct TiledExerciseSelectionReading: View {
             Card { EmptyStateView(headline: Text(DashboardStrings.tilesChooseEmpty)) }
         case .failed:
             Card {
-                ErrorStateView(message: Text(DashboardStrings.tilesChooseError), retry: retry)
+                ErrorStateView(message: Text(DashboardStrings.tilesChooseError), retryEmphasis: .primary, retry: retry)
             }
         case .ready(let sections):
             ExerciseChoiceList(searchText: $searchText, sections: sections, toggle: toggle)

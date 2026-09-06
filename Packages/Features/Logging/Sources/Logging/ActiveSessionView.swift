@@ -265,6 +265,7 @@ public struct ActiveSessionView: View {
             ErrorStateView(
                 headline: Text(LoggingStrings.sessionErrorHeadline),
                 message: Text(LoggingStrings.sessionErrorMessage),
+                retryEmphasis: .primary,
                 retry: {
                     Task {
                         // Both, and for the `.task` above's reason: `resume()` drops the exercise
@@ -420,6 +421,7 @@ public struct ActiveSessionView: View {
                 ErrorStateView(
                     headline: Text(LoggingStrings.sessionExercisesErrorHeadline),
                     message: Text(LoggingStrings.sessionExercisesErrorMessage),
+                    retryEmphasis: .secondary,
                     retry: {
                         Task {
                             await store.loadExercises()
@@ -451,6 +453,7 @@ public struct ActiveSessionView: View {
         if store.previous.readFailure != nil {
             ErrorStateView(
                 message: Text(LoggingStrings.sessionPreviousErrorMessage),
+                retryEmphasis: .secondary,
                 retry: { Task { await store.loadPreviousPerformances() } }
             )
         }

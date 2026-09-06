@@ -142,7 +142,20 @@
                 EmptyStateView(
                     headline: Text(verbatim: "No exercises yet"),
                     message: Text(verbatim: "Add one to start logging."),
-                    action: StateAction(Text(verbatim: "Add exercise")) {}
+                    action: StateAction(Text(verbatim: "Add exercise"), emphasis: .primary) {}
+                )
+            }
+        }
+
+        // `FR-16.6.4`'s two weights, as a picture. The emphasis is compile-enforced now — the
+        // parameter has no default — but nothing else proves the secondary case is not the primary
+        // one drawn twice, and the choice is invisible from the call site's own type.
+        @Test func emptySecondaryAction() throws {
+            try assertSnapshots(named: "State-empty-secondary") {
+                EmptyStateView(
+                    headline: Text(verbatim: "No exercises yet"),
+                    message: Text(verbatim: "Add one to start logging."),
+                    action: StateAction(Text(verbatim: "Add exercise"), emphasis: .secondary) {}
                 )
             }
         }
@@ -161,7 +174,7 @@
 
         @Test func error() throws {
             try assertSnapshots(named: "State-error") {
-                ErrorStateView(message: Text(verbatim: "That could not be saved."), retry: {})
+                ErrorStateView(message: Text(verbatim: "That could not be saved."), retryEmphasis: .primary, retry: {})
             }
         }
 
@@ -175,7 +188,7 @@
 
         @Test func offline() throws {
             try assertSnapshots(named: "State-offline") {
-                OfflineStateView(retry: {})
+                OfflineStateView(retryEmphasis: .primary, retry: {})
             }
         }
 

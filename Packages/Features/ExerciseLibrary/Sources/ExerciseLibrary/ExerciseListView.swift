@@ -130,6 +130,7 @@ public struct ExerciseListView: View {
             ErrorStateView(
                 headline: Text(ExerciseLibraryStrings.errorHeadline),
                 message: Text(ExerciseLibraryStrings.errorMessage),
+                retryEmphasis: .primary,
                 retry: { Task { await state.load() } }
             )
         case .loaded:
@@ -152,7 +153,9 @@ public struct ExerciseListView: View {
                 symbolName: "figure.strengthtraining.traditional",
                 headline: Text(ExerciseLibraryStrings.emptyHeadline),
                 message: Text(ExerciseLibraryStrings.emptyMessage),
-                action: StateAction(Text(ExerciseLibraryStrings.createAction)) {
+                action: StateAction(
+                    Text(ExerciseLibraryStrings.createAction), emphasis: .primary
+                ) {
                     navigation?.navigate(to: .exerciseLibrary(.exerciseCreate))
                 }
             )
@@ -172,7 +175,9 @@ public struct ExerciseListView: View {
                 // which is where the message sends the user instead.
                 action: isPicking
                     ? nil
-                    : StateAction(Text(ExerciseLibraryStrings.showArchivedFilter)) {
+                    : StateAction(
+                        Text(ExerciseLibraryStrings.showArchivedFilter), emphasis: .primary
+                    ) {
                         state.showsArchived = true
                     }
             )
@@ -181,7 +186,9 @@ public struct ExerciseListView: View {
                 symbolName: "magnifyingglass",
                 headline: Text(ExerciseLibraryStrings.noMatchesHeadline),
                 message: Text(ExerciseLibraryStrings.noMatchesMessage),
-                action: StateAction(Text(ExerciseLibraryStrings.noMatchesAction)) {
+                action: StateAction(
+                    Text(ExerciseLibraryStrings.noMatchesAction), emphasis: .primary
+                ) {
                     state.clearFilters()
                 }
             )

@@ -133,6 +133,7 @@ public struct SessionListView: View {
             ErrorStateView(
                 headline: Text(HistoryStrings.errorHeadline),
                 message: Text(HistoryStrings.errorMessage),
+                retryEmphasis: .primary,
                 retry: { Task { await state.load() } }
             )
         case .empty:
@@ -140,7 +141,9 @@ public struct SessionListView: View {
                 symbolName: "figure.strengthtraining.traditional",
                 headline: Text(HistoryStrings.emptyHeadline),
                 message: Text(HistoryStrings.emptyMessage),
-                action: StateAction(Text(HistoryStrings.emptyAction)) {
+                action: StateAction(
+                    Text(HistoryStrings.emptyAction), emphasis: .primary
+                ) {
                     // A tab switch that drops Train to its root, not a push — `D-8`'s one place a
                     // workout is logged.
                     navigation?.startWorkout()
@@ -165,6 +168,7 @@ public struct SessionListView: View {
             ErrorStateView(
                 headline: Text(HistoryStrings.searchErrorHeadline),
                 message: Text(HistoryStrings.searchErrorMessage),
+                retryEmphasis: .primary,
                 retry: { Task { await search.load() } }
             )
         case .empty:
@@ -172,7 +176,9 @@ public struct SessionListView: View {
                 symbolName: "magnifyingglass",
                 headline: Text(HistoryStrings.noMatchesHeadline),
                 message: Text(HistoryStrings.noMatchesMessage),
-                action: StateAction(Text(HistoryStrings.noMatchesAction)) {
+                action: StateAction(
+                    Text(HistoryStrings.noMatchesAction), emphasis: .primary
+                ) {
                     search.clear()
                 }
             )
@@ -233,6 +239,7 @@ public struct SessionListView: View {
                 // another scroll at the same edge, so the button is the one that asks again.
                 ErrorStateView(
                     message: Text(HistoryStrings.moreErrorMessage),
+                    retryEmphasis: .secondary,
                     retry: { Task { await state.loadMore() } }
                 )
             }

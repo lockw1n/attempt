@@ -208,7 +208,10 @@ struct TrainingMaxReading: View {
                             : ExerciseLibraryStrings.trainingMaxChangeAction))
                 disclosedHistory(history)
             case .failed:
-                ErrorStateView(message: Text(ExerciseLibraryStrings.trainingMaxError), retry: retry)
+                ErrorStateView(
+                    message: Text(ExerciseLibraryStrings.trainingMaxError),
+                    retryEmphasis: .secondary,
+                    retry: retry)
             }
             if hasFailedWrite {
                 // No retry closure: nothing was stored and the sheet stayed open over it, so the

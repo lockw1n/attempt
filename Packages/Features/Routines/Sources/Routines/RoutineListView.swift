@@ -159,6 +159,7 @@ public struct RoutineListView: View {
             ErrorStateView(
                 headline: Text(RoutinesStrings.listErrorHeadline),
                 message: Text(RoutinesStrings.listErrorMessage),
+                retryEmphasis: .primary,
                 retry: { Task { await state.load() } }
             )
         case .ready where state.routines.isEmpty:
@@ -284,8 +285,8 @@ public struct RoutineListView: View {
 /// `SessionExerciseCard`'s reason for stacking its own two.
 ///
 /// **The management commands sit below the start**, not between it and the name: `FR-15.2.3` is
-/// what this list is for, and a row of secondary controls driven in above it would push the primary
-/// action away from the routine it belongs to. They are icon buttons carrying their names to
+/// what this list is for, and a row of controls driven in above it would push the command the card
+/// exists for away from the routine it belongs to. They are icon buttons carrying their names to
 /// VoiceOver (`G-4.2`), the shape the editor's slot header already uses for the same reason — three
 /// spelled-out commands do not fit a row at any Dynamic Type size.
 struct RoutineCard: View {
@@ -314,7 +315,11 @@ struct RoutineCard: View {
             Button(action: start) {
                 Text(RoutinesStrings.listStartAction)
             }
-            .buttonStyle(.primaryAction(.fill))
+            // Secondary, and this screen spends no accent at all (`FR-16.6.4`). Every card carries
+            // the same command, so a filled one is six filled ones on a six-routine list — which is
+            // finding 09's defect verbatim, one screen over from where T-16.02 removed it. There is
+            // no card the screen could promote without the choice being arbitrary.
+            .buttonStyle(.secondaryAction(.fill))
             management
         }
     }

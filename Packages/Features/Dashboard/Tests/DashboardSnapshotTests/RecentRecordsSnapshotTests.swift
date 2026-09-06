@@ -58,7 +58,7 @@
 
         @Test func unreadable() throws {
             try assertSnapshots(named: "RecentRecords-error") {
-                ErrorStateView(message: Text(DashboardStrings.recentRecordsError), retry: {})
+                ErrorStateView(message: Text(DashboardStrings.recentRecordsError), retryEmphasis: .secondary, retry: {})
             }
         }
     }

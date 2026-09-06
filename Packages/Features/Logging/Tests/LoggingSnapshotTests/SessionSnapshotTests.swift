@@ -74,7 +74,7 @@
                     symbolName: "figure.strengthtraining.traditional",
                     headline: Text(LoggingStrings.trainEmptyHeadline),
                     message: Text(LoggingStrings.trainEmptyMessage),
-                    action: StateAction(Text(LoggingStrings.trainStartAction)) {}
+                    action: StateAction(Text(LoggingStrings.trainStartAction), emphasis: .primary) {}
                 )
             }
         }
@@ -92,8 +92,8 @@
                 ErrorStateView(
                     headline: Text(LoggingStrings.trainErrorHeadline),
                     message: Text(LoggingStrings.trainErrorMessage),
-                    retry: {}
-                )
+                    retryEmphasis: .primary,
+                    retry: {})
             }
         }
 
@@ -146,7 +146,10 @@
                     symbolName: "list.bullet.rectangle",
                     headline: Text(LoggingStrings.sessionEmptyHeadline),
                     message: Text(LoggingStrings.sessionEmptyMessage),
-                    action: StateAction(Text(LoggingStrings.sessionAddExerciseAction)) {}
+                    // Secondary since T-16.02: **Finish workout** is the screen's one accent.
+                    action: StateAction(
+                        Text(LoggingStrings.sessionAddExerciseAction), emphasis: .secondary
+                    ) {}
                 )
             }
         }
@@ -400,8 +403,8 @@
                 ErrorStateView(
                     headline: Text(LoggingStrings.sessionExercisesErrorHeadline),
                     message: Text(LoggingStrings.sessionExercisesErrorMessage),
-                    retry: {}
-                )
+                    retryEmphasis: .secondary,
+                    retry: {})
             }
         }
 
@@ -413,8 +416,8 @@
                 ErrorStateView(
                     headline: Text(LoggingStrings.sessionErrorHeadline),
                     message: Text(LoggingStrings.sessionErrorMessage),
-                    retry: {}
-                )
+                    retryEmphasis: .primary,
+                    retry: {})
             }
         }
 

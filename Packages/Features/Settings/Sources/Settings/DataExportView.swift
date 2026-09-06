@@ -82,6 +82,7 @@ struct DataExportReading: View {
                 ErrorStateView(
                     headline: Text(SettingsStrings.exportErrorHeadline),
                     message: Text(SettingsStrings.exportErrorMessage),
+                    retryEmphasis: .primary,
                     retry: retry)
             }
         }

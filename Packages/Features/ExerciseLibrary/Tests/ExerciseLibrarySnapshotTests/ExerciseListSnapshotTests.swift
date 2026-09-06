@@ -186,7 +186,7 @@
                     // The way into the create form, which this state gained once that screen
                     // existed (`FR-1.1.3`). A reference built without it pictures a screen the app
                     // no longer has, and passes while doing so.
-                    action: StateAction(Text(ExerciseLibraryStrings.createAction)) {}
+                    action: StateAction(Text(ExerciseLibraryStrings.createAction), emphasis: .primary) {}
                 )
             }
         }
@@ -225,7 +225,9 @@
                     symbolName: "archivebox",
                     headline: Text(ExerciseLibraryStrings.archivedOnlyHeadline),
                     message: Text(ExerciseLibraryStrings.archivedOnlyMessage),
-                    action: StateAction(Text(ExerciseLibraryStrings.showArchivedFilter)) {}
+                    action: StateAction(
+                        Text(ExerciseLibraryStrings.showArchivedFilter), emphasis: .primary
+                    ) {}
                 )
             }
         }
@@ -236,7 +238,7 @@
                     symbolName: "magnifyingglass",
                     headline: Text(ExerciseLibraryStrings.noMatchesHeadline),
                     message: Text(ExerciseLibraryStrings.noMatchesMessage),
-                    action: StateAction(Text(ExerciseLibraryStrings.noMatchesAction)) {}
+                    action: StateAction(Text(ExerciseLibraryStrings.noMatchesAction), emphasis: .primary) {}
                 )
             }
         }
@@ -246,6 +248,7 @@
                 ErrorStateView(
                     headline: Text(ExerciseLibraryStrings.errorHeadline),
                     message: Text(ExerciseLibraryStrings.errorMessage),
+                    retryEmphasis: .primary,
                     retry: {}
                 )
             }

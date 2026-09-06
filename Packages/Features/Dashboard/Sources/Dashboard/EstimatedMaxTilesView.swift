@@ -137,7 +137,7 @@ struct EstimatedMaxTilesReading: View {
                     headline: Text(DashboardStrings.tilesNoneChosen),
                     message: Text(DashboardStrings.tilesNoneChosenMessage))
             case .failed:
-                ErrorStateView(message: Text(DashboardStrings.tilesError), retry: retry)
+                ErrorStateView(message: Text(DashboardStrings.tilesError), retryEmphasis: .secondary, retry: retry)
             case .noEstimates(let tiles):
                 InsufficientDataView(message: Text(DashboardStrings.tilesNoEstimates))
                 ForEach(tiles) { tile in
