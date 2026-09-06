@@ -196,9 +196,13 @@ extension StateActionEmphasis {
     /// The weight one of `tab.train`'s own commands takes beside the program's card (`FR-16.6.4`).
     ///
     /// **One home for a rule two call sites share, and the only one either of them can be tested
-    /// through**: ``TrainingHomeView`` draws a failed read's retry and the start action in different
-    /// phases, and the card is drawn above both. Written on the view they would be two literals
-    /// nothing could ask a question of.
+    /// through**: ``Logging/TrainingHomeView`` draws a failed read's retry and the start action in
+    /// different phases, and the card is drawn above both. Written on the view they would be two
+    /// literals nothing could ask a question of.
+    ///
+    /// The module prefix is not decoration: this extends a `DesignSystem` type, so the member
+    /// hangs off `/DesignSystem/StateActionEmphasis` and DocC resolves from there rather than from
+    /// this module.
     ///
     /// - Parameter nextUp: The card's reading, or `nil` where no card is drawn at all.
     /// - Returns: `.secondary` where the card spends the screen's accent, `.primary` otherwise.
