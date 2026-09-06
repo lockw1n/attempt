@@ -319,9 +319,6 @@ extension DetailFixtures {
             implementCount: exercise.implementCount,
             isCustom: exercise.isCustom,
             isArchived: isArchived,
-            notes: exercise.notes,
-            // Carried, not defaulted: this helper's contract is "nothing else touched", and a
-            // column dropped here would make the write assertions agree with a write that lost it.
-            manualE1RM: exercise.manualE1RM)
+            notes: exercise.notes)
     }
 }

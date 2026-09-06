@@ -222,8 +222,7 @@ private struct FlaggedExerciseReads: ExerciseRepository {
             implementCount: gone.implementCount,
             isCustom: gone.isCustom,
             isArchived: gone.isArchived,
-            notes: gone.notes,
-            manualE1RM: gone.manualE1RM)
+            notes: gone.notes)
     }
 
     func exercises(includingDeleted: Bool) async throws -> [Exercise] {

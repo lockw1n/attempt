@@ -34,7 +34,7 @@ extension Exercise {
     /// A new row for a catalogue entry.
     ///
     /// The six columns the payload has no opinion on are decided here: a seeded exercise is not
-    /// custom, is not archived, carries no notes, holds no manual estimate, and is live.
+    /// custom, is not archived, carries no notes, and is live.
     /// ``Exercise/ukrainianName`` is the payload's, absent included — see ``Exercise/reseeded(from:)``
     /// for what a *later* revision may do to it.
     /// `createdAt` is honoured because the row is new; `updatedAt` is the repository's whatever
@@ -55,8 +55,7 @@ extension Exercise {
             implementCount: entry.implements,
             isCustom: false,
             isArchived: false,
-            notes: "",
-            manualE1RM: nil)
+            notes: "")
     }
 
     /// `self` with the six seed-owned columns re-supplied from `entry` and every other column kept.
@@ -65,8 +64,8 @@ extension Exercise {
     /// ``Exercise/movement``, ``Exercise/parentExerciseID``, ``Exercise/equipment``,
     /// ``Exercise/laterality``, ``Exercise/barType``, ``Exercise/implementCount``. Kept:
     /// ``Exercise/name``, because `FR-1.1.4` lets a user rename a built-in and a later import must
-    /// not undo it; ``Exercise/notes``, ``Exercise/isArchived`` and ``Exercise/manualE1RM`` for the
-    /// same reason, being edits the payload cannot express; ``Exercise/isCustom``, which decides
+    /// not undo it; ``Exercise/notes`` and ``Exercise/isArchived`` for the same reason, being
+    /// edits the payload cannot express; ``Exercise/isCustom``, which decides
     /// the question rather than answering to it. The audit columns are copied so that a caller can
     /// compare this against the stored row and learn whether the import has anything to write.
     ///
@@ -105,8 +104,7 @@ extension Exercise {
             implementCount: entry.implements,
             isCustom: isCustom,
             isArchived: isArchived,
-            notes: notes,
-            manualE1RM: manualE1RM)
+            notes: notes)
     }
 
     /// `self` hidden from the pickers, with its logged history intact (`FR-1.1.5`, `G-1.3`).
@@ -136,7 +134,6 @@ extension Exercise {
             implementCount: implementCount,
             isCustom: isCustom,
             isArchived: true,
-            notes: notes,
-            manualE1RM: manualE1RM)
+            notes: notes)
     }
 }

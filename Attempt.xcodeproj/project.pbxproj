@@ -302,6 +302,7 @@
 				CODE_SIGN_ENTITLEMENTS = Attempt/Attempt.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 54A7S98K2Q;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Attempt reads your body mass from Health so your weigh-ins and their seven-day average are in one place. It stays on this device.";
@@ -337,6 +338,7 @@
 				CODE_SIGN_ENTITLEMENTS = Attempt/Attempt.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 54A7S98K2Q;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Attempt reads your body mass from Health so your weigh-ins and their seven-day average are in one place. It stays on this device.";

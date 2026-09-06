@@ -63,8 +63,7 @@ struct TrainingLogArchiveTests {
             implementCount: 2,
             isCustom: true,
             isArchived: true,
-            notes: "a\nnote",
-            manualE1RM: Weight(grams: 140_000))
+            notes: "a\nnote")
     }
 
     /// A session with its bodyweight and both programme references present.
@@ -140,8 +139,7 @@ struct TrainingLogArchiveTests {
             implementCount: 1,
             isCustom: false,
             isArchived: false,
-            notes: "",
-            manualE1RM: nil)
+            notes: "")
         let archive = TrainingLogArchive(
             exportedAt: Self.stamp,
             exercises: [translated, untranslated],

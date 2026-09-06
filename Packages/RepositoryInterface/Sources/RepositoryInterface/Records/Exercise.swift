@@ -76,21 +76,6 @@ public struct Exercise: StoredRecord {
     /// Free-text notes (`FR-1.1.6`).
     public let notes: String
 
-    /// The estimated one-rep maximum the user entered by hand, or `nil` to use the computed one
-    /// (`FR-1.7.5`).
-    ///
-    /// **An override, not a stored derived value**, so `G-1.4` is not in question: nothing computes
-    /// this, and clearing it is what returns the exercise to the computed number. It bypasses the
-    /// formula, the lookback window and every refusal `TR-0.2.5` makes, the same way a manual
-    /// training max bypasses the percentage and the rounding rule (`FR-1.5.1.5`).
-    ///
-    /// **No history and no date**, unlike ``TrainingMaxEntry``: `FR-1.7.5` asks for one number per
-    /// exercise and a way back, where `FR-1.5.1.4` asks for every change ever made.
-    ///
-    /// Signed, as every ``PowerliftingCore/Weight`` here is, and unvalidated: a negative override is assisted work
-    /// entered as a maximum, which is the entry field's refusal to make and not this record's.
-    public let manualE1RM: Weight?
-
     /// Creates an exercise record. No property is validated; see this module's header.
     public init(
         id: UUID,
@@ -107,8 +92,7 @@ public struct Exercise: StoredRecord {
         implementCount: Int,
         isCustom: Bool,
         isArchived: Bool,
-        notes: String,
-        manualE1RM: Weight?
+        notes: String
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -125,7 +109,6 @@ public struct Exercise: StoredRecord {
         self.isCustom = isCustom
         self.isArchived = isArchived
         self.notes = notes
-        self.manualE1RM = manualE1RM
     }
 }
 
@@ -149,7 +132,6 @@ extension Exercise {
         case isCustom
         case isArchived
         case notes
-        case manualE1RM
     }
 
     /// Decodes the keyed shape on ``CodingKeys``.
@@ -183,13 +165,12 @@ extension Exercise {
             implementCount: try container.decode(Int.self, forKey: .implementCount),
             isCustom: try container.decode(Bool.self, forKey: .isCustom),
             isArchived: try container.decode(Bool.self, forKey: .isArchived),
-            notes: try container.decode(String.self, forKey: .notes),
-            manualE1RM: try container.decodeIfPresent(Weight.self, forKey: .manualE1RM)
+            notes: try container.decode(String.self, forKey: .notes)
         )
     }
 
-    /// Writes the sixteen keys in declaration order. ``manualE1RM`` and ``ukrainianName`` are absent
-    /// rather than null when unset — `encodeIfPresent`, as every optional here is written.
+    /// Writes the fifteen keys in declaration order. An unset optional is absent rather than
+    /// null — `encodeIfPresent`, as every optional here is written.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -207,6 +188,5 @@ extension Exercise {
         try container.encode(isCustom, forKey: .isCustom)
         try container.encode(isArchived, forKey: .isArchived)
         try container.encode(notes, forKey: .notes)
-        try container.encodeIfPresent(manualE1RM, forKey: .manualE1RM)
     }
 }

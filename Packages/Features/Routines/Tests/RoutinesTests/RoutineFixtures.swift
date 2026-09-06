@@ -22,8 +22,7 @@ func routineExerciseFixture(name: String) -> Exercise {
         implementCount: 1,
         isCustom: true,
         isArchived: false,
-        notes: "",
-        manualE1RM: nil)
+        notes: "")
 }
 
 /// A stack whose catalogue already holds `exercises`, since a routine slot the repository will

@@ -160,8 +160,7 @@ private struct RepeatFixture {
             implementCount: 1,
             isCustom: false,
             isArchived: false,
-            notes: "",
-            manualE1RM: nil)
+            notes: "")
     }
 
     /// The finished workout being repeated, with a note of its own.

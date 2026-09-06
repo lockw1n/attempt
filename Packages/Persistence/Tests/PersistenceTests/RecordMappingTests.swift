@@ -355,8 +355,7 @@ struct RecordVocabularyMappingTests {
             implementCount: record.implementCount,
             isCustom: record.isCustom,
             isArchived: record.isArchived,
-            notes: record.notes,
-            manualE1RM: nil)
+            notes: record.notes)
         entity.update(from: record)
         #expect(entity.movementRawValue == "deadlift")
     }

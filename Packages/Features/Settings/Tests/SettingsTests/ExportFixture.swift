@@ -297,8 +297,7 @@ enum ExportRecords {
             implementCount: 1,
             isCustom: true,
             isArchived: false,
-            notes: "",
-            manualE1RM: nil)
+            notes: "")
     }
 
     /// One session.

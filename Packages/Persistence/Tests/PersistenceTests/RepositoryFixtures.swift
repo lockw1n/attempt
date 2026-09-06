@@ -70,8 +70,7 @@ func exerciseRecord(
         implementCount: 1,
         isCustom: false,
         isArchived: isArchived,
-        notes: "",
-        manualE1RM: nil)
+        notes: "")
 }
 
 func sessionRecord(

@@ -231,8 +231,7 @@ private final class TrainingLogFixture {
             implementCount: 1,
             isCustom: false,
             isArchived: false,
-            notes: "",
-            manualE1RM: nil)
+            notes: "")
     }
 
     /// A session and one entry under it, saved — returns the entry a set can be logged against.

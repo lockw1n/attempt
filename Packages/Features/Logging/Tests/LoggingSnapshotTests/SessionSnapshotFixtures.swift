@@ -434,8 +434,7 @@
                     implementCount: 1,
                     isCustom: false,
                     isArchived: false,
-                    notes: "",
-                    manualE1RM: nil),
+                    notes: ""),
                 sets: sets.enumerated().map { position, flags in
                     SetEntry(
                         id: identifier("D\(index)\(position)"),

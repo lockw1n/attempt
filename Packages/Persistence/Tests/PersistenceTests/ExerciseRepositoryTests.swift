@@ -57,8 +57,7 @@ struct ExerciseRepositoryTests {
             implementCount: 1,
             isCustom: false,
             isArchived: false,
-            notes: "",
-            manualE1RM: nil)
+            notes: "")
         try await harness.stack.exercises.save(rewritten)
 
         let row = try #require(try harness.store().fetch(FetchDescriptor<ExerciseEntity>()).first)
@@ -103,8 +102,7 @@ struct ExerciseRepositoryTests {
             implementCount: 1,
             isCustom: true,
             isArchived: false,
-            notes: "",
-            manualE1RM: nil)
+            notes: "")
 
         await #expect(
             throws: RepositoryError.danglingReference(
@@ -136,8 +134,7 @@ struct ExerciseRepositoryTests {
             implementCount: 1,
             isCustom: true,
             isArchived: false,
-            notes: "",
-            manualE1RM: nil)
+            notes: "")
 
         await #expect(
             throws: RepositoryError.danglingReference(recordID: id, referencing: id)
