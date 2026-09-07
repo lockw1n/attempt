@@ -36,8 +36,7 @@ extension Exercise: AuditStamped {
             implementCount: implementCount,
             isCustom: isCustom,
             isArchived: isArchived,
-            notes: notes,
-            manualE1RM: manualE1RM)
+            notes: notes)
     }
 }
 

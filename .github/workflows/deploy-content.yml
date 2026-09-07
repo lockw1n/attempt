@@ -11,6 +11,11 @@ name: Deploy content
 # no `_headers`-style override, where Cloudflare Pages would have let us set it. 600s is inside
 # what TR-0.5.4's kill switch needs, so the control is not worth the account.
 #
+# It also publishes /privacy.html — the App Store listing's Privacy Policy URL (G-5.3, T-1.72),
+# rendered from the About screen's strings rather than committed, so the two copies of one policy
+# cannot disagree. It rides this workflow because a Pages deployment replaces the whole site: a
+# second workflow publishing the policy would delete the content payloads, and vice versa.
+#
 # WHERE IT LANDS — https://lockw1n.github.io/attempt, which is RemoteContent's
 # `PublishedContent.baseURL`; the paths this workflow publishes are relative to it. A *project*
 # Pages site, so the repository name is in every URL and renaming the repository moves all three.
@@ -41,6 +46,10 @@ on:
       - "Packages/PowerliftingCore/Sources/PowerliftingCore/RPETable*.swift"
       - "Packages/RemoteContent/**"
       - "scripts/generate-remote-content.sh"
+      # G-5.3 (T-1.72): the App Store listing's Privacy Policy URL is served from this site, and
+      # its text is rendered from the About screen's own strings. A change to either republishes.
+      - "Packages/Features/Settings/Sources/Settings/Resources/*.lproj/Localizable.strings"
+      - "scripts/make-privacy-policy.py"
       - ".github/workflows/deploy-content.yml"
   workflow_dispatch:
 
@@ -71,6 +80,12 @@ jobs:
 
       - name: Generate content
         run: ./scripts/generate-remote-content.sh Content
+
+      # G-5.3: App Store Connect requires a Privacy Policy URL, which an in-app screen cannot
+      # satisfy (T-1.63 shipped the policy only inside the app). Rendered here rather than
+      # committed so the hosted copy cannot drift from the copy the app draws.
+      - name: Generate privacy policy
+        run: python3 scripts/make-privacy-policy.py --output Content/privacy.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

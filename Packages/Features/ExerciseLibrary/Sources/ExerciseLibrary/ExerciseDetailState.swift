@@ -237,9 +237,10 @@ public final class ExerciseDetailState {
     /// column it writes is a plain boolean the seed importer keeps rather than re-supplies — so
     /// nothing about the store makes it one-way.
     ///
-    /// Serialized behind the notes chain, for ``saveNotes()``'s reason: both writes rebuild the
-    /// whole record from the one the screen is showing, so an archive that overlapped a notes save
-    /// would store the record as it was before that save and undo it.
+    /// **Serialized behind the notes chain, because the re-read both writes do narrows that window
+    /// without closing it.** Two overlapping commands would each read the stored row before either
+    /// had written, and the second write would then store a record built before the first landed.
+    /// Running them in order is what makes each one's read see the write before it.
     ///
     /// - Parameter archived: What ``RepositoryInterface/Exercise/isArchived`` should become.
     public func setArchived(_ archived: Bool) async {
@@ -267,11 +268,10 @@ public final class ExerciseDetailState {
 
     /// One link of ``saveNotes()``'s chain: decide against the record as it stands now, then write.
     ///
-    /// **The record written is re-read here, not the one on screen.** This row has a second writer
-    /// — `FR-1.7.5`'s manual estimate, stored by the estimate section through its own store — and a
-    /// save rebuilds every column, so a copy built from the screen's picture would clear an
-    /// override entered since that picture was taken. The screen is never shown that column, so it
-    /// cannot carry it; the stored row can.
+    /// **The record written is re-read here, not the one on screen.** A save rebuilds every
+    /// column, so a copy built from the screen's picture would write back whatever that picture
+    /// held for a column changed since it was taken. The screen draws a subset of the row; the
+    /// stored row is the whole of it.
     ///
     /// **The write and the re-read are reported apart, because they fail differently.** A failed
     /// write is ``writeFailure``: nothing reached the store, and the screen keeps both the exercise
@@ -443,8 +443,7 @@ public final class ExerciseDetailState {
             implementCount: exercise.implementCount,
             isCustom: exercise.isCustom,
             isArchived: archived,
-            notes: exercise.notes,
-            manualE1RM: exercise.manualE1RM)
+            notes: exercise.notes)
     }
 
     /// `exercise` with `notes` in place of its own, and every other field untouched.
@@ -469,7 +468,6 @@ public final class ExerciseDetailState {
             implementCount: exercise.implementCount,
             isCustom: exercise.isCustom,
             isArchived: exercise.isArchived,
-            notes: notes,
-            manualE1RM: exercise.manualE1RM)
+            notes: notes)
     }
 }

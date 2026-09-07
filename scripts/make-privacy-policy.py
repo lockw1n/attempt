@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+"""Renders the hosted privacy policy from the in-app privacy copy.
+
+WHY THIS IS GENERATED. App Store Connect requires a Privacy Policy URL on the listing, which an
+in-app screen cannot satisfy (T-1.63 drew the policy inside the app and deliberately produced no
+hosted document). That leaves two copies of one policy, and `G-5.3` is worse served by two copies
+that disagree than by either alone. So the hosted page is neither written by hand nor committed —
+`.github/workflows/deploy-content.yml` renders it from `settings.about.privacy.*`, the same keys
+the About screen reads, on every deploy, and CI's `lint` job renders it to a throwaway path so a
+renamed key fails in review rather than on main. There is no copy in the tree to drift.
+
+WHAT IS NOT COPIED, AND WHY. `settings.about.privacy.currency` says the policy "describes the build
+named above" and "ships inside the app, so it is never newer or older than the version you are
+running". On a hosted page both clauses are false: there is no build named above, and the page is
+corrected without a submission while the in-app copy is not. Copying it verbatim would be the
+disagreement this script exists to prevent, so the currency paragraph is the one the web page
+states in its own words -- and it says which copy governs, which is the fact a reader of two
+policies actually needs.
+
+Usage:  python3 scripts/make-privacy-policy.py --output Content/privacy.html
+"""
+
+import argparse
+import html
+import pathlib
+import re
+import sys
+
+REPO = pathlib.Path(__file__).resolve().parent.parent
+STRINGS = REPO / "Packages/Features/Settings/Sources/Settings/Resources/{lang}.lproj/Localizable.strings"
+
+# The three substantive claims, in the order the About screen draws them. `.currency` is
+# deliberately absent -- see the module docstring.
+CLAIMS = ["storage", "health", "tracking"]
+
+LANGUAGES = [
+    ("en", "English", "Privacy",
+     "This page is the hosted copy of Attempt's privacy policy, required by the App Store "
+     "listing. The same policy ships inside the app under Settings → About, where it "
+     "describes the exact build you are running. Where the two differ, the copy inside your "
+     "build is the one that describes your build; this page describes the current release."),
+    ("uk", "Українська",
+     "Конфіденційність",
+     "Ця сторінка — розміщена в мережі копія політики конфіденційності Attempt, якої вимагає App Store. Та сама політика постачається всередині застосунку — Налаштування → Про застосунок, де вона описує саме вашу збірку. Якщо ці дві копії розбігаються, вашу збірку описує та, що всередині; ця сторінка описує поточний випуск."),
+]
+
+ENTRY = re.compile(r'^"([^"]+)"\s*=\s*"((?:[^"\\]|\\.)*)"\s*;', re.MULTILINE)
+
+
+def read_strings(lang):
+    path = pathlib.Path(str(STRINGS).format(lang=lang))
+    if not path.is_file():
+        sys.exit(f"error: {path} is missing")
+    table = {}
+    for key, value in ENTRY.findall(path.read_text(encoding="utf-8")):
+        table[key] = value.replace('\\"', '"').replace("\\n", "\n").replace("\\\\", "\\")
+    return table
+
+
+def render():
+    out = [
+        "<!DOCTYPE html>",
+        '<html lang="en">',
+        "<head>",
+        '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        "<title>Attempt — Privacy</title>",
+        "<style>",
+        ":root { color-scheme: light dark; --ink: #1a1a1c; --dim: #5a5a62; --bg: #efeff3; "
+        "--accent: #b04400; }",
+        "@media (prefers-color-scheme: dark) { :root { --ink: #f2f2f5; --dim: #9a9aa2; "
+        "--bg: #0b0b0d; --accent: #ff7a1a; } }",
+        "body { background: var(--bg); color: var(--ink); margin: 0 auto; max-width: 34rem; "
+        "padding: 3rem 1.25rem 4rem; line-height: 1.6; "
+        "font: 1rem/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; }",
+        "h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }",
+        "h2 { font-size: 1.05rem; margin: 2.5rem 0 0.75rem; color: var(--accent); }",
+        "p { margin: 0 0 1rem; }",
+        ".note { color: var(--dim); font-size: 0.9rem; }",
+        "footer { margin-top: 3rem; color: var(--dim); font-size: 0.85rem; }",
+        "</style>",
+        "</head>",
+        "<body>",
+        "<h1>Attempt</h1>",
+        '<p class="note">Privacy policy</p>',
+    ]
+
+    for lang, label, heading, currency in LANGUAGES:
+        table = read_strings(lang)
+        out.append(f'<h2 lang="{lang}">{html.escape(heading, quote=False)} · {html.escape(label, quote=False)}</h2>')
+        for claim in CLAIMS:
+            key = f"settings.about.privacy.{claim}"
+            if key not in table:
+                sys.exit(f"error: {key} is missing from {lang}.lproj/Localizable.strings")
+            out.append(f'<p lang="{lang}">{html.escape(table[key], quote=False)}</p>')
+        out.append(f'<p class="note" lang="{lang}">{html.escape(currency, quote=False)}</p>')
+
+    out += [
+        "<footer>",
+        "<p>Generated from the app's own copy by scripts/make-privacy-policy.py — "
+        "do not edit this file by hand.</p>",
+        "</footer>",
+        "</body>",
+        "</html>",
+        "",
+    ]
+    return "\n".join(out)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", default=str(REPO / "Content/privacy.html"))
+    args = parser.parse_args()
+    destination = pathlib.Path(args.output)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(render(), encoding="utf-8")
+    print(f"wrote {destination}")
+
+
+if __name__ == "__main__":
+    main()

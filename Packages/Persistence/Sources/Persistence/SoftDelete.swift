@@ -7,7 +7,7 @@ extension FetchDescriptor where T: StoredEntity {
     /// Soft-deleted rows are still in the store and SwiftData filters nothing on its own, so a read
     /// that builds its own descriptor silently returns deleted history.
     static func notDeleted(sortBy: [SortDescriptor<T>] = []) -> FetchDescriptor<T> {
-        FetchDescriptor<T>(predicate: #Predicate { $0.deletedAt == nil }, sortBy: sortBy)
+        FetchDescriptor<T>(predicate: T.notDeleted, sortBy: sortBy)
     }
 
     /// Live rows also matching `predicate`.
@@ -18,10 +18,7 @@ extension FetchDescriptor where T: StoredEntity {
         matching predicate: Predicate<T>,
         sortBy: [SortDescriptor<T>] = []
     ) -> FetchDescriptor<T> {
-        let combined = #Predicate<T> { entity in
-            predicate.evaluate(entity) && entity.deletedAt == nil
-        }
-        return FetchDescriptor<T>(predicate: combined, sortBy: sortBy)
+        FetchDescriptor<T>(predicate: T.notDeleted(alsoMatching: predicate), sortBy: sortBy)
     }
 
     /// Soft-deleted rows included — for a purge, an export or a diagnostic, never for display.
@@ -50,13 +47,7 @@ extension FetchDescriptor where T: StoredEntity {
     /// this descriptor exists rather than each caller writing the cutoff clause itself.
     static func deleted(onOrBefore cutoff: Date, sortBy: [SortDescriptor<T>] = []) -> FetchDescriptor<T> {
         FetchDescriptor<T>(
-            predicate: #Predicate { entity in
-                if let deletedAt = entity.deletedAt {
-                    return deletedAt <= cutoff
-                } else {
-                    return false
-                }
-            },
+            predicate: T.softDeleted(onOrBefore: cutoff),
             sortBy: sortBy
         )
     }

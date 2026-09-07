@@ -76,11 +76,11 @@ actor ScriptedExerciseRepository: ExerciseRepository {
     /// Starts failing reads only once `count` more of them have answered.
     ///
     /// **``failReads(_:)`` alone can no longer reach the re-read.** The detail screen's writes read
-    /// the stored row *before* they write it — that row has a second writer, and a record rebuilt
-    /// from the screen's own copy would clear a column the screen never shows — so a repository
-    /// failing every read from now on fails the write itself and never gets as far as the read this
-    /// is for. Counting past it is what keeps "stored, but the screen could not read it back"
-    /// expressible.
+    /// the stored row *before* they write it, because the screen draws a subset of the row and a
+    /// record rebuilt from its picture would write back whatever that picture held for a column
+    /// changed since — so a repository failing every read from now on fails the write itself and
+    /// never gets as far as the read this is for. Counting past it is what keeps "stored, but the
+    /// screen could not read it back" expressible.
     ///
     /// - Parameters:
     ///   - error: What the reads past the countdown throw.

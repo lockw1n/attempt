@@ -213,8 +213,7 @@ extension InMemoryRepositoryStack {
                 implementCount: 1,
                 isCustom: isCustom,
                 isArchived: false,
-                notes: "",
-                manualE1RM: nil))
+                notes: ""))
         return id
     }
 

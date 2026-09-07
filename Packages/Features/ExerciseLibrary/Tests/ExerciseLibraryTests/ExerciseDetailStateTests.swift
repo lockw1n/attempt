@@ -439,10 +439,7 @@ enum DetailFixtures {
         implementCount: 2,
         isCustom: true,
         isArchived: true,
-        notes: "Pins at the sticking point.",
-        // Non-nil for this fixture's own reason: a write that rebuilds the record from a stale
-        // copy clears `FR-1.7.5`'s override, and a fixture carrying no override cannot show it.
-        manualE1RM: Weight(grams: 152_500))
+        notes: "Pins at the sticking point.")
 
     /// **Deliberately in no order any assertion expects**, for the reason
     /// `ExerciseListStateTests.Fixtures.catalogue` gives.

@@ -81,7 +81,6 @@ struct SeedImporterTests {
         #expect(row.isCustom == false)
         #expect(row.isArchived == false)
         #expect(row.notes.isEmpty)
-        #expect(row.manualE1RM == nil)
         #expect(row.deletedAt == nil)
         #expect(row.createdAt == now)
         #expect(row.name == "Back Squat")
@@ -175,8 +174,7 @@ struct SeedImporterTests {
                 name: "Comp Squat",
                 notes: "belt only",
                 isArchived: true,
-                isCustom: true,
-                manualE1RM: Weight(grams: 182_500))
+                isCustom: true)
 
         let decodedEntry = try #require(decoded(payload([entry])).first)
 

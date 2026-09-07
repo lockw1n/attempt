@@ -173,8 +173,7 @@
             implementCount: 1,
             isCustom: false,
             isArchived: false,
-            notes: "",
-            manualE1RM: nil)
+            notes: "")
 
         func exercises(includingDeleted: Bool) async throws -> [Exercise] { [Self.squat] }
 

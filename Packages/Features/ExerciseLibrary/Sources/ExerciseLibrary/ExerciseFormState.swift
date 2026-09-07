@@ -359,8 +359,7 @@ public final class ExerciseFormState {
                 implementCount: edited.implementCount,
                 isCustom: edited.isCustom,
                 isArchived: edited.isArchived,
-                notes: edited.notes,
-                manualE1RM: edited.manualE1RM)
+                notes: edited.notes)
         }
         guard case .create = mode else { return nil }
         let now = Date.now
@@ -384,8 +383,7 @@ public final class ExerciseFormState {
             isCustom: true,
             isArchived: false,
             // The detail screen's editor owns these (`FR-1.1.6`).
-            notes: "",
-            manualE1RM: nil)
+            notes: "")
     }
 
     /// Fills the fields from a record being edited.

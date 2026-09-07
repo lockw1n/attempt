@@ -40,3 +40,35 @@ final class BodyweightEntryEntity: StoredEntity {
         self.updatedAt = updatedAt
     }
 }
+
+// `StoredEntity` requires these four per concrete type and supplies no default. The reason is on
+// the protocol's own requirements, and it is not a style preference: a `#Predicate` written in a
+// generic context captures a key path the optimizer may re-instantiate, which fetches correctly
+// unoptimized and traps under `-O`.
+extension BodyweightEntryEntity {
+    static func matchingID(_ id: UUID) -> Predicate<BodyweightEntryEntity> {
+        #Predicate<BodyweightEntryEntity> { $0.id == id }
+    }
+
+    static var notDeleted: Predicate<BodyweightEntryEntity> {
+        #Predicate<BodyweightEntryEntity> { $0.deletedAt == nil }
+    }
+
+    static func notDeleted(
+        alsoMatching other: Predicate<BodyweightEntryEntity>
+    ) -> Predicate<BodyweightEntryEntity> {
+        #Predicate<BodyweightEntryEntity> { entity in
+            other.evaluate(entity) && entity.deletedAt == nil
+        }
+    }
+
+    static func softDeleted(onOrBefore cutoff: Date) -> Predicate<BodyweightEntryEntity> {
+        #Predicate<BodyweightEntryEntity> { entity in
+            if let deletedAt = entity.deletedAt {
+                return deletedAt <= cutoff
+            } else {
+                return false
+            }
+        }
+    }
+}

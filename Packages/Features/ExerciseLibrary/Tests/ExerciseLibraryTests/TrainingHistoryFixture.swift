@@ -301,8 +301,7 @@ enum Builder {
             implementCount: 1,
             isCustom: false,
             isArchived: false,
-            notes: "",
-            manualE1RM: nil)
+            notes: "")
     }
 
     /// A workout on `date`.

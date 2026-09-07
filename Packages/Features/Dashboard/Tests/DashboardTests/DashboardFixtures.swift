@@ -50,8 +50,7 @@ struct DashboardFixture {
                 implementCount: 1,
                 isCustom: isCustom,
                 isArchived: isArchived,
-                notes: "",
-                manualE1RM: nil))
+                notes: ""))
         return id
     }
 

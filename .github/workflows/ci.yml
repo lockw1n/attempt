@@ -107,6 +107,13 @@ jobs:
       - name: Build and test all packages with warnings as errors
         run: ./scripts/build-packages.sh --test
 
+      # G-1.2 / DOD-1.4 (T-1.90). Everything above runs at -Onone. A `#Predicate` built in a
+      # generic context fetches correctly unoptimized and kills the process at -O, and the first
+      # Release build anyone ran was the first thing to see it. This is the only optimized run in
+      # CI; it covers the one package that fetches.
+      - name: Test the fetching packages optimized
+        run: ./scripts/test-optimized.sh
+
       # NFR-0.1: the core suite under 5 seconds. Runs after the step above, so the package is
       # already built and this measures execution rather than compilation.
       #
@@ -318,6 +325,23 @@ jobs:
 
       - name: Verify the translation gate fires
         run: ./scripts/check-translations.sh --self-test
+
+      # G-5.3 (T-1.72). Config/Info.plist declares the app uses only exempt encryption. That is a
+      # legal claim about the shipping binary which decays in a commit about something else, and
+      # no other step here can see it — check-no-third-party.sh proves only that no dependency
+      # brought crypto in, never that none was written.
+      - name: Check the export-compliance declaration
+        run: ./scripts/check-exempt-encryption.sh
+
+      - name: Verify the encryption gate fires
+        run: ./scripts/check-exempt-encryption.sh --self-test
+
+      # G-5.3 (T-1.72). The App Store listing's Privacy Policy URL is rendered from the About
+      # screen's strings at deploy time rather than committed, so nothing in the tree goes stale —
+      # but a renamed `settings.about.privacy.*` key would break the deploy on main instead of
+      # here. This runs the generator against a throwaway path to fail in review instead.
+      - name: Check the hosted privacy policy still renders
+        run: python3 scripts/make-privacy-policy.py --output "$RUNNER_TEMP/privacy.html"
 
       # TR-0.6.2's formatter half. `swift format` ships with the toolchain, so there is nothing to
       # install. Config is `.swift-format`: 4-space indent and a 120-column limit, matching

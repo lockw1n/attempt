@@ -66,8 +66,7 @@ struct ExerciseEntityTests {
             implementCount: 2,
             parentExerciseID: parent,
             isArchived: true,
-            notes: "competition grip",
-            manualE1RMGrams: 182_500
+            notes: "competition grip"
         )
         context.insert(exercise)
         try context.saveStamped()
@@ -85,28 +84,6 @@ struct ExerciseEntityTests {
         #expect(stored.parentExerciseID == parent)
         #expect(stored.isArchived)
         #expect(stored.notes == "competition grip")
-        #expect(stored.manualE1RMGrams == 182_500)
-    }
-
-    /// `FR-1.7.5`'s column is absent by default and has to be: `Weight` is signed, so a zero
-    /// written in place of "no override" would be a real load, and every exercise in the catalogue
-    /// would arrive overridden at nothing.
-    @Test("An exercise nobody has overridden carries no manual estimate")
-    func noOverrideByDefault() throws {
-        let context = try makeTrainingContext()
-        context.insert(
-            ExerciseEntity(
-                name: "Back Squat",
-                movement: .squat,
-                equipment: .barbell,
-                laterality: .bilateral,
-                barType: .standard,
-                isCustom: false))
-        try context.saveStamped()
-
-        let stored = try #require(try context.fetch(FetchDescriptor<ExerciseEntity>.notDeleted()).first)
-
-        #expect(stored.manualE1RMGrams == nil)
     }
 
     // The mitigation the whole unknown-value design rests on: `Laterality` throws on an unrecognised

@@ -36,8 +36,7 @@ struct RecordMappingUkrainianNameTests {
             implementCount: 2,
             isCustom: true,
             isArchived: true,
-            notes: "belt from 140",
-            manualE1RM: nil)
+            notes: "belt from 140")
         entity.update(from: cleared)
 
         #expect(entity.ukrainianName == nil)

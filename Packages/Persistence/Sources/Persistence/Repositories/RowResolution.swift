@@ -68,7 +68,7 @@ extension ModelContext {
         id: UUID,
         includingDeleted: Bool
     ) throws -> [T] {
-        let matching = #Predicate<T> { $0.id == id }
+        let matching = T.matchingID(id)
         return try fetch(
             includingDeleted
                 ? FetchDescriptor<T>.includingDeleted(matching: matching)

@@ -18,21 +18,15 @@ actor AppSyncControl: SyncControl {
 
     /// Whether a device that has never been asked mirrors.
     ///
-    /// **OFF, AND ONLY UNTIL THE CONTAINER EXISTS — FLIP THIS TO `true` AS PART OF T-1.70.**
-    /// `FR-1.12.1` wants sync to be the app's behaviour and `FR-1.12.3` makes it refusable, so `true`
-    /// is the right long-run answer: a default of off leaves a lifter's second device empty until
-    /// they find this screen.
+    /// `FR-1.12.1` makes sync the app's behaviour and `FR-1.12.3` makes it refusable, so a default
+    /// of off would leave a lifter's second device empty until they went looking for this screen.
     ///
-    /// It is `false` today because `iCloud.lockw1n.Attempt` has not been provisioned. Measured, not
-    /// assumed: with the entitlement present and the container absent, the app takes
-    /// `EXC_BREAKPOINT`/`SIGTRAP` on launch — CoreData's mirroring delegate traps on
-    /// `com.apple.coredata.cloudkit.queue`, which is T-0.33's finding arriving on the app's own
-    /// launch path rather than in a test process. **It cannot be caught**: it is a trap, not a
-    /// thrown error, so there is no `try` that recovers and no state a screen could show instead.
-    ///
-    /// So the default is the only lever, and this is the one line to change once the container is
-    /// real. Nothing else about activation is conditional on it.
-    static let defaultEnabled = false
+    /// **It may be `true` only while `iCloud.lockw1n.Attempt` is provisioned and its schema is
+    /// deployed to Production.** With the entitlement present and the container absent, launch takes
+    /// `EXC_BREAKPOINT`/`SIGTRAP` on CoreData's mirroring queue — a trap rather than a thrown error,
+    /// so no `try` recovers it and no screen can show it instead. Renaming the container, or
+    /// pointing a build at one whose schema was never deployed, arms that on every fresh install.
+    static let defaultEnabled = true
 
     /// Whether a device mirrors, as the choice stands in `defaults`.
     ///
