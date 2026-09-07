@@ -234,7 +234,10 @@ def check_string_catalogue(path):
 root = sys.argv[1]
 catalogue_dirs, string_catalogues = [], []
 for directory, subdirectories, files in os.walk(root):
-    subdirectories[:] = [d for d in subdirectories if d not in {".build", ".git"}]
+    # The same build products .gitignore names: `build/` is where archive-release.sh writes the
+    # archive, and an archived app carries every .strings file compiled to binary plist.
+    subdirectories[:] = [d for d in subdirectories
+                         if d not in {".build", ".git", "build", "DerivedData"}]
     if os.path.basename(directory) == "en.lproj":
         catalogue_dirs.append(directory)
     string_catalogues += [os.path.join(directory, f) for f in files if f.endswith(".xcstrings")]
