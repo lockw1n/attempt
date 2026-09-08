@@ -77,6 +77,22 @@ struct SetDraft: Equatable, Sendable {
     /// jump.
     var modifiers: [SetModifier] = []
 
+    /// How many sets of this the lifter did (`FR-17.1.1`) — the Log sheet's third field.
+    ///
+    /// **Text, like every other field here**, and floored at one by ``adjustingSets(by:)``: zero
+    /// sets is not an answer, it is the row left unanswered.
+    ///
+    /// **Not part of ``isBlank``**, for ``isWarmup``'s reason: the field opens holding a number, so
+    /// counting it would make every draft non-blank.
+    var setsText: String = "1"
+
+    /// What the **Per-set details** fold collects (`FR-17.9.4`) — one entry per set, or empty.
+    ///
+    /// **Empty means "the form speaks for every set"**, which is not the same fact as N copies of
+    /// it: a draft carrying none resolves to ``resolved`` repeated, and the fold is what lets the
+    /// sets differ. See ``SetDetailDraft``.
+    var details: [SetDetailDraft] = []
+
     /// The scale RPE is entered on. Outside it, the field is a typo rather than a rating.
     static let rpeRange: ClosedRange<Double> = 1...10
 
@@ -156,6 +172,7 @@ struct SetDraft: Equatable, Sendable {
             weightText = LocalizedNumberField.render(weight, in: unit, locale: locale)
         }
         repsText = LocalizedNumberField.render(Double(plan.reps), locale: locale)
+        setsText = LocalizedNumberField.render(Double(plan.sets), locale: locale)
     }
 }
 
@@ -179,9 +196,22 @@ extension SetDraft {
 
     /// The RPE, whether it was skipped, or whether what is there is not one.
     var rpe: OptionalField<Double> {
-        if rpeText.trimmingCharacters(in: .whitespaces).isEmpty { return .absent }
-        guard let entered = LocalizedNumberField.decimal(rpeText, locale: locale),
-            Self.rpeRange.contains(entered)
+        Self.rating(rpeText, locale: locale)
+    }
+
+    /// The RPE rule, once, for the form's own field and for each of ``details``' (`FR-17.9.4`).
+    ///
+    /// **One home, because the fold multiplies the field.** A second reading of `1...10` written
+    /// beside the per-set rows is a second place the range can drift from this one.
+    ///
+    /// - Parameters:
+    ///   - text: The field, as typed.
+    ///   - locale: The locale it is read in.
+    /// - Returns: Absent, the rating, or that what is there is not one.
+    static func rating(_ text: String, locale: Locale) -> OptionalField<Double> {
+        if text.trimmingCharacters(in: .whitespaces).isEmpty { return .absent }
+        guard let entered = LocalizedNumberField.decimal(text, locale: locale),
+            rpeRange.contains(entered)
         else {
             return .invalid
         }
@@ -190,7 +220,8 @@ extension SetDraft {
 
     /// Whether this draft can be logged — every required field parses, and no optional one is wrong.
     var isLoggable: Bool {
-        weight != nil && reps != nil && rpe != .invalid
+        weight != nil && reps != nil && rpe != .invalid && sets != nil
+            && details.allSatisfy(\.isResolvable)
     }
 
     /// Whether nothing has been entered — every field empty and no modifier picked.

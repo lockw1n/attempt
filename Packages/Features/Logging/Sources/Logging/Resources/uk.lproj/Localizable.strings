@@ -64,16 +64,16 @@
 "logging.session.exercises.write-error.message" = "Не вдалося зберегти. Нічого не втрачено — спробуйте ще раз.";
 
 "logging.session.set.empty" = "Підходів ще не записано.";
-"logging.session.set.add.action" = "Додати підхід";
+"logging.session.set.add.action" = "Записати";
 "logging.session.set.repeat.action" = "Повторити підхід";
-"logging.session.set.editor.title" = "Записати підхід";
+"logging.session.set.editor.title" = "Записати";
 "logging.session.set.weight.label" = "Вага";
 "logging.session.set.reps.label" = "Повторення";
 "logging.session.set.rpe.label" = "RPE";
 "logging.session.set.rpe.hint" = "Необов’язково, від 1 до 10";
 "logging.session.set.notes.label" = "Нотатка";
 "logging.session.set.notes.hint" = "Необов’язково";
-"logging.session.set.confirm.action" = "Записати підхід";
+"logging.session.set.confirm.action" = "Зберегти";
 "logging.session.set.cancel.action" = "Скасувати";
 "logging.session.set.weight.increase" = "Збільшити вагу";
 "logging.session.set.weight.decrease" = "Зменшити вагу";
@@ -349,3 +349,19 @@
 "logging.day.add-exercise.action" = "Додати вправу";
 "logging.day.no-rows.headline" = "У цьому дні ще нічого немає";
 "logging.day.no-rows.message" = "Додайте вправу, щоб почати записувати.";
+
+/* FR-17.1 — аркуш «Записати». */
+"logging.session.set.editor.question" = "Що ви зробили?";
+"logging.session.set.sets.label" = "Підходи";
+"logging.session.set.sets.increase" = "Додати підхід";
+"logging.session.set.sets.decrease" = "Прибрати підхід";
+"logging.session.set.planned.label" = "За планом";
+"logging.session.set.actual.label" = "Фактично";
+"logging.session.set.details.label" = "Деталі кожного підходу";
+"logging.session.set.save-done.action" = "Зберегти як виконане";
+
+/* FR-17.9.4 — відхилення поруч із фактично виконаним. */
+"logging.session.set.deviation.line %@ %@" = "%1$@ · %2$@";
+"logging.session.set.deviation.weight %@" = "%@";
+"logging.session.set.deviation.as-planned" = "як заплановано";
+"logging.session.set.deviation.separator" = ", ";

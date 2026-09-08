@@ -135,7 +135,7 @@ public struct PastSessionView: View {
         .sheet(item: $editing) { target in
             SetEditorSheet(
                 draft: draft(for: target),
-                isEditing: true,
+                mode: .set(isEditing: true),
                 // No target: this screen has no planned-target read wired up, for the reason its
                 // set rows draw none.
                 unit: state.displayUnit,

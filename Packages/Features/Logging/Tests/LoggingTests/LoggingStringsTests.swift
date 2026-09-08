@@ -18,6 +18,34 @@ struct LoggingStringsTests {
         }
     }
 
+    /// `FR-17.1.6` and `D-17.7`: one word names the sheet, and three spellings are retired.
+    ///
+    /// **A string test rather than a review note**, because the words are the requirement: the row
+    /// command that opens the sheet and the sheet's own heading have to be the same word, and *Add
+    /// set*, *Log set* and *Adjust* have to be gone from **both** catalogues rather than from the
+    /// one a reviewer happened to read.
+    @Test("One word names the Log sheet, and the retired spellings are gone from both catalogues")
+    func oneWordNamesTheSheet() {
+        #expect(String(localized: LoggingStrings.dayLogAction) == "Log")
+        #expect(String(localized: LoggingStrings.setEditorTitle) == "Log")
+        #expect(String(localized: LoggingStrings.setEditorQuestion) == "What did you do?")
+        #expect(String(localized: LoggingStrings.setSaveDoneAction) == "Save as done")
+        // The free workout's edit keeps its own words — this phase does not redesign it
+        // (`OUT-17.8`).
+        #expect(String(localized: LoggingStrings.setEditorEditTitle) == "Edit set")
+
+        // The three retirements, over every string either catalogue can draw. The Ukrainian half is
+        // covered by `everyKeyResolves` above plus `check-translations.sh`: what can be asserted
+        // here is that no English key still spells one of them.
+        let retired = ["Add set", "Log set", "Adjust"]
+        for resource in LoggingStrings.all {
+            let rendered = String(localized: resource)
+            for spelling in retired {
+                #expect(rendered != spelling, "\(resource.key) still reads \(spelling)")
+            }
+        }
+    }
+
     /// `FR-16.4.1`, and the half of it a picture cannot settle: a set nobody attempted announces
     /// itself as *pending*, and the word is not the failed one.
     @Test("A pending set announces itself as pending, not as failed")

@@ -113,10 +113,13 @@ public struct LoggedSetWriter: Sendable {
 
     /// `set` carrying `values`, and every other field untouched.
     ///
+    /// Internal rather than private: ``SetGroupRewrite`` rewrites a whole group through the same
+    /// carry-across rule, and a second copy of it there is a second place a column can be dropped.
+    ///
     /// Rebuilt rather than mutated because the record is a value with `let` properties, and the
     /// three timestamps are carried across because the write path is an upsert that stamps
     /// `updatedAt` itself.
-    private static func edited(_ set: SetEntry, to values: SetEntryValues) -> SetEntry {
+    static func edited(_ set: SetEntry, to values: SetEntryValues) -> SetEntry {
         SetEntry(
             id: set.id,
             createdAt: set.createdAt,

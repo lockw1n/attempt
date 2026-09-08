@@ -276,8 +276,8 @@ extension ActiveSessionStore {
     /// - Parameter write: The set to log, or the rewrite to apply.
     func write(_ write: SetEditorWrite) async {
         switch write {
-        case .add(let entryID, let values):
-            await addSet(toEntryID: entryID, values: values)
+        case .add(let entryID, let rows):
+            await addSets(toEntryID: entryID, rows: rows)
         case .rewrite(let setID, let entryID, let values):
             await editSet(id: setID, inEntryID: entryID, to: values)
         }

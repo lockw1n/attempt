@@ -24,7 +24,7 @@ public struct DayView: View {
     /// the editor's own writes.
     private let store: ActiveSessionStore
 
-    /// The modifier terms the interim editor offers (`FR-1.2.8`).
+    /// The modifier terms the Log sheet offers (`FR-1.2.8`).
     private let vocabulary: SetModifierVocabulary
 
     /// The gym `FR-1.4.1`'s loading is worked out on, for the same sheet.
@@ -37,7 +37,7 @@ public struct DayView: View {
     ///   - week: The week number stamped on the day's session.
     ///   - dayIndex: The `ProgramDay.order` this is.
     ///   - store: The workout the answers are written into.
-    ///   - vocabulary: The modifier terms the editor offers (`FR-1.2.8`).
+    ///   - vocabulary: The modifier terms the Log sheet offers (`FR-1.2.8`).
     ///   - equipment: The gym the plate calculator works over (`FR-1.4.1`).
     ///   - programs: The programs, their days and the run in force.
     ///   - routines: The routine the day names.
@@ -86,19 +86,31 @@ public struct DayView: View {
             SetEditorSheet(
                 draft: ActiveSessionView.draft(
                     for: target.editorTarget, unit: store.displayUnit, locale: locale),
+                mode: .row(target.row),
                 prescribed: target.prescribed,
                 unit: store.displayUnit,
                 vocabulary: vocabulary,
                 equipment: equipment,
                 log: { draft in
-                    guard let values = draft.resolved else { return }
+                    guard let group = draft.resolvedGroup else { return }
                     let rowID = target.rowID
                     editing = nil
-                    Task { await day.log(rowID: rowID, values: values) }
+                    Task { await day.log(rowID: rowID, group: group) }
                 },
-                cancel: { editing = nil }
+                cancel: { editing = nil },
+                skip: {
+                    let rowID = target.rowID
+                    editing = nil
+                    Task { await day.skip(rowID: rowID) }
+                }
             )
-            .presentationDetents([.medium, .large])
+            // `.large`, and it is measured rather than chosen — see
+            // `SetEditorSheet.smallestScreen`. This sheet's pinned plan line, its heading, Weight,
+            // Reps and its pinned commands are 584.5 pt at the default type size on a 667 pt
+            // screen, so `FR-17.1.6`'s "Weight and Reps visible together" rules out `.medium` and
+            // every fraction below 0.88. A second detent that could not hold them would be a
+            // height this form must never open at.
+            .presentationDetents([.large])
         }
         .sessionOverflow(
             date: day.date,
@@ -282,28 +294,31 @@ public struct DayView: View {
             .joined(separator: String(localized: LoggingStrings.dayUnanswerableSeparator))
     }
 
-    /// Opens the interim editor over one row (`FR-17.9.3`).
+    /// Opens the Log sheet over one row (`FR-17.9.3`).
+    ///
+    /// A row the day no longer holds opens nothing: it went away underneath the checklist, which is
+    /// every command here's rule.
     ///
     /// - Parameter rowID: The row.
     private func open(_ rowID: UUID) {
+        guard let row = day.editorRow(forRow: rowID) else { return }
         editing = DayLogTarget(
-            rowID: rowID,
-            planned: day.seed(forRow: rowID),
-            prescribed: day.prescribed(forRow: rowID))
+            rowID: rowID, row: row, prescribed: day.prescribed(forRow: rowID))
     }
 }
 
-/// Which row the day's interim set editor is open over (`FR-17.9.3`).
+/// Which row the Log sheet is open over (`FR-17.9.3`, `FR-17.9.4`).
 ///
 /// **The row rather than the entry**, because the sheet can be opened on a day that has no session
 /// yet: the first answer creates it, and the row is what survives that (see
-/// ``DayStore/log(rowID:values:)``).
+/// ``DayStore/log(rowID:group:)``).
 struct DayLogTarget: Identifiable, Equatable {
     /// The row.
     let rowID: UUID
 
-    /// What the form opens filled in with (`FR-15.2.3`), or `nil`.
-    let planned: PlannedSetSeed?
+    /// The plan, what is already logged, and whether the row is answered — what the sheet's row
+    /// mode is drawn from.
+    let row: SetEditorRow
 
     /// What the routine prescribed for the next set, drawn above the fields (`FR-15.3.1`).
     let prescribed: PlannedTargetGroup?
@@ -312,13 +327,8 @@ struct DayLogTarget: Identifiable, Equatable {
     var id: UUID { rowID }
 
     /// The same thing in the shape the shared editor takes.
-    ///
-    /// **A translation rather than a second type on the sheet**: `T-17.01` replaces the sheet, and a
-    /// day that had widened `SetEditorTarget` to carry a routine slot would have to be unwidened
-    /// there.
     var editorTarget: SetEditorTarget {
-        SetEditorTarget(
-            entryID: rowID, values: nil, editing: nil, planned: planned, prescribed: prescribed)
+        SetEditorTarget(entryID: rowID, prescribed: prescribed, row: row)
     }
 }
 

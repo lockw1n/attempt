@@ -227,26 +227,55 @@ public final class DayStore {
         await reload()
     }
 
-    /// Writes one set from the editor and marks the row done (`FR-17.9.3`).
+    /// Writes the Log sheet's group and marks the row done (`FR-17.9.3`, `FR-17.9.4`).
     ///
-    /// **The interim answer for a row the circle cannot take** — one whose plan named no load
-    /// (`FR-15.2.2`), or one the lifter added. `T-17.01` replaces the sheet the screen opens; this
-    /// wiring is what it replaces the sheet *in*.
+    /// **The answer for a row the circle cannot take** — one whose plan named no load
+    /// (`FR-15.2.2`), one the lifter added, or one performed differently from the plan.
     ///
     /// **Save marks the row done**, which is `FR-17.9.3`'s reading of a checklist: a day is a list
-    /// of answers, and logging a set against an exercise is answering for it. Adding a second set
-    /// afterwards is Log again, which leaves the mark where it is.
+    /// of answers, and logging a set against an exercise is answering for it.
+    ///
+    /// **A row already answered is rewritten rather than appended to** (`FR-17.7.5`). Reopening the
+    /// sheet over an answer is the *only* way to change one — the circle is inert by then — so a
+    /// save that appended would double the work every time a lifter corrected a rep count.
     ///
     /// - Parameters:
     ///   - rowID: The row being logged against.
-    ///   - values: What the editor collected.
-    public func log(rowID: UUID, values: SetEntryValues) async {
+    ///   - group: What the sheet collected — the form's answer and the rows it writes.
+    func log(rowID: UUID, group: ResolvedSetGroup) async {
         unanswerable = []
         guard await startIfNeeded(), let entryID = entryID(forRow: rowID) else { return }
-        await store.addSet(toEntryID: entryID, values: values)
-        await store.markExercise(id: entryID, isDone: true)
+        if isAnswered(rowID: rowID) {
+            await store.rewriteGroup(inEntryID: entryID, rows: group.rows)
+        } else {
+            await store.logGroup(inEntryID: entryID, rows: group.rows)
+        }
         await finishIfComplete()
         await reload()
+    }
+
+    /// What the Log sheet opens over `rowID` (`FR-17.9.4`, `FR-17.7.5`).
+    ///
+    /// **The plan, what is stored, and whether the row is answered** — the three things the sheet
+    /// needs and the one place they are read together. Composed here rather than on the screen for
+    /// ``seed(forRow:)``'s reason: the mapping from a row to its entry is this store's.
+    ///
+    /// - Parameter rowID: The row.
+    /// - Returns: The row, or `nil` where the day has none by that identity.
+    func editorRow(forRow rowID: UUID) -> SetEditorRow? {
+        guard let row = rows.first(where: { $0.id == rowID }) else { return nil }
+        return SetEditorRow(
+            plan: row.plan,
+            logged: store.exercises.first { $0.id == rowID }?.sets ?? [],
+            isAnswered: row.answer != .unanswered)
+    }
+
+    /// Whether the row has already been answered — what decides between a write and a rewrite.
+    ///
+    /// - Parameter rowID: The row.
+    /// - Returns: Whether it carries an answer.
+    private func isAnswered(rowID: UUID) -> Bool {
+        rows.first { $0.id == rowID }?.answer != .unanswered
     }
 
     /// What the editor opens filled in with for `rowID` (`FR-15.2.3`), or `nil` where nothing was

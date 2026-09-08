@@ -151,13 +151,13 @@ struct SetEditorWriteTests {
             draft, over: SetEditorTarget(entryID: entryID, values: Self.values))
 
         #expect(rewrite == .rewrite(setID: setID, entryID: entryID, values: Self.values))
-        #expect(addition == .add(entryID: entryID, values: Self.values))
+        #expect(addition == .add(entryID: entryID, rows: [Self.values]))
     }
 
     @Test("A draft that does not resolve writes nothing, either way")
     func anUnresolvableDraftWritesNothing() {
-        // The confirming command is disabled in this state, so this is the second reading of a
-        // guard the editor already applies — and the one a caller cannot skip.
+        // The confirming command refuses in this state (`FR-17.1.6`), so this is the second
+        // reading of a guard the sheet already applies — and the one a caller cannot skip.
         var draft = SetDraft(editing: Self.values, unit: .kilograms, locale: .posix)
         draft.weightText = "heavy"
 
@@ -187,8 +187,10 @@ struct SetEditorWriteTests {
         await workout.store.write(
             .add(
                 entryID: logged.entryID,
-                values: SetEntryValues(
-                    weight: Weight(grams: 60_000), reps: 8, rpe: nil, isWarmup: true, notes: "")))
+                rows: [
+                    SetEntryValues(
+                        weight: Weight(grams: 60_000), reps: 8, rpe: nil, isWarmup: true, notes: "")
+                ]))
 
         let both = try #require(workout.store.exercises.first?.sets)
         #expect(both.count == 2)
@@ -263,7 +265,7 @@ struct RefusedSetEditingTests {
             ActiveSessionView.write(
                 draft, over: SetEditorTarget(entryID: entryID, editing: setID)))
 
-        guard case .add(_, let addedValues) = added,
+        guard case .add(_, let addedRows) = added, let addedValues = addedRows.first,
             case .rewrite(_, _, let rewrittenValues) = rewritten
         else {
             Issue.record("the form resolved to neither kind of write")

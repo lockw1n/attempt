@@ -136,11 +136,11 @@
    fills one in. The editor is presented rather than pushed — NFR-1.4 wants every logging control
    in the lower two-thirds, and a card can be anywhere the user scrolled it to. */
 "logging.session.set.empty" = "No sets logged yet.";
-"logging.session.set.add.action" = "Add set";
+"logging.session.set.add.action" = "Log";
 /* FR-1.2.6, and the action the whole screen is shaped around: it opens the editor already filled
    in from the last set, so repeat-adjust-confirm is three taps (NFR-1.3). */
 "logging.session.set.repeat.action" = "Repeat set";
-"logging.session.set.editor.title" = "Log set";
+"logging.session.set.editor.title" = "Log";
 "logging.session.set.weight.label" = "Weight";
 "logging.session.set.reps.label" = "Reps";
 "logging.session.set.rpe.label" = "RPE";
@@ -150,7 +150,7 @@
 "logging.session.set.rpe.hint" = "Optional, 1 to 10";
 "logging.session.set.notes.label" = "Note";
 "logging.session.set.notes.hint" = "Optional";
-"logging.session.set.confirm.action" = "Log set";
+"logging.session.set.confirm.action" = "Save";
 "logging.session.set.cancel.action" = "Cancel";
 /* Accessibility labels: all four controls draw a glyph and have no visible title (G-4.2). */
 "logging.session.set.weight.increase" = "Increase weight";
@@ -558,3 +558,21 @@
 "logging.day.add-exercise.action" = "Add exercise";
 "logging.day.no-rows.headline" = "Nothing in this day yet";
 "logging.day.no-rows.message" = "Add an exercise to start logging into it.";
+
+/* FR-17.1's Log sheet. One word names it — Log — on the row command that opens it and on its
+   own heading (FR-17.1.6); Add set, Log set and Adjust are retired everywhere (D-17.7). */
+"logging.session.set.editor.question" = "What did you do?";
+"logging.session.set.sets.label" = "Sets";
+"logging.session.set.sets.increase" = "Add a set";
+"logging.session.set.sets.decrease" = "Remove a set";
+"logging.session.set.planned.label" = "Planned";
+"logging.session.set.actual.label" = "Actual";
+"logging.session.set.details.label" = "Per-set details";
+"logging.session.set.save-done.action" = "Save as done";
+
+/* FR-17.9.4's difference, called out beside what was actually done. The separator is a string
+   rather than a comma: not every language joins clauses with one (G-3.4). */
+"logging.session.set.deviation.line %@ %@" = "%1$@ · %2$@";
+"logging.session.set.deviation.weight %@" = "%@";
+"logging.session.set.deviation.as-planned" = "as planned";
+"logging.session.set.deviation.separator" = ", ";

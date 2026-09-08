@@ -214,6 +214,10 @@ extension ActiveSessionStore {
 
     /// Marks one entry done, where it is not already.
     ///
+    /// Internal rather than private: the Log sheet's group commands chain the same mark onto their
+    /// own write (`FR-17.9.4`), and a second copy of the no-op guard is a second place `G-2.4`'s
+    /// conflict key can be restamped for nothing.
+    ///
     /// An entry the read does not find is silently nothing, on the plan commands' rule: the row went
     /// away underneath the checklist. An entry already done is **not** written — assigning a
     /// `@Model` property marks the row changed whatever the value was, so the save would restamp
@@ -223,7 +227,7 @@ extension ActiveSessionStore {
     ///   - entryID: The exercise.
     ///   - sessionID: The workout it belongs to.
     /// - Throws: Whatever the repository throws.
-    private func markDone(entryID: UUID, ofSessionID sessionID: UUID) async throws {
+    func markDone(entryID: UUID, ofSessionID sessionID: UUID) async throws {
         let entries = try await repository.entries(forSessionID: sessionID, includingDeleted: false)
         guard let entry = entries.first(where: { $0.id == entryID }), !entry.isMarkedDone else {
             return

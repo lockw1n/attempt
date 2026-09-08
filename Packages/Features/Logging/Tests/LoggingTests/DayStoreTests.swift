@@ -281,8 +281,14 @@ struct DayStoreTests {
 
         await day.log(
             rowID: rowID,
-            values: SetEntryValues(
-                weight: Weight(grams: 60_000), reps: 12, rpe: nil, isWarmup: false))
+            group: ResolvedSetGroup(
+                values: SetEntryValues(
+                    weight: Weight(grams: 60_000), reps: 12, rpe: nil, isWarmup: false),
+                sets: 1,
+                rows: [
+                    SetEntryValues(
+                        weight: Weight(grams: 60_000), reps: 12, rpe: nil, isWarmup: false)
+                ]))
 
         let row = try #require(day.rows.first)
         #expect(row.answer == .logged)
@@ -290,6 +296,56 @@ struct DayStoreTests {
         #expect(row.performed.first?.reps == 12)
         #expect(day.progress.isComplete)
         #expect(day.isDone)
+    }
+
+    @Test("Log writes the group it collected, marks the row done and leaves the plan alone")
+    func logWritesAGroupAndNeverThePlan() async throws {
+        // DOD-17.7, structurally: the fixture prescribes 100 kg × 5 × 3 and this answers it with
+        // 100 kg × 4 × 3. Three actual rows, both lines on the row, and every planned row
+        // field-for-field identical afterwards — `updatedAt` included, which is `G-2.4`'s conflict
+        // key and the column a careless rewrite restamps.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
+        let store = fixture.activeStore()
+        let day = fixture.dayStore(dayIndex: 0, store: store)
+        await day.load()
+        let rowID = try #require(day.rows.first).id
+
+        await day.log(rowID: rowID, group: Self.group(reps: 4, sets: 3))
+
+        let entryID = try await fixture.firstEntryID(day: 0)
+        let before = try await fixture.stack.workouts.plannedTargets(
+            forEntryID: entryID, includingDeleted: false)
+        #expect(!before.isEmpty)
+        let logged = try #require(day.rows.first)
+        #expect(logged.answer == .logged)
+        #expect(logged.performed.map(\.sets) == [3])
+        #expect(logged.performed.first?.reps == 4)
+        // Two lines: what was asked for, and what was done. `100 × 5 × 3` is not `100 × 4 × 3`.
+        #expect(!logged.plan.isEmpty)
+        #expect(!logged.wasAsPlanned)
+
+        // Reopened over the answer, which is the only way to change one (`FR-17.7.5`).
+        await day.log(rowID: rowID, group: Self.group(reps: 5, sets: 2))
+
+        let rewritten = try #require(day.rows.first)
+        #expect(rewritten.performed.map(\.sets) == [2])
+        #expect(rewritten.performed.first?.reps == 5)
+        let after = try await fixture.stack.workouts.plannedTargets(
+            forEntryID: entryID, includingDeleted: false)
+        #expect(after == before)
+    }
+
+    /// A group of identical rows at the fixture's own load.
+    ///
+    /// - Parameters:
+    ///   - reps: What each set recorded.
+    ///   - sets: How many.
+    /// - Returns: The group.
+    private static func group(reps: Int, sets: Int) -> ResolvedSetGroup {
+        let values = SetEntryValues(
+            weight: Weight(grams: 100_000), reps: reps, rpe: nil, isWarmup: false)
+        return ResolvedSetGroup(
+            values: values, sets: sets, rows: Array(repeating: values, count: sets))
     }
 
     @Test("The editor opens seeded from the routine on a day nothing has been logged into")

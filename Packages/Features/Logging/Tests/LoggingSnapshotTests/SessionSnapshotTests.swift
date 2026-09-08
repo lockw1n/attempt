@@ -405,21 +405,24 @@
         ///   - isEditing: Whether it is open over a set that already exists (`FR-1.2.7`).
         /// - Returns: The editor, laid out for a reference.
         private func editor(over draft: SetDraft, isEditing: Bool = false) -> some View {
-            VStack(spacing: Spacing.sm.points) {
+            let mode = SetEditorMode.set(isEditing: isEditing)
+            return VStack(spacing: Spacing.sm.points) {
                 SetEditorFields(
                     draft: .constant(draft),
-                    hasInput: .constant(true),
-                    isEditing: isEditing,
+                    mode: mode,
                     vocabulary: Fixtures.vocabulary,
                     equipment: Fixtures.equipment
                 )
                 .padding(Spacing.lg.points)
                 SetEditorCommands(
-                    isLoggable: draft.isLoggable,
-                    showsRefusal: !draft.isLoggable && !draft.isBlank,
-                    isEditing: isEditing,
+                    // The refusal is a submission's, not a keystroke's (`FR-17.1.6`) — a reference
+                    // over an unresolvable draft is a picture of the sheet after the save that
+                    // refused, which is the only moment it is drawn.
+                    showsRefusal: !draft.isLoggable,
+                    mode: mode,
                     log: {},
                     cancel: {},
+                    skip: nil,
                     delete: {}
                 )
             }
