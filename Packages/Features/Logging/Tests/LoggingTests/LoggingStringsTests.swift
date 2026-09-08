@@ -52,6 +52,54 @@ struct LoggingStringsTests {
             String(localized: LoggingStrings.sessionFinishPendingCancel) == "Back to the workout")
     }
 
+    /// `FR-17.9.9`'s two confirmations, whose copy is the whole of the design and which no
+    /// reference can hold: a `confirmationDialog` is presented by the system, and on iOS 26 it
+    /// renders as a popover that drops its cancel — so the count and the destructive word are what
+    /// a lifter is actually asked, and only a string test can see them.
+    @Test("The whole-day commands name their count, and offer a way back that says what it keeps")
+    func theWholeDayCommandsAskByName() {
+        #expect(
+            String(localized: LoggingStrings.dayLogRemainingConfirmTitle(count: 3))
+                == "Log 3 exercises as planned?")
+        #expect(
+            String(localized: LoggingStrings.daySkipRemainingConfirmTitle(count: 2))
+                == "Skip 2 exercises?")
+        // The plural is why both keys are in the stringsdict rather than the table: one exercise
+        // cannot be spelled by substituting a numeral.
+        #expect(
+            String(localized: LoggingStrings.dayLogRemainingConfirmTitle(count: 1))
+                == "Log 1 exercise as planned?")
+        #expect(
+            String(localized: LoggingStrings.daySkipRemainingConfirmTitle(count: 1))
+                == "Skip 1 exercise?")
+        #expect(String(localized: LoggingStrings.dayLogRemainingConfirmAction) == "Log them")
+        #expect(String(localized: LoggingStrings.daySkipRemainingConfirmAction) == "Skip them")
+        // Naming what it keeps rather than saying "cancel", on the discard dialog's rule.
+        #expect(String(localized: LoggingStrings.dayRemainingConfirmCancel) == "Keep going")
+    }
+
+    /// `FR-17.9.7`'s overflow menu, on both of its hosts. A menu is not snapshottable — T-16.04's
+    /// finding on dialogs applies — so its two items and its own name are asserted here.
+    @Test("The overflow menu carries both items, and is named for neither")
+    func theOverflowMenuCarriesBothItems() {
+        #expect(String(localized: LoggingStrings.dayChangeDateAction) == "Change date")
+        #expect(String(localized: LoggingStrings.sessionDiscardAction) == "Discard workout")
+        // Named for the menu rather than for either item in it (`G-4.2`, `NFR-1.10`): a button
+        // announcing itself as **Discard** would be lying about the half that changes a date.
+        let menu = String(localized: LoggingStrings.dayMenuAction)
+        #expect(menu == "Day options")
+        #expect(menu != String(localized: LoggingStrings.dayChangeDateAction))
+        #expect(menu != String(localized: LoggingStrings.sessionDiscardAction))
+    }
+
+    /// `FR-17.9.6`: a skip is an outcome, and it is not the word a done row uses.
+    @Test("Skipped and done are different words")
+    func skippedIsNotDone() {
+        let skipped = String(localized: LoggingStrings.dayRowSkipped)
+        #expect(skipped == "Skipped")
+        #expect(skipped != String(localized: LoggingStrings.dayRowDone))
+    }
+
     @Test("The catalogue is this module's, not the app's")
     func copyComesFromTheModuleBundle() {
         #expect(Bundle.module.localizations.sorted() == ["en", "uk"])

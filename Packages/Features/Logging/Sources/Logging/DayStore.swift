@@ -322,14 +322,18 @@ public final class DayStore {
             }
             return
         }
-        rows = store.exercises.map(Self.row)
+        let marks = store.personalRecords
+        rows = store.exercises.map { Self.row($0, marks: marks) }
     }
 
     /// One row, from the session's exercise.
     ///
-    /// - Parameter exercise: The entry, its catalogue row, its sets and its planned targets.
+    /// - Parameters:
+    ///   - exercise: The entry, its catalogue row, its sets and its planned targets.
+    ///   - marks: Which of the workout's sets hold a record (`FR-1.6.3`) — read once per rebuild
+    ///     rather than per row, the store having already resolved it inside `loadExercises()`.
     /// - Returns: The row.
-    private static func row(_ exercise: SessionExercise) -> DayRow {
+    private static func row(_ exercise: SessionExercise, marks: SessionRecordMarks) -> DayRow {
         let performed = DayPerformance.runs(of: exercise.sets)
         return DayRow(
             id: exercise.id,
@@ -339,7 +343,10 @@ public final class DayStore {
                     id: $0.id, weight: $0.targetWeight, reps: $0.targetReps, sets: $0.targetSets)
             },
             performed: performed,
-            answer: answer(marked: exercise.entry.isMarkedDone, performed: performed))
+            answer: answer(marked: exercise.entry.isMarkedDone, performed: performed),
+            // The runs' own identifiers, which are their first sets' — the identifier the cache
+            // names a run by.
+            records: performed.flatMap { marks.schemes(forSetID: $0.id) })
     }
 
     /// What a row has been answered with (`FR-17.9.6`).

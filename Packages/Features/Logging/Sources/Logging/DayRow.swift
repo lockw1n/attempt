@@ -46,6 +46,16 @@ public struct DayRow: Identifiable, Equatable, Sendable {
     /// What has been said about it.
     public let answer: DayRowAnswer
 
+    /// Every scheme this row's work holds a personal record at (`FR-1.6.3`, `FR-16.2.4`).
+    ///
+    /// **On the row rather than looked up by the view**, on ``SessionExerciseCardView``'s rule for
+    /// the same badge: the cache read is the store's, and a row is what a reference renders.
+    ///
+    /// **Gathered over the row's runs, and the badge names the maximal one.** The cache names a run
+    /// by its first set, which is the identifier ``DayPerformance/runs(of:)`` gives each run — so a
+    /// row of five sets holding the 1RM through the 5RM carries one badge, not five.
+    public let records: [RecordScheme]
+
     /// Builds the row.
     ///
     /// - Parameters:
@@ -54,18 +64,21 @@ public struct DayRow: Identifiable, Equatable, Sendable {
     ///   - plan: What was prescribed.
     ///   - performed: What was logged, encoded.
     ///   - answer: What has been said about it.
+    ///   - records: The schemes its work holds a record at.
     public init(
         id: UUID,
         exercise: Exercise?,
         plan: [WeekPlanTarget],
         performed: [WeekPlanTarget] = [],
-        answer: DayRowAnswer = .unanswered
+        answer: DayRowAnswer = .unanswered,
+        records: [RecordScheme] = []
     ) {
         self.id = id
         self.exercise = exercise
         self.plan = plan
         self.performed = performed
         self.answer = answer
+        self.records = records
     }
 
     /// Whether the row carries `FR-17.9.2`'s circle — see ``DayRowCircle``.

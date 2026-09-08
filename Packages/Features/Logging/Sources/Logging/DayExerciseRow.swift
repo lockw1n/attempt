@@ -70,11 +70,31 @@ struct DayExerciseRow: View {
             .foregroundStyle(ColorToken.textSecondary)
         case .logged where row.wasAsPlanned:
             done(Text(LoggingStrings.dayRowAsPlanned(performed: rendered(row.performed))))
+            recordMark
         case .logged:
             if !row.plan.isEmpty {
                 caption(Text(LoggingStrings.dayRowPlanned(plan: rendered(row.plan))))
             }
             done(Text(LoggingStrings.dayRowDid(performed: rendered(row.performed))))
+            recordMark
+        }
+    }
+
+    /// `FR-1.6.3`'s badge, where this row's work holds a record.
+    ///
+    /// **On the *Did* line's own row and nowhere else**, which is T-16.13's rule applied to a
+    /// checklist: a per-set annotation owes three answers — the collapsed line, the member row, and
+    /// which stays silent — and a `DayExerciseRow` has no member rows, so this is the only place it
+    /// can be drawn and the question does not arise twice.
+    @ViewBuilder private var recordMark: some View {
+        if let badge = RecordBadge(schemes: row.records) {
+            Text(badge.text)
+                .font(Typography.metricLabel.font)
+                .foregroundStyle(ColorToken.onBrandAccent)
+                .padding(.horizontal, Spacing.sm.points)
+                .padding(.vertical, Spacing.xxs.points)
+                .background(ColorToken.brandAccent, in: .capsule)
+                .accessibilityLabel(Text(badge.label))
         }
     }
 

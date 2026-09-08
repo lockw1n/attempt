@@ -262,6 +262,13 @@
     }
 
     /// The days these references render (`FR-17.9`).
+    ///
+    /// EVERY ROW'S TRAILING MENU DRAWS AS A PLACEHOLDER, on this package's standing `ImageRenderer`
+    /// note: a `Menu` is UIKit-backed. The **frame is honoured** — 44 × 60 pt, which is what these
+    /// references measure the row's height against — so only the glyph is substituted, and the
+    /// circle beside it renders for real. Read the yellow block as *a control of that size is here*,
+    /// not as a defect, and do not replace it with an `Image` to make the picture prettier: a
+    /// fixture that is not the screen is evidence about the fixture (T-16.17).
     enum DayFixtures {
         /// Two rows nobody has answered, both with a load and therefore both with a circle.
         static var notStarted: [DayRow] {
@@ -276,13 +283,18 @@
             row("Back Squat", plan: planned(140_000), performed: planned(140_000), answer: .logged)
         }
 
-        /// The two-line answer — one set short, at a lighter load.
+        /// The two-line answer — one set short, at a lighter load, and a record all the same.
+        ///
+        /// **The badge is pictured here rather than on the as-planned row**, so one reference shows
+        /// the mark and the other shows the line without it: a set below the plan can still be the
+        /// heaviest ever done at that scheme, which is the case worth a picture (`FR-1.6.3`).
         static var deviated: DayRow {
             row(
                 "Bench Press",
                 plan: planned(100_000),
                 performed: [target(95_000, reps: 5, sets: 4)],
-                answer: .logged)
+                answer: .logged,
+                records: [RecordScheme(reps: 5, sets: 4)])
         }
 
         /// `FR-17.9.6`'s skip.
@@ -319,14 +331,16 @@
             _ name: String,
             plan: [WeekPlanTarget],
             performed: [WeekPlanTarget] = [],
-            answer: DayRowAnswer = .unanswered
+            answer: DayRowAnswer = .unanswered,
+            records: [RecordScheme] = []
         ) -> DayRow {
             DayRow(
                 id: UUID(),
                 exercise: WeekFixtures.line(name, grams: nil).exercise,
                 plan: plan,
                 performed: performed,
-                answer: answer)
+                answer: answer,
+                records: records)
         }
 
         /// The fixture's standard prescription: five sets of five.

@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -155,17 +156,62 @@ struct DayCommandTests {
 
     @Test("A day whose every row is skipped is not a workout on the week's tile")
     func aWhollySkippedDayIsNoWorkout() async throws {
+        // `FR-17.4.3`, orphaned until now: the tile counts a day as trained when any of its sets
+        // satisfies `Tonnage.counts`, which is what `WeekSummaryState.weigh` asks — asserted here
+        // over that predicate rather than over the Dashboard's state, `TR-1.3` forbidding this
+        // package from importing it.
         let fixture = try await WeekFixture(days: 1, exercisesPerDay: 3)
         let day = fixture.dayStore(dayIndex: 0)
         await day.load()
 
         await day.skipRemaining()
 
-        // Nothing was performed, so there is no tonnage and nothing to count as a workout.
         #expect(day.rows.allSatisfy { $0.performed.isEmpty })
-        let entryID = try await fixture.firstEntryID(day: 0)
-        let sets = try await fixture.stack.workouts.sets(
-            forEntryID: entryID, includingDeleted: false)
-        #expect(sets.isEmpty)
+        let session = try await fixture.session(day: 0)
+        let entries = try await fixture.stack.workouts.entries(
+            forSessionID: session.id, includingDeleted: false)
+        var counted: [SetEntry] = []
+        for entry in entries {
+            counted += try await fixture.stack.workouts.sets(
+                forEntryID: entry.id, includingDeleted: false
+            ).filter(Tonnage.counts)
+        }
+        #expect(counted.isEmpty)
+        // And the same day answered instead of skipped *is* a workout, so the assertion above is
+        // about the skip rather than about the fixture.
+        let trained = try await WeekFixture(days: 1, exercisesPerDay: 1)
+        let other = trained.dayStore(dayIndex: 0)
+        await other.load()
+        await other.answerAsPlanned(rowID: try #require(other.rows.first).id)
+        let sets = try await trained.setsOfFirstEntry(day: 0)
+        #expect(sets.contains(where: Tonnage.counts))
+    }
+
+    // MARK: - The record mark (FR-1.6.3)
+
+    @Test("A day answered as planned carries the record its work set")
+    func theRowCarriesItsRecord() async throws {
+        // The badge's data half. A finished session's sets count towards records where an open
+        // one's do not, so this is also an assertion about the order in `reload()`: the day is
+        // ended before the list — and therefore the marks — are re-read.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
+        let day = fixture.dayStore(dayIndex: 0)
+        await day.load()
+
+        await day.answerAsPlanned(rowID: try #require(day.rows.first).id)
+
+        #expect(day.isDone)
+        #expect(!(try #require(day.rows.first).records.isEmpty))
+    }
+
+    @Test("A skipped row carries no record, having done no work")
+    func aSkippedRowCarriesNoRecord() async throws {
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
+        let day = fixture.dayStore(dayIndex: 0)
+        await day.load()
+
+        await day.skipRemaining()
+
+        #expect(try #require(day.rows.first).records.isEmpty)
     }
 }
