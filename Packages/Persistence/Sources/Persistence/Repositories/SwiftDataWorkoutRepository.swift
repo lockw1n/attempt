@@ -123,7 +123,7 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
 
     /// The run's sessions for one week, newest first.
     ///
-    /// **Ordered on ``SessionOrder``, which is ``sessions(in:)``' key with the session's start
+    /// **Ordered on ``SessionOrder``, which is ``sessions(in:includingDeleted:)``' key with the session's start
     /// between the day and the tiebreak.** Two days of one week logged on one date tie on `date`
     /// alone, and falling through to a minted identifier there would order them by nothing.
     func sessions(

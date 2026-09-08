@@ -6,9 +6,6 @@
 /* Nothing is in progress. FR-1.13.2's first-launch guidance: the headline says what there is none
    of and the message names both ways to make one, since backdating is the half a new user would not
    guess. */
-"logging.train.empty.headline" = "No workout in progress";
-"logging.train.empty.message" = "Start today's workout, or pick an earlier date to log one you have already done.";
-"logging.train.start.action" = "Start workout";
 
 "logging.train.date.section" = "Workout date";
 "logging.train.date.picker" = "Training day";
@@ -16,29 +13,20 @@
    which day the workout counts as, not when it was typed in. */
 "logging.train.date.hint" = "Today, unless you are logging a workout from an earlier day.";
 
-"logging.train.in-progress.section" = "In progress";
 /* FR-16.6.5 — the same card over a workout dated ahead of today. It has been written and not
    performed, and "In progress" over it would say the lifter is mid-workout. */
-"logging.train.planned.section" = "Planned";
 "logging.train.in-progress.day" = "Training day";
-"logging.train.in-progress.started" = "Started";
 /* FR-1.2.11: the way back into a workout the app came back to. "Resume" rather than "Open", because
    the workout was interrupted — by a relaunch, a force-quit or a walk to the rack. */
-"logging.train.in-progress.resume" = "Resume workout";
 /* FR-16.6.5 — the same link over a workout dated ahead of today. "Resume" would claim it had
    been begun; "Start workout" is FR-1.2.1's command, which writes a session that already
    exists here. */
-"logging.train.planned.open" = "Open workout";
 
-"logging.train.library.action" = "Browse exercises";
 /* FR-15.2.1, beside the library. "Routines" rather than "Plans": a routine is one training day,
    and a plan reads like the week. */
-"logging.train.routines.action" = "Routines";
 
 /* The read failed — the screen does not know whether a workout is in progress, so this one takes
    the whole screen. A sentence for the user; the diagnostic is never shown. */
-"logging.train.error.headline" = "Workouts unavailable";
-"logging.train.error.message" = "Your workouts could not be read just now.";
 
 /* The start failed, which is a *write* and not a phase: it renders beside the command that issued
    it, with the date control still on screen, so the retry is another tap at the same button rather
@@ -522,6 +510,7 @@
 /* FR-17.8: the week root. */
 "logging.week.heading %lld" = "Week %lld";
 "logging.week.edit.action" = "Edit week";
+"logging.week.menu.action" = "More";
 "logging.week.library.action" = "Exercise library";
 "logging.week.free-workout.action" = "Free workout";
 "logging.week.free-workout.title" = "Free workout";
@@ -544,6 +533,6 @@
 "logging.day.plan.heading" = "Planned";
 "logging.day.row.done" = "Done";
 "logging.day.empty.headline" = "Nothing planned for this day";
-"logging.day.empty.message" = "This day's routine was archived. Edit the week to point it at another one.";
+"logging.day.empty.message" = "There is nothing to do on this day. Edit the week to give it a routine.";
 "logging.day.error.headline" = "Day unavailable";
 "logging.day.error.message" = "This day could not be read just now.";

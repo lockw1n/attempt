@@ -70,7 +70,8 @@ struct WeekStateTests {
         try await fixture.log(day: 0, done: 2)
         let run = try #require(try await fixture.stack.programs.currentRun())
         // `nextDayIndex` says the week is over; the sessions say one day of three is done. The
-        // sessions win — the column is written no more (`TR-17.4`).
+        // sessions win (`FR-17.8.2`, `D-17.10`) — the cursor is not one of this read's inputs.
+        // Retiring the column itself is `T-17.13`'s, which is why this test still writes it.
         try await fixture.stack.programs.save(run.movedTo(nextDayIndex: 9))
         let state = fixture.weekState()
 
@@ -183,6 +184,48 @@ struct WeekStateTests {
         #expect(days[1].progress == .notStarted)
     }
 
+    @Test("A day opened but not written into is not done — it is nothing of three")
+    func anEmptySessionIsNotDone() async throws {
+        // FR-1.2.11 reads "when every exercise is answered", which a session with no entries
+        // satisfies vacuously. A day drawn `Done` the instant it was opened would be a claim about
+        // a workout nobody logged, and `T-17.11` is the task that opens days.
+        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 3)
+        try await fixture.logEmptySession(day: 0)
+        let state = fixture.weekState()
+
+        await state.load(openSession: nil)
+
+        #expect(WeekFixture.days(of: state)[0].progress == .inProgress(done: 0, of: 0))
+    }
+
+    @Test("Where a day carries two sessions the newest is the one read")
+    func theNewestSessionOfADayWins() async throws {
+        // One day is one session; a second is a row the app did not write. The newest is the one a
+        // lifter would open, so it is the one whose state the card reports.
+        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 3)
+        try await fixture.log(day: 0, done: 1)
+        try await fixture.log(day: 0, done: 2, on: weekFixtureDay + 86_400)
+        let state = fixture.weekState()
+
+        await state.load(openSession: nil)
+
+        #expect(WeekFixture.days(of: state)[0].progress == .inProgress(done: 2, of: 3))
+    }
+
+    @Test("The week records which exercises each started day has answered")
+    func theWeekRecordsTheAnswers() async throws {
+        let fixture = try await WeekFixture(days: 3, exercisesPerDay: 4)
+        try await fixture.log(day: 1, done: 2)
+        let state = fixture.weekState()
+
+        await state.load(openSession: nil)
+
+        #expect(state.answered[1] == Set(fixture.exerciseIDs[1].prefix(2)))
+        // A day nothing has been logged into files nothing, rather than an empty set that would
+        // read as "read, and none of them".
+        #expect(state.answered[0] == nil)
+    }
+
     // MARK: - NFR-17.4
 
     @Test("The week's read walks no set history, however long the week")
@@ -258,6 +301,124 @@ struct WeekStateTests {
     /// One card, for the rule that reads only its index and its state.
     private func card(_ index: Int, _ progress: WeekDayProgress) -> WeekDayCard {
         WeekDayCard(dayIndex: index, name: "Day \(index + 1)", plan: [], progress: progress)
+    }
+}
+
+/// The read-only day the week's cards open (`TR-17.6`).
+@MainActor
+@Suite("One day of the week")
+struct DayStateTests {
+    @Test("The day carries its plan and the exercises its session has answered")
+    func theDayCarriesThePlanAndTheAnswers() async throws {
+        let fixture = try await WeekFixture(days: 3, exercisesPerDay: 4)
+        try await fixture.log(day: 1, done: 2)
+        let state = fixture.dayState(dayIndex: 1)
+
+        await state.load()
+
+        #expect(state.phase == .ready)
+        #expect(state.card?.name == "Day 2")
+        #expect(state.card?.plan.count == 4)
+        #expect(state.answered == Set(fixture.exerciseIDs[1].prefix(2)))
+    }
+
+    @Test("A day nothing has been logged into has a plan and no answers")
+    func anUntouchedDayHasNoAnswers() async throws {
+        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 3)
+        let state = fixture.dayState(dayIndex: 0)
+
+        await state.load()
+
+        #expect(state.card?.plan.count == 3)
+        #expect(state.answered.isEmpty)
+    }
+
+    @Test("A stamp naming another week draws no day, plan and ticks together")
+    func aStaleWeekDrawsNothing() async throws {
+        // The restored-stack case. `Route` is the persisted stack format, so a day reopened after
+        // the week turned arrives carrying the stamp it was pushed with; the week on screen is
+        // whichever one is current. Without the check the plan would be this week's and the ticks
+        // last week's — one screen describing two weeks.
+        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 3)
+        try await fixture.log(day: 0, done: 3)
+        let state = fixture.dayState(dayIndex: 0, week: WeekFixture.week + 1)
+
+        await state.load()
+
+        #expect(state.phase == .ready)
+        #expect(state.card == nil)
+        #expect(state.answered.isEmpty)
+    }
+
+    @Test("A stamp naming another run draws no day either")
+    func aForeignRunDrawsNothing() async throws {
+        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 3)
+        try await fixture.log(day: 0, done: 3)
+        let state = fixture.dayState(dayIndex: 0, runID: UUID())
+
+        await state.load()
+
+        #expect(state.card == nil)
+        #expect(state.answered.isEmpty)
+    }
+
+    @Test("A day the program does not have draws nothing rather than failing")
+    func aDayPastTheEndDrawsNothing() async throws {
+        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 3)
+        let state = fixture.dayState(dayIndex: 7)
+
+        await state.load()
+
+        #expect(state.phase == .ready)
+        #expect(state.card == nil)
+    }
+
+    @Test("A read that failed is the day's error state, not an empty day")
+    func aFailedReadIsReported() async throws {
+        let fixture = try await WeekFixture(days: 2)
+        let state = DayState(
+            runID: fixture.runID,
+            week: WeekFixture.week,
+            dayIndex: 0,
+            programs: UnreadablePrograms(),
+            routines: fixture.stack.routines,
+            workouts: fixture.stack.workouts,
+            exercises: fixture.stack.exercises)
+
+        await state.load()
+
+        guard case .failed(let diagnostic) = state.phase else {
+            Issue.record("expected a failed read")
+            return
+        }
+        #expect(!diagnostic.isEmpty)
+    }
+}
+
+/// Which failure Train's root reports beside **Free workout** (`FR-17.8.3`).
+///
+/// **The half of the retired `TrainingHomeState` that did not go with it.** `ActiveSessionStore`
+/// carries one diagnostic for both operations the screen issues, so which one is being reported is
+/// the screen's own knowledge — and off the view is the only place it can be asked.
+@Suite("The root's failed start")
+struct WeekStartFailureTests {
+    @Test("A start this screen asked for, and a diagnostic, is the message")
+    func anAttemptedStartWithADiagnosticIsReported() {
+        #expect(WeekStartFailure.isShown(startWasAttempted: true, failure: "boom"))
+    }
+
+    @Test("A diagnostic this screen did not ask for is not the message")
+    func aForeignDiagnosticIsNotReported() {
+        // A failure left by the store's own resume is not a failed start, and reporting it as one
+        // would offer a retry that re-runs the wrong operation.
+        #expect(!WeekStartFailure.isShown(startWasAttempted: false, failure: "boom"))
+    }
+
+    @Test("A retired diagnostic takes the message with it")
+    func aRetiredDiagnosticClearsTheMessage() {
+        // The screen's flag outlives the diagnostic: a later read clears `failure`, and the error
+        // must go rather than sit under the button until the tab is left.
+        #expect(!WeekStartFailure.isShown(startWasAttempted: true, failure: nil))
     }
 }
 

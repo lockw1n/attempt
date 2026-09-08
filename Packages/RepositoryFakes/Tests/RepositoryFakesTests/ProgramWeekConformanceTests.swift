@@ -20,14 +20,19 @@ struct ProgramWeekConformanceTests {
         let repositories = try subject.make()
         try await repositories.workouts.save(
             sessionRecord(notes: "wanted", programRunID: Self.run, weekNumber: 2, dayIndex: 0))
-        // The three near misses, one per column: another run, another week, and a session no
-        // program stamped at all. The last is the one an implementation reading `weekNumber`
-        // alone would return.
+        // The four near misses, one per column: another run, another week, a session no program
+        // stamped at all, and — the one the other three cannot reach — THIS run with no week on
+        // it. Both implementations promise a `nil` week never matches whatever its run, because
+        // `nil` is a workout logged before a program stamped one (`FR-16.8.3`) rather than week
+        // zero; without this row that promise is asserted by neither, the unstamped session being
+        // excluded by the run clause alone.
         try await repositories.workouts.save(
             sessionRecord(notes: "other run", programRunID: SortedIDs.second, weekNumber: 2))
         try await repositories.workouts.save(
             sessionRecord(notes: "other week", programRunID: Self.run, weekNumber: 3))
         try await repositories.workouts.save(sessionRecord(notes: "unstamped"))
+        try await repositories.workouts.save(
+            sessionRecord(notes: "this run, no week", programRunID: Self.run, weekNumber: nil))
 
         let read = try await repositories.workouts.sessions(
             forProgramRunID: Self.run, week: 2, includingDeleted: false)

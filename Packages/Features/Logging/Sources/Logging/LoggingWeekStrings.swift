@@ -16,6 +16,12 @@ extension LoggingStrings {
         resource("logging.week.heading \(week)")
     }
 
+    /// What the root's toolbar menu is called.
+    ///
+    /// **Named for the menu, not for either item in it** (`G-4.2`): it holds Edit week and the
+    /// library, so borrowing one of their labels would tell VoiceOver the other is not there.
+    static let weekMenuAction = resource("logging.week.menu.action")
+
     /// The way into the week's plan (`FR-17.8.3`, `FR-17.10`).
     static let weekEditAction = resource("logging.week.edit.action")
 
@@ -133,7 +139,9 @@ extension LoggingStrings {
     /// The heading when the day has nothing in it.
     static let dayEmptyHeadline = resource("logging.day.empty.headline")
 
-    /// What to do about it — the routine behind the day is gone (`FR-15.2.5`).
+    /// What to do about it. **Not only the archived routine** (`FR-15.2.5`): this state is also
+    /// a day whose routine prescribes nothing, and a stamp naming a week that is no longer the
+    /// one in force.
     static let dayEmptyMessage = resource("logging.day.empty.message")
 
     /// The heading when the day could not be read.
@@ -146,6 +154,7 @@ extension LoggingStrings {
     static var allWeekStrings: [LocalizedStringResource] {
         [
             weekHeading(week: 3),
+            weekMenuAction,
             weekEditAction,
             weekLibraryAction,
             weekFreeWorkoutAction,

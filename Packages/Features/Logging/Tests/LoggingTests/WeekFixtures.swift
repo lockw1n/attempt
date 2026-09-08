@@ -174,6 +174,36 @@ struct WeekFixture {
         return sessionID
     }
 
+    /// Writes a session stamped with the run, the week and `day`, and **no entries at all**.
+    ///
+    /// The state a day is in the instant it is opened, before `T-17.11` writes a row into it. It
+    /// cannot be reached through ``log(day:done:on:week:)``, which writes the day's plan out.
+    ///
+    /// - Parameters:
+    ///   - day: The `ProgramDay.order` the session is stamped with.
+    ///   - date: The training day.
+    /// - Returns: The session's identifier.
+    @discardableResult
+    func logEmptySession(day: Int, on date: Date = weekFixtureDay) async throws -> UUID {
+        let sessionID = UUID()
+        try await stack.workouts.save(
+            WorkoutSession(
+                id: sessionID,
+                createdAt: date,
+                updatedAt: date,
+                deletedAt: nil,
+                date: date,
+                startedAt: date,
+                endedAt: nil,
+                notes: "",
+                bodyweight: nil,
+                programRunID: runID,
+                scheduledWorkoutID: nil,
+                weekNumber: Self.week,
+                dayIndex: day))
+        return sessionID
+    }
+
     /// The week, over the fixture's stack.
     ///
     /// - Parameter workouts: The workout store to read through, or `nil` for the stack's own — a
@@ -184,6 +214,24 @@ struct WeekFixture {
             programs: stack.programs,
             routines: stack.routines,
             workouts: workouts ?? stack.workouts,
+            exercises: stack.exercises)
+    }
+
+    /// One day of the week, over the fixture's stack.
+    ///
+    /// - Parameters:
+    ///   - dayIndex: The `ProgramDay.order` the route carried.
+    ///   - runID: The run it carried — the fixture's own unless a test is asking for a stale stamp.
+    ///   - week: The week it carried, likewise.
+    /// - Returns: The state.
+    func dayState(dayIndex: Int, runID: UUID? = nil, week: Int = WeekFixture.week) -> DayState {
+        DayState(
+            runID: runID ?? self.runID,
+            week: week,
+            dayIndex: dayIndex,
+            programs: stack.programs,
+            routines: stack.routines,
+            workouts: stack.workouts,
             exercises: stack.exercises)
     }
 

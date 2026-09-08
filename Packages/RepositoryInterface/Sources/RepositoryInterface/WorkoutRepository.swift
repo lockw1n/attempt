@@ -17,8 +17,9 @@ public protocol WorkoutRepository: Sendable {
     /// The sessions one program run stamped with `week`, newest first (`FR-17.8.2`, `TR-17.5`).
     ///
     /// **The week root's whole read of what has been trained**, and the reason it is a query rather
-    /// than a filter over ``sessions(in:)``: a week is a position in a plan, not a range of dates —
-    /// a day backdated by a fortnight still belongs to the week it was started under, and a week
+    /// than a filter over ``WorkoutRepository/sessions(in:includingDeleted:)``: a week is a position
+    /// in a plan, not a range of dates — a day backdated by a fortnight still belongs to the week it
+    /// was started under, and a week
     /// the lifter took ten days over is still one week. `ProgramRun.nextDayIndex` answers neither,
     /// which is `FR-17.8.2`: days may be done in any order, so the state of a day is the sessions
     /// carrying its index and nothing else.

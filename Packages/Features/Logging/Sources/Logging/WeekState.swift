@@ -154,6 +154,14 @@ public final class WeekState {
     /// The week, or ``WeekReading/empty`` where no run is open.
     public private(set) var reading: WeekReading = .empty
 
+    /// The exercises each started day has marked done, keyed by
+    /// ``RepositoryInterface/ProgramDay/order`` (`FR-15.3.4`).
+    ///
+    /// **Recorded on the way past rather than read again.** The entries a day's progress is counted
+    /// from are the entries a day's own screen ticks its rows off, so reading them twice would be
+    /// one question with two answers as well as one query paid for twice.
+    public private(set) var answered: [Int: Set<UUID>] = [:]
+
     /// The free workout in progress, or `nil`.
     ///
     /// **Beside the reading rather than inside it**, because it is true of both: a lifter running
@@ -214,6 +222,7 @@ public final class WeekState {
             }
         do {
             catalogue = [:]
+            answered = [:]
             reading = try await read()
             phase = .ready
         } catch {
@@ -260,15 +269,15 @@ public final class WeekState {
         for day: ProgramDay, among sessions: [WorkoutSession]
     ) async throws -> WeekDayCard {
         let routine = try await routines.routine(id: day.routineID, includingDeleted: false)
+        // The query orders newest first, so the first row is the most recent workout stamped with
+        // this day. One day is one session — a second is a row the app did not write — and the
+        // newest is the one a lifter would open.
+        let session = sessions.first { $0.dayIndex == day.order }
         return WeekDayCard(
             dayIndex: day.order,
             name: routine?.name ?? "",
             plan: routine == nil ? [] : try await plan(forRoutineID: day.routineID),
-            progress: try await progress(
-                // The query orders newest first, so the first row is the most recent workout
-                // stamped with this day. One day is one session — a second is a row the app did
-                // not write — and the newest is the one a lifter would open.
-                of: sessions.first { $0.dayIndex == day.order }))
+            progress: try await progress(of: session, on: day.order))
     }
 
     /// What a routine prescribes, as the card's lines.
@@ -298,16 +307,21 @@ public final class WeekState {
     /// satisfies vacuously — and a day drawn `Done` the instant it was opened would be a claim
     /// about a workout nobody logged. It reads `0 of 0` instead, which is the state it is in.
     ///
-    /// - Parameter session: The day's session, or `nil`.
+    /// - Parameters:
+    ///   - session: The day's session, or `nil`.
+    ///   - dayIndex: The day's order, which is the key ``answered`` files its exercises under.
     /// - Returns: The day's state.
     /// - Throws: Whatever the entry read throws.
-    private func progress(of session: WorkoutSession?) async throws -> WeekDayProgress {
+    private func progress(
+        of session: WorkoutSession?, on dayIndex: Int
+    ) async throws -> WeekDayProgress {
         guard let session else { return .notStarted }
         let entries = try await workouts.entries(
             forSessionID: session.id, includingDeleted: false)
-        let done = entries.count(where: \.isMarkedDone)
-        guard !entries.isEmpty, done == entries.count else {
-            return .inProgress(done: done, of: entries.count)
+        let done = entries.filter(\.isMarkedDone)
+        answered[dayIndex] = Set(done.map(\.exerciseID))
+        guard !entries.isEmpty, done.count == entries.count else {
+            return .inProgress(done: done.count, of: entries.count)
         }
         return .done(on: session.date)
     }

@@ -55,7 +55,7 @@ struct LoggingStringsTests {
     @Test("The catalogue is this module's, not the app's")
     func copyComesFromTheModuleBundle() {
         #expect(Bundle.module.localizations.sorted() == ["en", "uk"])
-        #expect(String(localized: LoggingStrings.trainStartAction) == "Start workout")
+        #expect(String(localized: LoggingStrings.weekPlanAction) == "Plan your week")
     }
 
     /// `FR-1.14.1`. `scripts/check-translations.sh` is what holds the whole table complete, key for
@@ -71,7 +71,7 @@ struct LoggingStringsTests {
                 localization: "uk"
             ))
         let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
-        #expect(catalogue["logging.train.start.action"] == "Почати тренування")
+        #expect(catalogue["logging.week.plan.action"] == "Запланувати тиждень")
     }
 
     @Test("The catalogue and the accessors name exactly the same keys")

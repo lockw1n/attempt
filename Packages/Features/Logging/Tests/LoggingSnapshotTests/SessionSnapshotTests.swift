@@ -14,11 +14,11 @@
     // TR-1.12 for this module's two screens, in four configurations each — light and dark (`G-7.1`),
     // default and `accessibility3` (`NFR-1.10`'s own ceiling).
     //
-    // WHAT IS RENDERED AND WHAT IS NOT. The sections, not `ActiveSessionView`
-    // itself: both own a `.task` that reads a store, and `ImageRenderer` has no way to run one.
-    // Between them these references cover every pixel the two screens have of their own — the workout
-    // in progress, its facts, the two commands that end it, the screen-wake control, the date control
-    // and the four placeholders either screen can show instead.
+    // WHAT IS RENDERED AND WHAT IS NOT. The sections, not `ActiveSessionView` itself: it owns a
+    // `.task` that reads a store, and `ImageRenderer` has no way to run one. Between them these
+    // references cover every pixel that screen has of its own — the workout in progress, its
+    // facts, the two commands that end it and the placeholders it can show instead. Train's root
+    // left this suite with `FR-17.8.7`; its references are `WeekSnapshotTests`'.
     //
     // TWO THINGS THESE REFERENCES CANNOT SHOW, both measured rather than assumed. A `NavigationLink`
     // with no `NavigationStack` above it draws as though it led nowhere, so its label is dimmer here

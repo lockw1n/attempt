@@ -7,7 +7,7 @@ import RepositoryInterface
 
 /// Which of the pushed screen's four states is current (`FR-1.13.1`).
 ///
-/// A value rather than a chain of `if`s, for ``TrainingHomeState``'s reason.
+/// A value rather than a chain of `if`s, for ``WeekState``'s reason.
 enum ActiveSessionState: Equatable {
     /// Nothing has looked for a workout yet.
     case loading

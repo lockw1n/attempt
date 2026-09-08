@@ -387,13 +387,10 @@ enum LoggingStrings {
     /// Every string this module can show, for the test that proves each one resolves.
     static var all: [LocalizedStringResource] {
         [
-            trainEmptyHeadline, trainEmptyMessage, trainStartAction, trainDateSection,
-            trainDatePicker, trainDateHint, trainInProgressSection, trainPlannedSection,
+            trainDateSection,
+            trainDatePicker, trainDateHint,
             trainInProgressDay,
-            trainInProgressStarted, trainInProgressResume, trainPlannedOpen, trainLibraryAction,
-            trainRoutinesAction,
-            trainErrorHeadline,
-            trainErrorMessage, trainStartErrorMessage, sessionTitle, sessionTitleDay("Sep 4"),
+            trainStartErrorMessage, sessionTitle, sessionTitleDay("Sep 4"),
             sessionStarted, sessionEmptyHeadline, sessionEmptyMessage,
             sessionFinishAction, sessionFinishPendingTitle(1), sessionFinishPendingTitle(3),
             sessionFinishPendingMessage, sessionFinishPendingRemove, sessionFinishPendingKeep,

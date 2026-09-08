@@ -107,12 +107,35 @@ public struct DayView: View {
 
     /// One row per planned exercise, with the state each is in.
     private func rows(_ card: WeekDayCard) -> some View {
+        DayPlanSection(plan: card.plan, unit: store.displayUnit, answered: day.answered)
+    }
+}
+
+/// What a day prescribes, one row per exercise (`TR-17.6`).
+///
+/// **A view rather than a `GroupedSection` built inside the screen**, which is `T-16.17`'s finding:
+/// a reference that assembles a screen's parts by hand is evidence about the parts, so the section
+/// a snapshot renders has to be the section the screen draws.
+struct DayPlanSection: View {
+    /// The day's exercises with their plan.
+    let plan: [WeekPlanLine]
+
+    /// The unit their loads read in (`G-3.1`).
+    let unit: MassUnit
+
+    /// The exercises the day's session has marked done (`FR-15.3.4`).
+    let answered: Set<UUID>
+
+    var body: some View {
         GroupedSection(Text(LoggingStrings.dayPlanHeading)) {
-            ForEach(card.plan) { line in
+            ForEach(plan) { line in
                 DayPlanRow(
                     line: line,
-                    unit: store.displayUnit,
-                    isDone: day.answered.contains(line.exercise?.id ?? UUID()))
+                    unit: unit,
+                    // A slot whose catalogue row has gone is never answered: there is no id to have
+                    // ticked. Written as a `map` rather than a minted `UUID`, which would be a
+                    // value invented per render to stand for `false`.
+                    isDone: line.exercise.map { answered.contains($0.id) } ?? false)
             }
         }
     }
@@ -176,11 +199,8 @@ public final class DayState {
     /// The week the route carried.
     private let week: Int
 
-    /// The week this day belongs to, read whole — one query serves the card and the answers.
+    /// The week this day belongs to, read whole — its read serves both the card and the answers.
     private let weekState: WeekState
-
-    /// The day's own session and its entries.
-    private let workouts: any WorkoutRepository
 
     /// Builds the reading.
     ///
@@ -204,7 +224,6 @@ public final class DayState {
         self.runID = runID
         self.week = week
         self.dayIndex = dayIndex
-        self.workouts = workouts
         self.weekState = WeekState(
             programs: programs, routines: routines, workouts: workouts, exercises: exercises)
     }
@@ -217,33 +236,29 @@ public final class DayState {
         case .failed(let diagnostic):
             phase = .failed(diagnostic)
         case .idle, .loading, .ready:
-            guard case .week(_, _, _, let days) = weekState.reading else {
-                card = nil
-                answered = []
-                phase = .ready
-                return
-            }
-            card = days.first { $0.dayIndex == dayIndex }
-            await readAnswers()
+            card = day(in: weekState.reading)
+            answered = card == nil ? [] : weekState.answered[dayIndex] ?? []
             phase = .ready
         }
     }
 
-    /// Which of the day's exercises the session has marked done.
+    /// The day this screen is over, or `nil` where the week that was read is not the week the route
+    /// named.
     ///
-    /// **Nothing is reported when this read fails.** The plan is already on screen and correct; a
-    /// missing tick is less wrong than a screen replaced by an error over a day the lifter can see.
-    private func readAnswers() async {
-        answered = []
-        guard
-            let session = try? await workouts.sessions(
-                forProgramRunID: runID, week: week, includingDeleted: false
-            ).first(where: { $0.dayIndex == dayIndex }),
-            let entries = try? await workouts.entries(
-                forSessionID: session.id, includingDeleted: false)
+    /// **The stamp is checked rather than merely carried, and it is one read that answers both
+    /// halves.** ``WeekState`` reads whichever run and week are current; a restored stack decodes a
+    /// stamp that was current when it was written (`Route`'s header). Without the check a day
+    /// reopened after the week turned would draw the new week's plan under the old week's ticks —
+    /// two halves of one screen describing two different weeks.
+    ///
+    /// - Parameter reading: What the week read.
+    /// - Returns: The card, or `nil`.
+    private func day(in reading: WeekReading) -> WeekDayCard? {
+        guard case .week(let readRunID, _, let readWeek, let days) = reading,
+            readRunID == runID, readWeek == week
         else {
-            return
+            return nil
         }
-        answered = Set(entries.filter(\.isMarkedDone).map(\.exerciseID))
+        return days.first { $0.dayIndex == dayIndex }
     }
 }

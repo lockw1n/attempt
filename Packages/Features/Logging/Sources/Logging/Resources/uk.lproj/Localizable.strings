@@ -1,26 +1,14 @@
 /* Logging, Ukrainian (FR-1.14.1). The keys and the reasoning behind each string are in en.lproj
    beside this file. The table has to stay complete: a missing key renders its own identifier. */
 
-"logging.train.empty.headline" = "Немає активного тренування";
-"logging.train.empty.message" = "Почніть сьогоднішнє тренування або виберіть попередню дату, щоб записати те, яке ви вже провели.";
-"logging.train.start.action" = "Почати тренування";
 
 "logging.train.date.section" = "Дата тренування";
 "logging.train.date.picker" = "Тренувальний день";
 "logging.train.date.hint" = "Сьогодні, якщо ви не записуєте тренування з попереднього дня.";
 
-"logging.train.in-progress.section" = "Триває";
-"logging.train.planned.section" = "Заплановано";
 "logging.train.in-progress.day" = "Тренувальний день";
-"logging.train.in-progress.started" = "Початок";
-"logging.train.in-progress.resume" = "Продовжити тренування";
-"logging.train.planned.open" = "Відкрити тренування";
 
-"logging.train.library.action" = "Переглянути вправи";
-"logging.train.routines.action" = "Програми";
 
-"logging.train.error.headline" = "Тренування недоступні";
-"logging.train.error.message" = "Не вдалося прочитати ваші тренування.";
 
 "logging.train.start-error.message" = "Не вдалося почати це тренування. Спробуйте ще раз.";
 
@@ -313,6 +301,7 @@
 /* FR-17.8: the week root. */
 "logging.week.heading %lld" = "Тиждень %lld";
 "logging.week.edit.action" = "Редагувати тиждень";
+"logging.week.menu.action" = "Ще";
 "logging.week.library.action" = "Бібліотека вправ";
 "logging.week.free-workout.action" = "Вільне тренування";
 "logging.week.free-workout.title" = "Вільне тренування";
@@ -335,6 +324,6 @@
 "logging.day.plan.heading" = "Заплановано";
 "logging.day.row.done" = "Виконано";
 "logging.day.empty.headline" = "На цей день нічого не заплановано";
-"logging.day.empty.message" = "Програму цього дня заархівовано. Відредагуйте тиждень і призначте іншу.";
+"logging.day.empty.message" = "У цей день немає чого робити. Відредагуйте тиждень і призначте програму.";
 "logging.day.error.headline" = "День недоступний";
 "logging.day.error.message" = "Не вдалося прочитати цей день.";

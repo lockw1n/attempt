@@ -6,7 +6,7 @@ import SwiftUI
 
 /// Which of the exercise list's states is current (`FR-1.13.1`).
 ///
-/// A value rather than a chain of `if`s, for ``TrainingHomeState``'s reason — and for a second one
+/// A value rather than a chain of `if`s, for ``WeekState``'s reason — and for a second one
 /// here: the store carries two diagnostics for this list, and which of them is being reported is
 /// the whole difference between a screen that keeps its cards and one that has none.
 enum SessionExercisesState: Equatable {

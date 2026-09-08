@@ -60,7 +60,7 @@ public struct TrainingHomeView: View {
                 content
                 freeWorkout
                 freeWorkoutCommand
-                if startWasAttempted, store.failure != nil {
+                if showsStartFailure {
                     // Beside the command that issued it, on the retired root's rule for a failed
                     // *write*: it costs the screen nothing, and the retry is another tap at the
                     // same button.
@@ -98,8 +98,14 @@ public struct TrainingHomeView: View {
                     Text(LoggingStrings.weekLibraryAction)
                 }
             } label: {
-                Label(String(localized: LoggingStrings.weekEditAction), systemImage: "ellipsis.circle")
-                    .labelStyle(.iconOnly)
+                // Named for the menu rather than for either item in it (`G-4.2`, `NFR-1.10`): a
+                // button that announced itself as **Edit week** would be lying to VoiceOver about
+                // the half of it that is the library.
+                Label(
+                    String(localized: LoggingStrings.weekMenuAction),
+                    systemImage: "ellipsis.circle"
+                )
+                .labelStyle(.iconOnly)
             }
         }
     }
@@ -143,14 +149,7 @@ public struct TrainingHomeView: View {
     /// command rather than inside the state, so a lifter who wants to log something now is one tap
     /// from it without the empty state offering two primaries.
     private var empty: some View {
-        EmptyStateView(
-            symbolName: "calendar",
-            headline: Text(LoggingStrings.weekEmptyHeadline),
-            message: Text(LoggingStrings.weekEmptyMessage),
-            action: StateAction(Text(LoggingStrings.weekPlanAction), emphasis: .primary) {
-                navigation?.navigate(to: .routines(.editWeek))
-            }
-        )
+        WeekEmptyState { navigation?.navigate(to: .routines(.editWeek)) }
     }
 
     /// The free workout in progress, as a card after the plan's days (`FR-17.8.3`, `Q-17.5`).
@@ -183,6 +182,11 @@ public struct TrainingHomeView: View {
     /// a closure, and a preview or a snapshot has no shell above it.
     @Environment(NavigationState.self) private var navigation: NavigationState?
 
+    /// Whether the store's failure, if any, is drawn as a failed start — see ``WeekStartFailure``.
+    private var showsStartFailure: Bool {
+        WeekStartFailure.isShown(startWasAttempted: startWasAttempted, failure: store.failure)
+    }
+
     /// Whether the failure the store is carrying, if any, came from this screen's own command.
     ///
     /// The store has one ``ActiveSessionStore/failure`` and this screen issues two kinds of
@@ -199,5 +203,48 @@ public struct TrainingHomeView: View {
         guard store.isActive else { return }
         startWasAttempted = false
         navigation?.navigate(to: .training(.activeSession))
+    }
+}
+
+/// `FR-17.8.5`'s root for a lifter running no program, which is also `FR-1.13.2`'s first launch.
+///
+/// **A view rather than an `EmptyStateView` built inside the screen**, which is `T-16.17`'s finding:
+/// a reference that assembles a state's parts by hand pictures whatever it passed rather than what
+/// the screen passes, and the emphasis is exactly the argument that went wrong there.
+struct WeekEmptyState: View {
+    /// What **Plan your week** does. A closure, so a reference can render this with nowhere to go.
+    let plan: () -> Void
+
+    var body: some View {
+        EmptyStateView(
+            symbolName: "calendar",
+            headline: Text(LoggingStrings.weekEmptyHeadline),
+            message: Text(LoggingStrings.weekEmptyMessage),
+            action: StateAction(
+                Text(LoggingStrings.weekPlanAction), emphasis: .primary, handler: plan)
+        )
+    }
+}
+
+/// Whether Train's root reports the store's failure as a failed **start** (`FR-17.8.3`).
+///
+/// **Off the view so a test can reach it**, which is `T-16.17`'s rule and the reason the six cases
+/// `ScreenStateTests` used to hold over `TrainingHomeState` did not simply disappear with it.
+/// ``ActiveSessionStore`` carries one diagnostic for both of the operations this screen issues, so
+/// which one is being reported is the screen's own knowledge — and a *read* that failed is
+/// ``WeekState/Phase/failed(_:)``, which takes the whole screen instead.
+enum WeekStartFailure {
+    /// Whether to draw the error beside **Free workout**.
+    ///
+    /// **A retired diagnostic takes the error with it**, even though the screen's flag outlives it:
+    /// a later read clears ``ActiveSessionStore/failure`` and the message must go rather than sit
+    /// under the button until the tab is left.
+    ///
+    /// - Parameters:
+    ///   - startWasAttempted: Whether this screen is the thing that asked.
+    ///   - failure: The store's diagnostic, or `nil`.
+    /// - Returns: Whether the message is drawn.
+    static func isShown(startWasAttempted: Bool, failure: String?) -> Bool {
+        startWasAttempted && failure != nil
     }
 }

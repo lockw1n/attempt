@@ -31,15 +31,11 @@
     struct WeekSnapshotTests {
         /// `FR-17.8.5`, which is also `FR-1.13.2`'s first launch: one action, and it is the plan.
         @Test func noProgram() throws {
+            // The screen's own view, not an `EmptyStateView` assembled here: T-16.17's four wrong
+            // references were all fixtures that had built the component by hand and inherited an
+            // emphasis the screen does not pass.
             try assertSnapshots(named: "Week-empty") {
-                EmptyStateView(
-                    symbolName: "calendar",
-                    headline: Text(LoggingStrings.weekEmptyHeadline),
-                    message: Text(LoggingStrings.weekEmptyMessage),
-                    action: StateAction(
-                        Text(LoggingStrings.weekPlanAction), emphasis: .primary
-                    ) {}
-                )
+                WeekEmptyState {}
             }
         }
 
@@ -71,22 +67,18 @@
 
         /// The read-only day the week's cards open (`TR-17.6`).
         @Test func dayReadOnly() throws {
+            // `DayPlanSection` rather than three `DayPlanRow`s in a `GroupedSection`, on the same
+            // rule: the heading, the grouping and which row is ticked are the screen's decisions,
+            // and a fixture that restates them pictures itself.
+            let plan = [
+                WeekFixtures.line("Back Squat", grams: 140_000),
+                WeekFixtures.line("Romanian Deadlift", grams: 100_000),
+                WeekFixtures.line("Ab Wheel", grams: nil),
+            ]
+            let answered = Set(plan.prefix(1).compactMap { $0.exercise?.id })
             try assertSnapshots(named: "Day-read-only") {
                 fixedEnvironment {
-                    GroupedSection(Text(LoggingStrings.dayPlanHeading)) {
-                        DayPlanRow(
-                            line: WeekFixtures.line("Back Squat", grams: 140_000),
-                            unit: .kilograms,
-                            isDone: true)
-                        DayPlanRow(
-                            line: WeekFixtures.line("Romanian Deadlift", grams: 100_000),
-                            unit: .kilograms,
-                            isDone: false)
-                        DayPlanRow(
-                            line: WeekFixtures.line("Ab Wheel", grams: nil),
-                            unit: .kilograms,
-                            isDone: false)
-                    }
+                    DayPlanSection(plan: plan, unit: .kilograms, answered: answered)
                 }
             }
         }
