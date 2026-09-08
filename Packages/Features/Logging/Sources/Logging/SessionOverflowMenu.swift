@@ -84,7 +84,7 @@ extension View {
     }
 }
 
-/// See ``SwiftUI/View/sessionOverflow(date:changeDate:discard:)``.
+/// See `sessionOverflow(date:changeDate:discard:)`.
 struct SessionOverflowModifier: ViewModifier {
     /// The workout's training day, or `nil` where there is no workout.
     let date: Date?

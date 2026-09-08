@@ -32,10 +32,26 @@ public final class DayStore {
 
     /// The day's exercises, in order — the plan before the first answer, the session's entries
     /// after it.
-    public private(set) var rows: [DayRow] = []
+    ///
+    /// **Derived rather than kept**, and that is a correctness rule rather than a style: `+ Add
+    /// exercise` pushes the picker above this screen and it writes through ``ActiveSessionStore``
+    /// (`FR-1.2.2`), which this screen's `.task` does not re-run to notice — a pushed screen's
+    /// `.task` runs once (``ActiveSessionView``'s retry says so in as many words). A stored copy
+    /// would therefore be missing the row the lifter had just added until the day was left and
+    /// re-entered. Reading through the store instead makes the added row appear the moment the
+    /// picker pops, and costs no repository read: the entries are already in memory.
+    public var rows: [DayRow] {
+        guard store.session != nil else {
+            return planLines.map { DayRow(id: $0.id, exercise: $0.exercise, plan: $0.targets) }
+        }
+        let marks = store.personalRecords
+        return store.exercises.map { Self.row($0, marks: marks) }
+    }
 
     /// The training day the session belongs to, or `nil` before there is one (`FR-1.2.1`).
-    public private(set) var date: Date?
+    ///
+    /// Read through the store for ``rows``'s reason.
+    public var date: Date? { store.session?.date }
 
     /// The rows the last whole-day command could not answer because their plan named no load
     /// (`FR-15.2.2`, `FR-17.9.9`).
@@ -56,7 +72,12 @@ public final class DayStore {
     /// Whether the day's session has been ended (`FR-17.9.8`).
     public var isDone: Bool { store.session?.endedAt != nil }
 
-    /// Whether a session exists for this day at all — what the overflow menu's two items need.
+    /// Whether a session exists for this day at all.
+    ///
+    /// **What it separates is the two empty days**, which is the screen's only use for it: a day
+    /// whose routine is gone has no plan to draw, and a day whose session the lifter emptied has a
+    /// session and no rows. The overflow menu is gated on ``date`` rather than on this — a menu is
+    /// hidden by having no workout to act on, which is the same fact said where it is used.
     public var isStarted: Bool { store.session != nil }
 
     /// The last write against the day that failed, as the error's description, or `nil`.
@@ -134,8 +155,6 @@ public final class DayStore {
         if store.session != nil {
             await store.loadExercises()
         }
-        date = store.session?.date
-        rebuildRows()
         phase = .ready
     }
 
@@ -169,12 +188,18 @@ public final class DayStore {
     /// **One chain, one re-read, and a result.** The rows it cannot answer are the ones whose plan
     /// named no load — they are named in ``unanswerable`` rather than skipped, because nobody said
     /// the lifter was not doing them.
+    ///
+    /// **A command that can answer nothing does not start the day.** `FR-17.9.5` creates the
+    /// session at the *first answer*, and a day whose every remaining row names no load has no
+    /// answer to give — starting it anyway would write a workout holding nothing, which the week's
+    /// card then reads as in progress forever.
     public func logRemainingAsPlanned() async {
-        unanswerable = []
         let remaining = rows.filter { $0.answer == .unanswered }
-        guard await startIfNeeded() else { return }
         let answerable = remaining.filter(\.hasCircle)
+        // The result is owed either way: the lifter asked for the rest to be answered and is still
+        // owed an answer about the rows this stepped over.
         unanswerable = remaining.filter { !$0.hasCircle }
+        guard !answerable.isEmpty, await startIfNeeded() else { return }
         let entryIDs = answerable.compactMap { entryID(forRow: $0.id) }
         if !entryIDs.isEmpty {
             await store.answerAsPlanned(inEntryIDs: entryIDs)
@@ -187,10 +212,13 @@ public final class DayStore {
     ///
     /// **On a day never started this is the first answer**, and creates the session like any other:
     /// a day skipped whole is a day that was answered, and the week's card has to be able to say so.
+    /// **A day with nothing left to answer does not acquire a session here either**, which is
+    /// ``logRemainingAsPlanned()``'s rule: a day whose routine has no slots would otherwise be
+    /// given a workout with no entries, and ``finishIfComplete()`` cannot end one of those.
     public func skipRemaining() async {
         unanswerable = []
         let remaining = rows.filter { $0.answer == .unanswered }
-        guard await startIfNeeded() else { return }
+        guard !remaining.isEmpty, await startIfNeeded() else { return }
         let entryIDs = remaining.compactMap { entryID(forRow: $0.id) }
         if !entryIDs.isEmpty {
             await store.skipExercises(inEntryIDs: entryIDs)
@@ -290,10 +318,7 @@ public final class DayStore {
             fromRoutineID: routineID,
             in: routines,
             stampedWith: ProgramSessionStamp(runID: runID, weekNumber: week, dayIndex: dayIndex))
-        guard store.session != nil else { return false }
-        date = store.session?.date
-        rebuildRows()
-        return true
+        return store.session != nil
     }
 
     /// Ends the day when its last row has been answered (`FR-17.9.8`).
@@ -305,25 +330,10 @@ public final class DayStore {
 
     /// Re-reads what a command wrote.
     ///
-    /// **The store's list and the week's plan both**, which is `T-17.10`'s brief kept: a write here
-    /// changes what the day says and what the week's card counts, and the honest shape is a re-read
-    /// rather than a second copy of the answer.
+    /// **The store's list, and nothing else** — ``rows`` and ``date`` are read through it, so a
+    /// write here has one place to land rather than a second copy of the answer to keep in step.
     private func reload() async {
         await store.loadExercises()
-        date = store.session?.date
-        rebuildRows()
-    }
-
-    /// The day's rows, from the session where there is one and from the plan where there is not.
-    private func rebuildRows() {
-        guard store.session != nil else {
-            rows = planLines.map {
-                DayRow(id: $0.id, exercise: $0.exercise, plan: $0.targets)
-            }
-            return
-        }
-        let marks = store.personalRecords
-        rows = store.exercises.map { Self.row($0, marks: marks) }
     }
 
     /// One row, from the session's exercise.

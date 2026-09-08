@@ -203,6 +203,110 @@ struct DayStoreTests {
         #expect(!DayRowCircle.isOffered(answer: .unanswered, plan: []))
     }
 
+    @Test("A plan whose backoff names no load has no circle either")
+    func aBackoffWithNoLoadRemovesTheCircle() async throws {
+        // The circle writes the *whole* exercise in one tap, so `isOffered` asks every group and
+        // not merely the first — a plan whose backoff sets are open-load is one this command could
+        // only half perform. `addOpenLoadSlot(day:)` cannot reach this: it adds a whole row.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
+        try await fixture.addOpenLoadBackoff(day: 0)
+        let day = fixture.dayStore(dayIndex: 0)
+
+        await day.load()
+
+        let row = try #require(day.rows.first)
+        #expect(row.plan.count == 2)
+        // The first group names one, which is what makes this the case the rule exists for.
+        #expect(row.plan.first?.weight != nil)
+        #expect(row.plan.last?.weight == nil)
+        #expect(!row.hasCircle)
+    }
+
+    @Test("A row that was only warmed up for reads as skipped, not as work")
+    func warmupsAreNotWork() async throws {
+        // `DayPerformance` leaves warmups out, so a row marked done with nothing but warmups behind
+        // it has no completed *working* set and is a skip (`TR-17.4`) — a Did line that counted
+        // them would report an exercise as performed for warming up to it.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 2)
+        let store = fixture.activeStore()
+        let day = fixture.dayStore(dayIndex: 0, store: store)
+        await day.load()
+        await day.startIfNeeded()
+        let entryID = try await fixture.firstEntryID(day: 0)
+        try await fixture.writeWarmupSet(entryID: entryID, order: 0)
+        await store.markExercise(id: entryID, isDone: true)
+        await store.loadExercises()
+
+        let row = try #require(day.rows.first { $0.id == entryID })
+        #expect(row.performed.isEmpty)
+        #expect(row.answer == .skipped)
+    }
+
+    @Test("An exercise added through the store appears without the screen reloading")
+    func anAddedExerciseAppearsAtOnce() async throws {
+        // `FR-1.2.2`'s picker is pushed above this screen and writes through the store; a pushed
+        // screen's `.task` runs once, so a day holding its own copy of the list would be missing
+        // the row until it was left and re-entered. Nothing here calls `load()` a second time.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
+        let store = fixture.activeStore()
+        let day = fixture.dayStore(dayIndex: 0, store: store)
+        await day.load()
+        await day.startIfNeeded()
+        #expect(day.rows.count == 1)
+
+        let catalogueID = try #require(fixture.exerciseIDs.first?.first)
+        await store.addExercise(id: catalogueID)
+
+        #expect(day.rows.count == 2)
+        // It arrives with no plan, so it has no circle and Log is its only answer.
+        let added = try #require(day.rows.last)
+        #expect(added.plan.isEmpty)
+        #expect(!added.hasCircle)
+    }
+
+    // MARK: - Log, the interim answer (FR-17.9.3)
+
+    @Test("Log writes the set, marks the row done, and can finish the day")
+    func logIsAnAnswer() async throws {
+        // The only answer a row whose plan names no load can be given — the circle refuses it and
+        // **Log remaining** names it rather than answering it — so it is what lets such a day reach
+        // Done at all.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 0)
+        try await fixture.addOpenLoadSlot(day: 0)
+        let store = fixture.activeStore()
+        let day = fixture.dayStore(dayIndex: 0, store: store)
+        await day.load()
+        let rowID = try #require(day.rows.first).id
+        #expect(!day.rows[0].hasCircle)
+
+        await day.log(
+            rowID: rowID,
+            values: SetEntryValues(
+                weight: Weight(grams: 60_000), reps: 12, rpe: nil, isWarmup: false))
+
+        let row = try #require(day.rows.first)
+        #expect(row.answer == .logged)
+        #expect(row.performed.first?.weight == Weight(grams: 60_000))
+        #expect(row.performed.first?.reps == 12)
+        #expect(day.progress.isComplete)
+        #expect(day.isDone)
+    }
+
+    @Test("The editor opens seeded from the routine on a day nothing has been logged into")
+    func theEditorIsSeededFromThePlan() async throws {
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
+        let day = fixture.dayStore(dayIndex: 0)
+        await day.load()
+
+        let rowID = try #require(day.rows.first).id
+        let seed = try #require(day.seed(forRow: rowID))
+
+        #expect(seed.weight == Weight(grams: 100_000))
+        #expect(seed.reps == 5)
+        // The prescribed line reports a *group* of the session's own plan, and there is no session.
+        #expect(day.prescribed(forRow: rowID) == nil)
+    }
+
     // MARK: - Skip (FR-17.9.6)
 
     @Test("Skip soft-deletes the pending members and the row reads Skipped")

@@ -177,9 +177,6 @@ public final class WeekState {
     /// The sessions the week's state is read from (`TR-17.5`).
     let workouts: any WorkoutRepository
 
-    /// The catalogue the plan's slots name.
-    let exercises: any ExerciseRepository
-
     /// What a routine prescribes — shared with ``DayStore``, which reads the plan and nothing else.
     private let plans: WeekPlanReader
 
@@ -199,7 +196,6 @@ public final class WeekState {
         self.programs = programs
         self.routines = routines
         self.workouts = workouts
-        self.exercises = exercises
         self.plans = WeekPlanReader(routines: routines, exercises: exercises)
     }
 

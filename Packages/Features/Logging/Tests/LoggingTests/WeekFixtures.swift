@@ -332,10 +332,11 @@ struct WeekFixture {
                 targetSets: 3))
     }
 
-    /// The workout store every day of this fixture writes through.
+    /// A workout store over this fixture's stack.
     ///
-    /// One per fixture, because the app has one: a day and a free workout are two sessions and the
-    /// store is re-pointed between them (``SessionLocator``), which is the thing under test.
+    /// **A fresh one per call, so a test that needs the app's single store has to say so** by
+    /// handing the same one to every ``DayStore`` it builds — which is the thing under test
+    /// wherever a day and a free workout are both open (``SessionLocator``).
     func activeStore() -> ActiveSessionStore {
         .over(stack)
     }
@@ -391,6 +392,96 @@ func freeWorkoutSession(endedAt: Date? = nil) -> WorkoutSession {
         bodyweight: nil,
         programRunID: nil,
         scheduledWorkoutID: nil)
+}
+
+/// The states `T-17.11` needs that a plain week does not have — an open-load backoff, a warmup, and
+/// a workout no program planned.
+///
+/// **An extension rather than three more members**, the struct being at `type_body_length`'s
+/// ceiling: these are shapes a particular claim needs rather than part of what a week *is*.
+extension WeekFixture {
+    /// Adds a second target group to a day's **first** slot prescribing reps and no load.
+    ///
+    /// **A backoff on a row that already has a load**, which is the case
+    /// ``DayRowCircle/isOffered(answer:plan:)``'s "every group has to name a load, not merely the
+    /// first" exists for — and the one ``addOpenLoadSlot(day:)`` cannot produce, that adding a
+    /// whole row instead.
+    ///
+    /// - Parameter day: The `ProgramDay.order` whose first slot gains the group.
+    /// - Throws: Whatever the repository throws.
+    func addOpenLoadBackoff(day: Int) async throws {
+        let slots = try await stack.routines.exercises(
+            forRoutineID: routineIDs[day], includingDeleted: false)
+        guard let slot = slots.first else { throw WeekFixtureFailure.noEntries }
+        let groups = try await stack.routines.targetGroups(
+            forRoutineExerciseID: slot.id, includingDeleted: false)
+        try await stack.routines.save(
+            RoutineTargetGroup(
+                id: UUID(),
+                createdAt: weekFixtureDay,
+                updatedAt: weekFixtureDay,
+                deletedAt: nil,
+                routineExerciseID: slot.id,
+                order: groups.count,
+                targetWeight: nil,
+                targetReps: 8,
+                targetSets: 2))
+    }
+
+    /// A completed warmup set, as a lifter who warmed up and stopped leaves one.
+    ///
+    /// - Parameters:
+    ///   - entryID: The exercise it belongs to.
+    ///   - order: Its position.
+    /// - Throws: Whatever the repository throws.
+    func writeWarmupSet(entryID: UUID, order: Int) async throws {
+        try await stack.workouts.save(
+            SetEntry(
+                id: UUID(),
+                createdAt: weekFixtureDay,
+                updatedAt: weekFixtureDay,
+                deletedAt: nil,
+                entryID: entryID,
+                order: order,
+                weight: Weight(grams: 40_000),
+                reps: 5,
+                rpe: nil,
+                rir: nil,
+                isWarmup: true,
+                isCompleted: true,
+                targetWeight: nil,
+                targetReps: nil,
+                modifiers: [],
+                notes: "",
+                completedAt: weekFixtureDay))
+    }
+
+    /// A workout in progress that no program planned (`FR-17.8.3`).
+    ///
+    /// Written straight to the repository rather than through a store, so a test can have one open
+    /// *beside* a day's session without either store having been pointed at it.
+    ///
+    /// - Returns: The session.
+    /// - Throws: Whatever the repository throws.
+    @discardableResult
+    func writeFreeWorkout() async throws -> WorkoutSession {
+        let session = WorkoutSession(
+            id: UUID(),
+            createdAt: weekFixtureDay,
+            updatedAt: weekFixtureDay,
+            deletedAt: nil,
+            date: weekFixtureDay,
+            startedAt: weekFixtureDay,
+            endedAt: nil,
+            notes: "",
+            bodyweight: nil,
+            programRunID: nil,
+            scheduledWorkoutID: nil,
+            weekNumber: nil,
+            dayIndex: nil)
+        try await stack.workouts.save(session)
+        return session
+    }
 }
 
 /// What a fixture helper refuses with when the state a test asked about was never written.

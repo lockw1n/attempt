@@ -230,7 +230,12 @@ public struct DayView: View {
             answer: { rowID in Task { await day.answerAsPlanned(rowID: rowID) } },
             log: { rowID in open(rowID) },
             skip: { rowID in Task { await day.skip(rowID: rowID) } })
-        addExercise
+        // Not on a day that has ended: a finished day is read-only except through **Log**
+        // (`FR-17.7.5`), and a row added to it would arrive unanswered under a heading that had
+        // already counted every row — `n of m` disagreeing with the **Done** its card reads.
+        if !day.isDone {
+            addExercise
+        }
         if day.progress.offersWholeDayCommands {
             DayFootCommands(
                 logRemaining: { isConfirmingLogRemaining = true },

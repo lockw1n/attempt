@@ -48,7 +48,7 @@ public struct DayRow: Identifiable, Equatable, Sendable {
 
     /// Every scheme this row's work holds a personal record at (`FR-1.6.3`, `FR-16.2.4`).
     ///
-    /// **On the row rather than looked up by the view**, on ``SessionExerciseCardView``'s rule for
+    /// **On the row rather than looked up by the view**, on `SessionExerciseCardView`'s rule for
     /// the same badge: the cache read is the store's, and a row is what a reference renders.
     ///
     /// **Gathered over the row's runs, and the badge names the maximal one.** The cache names a run

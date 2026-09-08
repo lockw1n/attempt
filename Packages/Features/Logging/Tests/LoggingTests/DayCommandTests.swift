@@ -67,6 +67,98 @@ struct DayCommandTests {
         #expect(!DayProgress([]).offersWholeDayCommands)
     }
 
+    @Test("Log remaining writes no workout on a day where nothing can be answered")
+    func logRemainingStartsNothingItCannotAnswer() async throws {
+        // `FR-17.9.5` creates the session at the *first answer*. A day whose every row names no
+        // load has no answer to give, and a workout written here would hold nothing while the
+        // week's card read it as in progress.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 0)
+        try await fixture.addOpenLoadSlot(day: 0)
+        let day = fixture.dayStore(dayIndex: 0)
+        await day.load()
+        #expect(day.rows.count == 1)
+
+        await day.logRemainingAsPlanned()
+
+        #expect(!day.isStarted)
+        // The result is still owed: the lifter asked, and is told which row went unanswered.
+        #expect(day.unanswerable.count == 1)
+        let sessions = try await fixture.stack.workouts.sessions(
+            forProgramRunID: fixture.runID, week: WeekFixture.week, includingDeleted: false)
+        #expect(sessions.isEmpty)
+    }
+
+    @Test("Skip remaining writes no workout on a day whose routine has no exercises")
+    func skipRemainingStartsNothingOnAnEmptyDay() async throws {
+        // Reachable from the week card's own menu (`FR-17.8.8`), which is offered on every card
+        // that is not done. A session with no entries could never be ended — `finishIfComplete()`
+        // refuses an empty one — so the card would read in progress for the rest of the week.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 0)
+        let day = fixture.dayStore(dayIndex: 0)
+        await day.load()
+        #expect(day.rows.isEmpty)
+
+        await day.skipRemaining()
+
+        #expect(!day.isStarted)
+        let sessions = try await fixture.stack.workouts.sessions(
+            forProgramRunID: fixture.runID, week: WeekFixture.week, includingDeleted: false)
+        #expect(sessions.isEmpty)
+        let week = fixture.weekState()
+        await week.load(openSession: nil)
+        #expect(WeekFixture.days(of: week).first?.progress == .notStarted)
+    }
+
+    // MARK: - Which workout a screen is asking for (FR-17.9.5, OUT-17.3)
+
+    @Test("A day's session and a free workout are two, and each screen gets its own")
+    func aDayAndAFreeWorkoutAreTwoSessions() async throws {
+        // The store's read was "the one open session". A lifter can have a day part-answered and a
+        // workout no program planned open at the same time; a read that took the first unfinished
+        // row would hand one screen the other's workout.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 2)
+        let free = try await fixture.writeFreeWorkout()
+        let store = fixture.activeStore()
+        let day = fixture.dayStore(dayIndex: 0, store: store)
+
+        await day.load()
+        await day.answerAsPlanned(rowID: try #require(day.rows.first).id)
+
+        let dayed = try #require(store.session)
+        #expect(dayed.id != free.id)
+        #expect(dayed.programRunID == fixture.runID)
+        #expect(dayed.endedAt == nil, "the day is not finished, so both are open at once")
+
+        // The root asks for the free workout and gets that one back, not the day's.
+        await store.resume()
+        #expect(store.session?.id == free.id)
+
+        // And the day asks again and gets its own, which the free workout being newer must not
+        // decide: `sessions(in:)` is ordered newest first.
+        await store.open(.day(runID: fixture.runID, week: WeekFixture.week, dayIndex: 0))
+        #expect(store.session?.id == dayed.id)
+    }
+
+    @Test("Resume keeps a free workout it already holds and drops a day's")
+    func resumeReleasesADaysSession() async throws {
+        // `FR-17.8.8`'s card command re-points the one store at a day and `resume()` is what puts
+        // it back — so resume's own guard has to keep a free workout and let go of a day.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
+        let free = try await fixture.writeFreeWorkout()
+        let store = fixture.activeStore()
+        await store.resume()
+        #expect(store.session?.id == free.id)
+
+        let day = fixture.dayStore(dayIndex: 0, store: store)
+        await day.load()
+        await day.answerAsPlanned(rowID: try #require(day.rows.first).id)
+        #expect(store.session?.programRunID != nil)
+
+        await store.resume()
+
+        #expect(store.session?.id == free.id)
+    }
+
     // MARK: - The overflow menu (FR-17.9.7)
 
     @Test("Change date rewrites the training day and nothing else")
@@ -88,6 +180,51 @@ struct DayCommandTests {
         #expect(after.dayIndex == before.dayIndex)
         #expect(after.startedAt == before.startedAt)
         #expect(after.endedAt == before.endedAt)
+    }
+
+    @Test("Change date normalises to the start of the training day")
+    func changingTheDateNormalisesIt() async throws {
+        // `start(on:)`'s rule: the day, not the moment the picker was closed — a session dated to
+        // an afternoon sorts and groups against midnight-dated ones everywhere else.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
+        let store = fixture.activeStore()
+        let day = fixture.dayStore(dayIndex: 0, store: store)
+        await day.load()
+        await day.startIfNeeded()
+        let afternoon = weekFixtureDay.addingTimeInterval(-86_400 * 3 + 55_000)
+
+        await day.changeDate(to: afternoon)
+
+        let stored = try #require(store.session).date
+        #expect(stored == Calendar.current.startOfDay(for: afternoon))
+        #expect(stored != afternoon)
+        #expect(day.date == stored)
+    }
+
+    @Test("Answering a row that is already done does not restamp it")
+    func answeringATwiceDoneRowLeavesItAlone() async throws {
+        // Assigning a `@Model` property marks the row changed whatever the value was, and
+        // `updatedAt` is `G-2.4`'s conflict key — so a no-op local write would outrank a real
+        // remote edit of the same entry.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 2)
+        let store = fixture.activeStore()
+        let day = fixture.dayStore(dayIndex: 0, store: store)
+        await day.load()
+        let rowID = try #require(day.rows.first).id
+        await day.answerAsPlanned(rowID: rowID)
+        let entryID = try await fixture.firstEntryID(day: 0)
+        let sessionID = try await fixture.session(day: 0).id
+        let stored = try await fixture.stack.workouts.entries(
+            forSessionID: sessionID, includingDeleted: false)
+        let before = try #require(stored.first { $0.id == entryID })
+
+        await day.skip(rowID: entryID)
+
+        let reread = try await fixture.stack.workouts.entries(
+            forSessionID: sessionID, includingDeleted: false)
+        let after = try #require(reread.first { $0.id == entryID })
+        #expect(after.isMarkedDone)
+        #expect(after.updatedAt == before.updatedAt)
     }
 
     @Test("Change date does nothing on a day that has not been started")
