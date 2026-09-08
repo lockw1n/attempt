@@ -21,6 +21,16 @@ import SwiftUI
 public struct TrainingHomeView: View {
     private let store: ActiveSessionStore
 
+    /// The programs, their days and the run in force — held for `FR-17.8.8`'s card command, which
+    /// builds a ``DayStore`` of its own.
+    private let programs: any ProgramRepository
+
+    /// The routines those days name. See ``programs``.
+    private let routines: any RoutineRepository
+
+    /// The catalogue the plan's slots name. See ``programs``.
+    private let exercises: any ExerciseRepository
+
     /// The week — the program in force, its days and what has been logged into them.
     ///
     /// **Screen-lifetime**, which is `TR-1.2`'s split doing its own work: the week is one screen's
@@ -44,6 +54,9 @@ public struct TrainingHomeView: View {
         exercises: any ExerciseRepository
     ) {
         self.store = store
+        self.programs = programs
+        self.routines = routines
+        self.exercises = exercises
         _week = State(
             initialValue: WeekState(
                 programs: programs, routines: routines, workouts: workouts, exercises: exercises))
@@ -138,7 +151,10 @@ public struct TrainingHomeView: View {
                     programName: programName,
                     weekNumber: weekNumber,
                     days: days,
-                    unit: store.displayUnit)
+                    unit: store.displayUnit,
+                    skipRemaining: { dayIndex in
+                        Task { await skipRemaining(runID: runID, week: weekNumber, day: dayIndex) }
+                    })
             }
         }
     }
@@ -192,6 +208,36 @@ public struct TrainingHomeView: View {
     /// The store has one ``ActiveSessionStore/failure`` and this screen issues two kinds of
     /// operation, so which one is being reported is the screen's own knowledge.
     @State private var startWasAttempted = false
+
+    /// Answers for everything left of one day, from its card (`FR-17.8.8`, `Q-17.8`).
+    ///
+    /// **The same command the day's own foot draws**, run over a ``DayStore`` built for that card's
+    /// stamp — a second rule for what skipping the rest of a day means is a second answer to
+    /// `FR-17.9.6`.
+    ///
+    /// **The store is pointed back at the free workout afterwards.** ``DayStore`` re-points the one
+    /// ``ActiveSessionStore`` at the day it is writing into (see ``SessionLocator``), and this
+    /// screen's own card is the free workout's; ``ActiveSessionStore/resume()`` is what puts it
+    /// back, and the week is then re-read over whatever that found.
+    ///
+    /// - Parameters:
+    ///   - runID: The run the cards belong to.
+    ///   - week: The week they belong to.
+    ///   - dayIndex: The `ProgramDay.order` of the card whose menu was used.
+    private func skipRemaining(runID: UUID, week: Int, day dayIndex: Int) async {
+        let day = DayStore(
+            runID: runID,
+            week: week,
+            dayIndex: dayIndex,
+            store: store,
+            programs: programs,
+            routines: routines,
+            exercises: exercises)
+        await day.load()
+        await day.skipRemaining()
+        await store.resume()
+        await self.week.load(openSession: store.session)
+    }
 
     /// Starts a workout for today outside the plan, and opens it (`FR-17.8.3`).
     ///

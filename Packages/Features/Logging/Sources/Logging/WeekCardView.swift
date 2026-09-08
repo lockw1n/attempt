@@ -32,6 +32,12 @@ struct WeekSection: View {
     /// numbers on one screen to mean different things.
     let unit: MassUnit
 
+    /// Answers for everything left of one day, by its `ProgramDay.order` (`FR-17.8.8`).
+    ///
+    /// **From the week rather than only from inside the day**, which is `Q-17.8`'s answer: a lifter
+    /// who missed Wednesday is on this screen, not on Wednesday's.
+    let skipRemaining: (Int) -> Void
+
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md.points) {
             heading
@@ -41,7 +47,8 @@ struct WeekSection: View {
                     weekNumber: weekNumber,
                     day: day,
                     unit: unit,
-                    emphasis: .weekCommand(on: day, among: days))
+                    emphasis: .weekCommand(on: day, among: days),
+                    skipRemaining: { skipRemaining(day.dayIndex) })
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -85,6 +92,9 @@ struct WeekDayCardView: View {
     /// ``DesignSystem/StateActionEmphasis/weekCommand(on:among:)``.
     let emphasis: StateActionEmphasis
 
+    /// Answers for everything left of this day (`FR-17.8.8`).
+    let skipRemaining: () -> Void
+
     /// Which locale the done date is rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
@@ -104,6 +114,33 @@ struct WeekDayCardView: View {
             }
         }
         .buttonStyle(.plain)
+        // Outside the link rather than inside its label: a `Menu` nested in a `NavigationLink`'s
+        // label is two controls over one rectangle, and the push wins every time.
+        .overlay(alignment: .topTrailing) { menu }
+    }
+
+    /// The card's own overflow — one item, and only while there is something left to answer for
+    /// (`FR-17.8.8`).
+    ///
+    /// A done card has nothing remaining, and one that has not started has everything: **Skip
+    /// remaining** on the second is the whole day, which is exactly what a lifter who missed it
+    /// wants and is why it is not restricted to days in progress.
+    @ViewBuilder private var menu: some View {
+        if !isDone {
+            Menu {
+                Button(role: .destructive, action: skipRemaining) {
+                    Text(LoggingStrings.daySkipRemainingAction)
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(Typography.body.font)
+                    .foregroundStyle(ColorToken.textSecondary)
+                    .frame(width: TouchTarget.standard.points, height: TouchTarget.standard.points)
+                    .contentShape(.rect)
+            }
+            .accessibilityLabel(Text(LoggingStrings.dayMenuAction))
+            .padding(Spacing.xs.points)
+        }
     }
 
     /// Whether the day's card is collapsed to its header line.
@@ -218,22 +255,52 @@ struct PlanLineRow: View {
     /// one localized format string with the lift's name in it (`G-3.4`) — a translation is free to
     /// put the plan first, which a stack of views could not honour.
     private var plan: String {
-        line.targets.map(rendered).joined(
-            separator: String(localized: LoggingStrings.weekPlanTargetSeparator))
+        WeekPlanTargets.rendered(
+            line.targets, unit: unit, precision: displayPrecision, locale: locale)
+    }
+}
+
+/// How a run of target groups reads — `140 kg × 5 × 5`, joined (`FR-17.8.1`, `FR-17.9.3`).
+///
+/// **One renderer rather than one per screen.** The week's card draws a plan, and a day's checklist
+/// draws a plan *and* what was performed on the same shape (``DayPerformance``); the whole point of
+/// the *Planned* / *Did* pair is that the two lines are comparable, which two renderers could not
+/// guarantee.
+enum WeekPlanTargets {
+    /// The groups, rendered and joined.
+    ///
+    /// - Parameters:
+    ///   - targets: The groups, in order.
+    ///   - unit: The unit their loads read in (`G-3.1`).
+    ///   - precision: `G-3.3`'s step, or `nil` for the unit's own.
+    ///   - locale: Which locale the numbers read in (`G-3.4`).
+    /// - Returns: The line.
+    static func rendered(
+        _ targets: [WeekPlanTarget], unit: MassUnit, precision: DisplayPrecision?, locale: Locale
+    ) -> String {
+        targets
+            .map { rendered($0, unit: unit, precision: precision, locale: locale) }
+            .joined(separator: String(localized: LoggingStrings.weekPlanTargetSeparator))
     }
 
     /// One target group, in the lifter's unit.
     ///
-    /// - Parameter target: The group.
+    /// - Parameters:
+    ///   - target: The group.
+    ///   - unit: The unit its load reads in.
+    ///   - precision: `G-3.3`'s step.
+    ///   - locale: Which locale the numbers read in.
     /// - Returns: `140 kg × 5 × 5`, or `5 × 5` where the plan named no load (`FR-15.2.2`).
-    private func rendered(_ target: WeekPlanTarget) -> String {
+    private static func rendered(
+        _ target: WeekPlanTarget, unit: MassUnit, precision: DisplayPrecision?, locale: Locale
+    ) -> String {
         guard let weight = target.weight else {
             return String(
                 localized: LoggingStrings.weekPlanTargetOpenLoad(
                     reps: target.reps, sets: target.sets))
         }
         let load = weight.formatted(
-            AppFormat.weight(WeightDisplay(unit: unit, resolving: displayPrecision), locale: locale))
+            AppFormat.weight(WeightDisplay(unit: unit, resolving: precision), locale: locale))
         return String(
             localized: LoggingStrings.weekPlanTarget(
                 weight: load, reps: target.reps, sets: target.sets))

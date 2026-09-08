@@ -536,3 +536,25 @@
 "logging.day.empty.message" = "There is nothing to do on this day. Edit the week to give it a routine.";
 "logging.day.error.headline" = "Day unavailable";
 "logging.day.error.message" = "This day could not be read just now.";
+
+/* FR-17.9's day checklist (T-17.11). */
+"logging.day.row.skipped" = "Skipped";
+"logging.day.row.as-planned %@" = "%@ · as planned";
+"logging.day.row.planned %@" = "Planned %@";
+"logging.day.row.did %@" = "Did %@";
+"logging.day.circle.action" = "Log as planned";
+"logging.day.log.action" = "Log";
+"logging.day.skip.action" = "Skip this exercise";
+"logging.day.log-remaining.action" = "Log remaining as planned";
+"logging.day.skip-remaining.action" = "Skip remaining";
+"logging.day.log-remaining.confirm.action" = "Log them";
+"logging.day.skip-remaining.confirm.action" = "Skip them";
+"logging.day.remaining.confirm.cancel" = "Keep going";
+"logging.day.unanswerable %@" = "These still need a load: %@";
+"logging.day.unanswerable.separator" = ", ";
+"logging.day.menu.action" = "Day options";
+"logging.day.change-date.action" = "Change date";
+"logging.day.change-date.done" = "Done";
+"logging.day.add-exercise.action" = "Add exercise";
+"logging.day.no-rows.headline" = "Nothing in this day yet";
+"logging.day.no-rows.message" = "Add an exercise to start logging into it.";

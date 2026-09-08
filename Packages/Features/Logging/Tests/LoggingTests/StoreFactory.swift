@@ -44,11 +44,15 @@ extension ActiveSessionStore {
     ///   - programs: The program store to use instead of the stack's own — for a test that needs
     ///     the cursor write to refuse.
     /// - Returns: The store.
+    ///   - workouts: The workout store to use instead of the stack's own — for a test that needs to
+    ///     count what a command reads or announces.
     static func over(
-        _ stack: InMemoryRepositoryStack, programs: (any ProgramRepository)? = nil
+        _ stack: InMemoryRepositoryStack,
+        programs: (any ProgramRepository)? = nil,
+        workouts: (any WorkoutRepository & PlannedTargetRepository)? = nil
     ) -> ActiveSessionStore {
         ActiveSessionStore(
-            repository: stack.workouts,
+            repository: workouts ?? stack.workouts,
             catalogue: stack.exercises,
             settings: stack.settings,
             records: PersonalRecordRecomputer(

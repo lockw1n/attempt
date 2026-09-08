@@ -280,37 +280,22 @@ public final class ActiveSessionStore {
         }
     }
 
-    /// Adopts the workout left in progress, if there is one (`FR-1.2.11`).
+    /// Records that something has looked for a workout — see ``hasCheckedForSession``.
     ///
-    /// **What "in progress" means is `endedAt == nil`, and nothing else.** Not a flag, and not a
-    /// date window: a session is finished when it has been finished, so a workout backdated to last
-    /// month and never finished is still the one this app is in the middle of. That is also why the
-    /// read is unbounded — `WorkoutRepository` has no "incomplete sessions" query, so this is every
-    /// live session filtered here, and any window narrow enough to be cheap is a window a real
-    /// backdated session can fall outside of and never be seen again. The rows are dated training
-    /// days, one per workout, so reading them all at launch is a small read rather than a scan of
-    /// the sets.
+    /// **Here rather than a wider setter**, on ``adopt(stored:)``'s rule: `private` is file-scoped,
+    /// and the two methods that ask a locator for a workout live in `SessionLocator.swift`. This
+    /// and the one below name those transitions and nothing else.
+    func noteChecked() { hasCheckedForSession = true }
+
+    /// Adopts what a locator found. See ``noteChecked()`` for why both live here.
     ///
-    /// **Newest first is the repository's order**, so the first match is the most recent day —
-    /// which is the workout a user who force-quit mid-set is coming back to.
-    ///
-    /// A session already held is kept and nothing is read: this runs from a screen's `.task`, which
-    /// SwiftUI re-runs on every tab switch and restored push, and a re-read would race the record
-    /// ``update(_:)`` publishes. ``hasCheckedForSession`` is still set, because the question that
-    /// property answers — has anything looked? — has been answered either way.
-    public func resume() async {
-        defer { hasCheckedForSession = true }
-        guard session == nil else { return }
-        do {
-            session =
-                try await repository
-                .sessions(in: Date.distantPast...Date.distantFuture, includingDeleted: false)
-                .first { $0.endedAt == nil }
-            failure = nil
-        } catch {
-            session = nil
-            failure = String(describing: error)
-        }
+    /// - Parameters:
+    ///   - session: What the locator found, or `nil`.
+    ///   - diagnostic: Why it could not look, or `nil`.
+    func adopt(located session: WorkoutSession?, failure diagnostic: String?) {
+        self.session = session
+        failure = diagnostic
+        hasCheckedForSession = true
         forgetExercises()
     }
 

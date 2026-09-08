@@ -192,26 +192,14 @@ public struct ActiveSessionView: View {
         // block is a second heading above a screen whose first line already names the workout, and
         // this one now carries the training day, so it is a fact rather than a decoration.
         .inlineNavigationTitle()
-        // Every path that replaces the held record, the note's own save among them: the draft gives
-        // way to what is stored only where the two already agreed.
-        .onChange(of: store.session) { noteDraft.follow(store.session) }
-        .sheet(item: $editing) { target in
-            SetEditorSheet(
-                draft: draft(for: target),
-                isEditing: target.editing != nil,
-                prescribed: target.prescribed,
-                unit: store.displayUnit,
-                vocabulary: vocabulary,
-                equipment: equipment,
-                log: { write($0, target) },
-                cancel: { editing = nil },
-                delete: { delete(target) }
-            )
-            // The medium detent is what puts every logging control in the lower two-thirds
-            // (`NFR-1.4`); the large one is there because at `accessibility3` the fields no
-            // longer fit the medium one.
-            .presentationDetents([.medium, .large])
-        }
+        // `FR-17.9.7`'s menu, shared with a day's checklist: the training day this workout
+        // belongs to lost its only control when `FR-17.8.7` took the date picker off Train's root,
+        // and Discard came here with it.
+        .sessionOverflow(
+            date: store.session?.date,
+            changeDate: { day in Task { await store.changeDate(to: day) } },
+            discard: { isConfirmingDiscard = true }
+        )
         .confirmationDialog(
             Text(LoggingStrings.sessionDiscardConfirmTitle),
             isPresented: $isConfirmingDiscard,
@@ -306,11 +294,7 @@ public struct ActiveSessionView: View {
         // it — including the one that puts the stored note back. Without this it outlives the edit
         // it belongs to, leaving a retry on screen with nothing left to write.
         .onChange(of: noteDraft.text) { store.noteWriteFailure = nil }
-        SessionCommandsSection(
-            hasFailed: writeFailed,
-            finish: { Task { await finish() } },
-            discard: { isConfirmingDiscard = true }
-        )
+        SessionCommandsSection(hasFailed: writeFailed, finish: { Task { await finish() } })
     }
 
     /// The screen's title: its name, and the training day once there is a workout to name one

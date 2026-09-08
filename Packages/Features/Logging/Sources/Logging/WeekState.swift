@@ -180,8 +180,8 @@ public final class WeekState {
     /// The catalogue the plan's slots name.
     let exercises: any ExerciseRepository
 
-    /// The catalogue rows read so far this load, so a lift planned on three days is read once.
-    private var catalogue: [UUID: Exercise] = [:]
+    /// What a routine prescribes — shared with ``DayStore``, which reads the plan and nothing else.
+    private let plans: WeekPlanReader
 
     /// Builds the reading over the four repositories a week is assembled from.
     ///
@@ -200,6 +200,7 @@ public final class WeekState {
         self.routines = routines
         self.workouts = workouts
         self.exercises = exercises
+        self.plans = WeekPlanReader(routines: routines, exercises: exercises)
     }
 
     /// Reads the week, on every appearance.
@@ -221,7 +222,7 @@ public final class WeekState {
                 $0.programRunID == nil && $0.endedAt == nil ? FreeWorkoutCard(date: $0.date) : nil
             }
         do {
-            catalogue = [:]
+            plans.reset()
             answered = [:]
             reading = try await read()
             phase = .ready
@@ -276,28 +277,8 @@ public final class WeekState {
         return WeekDayCard(
             dayIndex: day.order,
             name: routine?.name ?? "",
-            plan: routine == nil ? [] : try await plan(forRoutineID: day.routineID),
+            plan: routine == nil ? [] : try await plans.plan(forRoutineID: day.routineID),
             progress: try await progress(of: session, on: day.order))
-    }
-
-    /// What a routine prescribes, as the card's lines.
-    ///
-    /// - Parameter routineID: The routine the day names.
-    /// - Returns: One line per slot, in the routine's own order.
-    /// - Throws: Whatever the repositories throw.
-    private func plan(forRoutineID routineID: UUID) async throws -> [WeekPlanLine] {
-        let slots = try await routines.exercises(forRoutineID: routineID, includingDeleted: false)
-        var lines: [WeekPlanLine] = []
-        for slot in slots {
-            let groups = try await routines.targetGroups(
-                forRoutineExerciseID: slot.id, includingDeleted: false)
-            lines.append(
-                WeekPlanLine(
-                    id: slot.id,
-                    exercise: try await exercise(id: slot.exerciseID),
-                    targets: groups.map(Self.target)))
-        }
-        return lines
     }
 
     /// Where a day has got to, from the session stamped with it (`FR-17.8.2`).
@@ -326,27 +307,4 @@ public final class WeekState {
         return .done(on: session.date)
     }
 
-    /// One target group, as a card draws it.
-    ///
-    /// - Parameter group: The routine's prescription.
-    /// - Returns: The target.
-    private static func target(_ group: RoutineTargetGroup) -> WeekPlanTarget {
-        WeekPlanTarget(
-            id: group.id,
-            weight: group.targetWeight,
-            reps: group.targetReps,
-            sets: group.targetSets)
-    }
-
-    /// One catalogue row, read at most once per load.
-    ///
-    /// - Parameter id: The exercise a slot names.
-    /// - Returns: The row, or `nil` where the catalogue has none.
-    /// - Throws: Whatever the catalogue read throws.
-    private func exercise(id: UUID) async throws -> Exercise? {
-        if let held = catalogue[id] { return held }
-        let read = try await exercises.exercise(id: id, includingDeleted: true)
-        if let read { catalogue[id] = read }
-        return read
-    }
 }

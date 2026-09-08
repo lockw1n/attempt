@@ -304,97 +304,6 @@ struct WeekStateTests {
     }
 }
 
-/// The read-only day the week's cards open (`TR-17.6`).
-@MainActor
-@Suite("One day of the week")
-struct DayStateTests {
-    @Test("The day carries its plan and the exercises its session has answered")
-    func theDayCarriesThePlanAndTheAnswers() async throws {
-        let fixture = try await WeekFixture(days: 3, exercisesPerDay: 4)
-        try await fixture.log(day: 1, done: 2)
-        let state = fixture.dayState(dayIndex: 1)
-
-        await state.load()
-
-        #expect(state.phase == .ready)
-        #expect(state.card?.name == "Day 2")
-        #expect(state.card?.plan.count == 4)
-        #expect(state.answered == Set(fixture.exerciseIDs[1].prefix(2)))
-    }
-
-    @Test("A day nothing has been logged into has a plan and no answers")
-    func anUntouchedDayHasNoAnswers() async throws {
-        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 3)
-        let state = fixture.dayState(dayIndex: 0)
-
-        await state.load()
-
-        #expect(state.card?.plan.count == 3)
-        #expect(state.answered.isEmpty)
-    }
-
-    @Test("A stamp naming another week draws no day, plan and ticks together")
-    func aStaleWeekDrawsNothing() async throws {
-        // The restored-stack case. `Route` is the persisted stack format, so a day reopened after
-        // the week turned arrives carrying the stamp it was pushed with; the week on screen is
-        // whichever one is current. Without the check the plan would be this week's and the ticks
-        // last week's — one screen describing two weeks.
-        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 3)
-        try await fixture.log(day: 0, done: 3)
-        let state = fixture.dayState(dayIndex: 0, week: WeekFixture.week + 1)
-
-        await state.load()
-
-        #expect(state.phase == .ready)
-        #expect(state.card == nil)
-        #expect(state.answered.isEmpty)
-    }
-
-    @Test("A stamp naming another run draws no day either")
-    func aForeignRunDrawsNothing() async throws {
-        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 3)
-        try await fixture.log(day: 0, done: 3)
-        let state = fixture.dayState(dayIndex: 0, runID: UUID())
-
-        await state.load()
-
-        #expect(state.card == nil)
-        #expect(state.answered.isEmpty)
-    }
-
-    @Test("A day the program does not have draws nothing rather than failing")
-    func aDayPastTheEndDrawsNothing() async throws {
-        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 3)
-        let state = fixture.dayState(dayIndex: 7)
-
-        await state.load()
-
-        #expect(state.phase == .ready)
-        #expect(state.card == nil)
-    }
-
-    @Test("A read that failed is the day's error state, not an empty day")
-    func aFailedReadIsReported() async throws {
-        let fixture = try await WeekFixture(days: 2)
-        let state = DayState(
-            runID: fixture.runID,
-            week: WeekFixture.week,
-            dayIndex: 0,
-            programs: UnreadablePrograms(),
-            routines: fixture.stack.routines,
-            workouts: fixture.stack.workouts,
-            exercises: fixture.stack.exercises)
-
-        await state.load()
-
-        guard case .failed(let diagnostic) = state.phase else {
-            Issue.record("expected a failed read")
-            return
-        }
-        #expect(!diagnostic.isEmpty)
-    }
-}
-
 /// Which failure Train's root reports beside **Free workout** (`FR-17.8.3`).
 ///
 /// **The half of the retired `TrainingHomeState` that did not go with it.** `ActiveSessionStore`
@@ -426,19 +335,39 @@ struct WeekStartFailureTests {
 ///
 /// **An actor** (`G-6.4`): `WorkoutRepository` refines `Sendable`, so a class with a mutable counter
 /// could conform only through `@unchecked Sendable`.
-actor SetWalkCounter: WorkoutRepository {
+///
+/// **It answers `PlannedTargetRepository` too**, so a whole ``ActiveSessionStore`` can be built over
+/// it (`T-17.11`): the same counter then measures `NFR-17.3`'s claim that one tap of the circle is
+/// one announcement to the recomputer, because an announcement is what walks an exercise's sets.
+actor SetWalkCounter: WorkoutRepository, PlannedTargetRepository {
     /// What answers everything.
-    let wrapped: any WorkoutRepository
+    let wrapped: any WorkoutRepository & PlannedTargetRepository
 
     /// How many times the year of training behind an exercise has been walked.
     private(set) var setWalks = 0
 
+    /// How many times a session's entries have been read — one per re-read of a day's list.
+    private(set) var entryReads = 0
+
     /// Wraps the store that answers.
     ///
     /// - Parameter wrapped: The real repository.
-    init(wrapped: any WorkoutRepository) {
+    init(wrapped: any WorkoutRepository & PlannedTargetRepository) {
         self.wrapped = wrapped
     }
+
+    /// Forgets what has been counted so far, so a test can measure one command.
+    func reset() {
+        setWalks = 0
+        entryReads = 0
+    }
+
+    func plannedTargets(
+        forEntryID entryID: UUID, includingDeleted: Bool
+    ) async throws -> [PlannedTargetGroup] {
+        try await wrapped.plannedTargets(forEntryID: entryID, includingDeleted: includingDeleted)
+    }
+    func save(_ group: PlannedTargetGroup) async throws { try await wrapped.save(group) }
 
     func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
@@ -459,7 +388,9 @@ actor SetWalkCounter: WorkoutRepository {
     func entries(
         forSessionID sessionID: UUID, includingDeleted: Bool
     ) async throws -> [ExerciseEntry] {
-        try await wrapped.entries(forSessionID: sessionID, includingDeleted: includingDeleted)
+        entryReads += 1
+        return try await wrapped.entries(
+            forSessionID: sessionID, includingDeleted: includingDeleted)
     }
     func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
         try await wrapped.entry(id: id, includingDeleted: includingDeleted)

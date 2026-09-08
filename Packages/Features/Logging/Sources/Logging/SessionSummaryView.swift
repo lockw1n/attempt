@@ -113,37 +113,27 @@ struct SessionSummaryLine: View {
 
 /// The two ways a workout ends (`FR-1.2.11`, `FR-1.2.12`).
 ///
-/// Taking closures rather than the store, so both commands are picturable without one behind them.
+/// Taking closures rather than the store, so the command is picturable without one behind them.
 ///
-/// **Finish is the primary action and discard is not styled as one.** They are not two options: one
-/// keeps the workout and one throws it away, and a pair of matching buttons is how the second gets
-/// tapped by accident. `FR-1.2.12`'s confirmation is the other half of that, and it is the caller's.
+/// **Discard has left this section** (`FR-17.9.7`): it is in the screen's overflow menu, beside the
+/// training day the retired root took away — see ``SessionOverflowMenu``. A destructive control
+/// standing under the primary one was how it got tapped by accident, which is the same argument
+/// that kept it unstyled, taken one step further.
 struct SessionCommandsSection: View {
-    /// Whether the last write failed. The workout is unchanged when it did, so both commands still
-    /// ask for the same thing and the retry is the same tap.
+    /// Whether the last write failed. The workout is unchanged when it did, so the command still
+    /// asks for the same thing and the retry is the same tap.
     let hasFailed: Bool
 
     /// Ends the workout and keeps it.
     let finish: () -> Void
 
-    /// Asks whether to throw it away.
-    let discard: () -> Void
-
-    /// Both commands, and a failed write beneath them.
+    /// The command, and a failed write beneath it.
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md.points) {
             Button(action: finish) {
                 Text(LoggingStrings.sessionFinishAction)
             }
             .buttonStyle(.primaryAction(.fill))
-
-            Button(action: discard) {
-                Text(LoggingStrings.sessionDiscardAction)
-                    .font(Typography.actionLabel.font)
-                    .foregroundStyle(ColorToken.negative)
-                    .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points)
-            }
-            .buttonStyle(.plain)
 
             if hasFailed {
                 // The shared error component rather than a local label, and the workout stays on

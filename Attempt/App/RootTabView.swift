@@ -382,9 +382,10 @@ struct RootTabView: View {
                 week: week,
                 dayIndex: dayIndex,
                 store: stores.activeSession,
+                vocabulary: stores.modifiers,
+                equipment: stores.equipment,
                 programs: repositories.programs,
                 routines: repositories.routines,
-                workouts: repositories.workouts,
                 exercises: repositories.exercises)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)

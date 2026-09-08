@@ -217,21 +217,150 @@ struct WeekFixture {
             exercises: stack.exercises)
     }
 
+    /// The day's session, as `T-17.11`'s commands wrote it.
+    ///
+    /// - Parameter day: The `ProgramDay.order`.
+    /// - Returns: The session.
+    /// - Throws: Whatever the repository throws, or a failure where no session was written.
+    func session(day: Int) async throws -> WorkoutSession {
+        let sessions = try await stack.workouts.sessions(
+            forProgramRunID: runID, week: Self.week, includingDeleted: false)
+        guard let session = sessions.first(where: { $0.dayIndex == day }) else {
+            throw WeekFixtureFailure.noSession
+        }
+        return session
+    }
+
+    /// The first entry of a day's session, in the routine's own order.
+    ///
+    /// - Parameter day: The `ProgramDay.order`.
+    /// - Returns: The entry's identifier.
+    /// - Throws: Whatever the repository throws, or a failure where the session has no entries.
+    func firstEntryID(day: Int) async throws -> UUID {
+        let entries = try await stack.workouts.entries(
+            forSessionID: try await session(day: day).id, includingDeleted: false)
+        guard let first = entries.first else { throw WeekFixtureFailure.noEntries }
+        return first.id
+    }
+
+    /// The sets logged against that entry.
+    ///
+    /// - Parameter day: The `ProgramDay.order`.
+    /// - Returns: The sets, in order.
+    /// - Throws: Whatever the repository throws.
+    func setsOfFirstEntry(day: Int) async throws -> [SetEntry] {
+        try await stack.workouts.sets(
+            forEntryID: try await firstEntryID(day: day), includingDeleted: false)
+    }
+
+    /// A set nobody has attempted, as an import leaves one (`FR-16.4.1`).
+    ///
+    /// - Parameters:
+    ///   - entryID: The exercise it belongs to.
+    ///   - order: Its position.
+    /// - Throws: Whatever the repository throws.
+    func writePendingSet(entryID: UUID, order: Int) async throws {
+        try await stack.workouts.save(
+            SetEntry(
+                id: UUID(),
+                createdAt: weekFixtureDay,
+                updatedAt: weekFixtureDay,
+                deletedAt: nil,
+                entryID: entryID,
+                order: order,
+                weight: Weight(grams: 100_000),
+                reps: 5,
+                rpe: nil,
+                rir: nil,
+                isWarmup: false,
+                isCompleted: false,
+                targetWeight: nil,
+                targetReps: nil,
+                modifiers: [],
+                notes: "",
+                completedAt: nil))
+    }
+
+    /// Adds a slot to a day's routine prescribing reps and no load (`FR-15.2.2`).
+    ///
+    /// The row `FR-17.9.2`'s circle refuses, and the one `FR-17.9.9`'s **Log remaining** reports
+    /// rather than answers.
+    ///
+    /// - Parameter day: The `ProgramDay.order` whose routine gains the slot.
+    /// - Throws: Whatever the repository throws.
+    func addOpenLoadSlot(day: Int) async throws {
+        let exerciseID = UUID()
+        try await stack.exercises.save(
+            Exercise(
+                id: exerciseID,
+                createdAt: weekFixtureDay,
+                updatedAt: weekFixtureDay,
+                deletedAt: nil,
+                name: "Ab Wheel",
+                ukrainianName: nil,
+                movement: .other,
+                parentExerciseID: nil,
+                equipment: .bodyweight,
+                laterality: .bilateral,
+                barType: .noBar,
+                implementCount: 1,
+                isCustom: false,
+                isArchived: false,
+                notes: ""))
+        let slotID = UUID()
+        let existing = try await stack.routines.exercises(
+            forRoutineID: routineIDs[day], includingDeleted: false)
+        try await stack.routines.save(
+            RoutineExercise(
+                id: slotID,
+                createdAt: weekFixtureDay,
+                updatedAt: weekFixtureDay,
+                deletedAt: nil,
+                routineID: routineIDs[day],
+                exerciseID: exerciseID,
+                order: existing.count))
+        try await stack.routines.save(
+            RoutineTargetGroup(
+                id: UUID(),
+                createdAt: weekFixtureDay,
+                updatedAt: weekFixtureDay,
+                deletedAt: nil,
+                routineExerciseID: slotID,
+                order: 0,
+                targetWeight: nil,
+                targetReps: 12,
+                targetSets: 3))
+    }
+
+    /// The workout store every day of this fixture writes through.
+    ///
+    /// One per fixture, because the app has one: a day and a free workout are two sessions and the
+    /// store is re-pointed between them (``SessionLocator``), which is the thing under test.
+    func activeStore() -> ActiveSessionStore {
+        .over(stack)
+    }
+
     /// One day of the week, over the fixture's stack.
     ///
     /// - Parameters:
     ///   - dayIndex: The `ProgramDay.order` the route carried.
     ///   - runID: The run it carried — the fixture's own unless a test is asking for a stale stamp.
     ///   - week: The week it carried, likewise.
-    /// - Returns: The state.
-    func dayState(dayIndex: Int, runID: UUID? = nil, week: Int = WeekFixture.week) -> DayState {
-        DayState(
+    ///   - store: The workout store to write through, or `nil` for a fresh one over this stack.
+    /// - Returns: The store.
+    func dayStore(
+        dayIndex: Int,
+        runID: UUID? = nil,
+        week: Int = WeekFixture.week,
+        store: ActiveSessionStore? = nil
+    ) -> DayStore {
+        DayStore(
             runID: runID ?? self.runID,
             week: week,
             dayIndex: dayIndex,
+            store: store ?? activeStore(),
             programs: stack.programs,
             routines: stack.routines,
-            workouts: stack.workouts,
             exercises: stack.exercises)
     }
 
@@ -262,4 +391,16 @@ func freeWorkoutSession(endedAt: Date? = nil) -> WorkoutSession {
         bodyweight: nil,
         programRunID: nil,
         scheduledWorkoutID: nil)
+}
+
+/// What a fixture helper refuses with when the state a test asked about was never written.
+///
+/// An error rather than an `Issue.record` at the call site, so the helper composes with `try` in a
+/// test that is asserting something else.
+enum WeekFixtureFailure: Error {
+    /// No session is stamped with that day.
+    case noSession
+
+    /// The day's session has no entries.
+    case noEntries
 }

@@ -65,20 +65,72 @@
             }
         }
 
-        /// The read-only day the week's cards open (`TR-17.6`).
-        @Test func dayReadOnly() throws {
-            // `DayPlanSection` rather than three `DayPlanRow`s in a `GroupedSection`, on the same
-            // rule: the heading, the grouping and which row is ticked are the screen's decisions,
-            // and a fixture that restates them pictures itself.
-            let plan = [
-                WeekFixtures.line("Back Squat", grams: 140_000),
-                WeekFixtures.line("Romanian Deadlift", grams: 100_000),
-                WeekFixtures.line("Ab Wheel", grams: nil),
-            ]
-            let answered = Set(plan.prefix(1).compactMap { $0.exercise?.id })
-            try assertSnapshots(named: "Day-read-only") {
+        /// `FR-17.9.1`: a day nothing has been logged into is the plan, one row per exercise,
+        /// every circle open.
+        @Test func dayNotStarted() throws {
+            // `DayChecklistSection` rather than rows in a `GroupedSection` assembled here, on the
+            // same rule: the heading, the grouping and what each row offers are the screen's
+            // decisions, and a fixture that restates them pictures itself.
+            try assertSnapshots(named: "Day-not-started") {
+                fixedEnvironment { DayFixtures.section(DayFixtures.notStarted) }
+            }
+        }
+
+        /// `FR-17.9.3`'s one-line answer: logged exactly as prescribed.
+        @Test func dayAsPlanned() throws {
+            try assertSnapshots(named: "Day-as-planned") {
+                fixedEnvironment { DayFixtures.section([DayFixtures.asPlanned]) }
+            }
+        }
+
+        /// `FR-17.9.3`'s two-line answer: what was planned, then what was done.
+        @Test func dayLogged() throws {
+            try assertSnapshots(named: "Day-logged") {
+                fixedEnvironment { DayFixtures.section([DayFixtures.deviated]) }
+            }
+        }
+
+        /// `FR-17.9.6`: an exercise the lifter decided against, which is an answer rather than an
+        /// absence.
+        @Test func daySkipped() throws {
+            try assertSnapshots(named: "Day-skipped") {
+                fixedEnvironment { DayFixtures.section([DayFixtures.skipped]) }
+            }
+        }
+
+        /// `FR-15.2.2`: a plan naming no load has no circle, because the circle would have to
+        /// invent a zero.
+        @Test func dayNoLoad() throws {
+            try assertSnapshots(named: "Day-no-load") {
+                fixedEnvironment { DayFixtures.section([DayFixtures.openLoad]) }
+            }
+        }
+
+        /// `FR-1.2.2`: a row the lifter added has no plan to perform, so no circle either.
+        @Test func dayAdded() throws {
+            try assertSnapshots(named: "Day-added") {
+                fixedEnvironment { DayFixtures.section([DayFixtures.added]) }
+            }
+        }
+
+        /// `FR-17.9.8`: every row answered — the heading says so, and the foot commands the
+        /// `Day-foot-commands` reference pictures are gone.
+        @Test func dayDone() throws {
+            try assertSnapshots(named: "Day-done") {
                 fixedEnvironment {
-                    DayPlanSection(plan: plan, unit: .kilograms, answered: answered)
+                    DayFixtures.section([DayFixtures.asPlanned, DayFixtures.skipped])
+                }
+            }
+        }
+
+        /// `FR-17.9.9`'s two whole-day commands, drawn under the rows they would answer for.
+        @Test func dayFootCommands() throws {
+            try assertSnapshots(named: "Day-foot-commands") {
+                fixedEnvironment {
+                    VStack(alignment: .leading, spacing: Spacing.lg.points) {
+                        DayFixtures.section(DayFixtures.notStarted)
+                        DayFootCommands(logRemaining: {}, skipRemaining: {})
+                    }
                 }
             }
         }
@@ -159,7 +211,8 @@
                 programName: "Course #2",
                 weekNumber: 3,
                 days: days,
-                unit: .kilograms)
+                unit: .kilograms,
+                skipRemaining: { _ in })
         }
 
         /// One card.
@@ -205,6 +258,86 @@
                         reps: 5,
                         sets: 5)
                 ])
+        }
+    }
+
+    /// The days these references render (`FR-17.9`).
+    enum DayFixtures {
+        /// Two rows nobody has answered, both with a load and therefore both with a circle.
+        static var notStarted: [DayRow] {
+            [
+                row("Back Squat", plan: planned(140_000)),
+                row("Romanian Deadlift", plan: planned(100_000)),
+            ]
+        }
+
+        /// The one-line answer.
+        static var asPlanned: DayRow {
+            row("Back Squat", plan: planned(140_000), performed: planned(140_000), answer: .logged)
+        }
+
+        /// The two-line answer — one set short, at a lighter load.
+        static var deviated: DayRow {
+            row(
+                "Bench Press",
+                plan: planned(100_000),
+                performed: [target(95_000, reps: 5, sets: 4)],
+                answer: .logged)
+        }
+
+        /// `FR-17.9.6`'s skip.
+        static var skipped: DayRow {
+            row("Barbell Row", plan: planned(80_000), answer: .skipped)
+        }
+
+        /// `FR-15.2.2`'s blank target.
+        static var openLoad: DayRow {
+            row("Ab Wheel", plan: [target(nil, reps: 12, sets: 3)])
+        }
+
+        /// `FR-1.2.2`'s added row: no plan at all.
+        static var added: DayRow {
+            row("Face Pull", plan: [])
+        }
+
+        /// The day's rows, as the screen draws them.
+        ///
+        /// - Parameter rows: The rows.
+        /// - Returns: The section.
+        static func section(_ rows: [DayRow]) -> some View {
+            DayChecklistSection(
+                rows: rows,
+                progress: DayProgress(rows),
+                unit: .kilograms,
+                answer: { _ in },
+                log: { _ in },
+                skip: { _ in })
+        }
+
+        /// One row, over the week fixture's own catalogue row so the two files name one lift once.
+        private static func row(
+            _ name: String,
+            plan: [WeekPlanTarget],
+            performed: [WeekPlanTarget] = [],
+            answer: DayRowAnswer = .unanswered
+        ) -> DayRow {
+            DayRow(
+                id: UUID(),
+                exercise: WeekFixtures.line(name, grams: nil).exercise,
+                plan: plan,
+                performed: performed,
+                answer: answer)
+        }
+
+        /// The fixture's standard prescription: five sets of five.
+        private static func planned(_ grams: Int) -> [WeekPlanTarget] {
+            [target(grams, reps: 5, sets: 5)]
+        }
+
+        /// One target group.
+        private static func target(_ grams: Int?, reps: Int, sets: Int) -> WeekPlanTarget {
+            WeekPlanTarget(
+                id: UUID(), weight: grams.map { Weight(grams: $0) }, reps: reps, sets: sets)
         }
     }
 

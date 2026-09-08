@@ -327,3 +327,25 @@
 "logging.day.empty.message" = "У цей день немає чого робити. Відредагуйте тиждень і призначте програму.";
 "logging.day.error.headline" = "День недоступний";
 "logging.day.error.message" = "Не вдалося прочитати цей день.";
+
+/* FR-17.9's day checklist (T-17.11). */
+"logging.day.row.skipped" = "Пропущено";
+"logging.day.row.as-planned %@" = "%@ · як заплановано";
+"logging.day.row.planned %@" = "План: %@";
+"logging.day.row.did %@" = "Виконано: %@";
+"logging.day.circle.action" = "Записати як заплановано";
+"logging.day.log.action" = "Записати";
+"logging.day.skip.action" = "Пропустити цю вправу";
+"logging.day.log-remaining.action" = "Записати решту як заплановано";
+"logging.day.skip-remaining.action" = "Пропустити решту";
+"logging.day.log-remaining.confirm.action" = "Записати";
+"logging.day.skip-remaining.confirm.action" = "Пропустити";
+"logging.day.remaining.confirm.cancel" = "Продовжити";
+"logging.day.unanswerable %@" = "Цим вправам ще потрібна вага: %@";
+"logging.day.unanswerable.separator" = ", ";
+"logging.day.menu.action" = "Дії з днем";
+"logging.day.change-date.action" = "Змінити дату";
+"logging.day.change-date.done" = "Готово";
+"logging.day.add-exercise.action" = "Додати вправу";
+"logging.day.no-rows.headline" = "У цьому дні ще нічого немає";
+"logging.day.no-rows.message" = "Додайте вправу, щоб почати записувати.";

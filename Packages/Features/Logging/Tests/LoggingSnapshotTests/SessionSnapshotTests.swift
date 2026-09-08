@@ -55,7 +55,7 @@
 
         @Test func commands() throws {
             try assertSnapshots(named: "Session-commands") {
-                SessionCommandsSection(hasFailed: false, finish: {}, discard: {})
+                SessionCommandsSection(hasFailed: false, finish: {})
             }
         }
 
@@ -63,7 +63,7 @@
             // The workout is still on screen beside the failure, which is the part worth a picture:
             // a failed write costs this screen nothing.
             try assertSnapshots(named: "Session-commands-failed") {
-                SessionCommandsSection(hasFailed: true, finish: {}, discard: {})
+                SessionCommandsSection(hasFailed: true, finish: {})
             }
         }
 

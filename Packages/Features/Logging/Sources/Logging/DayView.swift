@@ -7,21 +7,28 @@ import PowerliftingCore
 import RepositoryInterface
 import SwiftUI
 
-/// One day of the week, read only (`TR-17.6`).
+/// One day of the week, as a checklist (`FR-17.9.1`, `D-17.6`).
 ///
-/// **What the day prescribes and how far through it the lifter is, and no command** — the answers
-/// are `T-17.11`'s. It exists in this task because `TrainingRoute.day(runID:week:dayIndex:)` has to
-/// be answered by something the moment the case compiles, and because a day reached from a card is
-/// what makes the week navigable at all.
+/// **The session is implicit and there is no Start.** A lifter opens the day, taps a circle per
+/// exercise, and the workout is written underneath them (`FR-17.9.5`); the last answer ends it
+/// (`FR-17.9.8`). Backdating and discarding are in an overflow menu rather than on the screen,
+/// because neither is what anyone came here to do.
 ///
 /// **Addressed by the stamp rather than by a session id**, which is the route's own argument: a day
 /// nothing has been logged into has no session, so a session id could not name it.
 public struct DayView: View {
-    /// The day's own state — the plan, and what has been logged against it.
-    @State private var day: DayState
+    /// The day's own state — the plan, the answers, and the commands that write them.
+    @State private var day: DayStore
 
-    /// The workout in progress, for the unit its loads read in (`G-3.1`).
+    /// The workout the answers are written into, for the unit its loads read in (`G-3.1`) and for
+    /// the editor's own writes.
     private let store: ActiveSessionStore
+
+    /// The modifier terms the interim editor offers (`FR-1.2.8`).
+    private let vocabulary: SetModifierVocabulary
+
+    /// The gym `FR-1.4.1`'s loading is worked out on, for the same sheet.
+    private let equipment: PlateCalculatorStore
 
     /// Builds the screen over the stamp the route carried.
     ///
@@ -29,34 +36,38 @@ public struct DayView: View {
     ///   - runID: The program run.
     ///   - week: The week number stamped on the day's session.
     ///   - dayIndex: The `ProgramDay.order` this is.
-    ///   - store: The workout in progress, for the display unit.
+    ///   - store: The workout the answers are written into.
+    ///   - vocabulary: The modifier terms the editor offers (`FR-1.2.8`).
+    ///   - equipment: The gym the plate calculator works over (`FR-1.4.1`).
     ///   - programs: The programs, their days and the run in force.
     ///   - routines: The routine the day names.
-    ///   - workouts: The day's session and its entries.
     ///   - exercises: The catalogue the plan's slots name.
     public init(
         runID: UUID,
         week: Int,
         dayIndex: Int,
         store: ActiveSessionStore,
+        vocabulary: SetModifierVocabulary,
+        equipment: PlateCalculatorStore,
         programs: any ProgramRepository,
         routines: any RoutineRepository,
-        workouts: any WorkoutRepository,
         exercises: any ExerciseRepository
     ) {
         self.store = store
+        self.vocabulary = vocabulary
+        self.equipment = equipment
         _day = State(
-            initialValue: DayState(
+            initialValue: DayStore(
                 runID: runID,
                 week: week,
                 dayIndex: dayIndex,
+                store: store,
                 programs: programs,
                 routines: routines,
-                workouts: workouts,
                 exercises: exercises))
     }
 
-    /// The day's plan, whichever state the read is in.
+    /// The day, whichever state it is in, with the commands that are true in all of them.
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.lg.points) {
@@ -71,11 +82,99 @@ public struct DayView: View {
             await store.loadDisplayUnit()
             await day.load()
         }
+        .sheet(item: $editing) { target in
+            SetEditorSheet(
+                draft: ActiveSessionView.draft(
+                    for: target.editorTarget, unit: store.displayUnit, locale: locale),
+                prescribed: target.prescribed,
+                unit: store.displayUnit,
+                vocabulary: vocabulary,
+                equipment: equipment,
+                log: { draft in
+                    guard let values = draft.resolved else { return }
+                    let rowID = target.rowID
+                    editing = nil
+                    Task { await day.log(rowID: rowID, values: values) }
+                },
+                cancel: { editing = nil }
+            )
+            .presentationDetents([.medium, .large])
+        }
+        .sessionOverflow(
+            date: day.date,
+            changeDate: { chosen in Task { await day.changeDate(to: chosen) } },
+            discard: { isConfirmingDiscard = true }
+        )
+        .confirmationDialog(
+            Text(LoggingStrings.dayLogRemainingConfirmTitle(count: unansweredCount)),
+            isPresented: $isConfirmingLogRemaining,
+            titleVisibility: .visible
+        ) {
+            Button {
+                Task { await day.logRemainingAsPlanned() }
+            } label: {
+                Text(LoggingStrings.dayLogRemainingConfirmAction)
+            }
+            Button(role: .cancel) {
+            } label: {
+                Text(LoggingStrings.dayRemainingConfirmCancel)
+            }
+        }
+        .confirmationDialog(
+            Text(LoggingStrings.daySkipRemainingConfirmTitle(count: unansweredCount)),
+            isPresented: $isConfirmingSkipRemaining,
+            titleVisibility: .visible
+        ) {
+            Button(role: .destructive) {
+                Task { await day.skipRemaining() }
+            } label: {
+                Text(LoggingStrings.daySkipRemainingConfirmAction)
+            }
+            Button(role: .cancel) {
+            } label: {
+                Text(LoggingStrings.dayRemainingConfirmCancel)
+            }
+        }
+        .confirmationDialog(
+            Text(LoggingStrings.sessionDiscardConfirmTitle),
+            isPresented: $isConfirmingDiscard,
+            titleVisibility: .visible
+        ) {
+            Button(role: .destructive) {
+                Task { await day.discard() }
+            } label: {
+                Text(LoggingStrings.sessionDiscardConfirmAction)
+            }
+            Button(role: .cancel) {
+            } label: {
+                Text(LoggingStrings.sessionDiscardConfirmCancel)
+            }
+        } message: {
+            Text(LoggingStrings.sessionDiscardConfirmMessage)
+        }
     }
+
+    /// Which set editor is open, or `nil`.
+    @State private var editing: DayLogTarget?
+
+    /// Whether **Log remaining as planned** is asking (`FR-17.9.9`).
+    @State private var isConfirmingLogRemaining = false
+
+    /// Whether **Skip remaining** is asking.
+    @State private var isConfirmingSkipRemaining = false
+
+    /// Whether **Discard** is asking (`FR-1.2.12`).
+    @State private var isConfirmingDiscard = false
+
+    /// Which of the exercise's two names reads, and which locale the editor's numbers are in.
+    @Environment(\.locale) private var locale
+
+    /// How many rows the two whole-day commands would act on.
+    private var unansweredCount: Int { day.progress.total - day.progress.answered }
 
     /// The day's name where its routine has one, and its position where it has not.
     private var title: String {
-        let name = day.card?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let name = day.name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard name.isEmpty else { return name }
         return String(localized: LoggingStrings.weekDay(day.dayIndex + 1))
     }
@@ -94,171 +193,200 @@ public struct DayView: View {
                 retry: { Task { await day.load() } }
             )
         case .ready:
-            if let card = day.card, !card.plan.isEmpty {
-                rows(card)
+            if day.rows.isEmpty {
+                empty
             } else {
-                EmptyStateView(
-                    symbolName: "archivebox",
-                    headline: Text(LoggingStrings.dayEmptyHeadline),
-                    message: Text(LoggingStrings.dayEmptyMessage))
+                checklist
             }
         }
     }
 
-    /// One row per planned exercise, with the state each is in.
-    private func rows(_ card: WeekDayCard) -> some View {
-        DayPlanSection(plan: card.plan, unit: store.displayUnit, answered: day.answered)
+    /// A day with nothing in it — two different facts, and the words say which.
+    ///
+    /// A day whose routine is gone or whose stamp names a week that has turned has no plan
+    /// (`FR-15.2.5`); a day whose session the lifter emptied has one and no rows. The second is
+    /// reachable only by deleting every entry, and it offers the picker rather than the week.
+    @ViewBuilder private var empty: some View {
+        if day.isStarted {
+            EmptyStateView(
+                symbolName: "list.bullet",
+                headline: Text(LoggingStrings.dayNoRowsHeadline),
+                message: Text(LoggingStrings.dayNoRowsMessage))
+            addExercise
+        } else {
+            EmptyStateView(
+                symbolName: "archivebox",
+                headline: Text(LoggingStrings.dayEmptyHeadline),
+                message: Text(LoggingStrings.dayEmptyMessage))
+        }
+    }
+
+    /// The rows, the picker and the two whole-day commands.
+    @ViewBuilder private var checklist: some View {
+        DayChecklistSection(
+            rows: day.rows,
+            progress: day.progress,
+            unit: store.displayUnit,
+            answer: { rowID in Task { await day.answerAsPlanned(rowID: rowID) } },
+            log: { rowID in open(rowID) },
+            skip: { rowID in Task { await day.skip(rowID: rowID) } })
+        addExercise
+        if day.progress.offersWholeDayCommands {
+            DayFootCommands(
+                logRemaining: { isConfirmingLogRemaining = true },
+                skipRemaining: { isConfirmingSkipRemaining = true })
+        }
+        if !day.unanswerable.isEmpty {
+            // A result, not an error: the command did what it could and is saying what it could
+            // not, which is `FR-17.9.9`'s whole reason for reporting anything at all.
+            Text(LoggingStrings.dayUnanswerable(exercises: unanswerableNames))
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if day.writeFailure != nil {
+            ErrorStateView(message: Text(LoggingStrings.sessionWriteErrorMessage))
+        }
+    }
+
+    /// `FR-1.2.2`'s way of putting an exercise into a day the plan did not name.
+    ///
+    /// **The session is created before the push, not after the selection.** The picker writes
+    /// through the store, which refuses an entry with no workout held — so a day nobody has logged
+    /// into has to acquire its session on this tap.
+    private var addExercise: some View {
+        Button {
+            Task {
+                guard await day.startIfNeeded() else { return }
+                navigation?.navigate(to: .exerciseLibrary(.exercisePicker))
+            }
+        } label: {
+            Text(LoggingStrings.dayAddExerciseAction)
+        }
+        .buttonStyle(.secondaryAction(.fill))
+    }
+
+    /// The shell's navigation position, for the picker. Optional and read rather than required, on
+    /// `ExerciseListView`'s rule: a snapshot has no shell above it.
+    @Environment(NavigationState.self) private var navigation: NavigationState?
+
+    /// The rows the last whole-day command could not answer, as the lifter reads them (`G-3.2`).
+    private var unanswerableNames: String {
+        day.unanswerable
+            .map { $0.exercise?.displayName(for: locale) ?? "" }
+            .joined(separator: String(localized: LoggingStrings.dayUnanswerableSeparator))
+    }
+
+    /// Opens the interim editor over one row (`FR-17.9.3`).
+    ///
+    /// - Parameter rowID: The row.
+    private func open(_ rowID: UUID) {
+        editing = DayLogTarget(
+            rowID: rowID,
+            planned: day.seed(forRow: rowID),
+            prescribed: day.prescribed(forRow: rowID))
     }
 }
 
-/// What a day prescribes, one row per exercise (`TR-17.6`).
+/// Which row the day's interim set editor is open over (`FR-17.9.3`).
 ///
-/// **A view rather than a `GroupedSection` built inside the screen**, which is `T-16.17`'s finding:
-/// a reference that assembles a screen's parts by hand is evidence about the parts, so the section
-/// a snapshot renders has to be the section the screen draws.
-struct DayPlanSection: View {
-    /// The day's exercises with their plan.
-    let plan: [WeekPlanLine]
+/// **The row rather than the entry**, because the sheet can be opened on a day that has no session
+/// yet: the first answer creates it, and the row is what survives that (see
+/// ``DayStore/log(rowID:values:)``).
+struct DayLogTarget: Identifiable, Equatable {
+    /// The row.
+    let rowID: UUID
+
+    /// What the form opens filled in with (`FR-15.2.3`), or `nil`.
+    let planned: PlannedSetSeed?
+
+    /// What the routine prescribed for the next set, drawn above the fields (`FR-15.3.1`).
+    let prescribed: PlannedTargetGroup?
+
+    /// The row's identity is the sheet's.
+    var id: UUID { rowID }
+
+    /// The same thing in the shape the shared editor takes.
+    ///
+    /// **A translation rather than a second type on the sheet**: `T-17.01` replaces the sheet, and a
+    /// day that had widened `SetEditorTarget` to carry a routine slot would have to be unwidened
+    /// there.
+    var editorTarget: SetEditorTarget {
+        SetEditorTarget(
+            entryID: rowID, values: nil, editing: nil, planned: planned, prescribed: prescribed)
+    }
+}
+
+/// The day's rows, under the count of how many are answered (`FR-17.9.1`).
+///
+/// A view rather than a `GroupedSection` built inside the screen, which is `T-16.17`'s finding: the
+/// heading, the grouping and what each row offers are the screen's decisions, and a fixture that
+/// restates them pictures itself.
+struct DayChecklistSection: View {
+    /// The day's exercises, in order.
+    let rows: [DayRow]
+
+    /// How far through them the lifter is.
+    let progress: DayProgress
 
     /// The unit their loads read in (`G-3.1`).
     let unit: MassUnit
 
-    /// The exercises the day's session has marked done (`FR-15.3.4`).
-    let answered: Set<UUID>
+    /// Logs one row exactly as planned (`FR-17.9.2`).
+    let answer: (UUID) -> Void
+
+    /// Opens the editor over one row (`FR-17.9.3`).
+    let log: (UUID) -> Void
+
+    /// Records that the lifter is not doing one row today (`FR-17.9.6`).
+    let skip: (UUID) -> Void
 
     var body: some View {
-        GroupedSection(Text(LoggingStrings.dayPlanHeading)) {
-            ForEach(plan) { line in
-                DayPlanRow(
-                    line: line,
+        GroupedSection(
+            Text(LoggingStrings.dayProgress(done: progress.answered, of: progress.total))
+        ) {
+            ForEach(rows) { row in
+                DayExerciseRow(
+                    row: row,
                     unit: unit,
-                    // A slot whose catalogue row has gone is never answered: there is no id to have
-                    // ticked. Written as a `map` rather than a minted `UUID`, which would be a
-                    // value invented per render to stand for `false`.
-                    isDone: line.exercise.map { answered.contains($0.id) } ?? false)
+                    answer: { answer(row.id) },
+                    log: { log(row.id) },
+                    skip: { skip(row.id) })
             }
         }
     }
 }
 
-/// One planned exercise on a read-only day.
-struct DayPlanRow: View {
-    /// The slot.
-    let line: WeekPlanLine
+/// The two commands that answer for everything that is left (`FR-17.9.9`).
+///
+/// **At the foot, under `+ Add exercise`, and both secondary.** They are the exception rather than
+/// the way a day is normally answered — the circle is — and a filled pair here would be two primary
+/// actions on a screen whose accent belongs to the work.
+struct DayFootCommands: View {
+    /// Logs everything that is left exactly as planned.
+    let logRemaining: () -> Void
 
-    /// The unit its loads read in (`G-3.1`).
-    let unit: MassUnit
-
-    /// Whether the day's session has this exercise answered (`FR-15.3.4`).
-    let isDone: Bool
+    /// Records that the lifter is not doing the rest.
+    let skipRemaining: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.xxs.points) {
-            PlanLineRow(line: line, unit: unit)
-            if isDone {
-                // Never by tint alone (`G-4.5`): the word carries it and the colour is added.
-                Label {
-                    Text(LoggingStrings.dayRowDone)
-                } icon: {
-                    Image(systemName: "checkmark.circle.fill")
-                }
-                .font(Typography.caption.font)
-                .foregroundStyle(ColorToken.positive)
+        VStack(alignment: .leading, spacing: Spacing.sm.points) {
+            Button(action: logRemaining) {
+                Text(LoggingStrings.dayLogRemainingAction)
             }
+            .buttonStyle(.plain)
+            .font(Typography.actionLabel.font)
+            .foregroundStyle(ColorToken.textSecondary)
+            .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points, alignment: .leading)
+
+            Button(action: skipRemaining) {
+                Text(LoggingStrings.daySkipRemainingAction)
+            }
+            .buttonStyle(.plain)
+            .font(Typography.actionLabel.font)
+            .foregroundStyle(ColorToken.textSecondary)
+            .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// One day of a week, as ``DayView`` reads it (`TR-17.6`).
-///
-/// **It reuses ``WeekState``'s card rather than a shape of its own**, because a day *is* one of
-/// those: the same plan lines, the same three states. What it adds is which exercises the day's
-/// session has answered, which the week's card only counts.
-@Observable
-public final class DayState {
-    /// What the screen has to show. ``WeekState/Phase``'s four, for the same reason.
-    public typealias Phase = WeekState.Phase
-
-    /// The screen's read state.
-    public private(set) var phase: Phase = .idle
-
-    /// The day, or `nil` where the run or the day has gone.
-    public private(set) var card: WeekDayCard?
-
-    /// The exercises the day's session has marked done (`FR-15.3.4`).
-    public private(set) var answered: Set<UUID> = []
-
-    /// The `ProgramDay.order` this screen is over.
-    public let dayIndex: Int
-
-    /// The run the route carried.
-    private let runID: UUID
-
-    /// The week the route carried.
-    private let week: Int
-
-    /// The week this day belongs to, read whole — its read serves both the card and the answers.
-    private let weekState: WeekState
-
-    /// Builds the reading.
-    ///
-    /// - Parameters:
-    ///   - runID: The program run.
-    ///   - week: The week number.
-    ///   - dayIndex: The `ProgramDay.order`.
-    ///   - programs: The programs, their days and the run in force.
-    ///   - routines: The routine the day names.
-    ///   - workouts: The day's session and its entries.
-    ///   - exercises: The catalogue the plan's slots name.
-    public init(
-        runID: UUID,
-        week: Int,
-        dayIndex: Int,
-        programs: any ProgramRepository,
-        routines: any RoutineRepository,
-        workouts: any WorkoutRepository,
-        exercises: any ExerciseRepository
-    ) {
-        self.runID = runID
-        self.week = week
-        self.dayIndex = dayIndex
-        self.weekState = WeekState(
-            programs: programs, routines: routines, workouts: workouts, exercises: exercises)
-    }
-
-    /// Reads the day, on every appearance.
-    public func load() async {
-        phase = .loading
-        await weekState.load(openSession: nil)
-        switch weekState.phase {
-        case .failed(let diagnostic):
-            phase = .failed(diagnostic)
-        case .idle, .loading, .ready:
-            card = day(in: weekState.reading)
-            answered = card == nil ? [] : weekState.answered[dayIndex] ?? []
-            phase = .ready
-        }
-    }
-
-    /// The day this screen is over, or `nil` where the week that was read is not the week the route
-    /// named.
-    ///
-    /// **The stamp is checked rather than merely carried, and it is one read that answers both
-    /// halves.** ``WeekState`` reads whichever run and week are current; a restored stack decodes a
-    /// stamp that was current when it was written (`Route`'s header). Without the check a day
-    /// reopened after the week turned would draw the new week's plan under the old week's ticks —
-    /// two halves of one screen describing two different weeks.
-    ///
-    /// - Parameter reading: What the week read.
-    /// - Returns: The card, or `nil`.
-    private func day(in reading: WeekReading) -> WeekDayCard? {
-        guard case .week(let readRunID, _, let readWeek, let days) = reading,
-            readRunID == runID, readWeek == week
-        else {
-            return nil
-        }
-        return days.first { $0.dayIndex == dayIndex }
     }
 }
