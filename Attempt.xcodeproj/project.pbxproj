@@ -306,6 +306,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Attempt reads your body mass from Health so your weigh-ins and their seven-day average are in one place. Imported readings are kept with the rest of your log.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Attempt never writes to Health. Your weigh-ins and training log stay in the app, and this permission is never requested.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_FILE = Config/Info.plist;
@@ -342,6 +343,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Attempt reads your body mass from Health so your weigh-ins and their seven-day average are in one place. Imported readings are kept with the rest of your log.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Attempt never writes to Health. Your weigh-ins and training log stay in the app, and this permission is never requested.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_FILE = Config/Info.plist;
