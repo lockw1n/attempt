@@ -98,6 +98,10 @@ struct WeekDayCardView: View {
     /// Which locale the done date is rendered for (`G-3.4`).
     @Environment(\.locale) private var locale
 
+    /// Which calendar and time zone that date is resolved in — the device's own, bound explicitly
+    /// for ``Localization/AppFormat/resolved(_:in:)``'s reason.
+    @Environment(\.calendar) private var calendar
+
     var body: some View {
         NavigationLink(
             value: Route.training(.day(runID: runID, week: weekNumber, dayIndex: day.dayIndex))
@@ -185,7 +189,8 @@ struct WeekDayCardView: View {
             Label {
                 Text(
                     LoggingStrings.weekDayDone(
-                        on: date.formatted(AppFormat.date(locale: locale))))
+                        on: date.formatted(
+                            AppFormat.resolved(AppFormat.date(locale: locale), in: calendar))))
             } icon: {
                 Image(systemName: "checkmark.circle.fill")
             }

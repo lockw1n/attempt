@@ -12,31 +12,39 @@
     // nor the suite beside it runs into `file_length` — the two grow for different reasons, a
     // reference being added and a fixture shape being added.
 
-    /// Pins the process time zone, so a rendered date is the same picture on a developer's machine
-    /// as it is on the CI runner.
+    /// The calendar and time zone every date here is resolved in.
     ///
     /// **A reference that renders a date is otherwise not reproducible**, and the failure is
-    /// asymmetric: recorded in `EDT` and compared in `UTC`, a time renders four hours out and every
-    /// such reference fails on CI alone. `AppFormat`'s styles take a locale and read the process's
-    /// time zone, so the locale is pinned per subject and this is the other half.
-    private let pinnedTimeZone: Bool = {
-        NSTimeZone.default = TimeZone(identifier: "UTC") ?? .gmt
-        return true
+    /// asymmetric: recorded at `UTC-5` and compared at `UTC`, an instant near midnight renders a
+    /// whole day out and every such reference fails on CI alone — which is what `Week-cards` and
+    /// `Week-six-days` did.
+    ///
+    /// **This replaces an `NSTimeZone.default` assignment, which was inert.** Writing that property
+    /// does not move `TimeZone.current`, so a `Date.FormatStyle` carrying no zone of its own went on
+    /// rendering in the recorder's — the pin read as the guarantee it was not. The working half is
+    /// the pair below: a view binds its style to `@Environment(\.calendar)` through
+    /// ``Localization/AppFormat/resolved(_:in:)``, and this is the calendar that lands there.
+    private let gmt: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .gmt
+        return calendar
     }()
 
-    /// A subject whose rendering depends on a locale or a time zone, pinned to both.
+    /// A subject whose rendering depends on a locale, a time zone or a calendar, pinned to all
+    /// three — which is what `HistorySnapshotTests` pins, for the same reason.
     ///
-    /// The locale is the environment's, which is what `AppFormat` reads through the view; the time
-    /// zone is the process's, pinned once above. Here rather than on a suite because both suites in
-    /// this target render dates.
+    /// **The calendar is the half that was missing.** `\.timeZone` reaches a `Text(_:format:)`,
+    /// which is why `Week-free-workout` was reproducible while the two references rendering a date
+    /// *eagerly* were not: a style built in Swift carries the calendar's zone or the device's, and
+    /// nothing here was replacing the device's.
     ///
     /// - Parameter subject: What to render.
     /// - Returns: The subject, pinned.
     func fixedEnvironment(@ViewBuilder _ subject: () -> some View) -> some View {
-        _ = pinnedTimeZone
-        return subject()
+        subject()
             .environment(\.locale, Fixtures.locale)
             .environment(\.timeZone, .gmt)
+            .environment(\.calendar, gmt)
     }
 
     /// The workout these references render, and the two things it takes to render one.
