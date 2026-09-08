@@ -56,7 +56,8 @@ Packages/
 ├── Features/                Feature modules, one level deeper — the level is load-bearing:
 │                            .swiftlint.yml scopes the no-raw-values rules to this path.
 │   ├── ExerciseLibrary/     The exercise catalogue, including its per-exercise history section
-│   ├── Logging/             The active session and everything logged into it
+│   ├── Logging/             The Train tab — this week, a day, the active session and
+│   │                        everything logged into it
 │   ├── History/             Past training: sessions, calendar, search
 │   ├── Dashboard/           e1RM tiles, the recent-PR feed, the week summary, the start-workout
 │   │                        action
