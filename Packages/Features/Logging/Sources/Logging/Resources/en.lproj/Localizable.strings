@@ -518,3 +518,32 @@
 "logging.session.finish.pending.remove" = "Remove them";
 "logging.session.finish.pending.keep" = "Keep as failed";
 "logging.session.finish.pending.cancel" = "Back to the workout";
+
+/* FR-17.8: the week root. */
+"logging.week.heading %lld" = "Week %lld";
+"logging.week.edit.action" = "Edit week";
+"logging.week.library.action" = "Exercise library";
+"logging.week.free-workout.action" = "Free workout";
+"logging.week.free-workout.title" = "Free workout";
+"logging.week.day %lld" = "Day %lld";
+"logging.week.day.start" = "Start";
+"logging.week.day.continue" = "Continue";
+"logging.week.day.progress %lld %lld" = "%1$lld of %2$lld done";
+"logging.week.day.done %@" = "Done · %@";
+"logging.week.plan.line %@ %@" = "%1$@ · %2$@";
+"logging.week.plan.target %@ %lld %lld" = "%1$@ × %2$lld × %3$lld";
+"logging.week.plan.target-open %lld %lld" = "%1$lld × %2$lld";
+"logging.week.plan.target.separator" = ", ";
+"logging.week.empty.headline" = "No week planned yet";
+"logging.week.empty.message" = "Plan your week and every training day shows up here, ready to tick off.";
+"logging.week.plan.action" = "Plan your week";
+"logging.week.error.headline" = "This week unavailable";
+"logging.week.error.message" = "Your plan could not be read just now.";
+
+/* FR-17.9: one day of the week. */
+"logging.day.plan.heading" = "Planned";
+"logging.day.row.done" = "Done";
+"logging.day.empty.headline" = "Nothing planned for this day";
+"logging.day.empty.message" = "This day's routine was archived. Edit the week to point it at another one.";
+"logging.day.error.headline" = "Day unavailable";
+"logging.day.error.message" = "This day could not be read just now.";

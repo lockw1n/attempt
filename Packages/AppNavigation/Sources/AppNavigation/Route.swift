@@ -74,6 +74,19 @@ public enum DashboardRoute: Hashable, Sendable, Codable {
 public enum TrainingRoute: Hashable, Sendable, Codable {
     /// The workout in progress (`FR-1.2.1`). T-1.20 builds it.
     case activeSession
+
+    /// One day of the current week (`FR-17.9`, `TR-17.6`).
+    ///
+    /// **Addressed by the program stamp rather than by a session id**, which is the whole of the
+    /// choice. A day nothing has been logged into has no session at all, so a session id cannot
+    /// name it; the run, the week and the day index are what `FR-16.8.3` stamps and what
+    /// `FR-17.8.2` reads a day's state by. A *past* day stays ``HistoryRoute/session(sessionID:)``
+    /// — that one is a workout that happened rather than a position in a plan — and a free workout
+    /// stays ``activeSession``.
+    ///
+    /// It carries the stamp and not the day, for ``ExerciseLibraryRoute/exerciseDetail(exerciseID:)``'s
+    /// reason: a restored stack is decoded before any store has been read.
+    case day(runID: UUID, week: Int, dayIndex: Int)
 }
 
 /// Destinations pushed from the exercise library (`FR-1.1`).
@@ -202,6 +215,18 @@ public enum RoutinesRoute: Hashable, Sendable, Codable {
     /// Carries the identifier and not the record, for
     /// ``ExerciseLibraryRoute/exerciseDetail(exerciseID:)``'s reason.
     case programEdit(programID: UUID)
+
+    /// The week's plan — the one editor routines and programs collapse into (`FR-17.10`,
+    /// `TR-17.6`).
+    ///
+    /// **Answered by ``programList`` until `T-17.12` builds the screen.** The case has to compile
+    /// the moment the week root offers **Edit week**, and a destination that pushed nothing would
+    /// be a command that does nothing; the program list is the nearest true thing there is. The
+    /// five cases above retire with that task, not this one.
+    ///
+    /// It carries nothing: which week is being edited is the run in force, one fact about the app
+    /// rather than a parameter of a push.
+    case editWeek
 }
 
 /// Destinations pushed from history (`FR-1.5`).

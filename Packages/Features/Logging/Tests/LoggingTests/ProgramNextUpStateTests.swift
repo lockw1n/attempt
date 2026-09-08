@@ -34,7 +34,6 @@ struct ProgramNextUpStateTests {
         #expect(reading.programName == "Course #2")
         #expect(reading.weekNumber == 2)
         #expect(reading.day == .next(index: 0, routineID: fixture.routineIDs[0], name: "Squat day"))
-        #expect(reading.spendsAccent)
     }
 
     /// `FR-15.2.5`'s archive reaching a program day: the repository returns the row intact and the
@@ -49,7 +48,6 @@ struct ProgramNextUpStateTests {
 
         #expect(state.nextUp?.day == .archivedRoutine(index: 0))
         // It offers no Start, so it does not spend the screen's accent.
-        #expect(state.nextUp?.spendsAccent == false)
     }
 
     @Test("A program with no days says so")
@@ -63,7 +61,6 @@ struct ProgramNextUpStateTests {
         await state.load()
 
         #expect(state.nextUp?.day == .noDays)
-        #expect(state.nextUp?.spendsAccent == false)
     }
 
     /// The cursor is a `ProgramDay.order`, not a position: a day removed from the middle leaves a
@@ -94,7 +91,6 @@ struct ProgramNextUpStateTests {
         await state.load()
 
         #expect(state.nextUp?.day == .weekComplete)
-        #expect(state.nextUp?.spendsAccent == true)
     }
 
     @Test("A read that failed carries the diagnostic and draws no card")
@@ -114,37 +110,11 @@ struct ProgramNextUpStateTests {
         }
         #expect(!diagnostic.isEmpty)
     }
-
-    /// `FR-16.6.4` on the one screen where the accent moves between two views: the card decides,
-    /// and `TrainingHomeView` reads the decision rather than restating it.
-    ///
-    /// **The rule is asserted here because it cannot be asserted where it is used.** Both call
-    /// sites are inside a `View`, and the references that picture those states build their state
-    /// components by hand — so a literal written on the view would be pinned by nothing.
-    @Test("Train's own command steps down for exactly the two readings that draw a Start")
-    func trainStepsDownOnlyForACardThatSpendsTheAccent() {
-        func reading(_ day: ProgramNextUp.Day) -> ProgramNextUp {
-            ProgramNextUp(runID: UUID(), programName: "Course #2", weekNumber: 2, day: day)
-        }
-
-        let routineID = UUID()
-        #expect(
-            StateActionEmphasis.trainCommand(
-                under: reading(.next(index: 0, routineID: routineID, name: "Squat day")))
-                == .secondary)
-        #expect(StateActionEmphasis.trainCommand(under: reading(.weekComplete)) == .secondary)
-        #expect(
-            StateActionEmphasis.trainCommand(under: reading(.archivedRoutine(index: 0)))
-                == .primary)
-        #expect(StateActionEmphasis.trainCommand(under: reading(.noDays)) == .primary)
-        // No card at all, which is both the loading and the failed reading of the section above.
-        #expect(StateActionEmphasis.trainCommand(under: nil) == .primary)
-    }
 }
 
-/// A program repository whose every read refuses — the only way to reach ``ProgramNextUpState``'s
-/// failed phase, the fakes being incapable of failing.
-private struct UnreadablePrograms: ProgramRepository {
+/// A program store whose every read refuses, for the failed-read state.
+struct UnreadablePrograms: ProgramRepository {
+    /// What every call raises.
     private var failure: RepositoryError { .recordNotFound(id: UUID()) }
 
     func programs(includingDeleted: Bool) async throws -> [Program] { throw failure }

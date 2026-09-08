@@ -14,6 +14,21 @@ public protocol WorkoutRepository: Sendable {
     /// One session, or `nil` if no row carries that id.
     func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession?
 
+    /// The sessions one program run stamped with `week`, newest first (`FR-17.8.2`, `TR-17.5`).
+    ///
+    /// **The week root's whole read of what has been trained**, and the reason it is a query rather
+    /// than a filter over ``sessions(in:)``: a week is a position in a plan, not a range of dates —
+    /// a day backdated by a fortnight still belongs to the week it was started under, and a week
+    /// the lifter took ten days over is still one week. `ProgramRun.nextDayIndex` answers neither,
+    /// which is `FR-17.8.2`: days may be done in any order, so the state of a day is the sessions
+    /// carrying its index and nothing else.
+    ///
+    /// A session whose ``WorkoutSession/weekNumber`` is `nil` is never returned, whatever its run:
+    /// `nil` is a workout logged before a program stamped one (`FR-16.8.3`), not week zero.
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession]
+
     /// Inserts or replaces the session, keyed on ``WorkoutSession/id``.
     func save(_ session: WorkoutSession) async throws
 

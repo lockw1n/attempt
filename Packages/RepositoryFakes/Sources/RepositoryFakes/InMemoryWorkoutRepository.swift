@@ -60,6 +60,29 @@ struct FeedSortKey: Comparable {
     }
 }
 
+/// Where a session sits among the ones sharing a week — its day, then its start, then its own id.
+///
+/// A second implementation of `Persistence`'s `SessionOrder`, not a shared one, for the reason
+/// ``FeedPosition`` is one.
+struct SessionOrder: Comparable {
+    let date: Date
+    let startedAt: Date
+    let id: String
+
+    /// A session's place. One never tracked live sorts earliest in its own day.
+    ///
+    /// - Parameter session: The record.
+    init(_ session: WorkoutSession) {
+        self.date = session.date
+        self.startedAt = session.startedAt ?? .distantPast
+        self.id = session.id.uuidString
+    }
+
+    static func < (lhs: SessionOrder, rhs: SessionOrder) -> Bool {
+        (lhs.date, lhs.startedAt, lhs.id) < (rhs.date, rhs.startedAt, rhs.id)
+    }
+}
+
 /// `WorkoutRepository` over dictionaries (`TR-0.4.2`).
 ///
 /// The three levels join by `UUID` here exactly as they do in the store, so the cascade and the
@@ -81,6 +104,14 @@ struct InMemoryWorkoutRepository: WorkoutRepository, PlannedTargetRepository, Se
     /// The session carrying `id`, or `nil`.
     func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
         await store.session(id: id, includingDeleted: includingDeleted)
+    }
+
+    /// The run's sessions for one week, newest first (`TR-17.5`).
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        await store.allSessions(
+            forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
     }
 
     /// Inserts or replaces the session. `programRunID` and `scheduledWorkoutID` are unchecked —
@@ -163,6 +194,22 @@ extension InMemoryRepositoryStore {
             .filter { range.contains($0.date) }
             .live(includingDeleted: includingDeleted)
             .sortedDeterministically(by: { ($0.date, $0.id.uuidString) }, descending: true)
+    }
+
+    /// The sessions one run stamped with `week`, newest first.
+    ///
+    /// **A `nil` week never matches**, whatever the run: it is a workout logged before a program
+    /// stamped one (`FR-16.8.3`), not week zero. Ordered on ``SessionOrder`` for the store's
+    /// reason — two days of one week logged on one date tie on the day alone.
+    func allSessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) -> [WorkoutSession] {
+        Array(
+            sessions.values
+                .filter { $0.programRunID == runID && $0.weekNumber == week }
+                .live(includingDeleted: includingDeleted)
+                .sortedDeterministically { SessionOrder($0) }
+                .reversed())
     }
 
     /// The session carrying `id`, subject to the flag.

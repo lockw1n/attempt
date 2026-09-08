@@ -78,6 +78,8 @@ struct RootTabView: View {
             routinesDestination(route)
         case .training(.activeSession):
             activeSessionRoot
+        case .training(.day(let runID, let week, let dayIndex)):
+            dayRoot(runID: runID, week: week, dayIndex: dayIndex)
         case .settings(let route):
             settingsDestination(route)
         case .history(.session(let sessionID)):
@@ -105,6 +107,10 @@ struct RootTabView: View {
             programListRoot
         case .programEdit(let programID):
             programEditorRoot(programID)
+        // The interim destination `RoutinesRoute.editWeek` documents: `T-17.12` replaces it with
+        // the week's own editor, and the five cases above retire with it.
+        case .editWeek:
+            programListRoot
         }
     }
 
@@ -340,7 +346,12 @@ struct RootTabView: View {
         }
     }
 
-    /// Train's root — the session surface (`FR-1.2.1`) — or the reason it cannot be shown.
+    /// Train's root — this week (`FR-17.8.1`) — or the reason it cannot be shown.
+    ///
+    /// Four repositories, because a week is five tables joined: the run and its days, the routines
+    /// those days name, the targets those prescribe, the catalogue the targets are against, and the
+    /// sessions stamped with the run and the week. The screen joins them; `G-2.5` forbids the
+    /// schema doing it.
     @ViewBuilder
     private var trainRoot: some View {
         switch dependencies.state {
@@ -349,7 +360,32 @@ struct RootTabView: View {
                 store: stores.activeSession,
                 programs: repositories.programs,
                 routines: repositories.routines,
-                workouts: repositories.workouts)
+                workouts: repositories.workouts,
+                exercises: repositories.exercises)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// One day of the current week (`TR-17.6`), or the reason it cannot be shown.
+    ///
+    /// - Parameters:
+    ///   - runID: The program run the route carried.
+    ///   - week: The week number it carried.
+    ///   - dayIndex: The `ProgramDay.order` it carried.
+    @ViewBuilder
+    private func dayRoot(runID: UUID, week: Int, dayIndex: Int) -> some View {
+        switch dependencies.state {
+        case .open(let repositories, let stores):
+            DayView(
+                runID: runID,
+                week: week,
+                dayIndex: dayIndex,
+                store: stores.activeSession,
+                programs: repositories.programs,
+                routines: repositories.routines,
+                workouts: repositories.workouts,
+                exercises: repositories.exercises)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

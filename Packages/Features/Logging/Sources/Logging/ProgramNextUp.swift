@@ -68,11 +68,11 @@ public enum ProgramCommandFailure: Sendable, Equatable {
     case nextWeekFailed
 }
 
-/// Train's reading of the program in force, and the two commands that move it (`FR-16.8.2`,
-/// `FR-16.8.4`).
+/// The program in force, and the command that moves it on a week (`FR-16.8.4`).
 ///
-/// **Screen-lifetime, like `RoutineListState`**: nothing here outlives Train's root, and the one
-/// thing that does — the workout a **Start** creates — is ``ActiveSessionStore``'s.
+/// **Nothing draws this any more** — `FR-17.8.7` retired the Next-up card with the rest of the old
+/// root. It is kept for ``startNextWeek()``, which `T-17.13` hosts: the reads below are the reads
+/// that command makes, and rewriting them there would be this file written twice.
 @Observable
 public final class ProgramNextUpState {
     /// What the card has to show, as one value rather than three flags.
@@ -193,6 +193,12 @@ public final class ProgramNextUpState {
     }
 
     /// Moves the cursor past `index` without logging anything (`FR-16.8.4`).
+    ///
+    /// **No screen calls this any more** — `FR-17.8.2` retired **Skip day** from the root, and
+    /// `FR-17.8.8`'s **Skip remaining** is `T-17.11`'s different command over a day's rows. It is
+    /// kept because ``startNextWeek()`` is defined over a week that is over, and this is what
+    /// carries a run to one; retiring it belongs with the cursor column itself, in `T-17.14`'s
+    /// sweep.
     ///
     /// **A day skipped writes no session**, which is what makes it a skip: the week's rebuild reads
     /// the sessions it finds, so a day with none keeps the routine it already has rather than

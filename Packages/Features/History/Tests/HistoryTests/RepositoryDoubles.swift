@@ -10,6 +10,11 @@ struct FailingWorkoutRepository: WorkoutRepository {
     private var failure: RepositoryError { .recordNotFound(id: UUID()) }
 
     func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        throw failure
+    }
+    func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] { throw failure }
     func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? { throw failure }
@@ -58,6 +63,11 @@ actor FlakyWorkoutRepository: WorkoutRepository {
             forSessionID: sessionID, includingDeleted: includingDeleted)
     }
 
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
     func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] {
@@ -155,6 +165,11 @@ actor GatedWorkoutRepository: WorkoutRepository {
     }
 
     func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
+    func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] {
         try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
@@ -232,6 +247,11 @@ actor CountingWorkoutRepository: WorkoutRepository {
     }
 
     func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
+    func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] {
         sessionReads += 1
@@ -286,6 +306,14 @@ struct ForeignWorkoutLog: WorkoutRepository {
         self.wrapped = wrapped
     }
 
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        held.filter {
+            $0.programRunID == runID && $0.weekNumber == week
+                && (includingDeleted || $0.deletedAt == nil)
+        }
+    }
     func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] {

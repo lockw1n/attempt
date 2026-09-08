@@ -239,6 +239,12 @@ actor ScriptedWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     }
 
     /// The one row, when it is dated inside `range` — the read `resume()` makes.
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        if let readError { throw readError }
+        return [row].compactMap { $0 }.filter { $0.programRunID == runID && $0.weekNumber == week }
+    }
     func sessions(in range: ClosedRange<Date>, includingDeleted: Bool) async throws -> [WorkoutSession] {
         if let readError { throw readError }
         return [row].compactMap { $0 }.filter { range.contains($0.date) }

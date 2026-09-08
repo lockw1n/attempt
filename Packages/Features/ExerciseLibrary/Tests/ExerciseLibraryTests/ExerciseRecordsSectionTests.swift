@@ -290,6 +290,11 @@ struct RefusingWorkouts: WorkoutRepository {
     let failure: RepositoryError
 
     func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        throw failure
+    }
+    func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] { throw failure }
     func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? { throw failure }

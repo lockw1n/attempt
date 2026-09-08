@@ -309,3 +309,32 @@
 "logging.session.finish.pending.remove" = "Видалити";
 "logging.session.finish.pending.keep" = "Залишити невиконаними";
 "logging.session.finish.pending.cancel" = "Повернутися до тренування";
+
+/* FR-17.8: the week root. */
+"logging.week.heading %lld" = "Тиждень %lld";
+"logging.week.edit.action" = "Редагувати тиждень";
+"logging.week.library.action" = "Бібліотека вправ";
+"logging.week.free-workout.action" = "Вільне тренування";
+"logging.week.free-workout.title" = "Вільне тренування";
+"logging.week.day %lld" = "День %lld";
+"logging.week.day.start" = "Почати";
+"logging.week.day.continue" = "Продовжити";
+"logging.week.day.progress %lld %lld" = "%1$lld з %2$lld виконано";
+"logging.week.day.done %@" = "Виконано · %@";
+"logging.week.plan.line %@ %@" = "%1$@ · %2$@";
+"logging.week.plan.target %@ %lld %lld" = "%1$@ × %2$lld × %3$lld";
+"logging.week.plan.target-open %lld %lld" = "%1$lld × %2$lld";
+"logging.week.plan.target.separator" = ", ";
+"logging.week.empty.headline" = "Тиждень ще не заплановано";
+"logging.week.empty.message" = "Заплануйте тиждень — і кожен тренувальний день з’явиться тут, готовий до відмітки.";
+"logging.week.plan.action" = "Запланувати тиждень";
+"logging.week.error.headline" = "Тиждень недоступний";
+"logging.week.error.message" = "Не вдалося прочитати ваш план.";
+
+/* FR-17.9: one day of the week. */
+"logging.day.plan.heading" = "Заплановано";
+"logging.day.row.done" = "Виконано";
+"logging.day.empty.headline" = "На цей день нічого не заплановано";
+"logging.day.empty.message" = "Програму цього дня заархівовано. Відредагуйте тиждень і призначте іншу.";
+"logging.day.error.headline" = "День недоступний";
+"logging.day.error.message" = "Не вдалося прочитати цей день.";

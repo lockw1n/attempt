@@ -421,7 +421,7 @@ enum LoggingStrings {
             setWarmupHint,
         ] + allModifierStrings + allPlateStrings + allEquipmentStrings + allPastSessionStrings
             + allRecordStrings + allPlanStrings + allSetGroupStrings
-            + allProgramStrings
+            + allProgramStrings + allWeekStrings
             + MassUnit.allCases.map(setUnitSymbol(for:))
             + [true, false].map(setMarkAction(isWarmup:))
             + [SetOutcome.completed, .failed, .pending].map(setOutcome)

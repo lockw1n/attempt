@@ -243,6 +243,12 @@ actor FailableWorkoutRepository: WorkoutRepository {
     }
 
     func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        if refusesReads { throw failure }
+        return try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
+    func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] {
         if refusesReads { throw failure }
@@ -353,6 +359,11 @@ actor GatedWorkoutRepository: WorkoutRepository {
     }
 
     func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
+    func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] {
         try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
@@ -382,6 +393,11 @@ struct RefusingWorkoutRepository: WorkoutRepository {
     /// What every call raises.
     private var failure: RepositoryError { .recordNotFound(id: UUID()) }
 
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        throw failure
+    }
     func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] { throw failure }
