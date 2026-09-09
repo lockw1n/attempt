@@ -99,8 +99,9 @@ public final class WeekEditorState {
 
     /// Whether the last **Save** was refused because the week's own name field was empty.
     ///
-    /// **Beside ``writeFailed`` rather than a case of it**, on `RoutineManagementFailure`'s split:
-    /// one names a field the lifter can fill in, the other names only the store.
+    /// **Beside ``writeFailed`` rather than a case of it**, on the split the retired routine
+    /// editor's failure type made: one names a field the lifter can fill in, the other names only
+    /// the store.
     ///
     /// **And beside ``dayNameRequired`` rather than shared with it**, which is a correction: one
     /// flag for both refusals meant the screen said *both* sentences whenever either applied, so

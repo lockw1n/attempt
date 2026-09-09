@@ -110,8 +110,8 @@ struct SetGroupRow: View {
     /// without reintroducing that is to add one that says what it does.
     ///
     /// **Secondary, on a screen whose one accent is Finish** (`G-7.2`). It is the common action and
-    /// it is not the screen's primary one: `Repeat set`, `Add set` and `Log planned set` sit beneath
-    /// it at the same weight, and the filled button at the foot ends the workout.
+    /// it is not the screen's primary one: `Repeat set` and the card's own `Log` sit beneath it at
+    /// the same weight, and the filled button at the foot ends the workout.
     @ViewBuilder private var logNextCommand: some View {
         if let logNext {
             Button(action: logNext) {

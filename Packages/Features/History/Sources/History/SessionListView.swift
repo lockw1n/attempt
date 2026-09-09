@@ -146,7 +146,7 @@ public struct SessionListView: View {
                 ) {
                     // A tab switch that drops Train to its root, not a push — `D-8`'s one place a
                     // workout is logged.
-                    navigation?.startWorkout()
+                    navigation?.showTrain()
                 }
             )
         case .ready:

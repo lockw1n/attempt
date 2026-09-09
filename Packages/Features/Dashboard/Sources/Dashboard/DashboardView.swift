@@ -38,14 +38,14 @@ enum DashboardScreenState: Equatable {
     }
 }
 
-/// Home's root: the primary action, and either `FR-1.13.2`'s first launch or `FR-1.9`'s four
-/// sections.
+/// Home's root: either `FR-1.13.2`'s first launch or `FR-1.9`'s four sections.
 ///
-/// **The "Start workout" action is a navigation and not a logging surface** (`FR-1.9.4`, `D-8`).
-/// `NavigationState.startWorkout()` selects Train and drops it to its root, so the app's primary
-/// action always arrives at the one screen a workout is started from — which is the duplication the
-/// four-tab decision was taken to remove. It stays on screen while a workout is open, because Train's
-/// root is what says a workout is open; the card below is where `FR-1.9.2`'s resume lives.
+/// **Home offers no training action** (`D-17.11`, which withdrew `FR-1.9.4`). Training is the Train
+/// tab's, and a filled command here was a second door onto a tab the tab bar already reaches — so
+/// the sections shape is four readings and spends no accent at all (`FR-16.6.4`), the way
+/// `routines.routineList` does. `FR-1.9.2`'s card keeps its **Resume**, which is a push onto a
+/// workout already open rather than an offer to start one, and it is secondary. The one accent this
+/// screen can still spend is ``FirstLaunchReading``'s, on the shape that holds nothing else.
 ///
 /// **On first launch the sections are replaced rather than joined.** Every one of them draws its own
 /// state, and on an install with nothing in it that is five separate apologies pointing at the same
@@ -115,7 +115,7 @@ public struct DashboardView: View {
         _week = State(initialValue: WeekSummaryState(workouts: workouts))
     }
 
-    /// The action, then either the guided first launch or the four sections.
+    /// Either the guided first launch or the four sections.
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl.points) {
@@ -123,7 +123,6 @@ public struct DashboardView: View {
                 case .firstLaunch:
                     firstLaunch
                 case .sections:
-                    startAction
                     sections
                 }
             }
@@ -134,7 +133,7 @@ public struct DashboardView: View {
         .task { await week.load() }
     }
 
-    /// `FR-1.9`'s four sections, in the order `FR-1.9.4`'s action is primary to.
+    /// `FR-1.9`'s four sections.
     ///
     /// **The week before the records.** `FR-1.9.5`'s two numbers are about the days the reader is
     /// in the middle of, where `FR-1.9.3`'s feed and `FR-1.9.1`'s tiles both reach back months —
@@ -153,29 +152,22 @@ public struct DashboardView: View {
 
     /// `FR-1.13.2`'s guided state, wired to the shell.
     private var firstLaunch: some View {
-        FirstLaunchReading { navigation?.startWorkout() }
-    }
-
-    /// `FR-1.9.4`'s primary action.
-    private var startAction: some View {
-        Button {
-            navigation?.startWorkout()
-        } label: {
-            Text(DashboardStrings.startWorkout)
-        }
-        .buttonStyle(.primaryAction)
-        .frame(maxWidth: .infinity)
+        FirstLaunchReading { navigation?.showTrain() }
     }
 }
 
-/// `FR-1.13.2`: one guided state for an install with nothing in it, carrying `FR-1.9.4`'s action
-/// itself — `TR-1.12`'s renderable half.
+/// `FR-1.13.2`: one guided state for an install with nothing in it, carrying its one action —
+/// `TR-1.12`'s renderable half.
 ///
-/// **The separate "Start workout" button is not drawn above this.** The empty state's own action is
-/// the same navigation, and two identical primary buttons stacked on a screen holding nothing else
-/// is the first thing a new user would see.
+/// **The action is the Train tab's own empty-state offer, word for word** (`FR-17.8.5`'s **Plan
+/// your week**). An install with nothing in it can be sent to exactly one place, and a screen that
+/// named it differently from the screen it arrives at would read as two destinations.
+///
+/// **This is the only accent Home spends, and it is spent on a screen holding nothing else**
+/// (`FR-16.6.4`) — `EmptyStateView`'s own contract makes the action mandatory here, and there is no
+/// second command for it to outrank.
 struct FirstLaunchReading: View {
-    /// Goes to Train, where a workout is started.
+    /// Selects Train, where a week is planned.
     let start: () -> Void
 
     /// The heading, what the screen becomes, and the way to get there.
@@ -185,7 +177,7 @@ struct FirstLaunchReading: View {
             headline: Text(DashboardStrings.firstLaunchHeadline),
             message: Text(DashboardStrings.firstLaunchMessage),
             action: StateAction(
-                Text(DashboardStrings.startWorkout), emphasis: .primary, handler: start)
+                Text(DashboardStrings.planWeek), emphasis: .primary, handler: start)
         )
         .frame(maxWidth: .infinity)
     }

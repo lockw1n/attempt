@@ -162,8 +162,8 @@ struct PlannedTargetLine: View {
 ///
 /// **The command is offered only where the plan named a load.** A blank-weight group prescribes the
 /// reps and leaves the load to the lifter (`FR-15.2.2`), so there is nothing to log without asking
-/// — the card's **Add set** opens pre-filled there instead, which is one tap more and the only
-/// honest number available.
+/// — the card's **Log** opens the editor pre-filled there instead, which is one tap more and the
+/// only honest number available.
 struct PlannedNextSetSection: View {
     /// What the routine prescribed for the next working set.
     let target: PlannedTargetGroup

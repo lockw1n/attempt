@@ -187,18 +187,6 @@ struct ProgramFixture {
     /// - Returns: The store.
     func store() -> ActiveSessionStore { ActiveSessionStore.over(stack) }
 
-    /// Train's reading of the run in force, over the fixture's stack.
-    ///
-    /// - Parameter programs: The program store to read and write through, or `nil` for the
-    ///   stack's own — a substitute is how a refused write is reached.
-    /// - Returns: The state.
-    func nextUpState(programs: (any ProgramRepository)? = nil) -> ProgramNextUpState {
-        ProgramNextUpState(
-            programs: programs ?? stack.programs,
-            routines: stack.routines,
-            workouts: stack.workouts)
-    }
-
     /// Train's root over the fixture's stack — the week, and `FR-17.8.4`'s command.
     ///
     /// - Parameter programs: The program store to read and write through, or `nil` for the

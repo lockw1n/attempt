@@ -34,9 +34,10 @@
 /* VoiceOver's hint on a feed entry. It opens the exercise, not the session — see RecentRecordRow. */
 "dashboard.recent-records.exercise-hint" = "Shows this exercise's personal records.";
 
-/* FR-1.9.4's primary action. It navigates to the Train tab (D-8) rather than logging anything on
-   Home, so the verb is the one the user reads on arrival too. */
-"dashboard.start.action" = "Start workout";
+/* FR-1.13.2's one guided action on an install with nothing in it. It selects the Train tab (D-8),
+   and it is the same words that tab's own empty state offers (FR-17.8.5) — one destination, one
+   name for it. FR-1.9.4's "Start workout" was withdrawn by D-17.11. */
+"dashboard.plan-week.action" = "Plan your week";
 
 /* FR-1.9.2's card: the workout in progress, or the most recent finished one. */
 "dashboard.last-workout.title" = "Last workout";
@@ -97,9 +98,10 @@
 "dashboard.tiles.absence.no-effort" = "This formula reads the RPE or RIR on a set, and the recent sets here record neither.";
 
 /* FR-1.13.2. Shown INSTEAD OF every section on an install with nothing logged — one guided state
-   rather than five apologies pointing at the same action, which is why it carries the action itself
-   and the separate "Start workout" button is not drawn above it. The headline is about the app
-   filling up rather than about emptiness: "No data" is true and says nothing worth reading. */
+   rather than five apologies pointing at the same action, which is why it carries the action
+   itself. It is also the only shape of this screen that spends an accent, D-17.11 having withdrawn
+   the button that used to sit above the sections. The headline is about the app filling up rather
+   than about emptiness: "No data" is true and says nothing worth reading. */
 "dashboard.first-launch.headline" = "Your training log starts here";
 /* Names the four things the screen becomes, in the order it draws them, so the reward is concrete
    rather than a promise. */

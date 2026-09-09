@@ -229,9 +229,8 @@ public final class WeekState {
 
     /// Reads the week, on every appearance.
     ///
-    /// **Re-entrant through ``Phase/ready``**, on `ProgramNextUpState.load()`'s rule: the day
-    /// pushed over this one is what changes a card's state, so the week has to be right on the way
-    /// back.
+    /// **Re-entrant through ``Phase/ready``**: the day pushed over this one is what changes a
+    /// card's state, so the week has to be right on the way back.
     ///
     /// - Parameter openSession: The workout in progress, or `nil` — ``ActiveSessionStore/session``.
     ///   **Passed in rather than read**, because the app has exactly one and the store already

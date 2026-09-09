@@ -8,8 +8,8 @@ import SwiftUI
 /// accent, and a screen that needs three logging commands next to a **Finish** cannot spend it four
 /// times — so the other three are drawn at the same size and the same weight as each other, and the
 /// accent says which one ends the workout. Without a style for that, every screen hand-rolls its
-/// own rectangle: `Add set` and `Add exercise` each did, at two different surface tokens, on one
-/// screen.
+/// own rectangle: the logging card's set command and `Add exercise` each did, at two different
+/// surface tokens, on one screen.
 ///
 /// **A raised surface, which is where a control inside a card belongs** (``CardElevation/raised``).
 /// A card is ``DesignTokens/ColorToken/surface``, so a button drawn at that token on one is the

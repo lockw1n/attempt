@@ -94,9 +94,9 @@ public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
     /// The catalogue, grouped by movement, with search and filters (`FR-1.1.1`, `FR-1.1.2`).
     ///
     /// **Pushed onto Train's stack rather than being Train's root**, which is the answer to the
-    /// question ``NavigationState/startWorkout()`` leaves open: the root is the session surface, so
-    /// Home's primary action lands on a workout and not on a catalogue. The library is a place the
-    /// user goes from there.
+    /// question ``NavigationState/showTrain()`` leaves open: the root is the week (`FR-17.8`), so
+    /// anything that selects Train lands on the plan and not on a catalogue. The library is a place
+    /// the user goes from there.
     case exerciseList
 
     /// One exercise's detail (`FR-1.1.6`). T-1.11 builds it.

@@ -15,22 +15,22 @@ struct ProgramRunTests {
     func theWorkoutCarriesTheRun() async throws {
         let fixture = try await ProgramFixture()
         let store = fixture.store()
-        let nextUp = fixture.nextUpState()
-        await nextUp.load()
-        let reading = try #require(nextUp.nextUp)
-        guard case .next(let index, let routineID, let name) = reading.day else {
-            Issue.record("expected day 0 to be next")
-            return
-        }
-        #expect(index == 0)
-        #expect(name == "Squat day")
+        // The day is read off the program, not off a cursor (`D-17.10`) — `order` is the index the
+        // stamp carries, and the routine it names is what the workout is filled from.
+        let days = try await fixture.stack.programs.days(
+            forProgramID: fixture.programID, includingDeleted: false)
+        let day = try #require(days.first)
+        let routine = try #require(
+            try await fixture.stack.routines.routine(id: day.routineID, includingDeleted: false))
+        #expect(day.order == 0)
+        #expect(routine.name == "Squat day")
 
         #expect(
             await store.start(
                 on: fixture.today,
                 in: ProgramSessionStamp(
-                    runID: reading.runID, weekNumber: reading.weekNumber, dayIndex: index),
-                fromRoutineID: routineID,
+                    runID: fixture.runID, weekNumber: ProgramFixture.week, dayIndex: day.order),
+                fromRoutineID: day.routineID,
                 using: fixture.stack.routines))
 
         let session = try #require(store.session)
@@ -113,18 +113,11 @@ struct ProgramRunTests {
     func theNoteKeepsTheStamp() async throws {
         let fixture = try await ProgramFixture()
         let store = fixture.store()
-        let nextUp = fixture.nextUpState()
-        await nextUp.load()
-        let reading = try #require(nextUp.nextUp)
-        guard case .next(let index, let routineID, _) = reading.day else {
-            Issue.record("expected day 0 to be next")
-            return
-        }
         await store.start(
             on: fixture.today,
             in: ProgramSessionStamp(
-                runID: reading.runID, weekNumber: reading.weekNumber, dayIndex: index),
-            fromRoutineID: routineID,
+                runID: fixture.runID, weekNumber: ProgramFixture.week, dayIndex: 0),
+            fromRoutineID: fixture.routineIDs[0],
             using: fixture.stack.routines)
 
         await store.saveNote("felt heavy")

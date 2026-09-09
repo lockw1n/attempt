@@ -1,14 +1,11 @@
 /* Logging, Ukrainian (FR-1.14.1). The keys and the reasoning behind each string are in en.lproj
    beside this file. The table has to stay complete: a missing key renders its own identifier. */
 
-
 "logging.train.date.section" = "Дата тренування";
 "logging.train.date.picker" = "Тренувальний день";
 "logging.train.date.hint" = "Сьогодні, якщо ви не записуєте тренування з попереднього дня.";
 
 "logging.train.in-progress.day" = "Тренувальний день";
-
-
 
 "logging.train.start-error.message" = "Не вдалося почати це тренування. Спробуйте ще раз.";
 

@@ -33,9 +33,9 @@ extension ActiveSessionStore {
     /// Logs the next planned set exactly as the routine prescribed it (`NFR-15.3`, `FR-15.3.1`).
     ///
     /// **The one-tap half of "start to first set logged in two taps".** The other route to the same
-    /// set — **Add set**, opening the editor pre-filled — is one tap more, which is the tap that
-    /// puts the inclusive reading of `NFR-15.3` over budget. This command spends none: what the
-    /// plan named is what is written.
+    /// set — the card's **Log**, opening the editor pre-filled — is one tap more, which is the tap
+    /// that puts the inclusive reading of `NFR-15.3` over budget. This command spends none: what
+    /// the plan named is what is written.
     ///
     /// **Nothing is written where the plan named no load** (`FR-15.2.2`). A blank-weight group
     /// prescribes the reps and leaves the load to the lifter, so there is no set to log without

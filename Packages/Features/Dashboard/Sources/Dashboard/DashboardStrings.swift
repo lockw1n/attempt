@@ -163,10 +163,11 @@ enum DashboardStrings {
     /// Why it is off to begin with.
     static let recentRecordsBaselinesDetail = resource("dashboard.recent-records.baselines.detail")
 
-    /// `FR-1.9.4`'s primary action, which navigates to Train rather than logging anything here.
+    /// `FR-1.13.2`'s one guided action: select Train, where a week is planned.
     ///
-    /// **Also `FR-1.13.2`'s action**, where the first-launch state carries it instead of the button.
-    static let startWorkout = resource("dashboard.start.action")
+    /// **The Train tab's own empty-state offer, word for word** (`FR-17.8.5`) — the two states
+    /// point at one destination, so they name it once.
+    static let planWeek = resource("dashboard.plan-week.action")
 
     /// `FR-1.13.2`'s heading: an install with nothing in it.
     static let firstLaunchHeadline = resource("dashboard.first-launch.headline")
@@ -298,7 +299,7 @@ enum DashboardStrings {
             recentRecordsSchemesEmpty,
             recentRecordsBaselinesTitle, recentRecordsBaselinesLabel,
             recentRecordsBaselinesDetail,
-            startWorkout, lastWorkoutTitle, lastWorkoutNone, lastWorkoutNoneMessage,
+            planWeek, lastWorkoutTitle, lastWorkoutNone, lastWorkoutNoneMessage,
             lastWorkoutError, lastWorkoutInProgress, lastWorkoutResume, lastWorkoutRepeat,
             lastWorkoutRepeatError, lastWorkoutSets(4), lastWorkoutPlanned,
             firstLaunchHeadline, firstLaunchMessage,

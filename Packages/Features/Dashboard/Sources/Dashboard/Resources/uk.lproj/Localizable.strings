@@ -14,7 +14,7 @@
 "dashboard.recent-records.baseline" = "Уперше";
 "dashboard.recent-records.exercise-hint" = "Показує особисті рекорди цієї вправи.";
 
-"dashboard.start.action" = "Почати тренування";
+"dashboard.plan-week.action" = "Запланувати тиждень";
 
 "dashboard.last-workout.title" = "Останнє тренування";
 "dashboard.last-workout.none.headline" = "Тренувань ще немає";

@@ -4,7 +4,7 @@ import SwiftUI
 ///
 /// One object for all four stacks rather than one per tab, because the operations that matter are
 /// cross-tab: a route names the tab that owns it (``Route/tab``), so navigating to one is a tab
-/// selection *and* a push, and Home's "Start workout" is a tab selection with no push at all.
+/// selection *and* a push, and ``showTrain()`` is a tab selection with no push at all.
 ///
 /// `@Observable`, and there is exactly one of it (`TR-1.2` — no view model per view). A feature's
 /// own state belongs in that feature's store; what belongs here is position.
@@ -61,13 +61,17 @@ public final class NavigationState {
         stacks[tab] = nil
     }
 
-    /// The dashboard's primary action (`FR-1.9.4`): go to Train.
+    /// Selects Train and drops it to its root.
     ///
-    /// A **navigation**, deliberately — `D-8` removed the reference's duplication by making Train
-    /// the one place a workout is logged, and an inline logging surface presented from Home would
-    /// put it straight back. Train's stack is dropped to its root so the action always arrives at
-    /// the same place; what that root shows once a session can exist is T-1.20's.
-    public func startWorkout() {
+    /// A **navigation**, deliberately — `D-8` made Train the one place a workout is logged, and an
+    /// inline logging surface presented from another tab would put the duplication straight back.
+    /// The stack is dropped so the destination is always the week rather than wherever Train was
+    /// left.
+    ///
+    /// **Named for where it goes, not for what the caller offers**, since `FR-1.9.4`'s withdrawal
+    /// left it with three callers offering two different words: Home's **Plan your week**
+    /// (`FR-1.13.2`) and History's two empty states.
+    public func showTrain() {
         popToRoot(.train)
         selectedTab = .train
     }

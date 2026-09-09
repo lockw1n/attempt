@@ -465,9 +465,6 @@
 "logging.train.program.error.message" = "Could not read your program. Try again.";
 "logging.train.program.next-week-error.message" = "Could not start next week. Nothing was changed — try again.";
 
-/* The workout itself was finished and stored; only the program's cursor did not move. The sentence
-   says both halves, because a lifter who reads "could not finish" would go looking for the workout. */
-
 /* FR-16.8.3 / DOD-16.1: the week and day are read off the session's own columns, so a session note
    no longer has to carry them. */
 "logging.session.program.week-day %lld %lld" = "Week %1$lld · Day %2$lld";

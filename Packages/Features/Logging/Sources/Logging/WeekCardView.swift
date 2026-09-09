@@ -9,9 +9,8 @@ import SwiftUI
 
 /// The week: its heading, and one card per day of the run (`FR-17.8.1`).
 ///
-/// Taking the reading rather than the state, for `SessionInProgressSection`'s reason: this is what
-/// a snapshot renders, and a section that fetched its own facts would render as whatever it held
-/// before the read.
+/// Taking the reading rather than the state: this is what a snapshot renders, and a section that
+/// fetched its own facts would render as whatever it held before the read.
 struct WeekSection: View {
     /// The run these cards belong to — half of the route each one pushes.
     let runID: UUID

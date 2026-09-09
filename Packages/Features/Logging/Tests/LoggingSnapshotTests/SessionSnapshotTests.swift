@@ -122,7 +122,7 @@
         // MARK: - Sets inside one exercise (FR-1.2.3, FR-1.2.6)
 
         @Test func setEditorBlank() throws {
-            // FR-1.2.3's form as **Add set** opens it: four fields, nothing filled in, and the
+            // FR-1.2.3's form as the card's **Log** opens it: four fields, nothing filled in, and the
             // confirming command disabled. No complaint yet — a form that opened saying what is
             // wrong with it is a form scolding the user for not having typed.
             try assertSnapshots(named: "Session-set-editor-blank") {

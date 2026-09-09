@@ -65,6 +65,38 @@ struct DashboardStringsTests {
         }
     }
 
+    /// `D-17.11`: `FR-1.9.4`'s **Start workout** is withdrawn, and a withdrawal that already
+    /// shipped has to leave the catalogues as well as the screen.
+    ///
+    /// **Both catalogues, read as files**, rather than the accessors alone: `DashboardStrings.all`
+    /// can only say what the code still *names*, and a key left behind in `uk.lproj` with no
+    /// accessor is exactly the leftover `check-translations.sh` cannot see either — it compares the
+    /// two catalogues to each other, so a key present in both is complete and wrong.
+    ///
+    /// The guided action's own words are asserted here rather than in a picture, because what makes
+    /// them right is that they match the Train tab's empty state (`FR-17.8.5`) and a reference
+    /// cannot compare two modules.
+    @Test("The first launch offers Plan your week, and Start workout is in neither catalogue")
+    func theGuidedActionPlansTheWeek() throws {
+        #expect(String(localized: DashboardStrings.planWeek) == "Plan your week")
+
+        for localization in ["en", "uk"] {
+            let url = try #require(
+                Bundle.module.url(
+                    forResource: "Localizable",
+                    withExtension: "strings",
+                    subdirectory: nil,
+                    localization: localization
+                ))
+            let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
+            #expect(catalogue["dashboard.plan-week.action"] != nil)
+            #expect(catalogue["dashboard.start.action"] == nil, "\(localization) kept the key")
+            #expect(
+                !catalogue.values.contains("Start workout"),
+                "\(localization) still reads Start workout")
+        }
+    }
+
     /// The two forms are one label at two shapes, and each has to keep every number it was
     /// given — a translation that dropped one would read as the wrong record.
     @Test("A rep max and a scheme read as different labels")

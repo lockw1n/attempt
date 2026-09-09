@@ -125,8 +125,9 @@ struct RecentRecordsFeed: View {
             // requirement is written against.
             InsufficientDataView(
                 message: Text(DashboardStrings.recentRecordsNoneInScope),
-                // Secondary: this is a section of `tab.home`, which spends its one accent on
-                // `FR-1.9.4`'s **Start workout** above it (`FR-16.6.4`).
+                // Secondary: this is a section of `tab.home`, which since `D-17.11` withdrew
+                // `FR-1.9.4` spends no accent at all in this shape (`FR-16.6.4`). A filled offer
+                // here would become the screen's only one, which is not what it is.
                 action: StateAction(
                     Text(DashboardStrings.recentRecordsShowEverything), emphasis: .secondary
                 ) {

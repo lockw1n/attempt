@@ -176,7 +176,7 @@ public final class ActiveSessionStore {
     ///
     /// **One chain for the exercises and the sets together**, not one each: a set is written against
     /// an entry, and that entry can be moved or added by the same thumb between two taps of
-    /// **Log set**.
+    /// **Log**.
     var pendingWrite: Task<Void, Never>?
 
     /// Builds the store over the three repositories the workout is assembled from.
