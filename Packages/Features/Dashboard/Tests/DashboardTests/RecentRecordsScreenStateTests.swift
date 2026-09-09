@@ -122,7 +122,7 @@ struct RecentRecordsScreenStateTests {
         let widened = try await log.repositories.settings.settings()
         #expect(widened.recentRecordsScope == .everyExercise)
         #expect(widened.recentRecordsShowsBaselines == true)
-        #expect(widened.recentRecordsSchemes == .derived)
+        #expect(widened.recentRecordsSchemes == .everyScheme)
     }
 
     @Test("Records to show is the ready case")

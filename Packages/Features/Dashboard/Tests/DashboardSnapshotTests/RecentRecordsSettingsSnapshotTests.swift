@@ -24,47 +24,60 @@
     @Suite("Recent PRs configuration snapshots")
     struct RecentRecordsSettingsSnapshotTests {
         @Test func defaults() throws {
-            // What a lifter who has configured nothing sees: the dashboard scope, schemes following
-            // the log, baselines off — and therefore neither of the two revealed lists.
+            // What a lifter who has configured nothing sees: the dashboard scope, every scheme,
+            // baselines off — and therefore neither the Choose lifts row nor the scheme list.
             try assertSnapshots(named: "RecentRecords-settings") {
                 RecentRecordsSettingsForm(
                     settings: SettingsFixtures.row,
-                    exerciseSearchText: .constant(""),
-                    exerciseSections: SettingsFixtures.exerciseSections,
-                    hasExercises: true,
+                    chosenExerciseCount: 0,
                     schemes: SettingsFixtures.schemes,
                     hasFailedWrite: false,
                     apply: { _ in },
-                    toggleExercise: { _ in },
-                    setSchemesDerived: { _ in },
+                    setSchemesChosen: { _ in },
                     toggleScheme: { _ in })
             }
         }
 
-        @Test func bothListsRevealed() throws {
-            // The chosen scope and the chosen schemes together: the two lists a picker reveals, and
-            // the only configuration in which this screen is longer than four sections.
+        @Test func chosenScopeAndSchemes() throws {
+            // The chosen scope and the chosen schemes together: `FR-17.3.3`'s row carrying its
+            // count, and the scheme list the toggle above it reveals.
+            //
+            // THE COUNT IS READ OFF THE SAME ROW THE SCREEN READS IT FROM, not passed as a number
+            // this fixture chose: production computes it from `recentRecordsExerciseIDs`, and a
+            // fixture picking its own would picture a row that cannot happen.
             var configured = SettingsFixtures.row
             configured.recentRecordsScope = .chosen
+            configured.recentRecordsExerciseIDs = SettingsFixtures.exercises.map(\.exerciseID)
             configured.recentRecordsSchemes = .chosen([RecordScheme(reps: 5, sets: 5)])
             configured.recentRecordsShowsBaselines = true
 
+            try assertSnapshots(named: "RecentRecords-settings-chosen") {
+                RecentRecordsSettingsForm(
+                    settings: configured,
+                    chosenExerciseCount: configured.recentRecordsExerciseIDs?.count ?? 0,
+                    schemes: SettingsFixtures.chosenSchemes,
+                    hasFailedWrite: false,
+                    apply: { _ in },
+                    setSchemesChosen: { _ in },
+                    toggleScheme: { _ in }
+                )
+            }
+        }
+
+        @Test func pushedLiftPicker() throws {
+            // FR-17.3.3's own screen: the list that used to unfold inside the form above.
+            //
             // THE LOCALE AND THE TIME ZONE ARE PINNED, and only here: this is the one reference in
             // the suite that renders a date — `FR-16.5.3`'s "last trained" under a chosen lift —
             // and `SnapshotHarness` pins neither itself. Unpinned, the day 1_700_000_000 falls on
             // moves east of UTC+2 and the format moves with the recording machine's own locale.
-            try assertSnapshots(named: "RecentRecords-settings-chosen") {
-                RecentRecordsSettingsForm(
-                    settings: configured,
-                    exerciseSearchText: .constant(""),
-                    exerciseSections: SettingsFixtures.exerciseSections,
-                    hasExercises: true,
-                    schemes: SettingsFixtures.chosenSchemes,
+            try assertSnapshots(named: "RecentRecords-exercises") {
+                RecentRecordsExercisesReading(
+                    state: .ready(SettingsFixtures.exerciseSections),
+                    searchText: .constant(""),
                     hasFailedWrite: false,
-                    apply: { _ in },
-                    toggleExercise: { _ in },
-                    setSchemesDerived: { _ in },
-                    toggleScheme: { _ in }
+                    retry: {},
+                    toggle: { _ in }
                 )
                 .environment(\.locale, SettingsFixtures.locale)
                 .environment(\.timeZone, .gmt)
@@ -122,7 +135,7 @@
         /// Those rows as the screen draws them (`FR-16.5.3`).
         static let exerciseSections = ExerciseChoiceSections.sections(exercises, matching: "")
 
-        /// The derived case: cells the log offers, none of them the lifter's own choice.
+        /// The un-narrowed case: cells the log offers, none of them the lifter's own choice.
         static let schemes = [
             RecentRecordsSchemeChoice(scheme: RecordScheme(reps: 5, sets: 5), isChosen: false),
             RecentRecordsSchemeChoice(scheme: RecordScheme(reps: 3, sets: 1), isChosen: false),

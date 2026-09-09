@@ -117,11 +117,30 @@ enum DashboardStrings {
     static let recentRecordsSettingsWriteError = resource(
         "dashboard.recent-records.settings.write-error")
 
+    /// The toolbar control that opens the configuration from the feed (`FR-17.3.3`). A label for a
+    /// glyph, so it is what VoiceOver reads (`G-4.2`).
+    static let recentRecordsSettingsAction = resource("dashboard.recent-records.settings.action")
+
     /// `FR-16.3.1`'s heading.
     static let recentRecordsScopeTitle = resource("dashboard.recent-records.scope.title")
 
-    /// What choosing a narrower scope does, and where the first option's list comes from.
-    static let recentRecordsScopeDetail = resource("dashboard.recent-records.scope.detail")
+    /// What the *selected* scope does (`FR-17.3.3`).
+    ///
+    /// **A function over the vocabulary, like ``recentRecordsScopeName(for:)``**, and for a second
+    /// reason of its own: the caption sits under a segmented control, so a single sentence
+    /// describing one option is wrong for two thirds of the readings of this screen.
+    ///
+    /// - Parameter scope: The scope selected.
+    /// - Returns: What it reports on.
+    static func recentRecordsScopeDetail(
+        for scope: RecentRecordsScope
+    ) -> LocalizedStringResource {
+        switch scope {
+        case .dashboardLifts: resource("dashboard.recent-records.scope.detail.dashboard-lifts")
+        case .everyExercise: resource("dashboard.recent-records.scope.detail.every-exercise")
+        case .chosen: resource("dashboard.recent-records.scope.detail.chosen")
+        }
+    }
 
     /// One scope's name (`FR-16.3.1`).
     ///
@@ -139,19 +158,38 @@ enum DashboardStrings {
         }
     }
 
-    /// The heading over the chosen scope's own exercise list.
+    /// The pushed lift picker's own title (`FR-17.3.3`).
     static let recentRecordsExercisesTitle = resource("dashboard.recent-records.exercises.title")
+
+    /// The row on the configuration screen that opens it.
+    static let recentRecordsExercisesChoose = resource("dashboard.recent-records.exercises.choose")
+
+    /// How many lifts that row's screen has ticked — the second line of the row.
+    ///
+    /// - Parameter count: The chosen lifts.
+    /// - Returns: The count, as the row reads it.
+    static func recentRecordsExercisesCount(_ count: Int) -> LocalizedStringResource {
+        resource("dashboard.recent-records.exercises.count \(count)")
+    }
 
     /// The catalogue holds nothing to choose from.
     static let recentRecordsExercisesEmpty = resource("dashboard.recent-records.exercises.empty")
 
+    /// The catalogue could not be read.
+    static let recentRecordsExercisesError = resource("dashboard.recent-records.exercises.error")
+
+    /// A tick could not be stored. Nothing moved.
+    static let recentRecordsExercisesWriteError = resource(
+        "dashboard.recent-records.exercises.write-error")
+
     /// `FR-16.3.2`'s heading.
     static let recentRecordsSchemesTitle = resource("dashboard.recent-records.schemes.title")
 
-    /// The switch between derived and chosen schemes.
-    static let recentRecordsSchemesDerived = resource("dashboard.recent-records.schemes.derived")
+    /// The switch that narrows the feed to a chosen list of schemes (`FR-17.3.2`).
+    static let recentRecordsSchemesOnlyThese = resource(
+        "dashboard.recent-records.schemes.only-these")
 
-    /// What "derived" means, in the threshold the requirement names.
+    /// What the switch does in each of its two positions.
     static let recentRecordsSchemesDetail = resource("dashboard.recent-records.schemes.detail")
 
     /// The scope holds no record to choose a scheme from.
@@ -295,10 +333,12 @@ enum DashboardStrings {
             recentRecordsBaseline, recentRecordsExerciseHint,
             recentRecordsNoneInScope, recentRecordsShowEverything,
             recentRecordsSettingsTitle, recentRecordsSettingsError,
-            recentRecordsSettingsWriteError,
-            recentRecordsScopeTitle, recentRecordsScopeDetail,
-            recentRecordsExercisesTitle, recentRecordsExercisesEmpty,
-            recentRecordsSchemesTitle, recentRecordsSchemesDerived, recentRecordsSchemesDetail,
+            recentRecordsSettingsWriteError, recentRecordsSettingsAction,
+            recentRecordsScopeTitle,
+            recentRecordsExercisesTitle, recentRecordsExercisesChoose,
+            recentRecordsExercisesCount(3), recentRecordsExercisesEmpty,
+            recentRecordsExercisesError, recentRecordsExercisesWriteError,
+            recentRecordsSchemesTitle, recentRecordsSchemesOnlyThese, recentRecordsSchemesDetail,
             recentRecordsSchemesEmpty,
             recentRecordsBaselinesTitle, recentRecordsBaselinesLabel,
             recentRecordsBaselinesDetail,
@@ -318,6 +358,7 @@ enum DashboardStrings {
         ] + absences.map { tileAbsence($0, days: 90) }
             + absences.map { tileAbsenceShort($0, days: 90) }
             + RecentRecordsScope.allCases.map { recentRecordsScopeName(for: $0) }
+            + RecentRecordsScope.allCases.map { recentRecordsScopeDetail(for: $0) }
     }
 
     /// Binds a key to this module's catalogue.

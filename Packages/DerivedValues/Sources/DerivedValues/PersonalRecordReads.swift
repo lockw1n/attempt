@@ -92,28 +92,18 @@ extension PersonalRecordRecomputer {
     /// on the screen the app launches into. What a row this build did not compute costs the feed is
     /// written on ``RecentRecord/feed(from:limit:)``.
     ///
-    /// **The filter's exercise scope is applied to the cached rows, its scheme and baseline rules to
-    /// the grouped events, and `FR-16.3.2`'s derived schemes only where an event survives both** —
-    /// which is the order that keeps the expensive part rare. A derived scheme set costs one walk of
-    /// that exercise's sets, memoised per call, and it is asked for lazily down the ordered feed, so
-    /// the walks are bounded by the number of distinct exercises among the events examined before
-    /// `limit` survivors accumulate — under `FR-16.3.1`'s default scope, the handful the dashboard
-    /// already estimates a maximum for.
-    ///
-    /// **That bound is the scope's and nothing else's, and `FR-16.3.4`'s offer removes it.** A
-    /// lifter who takes it is written to `.everyExercise` with the schemes still derived, and this
-    /// read then walks the full set history of every exercise it has to reach — on the tab the app
-    /// launches into, at ``RecentRecordsState/listLimit`` on the feed's own screen. Fixing it is a
-    /// stored derivation rather than a change here, the same shape as
-    /// ``repMaxes(forExerciseID:)`` recomputing for an exercise that qualifies nothing, and it
-    /// wants the same "computed, confirmed" marker (`NFR-1.6`).
+    /// **The filter's exercise scope is applied to the cached rows and its scheme and baseline
+    /// rules to the grouped events** — and neither reads a set history. `FR-17.3.1` withdrew the
+    /// threshold that did, so this read is bounded by the cache whatever the scope is (`NFR-17.2`):
+    /// the widest configuration `FR-16.3.4`'s offer can write costs one cache read on the tab the
+    /// app launches into, where it used to cost a walk of every exercise it had to reach.
     ///
     /// - Parameters:
     ///   - limit: How many entries to return, counted in PR-setting *runs* rather than in cached
     ///     rows, and counted *after* filtering — five entries means five the lifter can read.
-    ///   - filter: What the feed is narrowed to (`FR-16.3.1`, `FR-16.3.2`, `FR-16.3.4`).
+    ///   - filter: What the feed is narrowed to (`FR-16.3.1`, `FR-17.3.2`, `FR-16.3.4`).
     /// - Returns: The feed, newest first.
-    /// - Throws: Whatever the repository throws reading the cache, or an exercise's sets.
+    /// - Throws: Whatever the repository throws reading the cache.
     public func recentRecords(
         limit: Int, filter: RecentRecordsFilter = .unfiltered
     ) async throws -> [RecentRecord] {
@@ -124,62 +114,7 @@ extension PersonalRecordRecomputer {
         // Grouped without a bound, because the bound counts what survives: a limit applied here
         // would be a limit on candidates, and a scope that filtered nine of ten would draw one row.
         let events = RecentRecord.feed(from: scoped, limit: Int.max)
-
-        var kept: [RecentRecord] = []
-        var derived: [UUID: Set<RecordScheme>] = [:]
-        for event in events where filter.admitsWithoutHistory(event) {
-            if filter.needsHistory {
-                let schemes: Set<RecordScheme>
-                if let known = derived[event.exerciseID] {
-                    schemes = known
-                } else {
-                    schemes = try await derivedSchemes(forExerciseID: event.exerciseID)
-                    derived[event.exerciseID] = schemes
-                }
-                // AN EXERCISE THAT DERIVES NOTHING IS NOT FILTERED, which is what keeps "derived
-                // from history" from meaning "your history is too short, so you get nothing". The
-                // threshold exists to drop a one-off scheme for a lifter who has habitual ones; a
-                // lifter who has none yet has nothing for it to drop, and an empty feed under a
-                // setting they never chose is the failure `FR-16.3.4` is written against.
-                guard schemes.isEmpty || schemes.contains(event.scheme) else { continue }
-            }
-            kept.append(event)
-            if kept.count == limit { break }
-        }
-        return kept
-    }
-
-    /// The schemes this exercise has actually been trained at — `FR-16.3.2`'s "logged at least three
-    /// times".
-    ///
-    /// **Runs, not cells**, which since `FR-17.2.1` is one cell each and was sixty before it. The
-    /// count is of performances: three sessions of `100 × 5 × 5` are three `5 × 5` performances,
-    /// where counting the cells the withdrawn dominance rule filled would have made `1 × 1` the
-    /// most-trained scheme of every lifter alive and the threshold would have filtered nothing. It
-    /// reads ``PowerliftingCore/SchemeRecordCalculator/cell(for:)``, which is where a run's cell and
-    /// its bounds are decided, so this and the records themselves cannot disagree about what a run
-    /// reached — a run outside the bounds included, which reaches nothing and is counted nowhere.
-    ///
-    /// **All-time, and `FR-1.7.1`'s window is deliberately not read.** `FR-16.3.2` names no window;
-    /// applying the estimate's would make a lifter narrowing their e1RM lookback silently lose
-    /// personal records, and it would cost a ranged session read plus one entry read per session
-    /// where this costs one.
-    ///
-    /// Internal: the feed is the only caller, and it is on this actor.
-    ///
-    /// - Parameter exerciseID: The exercise.
-    /// - Returns: The schemes at or over the threshold.
-    /// - Throws: Whatever the repository throws reading the sets.
-    func derivedSchemes(forExerciseID exerciseID: UUID) async throws -> Set<RecordScheme> {
-        let stored = try await workouts.sets(forExerciseID: exerciseID, includingDeleted: false)
-        let analysed = stored.compactMap { set in (try? set.setRecord()).map { (set, $0) } }
-        var counts: [RecordScheme: Int] = [:]
-        for run in SchemeRuns.runs(over: stored, offsetsInto: analysed) {
-            guard let cell = SchemeRecordCalculator.cell(for: run) else { continue }
-            counts[cell, default: 0] += 1
-        }
-        return Set(
-            counts.filter { $0.value >= RecentRecordsSchemes.derivedThreshold }.keys)
+        return Array(events.lazy.filter(filter.admits).prefix(limit))
     }
 }
 

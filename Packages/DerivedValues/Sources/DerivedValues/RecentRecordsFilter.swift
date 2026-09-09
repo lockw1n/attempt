@@ -2,7 +2,7 @@ import Foundation
 import PowerliftingCore
 import RepositoryInterface
 
-/// What `FR-1.6.5`'s feed is narrowed to (`FR-16.3.1`, `FR-16.3.2`, `FR-16.3.4`).
+/// What `FR-1.6.5`'s feed is narrowed to (`FR-16.3.1`, `FR-17.3.2`, `FR-16.3.4`).
 ///
 /// **Resolved identifiers rather than the stored scope**, and that is this type's whole reason for
 /// existing. `RecentRecordsScope.dashboardLifts` means "whatever `FR-1.9.1` currently selects",
@@ -10,9 +10,9 @@ import RepositoryInterface
 /// competition lifts, resolved by name against the rows that are actually installed. That rule lives
 /// in the dashboard feature, one layer up, so the caller resolves it and hands this the answer.
 ///
-/// **Applied after grouping, never before.** A run is one feed entry labelled by its maximal scheme
-/// (`FR-16.3.2`), so a filter on schemes has to see the label — filtering the cached cells first
-/// would drop the very rows a run's maximal cell is chosen from and relabel the event.
+/// **Applied after grouping, never before.** A run is one feed entry labelled by its own scheme
+/// (`FR-17.2.1`), so a filter on schemes has to see the label — filtering the cached cells first
+/// would drop the very rows a run's cell is chosen from and relabel the event.
 public struct RecentRecordsFilter: Sendable, Hashable {
     /// The exercises to report on, or `nil` for every one of them.
     ///
@@ -20,7 +20,7 @@ public struct RecentRecordsFilter: Sendable, Hashable {
     /// and then ticked nothing, which is an empty feed they asked for.
     public let exerciseIDs: Set<UUID>?
 
-    /// Which schemes appear (`FR-16.3.2`).
+    /// Which schemes appear (`FR-17.3.2`).
     public let schemes: RecentRecordsSchemes
 
     /// Whether a scheme's first-ever record appears (`FR-16.3.4`).
@@ -49,7 +49,7 @@ public struct RecentRecordsFilter: Sendable, Hashable {
     /// ``PersonalRecordRecomputer/recentRecords(limit:filter:)`` answering the same thing its
     /// unfiltered predecessor did.
     public static let unfiltered = Self(
-        exerciseIDs: nil, schemes: .chosen(Self.everyScheme), showsBaselines: true)
+        exerciseIDs: nil, schemes: .everyScheme, showsBaselines: true)
 
     /// The same filter with only `FR-16.3.1`'s scope narrowed — every scheme, baselines included.
     ///
@@ -60,7 +60,7 @@ public struct RecentRecordsFilter: Sendable, Hashable {
     /// - Parameter exerciseIDs: The exercises, or `nil` for all.
     /// - Returns: The filter.
     public static func scoped(to exerciseIDs: Set<UUID>?) -> Self {
-        Self(exerciseIDs: exerciseIDs, schemes: .chosen(Self.everyScheme), showsBaselines: true)
+        Self(exerciseIDs: exerciseIDs, schemes: .everyScheme, showsBaselines: true)
     }
 
     /// Which exercises `stored` scopes the feed to, or `nil` for every one of them (`FR-16.3.1`).
@@ -96,35 +96,18 @@ public struct RecentRecordsFilter: Sendable, Hashable {
         }
     }
 
-    /// Every cell of `FR-16.2.1`'s table, for ``unfiltered``.
+    /// Whether `record` survives the scheme rule and the baseline rule.
     ///
-    /// Enumerated rather than given a `.all` case: ``RepositoryInterface/RecentRecordsSchemes`` has two cases because
-    /// `FR-16.3.2` offers two choices, and a third meaning "no filter" would be a second spelling of
-    /// a selection the user can already make.
-    private static let everyScheme = PersonalRecords.repRange.flatMap { reps in
-        SchemeRecordCalculator.setRange.map { RecordScheme(reps: reps, sets: $0) }
-    }
-
-    /// Whether `record` survives this filter — the scheme rule and the baseline rule, which are the
-    /// two a caller can answer without reading anything.
-    ///
-    /// The exercise rule is applied to the cached rows before they are grouped, and
-    /// ``RepositoryInterface/RecentRecordsSchemes/derived`` needs a read, so neither is here.
+    /// **Everything this type decides, it decides from the entry alone**, which is `NFR-17.2` in
+    /// one sentence: `FR-17.3.1` withdrew the threshold, so no case here asks what an exercise's
+    /// history holds and the feed reads the record cache and nothing else. The exercise rule is the
+    /// one part applied elsewhere — to the cached rows, before they are grouped.
     ///
     /// - Parameter record: The feed entry.
     /// - Returns: Whether it is drawn.
-    func admitsWithoutHistory(_ record: RecentRecord) -> Bool {
+    func admits(_ record: RecentRecord) -> Bool {
         guard showsBaselines || !record.isBaseline else { return false }
         guard case .chosen(let chosen) = schemes else { return true }
         return chosen.contains(record.scheme)
-    }
-
-    /// Whether this filter has to read an exercise's history to decide (`FR-16.3.2`).
-    ///
-    /// An exercise whose history derives no scheme is drawn unfiltered — see
-    /// ``PersonalRecordRecomputer/recentRecords(limit:filter:)``, where that rule is written.
-    var needsHistory: Bool {
-        if case .derived = schemes { return true }
-        return false
     }
 }

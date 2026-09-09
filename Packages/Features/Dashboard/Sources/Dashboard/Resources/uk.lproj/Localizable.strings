@@ -71,18 +71,26 @@
 "dashboard.recent-records.settings.title" = "Свіжі рекорди";
 "dashboard.recent-records.settings.error" = "Не вдалося прочитати налаштування свіжих рекордів.";
 "dashboard.recent-records.settings.write-error" = "Не вдалося зберегти цю зміну.";
+"dashboard.recent-records.settings.action" = "Налаштування нещодавніх рекордів";
 
 "dashboard.recent-records.scope.title" = "Які вправи";
 "dashboard.recent-records.scope.dashboard-lifts" = "Головний екран";
 "dashboard.recent-records.scope.every-exercise" = "Усі";
 "dashboard.recent-records.scope.chosen" = "Вибрані";
-"dashboard.recent-records.scope.detail" = "«Головний екран» бере ті самі вправи, для яких ви показуєте орієнтовний 1ПМ, — один вибір працює для обох.";
+"dashboard.recent-records.scope.detail.dashboard-lifts" = "Бере ті самі вправи, для яких ви показуєте орієнтовний 1ПМ, — один вибір працює для обох.";
+"dashboard.recent-records.scope.detail.every-exercise" = "Показує кожну вправу, яку ви записували.";
+"dashboard.recent-records.scope.detail.chosen" = "Показує вправи, які ви виберете тут, незалежно від головного екрана.";
+
 "dashboard.recent-records.exercises.title" = "Вправи в цій стрічці";
+"dashboard.recent-records.exercises.choose" = "Вибрати вправи";
+"dashboard.recent-records.exercises.count %lld" = "Вибрано: %lld";
 "dashboard.recent-records.exercises.empty" = "Немає вправ для вибору";
+"dashboard.recent-records.exercises.error" = "Не вдалося прочитати ваші вправи.";
+"dashboard.recent-records.exercises.write-error" = "Не вдалося зберегти цю зміну.";
 
 "dashboard.recent-records.schemes.title" = "Які схеми";
-"dashboard.recent-records.schemes.derived" = "За моїми тренуваннями";
-"dashboard.recent-records.schemes.detail" = "Показує рекорди в будь-якій схемі «повторення × підходи», яку ви виконували щонайменше тричі. Вимкніть, щоб вибрати схеми самостійно.";
+"dashboard.recent-records.schemes.only-these" = "Лише ці схеми";
+"dashboard.recent-records.schemes.detail" = "Вимкнено — стрічка показує рекорди в кожній схемі «повторення × підходи». Увімкнено — лише в позначених.";
 "dashboard.recent-records.schemes.empty" = "Поки немає рекордів, з яких можна вибрати схему.";
 
 "dashboard.recent-records.baselines.title" = "Перші рекорди";

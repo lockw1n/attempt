@@ -376,6 +376,25 @@ public struct RecentRecordsView: View {
         }
         .background(ColorToken.background)
         .navigationTitle(Text(DashboardStrings.recentRecordsTitle))
+        .toolbar { settingsLink }
+    }
+
+    /// `FR-17.3.3`'s way from the feed to what narrows it.
+    ///
+    /// **Here and not on the card**, which is the same split the card's **See all** row makes: the
+    /// dashboard is four sections and a control belonging to one of them would read as the screen's.
+    /// A reader who wants to know why a record is missing is on this screen already.
+    ///
+    /// **A glyph with a label, not a word**, on the navigation bar's own terms — the label is what
+    /// VoiceOver reads (`G-4.2`), and it is a `Route` rather than a closure because the destination
+    /// is the app target's to compose (`TR-1.3`).
+    @ToolbarContentBuilder private var settingsLink: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            NavigationLink(value: Route.settings(.recentRecords)) {
+                Image(systemName: "slider.horizontal.3")
+                    .accessibilityLabel(Text(DashboardStrings.recentRecordsSettingsAction))
+            }
+        }
     }
 }
 

@@ -5,26 +5,19 @@ import SwiftUI
 
 /// The searchable, sectioned toggle list both exercise pickers draw (`FR-16.5.3`).
 ///
-/// **One view, two callers, and neither of them is on another module's side of `TR-1.3`.** The tile
-/// picker (`FR-1.9.1`) and the recent-records `.chosen` list (`FR-16.3.1`) are both `Dashboard`
-/// screens, so this is a `Dashboard` type rather than the `DesignSystem` or `ExerciseLibrary`
-/// component the task predicted — only ``DesignSystem/SearchField`` had to move down, because the
-/// exercise library's header needs one too. Extracting it here is what stops the second screen from
-/// growing its own search and its own idea of what "trained" means.
+/// **One view, two callers, and neither is on another module's side of `TR-1.3`.** The tile picker
+/// (`FR-1.9.1`) and the recent-records lift picker (`FR-17.3.3`) are both `Dashboard` screens, so
+/// this is a `Dashboard` type rather than the `DesignSystem` or `ExerciseLibrary` component the task
+/// predicted; only ``DesignSystem/SearchField`` had to move down, because the exercise library's
+/// header needs one too. Extracting it here is what stops a second screen from growing its own
+/// search and its own idea of what "trained" means.
 ///
-/// **The `.chosen` list stays inline under its scope picker**, which is the shape T-16.07 shipped
-/// and its argument still holds: a row leading to a chooser that the current scope ignores is a dead
-/// end. Sharing the *view* was the part that was owed, not a push.
+/// **It carries no heading of its own any more.** The one host that needed one was the inline
+/// `.chosen` list, which retired with `FR-17.3.3`; both remaining hosts are pushed screens whose
+/// navigation bars have already said what the list is. A host that draws it among other headed
+/// sections has to give it back — see T-16.09's rule, that a shared view loses the frame its last
+/// host gave it.
 struct ExerciseChoiceList: View {
-    /// What this list is, or `nil` where the screen has already said.
-    ///
-    /// **A heading rather than one more ``DesignSystem/GroupedSection``**: the sections below are
-    /// cards already, and wrapping them in another would draw a surface around a surface. The tile
-    /// picker passes nothing — the screen it fills is titled — where `settings.recentRecords`
-    /// reveals this list between three other headed sections, and two unlabelled cards there say
-    /// nothing about which scope they belong to.
-    var title: LocalizedStringResource?
-
     /// What the user has typed, bound to whichever state holds it.
     @Binding var searchText: String
 
@@ -42,11 +35,6 @@ struct ExerciseChoiceList: View {
     /// field the message sits under is one tap from bringing every one of them back. A search the
     /// user typed is a cause they can see; the tiles' empty state had neither.
     var body: some View {
-        if let title {
-            Text(title)
-                .font(Typography.sectionHeading.font)
-                .foregroundStyle(ColorToken.textPrimary)
-        }
         SearchField(text: $searchText, prompt: DashboardStrings.exerciseSearchPrompt)
         if sections.isEmpty {
             EmptyStateView(

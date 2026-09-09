@@ -8,6 +8,9 @@ import Testing
 @testable import Dashboard
 
 /// `FR-16.3`'s configuration screen: what it reads, what it writes, and what it tells the feed.
+///
+/// The chosen lifts are `RecentRecordsExercisesStateTests`' since `FR-17.3.3` — this screen carries
+/// their count and no longer their list.
 @Suite("Recent PRs configuration")
 @MainActor
 struct RecentRecordsSettingsStateTests {
@@ -29,7 +32,7 @@ struct RecentRecordsSettingsStateTests {
             exerciseNamed: "Back Squat", movement: .squat, isCustom: false)
         let kickback = try await repositories.save(
             exerciseNamed: "Triceps Kickback", movement: .other, isCustom: true)
-        // Three 5 × 3 runs, improving: enough for `FR-16.3.2`'s threshold, and not a baseline.
+        // Three 5 × 3 runs, improving, so the standing record beat something and is not a baseline.
         for (offset, grams) in [(0, 120_000), (1, 130_000), (2, 140_000)] {
             try await repositories.log(
                 exerciseID: squat, grams: grams, reps: 5, sets: 3, dayOffset: offset)
@@ -46,7 +49,7 @@ struct RecentRecordsSettingsStateTests {
             kickback: kickback)
     }
 
-    @Test("A load reports the stored row, the exercises and the schemes in scope")
+    @Test("A load reports the stored row and the schemes in scope")
     func aLoadReportsTheConfiguration() async throws {
         let fixture = try await configured()
 
@@ -55,7 +58,6 @@ struct RecentRecordsSettingsStateTests {
         #expect(fixture.state.hasLoaded)
         #expect(fixture.state.failure == nil)
         #expect(fixture.state.settings?.recentRecordsScope == .dashboardLifts)
-        #expect(fixture.state.exerciseChoices.map(\.name) == ["Back Squat", "Triceps Kickback"])
         // The squat is the only competition lift installed, so the default scope resolves to it and
         // the schemes offered are its own.
         #expect(fixture.state.schemeChoices.map(\.scheme) == [RecordScheme(reps: 5, sets: 3)])
@@ -69,12 +71,10 @@ struct RecentRecordsSettingsStateTests {
         await fixture.state.load()
 
         await fixture.state.apply { $0.recentRecordsScope = .chosen }
-        await fixture.state.toggleExercise(fixture.kickback)
         await fixture.state.apply { $0.recentRecordsShowsBaselines = true }
 
         let stored = try await fixture.repositories.settings.settings()
         #expect(stored.recentRecordsScope == .chosen)
-        #expect(stored.recentRecordsExerciseIDs == [fixture.kickback])
         #expect(stored.recentRecordsShowsBaselines == true)
         #expect(fixture.state.writeFailure == nil)
     }
@@ -86,7 +86,7 @@ struct RecentRecordsSettingsStateTests {
         let fixture = try await configured()
         await fixture.state.load()
 
-        await fixture.state.setSchemesDerived(false)
+        await fixture.state.setSchemesChosen(true)
 
         #expect(
             fixture.state.settings?.recentRecordsSchemes
@@ -94,11 +94,27 @@ struct RecentRecordsSettingsStateTests {
         #expect(fixture.state.schemeChoices.allSatisfy { $0.isChosen })
     }
 
+    /// Turning the switch back off writes the un-configured value rather than a chosen list holding
+    /// every cell — two spellings of "no narrowing" is how ``RecentRecordsState/isNarrowed`` starts
+    /// disagreeing with the feed it describes (`FR-17.3.2`).
+    @Test("Turning the chosen list off writes every scheme")
+    func turningTheChosenListOffWritesEveryScheme() async throws {
+        let fixture = try await configured()
+        await fixture.state.load()
+        await fixture.state.setSchemesChosen(true)
+
+        await fixture.state.setSchemesChosen(false)
+
+        #expect(fixture.state.settings?.recentRecordsSchemes == .everyScheme)
+        let stored = try await fixture.repositories.settings.settings()
+        #expect(stored.recentRecordsSchemes == .everyScheme)
+    }
+
     @Test("A scheme is taken out of the chosen list and put back")
     func aSchemeTogglesInTheChosenList() async throws {
         let fixture = try await configured()
         await fixture.state.load()
-        await fixture.state.setSchemesDerived(false)
+        await fixture.state.setSchemesChosen(true)
         let scheme = RecordScheme(reps: 5, sets: 3)
 
         await fixture.state.toggleScheme(scheme)
@@ -193,7 +209,11 @@ private struct RefusingSettings: SettingsRepository {
 
 extension InMemoryRepositoryStack {
     /// One catalogue row, enough for the configuration screen's list.
-    fileprivate func save(
+    ///
+    /// Internal rather than `fileprivate`: `RecentRecordsExercisesStateTests` builds the same store
+    /// since `FR-17.3.3` split the picker off this screen, and two copies of a fixture is how the
+    /// two suites start disagreeing about what they are configuring.
+    func save(
         exerciseNamed name: String, movement: Movement, isCustom: Bool
     ) async throws -> UUID {
         let id = UUID()
@@ -218,7 +238,7 @@ extension InMemoryRepositoryStack {
     }
 
     /// A session of `sets` consecutive completed working sets, on its own training day.
-    fileprivate func log(
+    func log(
         exerciseID: UUID, grams: Int, reps: Int, sets: Int, dayOffset: Int
     ) async throws {
         let day = Date(timeIntervalSince1970: 1_700_000_000)

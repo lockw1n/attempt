@@ -29,6 +29,7 @@ struct RouteTests {
         .history(.calendar),
         .history(.week(containing: day)),
         .settings(.about),
+        .settings(.recentRecordsExercises),
     ]
 
     /// The keys a route encodes to, outermost first — the case names and the associated-value
@@ -94,6 +95,10 @@ struct RouteTests {
                 == ["history", "_0", "week", "containing"]
         )
         #expect(try Self.encodedKeyPath(.settings(.about)) == ["settings", "_0", "about"])
+        #expect(
+            try Self.encodedKeyPath(.settings(.recentRecordsExercises))
+                == ["settings", "_0", "recentRecordsExercises"]
+        )
     }
 
     /// `D-8`/Q-1.2's split, stated as the mapping the shell actually navigates by. The Train pair is
@@ -107,6 +112,7 @@ struct RouteTests {
         #expect(Route.history(.session(sessionID: UUID())).tab == .history)
         #expect(Route.history(.week(containing: Self.day)).tab == .history)
         #expect(Route.settings(.about).tab == .settings)
+        #expect(Route.settings(.recentRecordsExercises).tab == .settings)
     }
 
     /// The payload has to come back, not just the case: a route that decoded to *some* exercise

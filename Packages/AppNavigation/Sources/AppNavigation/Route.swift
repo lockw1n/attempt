@@ -323,4 +323,16 @@ public enum SettingsRoute: Hashable, Sendable, Codable {
     /// the app can legitimately be restored to. It carries no selection for the same reason that one
     /// does — what is configured is a stored row, not a parameter of a push.
     case recentRecords
+
+    /// Which lifts that feed reports on, under ``recentRecords``' `Chosen` scope (`FR-17.3.3`).
+    ///
+    /// **A second Settings route over a `Dashboard` screen, pushed from the first.** The list used
+    /// to unfold inside ``recentRecords`` and is 132 rows on a seeded install, which put every
+    /// control beneath it out of reach; `FR-17.3.3` makes it a screen, and a screen the app can be
+    /// restored onto needs a case.
+    ///
+    /// **It carries no selection**, like every case here: what is configured is a stored column, and
+    /// a route holding the ticks would restore a lifter into a list that disagreed with the row it
+    /// is drawn from.
+    case recentRecordsExercises
 }

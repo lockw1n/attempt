@@ -69,7 +69,7 @@ cd "$(dirname "$0")/.."
 #   Logging:         93 tests, 88 reference-backed, a width probe and four layout budgets
 #                                                                    -> 93, its own count.
 #   History:         28 tests, 27 reference-backed, one layout budget -> 28, above the 27.
-#   Dashboard:       20 tests, all of them reference-backed, no probes -> 20, its own count.
+#   Dashboard:       21 tests, all of them reference-backed, no probes -> 21, its own count.
 #   Settings:        45 tests, all of them reference-backed, no probes -> 45, its own count.
 #   Routines:         4 tests, all of them reference-backed, no probes ->  4, its own count.
 #                     The one floor that has ever gone DOWN: T-17.12 retired four screens for one
@@ -89,7 +89,7 @@ SUITES=(
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|41"
     "Packages/Features/Logging|Logging|LoggingSnapshotTests|93"
     "Packages/Features/History|History|HistorySnapshotTests|28"
-    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|20"
+    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|21"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|45"
     "Packages/Features/Routines|Routines|RoutinesSnapshotTests|4"
 )

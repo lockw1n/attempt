@@ -3,7 +3,7 @@ import Foundation
 import PowerliftingCore
 import RepositoryInterface
 
-/// One scheme the feed could be narrowed to, and whether it is (`FR-16.3.2`).
+/// One scheme the feed could be narrowed to, and whether it is (`FR-17.3.2`).
 struct RecentRecordsSchemeChoice: Identifiable, Sendable, Equatable {
     /// The cell.
     let scheme: RecordScheme
@@ -23,6 +23,11 @@ struct RecentRecordsSchemeChoice: Identifiable, Sendable, Equatable {
 /// three of the four controls change what the *other* controls offer — widening the scope changes
 /// which schemes are available to choose among.
 ///
+/// **The chosen lifts are a count here and a list one screen further on** (`FR-17.3.3`), so nothing
+/// on this screen reads the catalogue for a row: the count comes off the stored column, and
+/// ``RecentRecordsExercisesState`` owns the picker. The catalogue is still read once, to resolve
+/// `FR-16.3.1`'s default scope into the identifiers the scheme list is gathered under.
+///
 /// **The candidate schemes come from the records, not from the table.** `FR-16.2.1`'s table is sixty
 /// cells and a checklist of sixty is not a control; what the feed can actually draw is the distinct
 /// *maximal* scheme of each run in scope (`FR-16.3.2`), which is a short list of the shapes this
@@ -34,28 +39,8 @@ final class RecentRecordsSettingsState {
     /// The row every control reads its selection from, or `nil` before the first read answers.
     private(set) var settings: UserSettings?
 
-    /// Every exercise the `.chosen` scope can name, ordered by name.
-    ///
-    /// Read whatever the scope is, so switching to `.chosen` does not land on an empty screen while
-    /// a second read runs.
-    private(set) var exerciseChoices: [TiledExerciseChoice] = []
-
-    /// What the user typed into the `.chosen` list's search field (`FR-16.5.3`).
-    var exerciseSearchText = ""
-
-    /// The `.chosen` list as it is drawn: trained first, then the rest, narrowed by the search.
-    ///
-    /// The same split the tile picker gets, from the same function — sharing it is what stops this
-    /// screen from growing its own idea of what "trained" means.
-    var exerciseSections: [ExerciseChoiceSection] {
-        ExerciseChoiceSections.sections(exerciseChoices, matching: exerciseSearchText)
-    }
-
     /// The schemes in scope, and which are ticked.
     private(set) var schemeChoices: [RecentRecordsSchemeChoice] = []
-
-    /// ``trainedDates()``' one answer for this visit, or `nil` while it has not been read.
-    private var lastTrained: [UUID: Date]?
 
     /// Whether the first read has answered.
     private(set) var hasLoaded = false
@@ -66,13 +51,10 @@ final class RecentRecordsSettingsState {
     /// Why the last change could not be stored, or `nil`. Nothing changed when it is set.
     private(set) var writeFailure: String?
 
-    /// Which of an exercise's two names a row shows, and orders by (`FR-1.14.2`).
-    var nameLanguage: ExerciseNameLanguage = .english
-
     /// Where the row lives.
     @ObservationIgnored private let settingsRepository: any SettingsRepository
 
-    /// The exercises to choose among, and what `FR-1.9.1`'s default scope resolves against.
+    /// What `FR-1.9.1`'s default scope resolves against — the rows `DashboardDefaults` picks from.
     @ObservationIgnored private let catalogue: any ExerciseRepository
 
     /// Where the candidate schemes are read from, and what is told that the row moved.
@@ -82,7 +64,7 @@ final class RecentRecordsSettingsState {
     ///
     /// - Parameters:
     ///   - settings: Where the configuration is stored.
-    ///   - catalogue: The exercises to choose among.
+    ///   - catalogue: The exercises `FR-16.3.1`'s default scope resolves against.
     ///   - records: The app's one recompute actor — the candidate schemes, and the announcement that
     ///     tells the feed to re-read (`TR-1.5`).
     init(
@@ -95,34 +77,24 @@ final class RecentRecordsSettingsState {
         self.recomputer = records
     }
 
-    /// Reads the row, the catalogue and the schemes the current scope offers.
+    /// Reads the row and the schemes the current scope offers.
     ///
     /// **A fresh read retires ``writeFailure``**, `TiledExerciseSelectionState/load()`'s rule: a
     /// failed change is reported beside the controls it did not move, and those controls are exactly
     /// what this replaces.
     ///
-    /// The last-trained dates come from ``trainedDates()`` rather than the recomputer directly, so
-    /// every control on this screen does not re-walk the log to answer a question none of them
-    /// moved.
+    /// **It runs on every appearance**, which is what makes the row's count true after a visit to
+    /// the picker it opens (`FR-17.3.3`).
     func load() async {
         writeFailure = nil
         do {
             let stored = try await settingsRepository.settings()
             let exercises = try await catalogue.exercises(includingDeleted: false)
-            let chosen = Set(stored.recentRecordsExerciseIDs ?? [])
             let scope = try await RecentRecordsFilter.scope(of: stored) {
                 DashboardDefaults.exerciseIDs(
                     in: exercises, mostTrained: try await recomputer.mostTrainedExerciseIDs())
             }
-            let trained = try await trainedDates()
             settings = stored
-            exerciseChoices = ExerciseDisplayOrder.sorted(exercises, in: nameLanguage).map {
-                TiledExerciseChoice(
-                    exerciseID: $0.id,
-                    name: $0.displayName(in: nameLanguage),
-                    isTiled: chosen.contains($0.id),
-                    lastTrained: trained[$0.id])
-            }
             schemeChoices = try await schemes(inScope: scope, chosen: stored.recentRecordsSchemes)
             failure = nil
         } catch {
@@ -131,22 +103,7 @@ final class RecentRecordsSettingsState {
         hasLoaded = true
     }
 
-    /// When each exercise was last trained, read once per visit rather than once per load.
-    ///
-    /// ``TiledExerciseSelectionState/trainedDates()``' reason, on the screen it bites harder:
-    /// ``apply(_:)`` and ``toggleExercise(_:)`` both end in ``load()``, so every scope change,
-    /// scheme tick and baseline switch would otherwise walk every session in the lookback window
-    /// and every set under it (`NFR-1.6`). None of those controls changes what was trained when.
-    ///
-    /// - Returns: The most recent session date per exercise, for exercises trained in the window.
-    private func trainedDates() async throws -> [UUID: Date] {
-        if let lastTrained { return lastTrained }
-        let dates = try await recomputer.lastTrainedDates()
-        lastTrained = dates
-        return dates
-    }
-
-    /// Moves one field on the stored row and re-reads (`FR-16.3.1`, `FR-16.3.2`, `FR-16.3.4`).
+    /// Moves one field on the stored row and re-reads (`FR-16.3.1`, `FR-17.3.2`, `FR-16.3.4`).
     ///
     /// **It re-reads the row before writing rather than saving the copy on screen.** A control here
     /// changes what the other controls offer, so the row this screen holds can be one read behind
@@ -169,21 +126,7 @@ final class RecentRecordsSettingsState {
         await load()
     }
 
-    /// Adds or removes one exercise from the `.chosen` list (`FR-16.3.1`).
-    ///
-    /// An added exercise goes to the end, on `TiledExerciseSelectionState/toggle(_:)`'s rule.
-    ///
-    /// - Parameter exerciseID: The exercise to toggle.
-    func toggleExercise(_ exerciseID: UUID) async {
-        await apply { stored in
-            let current = stored.recentRecordsExerciseIDs ?? []
-            stored.recentRecordsExerciseIDs =
-                current.contains(exerciseID)
-                ? current.filter { $0 != exerciseID } : current + [exerciseID]
-        }
-    }
-
-    /// Adds or removes one scheme from the chosen list (`FR-16.3.2`).
+    /// Adds or removes one scheme from the chosen list (`FR-17.3.2`).
     ///
     /// - Parameter scheme: The cell to toggle.
     func toggleScheme(_ scheme: RecordScheme) async {
@@ -196,18 +139,18 @@ final class RecentRecordsSettingsState {
         }
     }
 
-    /// Switches between derived and chosen schemes (`FR-16.3.2`).
+    /// Switches between every scheme and a chosen list (`FR-17.3.2`).
     ///
     /// **Turning the chosen list *on* seeds it with everything on offer, not with nothing.** The
     /// list is a narrowing, and a switch whose first effect is to empty the feed reads as the
     /// control being broken rather than as a starting point — so the feed does not move until the
     /// lifter unticks something, which is the tap that means it.
     ///
-    /// - Parameter isDerived: Whether the schemes follow the training log.
-    func setSchemesDerived(_ isDerived: Bool) async {
+    /// - Parameter isChosen: Whether the feed is narrowed to a list the lifter picks.
+    func setSchemesChosen(_ isChosen: Bool) async {
         let offered = schemeChoices.map(\.scheme)
         await apply { stored in
-            stored.recentRecordsSchemes = isDerived ? .derived : .chosen(offered)
+            stored.recentRecordsSchemes = isChosen ? .chosen(offered) : .everyScheme
         }
     }
 
@@ -223,8 +166,8 @@ final class RecentRecordsSettingsState {
             limit: RecentRecordsState.listLimit, filter: .scoped(to: scope))
         let ticked = chosen.chosenSchemes
         let offered = Set(available.map(\.scheme)).union(ticked ?? [])
-        // A derived list ticks nothing, and the ticks are not drawn under it either: the cells it
-        // shows are the log's answer rather than the lifter's.
+        // Every scheme ticks nothing, and the list is not drawn under it either: the toggle above
+        // is off, and what the feed shows is the whole table rather than a selection.
         return offered.sorted().map {
             RecentRecordsSchemeChoice(scheme: $0, isChosen: ticked?.contains($0) ?? false)
         }
