@@ -24,6 +24,14 @@ import RepositoryInterface
 /// same "short rather than wrong" routine `Routines`' own editor already allows — a slot with no
 /// target is one the lifter has not decided yet — and dropping the exercise instead would silently
 /// shorten the plan.
+///
+/// **A skipped exercise keeps the plan it was given, rather than reading as nothing performed**
+/// (`FR-17.8.6`). *Skipped* is ``DayRowAnswer/skipped`` — marked done with no completed working set
+/// — and the sets are then silent about what the lifter meant to do, so the entry's own planned
+/// rows are what is carried forward. They are the rows the day was *started* with rather than the
+/// routine's targets as they read today, which is `FR-16.8.3`: a past session is never altered by a
+/// later plan edit. An entry nobody answered at all is neither, and contributes an empty slot as
+/// before.
 struct SessionAsRoutine: Equatable {
     /// One exercise slot, in the order the workout performed it.
     struct Slot: Equatable {
@@ -36,8 +44,12 @@ struct SessionAsRoutine: Equatable {
 
     /// One target group: a load, its reps, and how many sets of it were done back to back.
     struct Target: Equatable {
-        /// The load on one implement (`TR-0.2.3`).
-        let weight: Weight
+        /// The load on one implement (`TR-0.2.3`), or `nil` where the plan named none.
+        ///
+        /// **Optional because a *carried* plan may be**: a performed group always has a load, and a
+        /// skipped exercise's planned rows are `FR-15.2.2`'s targets, which are free to leave the
+        /// load for the session to decide. Dropping those would shorten the plan silently.
+        let weight: Weight?
 
         /// Repetitions per set.
         let reps: Int
@@ -49,13 +61,34 @@ struct SessionAsRoutine: Equatable {
     /// The slots, in entry order.
     let slots: [Slot]
 
-    /// Reads a session's exercises as a routine.
+    /// Reads a session's exercises as a routine, per answer (`FR-17.8.6`).
     ///
-    /// - Parameter exercises: The session's exercises, in entry order.
+    /// - Parameter exercises: The session's exercises, in entry order, each carrying the targets
+    ///   the day was started with (``SessionExercise/planned``).
     init(_ exercises: [SessionExercise]) {
         slots = exercises.map {
-            Slot(exerciseID: $0.entry.exerciseID, groups: Self.targets(from: $0.sets))
+            Slot(exerciseID: $0.entry.exerciseID, groups: Self.targets(of: $0))
         }
+    }
+
+    /// What one exercise prescribes next week, chosen by what was said about it.
+    ///
+    /// - Parameter exercise: The entry, its sets and the targets it was planned with.
+    /// - Returns: The groups, in order — the performed runs, the planned rows, or none.
+    private static func targets(of exercise: SessionExercise) -> [Target] {
+        let performed = targets(from: exercise.sets)
+        let answer = DayRowAnswer.derived(
+            marked: exercise.entry.isMarkedDone, performedSomething: !performed.isEmpty)
+        return answer == .skipped ? planned(from: exercise.planned) : performed
+    }
+
+    /// A skipped exercise's own plan, as targets.
+    ///
+    /// - Parameter groups: The entry's planned rows, in
+    ///   ``RepositoryInterface/PlannedTargetGroup/order``.
+    /// - Returns: The groups, in that order.
+    private static func planned(from groups: [PlannedTargetGroup]) -> [Target] {
+        groups.map { Target(weight: $0.targetWeight, reps: $0.targetReps, sets: $0.targetSets) }
     }
 
     /// Compresses one exercise's sets into target groups.

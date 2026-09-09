@@ -47,6 +47,15 @@
             }
         }
 
+        /// `FR-17.8.4`'s offer at the week's foot, once every planned day is done.
+        @Test func nextWeek() throws {
+            // The section, not a `Card` assembled here: the headline, the message and the accent
+            // the command takes are the screen's decisions (T-16.17).
+            try assertSnapshots(named: "Week-next-week-card") {
+                fixedEnvironment { NextWeekSection(weekNumber: 3, failed: false, start: {}) }
+            }
+        }
+
         /// `FR-17.8.3`'s card for a workout no program planned.
         @Test func freeWorkout() throws {
             try assertSnapshots(named: "Week-free-workout") {

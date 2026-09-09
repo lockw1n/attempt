@@ -312,6 +312,51 @@ enum WeekPlanTargets {
     }
 }
 
+/// **Start next week**, at the week's foot once every planned day is done (`FR-17.8.4`, `D-17.8`).
+///
+/// **A card rather than a bare button**, because the offer needs its two sentences: where next
+/// week's loads come from, and that they stay editable. `FR-17.8.6` opens Edit week over the new
+/// week straight afterwards, so the second sentence is a promise the next screen keeps.
+///
+/// **It takes the screen's accent** (`FR-16.6.4`), and can: a week whose days are all done gives
+/// none of them a filled command — ``DesignSystem/StateActionEmphasis/weekCommand(on:among:)``
+/// accents the day in progress, else the first not started, and there is neither.
+struct NextWeekSection: View {
+    /// The week that is over, as the lifter numbers it.
+    let weekNumber: Int
+
+    /// Whether the last attempt wrote nothing (`FR-17.8.4`) — see ``WeekState/nextWeekFailed``.
+    let failed: Bool
+
+    /// Builds next week from this one.
+    let start: () -> Void
+
+    var body: some View {
+        Card {
+            VStack(alignment: .leading, spacing: Spacing.sm.points) {
+                Text(LoggingStrings.programWeekCompleteHeadline(week: weekNumber))
+                    .font(Typography.cardTitle.font)
+                    .foregroundStyle(ColorToken.textPrimary)
+                Text(LoggingStrings.programWeekCompleteMessage)
+                    .font(Typography.caption.font)
+                    .foregroundStyle(ColorToken.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(action: start) {
+                    Text(LoggingStrings.programNextWeekAction)
+                }
+                .buttonStyle(.primaryAction(.fill))
+                if failed {
+                    // Beside the command that issued it, `.secondary`'s rule for a failed *write*:
+                    // the rollback means nothing was written, so the retry is another tap at the
+                    // same button rather than an action of its own.
+                    ErrorStateView(message: Text(LoggingStrings.programNextWeekErrorMessage))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
 /// The workout in progress that no program planned, after the week's days (`FR-17.8.3`, `Q-17.5`).
 struct FreeWorkoutSection: View {
     /// What it draws.

@@ -72,7 +72,7 @@ struct WeekStateTests {
         // `nextDayIndex` says the week is over; the sessions say one day of three is done. The
         // sessions win (`FR-17.8.2`, `D-17.10`) — the cursor is not one of this read's inputs.
         // Retiring the column itself is `T-17.13`'s, which is why this test still writes it.
-        try await fixture.stack.programs.save(run.movedTo(nextDayIndex: 9))
+        try await fixture.stack.programs.save(run.withCursor(9))
         let state = fixture.weekState()
 
         await state.load(openSession: nil)
@@ -296,6 +296,87 @@ struct WeekStateTests {
 
         #expect(StateActionEmphasis.weekCommand(on: days[1], among: days) == .primary)
         #expect(StateActionEmphasis.weekCommand(on: days[0], among: days) == .secondary)
+    }
+
+    // MARK: - Whether the week offers Start next week (FR-17.8.4, D-17.8)
+
+    @Test("Every day done offers next week")
+    func everyDayDoneOffersNextWeek() async throws {
+        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 2)
+        for day in 0...1 { try await fixture.log(day: day, done: 2) }
+        let state = fixture.weekState()
+
+        await state.load(openSession: nil)
+
+        #expect(state.everyPlannedDayIsDone)
+    }
+
+    /// `FR-17.8.8`'s **Skip remaining** is what gets a week past a day the lifter missed, and the
+    /// day it leaves behind is *done* rather than a fourth state — so the offer stands.
+    @Test("A day skipped whole counts as done")
+    func aDaySkippedWholeCountsAsDone() async throws {
+        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 2)
+        try await fixture.log(day: 0, done: 2)
+        let day = fixture.dayStore(dayIndex: 1)
+        await day.load()
+        await day.skipRemaining()
+        let state = fixture.weekState()
+
+        await state.load(openSession: nil)
+
+        #expect(WeekFixture.days(of: state)[1].progress != .notStarted)
+        #expect(state.everyPlannedDayIsDone)
+    }
+
+    /// `Q-17.8`: the card does not move a week on over a day nobody opened. Skipping that day from
+    /// its own card is the way past, which is one confirmation rather than a silent write.
+    @Test("A day not started withholds the offer")
+    func aDayNotStartedWithholdsTheOffer() async throws {
+        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 2)
+        try await fixture.log(day: 0, done: 2)
+        let state = fixture.weekState()
+
+        await state.load(openSession: nil)
+
+        #expect(!state.everyPlannedDayIsDone)
+    }
+
+    @Test("A day part answered withholds the offer")
+    func aDayInProgressWithholdsTheOffer() async throws {
+        let fixture = try await WeekFixture(days: 2, exercisesPerDay: 2)
+        try await fixture.log(day: 0, done: 2)
+        try await fixture.log(day: 1, done: 1)
+        let state = fixture.weekState()
+
+        await state.load(openSession: nil)
+
+        #expect(!state.everyPlannedDayIsDone)
+    }
+
+    /// Vacuous truth is not an offer: `allSatisfy` over no days is `true`, and a program with
+    /// nothing in it has no week to move on from.
+    @Test("A program with no days offers nothing")
+    func aProgramWithNoDaysOffersNothing() async throws {
+        let fixture = try await WeekFixture(days: 0)
+        let state = fixture.weekState()
+
+        await state.load(openSession: nil)
+
+        #expect(!state.everyPlannedDayIsDone)
+    }
+
+    @Test("No run at all offers nothing")
+    func noRunOffersNothing() async throws {
+        let stack = InMemoryRepositoryStack()
+        let state = WeekState(
+            programs: stack.programs,
+            routines: stack.routines,
+            workouts: stack.workouts,
+            exercises: stack.exercises)
+
+        await state.load(openSession: nil)
+
+        #expect(!state.everyPlannedDayIsDone)
     }
 
     /// One card, for the rule that reads only its index and its state.

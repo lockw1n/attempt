@@ -162,6 +162,29 @@ public final class WeekState {
     /// one question with two answers as well as one query paid for twice.
     public private(set) var answered: [Int: Set<UUID>] = [:]
 
+    /// Whether the last **Start next week** changed nothing (`FR-17.8.4`).
+    ///
+    /// **A flag rather than a diagnostic**, on the store's own split: the rollback means nothing
+    /// was written, so what the lifter is owed is a sentence and another tap — the error itself is
+    /// not theirs to read (`G-3.4`). Cleared by every fresh read.
+    ///
+    /// Settable across the module rather than only within this file, because the command lives in
+    /// `ProgramNextWeek.swift` — `private` is file-scoped and this type is two files.
+    public internal(set) var nextWeekFailed = false
+
+    /// Whether the week is over, and therefore whether the root offers **Start next week**
+    /// (`FR-17.8.4`, `D-17.8`).
+    ///
+    /// **Every planned day done, and at least one of them.** A day skipped whole counts as done —
+    /// `FR-17.8.8`'s **Skip remaining** answers for its rows, which is what makes it done rather
+    /// than a fourth state — and a day nothing has been logged into does not: the way past that one
+    /// is to skip it from its own card, which is one confirmation (`Q-17.8`). A program with no
+    /// days satisfies "every day is done" vacuously and is offered nothing.
+    public var everyPlannedDayIsDone: Bool {
+        guard case .week(_, _, _, let days) = reading, !days.isEmpty else { return false }
+        return days.allSatisfy { if case .done = $0.progress { return true } else { return false } }
+    }
+
     /// The free workout in progress, or `nil`.
     ///
     /// **Beside the reading rather than inside it**, because it is true of both: a lifter running
@@ -174,8 +197,13 @@ public final class WeekState {
     /// The routines those days name, and the targets they prescribe.
     let routines: any RoutineRepository
 
-    /// The sessions the week's state is read from (`TR-17.5`).
-    let workouts: any WorkoutRepository
+    /// The sessions the week's state is read from (`TR-17.5`), and the targets their entries were
+    /// planned against.
+    ///
+    /// **Both protocols, because `FR-17.8.6`'s copy needs the plan.** A skipped exercise carries
+    /// its planned rows into next week (``SessionAsRoutine``), and those live in a table of their
+    /// own — the cards themselves need only the sessions.
+    let workouts: any WorkoutRepository & PlannedTargetRepository
 
     /// What a routine prescribes — shared with ``DayStore``, which reads the plan and nothing else.
     private let plans: WeekPlanReader
@@ -185,12 +213,12 @@ public final class WeekState {
     /// - Parameters:
     ///   - programs: The programs, their days and the run in force.
     ///   - routines: The routines those days name.
-    ///   - workouts: The sessions stamped with the run and the week.
+    ///   - workouts: The sessions stamped with the run and the week, and their planned targets.
     ///   - exercises: The catalogue the plan's slots name.
     public init(
         programs: any ProgramRepository,
         routines: any RoutineRepository,
-        workouts: any WorkoutRepository,
+        workouts: any WorkoutRepository & PlannedTargetRepository,
         exercises: any ExerciseRepository
     ) {
         self.programs = programs
@@ -220,6 +248,7 @@ public final class WeekState {
         do {
             plans.reset()
             answered = [:]
+            nextWeekFailed = false
             reading = try await read()
             phase = .ready
         } catch {

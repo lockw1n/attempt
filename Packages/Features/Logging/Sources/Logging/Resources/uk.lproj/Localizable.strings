@@ -283,9 +283,7 @@
 "logging.train.program.next-week" = "Почати наступний тиждень";
 
 "logging.train.program.error.message" = "Не вдалося прочитати курс. Спробуйте ще раз.";
-"logging.train.program.skip-error.message" = "Не вдалося пропустити день. Спробуйте ще раз.";
 "logging.train.program.next-week-error.message" = "Не вдалося почати наступний тиждень. Нічого не змінено — спробуйте ще раз.";
-"logging.train.program.advance-error.message" = "Тренування збережено, але курс досі показує цей день. Пропустіть його або завершіть ще раз.";
 
 /* FR-16.8.3 / DOD-16.1. */
 "logging.session.program.week-day %lld %lld" = "Тиждень %1$lld · День %2$lld";

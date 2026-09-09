@@ -209,7 +209,9 @@ struct WeekFixture {
     /// - Parameter workouts: The workout store to read through, or `nil` for the stack's own — a
     ///   substitute is how `NFR-17.4`'s counting fake is reached.
     /// - Returns: The state.
-    func weekState(workouts: (any WorkoutRepository)? = nil) -> WeekState {
+    func weekState(
+        workouts: (any WorkoutRepository & PlannedTargetRepository)? = nil
+    ) -> WeekState {
         WeekState(
             programs: stack.programs,
             routines: stack.routines,

@@ -44,13 +44,14 @@ public struct TrainingHomeView: View {
     ///   - store: The workout in progress. One per app, built where the repositories are.
     ///   - programs: The programs, their days and the run in force (`FR-16.8`).
     ///   - routines: The routines those days name.
-    ///   - workouts: The sessions the week's state is read from (`TR-17.5`).
+    ///   - workouts: The sessions the week's state is read from (`TR-17.5`), and the targets
+    ///     `FR-17.8.6`'s copy reads back.
     ///   - exercises: The catalogue the plan's slots name.
     public init(
         store: ActiveSessionStore,
         programs: any ProgramRepository,
         routines: any RoutineRepository,
-        workouts: any WorkoutRepository,
+        workouts: any WorkoutRepository & PlannedTargetRepository,
         exercises: any ExerciseRepository
     ) {
         self.store = store
@@ -73,6 +74,7 @@ public struct TrainingHomeView: View {
                 content
                 freeWorkout
                 freeWorkoutCommand
+                nextWeek
                 if showsStartFailure {
                     // Beside the command that issued it, on the retired root's rule for a failed
                     // *write*: it costs the screen nothing, and the retry is another tap at the
@@ -178,8 +180,7 @@ public struct TrainingHomeView: View {
     /// The way into a workout no program planned (`FR-17.8.3`).
     ///
     /// **At the foot, and `.secondary` whatever else is on screen.** The week is what the lifter
-    /// came for; an unplanned workout is the exception, and `T-17.13`'s **Start next week** card
-    /// arrives below this one.
+    /// came for; an unplanned workout is the exception, and ``nextWeek`` sits below it.
     private var freeWorkoutCommand: some View {
         Button {
             Task { await startFreeWorkout() }
@@ -190,6 +191,20 @@ public struct TrainingHomeView: View {
         // A second Free workout while one is open would ask the store for a workout it refuses;
         // the card above is the way back into that one.
         .disabled(week.freeWorkout != nil)
+    }
+
+    /// `FR-17.8.4`'s offer, once every planned day of the week is done.
+    ///
+    /// **Below Free workout rather than inside the week's own section**, which is what makes it the
+    /// screen's foot: it is a command about the week as a whole, and the days above it are all
+    /// collapsed to their header lines by the time it appears.
+    @ViewBuilder private var nextWeek: some View {
+        if case .week(_, _, let weekNumber, _) = week.reading, week.everyPlannedDayIsDone {
+            NextWeekSection(
+                weekNumber: weekNumber,
+                failed: week.nextWeekFailed,
+                start: { Task { await startNextWeek() } })
+        }
     }
 
     /// The shell's navigation position, for the two commands here that are not `NavigationLink`s.
@@ -237,6 +252,18 @@ public struct TrainingHomeView: View {
         await day.skipRemaining()
         await store.resume()
         await self.week.load(openSession: store.session)
+    }
+
+    /// Builds next week from this one, and opens it for review (`FR-17.8.4`, `FR-17.8.6`).
+    ///
+    /// **Edit week is the destination, and it is the same screen the toolbar opens** — `FR-17.8.6`
+    /// asks for loads that are editable before and during the week, and `T-17.12` built exactly one
+    /// screen that edits them. The push happens only when the rebuild took, on the free workout's
+    /// rule: a failed write leaves the lifter where they are, with the card still offering.
+    private func startNextWeek() async {
+        await week.startNextWeek(openSession: store.session)
+        guard !week.nextWeekFailed else { return }
+        navigation?.navigate(to: .routines(.editWeek))
     }
 
     /// Starts a workout for today outside the plan, and opens it (`FR-17.8.3`).

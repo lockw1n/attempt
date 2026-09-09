@@ -85,7 +85,7 @@ struct ProgramNextUpStateTests {
     func aCursorPastTheLastDayIsAFinishedWeek() async throws {
         let fixture = try await ProgramFixture()
         let run = try #require(try await fixture.stack.programs.currentRun())
-        try await fixture.stack.programs.save(run.movedTo(nextDayIndex: 3))
+        try await fixture.stack.programs.save(run.withCursor(3))
         let state = fixture.nextUpState()
 
         await state.load()

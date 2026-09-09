@@ -17,6 +17,21 @@ public enum DayRowAnswer: Equatable, Sendable {
 
     /// Work was logged against it and it is marked done.
     case logged
+
+    /// Which of the three a row is in, from the entry's mark and whether anything was performed.
+    ///
+    /// **One home for the rule, because two surfaces ask it.** A day's checklist draws the answer
+    /// and `FR-17.8.6`'s rebuild copies per answer, and a second derivation beside the copy would
+    /// be a second definition of *skipped*.
+    ///
+    /// - Parameters:
+    ///   - marked: Whether the entry carries the lifter's check-off.
+    ///   - performedSomething: Whether any completed working set stands behind it.
+    /// - Returns: The answer.
+    static func derived(marked: Bool, performedSomething: Bool) -> DayRowAnswer {
+        guard marked else { return .unanswered }
+        return performedSomething ? .logged : .skipped
+    }
 }
 
 /// One exercise on a day's checklist — the name, what was planned, what was done, and the answer

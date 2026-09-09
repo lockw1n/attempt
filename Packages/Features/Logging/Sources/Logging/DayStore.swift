@@ -409,15 +409,15 @@ public final class DayStore {
 
     /// What a row has been answered with (`FR-17.9.6`).
     ///
-    /// **Skipped is derived** — marked done with no completed working set — which is `TR-17.4`.
+    /// The rule itself is ``DayRowAnswer/derived(marked:performedSomething:)`` — this only says
+    /// which of this row's values answer its two questions.
     ///
     /// - Parameters:
     ///   - marked: Whether the entry carries the lifter's check-off.
     ///   - performed: The working sets, encoded.
     /// - Returns: The answer.
     private static func answer(marked: Bool, performed: [WeekPlanTarget]) -> DayRowAnswer {
-        guard marked else { return .unanswered }
-        return performed.isEmpty ? .skipped : .logged
+        DayRowAnswer.derived(marked: marked, performedSomething: !performed.isEmpty)
     }
 
     /// The entry a row names, once the session exists.

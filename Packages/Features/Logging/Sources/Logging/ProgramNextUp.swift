@@ -55,24 +55,12 @@ public struct ProgramNextUp: Equatable, Sendable {
     }
 }
 
-/// Why the program's cursor did not move (`FR-16.8.4`).
+/// The program in force, as the retired Next-up card read it (`FR-16.8.2`).
 ///
-/// **Two cases rather than one, because they name different commands.** A lifter who skipped a day
-/// and a lifter who asked for next week are owed the sentence for the thing they tapped; one shared
-/// wording would tell them the other command failed.
-public enum ProgramCommandFailure: Sendable, Equatable {
-    /// **Skip day** wrote nothing.
-    case skipFailed
-
-    /// **Start next week** wrote nothing. Whatever it had already written has been taken back out.
-    case nextWeekFailed
-}
-
-/// The program in force, and the command that moves it on a week (`FR-16.8.4`).
-///
-/// **Nothing draws this any more** — `FR-17.8.7` retired the Next-up card with the rest of the old
-/// root. It is kept for ``startNextWeek()``, which `T-17.13` hosts: the reads below are the reads
-/// that command makes, and rewriting them there would be this file written twice.
+/// **Nothing draws this any more, and nothing writes through it either** — `FR-17.8.7` retired the
+/// Next-up card with the rest of the old root, and `D-17.10` retired the day cursor this reads.
+/// `T-17.14`'s sweep is what removes the type; it is still here only because a removal and a
+/// rewrite in one commit is two diffs wearing one hat.
 @Observable
 public final class ProgramNextUpState {
     /// What the card has to show, as one value rather than three flags.
@@ -99,23 +87,13 @@ public final class ProgramNextUpState {
     /// Train's root is a workout surface, and a lifter with no program is not missing one.
     public private(set) var nextUp: ProgramNextUp?
 
-    /// Why the last **Skip day** or **Start next week** changed nothing, or `nil`.
-    ///
-    /// Cleared by every fresh read: a read that succeeds retires a claim about a write that
-    /// failed.
-    ///
-    /// Settable across the module rather than only within this file, because `FR-16.8.4`'s command
-    /// lives in `ProgramNextWeek.swift` — `private` is file-scoped and this type is two files.
-    public internal(set) var commandFailure: ProgramCommandFailure?
-
     /// The programs, their days and the run in force.
     let programs: any ProgramRepository
 
-    /// The routines a program day names — read for the day's name, and written by
-    /// ``startNextWeek()``.
+    /// The routines a program day names — read for the day's name.
     let routines: any RoutineRepository
 
-    /// The sessions a week's plan is rebuilt from (`FR-16.8.4`).
+    /// Unread, and kept only so the initialiser this type is built by does not change shape.
     let workouts: any WorkoutRepository
 
     /// Builds the reading over the three repositories a program's next day is assembled from.
@@ -123,7 +101,7 @@ public final class ProgramNextUpState {
     /// - Parameters:
     ///   - programs: The programs, their days and the run in force.
     ///   - routines: The routines those days name.
-    ///   - workouts: The sessions **Start next week** reads back.
+    ///   - workouts: Unread — see ``workouts``.
     public init(
         programs: any ProgramRepository,
         routines: any RoutineRepository,
@@ -147,7 +125,6 @@ public final class ProgramNextUpState {
     public func load() async {
         if phase == .loading { return }
         phase = .loading
-        commandFailure = nil
         do {
             nextUp = try await read()
             phase = .ready
@@ -190,35 +167,5 @@ public final class ProgramNextUpState {
             return .archivedRoutine(index: day.order)
         }
         return .next(index: day.order, routineID: day.routineID, name: routine.name)
-    }
-
-    /// Moves the cursor past `index` without logging anything (`FR-16.8.4`).
-    ///
-    /// **No screen calls this any more** — `FR-17.8.2` retired **Skip day** from the root, and
-    /// `FR-17.8.8`'s **Skip remaining** is `T-17.11`'s different command over a day's rows. It is
-    /// kept because ``startNextWeek()`` is defined over a week that is over, and this is what
-    /// carries a run to one; retiring it belongs with the cursor column itself, in `T-17.14`'s
-    /// sweep.
-    ///
-    /// **A day skipped writes no session**, which is what makes it a skip: the week's rebuild reads
-    /// the sessions it finds, so a day with none keeps the routine it already has rather than
-    /// becoming an empty plan — see ``startNextWeek()``.
-    ///
-    /// - Parameter index: The ``RepositoryInterface/ProgramDay/order`` being skipped.
-    public func skipDay(at index: Int) async {
-        do {
-            guard let run = try await programs.currentRun(), run.nextDayIndex <= index else {
-                await load()
-                return
-            }
-            try await programs.save(run.movedTo(nextDayIndex: index + 1))
-        } catch {
-            // The read first, then the claim, on ``startNextWeek()``'s rule: `load()` retires
-            // `commandFailure`, so a refusal reported before it would be cleared by it.
-            await load()
-            commandFailure = .skipFailed
-            return
-        }
-        await load()
     }
 }

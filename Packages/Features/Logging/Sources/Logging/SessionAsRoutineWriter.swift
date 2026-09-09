@@ -73,8 +73,9 @@ struct SessionAsRoutineWriter: Sendable {
                         deletedAt: nil,
                         routineExerciseID: slotID,
                         order: index,
-                        // Never blank: every target here is a load that was actually lifted, so
-                        // `FR-15.2.2`'s "decide it in the session" cannot arise from this path.
+                        // Blank only where the plan being carried forward was (`FR-15.2.2`): a
+                        // performed group is a load that was actually lifted, and a skipped
+                        // exercise's planned rows are copied as they stand.
                         targetWeight: group.weight,
                         targetReps: group.reps,
                         targetSets: group.sets))

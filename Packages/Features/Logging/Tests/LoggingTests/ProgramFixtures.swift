@@ -184,15 +184,8 @@ struct ProgramFixture {
 
     /// A store over the fixture's stack.
     ///
-    /// - Parameter refusingRunSaves: Whether the cursor write refuses, for the tests that need
-    ///   ``ActiveSessionStore/programAdvanceFailure`` to be reachable.
     /// - Returns: The store.
-    func store(refusingRunSaves: Bool = false) -> ActiveSessionStore {
-        guard refusingRunSaves else { return ActiveSessionStore.over(stack) }
-        var programs = RefusingProgramRepository(wrapped: stack.programs)
-        programs.refusesRunSave = true
-        return ActiveSessionStore.over(stack, programs: programs)
-    }
+    func store() -> ActiveSessionStore { ActiveSessionStore.over(stack) }
 
     /// Train's reading of the run in force, over the fixture's stack.
     ///
@@ -206,12 +199,29 @@ struct ProgramFixture {
             workouts: stack.workouts)
     }
 
+    /// Train's root over the fixture's stack — the week, and `FR-17.8.4`'s command.
+    ///
+    /// - Parameter programs: The program store to read and write through, or `nil` for the
+    ///   stack's own — a substitute is how a refused write is reached.
+    /// - Returns: The state.
+    func weekState(programs: (any ProgramRepository)? = nil) -> WeekState {
+        WeekState(
+            programs: programs ?? stack.programs,
+            routines: stack.routines,
+            workouts: stack.workouts,
+            exercises: stack.exercises)
+    }
+
     /// Starts the program's day `index`, logs `sets` sets of `grams` × `reps`, and finishes.
+    ///
+    /// **The day is named, not taken from a cursor** (`D-17.10`): `ProgramRun.nextDayIndex` is no
+    /// longer written by anything, so a fixture that read it would train day 0 three times.
     ///
     /// - Parameters:
     ///   - index: The day to train — its `ProgramDay.order`.
     ///   - store: The store to log through.
-    ///   - grams: The load on every set, or `nil` to finish having logged nothing (a skipped day).
+    ///   - grams: The load on every set, or `nil` to finish having logged nothing (a day opened and
+    ///     abandoned, which is neither trained nor skipped).
     ///   - reps: The repetitions on every set.
     ///   - sets: How many sets.
     /// - Returns: The finished session's identifier.
@@ -219,20 +229,15 @@ struct ProgramFixture {
     func train(
         day index: Int, through store: ActiveSessionStore, grams: Int?, reps: Int = 5, sets: Int = 3
     ) async throws -> UUID {
-        let nextUp = nextUpState()
-        await nextUp.load()
-        let reading = try #require(nextUp.nextUp)
-        guard case .next(let order, let routineID, _) = reading.day else {
-            Issue.record("day \(index) is not the next one up")
-            throw CancellationError()
-        }
-        #expect(order == index)
+        let run = try #require(try await stack.programs.currentRun())
+        let days = try await stack.programs.days(forProgramID: programID, includingDeleted: false)
+        let day = try #require(days.first { $0.order == index })
         #expect(
             await store.start(
                 on: today,
                 in: ProgramSessionStamp(
-                    runID: reading.runID, weekNumber: reading.weekNumber, dayIndex: order),
-                fromRoutineID: routineID,
+                    runID: run.id, weekNumber: run.weekNumber, dayIndex: index),
+                fromRoutineID: day.routineID,
                 using: stack.routines))
         let sessionID = try #require(store.session).id
         if let grams {
@@ -246,6 +251,30 @@ struct ProgramFixture {
         }
         await store.finish()
         return sessionID
+    }
+
+    /// Answers for every exercise of a day without logging anything — `FR-17.9.6`'s skip.
+    ///
+    /// **Through ``DayStore/skipRemaining()``, which is the shipping route** (`FR-17.8.8`): a skip
+    /// is derived from the entry's mark and the absence of completed working sets, and a fixture
+    /// that wrote the mark by hand would be a second definition of it.
+    ///
+    /// - Parameters:
+    ///   - index: The day to skip — its `ProgramDay.order`.
+    ///   - store: The store the day is opened through.
+    /// - Throws: Whatever the repositories throw.
+    func skip(day index: Int, through store: ActiveSessionStore) async throws {
+        let run = try #require(try await stack.programs.currentRun())
+        let day = DayStore(
+            runID: run.id,
+            week: run.weekNumber,
+            dayIndex: index,
+            store: store,
+            programs: stack.programs,
+            routines: stack.routines,
+            exercises: stack.exercises)
+        await day.load()
+        await day.skipRemaining()
     }
 
     /// Writes a finished session against `index`, with the identifier and start time given.

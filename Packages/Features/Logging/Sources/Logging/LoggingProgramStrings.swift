@@ -64,14 +64,8 @@ extension LoggingStrings {
     /// The program in force could not be read.
     static let programErrorMessage = resource("logging.train.program.error.message")
 
-    /// **Skip day** wrote nothing.
-    static let programSkipErrorMessage = resource("logging.train.program.skip-error.message")
-
     /// **Start next week** wrote nothing, and took back whatever it had written.
     static let programNextWeekErrorMessage = resource("logging.train.program.next-week-error.message")
-
-    /// The workout was finished and stored, and the program's cursor did not move with it.
-    static let programAdvanceErrorMessage = resource("logging.train.program.advance-error.message")
 
     // MARK: - The week and day a session was started under (FR-16.8.3, DOD-16.1)
 
@@ -107,9 +101,7 @@ extension LoggingStrings {
             programWeekCompleteMessage,
             programNextWeekAction,
             programErrorMessage,
-            programSkipErrorMessage,
             programNextWeekErrorMessage,
-            programAdvanceErrorMessage,
             sessionProgramWeekAndDay(week: 2, day: 1),
             sessionProgramLabel,
         ]

@@ -98,17 +98,6 @@ public final class ActiveSessionStore {
     /// projection of ``exercises`` is not.
     public private(set) var pendingSetCount = 0
 
-    /// Why the program's day cursor did not move when the last workout was finished
-    /// (`FR-16.8.4`), or `nil`.
-    ///
-    /// A **diagnostic**, not copy (`G-3.4`): the workout *was* stored, and the screen that can say
-    /// what was not is the one drawing the program's next day. **Not cleared by
-    /// ``forgetExercises()``**, being set after that workout has been let go of; retired by
-    /// ``retryProgramAdvance()``, the only thing that knows whether the cursor has since moved.
-    public internal(set) var programAdvanceFailure: String?
-
-    /// The finished workout the report above is owed to, held so it can be retried at all.
-    var unadvancedSession: WorkoutSession?
     /// What each card's "last time" strip is drawn from (`FR-1.2.10`).
     ///
     /// One value rather than three properties — see ``PreviousPerformances``.
