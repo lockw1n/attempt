@@ -128,8 +128,12 @@ public struct WeekEditorView: View {
     ///
     /// **One place rather than one per control**, which is ``WeekEditorState/writeFailed``'s own
     /// argument: every write here fails the same way and asks for the same thing.
+    ///
+    /// **The week's own name is not one of them**, and that is a correction: it is refused under
+    /// the field it names, in ``WeekNameSection``. Both refusals once read one flag, so either
+    /// drew both sentences and one of the two was always false.
     @ViewBuilder private var refusals: some View {
-        if store.nameRequired {
+        if store.dayNameRequired {
             ErrorStateView(message: Text(RoutinesStrings.dayNameRequiredMessage))
         }
         if store.writeFailed {

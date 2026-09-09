@@ -107,6 +107,15 @@ final class FlakyRoutineRepository: RoutineRepository {
     /// Whether `save(_ routine:)` refuses.
     private let refusesRoutineSaves: Bool
 
+    /// Whether `save(_ exercise:)` refuses — the seam a copy that fails part-way is made at.
+    private let refusesSlotSaves: Bool
+
+    /// Every target group `deleteTargetGroup(id:)` has been asked for, in order.
+    ///
+    /// **A record rather than a count**, because the rule under test is *which* rows are deleted:
+    /// a group the store never held must not be named at all (`WeekEditorState.removeTarget`).
+    private(set) var deletedTargetGroupIDs: [UUID] = []
+
     /// Whether `save(_ group:)` refuses — the seam a write-through target failure is made at.
     private let refusesTargetSaves: Bool
 
@@ -116,16 +125,19 @@ final class FlakyRoutineRepository: RoutineRepository {
     ///   - base: The store the calls that are not refused go to.
     ///   - refusingReads: How many reads to refuse before letting one through.
     ///   - refusingRoutineSaves: Whether every routine write is refused.
+    ///   - refusingSlotSaves: Whether every routine-exercise write is refused.
     ///   - refusingTargetSaves: Whether every target write is refused.
     init(
         _ base: any RoutineRepository,
         refusingReads: Int = 0,
         refusingRoutineSaves: Bool = false,
+        refusingSlotSaves: Bool = false,
         refusingTargetSaves: Bool = false
     ) {
         self.base = base
         readsToRefuse = refusingReads
         refusesRoutineSaves = refusingRoutineSaves
+        refusesSlotSaves = refusingSlotSaves
         refusesTargetSaves = refusingTargetSaves
     }
 
@@ -158,7 +170,10 @@ final class FlakyRoutineRepository: RoutineRepository {
         try await base.routineExercise(id: id, includingDeleted: includingDeleted)
     }
 
-    func save(_ exercise: RoutineExercise) async throws { try await base.save(exercise) }
+    func save(_ exercise: RoutineExercise) async throws {
+        if refusesSlotSaves { throw Refusal() }
+        try await base.save(exercise)
+    }
 
     func deleteRoutineExercise(id: UUID) async throws {
         try await base.deleteRoutineExercise(id: id)
@@ -176,7 +191,10 @@ final class FlakyRoutineRepository: RoutineRepository {
         try await base.save(group)
     }
 
-    func deleteTargetGroup(id: UUID) async throws { try await base.deleteTargetGroup(id: id) }
+    func deleteTargetGroup(id: UUID) async throws {
+        deletedTargetGroupIDs.append(id)
+        try await base.deleteTargetGroup(id: id)
+    }
 
     /// Refuses this read, if any refusals are left to spend.
     private func refuseARead() throws {

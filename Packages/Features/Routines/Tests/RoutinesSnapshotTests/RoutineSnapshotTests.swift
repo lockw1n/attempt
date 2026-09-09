@@ -27,13 +27,14 @@
     // pin is their FRAME, which is the half that matters for `G-4.3`: a menu that stopped being
     // 44 pt, or a field that stopped reserving a line, moves the picture.
     //
-    // The consequence for `FR-17.10.1`'s set notation is sharper and worth stating: `RoutineGroupRow`
-    // picks between the inline `[105] kg × [4] × [4]` and the labelled stack with `ViewThatFits`,
-    // and the placeholder is far wider than the field it stands for — so these references show the
-    // STACK at every size, including the ones where the app draws the notation. **A reference here
-    // is evidence about the row's parts and not about which layout a reader gets**; the simulator
-    // run is what settles that (`docs/phase-1/tasks.md` §2), and the menu items are
-    // `WeekEditorStateTests`'.
+    // WHICH LAYOUT A REFERENCE SHOWS, and this paragraph is a correction — it once described the
+    // FIRST version of `RoutineGroupRow`, which picked between the inline `[105] kg × [4] × [4]`
+    // and the labelled stack with `ViewThatFits`, lost to the placeholder's width at every size,
+    // and was replaced before this commit landed. What ships reads `dynamicTypeSize` directly, so
+    // the split here is clean: the `.default` references ARE `FR-17.10.1`'s notation and the
+    // `.accessibility3` ones ARE the labelled stack, each drawn by the branch the app takes at that
+    // size. What the placeholders cost is the field CONTENTS, not the arrangement — the numbers a
+    // reader would see in the boxes are `WeekEditorStateTests`', and so are the menu items.
     //
     // So what these pin is the day header and its fold, the three stand-ins a day's name can take,
     // the empty state and its one command, the target headings, and FR-15.2.2's blank-target

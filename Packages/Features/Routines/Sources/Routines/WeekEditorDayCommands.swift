@@ -3,8 +3,9 @@ import RepositoryInterface
 
 /// `FR-17.10.4`'s day actions and the two that order the week (`FR-15.2.5`, `FR-17.10.1`).
 ///
-/// **A file of its own beside ``WeekEditorState``**, which is `RoutineManagementCommands`' shape
-/// and its reason: the state is the screen's read, and these are writes that happen to re-run it.
+/// **A file of its own beside ``WeekEditorState``**, which is the shape the retired routine
+/// list's own command file took, and its reason: the state is the screen's read, and these are
+/// writes that happen to re-run it.
 ///
 /// **A day is a routine row**, so *rename* retitles the routine and *duplicate* copies it whole —
 /// three levels of records with fresh identifiers, because a copy sharing a slot id would make one
@@ -19,11 +20,27 @@ extension WeekEditorState {
     ///
     /// **The new day's order is one past the last, not the count** — orders are positions a soft
     /// delete leaves gaps in, and reusing one a deleted day still holds would put two days in one
-    /// place.
+    /// place. **The default *name* is the count**, which is the other half of the same fact: the
+    /// order is an identity the deleted rows have a claim on and the name is what the lifter reads
+    /// beside `Day n`, so a week that has had a day removed would otherwise offer *Day 4* third.
+    ///
+    /// **A write that fails part-way takes back everything this call wrote**, which is
+    /// ``WeekEditorState/discardWeekIfJustCreated(_:)`` and `writeCopy`'s rule at the one command
+    /// that can write three records: the routine lands before the day by necessity, and on a fresh
+    /// install the program and its run land before both. Left behind, they are a routine nothing
+    /// names and a current week with no days — which Train's root draws in place of
+    /// **Plan your week** (`FR-17.10.2`, `DOD-17.9`).
     public func addDay() async {
+        let thisWeek: (id: UUID, created: Bool)
         do {
-            let programID = try await week()
-            let stored = try await programs.days(forProgramID: programID, includingDeleted: true)
+            thisWeek = try await week()
+        } catch {
+            writeDidFail()
+            return
+        }
+        var writtenRoutineID: UUID?
+        do {
+            let stored = try await programs.days(forProgramID: thisWeek.id, includingDeleted: true)
             let order = (stored.map(\.order).max() ?? -1) + 1
             let now = Date.now
             let routineID = UUID()
@@ -33,7 +50,8 @@ extension WeekEditorState {
                     createdAt: now,
                     updatedAt: now,
                     deletedAt: nil,
-                    name: String(localized: RoutinesStrings.dayDefaultName(order + 1))))
+                    name: String(localized: RoutinesStrings.dayDefaultName(days.count + 1))))
+            writtenRoutineID = routineID
             let dayID = UUID()
             try await programs.save(
                 ProgramDay(
@@ -41,13 +59,15 @@ extension WeekEditorState {
                     createdAt: now,
                     updatedAt: now,
                     deletedAt: nil,
-                    programID: programID,
+                    programID: thisWeek.id,
                     routineID: routineID,
                     order: order))
             // Opened as it is added: a day nobody unfolds is a day with no way to add an exercise
             // to it, and adding one is what the lifter is here for.
             openDayID = dayID
         } catch {
+            if let writtenRoutineID { try? await routines.deleteRoutine(id: writtenRoutineID) }
+            await discardWeekIfJustCreated(thisWeek)
             writeDidFail()
             return
         }
@@ -66,7 +86,7 @@ extension WeekEditorState {
     public func renameDay(_ dayID: UUID, to name: String) async {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            nameWasRequired()
+            dayNameWasRequired()
             return
         }
         guard let day = days.first(where: { $0.id == dayID }) else { return }
@@ -107,7 +127,7 @@ extension WeekEditorState {
     public func duplicateDay(_ dayID: UUID) async {
         guard let day = days.first(where: { $0.id == dayID }) else { return }
         do {
-            let programID = try await week()
+            let programID = try await week().id
             guard
                 let original = try await routines.routine(
                     id: day.routineID, includingDeleted: false)

@@ -28,8 +28,8 @@ public struct WeekEditorDay: Identifiable, Equatable {
 /// The one editor routines and programs collapsed into: the current week's name, its days in
 /// order, each day's exercises and each exercise's targets (`FR-17.10`, `D-17.9`).
 ///
-/// **App-lifetime rather than screen-lifetime**, for ``RoutineEditorState``'s reason one screen
-/// over: adding an exercise pushes the catalogue as a chooser
+/// **App-lifetime rather than screen-lifetime**, for the reason the routine editor this replaces
+/// was: adding an exercise pushes the catalogue as a chooser
 /// (``AppNavigation/ExerciseLibraryRoute/routineExercisePicker``), which is `ExerciseLibrary`'s
 /// screen and which `TR-1.3` forbids this module from importing — so the app target composes the
 /// chooser over this store, and a store created with the screen could not be written into from a
@@ -93,15 +93,26 @@ public final class WeekEditorState {
 
     /// Whether the last write changed nothing because the store refused.
     ///
-    /// **One flag rather than one per command**, on ``ProgramEditorState``'s argument at the screen
-    /// it replaces: every write here fails the same way and asks for the same thing.
+    /// **One flag rather than one per command**, on the argument the program editor this replaces
+    /// made: every write here fails the same way and asks for the same thing.
     public private(set) var writeFailed = false
 
-    /// Whether the last **Save** or **Rename** was refused for holding no name.
+    /// Whether the last **Save** was refused because the week's own name field was empty.
     ///
     /// **Beside ``writeFailed`` rather than a case of it**, on `RoutineManagementFailure`'s split:
     /// one names a field the lifter can fill in, the other names only the store.
+    ///
+    /// **And beside ``dayNameRequired`` rather than shared with it**, which is a correction: one
+    /// flag for both refusals meant the screen said *both* sentences whenever either applied, so
+    /// refusing a blank week name also claimed a day had not been renamed. Two refusals that name
+    /// two different fields are two flags, whatever they have in common.
     public private(set) var nameRequired = false
+
+    /// Whether the last **Rename** of a day was refused for holding no name.
+    ///
+    /// Drawn above the days rather than under the name field, which is where the field it names
+    /// is — see ``nameRequired`` for why the two are not one flag.
+    public private(set) var dayNameRequired = false
 
     /// The unit loads are entered in — the user's display preference (`G-3.1`, `G-3.2`).
     public private(set) var unit: MassUnit = .kilograms
@@ -155,7 +166,7 @@ public final class WeekEditorState {
     /// Reads the week, unless the same screen already has it read.
     ///
     /// **The screen token is what makes an app-lifetime store safe behind a screen-lifetime
-    /// `.task`**, which is ``RoutineEditorState/open(_:screen:)``'s rule inherited whole: SwiftUI
+    /// `.task`**, which is the retired routine editor's rule inherited whole: SwiftUI
     /// re-runs `.task` whenever the view's identity is re-established — while the exercise chooser
     /// is pushed over this screen, for one — and a second read there would throw away the group the
     /// lifter is halfway through typing and the slot the chooser has just added.
@@ -178,6 +189,7 @@ public final class WeekEditorState {
         phase = .loading
         writeFailed = false
         nameRequired = false
+        dayNameRequired = false
         do {
             unit = try await settings.settings().displayUnit
             let run = try await programs.currentRun()
@@ -280,8 +292,8 @@ public final class WeekEditorState {
             return
         }
         do {
-            let programID = try await ensureWeek()
-            guard let program = try await programs.program(id: programID, includingDeleted: false)
+            let week = try await ensureWeek()
+            guard let program = try await programs.program(id: week.id, includingDeleted: false)
             else {
                 await load()
                 return
@@ -315,10 +327,10 @@ public final class WeekEditorState {
     /// **It writes ``storedName``, never the field.** The field is a draft (see the type's note),
     /// and a program created by adding a day must not adopt a name the lifter has not saved.
     ///
-    /// - Returns: The program in force.
+    /// - Returns: The program in force, and whether this call is what wrote it.
     /// - Throws: Whatever the program repository throws.
-    private func ensureWeek() async throws -> UUID {
-        if let programID { return programID }
+    private func ensureWeek() async throws -> (id: UUID, created: Bool) {
+        if let programID { return (programID, false) }
         let now = Date.now
         let created = UUID()
         try await programs.save(
@@ -341,19 +353,41 @@ public final class WeekEditorState {
                 weekNumber: 1,
                 nextDayIndex: 0))
         programID = created
-        return created
+        return (created, true)
     }
 
     /// The program row, written where this week has none yet — the seam every write-through
     /// command goes through.
     ///
-    /// - Returns: The program in force.
+    /// **It reports whether it wrote the week**, which is what a command that fails part-way
+    /// needs to know: a program and a started run created for a day that never landed are a week
+    /// the lifter did not ask for, and Train's root would draw it in place of **Plan your week**.
+    ///
+    /// - Returns: The program in force, and whether this call is what wrote it.
     /// - Throws: Whatever the program repository throws.
-    func week() async throws -> UUID { try await ensureWeek() }
+    func week() async throws -> (id: UUID, created: Bool) { try await ensureWeek() }
+
+    /// Takes back a week this call had to create for a write that then failed (`FR-17.10.2`).
+    ///
+    /// **The program alone, because the delete cascades** to the days and to the run started with
+    /// it — so a refused **Add day** on a fresh install leaves the lifter on the empty state they
+    /// were looking at, rather than on a current week with no days in it.
+    ///
+    /// - Parameter week: What ``week()`` answered. A week that was already there is left alone.
+    func discardWeekIfJustCreated(_ week: (id: UUID, created: Bool)) async {
+        guard week.created else { return }
+        // A cleanup that fails leaves what the caller is about to report anyway (`writeCopy`'s
+        // rule, one file over).
+        try? await programs.deleteProgram(id: week.id)
+        programID = nil
+    }
 
     // MARK: - Diagnostics
 
     /// Retires a stale refusal when a field actually changes.
+    ///
+    /// **``dayNameRequired`` is not retired here**, and that is the point of it being its own
+    /// flag: typing in the week's name field says nothing about a day whose rename was refused.
     ///
     /// - Parameter changed: Whether the assignment moved the field. `@Observable` cannot tell a
     ///   write from a change, and a `didSet` that fired on either would retire the sentence on a
@@ -369,11 +403,12 @@ public final class WeekEditorState {
     func writeDidLand() {
         writeFailed = false
         nameRequired = false
+        dayNameRequired = false
     }
 
     /// Records that a write was refused.
     func writeDidFail() { writeFailed = true }
 
-    /// Records that a name was refused for being empty.
-    func nameWasRequired() { nameRequired = true }
+    /// Records that a day's rename was refused for being empty.
+    func dayNameWasRequired() { dayNameRequired = true }
 }

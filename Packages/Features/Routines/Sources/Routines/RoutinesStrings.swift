@@ -6,8 +6,9 @@ import PowerliftingCore
 /// Each entry names a key in `Resources/en.lproj/Localizable.strings` and binds it to this module's
 /// own bundle. The key convention is documented once, in `Localization`.
 ///
-/// **This file is the day and everything under it; ``ProgramStrings`` is the week.** The seam is
-/// the record: a day is a routine row and a week is a program row (`FR-17.10.2`).
+/// **This file is the day and everything under it; `ProgramStrings.swift` is the week.** The seam
+/// is the record: a day is a routine row and a week is a program row (`FR-17.10.2`). Single
+/// backticks because that file is a second `extension` of this enum rather than a type of its own.
 enum RoutinesStrings {
     // MARK: - A day (FR-17.10.1, FR-17.10.4)
 

@@ -114,8 +114,43 @@ struct WeekEditorStateTests {
         #expect(state.days.first?.name == "Heavy squat")
 
         await state.renameDay(dayID, to: "   ")
-        #expect(state.nameRequired)
+        #expect(state.dayNameRequired)
+        // And it says nothing about the week's own name, which is a different field with a
+        // different sentence under it.
+        #expect(state.nameRequired == false)
         #expect(state.days.first?.name == "Heavy squat")
+    }
+
+    /// The other direction, which is the half that shipped wrong: refusing the week's name must
+    /// not claim a day was left unrenamed. One flag drew both sentences and one was always false.
+    @Test("the week's blank name and a day's blank rename are refused separately")
+    func theTwoNameRefusalsAreSeparate() async throws {
+        let stack = InMemoryRepositoryStack()
+        let state = await opened(weekEditor(over: stack))
+        await state.addDay()
+
+        state.name = " "
+        await state.saveName()
+        #expect(state.nameRequired)
+        #expect(state.dayNameRequired == false)
+    }
+
+    /// `FR-17.10.1`'s default name is the day's POSITION, and `order` is not it: a soft delete
+    /// leaves gaps the order has to skip and the name must not.
+    @Test("the day added after a removal is named for where it sits, not for its order")
+    func theDefaultNameFollowsThePosition() async throws {
+        let stack = InMemoryRepositoryStack()
+        let state = await opened(weekEditor(over: stack))
+        await state.addDay()
+        await state.addDay()
+        let secondName = try #require(state.days[1].name)
+        await state.removeDay(try #require(state.days[1].id as UUID?))
+
+        await state.addDay()
+
+        #expect(state.days.count == 2)
+        // The replacement is the second day again, so it carries the second day's name.
+        #expect(state.days[1].name == secondName)
     }
 
     @Test("a duplicated day copies its exercises and their targets and lands next to it")
@@ -158,10 +193,15 @@ struct WeekEditorStateTests {
         await state.addDay()
         let secondID = try #require(state.days[1].id as UUID?)
         let thirdID = state.days[2].id
+        // Unfolded, which is the state the exercise chooser files into — see below.
+        state.openDayID = secondID
 
         await state.removeDay(secondID)
 
         #expect(state.days.map(\.id) == [state.days[0].id, thirdID])
+        // Nothing stays unfolded over a day that has gone, or the chooser would still be filing
+        // exercises into it.
+        #expect(state.openDayID == nil)
         let run = try #require(try await stack.programs.currentRun())
         let days = try await stack.programs.days(forProgramID: run.programID, includingDeleted: false)
         #expect(days.map(\.order) == [0, 1])
@@ -265,222 +305,5 @@ struct WeekEditorStateTests {
         #expect(state.days.first?.slots.map(\.exerciseID) == [squat.id])
         stored = try await stack.routines.exercises(forRoutineID: routineID, includingDeleted: false)
         #expect(stored.map(\.order) == [0])
-    }
-}
-
-/// The write-through half of `FR-17.10.1`, and `Q-17.4`'s answer — a second suite rather than a
-/// longer one, the first being the week's own shape.
-@MainActor
-@Suite("Week editor targets")
-struct WeekEditorTargetTests {
-    @Test("a target is written the moment it resolves, and not before")
-    func targetsWriteThroughOnceTheyResolve() async throws {
-        let squat = routineExerciseFixture(name: "Back Squat")
-        let stack = try await seededStack([squat])
-        let state = await opened(weekEditor(over: stack))
-        await state.addDay()
-        await state.addExercise(id: squat.id)
-        let slotID = try #require(state.days.first?.slots.first?.id)
-
-        // Reps alone is not a prescription.
-        state.editTarget(0, inSlot: 0, inDayAt: 0) { $0.repsText = "5" }
-        await state.commitTarget(0, inSlot: 0, inDayAt: 0)
-        #expect(
-            try await stack.routines.targetGroups(
-                forRoutineExerciseID: slotID, includingDeleted: false
-            ).isEmpty)
-
-        // Reps and sets are, and a blank load is a prescribed blank (`FR-15.2.2`).
-        state.editTarget(0, inSlot: 0, inDayAt: 0) { $0.setsText = "3" }
-        await state.commitTarget(0, inSlot: 0, inDayAt: 0)
-        let stored = try await stack.routines.targetGroups(
-            forRoutineExerciseID: slotID, includingDeleted: false)
-        #expect(stored.count == 1)
-        #expect(stored.first?.targetWeight == nil)
-        #expect(stored.first?.targetReps == 5)
-        #expect(stored.first?.targetSets == 3)
-        #expect(stored.first?.order == 0)
-    }
-
-    @Test("a load typed into a stored target lands, and emptying reps leaves the row alone")
-    func emptyingAFieldKeepsTheStoredRow() async throws {
-        let squat = routineExerciseFixture(name: "Back Squat")
-        let stack = try await seededStack([squat])
-        let state = await opened(weekEditor(over: stack))
-        await state.addDay()
-        await state.addExercise(id: squat.id)
-        await fillTarget(state, weight: "100", reps: "5", sets: "3")
-        let slotID = try #require(state.days.first?.slots.first?.id)
-
-        state.editTarget(0, inSlot: 0, inDayAt: 0) { $0.weightText = "102.5" }
-        await state.commitTarget(0, inSlot: 0, inDayAt: 0)
-        #expect(
-            try await stack.routines.targetGroups(
-                forRoutineExerciseID: slotID, includingDeleted: false
-            ).first?.targetWeight
-                == Weight(grams: 102_500))
-
-        // Mid-retype: unstorable, so the store keeps what it holds rather than a zero.
-        state.editTarget(0, inSlot: 0, inDayAt: 0) { $0.repsText = "" }
-        await state.commitTarget(0, inSlot: 0, inDayAt: 0)
-        #expect(
-            try await stack.routines.targetGroups(
-                forRoutineExerciseID: slotID, includingDeleted: false
-            ).first?.targetReps == 5)
-    }
-
-    @Test("a second target reorders and removes, and one never stored is dropped silently")
-    func reorderingAndRemovingTargets() async throws {
-        let squat = routineExerciseFixture(name: "Back Squat")
-        let stack = try await seededStack([squat])
-        let state = await opened(weekEditor(over: stack))
-        await state.addDay()
-        await state.addExercise(id: squat.id)
-        await fillTarget(state, group: 0, weight: "180", reps: "3", sets: "1")
-        state.addTarget(toSlot: 0, inDayAt: 0)
-        await fillTarget(state, group: 1, weight: "150", reps: "8", sets: "3")
-        let slotID = try #require(state.days.first?.slots.first?.id)
-
-        await state.moveTarget(1, by: -1, inSlot: 0, inDayAt: 0)
-        var stored = try await stack.routines.targetGroups(
-            forRoutineExerciseID: slotID, includingDeleted: false)
-        #expect(stored.map(\.targetReps) == [8, 3])
-        #expect(stored.map(\.order) == [0, 1])
-
-        // A group added and never filled in is in no table, so removing it must not report a
-        // failure over a row that was never written.
-        state.addTarget(toSlot: 0, inDayAt: 0)
-        await state.removeTarget(2, inSlot: 0, inDayAt: 0)
-        #expect(state.writeFailed == false)
-        #expect(state.days.first?.slots.first?.groups.count == 2)
-
-        await state.removeTarget(0, inSlot: 0, inDayAt: 0)
-        stored = try await stack.routines.targetGroups(
-            forRoutineExerciseID: slotID, includingDeleted: false)
-        #expect(stored.map(\.targetReps) == [3])
-        #expect(stored.map(\.order) == [0])
-    }
-
-    @Test("a target that resolves and cannot be written says so")
-    func aRefusedTargetWriteIsReported() async throws {
-        let squat = routineExerciseFixture(name: "Back Squat")
-        let stack = try await seededStack([squat])
-        let state = await opened(
-            weekEditor(
-                over: stack,
-                routines: FlakyRoutineRepository(stack.routines, refusingTargetSaves: true),
-                programs: stack.programs))
-        await state.addDay()
-        await state.addExercise(id: squat.id)
-        await fillTarget(state)
-
-        #expect(state.writeFailed)
-    }
-
-    @Test("a day the store will not take says so and adds nothing")
-    func aRefusedDayWriteIsReported() async throws {
-        let stack = InMemoryRepositoryStack()
-        let state = await opened(
-            weekEditor(
-                over: stack,
-                routines: stack.routines,
-                programs: FlakyProgramRepository(stack.programs, refusingDaySaves: true)))
-
-        await state.addDay()
-
-        #expect(state.writeFailed)
-        #expect(state.days.isEmpty)
-    }
-
-    @Test("a read that fails is recoverable")
-    func aFailedReadReloads() async throws {
-        let stack = InMemoryRepositoryStack()
-        // A week with a day in it, so the read has a routine to walk before it can fail.
-        await opened(weekEditor(over: stack)).addDay()
-
-        let flaky = FlakyRoutineRepository(stack.routines, refusingReads: 1)
-        let state = await opened(
-            weekEditor(over: stack, routines: flaky, programs: stack.programs))
-        guard case .failed = state.phase else {
-            Issue.record("expected a failed read, got \(state.phase)")
-            return
-        }
-
-        await state.reload()
-        #expect(state.phase == .ready)
-        #expect(state.days.count == 1)
-    }
-
-    // MARK: - Q-17.4 (FR-17.10.5)
-
-    /// An edit lands on the plan and on nothing else. A day already started this week keeps the
-    /// targets its session copied when it started (`TR-15.3`), so the checklist and the week card
-    /// can disagree for that day — drawn, not prevented.
-    @Test("a day started this week keeps its planned rows through an edit of the same day")
-    func editingAStartedDayLeavesItsPlannedRowsAlone() async throws {
-        let squat = routineExerciseFixture(name: "Back Squat")
-        let stack = try await seededStack([squat])
-        let state = await opened(weekEditor(over: stack))
-        await state.addDay()
-        await state.addExercise(id: squat.id)
-        await fillTarget(state, weight: "100", reps: "5", sets: "3")
-        let run = try #require(try await stack.programs.currentRun())
-
-        // The session a lifter starts on that day, with the plan copied into it.
-        let now = Date.now
-        let session = WorkoutSession(
-            id: UUID(),
-            createdAt: now,
-            updatedAt: now,
-            deletedAt: nil,
-            date: now,
-            startedAt: now,
-            endedAt: nil,
-            notes: "",
-            bodyweight: nil,
-            programRunID: run.id,
-            scheduledWorkoutID: nil,
-            weekNumber: 1,
-            dayIndex: 0)
-        try await stack.workouts.save(session)
-        let entry = ExerciseEntry(
-            id: UUID(),
-            createdAt: now,
-            updatedAt: now,
-            deletedAt: nil,
-            sessionID: session.id,
-            exerciseID: squat.id,
-            order: 0,
-            notes: "")
-        try await stack.workouts.save(entry)
-        let planned = PlannedTargetGroup(
-            id: UUID(),
-            createdAt: now,
-            updatedAt: now,
-            deletedAt: nil,
-            exerciseEntryID: entry.id,
-            order: 0,
-            targetWeight: Weight(grams: 100_000),
-            targetReps: 5,
-            targetSets: 3)
-        try await stack.workouts.save(planned)
-
-        // The edit: the same day, a heavier top set.
-        await fillTarget(state, weight: "110", reps: "5", sets: "3")
-
-        let after = try await stack.workouts.plannedTargets(
-            forEntryID: entry.id, includingDeleted: false)
-        #expect(after.count == 1)
-        #expect(after.first?.targetWeight == Weight(grams: 100_000))
-        #expect(after.first?.targetReps == 5)
-        #expect(after.first?.targetSets == 3)
-        #expect(after.first?.id == planned.id)
-        // And the plan itself did move, or the test would pass for an edit that did nothing.
-        let slotID = try #require(state.days.first?.slots.first?.id)
-        #expect(
-            try await stack.routines.targetGroups(
-                forRoutineExerciseID: slotID, includingDeleted: false
-            ).first?.targetWeight
-                == Weight(grams: 110_000))
     }
 }

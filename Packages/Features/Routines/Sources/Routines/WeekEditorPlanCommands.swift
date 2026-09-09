@@ -28,6 +28,10 @@ extension WeekEditorState {
     /// A row that cannot be read is added anyway, drawn nameless — refusing it would lose the
     /// lifter's tap over a display string.
     ///
+    /// **Archived rows included, which is ``WeekEditorState/readDays(ofProgramID:)``'s read.** The
+    /// two have to agree or a slot drawn nameless here acquires a name on the next read, for no
+    /// reason a lifter could see.
+    ///
     /// **The reading is mutated in place rather than re-read.** A day carries groups the lifter is
     /// halfway through typing and the store does not hold yet; re-reading here would throw them
     /// away on the way back from the chooser.
@@ -37,7 +41,7 @@ extension WeekEditorState {
         guard phase == .ready, let dayID = openDayID,
             let day = days.first(where: { $0.id == dayID })
         else { return }
-        let exercise = try? await catalogue.exercise(id: exerciseID, includingDeleted: false)
+        let exercise = try? await catalogue.exercise(id: exerciseID, includingDeleted: true)
         let slotID = UUID()
         do {
             let stored = try await routines.exercises(

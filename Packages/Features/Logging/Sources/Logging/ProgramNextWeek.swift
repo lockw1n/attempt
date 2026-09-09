@@ -3,8 +3,8 @@ import RepositoryInterface
 
 /// `FR-16.8.4`'s **Start next week**: the week's days rewritten from what was actually lifted.
 ///
-/// A file of its own beside `ProgramNextUp.swift`, on `RoutineManagementCommands`' shape and its
-/// reason — the state is the screen's read, and this is a write that happens to re-run it.
+/// A file of its own beside `ProgramNextUp.swift`, on `WeekEditorDayCommands.swift`'s shape and
+/// its reason — the state is the screen's read, and this is a write that happens to re-run it.
 extension ProgramNextUpState {
     /// Rebuilds each day of the week from the session logged against it and advances the run
     /// (`FR-16.8.4`, `FR-16.8.5`).
