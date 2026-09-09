@@ -192,9 +192,9 @@
             // THE ROW ON A `Card` RATHER THAN A `SessionSummaryCard`, and the pixels are the same
             // either way: a month section is `Card { VStack { rows } }`, so a lone row under a
             // heading renders exactly this. What differs is the claim. `SessionSummaryCard` is drawn
-            // at `.full` by a search result and at `.hidden` by a calendar day and nowhere else, so
-            // a reference calling it at `.dayOfMonth` would picture a call site the app does not
-            // have — and would go on matching if the card and the section ever stopped agreeing.
+            // at `.full` by a search result and nowhere else, so a reference calling it at
+            // `.dayOfMonth` would picture a call site the app does not have — and would go on
+            // matching if the card and the section ever stopped agreeing.
             Card {
                 SessionSummaryRow(
                     summary: summary,

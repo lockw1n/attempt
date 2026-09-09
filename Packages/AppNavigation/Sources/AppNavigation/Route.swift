@@ -202,10 +202,22 @@ public enum HistoryRoute: Hashable, Sendable, Codable {
     /// tap on the back-and-forward chevrons a stack edit. A restored stack opens this screen on the
     /// current month, the same as a fresh push does.
     ///
-    /// **Nor does it carry the selected day.** Selecting a day reveals that day's sessions beneath
-    /// the grid rather than pushing a screen — the sessions are ``session(sessionID:)``'s, and this
-    /// is the step that says *which one* where a day holds two.
+    /// **Nor does it carry the selected day.** A day's tap pushes ``week(containing:)`` — the week
+    /// that day falls in, with the day marked (`FR-17.11.2`) — so there is no selection on the grid
+    /// to carry.
     case calendar
+
+    /// The history a calendar week at a time, opened at the week `date` falls in (`FR-17.11`).
+    ///
+    /// **It carries a day rather than a week**, and the label is the persisted stack format so it is
+    /// chosen once: a week start depends on the calendar in force — the locale's first weekday, and
+    /// the device's time zone — and a stack restored on a device set differently would name an
+    /// instant that is no longer any week's beginning. A *day* survives that: whichever calendar the
+    /// screen is drawn in resolves it to the week it belongs to there, and marks it (`FR-17.11.2`).
+    ///
+    /// **The tab's own week mode is not this case.** It is a control on ``SessionListView``, so the
+    /// only thing on this stack is a week reached from the grid.
+    case week(containing: Date)
 }
 
 /// Destinations pushed from settings (`FR-1.10`).

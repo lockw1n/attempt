@@ -77,28 +77,6 @@ struct CalendarStateTests {
         #expect(marked == [TrainingLog.day(2025, 12, 31)])
     }
 
-    @Test("A failed read of one day costs the screen that day and not the grid")
-    func aFailedDayReadKeepsTheMarkers() async throws {
-        var log = TrainingLog()
-        let squat = try await log.exercise(named: "Back Squat")
-        let session = try await log.session(on: TrainingLog.day(2026, 1, 9))
-        try await log.entry(squat, in: session)
-
-        let state = log.calendarState(
-            today: TrainingLog.day(2026, 1, 20),
-            workouts: FlakyWorkoutRepository(wrapping: log.repositories.workouts, failingAfter: 0)
-        )
-        await state.load()
-        await state.select(TrainingLog.day(2026, 1, 9))
-
-        #expect(state.trainingDays == [TrainingLog.day(2026, 1, 9)])
-        #expect(CalendarScreenState.current(state.phase, trainingDays: 1) == .ready)
-        guard case .failed = state.day else {
-            Issue.record("expected the day to have failed, got \(state.day)")
-            return
-        }
-    }
-
     @Test("A failed read of the sessions is the screen's error state, with nothing marked")
     func aFailedReadIsTheErrorState() async throws {
         var log = TrainingLog()
@@ -201,15 +179,15 @@ struct CalendarStateTests {
 
         let state = log.calendarState(today: TrainingLog.day(2026, 1, 20))
         await state.load()
-        await state.select(TrainingLog.day(2026, 1, 9))
+        let grid = state.grid
 
         state.adopt(TrainingLog.utc)
 
-        #expect(state.selectedDay == TrainingLog.day(2026, 1, 9))
+        #expect(state.grid == grid)
         #expect(state.trainingDays == [TrainingLog.day(2026, 1, 9)])
     }
 
-    @Test("Two sessions on one day are one marker with both rows beneath it")
+    @Test("Two sessions on one day are one marker")
     func aDayWithTwoSessionsIsStillOneMarker() async throws {
         var log = TrainingLog()
         try await log.exercise(named: "Back Squat")
@@ -218,40 +196,10 @@ struct CalendarStateTests {
 
         let state = log.calendarState(today: TrainingLog.day(2026, 1, 20))
         await state.load()
-        await state.select(TrainingLog.day(2026, 1, 9))
 
-        // One marker for two sessions, and both rows under it: the grid marks days, so a second
-        // session on a marked day adds a row rather than a dot.
+        // One marker for two sessions: the grid marks days, so a second session on a marked day
+        // adds a row to the week that day opens (`FR-17.11.2`) rather than a dot here.
         #expect(state.trainingDays == [TrainingLog.day(2026, 1, 9)])
-        guard case .loaded(let rows) = state.day else {
-            Issue.record("expected the day's rows, got \(state.day)")
-            return
-        }
-        #expect(rows.count == 2)
-    }
-
-    @Test("Two sessions under one identifier are one row, not a ForEach keyed on both (G-2.5)")
-    func duplicateSessionIdentifiersAreOneRow() async throws {
-        var log = TrainingLog()
-        let squat = try await log.exercise(named: "Back Squat")
-        let session = try await log.session(on: TrainingLog.day(2026, 1, 9))
-        try await log.entry(squat, in: session)
-        // The pair a local `save` cannot write. The day's section is a `ForEach` keyed on this
-        // identifier, which renders neither of a duplicated pair correctly — the same reason the
-        // session list deduplicates the same read.
-        let foreign = ForeignWorkoutLog(holding: [session, session], over: log.repositories.workouts)
-
-        let state = log.calendarState(today: TrainingLog.day(2026, 1, 20), workouts: foreign)
-        await state.load()
-        await state.select(TrainingLog.day(2026, 1, 9))
-
-        #expect(state.trainingDays == [TrainingLog.day(2026, 1, 9)])
-        guard case .loaded(let rows) = state.day else {
-            Issue.record("expected the day's rows, got \(state.day)")
-            return
-        }
-        #expect(rows.count == 1)
-        #expect(rows.map(\.id) == [session.id])
     }
 
     @Test("A month the history no longer reaches is clamped to the nearest one that survives")
@@ -320,21 +268,5 @@ struct CalendarStateTests {
 
         #expect(await counter.sessionReads == 1)
         #expect(state.trainingDays == [TrainingLog.day(2026, 1, 9)])
-    }
-
-    @Test("The unit is the settings row's, read on every appearance")
-    func theUnitFollowsTheSetting() async throws {
-        var log = TrainingLog()
-        try await log.exercise(named: "Back Squat")
-        try await log.session(on: TrainingLog.day(2026, 1, 9))
-
-        let state = log.calendarState(today: TrainingLog.day(2026, 1, 20))
-        await state.load()
-        #expect(state.displayUnit == .kilograms)
-
-        try await log.setDisplayUnit(.pounds)
-        await state.load()
-
-        #expect(state.displayUnit == .pounds)
     }
 }

@@ -240,6 +240,12 @@ actor CountingWorkoutRepository: WorkoutRepository {
     /// How many times the whole history has been read.
     private(set) var sessionReads = 0
 
+    /// How many times an exercise's whole set history has been walked.
+    ///
+    /// **The read `NFR-17.5` forbids**, and the only way to assert its absence is to count it: a
+    /// screen that never makes it is indistinguishable from one that does, on its output alone.
+    private(set) var exerciseSetReads = 0
+
     private let wrapped: any WorkoutRepository
 
     init(wrapping wrapped: any WorkoutRepository) {
@@ -281,7 +287,9 @@ actor CountingWorkoutRepository: WorkoutRepository {
     func save(_ set: SetEntry) async throws { try await wrapped.save(set) }
     func deleteSet(id: UUID) async throws { try await wrapped.deleteSet(id: id) }
     func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
-        try await wrapped.sets(forExerciseID: exerciseID, includingDeleted: includingDeleted)
+        exerciseSetReads += 1
+        return try await wrapped.sets(
+            forExerciseID: exerciseID, includingDeleted: includingDeleted)
     }
 }
 

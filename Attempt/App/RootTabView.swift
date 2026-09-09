@@ -86,6 +86,8 @@ struct RootTabView: View {
             pastSessionRoot(sessionID)
         case .history(.calendar):
             calendarRoot
+        case .history(.week(let day)):
+            weekHistoryRoot(day)
         case .dashboard(.recentPersonalRecords):
             recentRecordsRoot
         case .dashboard(.estimatedMaxExercises):
@@ -261,17 +263,36 @@ struct RootTabView: View {
 
     /// The month grid of training days (`FR-1.5.3`), or the reason it cannot be shown.
     ///
-    /// The same three repositories as ``historyRoot``, and for the same reason: selecting a day
-    /// draws that day's sessions as the list's own summary cards, which are three facts from three
-    /// tables.
+    /// **One repository, since `FR-17.11.2`**: the grid marks days and a day's tap pushes its week,
+    /// so the catalogue and the settings row a summary needed belong to ``weekHistoryRoot(_:)``.
     @ViewBuilder
     private var calendarRoot: some View {
         switch dependencies.state {
         case .open(let repositories, _):
-            CalendarView(
+            CalendarView(workouts: repositories.workouts)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// The history by calendar week (`FR-17.11`), opened at `day`'s week, or the reason it cannot
+    /// be shown.
+    ///
+    /// The same three repositories as ``calendarRoot``, and for the same reason: a week's row is the
+    /// list's own summary line, which is three facts from three tables.
+    ///
+    /// - Parameter day: The day the calendar was tapped on — its week is the newest one drawn and
+    ///   its own rows are marked (`FR-17.11.2`).
+    /// - Returns: The screen.
+    @ViewBuilder
+    private func weekHistoryRoot(_ day: Date) -> some View {
+        switch dependencies.state {
+        case .open(let repositories, _):
+            WeekHistoryView(
                 workouts: repositories.workouts,
                 exercises: repositories.exercises,
-                settings: repositories.settings
+                settings: repositories.settings,
+                containing: day
             )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)

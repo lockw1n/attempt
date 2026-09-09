@@ -6,8 +6,8 @@ import PowerliftingCore
 import RepositoryInterface
 import SwiftUI
 
-/// The History tab's root: every session logged, newest first (`FR-1.5.1`), and `FR-1.5.4`'s search
-/// over the same history as a mode of it.
+/// The History tab's root: every session logged, newest first (`FR-1.5.1`), with `FR-1.5.4`'s search
+/// and `FR-17.11`'s calendar weeks as modes of it.
 ///
 /// The view half of `TR-1.2`'s pattern — it holds ``SessionListState`` in `@State`, reads its phase,
 /// and decides nothing a test would want to ask about.
@@ -37,6 +37,16 @@ public struct SessionListView: View {
     /// History tab's sessions are listed.
     @State private var search: SessionSearchState
 
+    /// `FR-17.11`'s week view over the same rows, likewise a mode rather than a tab (`D-8`).
+    @State private var byWeek: WeekHistoryState
+
+    /// Which of the two is showing, restored from where the tab was last left this launch.
+    ///
+    /// **Seeded from ``HistoryModeMemory`` rather than defaulted here.** `@State` survives a tab
+    /// switch but not the store reopening under it, and the memory is what makes the choice a
+    /// property of the session rather than of this view's lifetime.
+    @State private var mode: HistoryMode = HistoryModeMemory.shared.mode
+
     /// The shell's navigation position, for the empty state's action.
     ///
     /// Optional and read rather than required, on `ExerciseListView`'s rule: a `StateAction` is a
@@ -61,6 +71,9 @@ public struct SessionListView: View {
                 workouts: workouts, exercises: exercises, settings: settings, records: records))
         _search = State(
             initialValue: SessionSearchState(
+                workouts: workouts, exercises: exercises, settings: settings))
+        _byWeek = State(
+            initialValue: WeekHistoryState(
                 workouts: workouts, exercises: exercises, settings: settings))
     }
 
@@ -106,6 +119,16 @@ public struct SessionListView: View {
             search.nameLanguage = ExerciseNameLanguage(locale)
             await search.loadIfSearching()
         }
+        // The week view's own read, keyed on the mode so that switching to it loads it and coming
+        // back to the tab in it reloads it — the same "on every appearance" rule the list follows,
+        // for the same reason. Skipped while the log is showing, so the mode nobody chose costs
+        // nothing.
+        .task(id: mode) {
+            guard mode == .weeks else { return }
+            byWeek.adopt(calendar)
+            byWeek.nameLanguage = ExerciseNameLanguage(locale)
+            await byWeek.load()
+        }
     }
 
     /// The screen's three states (`FR-1.13.1`), each one of T-1.09's shared components.
@@ -118,10 +141,30 @@ public struct SessionListView: View {
     /// dashboard owes too.
     @ViewBuilder private var content: some View {
         if search.isSearching {
+            // The search reads every session, so it answers over the whole history whichever mode
+            // the tab is in — and a result is one workout rather than a week, which is why the
+            // control is not drawn over it.
             results
         } else {
-            browse
+            VStack(alignment: .leading, spacing: Spacing.lg.points) {
+                modeControl
+                if mode == .weeks {
+                    WeekHistoryContent(state: byWeek)
+                } else {
+                    browse
+                }
+            }
         }
+    }
+
+    /// `FR-17.11.1`'s two readings of the same rows, remembered for the rest of the launch.
+    private var modeControl: some View {
+        HistoryModeControl(mode: $mode)
+            .onChange(of: mode) { _, chosen in
+                // Remembered here and nowhere else: a settings column would owe the archive a field
+                // for a convenience (`T-16.14`).
+                HistoryModeMemory.shared.remember(chosen)
+            }
     }
 
     /// The unsearched list's three states (`FR-1.13.1`), each one of T-1.09's shared components.

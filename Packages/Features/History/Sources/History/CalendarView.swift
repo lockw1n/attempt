@@ -1,7 +1,6 @@
 import AppNavigation
 import DesignSystem
 import Localization
-import PowerliftingCore
 import RepositoryInterface
 import SwiftUI
 
@@ -10,10 +9,10 @@ import SwiftUI
 /// The view half of `TR-1.2`'s pattern — it holds ``CalendarState`` in `@State`, reads its phase,
 /// and decides nothing a test would want to ask about.
 ///
-/// **Selecting a marked day opens that day's sessions beneath the grid rather than pushing.** A day
-/// can hold two workouts, so a cell cannot name a session; what it can do is show the day's rows —
-/// T-1.35's own summary cards, unchanged — each of which is the link to `history.session`. That is
-/// also what makes an unmarked cell inert without a special case: it is not a control at all.
+/// **A marked day pushes its week** (`FR-17.11.2`), rather than opening a section beneath the grid.
+/// A day can hold two workouts, so a cell cannot name a session — and the week that day falls in is
+/// the screen that can, listing every day around it with its program position. An unmarked cell is
+/// inert without a special case: it is not a control at all.
 public struct CalendarView: View {
     @State private var state: CalendarState
 
@@ -30,17 +29,9 @@ public struct CalendarView: View {
     /// Builds the screen over the repositories its state reads.
     ///
     /// - Parameters:
-    ///   - workouts: The sessions, their entries and their sets.
-    ///   - exercises: The catalogue, for the names in a day's summary lines.
-    ///   - settings: The settings row, for the unit a tonnage is shown in.
-    public init(
-        workouts: any WorkoutRepository,
-        exercises: any ExerciseRepository,
-        settings: any SettingsRepository
-    ) {
-        _state = State(
-            initialValue: CalendarState(
-                workouts: workouts, exercises: exercises, settings: settings))
+    ///   - workouts: The sessions the grid marks days from.
+    public init(workouts: any WorkoutRepository) {
+        _state = State(initialValue: CalendarState(workouts: workouts))
     }
 
     /// Whichever of the screen's states is current.
@@ -56,7 +47,6 @@ public struct CalendarView: View {
             // The environment's calendar before the read, not after: the grid, the day index and
             // the month bounds are all computed in it, and re-deriving them costs a second pass.
             state.adopt(calendar)
-            state.nameLanguage = ExerciseNameLanguage(locale)
             await state.load()
         }
     }
@@ -97,7 +87,7 @@ public struct CalendarView: View {
         }
     }
 
-    /// The month's controls, its grid, and whatever the selected day has to say.
+    /// The month's controls and its grid.
     private var calendarBody: some View {
         VStack(alignment: .leading, spacing: Spacing.xl.points) {
             MonthHeader(
@@ -110,86 +100,7 @@ public struct CalendarView: View {
             MonthGridView(
                 grid: state.grid,
                 trainingDays: state.trainingDays,
-                selectedDay: state.selectedDay,
-                calendar: calendar,
-                select: { day in Task { await state.select(day) } }
-            )
-            daySection
-        }
-    }
-
-    /// The selected day's sessions, where a day of the month on screen is selected.
-    ///
-    /// **Hidden while another month is showing**, rather than dropped: stepping a month away and
-    /// back does not cost the user the section they opened, and a day's rows drawn under a grid
-    /// that does not contain that day would be two months on one screen.
-    @ViewBuilder private var daySection: some View {
-        if let selected = visibleSelection {
-            VStack(alignment: .leading, spacing: Spacing.md.points) {
-                Text(verbatim: rendered(selected, AppFormat.date(locale: locale)))
-                    .font(Typography.sectionHeading.font)
-                    .foregroundStyle(ColorToken.textPrimary)
-                    .accessibilityAddTraits(.isHeader)
-                dayContent(for: selected)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    /// `date` through `style`, in this screen's calendar rather than the device's.
-    ///
-    /// **`Text(_:format:)` is not usable here, and that is measured rather than assumed.** SwiftUI
-    /// re-resolves a date style's time zone out of the environment, which overrides a style bound to
-    /// a calendar — so a grid laid out in one calendar and drawn in another labels every cell with
-    /// the wrong day while its VoiceOver label, rendered through `formatted(_:)`, says the right
-    /// one. Rendering the string first is what keeps the two from ever disagreeing.
-    ///
-    /// - Parameters:
-    ///   - date: What to render.
-    ///   - style: How, before binding.
-    /// - Returns: The rendered string.
-    private func rendered(_ date: Date, _ style: Date.FormatStyle) -> String {
-        date.formatted(AppFormat.resolved(style, in: calendar))
-    }
-
-    /// The selected day, where it belongs to the month on screen.
-    ///
-    /// Hidden while another month is showing rather than dropped: stepping a month away and back
-    /// does not cost the user the section they opened, and a day's rows drawn under a grid that
-    /// does not contain that day would be two months on one screen.
-    private var visibleSelection: Date? {
-        guard let selected = state.selectedDay,
-            calendar.isDate(selected, equalTo: state.grid.month, toGranularity: .month)
-        else { return nil }
-        return selected
-    }
-
-    /// What the day's section is showing — its rows, or the reason it has none yet.
-    ///
-    /// - Parameter selected: The day the section is headed with.
-    @ViewBuilder private func dayContent(for selected: Date) -> some View {
-        switch state.day {
-        case .none:
-            EmptyView()
-        case .loading:
-            LoadingStateView()
-        case .loaded(let summaries):
-            ForEach(summaries) { summary in
-                NavigationLink(value: Route.history(.session(sessionID: summary.id))) {
-                    // Without its own date: the heading above the section already carries the day,
-                    // and every card under it is that same day.
-                    SessionSummaryCard(
-                        summary: summary, unit: state.displayUnit, date: .hidden)
-                }
-                .buttonStyle(.plain)
-            }
-        case .failed:
-            // The shared error component under a grid that is still correct and still marked: the
-            // day's rows are what failed, and the retry is the same tap that opened it.
-            ErrorStateView(
-                message: Text(HistoryStrings.calendarDayError),
-                retryEmphasis: .secondary,
-                retry: { Task { await state.select(selected) } }
+                calendar: calendar
             )
         }
     }
@@ -301,14 +212,8 @@ struct MonthGridView: View {
     /// The days training was logged on, as day starts in ``calendar``.
     let trainingDays: Set<Date>
 
-    /// The day currently open, if it is this month's.
-    let selectedDay: Date?
-
     /// The calendar the grid was laid out in.
     let calendar: Calendar
-
-    /// Opens a day.
-    let select: (Date) -> Void
 
     /// Which locale the headings and numerals render for (`G-3.4`).
     @Environment(\.locale) private var locale
@@ -356,9 +261,7 @@ struct MonthGridView: View {
             CalendarDayCell(
                 day: day,
                 calendar: calendar,
-                hasTraining: trainingDays.contains(day),
-                isSelected: selectedDay == day,
-                select: { select(day) }
+                hasTraining: trainingDays.contains(day)
             )
         } else {
             // A cell rather than a `Spacer`: the columns have to line up under their headings, and
@@ -374,11 +277,13 @@ struct MonthGridView: View {
 /// One day of the grid.
 ///
 /// **A marked day carries three signals, none of them colour** (`G-4.5`): a filled surface behind
-/// the numeral, a dot beneath it, and a VoiceOver label that says so in a word. Selection is a
-/// fourth and separate one — a ring — so that *trained* and *open* are never told apart by tint.
+/// the numeral, a dot beneath it, and a VoiceOver label that says so in a word.
 ///
-/// **An unmarked day is not a control.** There is no session to open, so there is nothing to tap:
+/// **An unmarked day is not a control.** There is no week to open on it, so there is nothing to tap:
 /// the cell is static text, and no gesture on it can navigate anywhere.
+///
+/// **No selected state since `FR-17.11.2`.** A tap leaves this screen for the day's week, so there
+/// is never a day held open under the grid for a ring to mark.
 struct CalendarDayCell: View {
     /// The day, as its first instant.
     let day: Date
@@ -396,22 +301,16 @@ struct CalendarDayCell: View {
     /// Whether training was logged on it.
     let hasTraining: Bool
 
-    /// Whether its sessions are the ones open below the grid.
-    let isSelected: Bool
-
-    /// Opens it.
-    let select: () -> Void
-
     /// Which locale the numeral and the spoken date render for (`G-3.4`).
     @Environment(\.locale) private var locale
 
-    /// A button where there is something to open, and a numeral where there is not.
+    /// A link where there is a week to open, and a numeral where there is not.
     var body: some View {
         if hasTraining {
-            Button(action: select) { face }
+            NavigationLink(value: Route.history(.week(containing: day))) { face }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text(HistoryStrings.calendarDayTrained(date: spokenDate)))
-                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+                .accessibilityAddTraits(.isButton)
         } else {
             face
                 .accessibilityElement()
@@ -445,11 +344,6 @@ struct CalendarDayCell: View {
             RoundedRectangle(cornerRadius: CornerRadius.control.points, style: .continuous)
                 .fill(ColorToken.surfaceRaised)
                 .opacity(hasTraining ? 1 : 0)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: CornerRadius.control.points, style: .continuous)
-                .strokeBorder(ColorToken.brandAccent, lineWidth: 2)
-                .opacity(isSelected ? 1 : 0)
         )
     }
 

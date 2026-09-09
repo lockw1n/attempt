@@ -12,6 +12,9 @@ struct RouteTests {
     static let exerciseID = UUID(uuidString: "0F5A1E24-9B7D-4C31-8E62-1A2B3C4D5E6F") ?? UUID()
     static let sessionID = UUID(uuidString: "7C1D2E3F-4A5B-4C6D-8E9F-0A1B2C3D4E5F") ?? UUID()
 
+    /// A fixed instant, so nothing here asserts against the day it runs.
+    static let day = Date(timeIntervalSince1970: 1_767_484_800)
+
     static let all: [Route] = [
         .dashboard(.recentPersonalRecords),
         .training(.activeSession),
@@ -24,6 +27,7 @@ struct RouteTests {
         .routines(.editWeek),
         .history(.session(sessionID: sessionID)),
         .history(.calendar),
+        .history(.week(containing: day)),
         .settings(.about),
     ]
 
@@ -85,6 +89,10 @@ struct RouteTests {
             try Self.encodedKeyPath(.history(.session(sessionID: Self.sessionID)))
                 == ["history", "_0", "session", "sessionID"]
         )
+        #expect(
+            try Self.encodedKeyPath(.history(.week(containing: Self.day)))
+                == ["history", "_0", "week", "containing"]
+        )
         #expect(try Self.encodedKeyPath(.settings(.about)) == ["settings", "_0", "about"])
     }
 
@@ -97,6 +105,7 @@ struct RouteTests {
         #expect(Route.exerciseLibrary(.exerciseDetail(exerciseID: UUID())).tab == .train)
         #expect(Route.routines(.editWeek).tab == .train)
         #expect(Route.history(.session(sessionID: UUID())).tab == .history)
+        #expect(Route.history(.week(containing: Self.day)).tab == .history)
         #expect(Route.settings(.about).tab == .settings)
     }
 

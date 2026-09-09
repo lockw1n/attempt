@@ -68,7 +68,7 @@ cd "$(dirname "$0")/.."
 #   ExerciseLibrary: 40 tests, all of them reference-backed, no probes -> 40, its own count.
 #   Logging:         93 tests, 88 reference-backed, a width probe and four layout budgets
 #                                                                    -> 93, its own count.
-#   History:         25 tests, 24 reference-backed, one layout budget -> 25, above the 24.
+#   History:         26 tests, 25 reference-backed, one layout budget -> 26, above the 25.
 #   Dashboard:       20 tests, all of them reference-backed, no probes -> 20, its own count.
 #   Settings:        45 tests, all of them reference-backed, no probes -> 45, its own count.
 #   Routines:         4 tests, all of them reference-backed, no probes ->  4, its own count.
@@ -88,7 +88,7 @@ SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|24"
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|40"
     "Packages/Features/Logging|Logging|LoggingSnapshotTests|93"
-    "Packages/Features/History|History|HistorySnapshotTests|25"
+    "Packages/Features/History|History|HistorySnapshotTests|26"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|20"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|45"
     "Packages/Features/Routines|Routines|RoutinesSnapshotTests|4"
