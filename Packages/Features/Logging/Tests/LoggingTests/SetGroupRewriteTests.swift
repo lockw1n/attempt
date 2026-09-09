@@ -312,23 +312,25 @@ private struct SetWriteRefusingRepository: WorkoutRepository, PlannedTargetRepos
     let attempts = Counter()
 
     /// Counts the set saves, so the refusal starts at a fixed one.
-    final class Counter: @unchecked Sendable {
-        private let lock = NSLock()
+    ///
+    /// **An actor rather than a lock behind `@unchecked Sendable`** (`G-6.4`): the only caller is
+    /// already `async`, so the isolation costs an `await` and buys the checked conformance — and
+    /// the escape hatch is for types the compiler cannot be shown to be safe, not for ones that
+    /// would be safe if written differently.
+    actor Counter {
         private var count = 0
 
         /// One more attempt.
         ///
         /// - Returns: How many there have now been, counting from zero.
         func next() -> Int {
-            lock.lock()
-            defer { lock.unlock() }
             defer { count += 1 }
             return count
         }
     }
 
     func save(_ set: SetEntry) async throws {
-        guard attempts.next() < refusingFrom else {
+        guard await attempts.next() < refusingFrom else {
             throw RepositoryError.recordNotFound(id: set.id)
         }
         try await wrapped.save(set)
