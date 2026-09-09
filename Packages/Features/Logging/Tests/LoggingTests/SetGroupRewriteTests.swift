@@ -119,6 +119,110 @@ struct SetGroupRewriteTests {
         #expect(entries.first?.isMarkedDone == false)
     }
 
+    @Test("A member nobody attempted comes back completed, because the sheet answered for it")
+    func aPendingMemberIsCompletedByTheRewrite() async throws {
+        // FR-16.4.4 and TR-17.4 together: a skip is *derived* from a row marked done with no
+        // completed working set, so a rewrite that carried `isCompleted == false` across would
+        // make the lifter's answer read as Skipped. `LoggedSetWriter.edited` carries it on
+        // purpose — FR-1.2.5's outcome has its own control — and this write is the other case.
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: workout.squat.id)
+        let entryID = try #require(workout.store.exercises.first).id
+        try await workout.repositories.workouts.save(
+            Self.pending(entryID: entryID, grams: 80_000, reps: 5))
+
+        try await SetGroupRewrite(
+            repository: workout.repositories.workouts,
+            records: PersonalRecordRecomputer(
+                workouts: workout.repositories.workouts,
+                cache: workout.repositories.personalRecords)
+        )
+        .rewrite(
+            inEntryID: entryID,
+            to: [SetEntryValues(weight: Weight(grams: 80_000), reps: 4, rpe: nil, isWarmup: false)])
+
+        let stored = try await workout.repositories.workouts.sets(
+            forEntryID: entryID, includingDeleted: false)
+        let member = try #require(stored.first)
+        #expect(member.reps == 4)
+        #expect(member.isCompleted)
+        #expect(member.completedAt != nil)
+    }
+
+    @Test("Answering a row drops the sets nobody attempted rather than logging beside them")
+    func answeringARowDropsItsPendingMembers() async throws {
+        // The circle completes them (`writeAnswerAsPlanned`) and the skip removes them; the sheet
+        // has to do one or the other, because it is answering for exactly those sets. Left in
+        // place they double the work and hand FR-16.4.4 a question on a day that has none.
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: workout.squat.id)
+        let entryID = try #require(workout.store.exercises.first).id
+        try await workout.repositories.workouts.save(
+            Self.pending(entryID: entryID, grams: 80_000, reps: 5))
+
+        await workout.store.logGroup(
+            inEntryID: entryID,
+            rows: [SetEntryValues(weight: Weight(grams: 82_500), reps: 5, rpe: nil, isWarmup: false)])
+
+        let stored = try await workout.repositories.workouts.sets(
+            forEntryID: entryID, includingDeleted: false)
+        #expect(stored.count == 1)
+        #expect(stored.first?.weight == Weight(grams: 82_500))
+        #expect(stored.first?.isCompleted == true)
+        // Soft, like every deletion here (`G-1.3`).
+        let all = try await workout.repositories.workouts.sets(
+            forEntryID: entryID, includingDeleted: true)
+        #expect(all.count == 2)
+    }
+
+    @Test("A free workout keeps its pending sets, because it keeps the question they answer")
+    func aFreeWorkoutsAddLeavesThemAlone() async throws {
+        // `addSets` marks no row done — there is no checklist row — so FR-16.4.4's resolution at
+        // the end of the workout is still the thing that answers for a set nobody attempted.
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: workout.squat.id)
+        let entryID = try #require(workout.store.exercises.first).id
+        try await workout.repositories.workouts.save(
+            Self.pending(entryID: entryID, grams: 80_000, reps: 5))
+
+        await workout.store.addSets(
+            toEntryID: entryID,
+            rows: [SetEntryValues(weight: Weight(grams: 82_500), reps: 5, rpe: nil, isWarmup: false)])
+
+        let stored = try await workout.repositories.workouts.sets(
+            forEntryID: entryID, includingDeleted: false)
+        #expect(stored.count == 2)
+        #expect(stored.contains { !$0.isCompleted })
+    }
+
+    /// One set nobody has attempted (`FR-16.4.4`).
+    ///
+    /// - Parameters:
+    ///   - entryID: The exercise it belongs to.
+    ///   - grams: The load.
+    ///   - reps: The repetitions.
+    /// - Returns: The record.
+    private static func pending(entryID: UUID, grams: Int, reps: Int) -> SetEntry {
+        SetEntry(
+            id: UUID(),
+            createdAt: .now,
+            updatedAt: .now,
+            deletedAt: nil,
+            entryID: entryID,
+            order: 0,
+            weight: Weight(grams: grams),
+            reps: reps,
+            rpe: nil,
+            rir: nil,
+            isWarmup: false,
+            isCompleted: false,
+            targetWeight: nil,
+            targetReps: nil,
+            modifiers: [],
+            notes: "",
+            completedAt: nil)
+    }
+
     /// One entry with a group of identical sets already logged against it.
     private struct Group {
         let workout: Workout

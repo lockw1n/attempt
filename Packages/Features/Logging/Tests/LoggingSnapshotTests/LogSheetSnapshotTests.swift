@@ -68,16 +68,17 @@
             // opens `.large`, so it gets the screen less the status bar. Nothing is subtracted for
             // a navigation bar or a tab bar: a sheet covers both.
             //
-            // WHAT IS MEASURED, AND WHY IT IS EXACTLY THE REQUIREMENT. The three regions the sheet
-            // stacks, each rendered as the sheet draws it: the plan line pinned above the fields,
-            // `SetEditorHead` — which holds the heading, Weight and Reps and nothing else — and the
-            // pinned commands. Sets and the plate row scroll and are not counted, which is
-            // `FR-17.1.6`'s own wording: it names Weight and Reps.
+            // WHAT IS MEASURED, AND WHY IT IS EXACTLY THE REQUIREMENT. The two regions the sheet
+            // stacks in this mode, each rendered as the sheet draws it: `SetEditorHead` — which
+            // holds the heading, Weight and Reps and nothing else — and the pinned commands. Sets
+            // and the plate row scroll and are not counted, which is `FR-17.1.6`'s own wording: it
+            // names Weight and Reps. The pinned plan line is not counted because a checklist row
+            // does not draw one — its reference is `PlannedActualPair`, inside the scroll view.
             //
             // THIS IS WHAT PUT THE SHEET AT `.large`. Measured with the plate row still between
-            // Weight and Reps the head was 447 pt and the total 679 — more than the whole screen,
-            // so no detent could have held it. Moving that row below the fold brings the head to
-            // 352.5 and the total to 584.5.
+            // Weight and Reps the head was 447 pt and the total 648.5 — inside 667 only by the
+            // status bar, and over it the moment a label wrapped. Moving that row below the fold
+            // brings the head to 352.5 and the total to 554.
             //
             // WHAT IS SUBTRACTED. `Snapshot.render` pads every subject by `Spacing.lg` on all four
             // sides and the sheet does not, so the vertical 32 pt per region is the harness's. The
@@ -85,7 +86,6 @@
             // rendered 32 pt narrower than the device would, so more labels wrap here than there.
             let budget = SetEditorSheet.smallestScreen - 20.0
             let regions: [(String, AnyView)] = [
-                ("plan line", AnyView(LogSheetFixtures.planLine)),
                 ("head", AnyView(LogSheetFixtures.head(over: LogSheetFixtures.unanswered))),
                 ("commands", AnyView(LogSheetFixtures.commands)),
             ]
@@ -103,34 +103,29 @@
 
         // MARK: - Fixtures
 
-        /// The Log sheet's three regions, in the order and with the paddings the sheet gives them.
+        /// The Log sheet's regions, in the order and with the paddings the sheet gives them.
         ///
         /// **Composed rather than rendered as ``SetEditorSheet``**, for `SessionPlanSnapshotTests`'
         /// own reason: `ImageRenderer` lays a `ScrollView`'s content out and draws none of it, so a
-        /// picture of the sheet is a picture of the plan line and the commands with the whole form
-        /// missing. The order, the spacing and both of the plan line's paddings are copied from the
-        /// sheet rather than chosen here.
+        /// picture of the sheet is a picture of the commands with the whole form missing. The order
+        /// and the spacing are copied from the sheet rather than chosen here.
+        ///
+        /// **And no pinned plan line, because a checklist row draws none** (T-16.17's family, which
+        /// is how these four references were wrong first time round). `SetEditorSheet` draws that
+        /// line from ``SessionExercise/nextPlannedGroup``, which is `nil` before the day has a
+        /// session and `nil` again once the row's planned sets are all logged — so it was absent
+        /// on the first **Log** of every day and on every reopen of an answered row, which is
+        /// exactly the pair of states these fixtures picture. The reference in this mode is
+        /// ``PlannedActualPair``, which is derived from the row's whole plan and cannot vanish.
         enum LogSheetFixtures {
-            /// DOD-17.7's prescription: three sets of ten at 30 kg.
             /// The locale the form's numbers are read and rendered in — fixed, like every other
             /// input to a reference.
             static let numberLocale = Locale(identifier: "en_US_POSIX")
 
+            /// DOD-17.7's prescription: three sets of ten at 30 kg.
             static let plan: [WeekPlanTarget] = [
                 WeekPlanTarget(id: identifier(1), weight: Weight(grams: 30_000), reps: 10, sets: 3)
             ]
-
-            /// The plan as the pinned reference line draws it (`FR-15.3.1`).
-            static let prescription = PlannedTargetGroup(
-                id: identifier(2),
-                createdAt: .distantPast,
-                updatedAt: .distantPast,
-                deletedAt: nil,
-                exerciseEntryID: identifier(3),
-                order: 0,
-                targetWeight: Weight(grams: 30_000),
-                targetReps: 10,
-                targetSets: 3)
 
             /// **Log** on a row nobody has answered — prefilled from the plan.
             static var unanswered: SetDraft {
@@ -163,7 +158,7 @@
             /// a deviation on all three dimensions at once.
             static var answered: SetDraft {
                 SetDraft(
-                    answering: SetEditorRow(plan: plan, logged: logged, isAnswered: true),
+                    answering: SetEditorRow(plan: plan, logged: logged),
                     unit: .kilograms,
                     locale: Self.numberLocale)
             }
@@ -188,13 +183,6 @@
                     modifiers: [],
                     notes: "",
                     completedAt: .distantPast)
-            }
-
-            /// The plan line, as the sheet pins it above the fields.
-            static var planLine: some View {
-                PlannedTargetLine(target: prescription, comparison: nil, unit: .kilograms)
-                    .padding(.horizontal, Spacing.lg.points)
-                    .padding(.top, Spacing.lg.points)
             }
 
             /// The pinned commands, in the mode a checklist row draws them.
@@ -227,7 +215,6 @@
             /// - Returns: The sheet, laid out for a reference.
             static func sheet(over draft: SetDraft) -> some View {
                 VStack(spacing: Spacing.sm.points) {
-                    planLine
                     SetEditorFields(
                         draft: .constant(draft),
                         mode: .row(SetEditorRow(plan: plan)),

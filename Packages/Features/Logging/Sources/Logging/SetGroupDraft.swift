@@ -156,13 +156,16 @@ extension SetDraft {
     /// the two must agree on everything the fold did not touch: a row built from an entry takes the
     /// group's load, because a different load is a different group.
     ///
-    /// `nil` where the draft does not resolve, on ``resolved``'s rule.
+    /// `nil` where the draft does not resolve, on ``resolved``'s rule — and that single guard is
+    /// also what makes ``ResolvedSetGroup/rows`` exactly ``ResolvedSetGroup/sets`` long: ``resolved``
+    /// requires ``isLoggable``, which requires every entry of ``details`` to resolve, and the
+    /// rebuilt branch copies text that same check has already read. A second count guard here
+    /// would be a branch no test can reach.
     var resolvedGroup: ResolvedSetGroup? {
         guard let values = resolved, let sets else { return nil }
         let entries = details.count == sets ? details : Self.details(of: self, count: sets)
-        let rows = entries.compactMap { Self.row(values, applying: $0) }
-        guard rows.count == sets else { return nil }
-        return ResolvedSetGroup(values: values, sets: sets, rows: rows)
+        return ResolvedSetGroup(
+            values: values, sets: sets, rows: entries.compactMap { Self.row(values, applying: $0) })
     }
 
     /// One row, the group's load with one set's own answers over it.

@@ -105,11 +105,11 @@ public struct DayView: View {
                 }
             )
             // `.large`, and it is measured rather than chosen — see
-            // `SetEditorSheet.smallestScreen`. This sheet's pinned plan line, its heading, Weight,
-            // Reps and its pinned commands are 584.5 pt at the default type size on a 667 pt
-            // screen, so `FR-17.1.6`'s "Weight and Reps visible together" rules out `.medium` and
-            // every fraction below 0.88. A second detent that could not hold them would be a
-            // height this form must never open at.
+            // `SetEditorSheet.smallestScreen`. This sheet's heading, Weight, Reps and its pinned
+            // commands are 554 pt at the default type size on a 667 pt screen, so `FR-17.1.6`'s
+            // "Weight and Reps visible together" rules out `.medium` and every fraction below
+            // 0.84. A second detent that could not hold them would be a height this form must
+            // never open at.
             .presentationDetents([.large])
         }
         .sessionOverflow(

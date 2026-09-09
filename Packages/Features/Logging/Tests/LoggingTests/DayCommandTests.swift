@@ -352,3 +352,39 @@ struct DayCommandTests {
         #expect(try #require(day.rows.first).records.isEmpty)
     }
 }
+
+/// Which identity a day's rows carry, and what that decides (`FR-17.9.4`, `FR-17.7.5`).
+///
+/// **Its own suite because the fact is the store's rather than any one command's**: every screen
+/// that holds a row id across the first answer of a day is holding one the list stops using, and
+/// the Log sheet's save is the first to have had to notice.
+@MainActor
+@Suite("A day's row identities")
+struct DayRowIdentityTests {
+    @Test("The start renumbers the rows, so answered-ness is asked about the entry")
+    func answerednessIsAskedAboutTheEntry() async throws {
+        // The two facts the Log sheet's save rests on, and the pair that made it read every first
+        // answer of a day as a correction. (1) Creating the session renumbers `rows` from the
+        // routine's slots onto the entries the copy wrote, so the id the sheet was opened on is
+        // one the list no longer holds — `entryID(forRow:)` is the translation. (2) A row the day
+        // does not hold is *not* answered: written as a comparison against the optional that
+        // misses, `nil != .unanswered` is true, and appending is the only one of the two branches
+        // that cannot soft-delete a set the lifter has.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
+        let store = fixture.activeStore()
+        let day = fixture.dayStore(dayIndex: 0, store: store)
+        await day.load()
+        let slotID = try #require(day.rows.first).id
+
+        #expect(!day.isAnswered(rowID: slotID))
+        #expect(await day.startIfNeeded())
+        let entryID = try #require(day.rows.first).id
+        #expect(entryID != slotID, "the start is expected to renumber the rows")
+        #expect(!day.isAnswered(rowID: slotID))
+        #expect(!day.isAnswered(rowID: entryID))
+
+        await day.answerAsPlanned(rowID: entryID)
+        #expect(day.isAnswered(rowID: entryID))
+        #expect(!day.isAnswered(rowID: slotID))
+    }
+}

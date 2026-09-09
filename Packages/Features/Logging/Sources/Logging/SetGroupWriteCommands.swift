@@ -73,6 +73,17 @@ extension ActiveSessionStore {
     /// stay written, the diagnostic is reported once rather than per row, and the announcement
     /// still goes out — sets that landed can have moved a record whether or not the rest did. The
     /// re-read then draws exactly the rows that exist.
+    ///
+    /// **A row being answered loses its pending members first** (`FR-16.4.4`, `Q-17.6`), which is
+    /// ``skipExercises(inEntryIDs:)``' rule rather than a new one: a set nobody attempted is the
+    /// question the sheet has just answered, so leaving it beside the answer would double the work
+    /// and hand `FR-16.4.4` a set to resolve at the end of a day that has none. Soft, like every
+    /// deletion here (`G-1.3`). A completed member is left alone — that is work the lifter logged
+    /// separately, and this command appends beside it.
+    ///
+    /// **Only where the row is being marked done.** A free workout has no checklist row and keeps
+    /// `FR-16.4.4`'s question, so ``addSets(toEntryID:rows:)`` writes beside its pending sets
+    /// rather than through them.
     private func writeLoggedGroup(
         inEntryID entryID: UUID, rows: [SetEntryValues], markingDone: Bool = true
     ) async {
@@ -80,6 +91,11 @@ extension ActiveSessionStore {
         var written = 0
         do {
             let stored = try await repository.sets(forEntryID: entryID, includingDeleted: false)
+            if markingDone {
+                for pending in stored where !pending.isCompleted {
+                    try await repository.deleteSet(id: pending.id)
+                }
+            }
             var order = (stored.map(\.order).max() ?? -1) + 1
             let moment = Date.now
             for values in rows {

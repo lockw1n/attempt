@@ -93,6 +93,12 @@ struct SetEditorTarget: Identifiable, Equatable {
 /// **And the sets already logged rather than a count**, because a reopened form is prefilled from
 /// them — per-set reps, ratings, warm-up marks and notes included — and the rewrite it saves is
 /// matched to them by position (``SetGroupRewrite``).
+///
+/// **Whether the row is *answered* is deliberately not here.** A skip is an answer holding no sets,
+/// so the fact cannot be read off ``logged`` — but it decides a *write*, not a form: what the sheet
+/// opens holding is the same either way, and the only screen that needs it reads it from
+/// ``DayStore/isAnswered(rowID:)`` at the moment it writes. Carried here it would be read at the
+/// moment the sheet opened, which is one whole session-creation earlier.
 struct SetEditorRow: Equatable {
     /// What the routine prescribed, in order. Empty for a row the lifter added (`FR-1.2.2`).
     let plan: [WeekPlanTarget]
@@ -101,20 +107,14 @@ struct SetEditorRow: Equatable {
     /// ``SetGroupRewrite``'s rule that the group is the whole entry.
     let logged: [SetEntry]
 
-    /// Whether the row has already been answered (`FR-17.9.6`) — a skip is answered and holds no
-    /// sets, which is why this is carried rather than read off ``logged``.
-    let isAnswered: Bool
-
     /// Builds the row.
     ///
     /// - Parameters:
     ///   - plan: What was prescribed.
     ///   - logged: What is already stored against it.
-    ///   - isAnswered: Whether it has been answered.
-    init(plan: [WeekPlanTarget], logged: [SetEntry] = [], isAnswered: Bool = false) {
+    init(plan: [WeekPlanTarget], logged: [SetEntry] = []) {
         self.plan = plan
         self.logged = logged
-        self.isAnswered = isAnswered
     }
 }
 

@@ -245,7 +245,12 @@ public final class DayStore {
     func log(rowID: UUID, group: ResolvedSetGroup) async {
         unanswerable = []
         guard await startIfNeeded(), let entryID = entryID(forRow: rowID) else { return }
-        if isAnswered(rowID: rowID) {
+        // Asked about the *entry*, never about `rowID`. A day with no session draws the routine's
+        // slots and a day with one draws its entries, so the identity the sheet was opened on is
+        // one `rows` no longer holds the moment the first answer creates the session — and a
+        // lookup by it finds nothing on the commonest save there is. ``entryID(forRow:)`` is the
+        // translation, and after ``startIfNeeded()`` its answer is always an identity `rows` has.
+        if isAnswered(rowID: entryID) {
             await store.rewriteGroup(inEntryID: entryID, rows: group.rows)
         } else {
             await store.logGroup(inEntryID: entryID, rows: group.rows)
@@ -256,9 +261,12 @@ public final class DayStore {
 
     /// What the Log sheet opens over `rowID` (`FR-17.9.4`, `FR-17.7.5`).
     ///
-    /// **The plan, what is stored, and whether the row is answered** — the three things the sheet
-    /// needs and the one place they are read together. Composed here rather than on the screen for
-    /// ``seed(forRow:)``'s reason: the mapping from a row to its entry is this store's.
+    /// **The plan and what is stored** — the two things the sheet needs and the one place they are
+    /// read together. Composed here rather than on the screen for ``seed(forRow:)``'s reason: the
+    /// mapping from a row to its entry is this store's.
+    ///
+    /// Whether the row is answered is *not* carried: that decides the write rather than the form,
+    /// and it is read at the moment of writing — see ``isAnswered(rowID:)``.
     ///
     /// - Parameter rowID: The row.
     /// - Returns: The row, or `nil` where the day has none by that identity.
@@ -266,16 +274,27 @@ public final class DayStore {
         guard let row = rows.first(where: { $0.id == rowID }) else { return nil }
         return SetEditorRow(
             plan: row.plan,
-            logged: store.exercises.first { $0.id == rowID }?.sets ?? [],
-            isAnswered: row.answer != .unanswered)
+            logged: store.exercises.first { $0.id == rowID }?.sets ?? [])
     }
 
     /// Whether the row has already been answered — what decides between a write and a rewrite.
     ///
+    /// **A row the day does not hold is *not* answered**, and the default matters: written as a
+    /// comparison against the optional, a missing row reads as answered and the save becomes a
+    /// rewrite of a group nobody has logged. Appending is the safe answer to "I cannot tell" —
+    /// it is what an unanswered row does, and it is the only one of the two that cannot
+    /// soft-delete a set the lifter has.
+    ///
+    /// **It answers about whatever identity ``rows`` is currently keyed by**, which is the routine's
+    /// slots before the day has a session and the entries after — so a caller holding a row id from
+    /// before ``startIfNeeded()`` has to translate it through ``entryID(forRow:)`` first. Internal
+    /// rather than private so both halves of that can be asserted.
+    ///
     /// - Parameter rowID: The row.
     /// - Returns: Whether it carries an answer.
-    private func isAnswered(rowID: UUID) -> Bool {
-        rows.first { $0.id == rowID }?.answer != .unanswered
+    func isAnswered(rowID: UUID) -> Bool {
+        guard let row = rows.first(where: { $0.id == rowID }) else { return false }
+        return row.answer != .unanswered
     }
 
     /// What the editor opens filled in with for `rowID` (`FR-15.2.3`), or `nil` where nothing was

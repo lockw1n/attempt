@@ -174,11 +174,11 @@ struct SetGroupDraftTests {
     @Test("An answered row opens on what is stored, and the fold opens only where the sets differ")
     func anAnsweredRowOpensOnTheAnswer() throws {
         let uniform = SetDraft(
-            answering: SetEditorRow(plan: Self.plan, logged: Self.logged([8, 8, 8]), isAnswered: true),
+            answering: SetEditorRow(plan: Self.plan, logged: Self.logged([8, 8, 8])),
             unit: .kilograms,
             locale: .posix)
         let varied = SetDraft(
-            answering: SetEditorRow(plan: Self.plan, logged: Self.logged([8, 8, 6]), isAnswered: true),
+            answering: SetEditorRow(plan: Self.plan, logged: Self.logged([8, 8, 6])),
             unit: .kilograms,
             locale: .posix)
 

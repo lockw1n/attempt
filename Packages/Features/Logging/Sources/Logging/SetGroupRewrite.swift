@@ -21,6 +21,13 @@ import RepositoryInterface
 /// fold can mark any member a warmup, so a rewrite that skipped them would leave a row the lifter
 /// had just demoted outside the group it belongs to and rewrite the wrong member next time.
 ///
+/// **Every member it writes is work that happened**, which is where it parts company with
+/// ``LoggedSetWriter/edited(_:to:)``: that function carries `isCompleted` across because
+/// `FR-1.2.5`'s outcome has a control of its own, and this one is the answer to *what did you do*.
+/// A member still carrying `isCompleted == false` is a set nobody attempted (`FR-16.4.4`), and
+/// left that way a whole group of them would be marked done with no completed working set behind
+/// it — which is how a skip is derived (`TR-17.4`), so the sheet's answer would read as *Skipped*.
+///
 /// **One announcement, at the end, and only where something moved** (`NFR-17.3`, `FR-1.6.4`).
 public struct SetGroupRewrite: Sendable {
     /// The sets, and the entries they are read by.
@@ -61,7 +68,8 @@ public struct SetGroupRewrite: Sendable {
         let moment = Date.now
         for (index, values) in rows.enumerated() {
             if index < stored.count {
-                let edited = LoggedSetWriter.edited(stored[index], to: values)
+                let edited = Self.performed(
+                    LoggedSetWriter.edited(stored[index], to: values), at: moment)
                 guard edited != stored[index] else { continue }
                 try await repository.save(edited)
             } else {
@@ -77,6 +85,38 @@ public struct SetGroupRewrite: Sendable {
         }
         if changed { await records.setDidChange(inEntryID: entryID) }
         return changed
+    }
+
+    /// `set` marked as work that happened.
+    ///
+    /// **Rebuilt rather than mutated**, on ``LoggedSetWriter/edited(_:to:)``'s reason. A member
+    /// already completed comes back equal to itself, which is what the caller's `!=` reads — so
+    /// `G-2.4`'s no-op rule is enforced there rather than by a second guard here.
+    ///
+    /// - Parameters:
+    ///   - set: The member, with the form's values already on it.
+    ///   - moment: When the group was reported.
+    /// - Returns: The record to save.
+    static func performed(_ set: SetEntry, at moment: Date) -> SetEntry {
+        SetEntry(
+            id: set.id,
+            createdAt: set.createdAt,
+            updatedAt: set.updatedAt,
+            deletedAt: set.deletedAt,
+            entryID: set.entryID,
+            order: set.order,
+            weight: set.weight,
+            reps: set.reps,
+            rpe: set.rpe,
+            rir: set.rir,
+            isWarmup: set.isWarmup,
+            isCompleted: true,
+            targetWeight: set.targetWeight,
+            targetReps: set.targetReps,
+            modifiers: set.modifiers,
+            notes: set.notes,
+            completedAt: set.completedAt ?? moment
+        )
     }
 
     /// One row as the Log sheet writes it — performed, and completed.

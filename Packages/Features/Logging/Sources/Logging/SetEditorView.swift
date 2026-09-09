@@ -25,18 +25,20 @@ enum SetEditorWrite: Equatable {
 /// `FR-17.1`'s Log sheet — one form that answers *what did you do* for a whole exercise — and
 /// `FR-1.2.3`'s add-set form and `FR-1.2.7`'s editor, which are the same sheet in its other mode.
 ///
-/// **One form, and ``SetEditorMode`` is the difference.** A day's checklist row draws the plan
-/// above the fields, a Planned / Actual pair below them, a collapsed **Per-set details** row and
-/// two actions; a free workout draws today's six fields (`OUT-17.8`). Adding and editing collect
-/// the same fields either way, so a second sheet would be the same layout maintained twice.
+/// **One form, and ``SetEditorMode`` is the difference.** A day's checklist row draws a Planned /
+/// Actual pair under the fields, a collapsed **Per-set details** row and two actions; a free
+/// workout draws today's six fields under a pinned plan line (`OUT-17.8`). Adding and editing
+/// collect the same fields either way, so a second sheet would be the same layout maintained twice.
 ///
 /// **Presented rather than drawn inside the row, and that is `NFR-1.4` deciding it.** Every logging
 /// control has to sit in the lower two-thirds of the screen, reachable by one thumb; a draft row
-/// inside the list would sit wherever the user had scrolled it to. A sheet at the medium detent is
-/// the lower half of the screen by construction, and it is the same place for every exercise. The
-/// larger detent is offered as well rather than instead, because at `accessibility3` the fields no
-/// longer fit the medium one and a control that cannot be scrolled to is worse than one that is
-/// briefly higher up.
+/// inside the list would sit wherever the user had scrolled it to, and a sheet is the same place
+/// for every exercise.
+///
+/// **The detents are the host's, and the two hosts differ.** A free workout offers medium and
+/// large — medium is the lower half of the screen by construction, and large is there because at
+/// `accessibility3` the fields no longer fit the medium one. A checklist row opens `.large` only,
+/// and that is measured rather than chosen: see ``smallestScreen``.
 ///
 /// **Three taps, counted rather than assumed** (`NFR-1.3`, `FR-17.1.7`): **Log** opens this already
 /// filled in from the plan, one **+** moves the field being adjusted, **Save as done** stores it.
@@ -154,11 +156,11 @@ struct SetEditorSheet: View {
     /// The height a checklist row's sheet has to open at, in points, on the smallest device the app
     /// supports (`FR-17.1.6`).
     ///
-    /// **Measured, and it is why that sheet opens `.large` rather than at a detent.** The three
-    /// regions the sheet stacks come to 584.5 pt at the default type size — a 30.5 pt plan line, a
-    /// 352.5 pt head and 201.5 pt of pinned commands — against 667 pt of screen. Half of that
-    /// screen does not hold them, and neither does any fraction worth offering: the nearest one
-    /// that does is 0.88, which is `.large` wearing a number.
+    /// **Measured, and it is why that sheet opens `.large` rather than at a detent.** The two
+    /// regions the sheet stacks come to 554 pt at the default type size — a 352.5 pt head and
+    /// 201.5 pt of pinned commands — against 667 pt of screen. Half of that screen does not hold
+    /// them, and neither does any fraction worth offering: the nearest one that does is 0.84,
+    /// which is `.large` wearing a number.
     ///
     /// `LogSheetSnapshotTests.weightAndRepsOpenAboveTheCommands` is that measurement, re-run on
     /// every snapshot pass, so a field added to ``SetEditorHead`` has to be argued against this
@@ -173,16 +175,27 @@ struct SetEditorSheet: View {
         log(draft)
     }
 
-    /// `FR-15.3.1`'s target, where a routine planned this set — `FR-17.9.4`'s reference line.
+    /// `FR-15.3.1`'s target, where a routine planned this set — the free workout's reference line.
     ///
     /// **Above the scroll view rather than in the fields, and pinned for the commands' reason.**
-    /// This sheet covers the row the target is drawn on, so without it the one moment the lifter
+    /// This sheet covers the card the target is drawn on, so without it the one moment the lifter
     /// is actually entering a number is the one moment the plan is not on screen. Inside the
     /// fields it would push the load and the repetitions below the fold at the medium detent,
     /// which is the measurement ``SetEditorFields`` is ordered around; pinned, it costs the form
     /// one line and moves nothing.
+    ///
+    /// **Never in a checklist row's form, which has its own reference and a better one.**
+    /// ``PlannedActualPair`` draws what was prescribed against what the form says, it is derived
+    /// from the row's whole plan rather than from the next unconsumed group, and it is therefore
+    /// present in every state the sheet opens in. This line is not: it is read from
+    /// ``SessionExercise/nextPlannedGroup``, which is `nil` before the day has a session — the
+    /// first **Log** of every day — and `nil` again once the row's planned sets are all logged,
+    /// which is every reopen of a fully answered row (`FR-17.7.5`). Drawn where it *is* available
+    /// it would say what the pair says one line lower, and appear and vanish under a lifter who
+    /// had changed nothing but the count (T-16.13's rule: when two places would say the same
+    /// thing, one of them stays silent).
     @ViewBuilder private var plannedTarget: some View {
-        if let prescribed {
+        if let prescribed, !mode.isRow {
             PlannedTargetLine(target: prescribed, comparison: nil, unit: unit)
                 .padding(.horizontal, Spacing.lg.points)
                 .padding(.top, Spacing.lg.points)

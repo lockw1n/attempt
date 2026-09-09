@@ -179,10 +179,10 @@ struct SetEditorFields: View {
 /// later has to be argued against the budget rather than silently pushing Reps under the commands.
 ///
 /// **Sets and the plate row are deliberately outside it.** Measured at the default type size: the
-/// heading, Weight, its plate row, Reps and Sets came to 447 pt, which with the pinned plan line
-/// and the pinned commands is 679 pt — more than the 667 pt of the smallest device the app
-/// supports, so no detent could have held them. `FR-17.1.6` asks for Weight and Reps, and the two
-/// rows that scroll are the two it does not name.
+/// heading, Weight, its plate row, Reps and Sets came to 447 pt, which with the pinned commands is
+/// 648.5 pt — inside the 667 pt of the smallest device the app supports only by the width of the
+/// status bar, and over it the moment anything wraps. `FR-17.1.6` asks for Weight and Reps, and the
+/// two rows that scroll are the two it does not name.
 struct SetEditorHead: View {
     /// What the user has entered so far.
     @Binding var draft: SetDraft
