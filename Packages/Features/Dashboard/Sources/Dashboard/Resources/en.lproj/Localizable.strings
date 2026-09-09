@@ -19,10 +19,9 @@
 "dashboard.recent-records.see-all" = "See all";
 /* FR-17.2.3: one entry's label, at its two shapes — the cell the run was performed at, spelled
    "8 reps" for a single set and "5×5" for a run. "RM" is never written: it is the notation for the
-   at-least-N reading D-17.2 withdrew, and a set of eight is now the 8-rep record alone. Neither
-   form needs a plural rule — English reads oddly only at one rep, which is the compromise every
-   count in this module already makes. */
-"dashboard.recent-records.reps %lld" = "%lld reps";
+   at-least-N reading D-17.2 withdrew, and a set of eight is now the 8-rep record alone.
+   THE SINGLE-SET SHAPE IS IN THE .stringsdict and this one is not: "5×5" carries no noun that
+   agrees with a numeral, where "%lld reps" is drawn at one rep on every 1RM. */
 "dashboard.recent-records.scheme %lld %lld" = "%1$lld×%2$lld";
 
 /* FR-16.3.3: the set the record came from, written the way the log writes it. */

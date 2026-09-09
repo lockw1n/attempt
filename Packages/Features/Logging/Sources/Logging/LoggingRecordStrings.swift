@@ -14,6 +14,10 @@ import Foundation
 /// N* reading `D-17.2` withdrew, and never `× 1`, which nobody writes. Crossing that with
 /// `FR-17.2.2`'s record and first-performance states gives the four, and they are four strings
 /// rather than a word interpolated into a form: a translator needs the whole phrase to inflect.
+///
+/// **The four rep-counted keys are in the module's `.stringsdict`, the four scheme ones beside
+/// them in the `.strings`.** `%lld reps` counts a noun and is drawn at one on every 1RM; `5×5` and
+/// `5 by 5` count nothing.
 extension LoggingStrings {
     // MARK: - The personal-record badge (FR-1.6.3, FR-17.2.2, FR-17.2.3)
 

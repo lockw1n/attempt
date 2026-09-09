@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- FR-17.2.3: a feed row's label where the run is a single set. THE REASON THIS MODULE HAS A
+	     .stringsdict — a 1RM is the record a lifter sets most visibly and the feed would otherwise
+	     head its row "1 reps". The scheme spelling "5×5" stays in the .strings; it agrees with nothing. -->
+	<key>dashboard.recent-records.reps %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

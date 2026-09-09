@@ -96,20 +96,25 @@ struct RecomputeScaleTests {
         #expect(cached.allSatisfy { $0.sourceSetID == logged[Self.setCount - 1].id })
     }
 
-    /// 1,500 sessions of ten **identical** sets, ascending session to session — the worst case for
-    /// `FR-16.2.2`'s second dimension, where the first fixture has none.
+    /// 1,500 sessions of ten sets in two runs — six at one load and four a gram heavier, ascending
+    /// session to session. The worst case for the grouping, where the first fixture's ascending
+    /// sets group into runs of one.
     ///
-    /// Every entry is one run of ten, so every session fills a whole rectangle: `repRange` × the
-    /// clamped six sets, thirty cells reached 1,500 times. The other fixture's ascending sets group
-    /// into runs of one and exercise the dominance rule at its cheapest.
+    /// **Two runs rather than one of ten**, since `FR-17.2.1`: a run of ten is outside `setRange`
+    /// and sets no record at all, so a session of ten identical sets would measure a walk that
+    /// writes nothing — and the write is half of what this budget bounds. The gram between the two
+    /// loads is what keeps them two runs: `.loadAndReps` joins on the load, so an identical second
+    /// group would be one run of ten again.
     private func groupedHistory() async throws -> (log: TrainingLog, exerciseID: UUID) {
         let log = TrainingLog()
         let exerciseID = try await log.exercise()
         for session in 0..<(Self.setCount / 10) {
+            let base = 50_000 + session * 10
             try await log.session(
                 of: exerciseID,
                 on: weeksAgo(1_600 - session),
-                sets: Array(repeating: working(50_000 + session * 10, 5), count: 10))
+                sets: Array(repeating: working(base, 5), count: 6)
+                    + Array(repeating: working(base + 1, 5), count: 4))
         }
         return (log, exerciseID)
     }
@@ -139,13 +144,13 @@ struct RecomputeScaleTests {
         #expect(elapsed < Self.budget)
 
         // Worthless unless it computed the table: the last session is the heaviest and its entry is
-        // one run of ten, so it holds the `5 × 6` cell — six being `setRange`'s clamp — and nothing
-        // else. Fewer rows per run is exactly what `FR-17.2.1` buys the write half of this budget.
+        // two runs, so it holds the `5 × 6` and `5 × 4` cells and nothing else. One cell per run is
+        // exactly what `FR-17.2.1` buys the write half of this budget.
         let cached = try await log.repositories.personalRecords.personalRecords(
             forExerciseID: exerciseID, includingDeleted: false)
-        #expect(cached.count == 1)
-        #expect(cached.map(\.setCount) == [6])
-        #expect(cached.map(\.repCount) == [5])
+        #expect(cached.count == 2)
+        #expect(cached.map(\.setCount).sorted() == [4, 6])
+        #expect(cached.allSatisfy { $0.repCount == 5 })
     }
 
     /// The read `G-1.5`'s version exists to make cheap, at the size where cheap matters.

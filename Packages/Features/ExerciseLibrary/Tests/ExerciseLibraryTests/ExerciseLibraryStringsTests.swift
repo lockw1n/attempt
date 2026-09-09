@@ -121,6 +121,14 @@ struct ExerciseLibraryStringsTests {
         #expect(!plurals.isEmpty)
     }
 
+    @Test("A record row's rep count pluralises, and the one-rep row heads the list")
+    func theRecordRowRepCountPluralises() {
+        // `FR-17.2.3` spells a record `8 reps`, and the 1-rep row is the first line of this list —
+        // so "1 reps" would be the reading a reader meets first (`G-3.4`).
+        #expect(String(localized: ExerciseLibraryStrings.recordsReps(1)) == "1 rep")
+        #expect(String(localized: ExerciseLibraryStrings.recordsReps(5)) == "5 reps")
+    }
+
     @Test("A history row's set count pluralises, which a .strings format could not")
     func theSetCountPluralises() {
         // The reason this module gained a `.stringsdict`. A run of two would otherwise read

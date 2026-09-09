@@ -199,6 +199,55 @@ struct LoggingStringsTests {
                 == "Target 5 reps, load your own")
     }
 
+    /// `FR-17.2.3`: `RM` is never written, and the badge key that wrote it leaves both catalogues
+    /// along with its English value.
+    ///
+    /// **`check-translations.sh` compares the two catalogues to each other**, so a key retired from
+    /// both is invisible to it — this module's badge is where `PR %lldRM` was drawn, and the
+    /// `Dashboard` and `ExerciseLibrary` suites each assert their own half of the same retirement.
+    @Test("The RM notation is gone from both catalogues")
+    func theRepMaxNotationIsRetired() throws {
+        for localization in ["en", "uk"] {
+            let url = try #require(
+                Bundle.module.url(
+                    forResource: "Localizable",
+                    withExtension: "strings",
+                    subdirectory: nil,
+                    localization: localization
+                ))
+            let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
+            for key in [
+                "logging.session.set.record.rep-max %lld",
+                "logging.session.set.record.rep-max.label %lld",
+            ] {
+                #expect(catalogue[key] == nil, "\(localization) kept \(key)")
+            }
+            #expect(
+                !catalogue.values.contains { $0.contains("%lldRM") || $0.contains("%lldПМ") },
+                "\(localization) still writes a rep max as RM")
+            #expect(
+                !catalogue.values.contains { $0.localizedCaseInsensitiveContains("rep max") },
+                "\(localization) still writes \"rep max\"")
+        }
+    }
+
+    @Test("The badge's rep count pluralises, which is what a 1RM is badged with")
+    func theBadgeRepCountPluralises() {
+        // A record at a single rep is the 1RM, so `PR · 1 reps` would be the badge on the most
+        // visible record a lifter sets — and on what VoiceOver reads over it (`G-3.4`).
+        #expect(String(localized: LoggingStrings.setPersonalRecordReps(1)) == "PR · 1 rep")
+        #expect(String(localized: LoggingStrings.setPersonalRecordReps(8)) == "PR · 8 reps")
+        #expect(String(localized: LoggingStrings.setFirstPerformanceReps(1)) == "First · 1 rep")
+        #expect(
+            String(localized: LoggingStrings.setPersonalRecordRepsLabel(1))
+                == "Personal record, 1 rep")
+        #expect(
+            String(localized: LoggingStrings.setFirstPerformanceRepsLabel(1)) == "First time, 1 rep")
+        #expect(
+            String(localized: LoggingStrings.setFirstPerformanceRepsLabel(3))
+                == "First time, 3 reps")
+    }
+
     @Test("Keys follow the convention: lowercase, dotted, module-prefixed")
     func keysFollowTheConvention() {
         for resource in LoggingStrings.all {

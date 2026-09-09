@@ -22,5 +22,24 @@
 			<string>%lld sets</string>
 		</dict>
 	</dict>
+	<!-- FR-1.6.2's record rows, headed by the N they stand at. The 1-rep row is the top of the
+	     list and the first thing read on the screen, so "1 rep" rather than "1 reps" (FR-17.2.3,
+	     G-3.4). -->
+	<key>exerciselibrary.detail.records.reps %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

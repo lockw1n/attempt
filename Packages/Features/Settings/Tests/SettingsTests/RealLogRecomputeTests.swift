@@ -270,8 +270,14 @@ struct RealLogRecomputeTests {
     /// fabricates runs out of sets months apart. Measured: sorting here reported 104 of 119 cached
     /// cells as never performed, all of them false.
     ///
+    /// **A run outside either bound is not a cell and is not recorded as one.** `cell(for:)`
+    /// refuses it (`FR-17.2.1`), and the witness has to refuse it here rather than clamp: a witness
+    /// that clamped would call a run of twelve a `10 × n` performance, which is the one claim
+    /// `FR-17.2.1` can be violated at — so the check would agree with the engine by construction
+    /// exactly where it needs to disagree.
+    ///
     /// - Parameter stored: One exercise's live sets, oldest first, as the repository returned them.
-    /// - Returns: The cells, clamped to the table's bounds.
+    /// - Returns: The cells performed at, within the table's bounds.
     private static func schemesPerformed(in stored: [SetEntry]) -> Set<RecordScheme> {
         var schemes: Set<RecordScheme> = []
         var current: [SetEntry] = []
@@ -280,6 +286,11 @@ struct RealLogRecomputeTests {
         // SwiftLint's `opening_brace` does not — the two disagree and only the condition can yield.
         let joins: (SetEntry, SetEntry) -> Bool = { $0.weight == $1.weight && $0.reps == $1.reps }
 
+        // And for the same reason, the bounds are one closure rather than a two-clause `if`.
+        let isACell: (Int, Int) -> Bool = {
+            PersonalRecords.repRange.contains($0) && SchemeRecordCalculator.setRange.contains($1)
+        }
+
         func close() {
             var index = current.startIndex
             while index < current.endIndex {
@@ -287,11 +298,9 @@ struct RealLogRecomputeTests {
                 while end + 1 < current.endIndex, joins(current[index], current[end + 1]) {
                     end += 1
                 }
-                let reps = min(current[index].reps, PersonalRecords.repRange.upperBound)
-                let sets = min(end - index + 1, SchemeRecordCalculator.setRange.upperBound)
-                if reps >= PersonalRecords.repRange.lowerBound {
-                    schemes.insert(RecordScheme(reps: reps, sets: sets))
-                }
+                let reps = current[index].reps
+                let sets = end - index + 1
+                if isACell(reps, sets) { schemes.insert(RecordScheme(reps: reps, sets: sets)) }
                 index = end + 1
             }
             current = []

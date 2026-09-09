@@ -81,14 +81,29 @@ struct SchemeRecordCalculatorTests {
         #expect(record(records, reps: 5, sets: 4) == nil)
     }
 
-    @Test("A run past either bound clamps rather than being refused")
-    func boundsClamp() {
-        let records = SchemeRecordCalculator().records(in: [run(80_000, 12, by: 8)])
+    /// `FR-17.2.1` in the one place a clamp used to break it: a run outside either bound sets no
+    /// record, where clamping would have claimed the corner cell at a load nobody lifted there.
+    @Test("A run past either bound sets no record rather than clamping to the corner")
+    func boundsRefuse() {
+        #expect(SchemeRecordCalculator().records(in: [run(80_000, 12, by: 8)]).isEmpty)
+        // Each bound on its own, so a refusal is not passing because the other one fired.
+        #expect(SchemeRecordCalculator().records(in: [run(80_000, 12, by: 3)]).isEmpty)
+        #expect(SchemeRecordCalculator().records(in: [run(80_000, 5, by: 8)]).isEmpty)
+        // And the cells just inside both bounds are records, so the refusal is the bound and not
+        // the whole neighbourhood of it.
+        let inside = SchemeRecordCalculator().records(in: [run(80_000, 10, by: 6)])
+        #expect(inside.count == 1)
+        #expect(record(inside, reps: 10, sets: 6)?.weight == Weight(grams: 80_000))
+    }
 
-        #expect(records.count == 1)
-        #expect(record(records, reps: 10, sets: 6)?.weight == Weight(grams: 80_000))
-        #expect(record(records, reps: 12, sets: 8) == nil)
-        #expect(record(records, reps: 10, sets: 1) == nil)
+    /// The two computations of `FR-1.6.1` agree at every N, including the N's neither reaches —
+    /// which is what the clamp used to break, `repMax(forReps:in:)` never having clamped.
+    @Test("An over-long set sets no rep max through either computation")
+    func anOverLongSetSetsNoRepMaxEitherWay() throws {
+        let eleven = try workingSet(Weight(grams: 100_000), reps: 11)
+
+        #expect(SchemeRecordCalculator().records(in: [run(100_000, 11, by: 1)]).isEmpty)
+        #expect(PersonalRecordCalculator().repMax(forReps: 10, in: [eleven]) == nil)
     }
 
     /// `SetRecord.repsRange` starts at zero, so a completed working set of no reps is storable —

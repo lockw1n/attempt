@@ -43,16 +43,40 @@ struct DashboardStringsTests {
 
     @Test("The catalogue and the accessors name exactly the same keys")
     func catalogueAndAccessorsAgree() throws {
+        // Two files, one catalogue, on `LoggingStrings`' shape since `FR-17.2.3`: a feed row's
+        // single-set label is a plural, which only the `.stringsdict` can express, and a key in one
+        // file must not also be in the other.
+        let strings = try Self.keys(inCatalogueNamed: "strings")
+        let plurals = try Self.keys(inCatalogueNamed: "stringsdict")
+        #expect(strings.isDisjoint(with: plurals))
+        #expect(strings.union(plurals) == Set(DashboardStrings.all.map(\.key)))
+        #expect(!strings.isEmpty)
+        #expect(!plurals.isEmpty)
+    }
+
+    @Test("A single-set row pluralises, which is what a 1RM reads as")
+    func theSingleSetLabelPluralises() {
+        // The reason this module gained a `.stringsdict`. The one-rep case is the 1RM rather than
+        // an edge case, and a `.strings` format cannot fix it — the numeral is the one the noun
+        // agrees with (`G-3.4`).
+        #expect(String(localized: DashboardStrings.recentRecordsReps(1)) == "1 rep")
+        #expect(String(localized: DashboardStrings.recentRecordsReps(2)) == "2 reps")
+        #expect(String(localized: DashboardStrings.recentRecordsReps(8)) == "8 reps")
+    }
+
+    /// Every key in one of this module's two catalogue files.
+    ///
+    /// - Parameter ext: `strings` or `stringsdict`.
+    /// - Returns: The keys it declares.
+    private static func keys(inCatalogueNamed ext: String) throws -> Set<String> {
         let url = try #require(
             Bundle.module.url(
                 forResource: "Localizable",
-                withExtension: "strings",
+                withExtension: ext,
                 subdirectory: nil,
                 localization: "en"
             ))
-        let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
-        #expect(Set(catalogue.keys) == Set(DashboardStrings.all.map(\.key)))
-        #expect(!catalogue.isEmpty)
+        return Set(try #require(NSDictionary(contentsOf: url) as? [String: Any]).keys)
     }
 
     @Test("Keys follow the convention: lowercase, dotted, module-prefixed")
@@ -122,6 +146,8 @@ struct DashboardStringsTests {
             #expect(
                 catalogue["dashboard.recent-records.rep-max %lld"] == nil,
                 "\(localization) kept the key")
+            // Its replacement is in the `.stringsdict`, so its absence here is not the check.
+            #expect(catalogue["dashboard.recent-records.reps %lld"] == nil)
             // The estimated-1RM tile keeps its own `1RM`, which `FR-16.2.5` leaves untouched — so
             // this is the record label's form specifically: a numeral placeholder against `RM`.
             #expect(

@@ -34,9 +34,10 @@ enum DashboardStrings {
     /// `D-17.2` withdrew — an `8RM` is a lifter's word for a set of eight that also holds every N
     /// below it — and the app no longer computes that. `8 reps` states the one thing the run did.
     ///
-    /// **One string with a numeral in it and no plural rule**, on this module's: a record at a
-    /// single rep is the only English case that reads oddly, and Ukrainian's own forms are the
-    /// translator's.
+    /// **A plural, in this module's first `.stringsdict`.** A one-rep record is not a rare shape —
+    /// it is the 1RM, the most visible record a lifter sets — so `1 reps` would be the feed's
+    /// reading of it. Ukrainian keeps the invariant abbreviation and spells all four categories
+    /// anyway, one left out falling back to `other` in silence.
     ///
     /// - Parameter reps: The N the record stands at.
     /// - Returns: The label.

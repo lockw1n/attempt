@@ -155,7 +155,6 @@
 "exerciselibrary.detail.section.records" = "Personal records";
 "exerciselibrary.detail.records.none" = "Log a set against this exercise and its personal records appear here.";
 "exerciselibrary.detail.records.error" = "This exercise's personal records could not be read.";
-"exerciselibrary.detail.records.reps %lld" = "%lld reps";
 "exerciselibrary.detail.records.more" = "6–10 reps";
 "exerciselibrary.detail.records.source-hint" = "Shows the session this record was set in.";
 "exerciselibrary.detail.records.more.expanded" = "Expanded";
@@ -333,11 +332,11 @@
 "exerciselibrary.detail.records.all" = "All schemes";
 "exerciselibrary.detail.records.all.hint" = "Shows every rep and set count this exercise holds a record at.";
 
-/* The table's headings. A column is a number of consecutive sets and a row is a rep count, so the
-   column carries the multiplication sign and the row carries the noun. */
+/* The table's headings. A column is a number of consecutive sets and a row is a rep count, so a
+   column of two sets or more carries the multiplication sign and the row carries the noun.
+   THE ONE-SET COLUMN IS THE EXCEPTION AND IT IS FR-17.2.3's: it is headed by a word, never "× 1",
+   which is not a notation anybody writes their heaviest single in. */
 "exerciselibrary.records.column %lld" = "× %lld";
-
-/* FR-17.2.3: the one-set column is headed by a word and never "× 1". */
 "exerciselibrary.records.column.single" = "single";
 "exerciselibrary.records.reps-header" = "reps";
 

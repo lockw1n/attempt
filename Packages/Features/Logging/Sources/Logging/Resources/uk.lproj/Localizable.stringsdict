@@ -291,5 +291,88 @@
 			<string>%lld підходу</string>
 		</dict>
 	</dict>
+	<!-- The rep spellings, which count a noun. The badge keeps the abbreviation «повт.», invariant at
+	     every count; the spoken labels take the four categories — «2 повторення», «5 повторень» —
+	     where the literal «%lld повторень» they replaced was wrong at 2, 3 and 4. -->
+	<key>logging.session.set.record.reps %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>ОР · %#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld повт.</string>
+			<key>few</key>
+			<string>%lld повт.</string>
+			<key>many</key>
+			<string>%lld повт.</string>
+			<key>other</key>
+			<string>%lld повт.</string>
+		</dict>
+	</dict>
+	<key>logging.session.set.first.reps %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Уперше · %#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld повт.</string>
+			<key>few</key>
+			<string>%lld повт.</string>
+			<key>many</key>
+			<string>%lld повт.</string>
+			<key>other</key>
+			<string>%lld повт.</string>
+		</dict>
+	</dict>
+	<key>logging.session.set.record.reps.label %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Особистий рекорд: %#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld повторення</string>
+			<key>few</key>
+			<string>%lld повторення</string>
+			<key>many</key>
+			<string>%lld повторень</string>
+			<key>other</key>
+			<string>%lld повторення</string>
+		</dict>
+	</dict>
+	<key>logging.session.set.first.reps.label %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Уперше: %#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld повторення</string>
+			<key>few</key>
+			<string>%lld повторення</string>
+			<key>many</key>
+			<string>%lld повторень</string>
+			<key>other</key>
+			<string>%lld повторення</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

@@ -44,8 +44,11 @@ struct RecentRecordsFilterTests {
             }
         }
         let kickback = try await log.exercise(named: "Triceps Kickback")
-        // One light single, once, and never before: a baseline at a scheme trained once.
-        try await log.session(of: kickback, on: weeksAgo(1), sets: [working(10_000, 12)])
+        // One light single, once, and never before: a baseline at a scheme trained once. Ten reps
+        // rather than the twelve this fixture used to carry — twelve is outside `PersonalRecords`'
+        // rep range, so since `FR-17.2.1` it sets no record at all and the accessory this suite is
+        // about would never reach the feed to be scoped in or out of it.
+        try await log.session(of: kickback, on: weeksAgo(1), sets: [working(10_000, 10)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
             cache: log.repositories.personalRecords,
@@ -184,10 +187,10 @@ struct RecentRecordsFilterTests {
         #expect(derived == [RecordScheme(reps: 5, sets: 3)])
     }
 
-    /// A run establishes sixty cells by dominance and is one performance of one scheme. Counting
-    /// cells would put `1 × 1` over the threshold after three sessions of anything, and the filter
-    /// would stop filtering.
-    @Test("Dominance does not count: three runs derive their own cell and no other")
+    /// A run is one performance of one scheme (`FR-17.2.1`). Under the withdrawn dominance rule it
+    /// filled sixty cells, and counting those would have put `1 × 1` over the threshold after three
+    /// sessions of anything — the filter this asserts still filters is the same one either way.
+    @Test("Three runs derive their own cell and no other")
     func dominatedCellsAreNotCounted() async throws {
         let log = TrainingLog()
         let squat = try await log.exercise(named: "Back Squat")
@@ -206,10 +209,10 @@ struct RecentRecordsFilterTests {
         #expect(!derived.contains(RecordScheme(reps: 1, sets: 1)))
     }
 
-    /// A run past either bound clamps rather than being refused, so the cell it derives is the
-    /// table's corner — the same clamp the records themselves are computed through.
-    @Test("A run past the table's bounds derives the clamped cell")
-    func aRunPastTheBoundsClamps() async throws {
+    /// A run past either bound derives nothing, because it records nothing (`FR-17.2.1`): the
+    /// clamp that used to hand it the table's corner claimed a load at a scheme nobody performed.
+    @Test("A run past the table's bounds derives no scheme at all")
+    func aRunPastTheBoundsDerivesNothing() async throws {
         let log = TrainingLog()
         let squat = try await log.exercise(named: "Back Squat")
         for week in [6, 4, 2] {
@@ -221,6 +224,15 @@ struct RecentRecordsFilterTests {
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
 
+        #expect(try await recomputer.derivedSchemes(forExerciseID: squat).isEmpty)
+        // Anchored: the same lifter's work *inside* both bounds still derives, so the emptiness
+        // above is the bounds rather than the fixture failing to log anything. Three sessions,
+        // because that is `RecentRecordsSchemes.derivedThreshold`.
+        for week in [5, 3, 1] {
+            try await log.session(
+                of: squat, on: weeksAgo(week), sets: (0..<6).map { _ in working(60_000, 10) })
+        }
+        try await recomputer.recompute(forExerciseID: squat)
         #expect(
             try await recomputer.derivedSchemes(forExerciseID: squat)
                 == [RecordScheme(reps: 10, sets: 6)])

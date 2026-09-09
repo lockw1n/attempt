@@ -80,15 +80,15 @@
         /// no name still has to render.
         static let names: [UUID: String] = [squat: "Back Squat", bench: "Bench Press"]
 
-        /// `FR-16.3.3`'s row at each of its shapes: a rep max that improved on one, a rep max set
-        /// for the first time, and a run that set no rep max at all.
+        /// `FR-16.3.3`'s row at each of its shapes: a single set that improved on a standing load,
+        /// a single set performed for the first time, and a run of five.
         ///
-        /// **The first row's label is `3RM` and not `1–3-rep max`** — the retired form (see
-        /// ``Dashboard/DashboardStrings/recentRecordsRepMax(_:)``), and the reference is where that
-        /// is visible rather than argued.
+        /// **The first row's label is `3 reps`** — `FR-17.2.3`'s spelling, `RM` having been retired
+        /// with the reading that made it true — and the reference is where that is visible rather
+        /// than argued.
         static let entries: [RecentRecord] = [
-            entry(exerciseID: squat, reps: 1...3, kilos: 142.5, daysAgo: 2, beating: 140),
-            entry(exerciseID: bench, reps: 5...5, kilos: 102.5, daysAgo: 9),
+            entry(exerciseID: squat, reps: 3, kilos: 142.5, daysAgo: 2, beating: 140),
+            entry(exerciseID: bench, reps: 5, kilos: 102.5, daysAgo: 9),
             run(exerciseID: retired, reps: 5, sets: 5, kilos: 100, daysAgo: 30, beating: 95),
         ]
 
@@ -96,14 +96,14 @@
         /// repeated.
         private static func entry(
             exerciseID: UUID,
-            reps: ClosedRange<Int>,
+            reps: Int,
             kilos: Double,
             daysAgo: Int,
             beating: Double? = nil
         ) -> RecentRecord {
             RecentRecord(
                 exerciseID: exerciseID,
-                scheme: RecordScheme(reps: reps.upperBound, sets: 1),
+                scheme: RecordScheme(reps: reps, sets: 1),
                 weight: Weight(grams: Int(kilos * 1000)),
                 sourceSetID: sourceSetID(daysAgo),
                 achievedAt: day.addingTimeInterval(-Double(daysAgo) * 86_400),

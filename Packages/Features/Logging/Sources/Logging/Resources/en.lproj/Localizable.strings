@@ -187,20 +187,20 @@
    happen, and "Mark as warmup" on a set that already is one is the opposite instruction. */
 "logging.session.set.mark-warmup" = "Mark as warmup";
 "logging.session.set.mark-working" = "Mark as working";
-/* FR-1.6.3's and FR-16.2.4's badge, and what VoiceOver reads in its place. Short on the row
-   because the line is already spending its width on the load and two 44pt controls; the label
-   carries the whole claim. Two spellings of one badge, chosen on the set count rather than on how
-   many cells the set holds: the one-set column is a rep max and a lifter writes it "8RM", every
-   other cell is a scheme and they write it "5×5". Neither spelling needs a plural rule — the
-   numeral sits inside the compound in both. */
+/* FR-1.6.3's, FR-17.2.2's and FR-17.2.3's badge, and what VoiceOver reads in its place. Short on
+   the row because the line is already spending its width on the load and two 44pt controls; the
+   label carries the whole claim. Four badges and four labels: two spellings — a cell at one set is
+   written "8 reps" and every other cell "5×5", never "8RM" and never "× 1" — crossed with the two
+   states a performed cell can be in, a record and a first performance.
+
+   THE TWO SCHEME SPELLINGS ARE HERE AND THE TWO REP ONES ARE IN THE .stringsdict. "5×5" and
+   "5 by 5" carry no noun that agrees with a numeral; "%lld reps" does, and it is drawn at one rep
+   on every 1RM a lifter sets, which is the most-looked-at record there is. Same argument as
+   logging.session.plan.reps-delta, one requirement later. */
 "logging.session.set.record.scheme %lld %lld" = "PR · %1$lld×%2$lld";
-"logging.session.set.record.reps %lld" = "PR · %lld reps";
 "logging.session.set.first.scheme %lld %lld" = "First · %1$lld×%2$lld";
-"logging.session.set.first.reps %lld" = "First · %lld reps";
 "logging.session.set.record.scheme.label %lld %lld" = "Personal record, %1$lld by %2$lld";
-"logging.session.set.record.reps.label %lld" = "Personal record, %lld reps";
 "logging.session.set.first.scheme.label %lld %lld" = "First time, %1$lld by %2$lld";
-"logging.session.set.first.reps.label %lld" = "First time, %lld reps";
 /* FR-1.2.14's collapsible group. A label beside a numeral, so it stays a count in every language
    rather than needing a plural rule. */
 "logging.session.set.warmup.section" = "Warmups";

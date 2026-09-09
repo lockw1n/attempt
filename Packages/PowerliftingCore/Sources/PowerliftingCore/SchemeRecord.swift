@@ -57,8 +57,8 @@ public struct SetRun: Sendable, Hashable {
     /// The repetitions every set in the run carried.
     ///
     /// Zero upwards, on ``SetRecord/reps``' rule: a failed set records the reps it reached, which
-    /// can be none. A run below ``PersonalRecords/repRange`` sets no record rather than being
-    /// refused, and one above it clamps — see ``SchemeRecordCalculator/cell(for:)``.
+    /// can be none. A run outside ``PersonalRecords/repRange`` sets no record at either end — see
+    /// ``SchemeRecordCalculator/cell(for:)``, where that rule lives.
     public let reps: Int
 
     /// How many sets it holds — the `× 4`.
@@ -130,41 +130,46 @@ public struct SchemeRecord: Sendable, Hashable {
 ///
 /// **Nothing is cached** (`G-1.4`), as for every calculator here.
 public struct SchemeRecordCalculator: Sendable {
-    /// How many sets a scheme is computed up to (`FR-16.2.2`).
+    /// How many sets a scheme is computed up to (`FR-17.2.1`).
     ///
     /// **Six, and the bound is a product decision rather than an arithmetic one.** The table is
     /// `repRange × setRange` cells per exercise and every one of them is a stored row, so the
     /// second dimension is what multiplies the cache; a run longer than six sets is not a scheme
-    /// anybody trains against, and it records at six rather than being refused.
+    /// anybody trains against, and it sets no record rather than recording at six — see
+    /// ``cell(for:)``.
     public static let setRange: ClosedRange<Int> = 1...6
 
     /// Creates a calculator. It reads no setting — which is what keeps `TR-0.3.9`'s cache legal
     /// under `G-1.5`, one version being a complete statement of what produced a row.
     public init() {}
 
-    /// The corner cell `run` reaches — its own scheme, clamped to the table — or `nil` where it
-    /// reaches no cell at all.
+    /// The cell `run` was performed at — its own scheme — or `nil` where that is not a cell.
     ///
     /// **The one place a run is turned into a cell**, so the table's bounds are stated once, and
-    /// since `FR-17.2.1` it is the only cell the run reaches. A run past either bound clamps rather
-    /// than being refused: eight sets of twelve is a record at `10 × 6`, and the cells above the
-    /// bounds are not cells. A run below the rep floor — a set of none, which a failed set records
-    /// — reaches nothing.
+    /// since `FR-17.2.1` it is the only cell the run reaches.
+    ///
+    /// **A run outside either bound reaches nothing, and it is refused rather than clamped**
+    /// (`FR-17.2.1`, `FR-1.6.1`). Clamping was right under the withdrawn dominance rule, where a
+    /// run stood at every cell at or below its corner and the corner was only the largest of them;
+    /// with one cell per run it is the one remaining way a load is claimed at a scheme nobody
+    /// performed. Twelve reps is not a set of ten — more could have been lifted for ten — and eight
+    /// sets is not six, on the same argument in the other dimension. So a set of eleven sets no
+    /// record, exactly as ``PersonalRecordCalculator/repMax(forReps:in:)`` already refuses it, and
+    /// the two computations of `FR-1.6.1` agree at every N. A run below the rep floor — a set of
+    /// none, which a failed set records — reaches nothing for the same reason.
     ///
     /// - Parameter run: The run.
-    /// - Returns: The cell it holds, or `nil`.
+    /// - Returns: The cell it was performed at, or `nil`.
     public static func cell(for run: SetRun) -> RecordScheme? {
-        let reps = min(run.reps, PersonalRecords.repRange.upperBound)
-        let sets = min(run.count, Self.setRange.upperBound)
-        guard reps >= PersonalRecords.repRange.lowerBound, sets >= Self.setRange.lowerBound
+        guard PersonalRecords.repRange.contains(run.reps), Self.setRange.contains(run.count)
         else { return nil }
-        return RecordScheme(reps: reps, sets: sets)
+        return RecordScheme(reps: run.reps, sets: run.count)
     }
 
     /// Every scheme record `runs` holds, ascending by ``SchemeRecord/scheme``.
     ///
-    /// **One cell per run** (`FR-17.2.1`), which is ``cell(for:)``'s. A run reaching past either
-    /// bound **clamps** rather than being refused, and that rule lives there too.
+    /// **One cell per run** (`FR-17.2.1`), which is ``cell(for:)``'s. A run outside either bound
+    /// reaches no cell at all, and that rule lives there too.
     ///
     /// - Parameter runs: One exercise's runs of consecutive equal completed working sets, oldest
     ///   first. Warmups, failures and the runs they interrupt are the caller's to exclude — see

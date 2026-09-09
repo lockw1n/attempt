@@ -102,19 +102,16 @@
 
 /* «ОР» for особистий рекорд, the way the English badge is «PR».
 
-   NEITHER LABEL NEEDS A PLURAL RULE, AND THAT IS NOT AN OVERSIGHT. The compound
-   «%lld-повторний максимум» is an adjective agreeing with «максимум» rather than with the numeral,
-   so it is correct at 1 and at 6 alike — where the literal «на %lld повторень» would be wrong at 2,
-   3 and 4, which are the counts a lifter sets most. The scheme label reads «5 на 5», where «на»
-   sits between the two numerals and agrees with neither. */
+   THE FOUR KEYS HERE NEED NO PLURAL RULE AND THE FOUR IN THE .stringsdict DO. These four are the
+   scheme spellings: «5 на 5» puts «на» between two numerals, agreeing with neither. The rep
+   spellings count a noun — the compound «%lld-повторний максимум» that used to stand here agreed
+   with «максимум» rather than with the numeral and so was right at every count, and the literal
+   «%lld повторень» that replaced it is wrong at 2, 3 and 4, which are the counts a lifter sets
+   most. So they moved to the .stringsdict, where Ukrainian's four categories can be spelled. */
 "logging.session.set.record.scheme %lld %lld" = "ОР · %1$lld×%2$lld";
-"logging.session.set.record.reps %lld" = "ОР · %lld повт.";
 "logging.session.set.first.scheme %lld %lld" = "Уперше · %1$lld×%2$lld";
-"logging.session.set.first.reps %lld" = "Уперше · %lld повт.";
 "logging.session.set.record.scheme.label %lld %lld" = "Особистий рекорд: %1$lld на %2$lld";
-"logging.session.set.record.reps.label %lld" = "Особистий рекорд: %lld повторень";
 "logging.session.set.first.scheme.label %lld %lld" = "Уперше: %1$lld на %2$lld";
-"logging.session.set.first.reps.label %lld" = "Уперше: %lld повторень";
 "logging.session.set.warmup.section" = "Розминка";
 "logging.session.set.warmup.label" = "Розминковий підхід";
 "logging.session.set.warmup.hint" = "Нумерується окремо й не входить до ваших робочих підходів.";

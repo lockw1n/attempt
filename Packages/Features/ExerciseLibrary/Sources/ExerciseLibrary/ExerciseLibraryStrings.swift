@@ -199,6 +199,9 @@ enum ExerciseLibraryStrings {
     /// five-rep row and no other. `RM` and "rep max" are both retired with the *at least N* reading
     /// that made them true.
     ///
+    /// **A plural, in the `.stringsdict`** (`G-3.4`): the one-rep row heads this list, so the
+    /// alternative is `1 reps` on the first line a reader meets.
+    ///
     /// - Parameter reps: The N.
     /// - Returns: The heading.
     static func recordsReps(_ reps: Int) -> LocalizedStringResource {

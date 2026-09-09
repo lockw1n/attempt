@@ -276,6 +276,51 @@ struct ExerciseRecordsSectionTests {
         #expect(!table.diagonal.contains { $0.scheme == RecordScheme(reps: 1, sets: 1) })
     }
 
+    /// `FR-17.2.2`'s three cell states, off the table rather than off a picture.
+    ///
+    /// **The state a cell is in is the claim `ExerciseSchemeTable` exists to make assertable**, and
+    /// until this test the only thing that could tell a record from a first performance was a
+    /// snapshot reference: swapping the two arms of ``ExerciseSchemeTable/state(at:)`` passed every
+    /// test in this target. All three are read here from one history, so a fixture that lost the
+    /// distinction would fail rather than picture the wrong thing.
+    @Test("A cell is a record, a first performance, or never performed")
+    func aCellIsInOneOfThreeStates() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        // `5 × 1` twice, the second heavier: a record with a beaten load.
+        try await fixture.trainWeighted(squat, onDay: 0, work: [(reps: 5, kilos: 100)])
+        try await fixture.trainWeighted(squat, onDay: 1, work: [(reps: 5, kilos: 110)])
+        // `3 × 3` once: a first performance.
+        try await fixture.trainWeighted(
+            squat, onDay: 2, work: Array(repeating: (reps: 3, kilos: 90), count: 3))
+        let state = fixture.records(of: squat, through: fixture.recomputer())
+
+        await state.loadRecords()
+        let table = ExerciseSchemeTable(state.schemeRecords)
+
+        guard case .record(let beaten) = table.state(at: RecordScheme(reps: 5, sets: 1)) else {
+            Issue.record("5 × 1 is not a record")
+            return
+        }
+        #expect(beaten.record.weight == Weight(grams: 110_000))
+        #expect(beaten.previous == Weight(grams: 100_000))
+
+        guard case .firstPerformance(let baseline) = table.state(at: RecordScheme(reps: 3, sets: 3))
+        else {
+            Issue.record("3 × 3 is not a first performance")
+            return
+        }
+        #expect(baseline.record.weight == Weight(grams: 90_000))
+        #expect(baseline.previous == nil)
+
+        // A cell *inside* the drawn rows and columns, which is the one the grid has to say a word
+        // over — `3 × 1` sits where the `3 × 3` row meets the `5 × 1` column.
+        #expect(table.state(at: RecordScheme(reps: 3, sets: 1)) == .neverPerformed)
+        #expect(table.state(at: RecordScheme(reps: 5, sets: 3)) == .neverPerformed)
+        // And one outside them, so the state is not standing in for "the table does not draw this".
+        #expect(table.state(at: RecordScheme(reps: 8, sets: 6)) == .neverPerformed)
+    }
+
     /// The table screen's four states, which are the section's five minus the pair it cannot tell
     /// apart — see ``ExerciseRecordsTableState``.
     @Test("The table screen reports loading, nothing-yet and ready off one read")

@@ -21,9 +21,11 @@ public enum RecentRecordsSchemes: Sendable, Hashable {
     /// How many times a scheme has to have been performed before ``derived`` shows records at it
     /// (`FR-16.3.2`).
     ///
-    /// **Three, from the requirement, and it counts *runs* rather than cells.** A `100 × 5 × 5`
-    /// establishes sixty cells by dominance (`FR-16.2.2`) and is one performance of one scheme; a
-    /// threshold counting cells would make `1 × 1` the most-trained scheme of every lifter alive.
+    /// **Three, from the requirement, and it counts *runs* rather than cells.** A `100 × 5 × 5` is
+    /// one performance of one scheme (`FR-17.2.1`); under `FR-16.2.2`'s withdrawn dominance rule it
+    /// established sixty cells, and a threshold counting those would have made `1 × 1` the
+    /// most-trained scheme of every lifter alive. The distinction survives the withdrawal because
+    /// it is about what a *performance* is, not about how many cells one fills.
     public static let derivedThreshold = 3
 
     /// The cells chosen, or `nil` where the schemes are derived. The stored shape.

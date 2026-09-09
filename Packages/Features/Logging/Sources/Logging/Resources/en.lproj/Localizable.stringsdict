@@ -261,5 +261,72 @@
 			<string>%lld sets</string>
 		</dict>
 	</dict>
+	<!-- FR-17.2.2 and FR-17.2.3's badge at its one-set spelling, drawn and spoken. A 1RM is the record a
+	     lifter looks at most and it is the case the plural is for: "PR · 1 rep", never "1 reps".
+	     The scheme spellings stay in the .strings beside them — "5×5" agrees with nothing. -->
+	<key>logging.session.set.record.reps %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>PR · %#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
+	<key>logging.session.set.first.reps %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>First · %#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
+	<key>logging.session.set.record.reps.label %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Personal record, %#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
+	<key>logging.session.set.first.reps.label %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>First time, %#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

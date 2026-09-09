@@ -95,7 +95,6 @@
 "exerciselibrary.detail.section.records" = "Особисті рекорди";
 "exerciselibrary.detail.records.none" = "Запишіть підхід із цією вправою — і її особисті рекорди з’являться тут.";
 "exerciselibrary.detail.records.error" = "Не вдалося прочитати особисті рекорди цієї вправи.";
-"exerciselibrary.detail.records.reps %lld" = "%lld повт.";
 "exerciselibrary.detail.records.more" = "6–10 повторень";
 "exerciselibrary.detail.records.source-hint" = "Показує тренування, у якому встановлено цей рекорд.";
 "exerciselibrary.detail.records.more.expanded" = "Розгорнуто";

@@ -152,11 +152,13 @@ extension PersonalRecordRecomputer {
     /// The schemes this exercise has actually been trained at — `FR-16.3.2`'s "logged at least three
     /// times".
     ///
-    /// **Runs, not cells.** A `100 × 5 × 5` establishes sixty cells by dominance (`FR-16.2.2`) and is
-    /// one performance of one scheme; counting cells would make `1 × 1` the most-trained scheme of
-    /// every lifter alive, and the threshold would filter nothing. So it counts the corner each run
-    /// reaches — ``PowerliftingCore/SchemeRecordCalculator/cell(for:)``, the same clamp the records
-    /// themselves are computed through, so the two cannot disagree about what a run is.
+    /// **Runs, not cells**, which since `FR-17.2.1` is one cell each and was sixty before it. The
+    /// count is of performances: three sessions of `100 × 5 × 5` are three `5 × 5` performances,
+    /// where counting the cells the withdrawn dominance rule filled would have made `1 × 1` the
+    /// most-trained scheme of every lifter alive and the threshold would have filtered nothing. It
+    /// reads ``PowerliftingCore/SchemeRecordCalculator/cell(for:)``, which is where a run's cell and
+    /// its bounds are decided, so this and the records themselves cannot disagree about what a run
+    /// reached — a run outside the bounds included, which reaches nothing and is counted nowhere.
     ///
     /// **All-time, and `FR-1.7.1`'s window is deliberately not read.** `FR-16.3.2` names no window;
     /// applying the estimate's would make a lifter narrowing their e1RM lookback silently lose
