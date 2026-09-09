@@ -34,7 +34,7 @@ public struct WeekHistoryView: View {
     ///   - workouts: The sessions, their entries and their sets.
     ///   - exercises: The catalogue, for the names in a row.
     ///   - settings: The settings row, for the unit a tonnage is shown in.
-    ///   - containing: The day the screen was opened at, whose week is the newest one drawn and
+    ///   - day: The day the screen was opened at, whose week is the newest one drawn and
     ///     whose own rows are marked (`FR-17.11.2`).
     public init(
         workouts: any WorkoutRepository,

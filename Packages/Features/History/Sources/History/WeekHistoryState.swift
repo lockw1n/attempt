@@ -118,7 +118,7 @@ final class WeekHistoryState {
     ///   - workouts: Where the sessions, their entries and their sets come from.
     ///   - exercises: The catalogue, for the names in a row.
     ///   - settings: The settings row, for the unit a tonnage is shown in.
-    ///   - containing: The instant the screen was opened at — the week it falls in is the newest one
+    ///   - anchor: The instant the screen was opened at — the week it falls in is the newest one
     ///     drawn, and its day is marked (`FR-17.11.2`). `nil` for the tab's own week mode, which
     ///     starts at the newest row there is.
     ///   - calendar: Which calendar decides where a week and a day begin. The view passes

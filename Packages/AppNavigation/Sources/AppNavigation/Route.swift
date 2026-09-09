@@ -215,8 +215,10 @@ public enum HistoryRoute: Hashable, Sendable, Codable {
     /// instant that is no longer any week's beginning. A *day* survives that: whichever calendar the
     /// screen is drawn in resolves it to the week it belongs to there, and marks it (`FR-17.11.2`).
     ///
-    /// **The tab's own week mode is not this case.** It is a control on ``SessionListView``, so the
-    /// only thing on this stack is a week reached from the grid.
+    /// **The tab's own week mode is not this case.** It is a control on `SessionListView`, so
+    /// the only thing on this stack is a week reached from the grid. Single backticks: that
+    /// screen is `History`'s, and this module does not depend on it, so a symbol link here
+    /// could only render as plain text.
     case week(containing: Date)
 }
 

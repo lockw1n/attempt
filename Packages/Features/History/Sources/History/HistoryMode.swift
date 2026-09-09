@@ -23,9 +23,11 @@ enum HistoryMode: String, CaseIterable, Identifiable, Sendable {
 ///
 /// **Process-lifetime state and deliberately not a settings column** (`T-16.14`): a column nothing
 /// else reads is a column the archive owes a field and a restore owes a mapping, for a convenience
-/// whose whole value is that the tab is where the user left it this session. ``ExerciseListFilterMemory``
-/// is the same shape one module along, and its own note on `nil` is why this one has a default
-/// instead: there is no "neither mode", so the first launch has an answer rather than an absence.
+/// whose whole value is that the tab is where the user left it this session.
+/// `ExerciseListFilterMemory` is the same shape one module along — single backticks, that being
+/// `ExerciseLibrary`'s and unreachable from here — and its own note on `nil` is why this one has a
+/// default instead: there is no "neither mode", so the first launch has an answer rather than an
+/// absence.
 @MainActor
 final class HistoryModeMemory {
     /// The app's one memory. A test builds its own instead.

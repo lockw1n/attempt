@@ -273,7 +273,7 @@ struct TrainingLog {
     ///
     /// - Parameters:
     ///   - calendar: The calendar the weeks are cut in.
-    ///   - containing: The day the screen was opened at, or `nil` for the tab's own week mode.
+    ///   - anchor: The day the screen was opened at, or `nil` for the tab's own week mode.
     ///   - workouts: The workout repository to read through, for the cases that need one that
     ///     refuses. Defaults to this store's own.
     /// - Returns: A fresh state that has read nothing yet.
