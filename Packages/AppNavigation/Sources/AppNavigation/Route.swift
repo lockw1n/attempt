@@ -169,60 +169,21 @@ public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
 /// `TR-1.13`'s inventory keys off it, so these screens are written down wherever that inventory
 /// lives (Q-15.1).
 public enum RoutinesRoute: Hashable, Sendable, Codable {
-    /// Every routine the lifter has authored (`FR-15.2.1`).
+    /// The week's plan — the one editor routines and programs collapsed into (`FR-17.10`,
+    /// `TR-17.6`, `D-17.9`).
     ///
-    /// **Pushed onto Train's stack rather than being Train's root**, for
-    /// ``ExerciseLibraryRoute/exerciseList``'s reason: the root is the session surface, so Train
-    /// opens on a workout and not on a plan.
-    case routineList
-
-    /// The editor authoring a new routine (`FR-15.2.1`).
+    /// **The only case here, as of `T-17.12`.** `routineList`, `routineCreate`, `routineEdit`,
+    /// `programList` and `programEdit` retired with the four screens they named (`FR-17.10.6`): a
+    /// day *is* a routine row and a week *is* a program row, so one screen edits both and there is
+    /// nothing left to list or to choose between.
     ///
-    /// **A case of its own rather than ``routineEdit(routineID:)`` with no identifier**, which is
-    /// ``ExerciseLibraryRoute/exerciseCreate``'s argument: an optional payload would make one case
-    /// mean two screens, one that reads a record and one that cannot.
-    case routineCreate
-
-    /// The editor over an existing routine (`FR-15.2.1`, `FR-15.2.2`).
-    ///
-    /// Carries the identifier and not the record, for
-    /// ``ExerciseLibraryRoute/exerciseDetail(exerciseID:)``'s reason.
-    ///
-    /// **The draft it holds is not persisted with the stack**, unlike the two Settings editors that
-    /// have no case at all: this screen writes nothing until the lifter saves, so a restored stack
-    /// opens it on what the store holds rather than on what was half-typed in another session.
-    case routineEdit(routineID: UUID)
-
-    /// Every program the lifter has authored (`FR-16.8.1`).
-    ///
-    /// **Under routines rather than under a namespace of its own**, and the reason is what a
-    /// program *is*: an ordered list of routines. It is reached from the routine list, which is
-    /// reached from Train — so the two screens share an area, an entry point and a repository
-    /// pairing, and a third sub-enum would only make `Route`'s own switch longer.
-    ///
-    /// Pushed onto Train's stack, for ``routineList``'s reason.
-    case programList
-
-    /// The editor over one program: its name, its note, and the days it is made of (`FR-16.8.1`).
-    ///
-    /// **No `programCreate` beside it**, which is where this parts company with
-    /// ``routineCreate``/``routineEdit(routineID:)``. A routine is authored in the editor from
-    /// nothing, so the editor genuinely has two modes; a program is a *name* and then a list of
-    /// days, so the list writes the row from a one-field prompt — the shape `FR-15.2.5`'s rename
-    /// already uses — and this screen only ever opens on a program that exists. One case, one
-    /// screen, and the inventory keys off the case.
-    ///
-    /// Carries the identifier and not the record, for
-    /// ``ExerciseLibraryRoute/exerciseDetail(exerciseID:)``'s reason.
-    case programEdit(programID: UUID)
-
-    /// The week's plan — the one editor routines and programs collapse into (`FR-17.10`,
-    /// `TR-17.6`).
-    ///
-    /// **Answered by ``programList`` until `T-17.12` builds the screen.** The case has to compile
-    /// the moment the week root offers **Edit week**, and a destination that pushed nothing would
-    /// be a command that does nothing; the program list is the nearest true thing there is. The
-    /// five cases above retire with that task, not this one.
+    /// **A stack stored by an earlier build can name one of those five, and it decodes to nothing
+    /// rather than to something.** ``Route`` throws on a case this version does not know — a
+    /// retired case is exactly that — and ``NavigationSnapshot`` turns the throw into the answer:
+    /// the tab whose stack held it opens at its root, and the other tabs are untouched. Not the
+    /// entry alone, which is the tempting half-measure: dropping `routineEdit` and keeping what
+    /// was pushed over it produces a stack whose depth lies, and here it would leave a lifter on an
+    /// exercise chooser with no editor behind it to choose *into*.
     ///
     /// It carries nothing: which week is being edited is the run in force, one fact about the app
     /// rather than a parameter of a push.

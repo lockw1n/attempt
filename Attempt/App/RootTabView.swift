@@ -93,96 +93,29 @@ struct RootTabView: View {
         }
     }
 
-    /// What a pushed routines route shows (`FR-15.2`).
+    /// What a pushed routines route shows (`FR-17.10`).
+    ///
+    /// **One case since `T-17.12`**, so the switch is a line rather than a table: the routine list,
+    /// the routine editor, the program list and the program editor retired with `FR-17.10.6`, and
+    /// `RoutinesRoute` says what a stack stored by an earlier build does with their spellings.
     @ViewBuilder
     private func routinesDestination(_ route: RoutinesRoute) -> some View {
         switch route {
-        case .routineList:
-            routineListRoot
-        case .routineCreate:
-            routineEditorRoot(.create)
-        case .routineEdit(let routineID):
-            routineEditorRoot(.edit(routineID: routineID))
-        case .programList:
-            programListRoot
-        case .programEdit(let programID):
-            programEditorRoot(programID)
-        // The interim destination `RoutinesRoute.editWeek` documents: `T-17.12` replaces it with
-        // the week's own editor, and the five cases above retire with it.
         case .editWeek:
-            programListRoot
+            weekEditorRoot
         }
     }
 
-    /// The programs the lifter has authored (`FR-16.8.1`), or the reason they cannot be shown.
+    /// The current week's plan (`FR-17.10.1`), or the reason it cannot be shown.
+    ///
+    /// **The store is the app's rather than the screen's**, unlike most forms here — see
+    /// ``Routines/WeekEditorState`` for why, and ``routineExercisePickerRoot`` for the other end of
+    /// the same wire.
     @ViewBuilder
-    private var programListRoot: some View {
-        switch dependencies.state {
-        case .open(let repositories, _):
-            ProgramListView(repository: repositories.programs)
-        case .failed(let diagnostic):
-            StoreUnavailableScreen(diagnostic: diagnostic)
-        }
-    }
-
-    /// One program's editor (`FR-16.8.1`, `FR-16.8.2`), or the reason it cannot be shown.
-    ///
-    /// **Two repositories, because a program day is a join the schema does not declare** (`G-2.5`):
-    /// the day names a routine and the editor draws that routine's name.
-    ///
-    /// - Parameter programID: The program the route carried.
-    @ViewBuilder
-    private func programEditorRoot(_ programID: UUID) -> some View {
-        switch dependencies.state {
-        case .open(let repositories, _):
-            ProgramEditorView(
-                programID: programID,
-                programs: repositories.programs,
-                routines: repositories.routines)
-        case .failed(let diagnostic):
-            StoreUnavailableScreen(diagnostic: diagnostic)
-        }
-    }
-
-    /// The routines the lifter has authored (`FR-15.2.1`), or the reason they cannot be shown.
-    ///
-    /// **The fifth of this file's cross-module joins, and the second that hands over a command**
-    /// (`FR-15.2.3`). Starting a workout is `Logging`'s to write and `TR-1.3` keeps `Routines` from
-    /// importing it, so the screen takes a closure and this target — which owns both — supplies the
-    /// store's own method. ``ActiveSessionStore/resume()`` runs first for
-    /// ``dashboardRoot``'s reason: the store may never have looked, and starting without it would
-    /// start a second workout on top of one already open.
-    /// The store answers both a refusal and a failed write with `false` and the screen says
-    /// different things about them, so the discrimination is made here — the one place with both.
-    @ViewBuilder
-    private var routineListRoot: some View {
-        switch dependencies.state {
-        case .open(let repositories, let stores):
-            RoutineListView(repository: repositories.routines) { routineID in
-                await stores.activeSession.resume()
-                let started = await stores.activeSession.start(
-                    on: .now, fromRoutineID: routineID, in: repositories.routines)
-                // A refusal leaves the workout it would not replace held; a failed write does not.
-                if started { return .started }
-                return stores.activeSession.isActive ? .workoutInProgress : .writeFailed
-            }
-        case .failed(let diagnostic):
-            StoreUnavailableScreen(diagnostic: diagnostic)
-        }
-    }
-
-    /// The routine editor (`FR-15.2.1`, `FR-15.2.2`), or the reason it cannot be shown.
-    ///
-    /// **The store is the app's rather than the screen's**, unlike every other form here — see
-    /// ``Routines/RoutineEditorState`` for why, and ``routineExercisePickerRoot`` for the other end
-    /// of the same wire.
-    ///
-    /// - Parameter mode: Which of the two routine routes asked for it.
-    @ViewBuilder
-    private func routineEditorRoot(_ mode: RoutineEditorMode) -> some View {
+    private var weekEditorRoot: some View {
         switch dependencies.state {
         case .open(_, let stores):
-            RoutineEditorView(mode: mode, store: stores.routineEditor)
+            WeekEditorView(store: stores.weekEditor)
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

@@ -3,33 +3,41 @@ import DesignTokens
 import Foundation
 import SwiftUI
 
-/// One exercise slot in the editor: its name, where it sits, and its target groups.
+/// One exercise of a day: its name, its targets, and the commands that act on it as a whole
+/// (`FR-17.10.1`).
 struct RoutineSlotCard: View {
-    /// The draft this card writes into.
-    @Bindable var store: RoutineEditorState
+    /// The store this card writes into.
+    @Bindable var store: WeekEditorState
 
     /// What this card draws.
     let slot: RoutineSlotDraft
 
-    /// Where the slot sits in the routine, which is what the reorder commands move.
-    let index: Int
+    /// Where the exercise sits in the day, which is what the reorder commands move.
+    let slotIndex: Int
+
+    /// Where the day sits in the week.
+    let dayIndex: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md.points) {
             header
             ForEach(Array(slot.groups.enumerated()), id: \.element.id) { groupIndex, group in
                 RoutineGroupRow(
-                    store: store, group: group, groupIndex: groupIndex, slotIndex: index)
+                    store: store,
+                    group: group,
+                    groupIndex: groupIndex,
+                    slotIndex: slotIndex,
+                    dayIndex: dayIndex)
             }
             Button {
-                store.addGroup(toSlotAt: index)
+                store.addTarget(toSlot: slotIndex, inDayAt: dayIndex)
             } label: {
-                Text(RoutinesStrings.editorAddGroup)
+                Text(RoutinesStrings.targetAdd)
             }
-            // Secondary: this is drawn once per slot, so a three-exercise routine would otherwise
+            // Secondary: this is drawn once per exercise, so a three-exercise day would otherwise
             // put three filled accents on a screen that already has **Save** (`FR-16.6.4`).
             // Intrinsic width is unchanged — `PrimaryActionWidth` chooses width and nothing else,
-            // which is why this call site was invisible to a grep for `.fill`.
+            // which is why this call site is invisible to a grep for `.fill`.
             .buttonStyle(.secondaryAction(.intrinsic))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -40,25 +48,12 @@ struct RoutineSlotCard: View {
         )
     }
 
-    /// The exercise's name and the three commands that act on the slot as a whole.
-    ///
-    /// **Explicit move buttons rather than a drag**, which is the active session's own call and for
-    /// its two reasons: `TR-1.12`'s `ImageRenderer` harness rasterises `List`'s `.onMove` as a
-    /// placeholder, and a drag is the one reorder gesture VoiceOver and Switch Control cannot
-    /// perform (`G-4.2`).
-    @ViewBuilder private var header: some View {
-        // A stack rather than a line, because three 44pt controls and a name do not share one at
-        // the largest Dynamic Type size — the set row measured the same thing with two.
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: Spacing.sm.points) {
-                name
-                Spacer()
-                commands
-            }
-            VStack(alignment: .leading, spacing: Spacing.sm.points) {
-                name
-                HStack(spacing: Spacing.sm.points) { commands }
-            }
+    /// The exercise's name and its menu.
+    private var header: some View {
+        HStack(alignment: .top, spacing: Spacing.sm.points) {
+            name
+            Spacer(minLength: Spacing.sm.points)
+            menu
         }
     }
 
@@ -70,69 +65,70 @@ struct RoutineSlotCard: View {
     @ViewBuilder private var name: some View {
         Group {
             if slot.name.isEmpty {
-                Text(RoutinesStrings.editorUnnamedExercise)
+                Text(RoutinesStrings.exerciseUnnamed)
             } else {
                 Text(verbatim: slot.name)
             }
         }
         .font(Typography.cardTitle.font)
         .foregroundStyle(ColorToken.textPrimary)
+        .multilineTextAlignment(.leading)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
-    /// Move up, move down, remove — each a 44pt target (`G-4.3`) with a label rather than a bare
-    /// glyph (`G-4.2`).
-    @ViewBuilder private var commands: some View {
-        SlotCommandButton(
-            symbolName: "chevron.up",
-            label: RoutinesStrings.editorMoveUp,
-            isEnabled: index > 0
-        ) {
-            store.moveSlotUp(index)
+    /// Move up, move down, remove — behind one labelled menu (`FR-17.10.1`, `G-4.2`).
+    private var menu: some View {
+        SlotCommandMenu(label: RoutinesStrings.exerciseMenu) {
+            Button {
+                Task { await store.moveSlot(slotIndex, by: -1, inDayAt: dayIndex) }
+            } label: {
+                Text(RoutinesStrings.exerciseMoveUp)
+            }
+            .disabled(slotIndex == 0)
+            Button {
+                Task { await store.moveSlot(slotIndex, by: 1, inDayAt: dayIndex) }
+            } label: {
+                Text(RoutinesStrings.exerciseMoveDown)
+            }
+            .disabled(slotIndex >= slotCount - 1)
+            Button(role: .destructive) {
+                Task { await store.removeSlot(slotIndex, inDayAt: dayIndex) }
+            } label: {
+                Text(RoutinesStrings.exerciseRemove)
+            }
         }
-        SlotCommandButton(
-            symbolName: "chevron.down",
-            label: RoutinesStrings.editorMoveDown,
-            isEnabled: index < store.slots.count - 1
-        ) {
-            store.moveSlotDown(index)
-        }
-        SlotCommandButton(
-            symbolName: "minus.circle",
-            label: RoutinesStrings.editorRemoveExercise,
-            isEnabled: true
-        ) {
-            store.removeSlot(at: index)
-        }
+    }
+
+    /// How many exercises the day holds, which is what the move-down command reads to know it is at
+    /// the end. Zero where the day has gone, which disables it.
+    private var slotCount: Int {
+        store.days.indices.contains(dayIndex) ? store.days[dayIndex].slots.count : 0
     }
 }
 
-/// One of a slot's or a group's icon commands, sized and labelled the same way each time.
-struct SlotCommandButton: View {
-    /// The glyph drawn in it.
-    let symbolName: String
-
-    /// What it does, as VoiceOver's label — the glyph carries no name of its own (`G-4.2`).
+/// The overflow shape every command menu on this screen takes (`FR-17.10.1`, `G-4.2`, `G-4.3`).
+///
+/// **One type rather than the glyph written at each site**, for `NumberFieldBox`'s reason: a second
+/// copy is a second place to forget the 44 pt frame or the label. A `Menu`'s *button* is what a
+/// reference can see; the presented menu is UIKit's and renders as `ImageRenderer`'s placeholder,
+/// so the items are proven by a test rather than by a picture.
+struct SlotCommandMenu<Content: View>: View {
+    /// What the menu is, as VoiceOver's label — named for the menu rather than for any item in it.
     let label: LocalizedStringResource
 
-    /// Whether the command can act. A disabled button is drawn rather than hidden, so the row's
-    /// controls do not move as the list is reordered.
-    let isEnabled: Bool
-
-    /// What it does.
-    let action: () -> Void
+    /// The items.
+    @ViewBuilder let content: () -> Content
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: symbolName)
+        Menu {
+            content()
+        } label: {
+            Image(systemName: "ellipsis.circle")
                 .font(Typography.body.font)
-                .frame(
-                    minWidth: TouchTarget.standard.points,
-                    minHeight: TouchTarget.standard.points)
+                .foregroundStyle(ColorToken.textSecondary)
+                .frame(width: TouchTarget.standard.points, height: TouchTarget.standard.points)
+                .contentShape(.rect)
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(ColorToken.brandAccent)
-        .disabled(!isEnabled)
-        .opacity(isEnabled ? Opacity.opaque.value : Opacity.disabled.value)
         .accessibilityLabel(Text(label))
     }
 }

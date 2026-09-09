@@ -5,7 +5,7 @@ import RepositoryInterface
 
 @testable import Routines
 
-/// A catalogue exercise a routine can prescribe.
+/// A catalogue exercise a day can prescribe.
 func routineExerciseFixture(name: String) -> Exercise {
     Exercise(
         id: UUID(),
@@ -25,8 +25,8 @@ func routineExerciseFixture(name: String) -> Exercise {
         notes: "")
 }
 
-/// A stack whose catalogue already holds `exercises`, since a routine slot the repository will
-/// accept has to name a row that exists.
+/// A stack whose catalogue already holds `exercises`, since a slot the repository will accept has
+/// to name a row that exists.
 func seededStack(_ exercises: [Exercise]) async throws -> InMemoryRepositoryStack {
     let stack = InMemoryRepositoryStack()
     for exercise in exercises {
@@ -35,45 +35,64 @@ func seededStack(_ exercises: [Exercise]) async throws -> InMemoryRepositoryStac
     return stack
 }
 
-/// An editor over `stack`, in the locale and unit every test here uses.
+/// A week editor over `stack`, in the locale and unit every test here uses.
 ///
 /// **`en_US_POSIX` and kilograms deliberately**: the draft parses in a locale, so a test that took
 /// the machine's own would pass or fail on where it ran.
 @MainActor
-func editor(over stack: InMemoryRepositoryStack) -> RoutineEditorState {
-    editor(over: stack, routines: stack.routines)
+func weekEditor(over stack: InMemoryRepositoryStack) -> WeekEditorState {
+    weekEditor(over: stack, routines: stack.routines, programs: stack.programs)
 }
 
-/// An editor over `stack` whose routines are read and written through `routines` instead of the
-/// stack's own — the seam a failing repository is injected at.
+/// A week editor over `stack` whose routines or programs are read and written through another
+/// store — the seam a failing repository is injected at.
 @MainActor
-func editor(
-    over stack: InMemoryRepositoryStack, routines: any RoutineRepository
-) -> RoutineEditorState {
-    let state = RoutineEditorState(
-        repository: routines, catalogue: stack.exercises, settings: stack.settings)
+func weekEditor(
+    over stack: InMemoryRepositoryStack,
+    routines: any RoutineRepository,
+    programs: any ProgramRepository
+) -> WeekEditorState {
+    let state = WeekEditorState(
+        programs: programs,
+        routines: routines,
+        catalogue: stack.exercises,
+        settings: stack.settings)
     state.locale = Locale(identifier: "en_US_POSIX")
     return state
 }
 
-/// Fills a slot's first group with something storable, for the tests that are about the slots
-/// rather than about the numbers in them.
+/// Opens `state` on a fresh screen, which is how every test here reads.
 @MainActor
-func fillFirstGroup(_ state: RoutineEditorState, slot index: Int) {
-    state.updateGroup(at: 0, inSlotAt: index) { group in
-        group.weightText = "100"
-        group.repsText = "5"
-        group.setsText = "3"
-    }
+func opened(_ state: WeekEditorState) async -> WeekEditorState {
+    await state.open(screen: UUID())
+    return state
 }
 
-/// A routine store that forwards to another and refuses a chosen call.
+/// Fills a target group with something storable, for the tests that are about the rows rather than
+/// about the numbers in them.
+@MainActor
+func fillTarget(
+    _ state: WeekEditorState,
+    day: Int = 0,
+    slot: Int = 0,
+    group: Int = 0,
+    weight: String = "100",
+    reps: String = "5",
+    sets: String = "3"
+) async {
+    state.editTarget(group, inSlot: slot, inDayAt: day) { draft in
+        draft.weightText = weight
+        draft.repsText = reps
+        draft.setsText = sets
+    }
+    await state.commitTarget(group, inSlot: slot, inDayAt: day)
+}
+
+/// A routine store that forwards to another and refuses a chosen kind of call.
 ///
-/// Failures the in-memory stack cannot produce on its own, and none of them reachable without one:
-/// a read that fails and then succeeds, which is what `reload()` is for; a delete that fails
-/// *after* an earlier delete in the same save has already landed, which is the partial write a
-/// retry has to be able to finish; and, for `FR-15.2.5`, a refused routine write or routine
-/// delete — the store saying no to a management command that asked for nothing unusual.
+/// Failures the in-memory stack cannot produce on its own: a read that fails and then succeeds,
+/// which is what `reload()` is for, and a refused write on a command that asked for nothing
+/// unusual.
 @MainActor
 final class FlakyRoutineRepository: RoutineRepository {
     /// What a refused call throws.
@@ -85,47 +104,29 @@ final class FlakyRoutineRepository: RoutineRepository {
     /// How many reads are still owed a refusal before one is let through.
     private var readsToRefuse: Int
 
-    /// Which `deleteRoutineExercise(id:)` call to refuse, counting from one, or `nil` for none.
-    private let slotDeleteToRefuse: Int?
-
-    /// How many slot deletes have been asked for so far.
-    private var slotDeletes = 0
-
-    /// Whether `save(_ routine:)` refuses (`FR-15.2.5`).
+    /// Whether `save(_ routine:)` refuses.
     private let refusesRoutineSaves: Bool
 
-    /// Whether `deleteRoutine(id:)` refuses (`FR-15.2.5`).
-    private let refusesRoutineDeletes: Bool
-
-    /// Whether `save(_ exercise:)` refuses (`FR-15.2.5`).
-    ///
-    /// The seam a *partial* duplicate is built at: the routine row lands and the first slot under
-    /// it does not, which is the one failure that can leave a copy half-written.
-    private let refusesSlotSaves: Bool
+    /// Whether `save(_ group:)` refuses — the seam a write-through target failure is made at.
+    private let refusesTargetSaves: Bool
 
     /// Wraps `base`.
     ///
     /// - Parameters:
     ///   - base: The store the calls that are not refused go to.
     ///   - refusingReads: How many reads to refuse before letting one through.
-    ///   - refusingSlotDelete: Which slot delete to refuse, counting from one.
     ///   - refusingRoutineSaves: Whether every routine write is refused.
-    ///   - refusingRoutineDeletes: Whether every routine delete is refused.
-    ///   - refusingSlotSaves: Whether every slot write is refused.
+    ///   - refusingTargetSaves: Whether every target write is refused.
     init(
         _ base: any RoutineRepository,
         refusingReads: Int = 0,
-        refusingSlotDelete: Int? = nil,
         refusingRoutineSaves: Bool = false,
-        refusingRoutineDeletes: Bool = false,
-        refusingSlotSaves: Bool = false
+        refusingTargetSaves: Bool = false
     ) {
         self.base = base
         readsToRefuse = refusingReads
-        slotDeleteToRefuse = refusingSlotDelete
         refusesRoutineSaves = refusingRoutineSaves
-        refusesRoutineDeletes = refusingRoutineDeletes
-        refusesSlotSaves = refusingSlotSaves
+        refusesTargetSaves = refusingTargetSaves
     }
 
     func routines(includingDeleted: Bool) async throws -> [Routine] {
@@ -143,10 +144,7 @@ final class FlakyRoutineRepository: RoutineRepository {
         try await base.save(routine)
     }
 
-    func deleteRoutine(id: UUID) async throws {
-        if refusesRoutineDeletes { throw Refusal() }
-        try await base.deleteRoutine(id: id)
-    }
+    func deleteRoutine(id: UUID) async throws { try await base.deleteRoutine(id: id) }
 
     func exercises(
         forRoutineID routineID: UUID, includingDeleted: Bool
@@ -160,14 +158,9 @@ final class FlakyRoutineRepository: RoutineRepository {
         try await base.routineExercise(id: id, includingDeleted: includingDeleted)
     }
 
-    func save(_ exercise: RoutineExercise) async throws {
-        if refusesSlotSaves { throw Refusal() }
-        try await base.save(exercise)
-    }
+    func save(_ exercise: RoutineExercise) async throws { try await base.save(exercise) }
 
     func deleteRoutineExercise(id: UUID) async throws {
-        slotDeletes += 1
-        if slotDeletes == slotDeleteToRefuse { throw Refusal() }
         try await base.deleteRoutineExercise(id: id)
     }
 
@@ -178,7 +171,10 @@ final class FlakyRoutineRepository: RoutineRepository {
             forRoutineExerciseID: routineExerciseID, includingDeleted: includingDeleted)
     }
 
-    func save(_ group: RoutineTargetGroup) async throws { try await base.save(group) }
+    func save(_ group: RoutineTargetGroup) async throws {
+        if refusesTargetSaves { throw Refusal() }
+        try await base.save(group)
+    }
 
     func deleteTargetGroup(id: UUID) async throws { try await base.deleteTargetGroup(id: id) }
 
@@ -188,4 +184,73 @@ final class FlakyRoutineRepository: RoutineRepository {
         readsToRefuse -= 1
         throw Refusal()
     }
+}
+
+/// A program store that forwards to another and refuses every day write.
+///
+/// The seam the week's own write-through failures are made at — a store that will not take a day is
+/// what ``Routines/WeekEditorState/writeFailed`` reports.
+@MainActor
+final class FlakyProgramRepository: ProgramRepository {
+    /// What a refused call throws.
+    struct Refusal: Error {}
+
+    /// The store every call that is not refused goes to.
+    private let base: any ProgramRepository
+
+    /// Whether `save(_ day:)` refuses.
+    private let refusesDaySaves: Bool
+
+    /// Wraps `base`.
+    ///
+    /// - Parameters:
+    ///   - base: The store the calls that are not refused go to.
+    ///   - refusingDaySaves: Whether every day write is refused.
+    init(_ base: any ProgramRepository, refusingDaySaves: Bool = false) {
+        self.base = base
+        refusesDaySaves = refusingDaySaves
+    }
+
+    func programs(includingDeleted: Bool) async throws -> [Program] {
+        try await base.programs(includingDeleted: includingDeleted)
+    }
+
+    func program(id: UUID, includingDeleted: Bool) async throws -> Program? {
+        try await base.program(id: id, includingDeleted: includingDeleted)
+    }
+
+    func save(_ program: Program) async throws { try await base.save(program) }
+
+    func deleteProgram(id: UUID) async throws { try await base.deleteProgram(id: id) }
+
+    func days(forProgramID programID: UUID, includingDeleted: Bool) async throws -> [ProgramDay] {
+        try await base.days(forProgramID: programID, includingDeleted: includingDeleted)
+    }
+
+    func programDay(id: UUID, includingDeleted: Bool) async throws -> ProgramDay? {
+        try await base.programDay(id: id, includingDeleted: includingDeleted)
+    }
+
+    func save(_ day: ProgramDay) async throws {
+        if refusesDaySaves { throw Refusal() }
+        try await base.save(day)
+    }
+
+    func deleteDay(id: UUID) async throws { try await base.deleteDay(id: id) }
+
+    func currentRun() async throws -> ProgramRun? { try await base.currentRun() }
+
+    func runs(forProgramID programID: UUID, includingDeleted: Bool) async throws -> [ProgramRun] {
+        try await base.runs(forProgramID: programID, includingDeleted: includingDeleted)
+    }
+
+    func run(id: UUID, includingDeleted: Bool) async throws -> ProgramRun? {
+        try await base.run(id: id, includingDeleted: includingDeleted)
+    }
+
+    func startRun(_ run: ProgramRun) async throws { try await base.startRun(run) }
+
+    func save(_ run: ProgramRun) async throws { try await base.save(run) }
+
+    func deleteRun(id: UUID) async throws { try await base.deleteRun(id: id) }
 }

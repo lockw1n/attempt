@@ -4,9 +4,9 @@ import RepositoryInterface
 /// What saving a workout as a routine did (`FR-15.2.6`).
 ///
 /// **Three answers, one of them a success**, which is the difference from every other outcome on
-/// this screen — see ``PastSessionState/saveAsRoutineOutcome``. The two failures stay apart on
-/// `RoutineManagementFailure`'s argument: an empty name names something the lifter can fix, and a
-/// refused write names only the store.
+/// this screen — see ``PastSessionState/saveAsRoutineOutcome``. The two failures stay apart for
+/// the reason every pair of them in this app does: an empty name names something the lifter can fix
+/// in the field they just emptied, and a refused write names only the store.
 enum SaveAsRoutineOutcome: Equatable {
     /// A routine was written, under the name the lifter gave it.
     case saved(String)

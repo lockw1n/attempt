@@ -100,11 +100,11 @@ struct AppDependencies {
         /// app, so a profile edited in Settings reaches the next loading without a relaunch.
         let equipment: PlateCalculatorStore
 
-        /// The routine being authored or edited (`FR-15.2.1`) — one for the whole app, because the
-        /// exercise chooser that adds to it is a screen pushed *over* the editor, and a store
-        /// created with the editor could not be written into from there. `ActiveSessionStore` is
-        /// here for the same reason, one tab over.
-        let routineEditor: RoutineEditorState
+        /// The week being planned (`FR-17.10.1`) — one for the whole app, because the exercise
+        /// chooser that adds to it is a screen pushed *over* the editor, and a store created with
+        /// the editor could not be written into from there. `ActiveSessionStore` is here for the
+        /// same reason, one tab over.
+        let weekEditor: WeekEditorState
     }
 
     /// The opened store's repositories, or why the store could not be opened.
@@ -183,8 +183,9 @@ struct AppDependencies {
                     modifiers: SetModifierVocabulary(),
                     equipment: PlateCalculatorStore(
                         repository: stack.equipment, settings: stack.settings),
-                    routineEditor: RoutineEditorState(
-                        repository: stack.routines,
+                    weekEditor: WeekEditorState(
+                        programs: stack.programs,
+                        routines: stack.routines,
                         catalogue: stack.exercises,
                         settings: stack.settings)
                 )

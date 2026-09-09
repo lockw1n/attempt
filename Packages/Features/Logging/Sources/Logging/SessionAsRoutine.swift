@@ -21,8 +21,9 @@ import RepositoryInterface
 ///
 /// **Every entry becomes a slot even when nothing under it qualifies.** The exercises a workout
 /// trained, in the order it trained them, are the routine's shape; a slot with no targets is the
-/// same "short rather than wrong" routine `RoutineEditorState.everyGroupResolves` already allows,
-/// and dropping the exercise instead would silently shorten the plan.
+/// same "short rather than wrong" routine `Routines`' own editor already allows — a slot with no
+/// target is one the lifter has not decided yet — and dropping the exercise instead would silently
+/// shorten the plan.
 struct SessionAsRoutine: Equatable {
     /// One exercise slot, in the order the workout performed it.
     struct Slot: Equatable {

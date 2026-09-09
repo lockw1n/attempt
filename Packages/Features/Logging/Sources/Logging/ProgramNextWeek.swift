@@ -88,8 +88,8 @@ extension ProgramNextUpState {
     /// - Parameters:
     ///   - rebuilt: The days that were re-pointed, with their new routine.
     ///   - days: The program's days as they were before.
-    /// - Throws: Nothing — a routine already archived is not an error here, on
-    ///   `RoutineListState.archive(_:)`'s reading.
+    /// - Throws: Nothing — a routine already archived is not an error here: the read that follows
+    ///   sweeps its row off the screen, which is the answer to what happened to it.
     private func archive(
         replacedBy rebuilt: [(day: ProgramDay, routineID: UUID)], among days: [ProgramDay]
     ) async throws {

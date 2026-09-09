@@ -20,6 +20,8 @@ struct RouteTests {
         .exerciseLibrary(.exerciseCreate),
         .exerciseLibrary(.exerciseEdit(exerciseID: exerciseID)),
         .exerciseLibrary(.exercisePicker),
+        .exerciseLibrary(.routineExercisePicker),
+        .routines(.editWeek),
         .history(.session(sessionID: sessionID)),
         .history(.calendar),
         .settings(.about),
@@ -74,6 +76,9 @@ struct RouteTests {
                 == ["exerciseLibrary", "_0", "exercisePicker"]
         )
         #expect(
+            try Self.encodedKeyPath(.routines(.editWeek)) == ["routines", "_0", "editWeek"]
+        )
+        #expect(
             try Self.encodedKeyPath(.history(.calendar)) == ["history", "_0", "calendar"]
         )
         #expect(
@@ -90,6 +95,7 @@ struct RouteTests {
         #expect(Route.dashboard(.recentPersonalRecords).tab == .home)
         #expect(Route.training(.activeSession).tab == .train)
         #expect(Route.exerciseLibrary(.exerciseDetail(exerciseID: UUID())).tab == .train)
+        #expect(Route.routines(.editWeek).tab == .train)
         #expect(Route.history(.session(sessionID: UUID())).tab == .history)
         #expect(Route.settings(.about).tab == .settings)
     }
@@ -125,6 +131,26 @@ struct RouteTests {
         let json = Data(#"{"crossTraining":{"_0":{"class":{}}}}"#.utf8)
         #expect(throws: (any Error).self) {
             try JSONDecoder().decode(Route.self, from: json)
+        }
+    }
+
+    /// A RETIRED case is an unknown case, and it is the only kind this app has actually shipped:
+    /// build 1.0 (1) wrote these five spellings, `T-17.12` removed them (`FR-17.10.6`), and a stack
+    /// stored under that build still names them. The five are listed rather than sampled because
+    /// each is a different payload shape, and one carrying an identifier is the one a lenient
+    /// decoder would be most tempted to keep.
+    @Test(
+        "a routines case retired with its screen fails to decode",
+        arguments: [
+            #"{"routines":{"_0":{"routineList":{}}}}"#,
+            #"{"routines":{"_0":{"routineCreate":{}}}}"#,
+            #"{"routines":{"_0":{"routineEdit":{"routineID":"0F5A1E24-9B7D-4C31-8E62-1A2B3C4D5E6F"}}}}"#,
+            #"{"routines":{"_0":{"programList":{}}}}"#,
+            #"{"routines":{"_0":{"programEdit":{"programID":"0F5A1E24-9B7D-4C31-8E62-1A2B3C4D5E6F"}}}}"#,
+        ])
+    func retiredRoutinesCaseThrows(json: String) {
+        #expect(throws: (any Error).self) {
+            try JSONDecoder().decode(Route.self, from: Data(json.utf8))
         }
     }
 }

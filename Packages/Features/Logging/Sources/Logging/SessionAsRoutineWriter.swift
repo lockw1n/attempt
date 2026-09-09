@@ -45,8 +45,8 @@ struct SessionAsRoutineWriter: Sendable {
 
     /// Writes the plan's slots and their targets under the routine row that already landed.
     ///
-    /// **Positions are renumbered from zero**, on `RoutineListState.duplicate(_:)`'s rule: a stored
-    /// `order` is a position in a list a soft delete may have left gaps in.
+    /// **Positions are renumbered from zero**, on `WeekEditorState.duplicateDay(_:)`'s rule: a
+    /// stored `order` is a position in a list a soft delete may have left gaps in.
     ///
     /// - Parameters:
     ///   - plan: The workout read as a routine.

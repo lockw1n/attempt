@@ -71,7 +71,10 @@ cd "$(dirname "$0")/.."
 #   History:         25 tests, 24 reference-backed, one layout budget -> 25, above the 24.
 #   Dashboard:       20 tests, all of them reference-backed, no probes -> 20, its own count.
 #   Settings:        45 tests, all of them reference-backed, no probes -> 45, its own count.
-#   Routines:        12 tests, all of them reference-backed, no probes -> 12, its own count.
+#   Routines:         4 tests, all of them reference-backed, no probes ->  4, its own count.
+#                     The one floor that has ever gone DOWN: T-17.12 retired four screens for one
+#                     (`FR-17.10.6`), so the suite is a quarter of what it was. A floor left above
+#                     its count fails the run and reads exactly like a missing test.
 # A screen suite added later is the ExerciseLibrary case unless it brings probes of its own, and a
 # screen added to an existing package raises that package's floor rather than adding a row.
 #
@@ -88,7 +91,7 @@ SUITES=(
     "Packages/Features/History|History|HistorySnapshotTests|25"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|20"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|45"
-    "Packages/Features/Routines|Routines|RoutinesSnapshotTests|12"
+    "Packages/Features/Routines|Routines|RoutinesSnapshotTests|4"
 )
 
 # The iOS version the committed references were rendered on. See the header: bump it only when

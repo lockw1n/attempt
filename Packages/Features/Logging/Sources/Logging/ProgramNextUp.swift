@@ -101,8 +101,8 @@ public final class ProgramNextUpState {
 
     /// Why the last **Skip day** or **Start next week** changed nothing, or `nil`.
     ///
-    /// Cleared by every fresh read, on `RoutineListState.startFailure`'s rule: a read that
-    /// succeeds retires a claim about a write that failed.
+    /// Cleared by every fresh read: a read that succeeds retires a claim about a write that
+    /// failed.
     ///
     /// Settable across the module rather than only within this file, because `FR-16.8.4`'s command
     /// lives in `ProgramNextWeek.swift` — `private` is file-scoped and this type is two files.
@@ -136,9 +136,9 @@ public final class ProgramNextUpState {
 
     /// Reads the run in force and what it is pointing at, on every appearance.
     ///
-    /// **Re-entrant through ``Phase/ready``**, on `RoutineListState.load()`'s rule: the workout
-    /// finished on the screen pushed over this one is what moves the cursor, so the card has to be
-    /// right on the way back.
+    /// **Re-entrant through ``Phase/ready``**, on ``WeekState/load(openSession:)``'s rule: the
+    /// workout finished on the screen pushed over this one is what moves the cursor, so the card
+    /// has to be right on the way back.
     ///
     /// **The day is found by ``RepositoryInterface/ProgramDay/order``, not by position.** The cursor
     /// is an order and a soft-deleted day leaves a gap in them, so the day to train is the first one
