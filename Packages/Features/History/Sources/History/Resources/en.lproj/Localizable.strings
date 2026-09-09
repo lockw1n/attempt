@@ -6,11 +6,15 @@
 /* FR-1.13.2's first launch. The headline says what there is none of; the message says the one thing
    that makes one, and the action is that thing — a tab away, which is why it is worth a button
    rather than a sentence.
+   The action names the DESTINATION, not the wish: it selects Train, whose root is the week
+   (FR-17.8), so "Start a workout" would name something the screen it lands on does not do. Same
+   words as Home's first launch and as the week's own empty state (FR-17.8.5) — one destination,
+   one name for it.
    NOT "finished workouts": the list carries the workout in progress too, so a message promising
    only finished ones would be contradicted by the first row the user ever sees. */
 "history.list.empty.headline" = "No training logged yet";
 "history.list.empty.message" = "Your workouts appear here, newest first.";
-"history.list.empty.action" = "Start a workout";
+"history.list.empty.action" = "Plan your week";
 
 /* A failed read of the whole list. Copy, not the diagnostic: what the store said is for the log,
    not for the screen (G-3.4). */
@@ -69,7 +73,7 @@
    back through earlier ones, and there are none. */
 "history.calendar.empty.headline" = "No training logged yet";
 "history.calendar.empty.message" = "The days you train are marked here.";
-"history.calendar.empty.action" = "Start a workout";
+"history.calendar.empty.action" = "Plan your week";
 
 /* A failed read of the sessions the grid marks. Copy, not the diagnostic (G-3.4). */
 "history.calendar.error.headline" = "Calendar unavailable";

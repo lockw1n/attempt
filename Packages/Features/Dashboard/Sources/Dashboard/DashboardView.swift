@@ -168,7 +168,7 @@ public struct DashboardView: View {
 /// second command for it to outrank.
 struct FirstLaunchReading: View {
     /// Selects Train, where a week is planned.
-    let start: () -> Void
+    let plan: () -> Void
 
     /// The heading, what the screen becomes, and the way to get there.
     var body: some View {
@@ -177,7 +177,7 @@ struct FirstLaunchReading: View {
             headline: Text(DashboardStrings.firstLaunchHeadline),
             message: Text(DashboardStrings.firstLaunchMessage),
             action: StateAction(
-                Text(DashboardStrings.planWeek), emphasis: .primary, handler: start)
+                Text(DashboardStrings.planWeek), emphasis: .primary, handler: plan)
         )
         .frame(maxWidth: .infinity)
     }

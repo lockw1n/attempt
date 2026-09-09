@@ -24,6 +24,18 @@ struct HistoryStringsTests {
         #expect(String(localized: HistoryStrings.emptyHeadline) == "No training logged yet")
     }
 
+    /// Both empty states send the reader to Train's root, which is the week (`FR-17.8`) — so they
+    /// offer the week's own words (`FR-17.8.5`), the same ones Home's first launch does.
+    ///
+    /// **Asserted as literals, because no test can compare two modules' catalogues.** Three screens
+    /// in three packages name one destination; a reword in any of them has to fail somewhere, and
+    /// this is where it fails for these two.
+    @Test("Both empty states offer the week's own words")
+    func theEmptyStatesNameTheDestination() {
+        #expect(String(localized: HistoryStrings.emptyAction) == "Plan your week")
+        #expect(String(localized: HistoryStrings.calendarEmptyAction) == "Plan your week")
+    }
+
     /// `FR-1.14.1`. `scripts/check-translations.sh` is what holds the whole table complete, key for
     /// key; what it cannot say is that the table reached the built bundle, which is the half a
     /// comparison of two files in the repo has no way to see.
@@ -37,7 +49,7 @@ struct HistoryStringsTests {
                 localization: "uk"
             ))
         let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
-        #expect(catalogue["history.list.empty.action"] == "Почати тренування")
+        #expect(catalogue["history.list.empty.action"] == "Запланувати тиждень")
     }
 
     @Test("The catalogue and the accessors name exactly the same keys")

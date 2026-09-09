@@ -14,6 +14,9 @@ enum HistoryStrings {
     static let emptyMessage = resource("history.list.empty.message")
 
     /// The way to make the first one — a tab away, so it is a button rather than a sentence.
+    ///
+    /// **Named for where it goes**: it selects Train, whose root is the week (`FR-17.8`), and it is
+    /// the same words Home's first launch and the week's own empty state offer (`FR-17.8.5`).
     static let emptyAction = resource("history.list.empty.action")
 
     /// A failed read of the list.
@@ -76,7 +79,7 @@ enum HistoryStrings {
     /// What will appear here once there is.
     static let calendarEmptyMessage = resource("history.calendar.empty.message")
 
-    /// The way to make the first one — a tab away, so it is a button rather than a sentence.
+    /// The way to make the first one — ``emptyAction``'s words, on this screen's own key.
     static let calendarEmptyAction = resource("history.calendar.empty.action")
 
     /// A failed read of the sessions the grid marks.

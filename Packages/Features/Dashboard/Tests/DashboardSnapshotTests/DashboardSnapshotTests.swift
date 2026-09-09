@@ -171,7 +171,7 @@
             // workout" button that used to sit above the sections, so this is also the only
             // Dashboard reference in which any filled command appears at all.
             try assertSnapshots(named: "Dashboard-first-launch") {
-                FirstLaunchReading(start: {})
+                FirstLaunchReading(plan: {})
             }
         }
 

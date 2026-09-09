@@ -63,8 +63,6 @@
 "dashboard.tiles.error" = "Your estimated maxes could not be read.";
 "dashboard.tiles.none.headline" = "No lifts on the dashboard";
 "dashboard.tiles.none.message" = "Choose the lifts you want an estimate for.";
-/* FR-1.7.5's manual mark, where a delta would otherwise be. A manual number has nothing it moved
-   from, so this line replaces the delta rather than sitting beside it. */
 /* FR-1.9.1's delta has nothing to compare against: this is the first estimate inside the window. */
 "dashboard.tiles.no-previous" = "No earlier estimate to compare";
 "dashboard.tiles.choose.action" = "Choose lifts";

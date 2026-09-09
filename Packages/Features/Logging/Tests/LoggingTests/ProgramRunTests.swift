@@ -16,14 +16,12 @@ struct ProgramRunTests {
         let fixture = try await ProgramFixture()
         let store = fixture.store()
         // The day is read off the program, not off a cursor (`D-17.10`) — `order` is the index the
-        // stamp carries, and the routine it names is what the workout is filled from.
+        // stamp carries, and the routine it names is what the workout is filled from. Neither is
+        // asserted here: both are the fixture's own starting values, and what they are is pinned by
+        // the literals below, which the store has to agree with after the round trip.
         let days = try await fixture.stack.programs.days(
             forProgramID: fixture.programID, includingDeleted: false)
         let day = try #require(days.first)
-        let routine = try #require(
-            try await fixture.stack.routines.routine(id: day.routineID, includingDeleted: false))
-        #expect(day.order == 0)
-        #expect(routine.name == "Squat day")
 
         #expect(
             await store.start(

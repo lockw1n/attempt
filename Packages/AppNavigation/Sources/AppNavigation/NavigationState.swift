@@ -69,8 +69,9 @@ public final class NavigationState {
     /// left.
     ///
     /// **Named for where it goes, not for what the caller offers**, since `FR-1.9.4`'s withdrawal
-    /// left it with three callers offering two different words: Home's **Plan your week**
-    /// (`FR-1.13.2`) and History's two empty states.
+    /// left it with three: Home's first launch (`FR-1.13.2`) and History's two empty states. All
+    /// three offer **Plan your week**, which is what this arrives at (`FR-17.8.5`) — a caller that
+    /// named a workout would name something the destination does not do.
     public func showTrain() {
         popToRoot(.train)
         selectedTab = .train

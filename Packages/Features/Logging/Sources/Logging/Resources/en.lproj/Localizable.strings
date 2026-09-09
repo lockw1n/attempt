@@ -1,11 +1,7 @@
 /* Logging (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization module doc.
-   The two screens are the Train root, where a workout is started or resumed, and the workout
-   itself. Every key here has a Ukrainian counterpart in uk.lproj beside this file, and has to
+   The two screens are the Train root, which draws the week and its days (FR-17.8), and the
+   workout itself. Every key here has a Ukrainian counterpart in uk.lproj beside this file, and has to
    keep one: a key missing from that table renders its own identifier. */
-
-/* Nothing is in progress. FR-1.13.2's first-launch guidance: the headline says what there is none
-   of and the message names both ways to make one, since backdating is the half a new user would not
-   guess. */
 
 "logging.train.date.section" = "Workout date";
 "logging.train.date.picker" = "Training day";
@@ -16,18 +12,6 @@
 /* FR-16.6.5 — the same card over a workout dated ahead of today. It has been written and not
    performed, and "In progress" over it would say the lifter is mid-workout. */
 "logging.train.in-progress.day" = "Training day";
-/* FR-1.2.11: the way back into a workout the app came back to. "Resume" rather than "Open", because
-   the workout was interrupted — by a relaunch, a force-quit or a walk to the rack. */
-/* FR-16.6.5 — the same link over a workout dated ahead of today. "Resume" would claim it had
-   been begun; "Start workout" is FR-1.2.1's command, which writes a session that already
-   exists here. */
-
-/* FR-15.2.1, beside the library. "Routines" rather than "Plans": a routine is one training day,
-   and a plan reads like the week. */
-
-/* The read failed — the screen does not know whether a workout is in progress, so this one takes
-   the whole screen. A sentence for the user; the diagnostic is never shown. */
-
 /* The start failed, which is a *write* and not a phase: it renders beside the command that issued
    it, with the date control still on screen, so the retry is another tap at the same button rather
    than a workout the user has to ask for again. Never the read's copy — nothing was unreadable. */
@@ -440,29 +424,12 @@
 
 "logging.set.training-max-share %@" = "%@ of TM";
 
-/* FR-16.8.2's Next-up card on Train: the program in force, where it has got to, and the one tap
-   that starts it. The week and the day are positional so a translation can reorder them. */
-"logging.train.program.section" = "Next up";
-"logging.train.program.week-day %lld %lld" = "Week %1$lld · Day %2$lld";
-"logging.train.program.start" = "Start";
-"logging.train.program.skip" = "Skip day";
-
-/* FR-15.2.5's archive reaching a program day: the row is kept and the routine behind it is gone,
-   so the card says which of the two ways past it the lifter has. */
-"logging.train.program.archived.headline" = "This day's routine was archived";
-"logging.train.program.archived.message" = "Point the day at another routine in the program, or skip it and carry on.";
-
-"logging.train.program.no-days.headline" = "This program has no days yet";
-"logging.train.program.no-days.message" = "Add a day to it, and the routine you pick is what Train offers next.";
-
 /* FR-16.8.4. The message is said before the command is tapped rather than in a confirmation after
    it: what next week's loads are, that nothing is fixed, and that this week is archived and not
    deleted, are the three things a lifter needs in order to decide — not to be told afterwards. */
 "logging.train.program.week-complete.headline %lld" = "Week %lld is done";
 "logging.train.program.week-complete.message" = "Next week starts from how you answered this one: lifts you logged carry the numbers you did, and lifts you skipped keep their plan. Every load stays editable, and this week's routines are archived rather than lost.";
 "logging.train.program.next-week" = "Start next week";
-
-"logging.train.program.error.message" = "Could not read your program. Try again.";
 "logging.train.program.next-week-error.message" = "Could not start next week. Nothing was changed — try again.";
 
 /* FR-16.8.3 / DOD-16.1: the week and day are read off the session's own columns, so a session note

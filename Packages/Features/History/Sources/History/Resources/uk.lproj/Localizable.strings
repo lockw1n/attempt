@@ -3,7 +3,7 @@
 
 "history.list.empty.headline" = "Тренувань ще не записано";
 "history.list.empty.message" = "Ваші тренування з’являться тут, найновіші вгорі.";
-"history.list.empty.action" = "Почати тренування";
+"history.list.empty.action" = "Запланувати тиждень";
 
 "history.list.error.headline" = "Історія недоступна";
 "history.list.error.message" = "Не вдалося прочитати ваші минулі тренування. Спробуйте ще раз.";
@@ -33,7 +33,7 @@
 
 "history.calendar.empty.headline" = "Тренувань ще не записано";
 "history.calendar.empty.message" = "Дні, коли ви тренувалися, позначені тут.";
-"history.calendar.empty.action" = "Почати тренування";
+"history.calendar.empty.action" = "Запланувати тиждень";
 
 "history.calendar.error.headline" = "Календар недоступний";
 "history.calendar.error.message" = "Не вдалося прочитати ваші тренувальні дні. Спробуйте ще раз.";

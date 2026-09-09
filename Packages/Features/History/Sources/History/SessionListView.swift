@@ -145,7 +145,7 @@ public struct SessionListView: View {
                     Text(HistoryStrings.emptyAction), emphasis: .primary
                 ) {
                     // A tab switch that drops Train to its root, not a push — `D-8`'s one place a
-                    // workout is logged.
+                    // workout is logged. That root is the week, which is what the label names.
                     navigation?.showTrain()
                 }
             )
