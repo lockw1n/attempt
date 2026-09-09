@@ -105,11 +105,26 @@ public struct SessionListView: View {
                 }
             }
         }
-        // `load()` on every appearance, not once: a workout finished in the Train tab has to be
-        // here on the way back.
-        .task {
-            state.nameLanguage = ExerciseNameLanguage(locale)
-            await state.load()
+        // ONE READ, AND IT IS THE MODE'S. `.task(id:)` runs when the view appears *and* when the
+        // identity changes, so this covers both rules at once: `load()` on every appearance — a
+        // workout finished in the Train tab has to be here on the way back — and a load when the
+        // reader on screen changes. Only the mode being drawn reads: the choice is remembered for
+        // the whole launch (``HistoryModeMemory``), so an unconditional list read would make a
+        // reader who chose Weeks pay for a page of summaries nothing draws, on every appearance,
+        // for the rest of the launch. That is the eager load `NFR-1.5` cannot survive, and it is
+        // why ``SessionSearchState`` is lazy in the same body.
+        .task(id: mode) {
+            switch mode {
+            case .sessions:
+                state.nameLanguage = ExerciseNameLanguage(locale)
+                await state.load()
+            case .weeks:
+                // The environment's calendar before the read, for ``CalendarView``'s reason: every
+                // week boundary on this screen is computed in it.
+                byWeek.adopt(calendar)
+                byWeek.nameLanguage = ExerciseNameLanguage(locale)
+                await byWeek.load()
+            }
         }
         // The search's only trigger, keyed on *whether* a search is running rather than on what was
         // typed: it fires on the keystroke that starts one and on a return to a screen left
@@ -118,16 +133,6 @@ public struct SessionListView: View {
         .task(id: search.isSearching) {
             search.nameLanguage = ExerciseNameLanguage(locale)
             await search.loadIfSearching()
-        }
-        // The week view's own read, keyed on the mode so that switching to it loads it and coming
-        // back to the tab in it reloads it — the same "on every appearance" rule the list follows,
-        // for the same reason. Skipped while the log is showing, so the mode nobody chose costs
-        // nothing.
-        .task(id: mode) {
-            guard mode == .weeks else { return }
-            byWeek.adopt(calendar)
-            byWeek.nameLanguage = ExerciseNameLanguage(locale)
-            await byWeek.load()
         }
     }
 
@@ -146,25 +151,19 @@ public struct SessionListView: View {
             // control is not drawn over it.
             results
         } else {
-            VStack(alignment: .leading, spacing: Spacing.lg.points) {
-                modeControl
+            HistoryModeStack(mode: $mode) {
                 if mode == .weeks {
                     WeekHistoryContent(state: byWeek)
                 } else {
                     browse
                 }
             }
-        }
-    }
-
-    /// `FR-17.11.1`'s two readings of the same rows, remembered for the rest of the launch.
-    private var modeControl: some View {
-        HistoryModeControl(mode: $mode)
             .onChange(of: mode) { _, chosen in
                 // Remembered here and nowhere else: a settings column would owe the archive a field
                 // for a convenience (`T-16.14`).
                 HistoryModeMemory.shared.remember(chosen)
             }
+        }
     }
 
     /// The unsearched list's three states (`FR-1.13.1`), each one of T-1.09's shared components.

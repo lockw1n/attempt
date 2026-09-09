@@ -23,9 +23,6 @@ public struct CalendarView: View {
     /// Where a month, a week and a day begin — the viewer's, not this module's.
     @Environment(\.calendar) private var calendar
 
-    /// Which locale the month, the weekday headings and the day numerals render for (`G-3.4`).
-    @Environment(\.locale) private var locale
-
     /// Builds the screen over the repositories its state reads.
     ///
     /// - Parameters:
@@ -274,6 +271,23 @@ struct MonthGridView: View {
     }
 }
 
+/// Where a marked day's tap goes (`FR-17.11.2`).
+///
+/// **A named function rather than a `Route` built inline in ``CalendarDayCell``**, because the edge
+/// `DOD-17.11` is about is otherwise assertable only by running the app: a `NavigationLink`'s value
+/// is not readable from a test, so what the cell *hands* it is the one half a unit test can pin.
+/// The cell's own refusal to be a control at all on an untrained day stays where it is — this says
+/// only where a tap that does happen lands.
+enum CalendarDayDestination {
+    /// The week `day` falls in, with `day` marked.
+    ///
+    /// - Parameter day: The day the cell draws, as its first instant in the grid's calendar.
+    /// - Returns: The route the cell pushes.
+    static func route(for day: Date) -> Route {
+        .history(.week(containing: day))
+    }
+}
+
 /// One day of the grid.
 ///
 /// **A marked day carries three signals, none of them colour** (`G-4.5`): a filled surface behind
@@ -307,7 +321,7 @@ struct CalendarDayCell: View {
     /// A link where there is a week to open, and a numeral where there is not.
     var body: some View {
         if hasTraining {
-            NavigationLink(value: Route.history(.week(containing: day))) { face }
+            NavigationLink(value: CalendarDayDestination.route(for: day)) { face }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text(HistoryStrings.calendarDayTrained(date: spokenDate)))
                 .accessibilityAddTraits(.isButton)

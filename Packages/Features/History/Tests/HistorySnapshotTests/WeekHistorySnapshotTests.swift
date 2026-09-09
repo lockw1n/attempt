@@ -51,6 +51,34 @@
                 WeekFixtures.empty()
             }
         }
+
+        @Test func readFailed() throws {
+            // The week read itself failing, which stands in place of the whole screen — so the
+            // retry is this screen's one filled accent (`T-16.17`'s rule for a `case .failed:`
+            // inside a screen's own phase switch, `FR-16.6.4`).
+            try assertSnapshots(named: "Week-history-error") {
+                ErrorStateView(
+                    headline: Text(HistoryStrings.weekErrorHeadline),
+                    message: Text(HistoryStrings.weekErrorMessage),
+                    retryEmphasis: .primary,
+                    retry: {}
+                )
+            }
+        }
+
+        @Test func earlierWeeksFailed() throws {
+            // The OTHER half of the same rule, and the reason both are here: this one is reported
+            // beneath weeks that are still on screen and still correct, so it steps down to
+            // `.secondary`. The two emphases are a decision no test can read off a phase, and
+            // T-16.17 found four references picturing the wrong one — the picture is the check.
+            try assertSnapshots(named: "Week-history-more-error") {
+                ErrorStateView(
+                    message: Text(HistoryStrings.weekMoreErrorMessage),
+                    retryEmphasis: .secondary,
+                    retry: {}
+                )
+            }
+        }
     }
 
     /// What these references render.
@@ -122,18 +150,14 @@
 
         /// The tab's week mode with nothing logged: the control, and the state under it.
         ///
-        /// Composed the way ``SessionListView`` composes them rather than rendered through it — the
-        /// screen holds three states over three repositories, and the control is its own view so
-        /// that this half is production code and not a second drawing of it.
+        /// **Both halves are the screen's own views**, not a second drawing of them: the stack is
+        /// ``HistoryModeStack`` and the state is ``WeekHistoryEmptyState``, which is what
+        /// ``SessionListView`` and ``WeekHistoryContent`` respectively draw. A fixture that
+        /// assembled either by hand would be a second home for the decision, and would go on
+        /// matching after the screen stopped agreeing with it — T-16.17's four references.
         static func empty() -> some View {
-            VStack(alignment: .leading, spacing: Spacing.lg.points) {
-                HistoryModeControl(mode: .constant(.weeks))
-                EmptyStateView(
-                    symbolName: "calendar",
-                    headline: Text(HistoryStrings.weekEmptyHeadline),
-                    message: Text(HistoryStrings.weekEmptyMessage),
-                    action: StateAction(Text(HistoryStrings.weekEmptyAction), emphasis: .primary) {}
-                )
+            HistoryModeStack(mode: .constant(.weeks)) {
+                WeekHistoryEmptyState()
             }
             .environment(\.locale, locale)
         }

@@ -1,3 +1,4 @@
+import AppNavigation
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -5,8 +6,8 @@ import Testing
 
 @testable import History
 
-/// The calendar's reads (`FR-1.5.3`) — which days are marked, what selecting one shows, what a tap
-/// on an empty day does, and where the two chevrons stop.
+/// The calendar's reads (`FR-1.5.3`) — which days are marked, where a marked day's tap goes
+/// (`FR-17.11.2`), and where the two chevrons stop.
 @MainActor
 @Suite("Calendar")
 struct CalendarStateTests {
@@ -268,5 +269,21 @@ struct CalendarStateTests {
 
         #expect(await counter.sessionReads == 1)
         #expect(state.trainingDays == [TrainingLog.day(2026, 1, 9)])
+    }
+
+    @Test("A marked day's tap opens the week containing it, with that day named (FR-17.11.2)")
+    func aMarkedDayOpensItsOwnWeek() {
+        // `DOD-17.11`'s route half. The rest of that claim is `WeekHistoryStateTests`' — that the
+        // week a year back is the one drawn and that the day is marked — and this is the join
+        // between them: which `Route` the cell hands its `NavigationLink`. Nothing else can assert
+        // it, a link's value being unreadable from a test, and the previous owner of this edge
+        // (`CalendarState.select(_:)`) retired with the day section.
+        let day = TrainingLog.day(2025, 1, 8)
+
+        #expect(CalendarDayDestination.route(for: day) == .history(.week(containing: day)))
+        // THE DAY ITSELF, NOT ITS WEEK: a week start depends on the calendar in force, and a stack
+        // restored on a device set differently would name an instant that is no longer any week's
+        // beginning — see `HistoryRoute.week(containing:)`.
+        #expect(CalendarDayDestination.route(for: day).tab == .history)
     }
 }

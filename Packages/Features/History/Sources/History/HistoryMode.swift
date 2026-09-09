@@ -71,3 +71,25 @@ struct HistoryModeControl: View {
         .pickerStyle(.segmented)
     }
 }
+
+/// The tab's mode control and whatever is under it, as one stack (`FR-17.11.1`).
+///
+/// **A view rather than a `VStack` in ``SessionListView``'s body**, on the rule T-16.17's four wrong
+/// references established: a reference is evidence about a screen only to the extent the fixture
+/// *is* the screen, and a composition written out a second time in a fixture is a second place the
+/// screen's decision lives with nothing linking the two. The screen and the reference draw this.
+struct HistoryModeStack<Content: View>: View {
+    /// Which mode the control is set to.
+    @Binding var mode: HistoryMode
+
+    /// What the chosen mode draws.
+    @ViewBuilder var content: Content
+
+    /// The control, then the content.
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.lg.points) {
+            HistoryModeControl(mode: $mode)
+            content
+        }
+    }
+}

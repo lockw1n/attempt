@@ -14,6 +14,11 @@ import SwiftUI
 /// drawn and the day itself is marked. The tab's own week mode draws ``WeekHistoryContent``
 /// directly, inside the list screen's scroller, so that the two are the same body over the same
 /// state rather than two answers to what a week looks like.
+///
+/// **The navigation title names the screen, not the week.** A date range would be a title that is
+/// true of the first section and false of every one below it — the anchor's week is the newest
+/// drawn and the screen pages backwards past it (`FR-17.11.4`). `FR-17.11.1`'s range belongs to the
+/// week block, which is where it is drawn.
 public struct WeekHistoryView: View {
     @State private var state: WeekHistoryState
 
@@ -73,10 +78,6 @@ struct WeekHistoryContent: View {
     /// The screen's data.
     let state: WeekHistoryState
 
-    /// The shell's navigation position, for the empty state's action. Optional and read rather than
-    /// required, on ``SessionListView``'s rule: a snapshot has no shell above it.
-    @Environment(NavigationState.self) private var navigation: NavigationState?
-
     /// The state that is current.
     var body: some View {
         switch WeekHistoryScreenState.current(state.phase) {
@@ -91,19 +92,7 @@ struct WeekHistoryContent: View {
                 retry: { Task { await state.load() } }
             )
         case .empty:
-            EmptyStateView(
-                symbolName: "calendar",
-                headline: Text(HistoryStrings.weekEmptyHeadline),
-                message: Text(HistoryStrings.weekEmptyMessage),
-                action: StateAction(
-                    Text(HistoryStrings.weekEmptyAction), emphasis: .primary
-                ) {
-                    // A tab switch that drops Train to its root, not a push — `D-8`'s one place a
-                    // workout is logged. That root is the week, which is what the label names
-                    // (`FR-17.8.5`).
-                    navigation?.showTrain()
-                }
-            )
+            WeekHistoryEmptyState()
         case .ready:
             weeks
         }
@@ -133,6 +122,32 @@ struct WeekHistoryContent: View {
                 )
             }
         }
+    }
+}
+
+/// `FR-1.13.2`'s state for a week view with nothing in scope, as a view of its own.
+///
+/// **Its own type so that a reference draws the screen's copy rather than a second declaration of
+/// it** — T-16.17's finding, where four references pictured an emphasis production did not have
+/// because each had built the shared component itself. `Week-history-empty` renders this.
+struct WeekHistoryEmptyState: View {
+    /// The shell's navigation position, for the action. Optional and read rather than required, on
+    /// ``SessionListView``'s rule: a snapshot has no shell above it.
+    @Environment(NavigationState.self) private var navigation: NavigationState?
+
+    /// The shared component, with the week's own words on it.
+    var body: some View {
+        EmptyStateView(
+            symbolName: "calendar",
+            headline: Text(HistoryStrings.weekEmptyHeadline),
+            message: Text(HistoryStrings.weekEmptyMessage),
+            action: StateAction(Text(HistoryStrings.weekEmptyAction), emphasis: .primary) {
+                // A tab switch that drops Train to its root, not a push — `D-8`'s one place a
+                // workout is logged. That root is the week, which is what the label names
+                // (`FR-17.8.5`).
+                navigation?.showTrain()
+            }
+        )
     }
 }
 

@@ -25,10 +25,12 @@ struct SessionSummaryCard: View {
     let unit: MassUnit
 
     /// How the row names its own day. See ``SessionSummaryRow/date``.
+    ///
+    /// No ``SessionSummaryRow/position`` here, deliberately: the card is drawn by a search result
+    /// and by nothing else, and a result is one workout rather than a day of a week, so the only
+    /// reading it ever needs is the row's own default. A pass-through nothing sets would be a
+    /// default a later host inherits without choosing it.
     var date: SessionRowDate = .full
-
-    /// How the row names its place in a program. See ``SessionSummaryRow/position``.
-    var position: SessionRowPosition = .whenPresent
 
     /// Why a search put this row on screen, or `nil` (`FR-1.5.4`).
     var match: SearchMatch?
@@ -46,7 +48,6 @@ struct SessionSummaryCard: View {
                 summary: summary,
                 unit: unit,
                 date: date,
-                position: position,
                 match: match,
                 destination: destination,
                 finish: finish

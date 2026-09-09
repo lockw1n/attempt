@@ -172,6 +172,41 @@ struct WeekHistoryStateTests {
         #expect(!state.hasMore)
     }
 
+    @Test("The marked day is the anchor's day, whatever time of day the anchor is")
+    func theMarkIsNormalisedToItsDay() async throws {
+        let log = try await log(trainedOn: [TrainingLog.day(2026, 1, 7)])
+
+        // MID-DAY ON PURPOSE. Every other case here anchors on a day start, which is what the
+        // calendar's own cell hands the route — so nothing in this suite could tell the
+        // normalisation from its absence, and a probe that dropped it left all of them passing.
+        // A restored stack is the case that is not a day start: the instant was resolved in the
+        // calendar the grid was drawn in, and a device set to another zone reads it mid-day.
+        let midday = try #require(
+            TrainingLog.utc.date(byAdding: .hour, value: 15, to: TrainingLog.day(2026, 1, 7)))
+        let state = log.weekState(containing: midday)
+        await state.load()
+
+        #expect(state.markedDay == TrainingLog.day(2026, 1, 7))
+        #expect(state.markedDay != midday)
+    }
+
+    @Test("A section's identity is its first row's, and does not move between reads")
+    func aSectionKeepsItsIdentityAcrossReads() async throws {
+        let log = try await log(trainedOn: [
+            TrainingLog.day(2026, 1, 5), TrainingLog.day(2026, 1, 7),
+        ])
+
+        let state = log.weekState()
+        await state.load()
+
+        // ``weeks`` IS COMPUTED, so a `ForEach` over it re-reads the sections on every body
+        // evaluation. An identity taken from anything but the rows would therefore be a fresh one
+        // each time — SwiftUI told the same section is a different section — and no assertion on
+        // the sections' contents can see that, which is what a probe returning `UUID()` here proved.
+        #expect(state.weeks.map(\.id) == state.weeks.map(\.id))
+        #expect(state.weeks.map(\.id) == state.weeks.map { $0.summaries[0].id })
+    }
+
     @Test("With no anchor there is no marked day")
     func theTabsOwnModeMarksNothing() async throws {
         let state = try await log(trainedOn: [TrainingLog.day(2026, 1, 5)]).weekState()
