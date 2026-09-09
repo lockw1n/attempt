@@ -14,14 +14,20 @@
     // TR-1.12 for `history.session` (T-1.39), in four configurations each — light and dark (`G-7.1`),
     // default and `accessibility3` (`NFR-1.10`'s own ceiling).
     //
-    // WHAT IS RENDERED AND WHAT IS NOT. The card and the two placeholders, not `PastSessionView`
-    // itself: the screen owns a `.task` that reads a store and `ImageRenderer` has no way to run one.
-    // What the card's reference is *for* is the one thing this screen draws that no other reference
-    // covers — a `SetRow` with its two marking controls absent, which is a past session's row. The
-    // note section is pictured HERE, and that is `FR-16.6.1`'s doing: the workout in progress folds
-    // its note at the foot (`SessionNotesFold`, pictured by `SessionAboveFoldSnapshotTests`) while
-    // this screen keeps the headed section, so the two are no longer one component and this is the
-    // only screen `SessionNotesSection` is drawn on.
+    // WHAT IS RENDERED AND WHAT IS NOT. The pieces, not `PastSessionView` itself: the screen owns a
+    // `.task` that reads a store and `ImageRenderer` has no way to run one.
+    //
+    // TWO SHAPES, AND BOTH ARE PICTURED (`FR-17.7.6`). A past *free workout* is the card, whose
+    // reference is for the one thing no other covers — a `SetRow` with its two marking controls
+    // absent. A past *planned day* is `DayChecklistSection`, which the Train tab also draws: what
+    // its references here are for is the difference, which is what is MISSING — no circle on an
+    // unanswered row and no **Skip** in the menu, because those are how a day is answered and this
+    // one has been.
+    //
+    // THE NOTE IS THE FOLD NOW (`FR-17.7.1`), pictured here at `.primary` where
+    // `SessionAboveFoldSnapshotTests` pictures it at `.secondary` — that emphasis is the whole
+    // difference between the two screens' copies of one component, and it is the half a test cannot
+    // hold (T-16.17).
     //
     // These are a regression baseline; the colours and the controls are what the simulator run checks
     // (`docs/phase-1/tasks.md` §2).
@@ -103,61 +109,107 @@
             }
         }
 
-        // MARK: - Saving the workout as a routine (FR-15.2.6)
-
-        @Test func saveAsRoutineSection() throws {
-            // What the section looks like before anything has been asked of it. The picture is
-            // where the explanation is checkable: it says the routine will hold what was LIFTED,
-            // which is the one thing about this command a lifter cannot guess, and at
-            // accessibility3 it is four lines above a full-width control.
-            try assertSnapshots(named: "Past-session-save-routine") {
-                SaveAsRoutineSection(outcome: nil, save: {})
-            }
-        }
-
-        @Test func saveAsRoutineOutcomes() throws {
-            // The three answers, drawn together rather than as three sections: they are the whole
-            // difference between a command that worked and two that did not, and stacking the
-            // reports alone is what keeps this reference short enough to have content in it.
-            try assertSnapshots(named: "Past-session-save-routine-outcomes") {
-                VStack(alignment: .leading, spacing: Spacing.lg.points) {
-                    Text(LoggingStrings.saveRoutineSaved("Tuesday"))
-                        .font(Typography.caption.font)
-                        .foregroundStyle(ColorToken.textSecondary)
-                    ErrorStateView(message: Text(LoggingStrings.saveRoutineNameRequired))
-                    ErrorStateView(message: Text(LoggingStrings.saveRoutineWriteError))
-                }
-            }
-        }
-
-        // MARK: - FR-1.2.9's note, in the shape this screen keeps (FR-16.6.1)
-
-        @Test func notesSection() throws {
-            // The headed section, which is the whole of what `SessionNotesSection` adds to the
-            // editor inside it: nothing competes for the first screen of a session that is over, so
-            // the note is not folded here and the heading is a heading rather than a control.
+        @Test func exerciseCardWithRecordAndNotes() throws {
+            // `FR-17.7.2` and `FR-17.7.4` on one card, because they land in the same two places and
+            // the question each raises is the other's. The badge is the cache's answer — this run
+            // holds the record NOW — and the note is drawn on the collapsed line with the member
+            // rows quiet, which is where `SetGrouping.Grain.displayed` puts it: that grain compares
+            // the note, so every member of a run carries the same one and the line above them says
+            // it once (T-16.13's three answers).
             //
-            // The field itself rasterises as `ImageRenderer`'s placeholder, the way every
-            // `TextField` in this package does — so what this compares is the heading, the section
-            // around it, and the field's height at three-to-ten lines, not the text in it.
-            try assertSnapshots(named: "Past-session-notes") {
+            // The single set below the run is the other half: a group of one has no line above it,
+            // so it states its own.
+            try assertSnapshots(named: "Past-session-record") {
                 fixedEnvironment {
-                    SessionNotesSection(
-                        draft: .constant(Fixtures.storedNote), hasFailed: false, save: {})
+                    PastSessionExerciseCard(
+                        item: PastFixtures.notedExercise,
+                        unit: .kilograms,
+                        areWarmupsExpanded: false,
+                        toggleWarmups: {},
+                        expandedGroups: [],
+                        toggleGroup: { _ in },
+                        edit: { _ in },
+                        recordSchemes: { PastFixtures.recordSchemes[$0] ?? [] }
+                    )
                 }
             }
         }
 
-        @Test func notesSectionUnsavedAndFailed() throws {
-            // An edit that has not been stored, and a write that failed: **Save note**, **Discard
-            // changes** and the shared error beneath them. The same three the fold pictures, and
-            // worth its own reference because the wrapper is not the same one — a `GroupedSection`
-            // is narrower than a `Card`, so `accessibility3` reaches the point where `ViewThatFits`
-            // drops the commands into a column at a different width here.
+        @Test func exerciseCardWithTheRunOpen() throws {
+            // The same card with the run expanded, which is the reference the rule above needs:
+            // the members are drawn and none of them repeats the note the line already carries.
+            try assertSnapshots(named: "Past-session-set-note") {
+                fixedEnvironment {
+                    PastSessionExerciseCard(
+                        item: PastFixtures.notedExercise,
+                        unit: .kilograms,
+                        areWarmupsExpanded: false,
+                        toggleWarmups: {},
+                        expandedGroups: PastFixtures.notedGroupIDs,
+                        toggleGroup: { _ in },
+                        edit: { _ in },
+                        recordSchemes: { PastFixtures.recordSchemes[$0] ?? [] }
+                    )
+                }
+            }
+        }
+
+        // MARK: - A past planned day (FR-17.7.6)
+
+        @Test func pastDayRows() throws {
+            // What read-only means, and the picture is the only place it is visible: two rows
+            // NOBODY answered — the state `Day-not-started` draws with a circle on each — and here
+            // there is none, because a circle is how a day is answered and this day is over
+            // (`FR-17.7.5`). The menu keeps **Log** and loses **Skip**.
+            try assertSnapshots(named: "Past-day-rows") {
+                fixedEnvironment { PastFixtures.day(DayFixtures.notStarted) }
+            }
+        }
+
+        @Test func pastDaySkipped() throws {
+            // `DOD-17.8`'s History half: three exercises done and one skipped, the skipped row
+            // reading **Skipped** and the heading counting it among the answered.
+            try assertSnapshots(named: "Past-day-skipped") {
+                fixedEnvironment {
+                    PastFixtures.day(PastFixtures.threeDoneOneSkipped)
+                }
+            }
+        }
+
+        @Test func pastDayAdherence() throws {
+            // `FR-17.7.3` and `FR-17.7.6`: the day's program position and its adherence, on the
+            // line under the title where the active session draws the same two facts. The date is
+            // NOT here — it is the navigation title, and drawing it twice is what this line was
+            // split off to avoid.
+            try assertSnapshots(named: "Past-day-adherence") {
+                fixedEnvironment {
+                    SessionSummaryLine(
+                        session: PastFixtures.programDay,
+                        adherence: SessionAdherence(PastFixtures.plannedExercises))
+                }
+            }
+        }
+
+        // MARK: - FR-1.2.9's note, folded at the foot (FR-17.7.1)
+        //
+        // ONE REFERENCE, NOT TWO, AND `shasum` IS WHY. A `Past-session-notes` picturing the CLOSED
+        // fold was recorded here and came back byte-identical to `Session-notes` in all four
+        // configurations: `saveEmphasis` reaches only the button inside the fold, so closed, the two
+        // screens' copies of this component are one picture. A second reference for one claim is
+        // what a hash across the whole directory catches and no other gate does, so it went.
+
+        @Test func notesFoldUnsavedAndFailed() throws {
+            // Open, over an edit that has not been stored and a write that failed. This is where
+            // `.primary` is legible: **Save note** is filled here and outlined on the active
+            // session, and it is this screen's one filled command (`FR-16.6.4`).
             try assertSnapshots(named: "Past-session-notes-editing") {
                 fixedEnvironment {
-                    SessionNotesSection(
-                        draft: .constant(Fixtures.editedNote), hasFailed: true, save: {})
+                    SessionNotesFold(
+                        draft: .constant(Fixtures.editedNote),
+                        isExpanded: .constant(true),
+                        hasFailed: true,
+                        saveEmphasis: .primary,
+                        save: {})
                 }
             }
         }
@@ -234,6 +286,146 @@
             )
         }
 
+        /// The note four members of the run share, and the one the fifth set carries alone.
+        static let beltNote = "Belt on from the third"
+
+        /// See ``beltNote``.
+        static let kneeNote = "Left knee felt off"
+
+        /// `DOD-17.8`'s day: three exercises answered and one of them skipped.
+        static var threeDoneOneSkipped: [DayRow] {
+            [DayFixtures.asPlanned, DayFixtures.deviated, DayFixtures.skipped]
+        }
+
+        /// One of ``plannedExercises``' five sets — the last a rep short of what was prescribed.
+        ///
+        /// - Parameters:
+        ///   - entryID: The exercise it belongs to.
+        ///   - order: Its place among that exercise's sets.
+        /// - Returns: The set.
+        static func performed(entryID: UUID, order: Int) -> SetEntry {
+            set(entryID: entryID, order: order, grams: 100_000, reps: order == 4 ? 3 : 5)
+        }
+
+        /// ``notedExercise``'s sets, built **once**.
+        ///
+        /// **A `let` rather than a computed property, and that is the fixture's correctness rather
+        /// than its cost.** The badge is keyed on a set's identifier and the fold on a group's, so a
+        /// property that minted fresh `UUID`s per call would hand the card one set of ids and the
+        /// two maps beside it another — a reference picturing no badge and no open group, and
+        /// nothing in the harness able to say why.
+        static let notedSetList = notedSets(entryID: UUID())
+
+        /// A run of four carrying one note and holding a record, then a single set with a note of
+        /// its own — the two placements `FR-17.7.4` has to settle.
+        static var notedExercise: SessionExercise {
+            SessionExercise(
+                entry: entry(id: notedSetList[0].entryID),
+                exercise: catalogueRow,
+                sets: notedSetList
+            )
+        }
+
+        /// Which of ``notedExercise``'s sets hold a record, keyed on the set.
+        ///
+        /// **The run's FIRST set**, which is the identifier the cache names a run by
+        /// (`PersonalRecordCacheEntity.sourceSetID`) — a badge keyed on any other member would draw
+        /// nothing, and a fixture that keyed it on all four would picture a rule the store does not
+        /// implement.
+        static var recordSchemes: [UUID: [RecordScheme]] {
+            [notedSetList[0].id: [RecordScheme(reps: 6, sets: 4)]]
+        }
+
+        /// Every group on ``notedExercise``'s card, so a reference can draw them all open.
+        static var notedGroupIDs: Set<UUID> {
+            Set(SetNumbering.grouped(SetNumbering.numbered(notedSetList)).map(\.id))
+        }
+
+        /// A day of a program, three weeks in — what `FR-17.7.6`'s summary line reads its position
+        /// off.
+        static var programDay: WorkoutSession {
+            WorkoutSession(
+                id: UUID(),
+                createdAt: stamp,
+                updatedAt: stamp,
+                deletedAt: nil,
+                date: stamp,
+                startedAt: stamp,
+                endedAt: stamp.addingTimeInterval(4200),
+                notes: "",
+                bodyweight: nil,
+                programRunID: UUID(),
+                scheduledWorkoutID: nil,
+                weekNumber: 3,
+                dayIndex: 0
+            )
+        }
+
+        /// A planned exercise four sets of whose five were performed as prescribed — the numerator
+        /// and the denominator ``pastDayAdherence`` pictures.
+        static var plannedExercises: [SessionExercise] {
+            let entryID = UUID()
+            let planned = PlannedTargetGroup(
+                id: UUID(),
+                createdAt: stamp,
+                updatedAt: stamp,
+                deletedAt: nil,
+                exerciseEntryID: entryID,
+                order: 0,
+                targetWeight: Weight(grams: 100_000),
+                targetReps: 5,
+                targetSets: 5
+            )
+            return [
+                SessionExercise(
+                    entry: entry(id: entryID),
+                    exercise: catalogueRow,
+                    sets: (0..<5).map { performed(entryID: entryID, order: $0) },
+                    planned: [planned]
+                )
+            ]
+        }
+
+        /// One entry, with only its identifier named.
+        ///
+        /// - Parameter id: The entry.
+        /// - Returns: The record.
+        static func entry(id: UUID) -> ExerciseEntry {
+            ExerciseEntry(
+                id: id,
+                createdAt: stamp,
+                updatedAt: stamp,
+                deletedAt: nil,
+                sessionID: UUID(),
+                exerciseID: UUID(),
+                order: 0,
+                notes: ""
+            )
+        }
+
+        /// A past day's rows, exactly as ``PastSessionView/dayRows`` composes them — read-only,
+        /// which is `answer` and `skip` being absent.
+        ///
+        /// - Parameter rows: The rows.
+        /// - Returns: The section.
+        static func day(_ rows: [DayRow]) -> some View {
+            DayChecklistSection(
+                rows: rows,
+                progress: DayProgress(rows),
+                unit: .kilograms,
+                log: { _ in })
+        }
+
+        /// ``notedExercise``'s sets: a run of four sharing a note, then one set with another.
+        ///
+        /// - Parameter entryID: The exercise they belong to.
+        /// - Returns: The sets, in order.
+        static func notedSets(entryID: UUID) -> [SetEntry] {
+            (0..<4).map {
+                set(entryID: entryID, order: $0, grams: 100_000, reps: 6, notes: beltNote)
+            } + [set(entryID: entryID, order: 4, grams: 90_000, reps: 8, notes: kneeNote)]
+        }
+
         /// The catalogue row the card names.
         static var catalogueRow: Exercise {
             Exercise(
@@ -264,6 +456,7 @@
         ///   - rpe: The rating, where it carried one.
         ///   - isWarmup: Whether it is a warmup.
         ///   - isCompleted: Whether it was completed rather than failed.
+        ///   - notes: `FR-1.2.3`'s per-set note, where it carried one.
         /// - Returns: The set.
         static func set(
             entryID: UUID,
@@ -272,7 +465,8 @@
             reps: Int,
             rpe: Double? = nil,
             isWarmup: Bool = false,
-            isCompleted: Bool = true
+            isCompleted: Bool = true,
+            notes: String = ""
         ) -> SetEntry {
             SetEntry(
                 id: UUID(),
@@ -290,7 +484,7 @@
                 targetWeight: nil,
                 targetReps: nil,
                 modifiers: [],
-                notes: "",
+                notes: notes,
                 completedAt: nil
             )
         }

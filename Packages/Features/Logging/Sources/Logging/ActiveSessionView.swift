@@ -308,11 +308,11 @@ public struct ActiveSessionView: View {
             draft: $noteDraft,
             isExpanded: $areNotesExpanded,
             hasFailed: store.noteWriteFailure != nil,
+            saveEmphasis: .secondary,
             save: { Task { await store.saveNote(noteDraft.text) } }
         )
         // The banner describes one attempt to store one piece of text, so the next keystroke ends
-        // it — including the one that puts the stored note back. Without this it outlives the edit
-        // it belongs to, leaving a retry on screen with nothing left to write.
+        // it — otherwise it outlives the edit, a retry with nothing left to write.
         .onChange(of: noteDraft.text) { store.noteWriteFailure = nil }
         SessionCommandsSection(hasFailed: writeFailed, finish: { Task { await finish() } })
     }

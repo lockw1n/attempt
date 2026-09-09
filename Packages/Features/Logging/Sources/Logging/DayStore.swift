@@ -45,7 +45,7 @@ public final class DayStore {
             return planLines.map { DayRow(id: $0.id, exercise: $0.exercise, plan: $0.targets) }
         }
         let marks = store.personalRecords
-        return store.exercises.map { Self.row($0, marks: marks) }
+        return store.exercises.map { DayRow.performed($0, marks: marks) }
     }
 
     /// The training day the session belongs to, or `nil` before there is one (`FR-1.2.1`).
@@ -382,30 +382,6 @@ public final class DayStore {
     /// write here has one place to land rather than a second copy of the answer to keep in step.
     private func reload() async {
         await store.loadExercises()
-    }
-
-    /// One row, from the session's exercise.
-    ///
-    /// - Parameters:
-    ///   - exercise: The entry, its catalogue row, its sets and its planned targets.
-    ///   - marks: Which of the workout's sets hold a record (`FR-1.6.3`) — read once per rebuild
-    ///     rather than per row, the store having already resolved it inside `loadExercises()`.
-    /// - Returns: The row.
-    private static func row(_ exercise: SessionExercise, marks: SessionRecordMarks) -> DayRow {
-        let performed = DayPerformance.runs(of: exercise.sets)
-        return DayRow(
-            id: exercise.id,
-            exercise: exercise.exercise,
-            plan: exercise.planned.map {
-                WeekPlanTarget(
-                    id: $0.id, weight: $0.targetWeight, reps: $0.targetReps, sets: $0.targetSets)
-            },
-            performed: performed,
-            answer: DayRowAnswer.derived(
-                marked: exercise.entry.isMarkedDone, performedSomething: !performed.isEmpty),
-            // The runs' own identifiers, which are their first sets' — the identifier the cache
-            // names a run by.
-            records: performed.flatMap { marks.schemes(forSetID: $0.id) })
     }
 
     /// The entry a row names, once the session exists.

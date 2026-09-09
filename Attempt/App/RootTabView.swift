@@ -144,7 +144,6 @@ struct RootTabView: View {
                 vocabulary: stores.modifiers,
                 equipment: stores.equipment,
                 records: stores.records,
-                routines: repositories.routines,
                 trainingMaxes: repositories.trainingMaxes
             )
         case .failed(let diagnostic):

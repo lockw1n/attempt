@@ -347,14 +347,14 @@ struct DayChecklistSection: View {
     /// The unit their loads read in (`G-3.1`).
     let unit: MassUnit
 
-    /// Logs one row exactly as planned (`FR-17.9.2`).
-    let answer: (UUID) -> Void
+    /// Logs one row exactly as planned (`FR-17.9.2`), or `nil` on a past day (`FR-17.7.6`).
+    var answer: ((UUID) -> Void)?
 
-    /// Opens the editor over one row (`FR-17.9.3`).
+    /// Opens the editor over one row (`FR-17.9.3`). Never absent — see ``DayExerciseRow/log``.
     let log: (UUID) -> Void
 
-    /// Records that the lifter is not doing one row today (`FR-17.9.6`).
-    let skip: (UUID) -> Void
+    /// Records that the lifter is not doing one row today (`FR-17.9.6`), or `nil` — see ``answer``.
+    var skip: ((UUID) -> Void)?
 
     var body: some View {
         GroupedSection(
@@ -364,9 +364,11 @@ struct DayChecklistSection: View {
                 DayExerciseRow(
                     row: row,
                     unit: unit,
-                    answer: { answer(row.id) },
+                    // Rebound per row rather than passed through: the row's own commands take no
+                    // argument, and an absent one here has to stay absent there.
+                    answer: answer.map { command in { command(row.id) } },
                     log: { log(row.id) },
-                    skip: { skip(row.id) })
+                    skip: skip.map { command in { command(row.id) } })
             }
         }
     }

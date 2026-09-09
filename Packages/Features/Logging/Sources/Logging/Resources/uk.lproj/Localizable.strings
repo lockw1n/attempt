@@ -84,6 +84,7 @@
 "logging.session.set.unit.pounds" = "фнт";
 "logging.session.set.position %lld" = "Підхід %lld";
 "logging.session.set.reps %lld" = "Повторень %lld";
+"logging.session.set.note %@" = "Нотатка: %@";
 "logging.session.set.rpe %@" = "RPE %@";
 
 /* FR-16.1.1's set groups. The badge keeps the en dash the English catalogue draws — it is drawn
@@ -251,18 +252,8 @@
 "logging.session.plan.log.action" = "Записати запланований підхід";
 "logging.session.plan.on-target" = "У ціль";
 
-"logging.past-session.save-routine.section" = "Зберегти як програму";
-"logging.past-session.save-routine.explanation" = "Створює програму з цього тренування: вправи в тому порядку, у якому ви їх робили, і ту вагу та повторення, які ви справді підняли. Розминочні та незавершені підходи не враховуються.";
-"logging.past-session.save-routine.action" = "Зберегти як програму";
 
-"logging.past-session.save-routine.title" = "Назвіть цю програму";
-"logging.past-session.save-routine.prompt" = "Важкий день присідань";
-"logging.past-session.save-routine.confirm" = "Зберегти";
-"logging.past-session.save-routine.cancel" = "Скасувати";
 
-"logging.past-session.save-routine.name-required.message" = "Програмі потрібна назва. Нічого не збережено.";
-"logging.past-session.save-routine.write-error.message" = "Не вдалося зберегти програму. Спробуйте ще раз.";
-"logging.past-session.save-routine.saved %@" = "«%@» збережено до ваших програм.";
 "logging.set.training-max-share %@" = "%@ від ТМ";
 
 /* FR-16.8.2 — курс на вкладці «Тренування». */

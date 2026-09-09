@@ -4,62 +4,6 @@ import PowerliftingCore
 import RepositoryInterface
 import SwiftUI
 
-/// `FR-1.2.14`'s warmup group, and the control that folds it.
-///
-/// **Its own fold, beside the card's rather than inside it.** `FR-1.2.13` collapses a finished
-/// exercise and `FR-1.2.14` collapses the warmups within one; a card that is open may have either
-/// state of this, so the two folds are two pieces of state and two controls.
-///
-/// **The count is a numeral beside a word**, on `SessionExerciseCard`'s rule: a label next to a
-/// number stays a count in every language, where "3 warmups" would need a plural rule per language
-/// to say the same thing.
-struct WarmupSectionHeader: View {
-    /// How many warmups the group holds — the part of it that is legible while it is folded.
-    let count: Int
-
-    /// Whether it is open.
-    let isExpanded: Bool
-
-    /// Opens or closes it.
-    let toggle: () -> Void
-
-    /// Which locale the count is rendered for (`G-3.4`).
-    @Environment(\.locale) private var locale
-
-    /// The heading, as one control across the card's width.
-    ///
-    /// One VoiceOver element carrying the fold as a **value**, for the card header's reason: there
-    /// is no expanded trait, and `.isSelected` means a chosen filter everywhere else in this app.
-    var body: some View {
-        Button(action: toggle) {
-            HStack(spacing: Spacing.sm.points) {
-                Text(LoggingStrings.setWarmupSection)
-                    .font(Typography.metricLabel.font)
-                    .foregroundStyle(ColorToken.textSecondary)
-                Text(count, format: AppFormat.count(locale: locale))
-                    .font(Typography.caption.font)
-                    .foregroundStyle(ColorToken.textTertiary)
-                Spacer(minLength: Spacing.sm.points)
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .font(Typography.caption.font)
-                    .foregroundStyle(ColorToken.textTertiary)
-                    .accessibilityHidden(true)
-            }
-            .frame(minHeight: TouchTarget.standard.points)
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityValue(
-            Text(
-                isExpanded
-                    ? LoggingStrings.sessionExerciseExpanded
-                    : LoggingStrings.sessionExerciseCollapsed
-            )
-        )
-    }
-}
-
 /// One logged set inside an exercise card (`FR-1.2.3`, `FR-1.2.4`, `FR-1.2.5`, `FR-1.2.14`).
 ///
 /// **The number, the load, the repetitions and the rating, in that order and on one line.** A set is
@@ -126,6 +70,15 @@ struct SetRow: View {
     /// share, and repeating it under the line that just said it puts one percentage on screen four
     /// times. A group of one has no such line, so it draws its own.
     var statesTrainingMaxShare = true
+
+    /// Whether this row states its own note, or the line above it already did (`FR-17.7.4`).
+    ///
+    /// **`false` for a member of a run**, on ``statesTrainingMaxShare``'s rule and for the reason
+    /// the grouping itself gives: ``DerivedValues/SetGrouping/Grain/displayed`` compares the note,
+    /// so every member of a group carries the *same* one by construction. The collapsed line says
+    /// it once — which is also the only place it is legible, a run being folded until asked
+    /// (`FR-16.1.3`) — and repeating it under that line would print one sentence four times.
+    var statesNote = true
 
     /// Whether the session holding this set has yet to end (`FR-16.4.1`).
     ///
@@ -236,6 +189,7 @@ struct SetRow: View {
                 recordMark
                 trainingMaxShare
                 modifiers
+                note
                 plannedTarget
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -245,6 +199,22 @@ struct SetRow: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityHint(Text(LoggingStrings.setEditAction))
+    }
+
+    /// `FR-1.2.3`'s per-set note, where this row carries one and is the row that states it
+    /// (`FR-17.7.4`).
+    ///
+    /// **Inside the same button as the values**, on ``trainingMaxShare``'s rule: the note is prose
+    /// about this set, so VoiceOver reads it with the numbers it is about rather than as a stray
+    /// element after them.
+    @ViewBuilder private var note: some View {
+        if statesNote, !numbered.record.notes.isEmpty {
+            Text(LoggingStrings.setNote(numbered.record.notes))
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textSecondary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     /// The set's number, and `FR-1.2.4`'s marking control.

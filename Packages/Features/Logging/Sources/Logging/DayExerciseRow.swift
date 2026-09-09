@@ -13,6 +13,11 @@ import SwiftUI
 /// **A per-set annotation has one home here and it is the *Did* line** (T-16.13's trap). This row
 /// has no member rows to draw one on and nothing collapses, so a fact about the sets either appears
 /// on that line or does not appear.
+///
+/// **Read-only is two closures being absent rather than a mode** (`FR-17.7.6`). A past day is this
+/// row without `FR-17.9.2`'s circle and without `FR-17.9.6`'s skip — **Log** stays, because
+/// `FR-17.7.5` is the one write a finished day still takes. A flag would have been a third thing to
+/// keep in step with the two commands it governs.
 struct DayExerciseRow: View {
     /// What this row draws.
     let row: DayRow
@@ -20,14 +25,17 @@ struct DayExerciseRow: View {
     /// The unit its loads read in (`G-3.1`).
     let unit: MassUnit
 
-    /// Logs it exactly as planned, in one tap (`FR-17.9.2`).
-    let answer: () -> Void
+    /// Logs it exactly as planned, in one tap (`FR-17.9.2`), or `nil` where the surface offers no
+    /// such write — a past day (`FR-17.7.6`).
+    var answer: (() -> Void)?
 
-    /// Opens the editor over it (`FR-17.9.3`).
+    /// Opens the editor over it (`FR-17.9.3`). Never absent: it is the way an answer is corrected
+    /// on a day that is over as much as it is the way one is given on a day that is not
+    /// (`FR-17.7.5`).
     let log: () -> Void
 
-    /// Records that the lifter is not doing it today (`FR-17.9.6`).
-    let skip: () -> Void
+    /// Records that the lifter is not doing it today (`FR-17.9.6`), or `nil` — see ``answer``.
+    var skip: (() -> Void)?
 
     /// Which of the exercise's two names reads (`G-3.2`).
     @Environment(\.locale) private var locale
@@ -42,6 +50,7 @@ struct DayExerciseRow: View {
                     .font(Typography.actionLabel.font)
                     .foregroundStyle(ColorToken.textPrimary)
                 lines
+                setNotes
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
@@ -98,6 +107,16 @@ struct DayExerciseRow: View {
         }
     }
 
+    /// `FR-17.7.4`'s per-set notes, under the *Did* line.
+    ///
+    /// **The only place a day's row can draw one**, which is this view's own rule: there are no
+    /// member rows here and nothing collapses. Each distinct note once — see ``DayRow/notes``.
+    @ViewBuilder private var setNotes: some View {
+        ForEach(row.notes, id: \.self) { note in
+            caption(Text(LoggingStrings.setNote(note)))
+        }
+    }
+
     /// A secondary line.
     ///
     /// - Parameter text: What it says.
@@ -136,7 +155,7 @@ struct DayExerciseRow: View {
     /// two-line row.
     @ViewBuilder private var controls: some View {
         HStack(spacing: Spacing.xs.points) {
-            if row.hasCircle {
+            if row.hasCircle, let answer {
                 Button(action: answer) {
                     Image(systemName: "circle")
                         .font(Typography.cardTitle.font)
@@ -152,7 +171,7 @@ struct DayExerciseRow: View {
             }
             Menu {
                 Button(action: log) { Text(LoggingStrings.dayLogAction) }
-                if row.answer == .unanswered {
+                if row.answer == .unanswered, let skip {
                     Button(action: skip) { Text(LoggingStrings.daySkipAction) }
                 }
             } label: {

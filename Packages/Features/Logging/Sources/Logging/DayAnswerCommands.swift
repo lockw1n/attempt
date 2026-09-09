@@ -232,19 +232,7 @@ extension ActiveSessionStore {
         guard let entry = entries.first(where: { $0.id == entryID }), !entry.isMarkedDone else {
             return
         }
-        try await repository.save(
-            ExerciseEntry(
-                id: entry.id,
-                createdAt: entry.createdAt,
-                updatedAt: entry.updatedAt,
-                deletedAt: entry.deletedAt,
-                sessionID: entry.sessionID,
-                exerciseID: entry.exerciseID,
-                order: entry.order,
-                notes: entry.notes,
-                isMarkedDone: true
-            )
-        )
+        try await repository.save(entry.markedDone)
     }
 
     /// `set` completed, and every other field untouched.

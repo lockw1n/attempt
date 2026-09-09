@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 
@@ -41,12 +42,18 @@ struct SessionRecordMarks: Equatable, Sendable {
 
 /// Where the marks come from.
 ///
-/// **Beside the type rather than on the store**, which is also what keeps
-/// `ActiveSessionStore.swift` under SwiftLint's file ceiling: this reads the cache and writes
-/// nothing, so unlike every other member of that store it does not need the file scope its
-/// `private(set)` properties are protected by.
-extension ActiveSessionStore {
+/// **A reader beside the type rather than a member of a store**, and that is what lets three
+/// surfaces share one: the workout in progress, a past session and a day's checklist all draw the
+/// same badge over the same cache, and a read that lived on ``ActiveSessionStore`` would be
+/// unreachable from a screen that holds no workout.
+extension SessionRecordMarks {
     /// Which of `exercises`' sets hold a record, and at which schemes (`FR-1.6.3`, `FR-16.2.4`).
+    ///
+    /// **The cache's truth, which is *holds the record now* and not *set a record then*.** The
+    /// table is rebuilt from the log, so a run since beaten carries nothing (`FR-17.7.2`) — a badge
+    /// asserting a record the lifter no longer holds is worse on a screen about last month than it
+    /// would be on today's. This is the read a past day makes too, and it is why both screens say
+    /// the same thing about the same set.
     ///
     /// **One cache read per distinct exercise, not per card and not per set.** A workout names a
     /// handful of exercises and two entries can name the same one; the read is `G-1.5`'s cached
@@ -61,9 +68,13 @@ extension ActiveSessionStore {
     /// either way, and a derived value that could not be read is not something to fail a workout
     /// over (`G-1.4`) — the same swallow the recompute triggers make, for the same reason.
     ///
-    /// - Parameter exercises: The workout's exercises, already read.
-    /// - Returns: The marks, ready to hand to the cards.
-    func recordMarks(over exercises: [SessionExercise]) async -> SessionRecordMarks {
+    /// - Parameters:
+    ///   - exercises: The workout's exercises, already read.
+    ///   - records: The app's one recompute actor, which owns the cache (`TR-1.6`).
+    /// - Returns: The marks, ready to hand to the rows.
+    static func read(
+        over exercises: [SessionExercise], from records: PersonalRecordRecomputer
+    ) async -> SessionRecordMarks {
         var marks = SessionRecordMarks()
         for exerciseID in Set(exercises.map(\.entry.exerciseID)) {
             guard let cells = try? await records.schemeRecords(forExerciseID: exerciseID) else {

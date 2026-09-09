@@ -238,6 +238,31 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
     }
 }
 
+extension ExerciseEntry {
+    /// This entry carrying the lifter's check-off (`FR-17.9.3`, `FR-15.3.4`).
+    ///
+    /// **Rebuilt rather than mutated**, the record being a value with `let` properties — and shared
+    /// by the two screens that answer a row, so the nine columns carried across are written once.
+    ///
+    /// **The no-op guard is the caller's, not this property's.** Assigning a `@Model` property
+    /// marks the row changed whatever the value was, so an entry already done must not be saved at
+    /// all (`G-2.4`); a guard here would still hand the caller a value to save, which is the shape
+    /// that goes wrong.
+    var markedDone: ExerciseEntry {
+        ExerciseEntry(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            sessionID: sessionID,
+            exerciseID: exerciseID,
+            order: order,
+            notes: notes,
+            isMarkedDone: true
+        )
+    }
+}
+
 /// What a planned group puts into the set editor when it opens (`FR-15.2.3`).
 ///
 /// **Not ``SetEntryValues``, because the load is optional here and is not there.** That type

@@ -192,6 +192,7 @@ struct SetGroupRow: View {
                 recordMark
                 trainingMaxShare
                 modifiers
+                note
                 plannedTarget
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -308,6 +309,23 @@ struct SetGroupRow: View {
         }
     }
 
+    /// `FR-1.2.3`'s note, which the group cannot mix — see
+    /// ``DerivedValues/SetGrouping/Grain/displayed``, which compares it.
+    ///
+    /// **Here rather than on the member rows, and that is T-16.13's three answers settled.** A run
+    /// is collapsed until asked (`FR-16.1.3`), so a note drawn only underneath is a note nobody
+    /// reads on the ordinary screen; every member carries the same one, so the line above them says
+    /// it once and ``SetRow/statesNote`` keeps them quiet.
+    @ViewBuilder private var note: some View {
+        if !group.record.notes.isEmpty {
+            Text(LoggingStrings.setNote(group.record.notes))
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textSecondary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     /// `FR-16.7.1`'s annotation for the whole run: its load, as a share of the training max in
     /// force.
     ///
@@ -380,6 +398,7 @@ struct SetGroupRow: View {
             edit: edit,
             trainingMax: trainingMax,
             statesTrainingMaxShare: group.isSingle,
+            statesNote: group.isSingle,
             isSessionOpen: isSessionOpen,
             target: target(numbered.id)
         )

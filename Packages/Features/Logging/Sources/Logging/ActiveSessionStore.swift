@@ -382,7 +382,7 @@ public final class ActiveSessionStore {
                 )
             }
             exercises = loaded
-            personalRecords = await recordMarks(over: loaded)
+            personalRecords = await SessionRecordMarks.read(over: loaded, from: records)
             exercisesReadFailure = nil
         } catch {
             exercises = []

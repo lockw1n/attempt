@@ -63,6 +63,17 @@ public struct DayRow: Identifiable, Equatable, Sendable {
     /// What has been said about it.
     public let answer: DayRowAnswer
 
+    /// The notes the lifter put on this row's working sets, each distinct one once
+    /// (`FR-1.2.3`, `FR-17.7.4`).
+    ///
+    /// **Distinct rather than one per set, and in the order they were written.** Five sets carrying
+    /// *felt heavy* is one sentence, not five; two sets disagreeing about it are two, and a row that
+    /// showed only the first would be quoting one set under all of them.
+    ///
+    /// **Here rather than on the `Did` line's numbers**, because a note is prose and the runs are
+    /// numerals — see ``DayExerciseRow/setNotes``, which is the only place a day's row can draw one.
+    public let notes: [String]
+
     /// Every scheme this row's work holds a personal record at (`FR-1.6.3`, `FR-16.2.4`).
     ///
     /// **On the row rather than looked up by the view**, on `SessionExerciseCardView`'s rule for
@@ -81,6 +92,7 @@ public struct DayRow: Identifiable, Equatable, Sendable {
     ///   - plan: What was prescribed.
     ///   - performed: What was logged, encoded.
     ///   - answer: What has been said about it.
+    ///   - notes: The distinct notes on its working sets.
     ///   - records: The schemes its work holds a record at.
     public init(
         id: UUID,
@@ -88,6 +100,7 @@ public struct DayRow: Identifiable, Equatable, Sendable {
         plan: [WeekPlanTarget],
         performed: [WeekPlanTarget] = [],
         answer: DayRowAnswer = .unanswered,
+        notes: [String] = [],
         records: [RecordScheme] = []
     ) {
         self.id = id
@@ -95,6 +108,7 @@ public struct DayRow: Identifiable, Equatable, Sendable {
         self.plan = plan
         self.performed = performed
         self.answer = answer
+        self.notes = notes
         self.records = records
     }
 
@@ -124,6 +138,38 @@ public struct DayRow: Identifiable, Equatable, Sendable {
     /// - Returns: Its load, reps and count.
     private static func shape(_ target: WeekPlanTarget) -> [Int] {
         [target.weight?.grams ?? -1, target.reps, target.sets]
+    }
+}
+
+extension DayRow {
+    /// One row, from a session's exercise (`FR-17.9.1`, `FR-17.7.6`).
+    ///
+    /// **Shared by the two screens that draw a day**, which is what `FR-17.7.6` asks for in as many
+    /// words: a past planned day is the checklist over the same rows, so the rows have to be the
+    /// same rows. Written twice they would be two answers to *was this as planned* over one
+    /// workout — and the screen that got it wrong would be the read-only one nobody logs against.
+    ///
+    /// - Parameters:
+    ///   - exercise: The entry, its catalogue row, its sets and its planned targets.
+    ///   - marks: Which of the workout's sets hold a record (`FR-1.6.3`) — read once per rebuild
+    ///     rather than per row.
+    /// - Returns: The row.
+    static func performed(_ exercise: SessionExercise, marks: SessionRecordMarks) -> DayRow {
+        let performed = DayPerformance.runs(of: exercise.sets)
+        return DayRow(
+            id: exercise.id,
+            exercise: exercise.exercise,
+            plan: exercise.planned.map {
+                WeekPlanTarget(
+                    id: $0.id, weight: $0.targetWeight, reps: $0.targetReps, sets: $0.targetSets)
+            },
+            performed: performed,
+            answer: DayRowAnswer.derived(
+                marked: exercise.entry.isMarkedDone, performedSomething: !performed.isEmpty),
+            notes: DayPerformance.notes(of: exercise.sets),
+            // The runs' own identifiers, which are their first sets' — the identifier the cache
+            // names a run by.
+            records: performed.flatMap { marks.schemes(forSetID: $0.id) })
     }
 }
 
@@ -187,6 +233,23 @@ enum DayPerformance {
             }
         }
         return runs
+    }
+
+    /// The notes on the working sets, each distinct one once and in the order it was written
+    /// (`FR-1.2.3`, `FR-17.7.4`).
+    ///
+    /// **Warmups are absent, on this type's own rule** — a note on the ramp is not a note about the
+    /// work, and the *Did* line this sits under counts no warmup either.
+    ///
+    /// - Parameter sets: Every set logged against the entry, in order.
+    /// - Returns: The distinct notes.
+    static func notes(of sets: [SetEntry]) -> [String] {
+        var seen: Set<String> = []
+        var notes: [String] = []
+        for set in sets where !set.isWarmup && !set.notes.isEmpty {
+            if seen.insert(set.notes).inserted { notes.append(set.notes) }
+        }
+        return notes
     }
 
     /// The same collapsing applied to a *plan*, so the two sides compare like with like.
