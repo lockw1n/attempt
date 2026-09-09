@@ -252,8 +252,6 @@
 "logging.session.plan.log.action" = "Записати запланований підхід";
 "logging.session.plan.on-target" = "У ціль";
 
-
-
 "logging.set.training-max-share %@" = "%@ від ТМ";
 
 /* FR-16.8.2 — курс на вкладці «Тренування». */

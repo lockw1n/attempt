@@ -271,6 +271,36 @@ final class PastSessionState {
             if !entry.isMarkedDone { try await workouts.save(entry.markedDone) }
             return true
         }
+        await endDayIfComplete()
+    }
+
+    /// Ends the day once its last row has been answered (`FR-17.9.8`).
+    ///
+    /// **The same rule the checklist applies, because it is the same day.** `DayStore` ends a day
+    /// at its last answer, and a row answered from here would otherwise leave `endedAt` unwritten
+    /// for good — taking `FR-17.7.3`'s adherence with it, which is withheld until the day is done,
+    /// and leaving every unattempted set on it reading as *pending* rather than failed
+    /// (`FR-16.4.1`).
+    ///
+    /// **Nothing to do on a day that was already over**, which is every ordinary correction: a
+    /// second `endedAt` is a rewrite of a fact that has not changed (`G-2.4`).
+    ///
+    /// **`.keepAsFailed`**, which is the checklist's answer and the only one available here: a
+    /// past day offers no **Finish**, so there is nobody to ask `FR-16.4.3`'s question of.
+    private func endDayIfComplete() async {
+        guard let current = session, current.endedAt == nil, !exercises.isEmpty,
+            exercises.allSatisfy(\.entry.isMarkedDone)
+        else {
+            return
+        }
+        do {
+            let ended = try await SessionFinish(workouts: workouts, records: records)
+                .finish(current, at: .now, resolving: .keepAsFailed)
+            phase = .loaded(
+                try await workouts.session(id: ended.id, includingDeleted: false) ?? ended)
+        } catch {
+            writeFailure = String(describing: error)
+        }
     }
 
     /// What the Log sheet opens over `rowID` (`FR-17.7.5`), or `nil` where the screen has no such
@@ -345,15 +375,15 @@ final class PastSessionState {
     /// The session's exercises, joined from the three tables a schema with no relationships needs
     /// (`G-2.5`).
     ///
-    /// `includingDeleted: false` for the workout's own rows, which is what keeps a soft-deleted
-    /// entry or set off this screen and agrees with what the session list already counted (`G-1.3`).
+    /// `includingDeleted: false` at every call site, which is what keeps a soft-deleted entry or
+    /// set off this screen and agrees with what the session list already counted (`G-1.3`) — and,
+    /// for the catalogue, is what ``ActiveSessionStore`` reads the same rows with. `FR-17.7.6` puts
+    /// the two screens over one day, so the flag has to be the same on both or one lift changes its
+    /// name between them.
     ///
-    /// **`includingDeleted: true` for the *catalogue*, and the two are not the same question.** An
-    /// exercise cannot be deleted — `FR-1.1.5` gives archiving instead — so a row read without them
-    /// makes a workout performed with a since-archived lift render as an exercise that is missing.
-    /// It is ``WeekPlanReader``'s rule, which is what a day's plan is drawn with, and `FR-17.7.6`
-    /// asks a past day to be the same rows: read the other way, one lift would keep its name until
-    /// the day was answered and lose it afterwards.
+    /// **An archived exercise still names the row it was lifted under, and that costs no flag.**
+    /// `FR-1.1.5` archives with a column of its own — `ExerciseRepository` offers no delete at all —
+    /// so a lift retired since is read back here whichever way this is set.
     ///
     /// - Parameter day: The session's training day, which `FR-16.7.1`'s annotation is resolved at
     ///   — not today, so a training max raised since does not rewrite what this workout's loads
@@ -368,7 +398,7 @@ final class PastSessionState {
                 SessionExercise(
                     entry: entry,
                     exercise: try await catalogue.exercise(
-                        id: entry.exerciseID, includingDeleted: true),
+                        id: entry.exerciseID, includingDeleted: false),
                     sets: try await workouts.sets(forEntryID: entry.id, includingDeleted: false),
                     planned: try await workouts.plannedTargets(
                         forEntryID: entry.id, includingDeleted: false),

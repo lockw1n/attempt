@@ -167,7 +167,12 @@ struct PastSession {
             workouts: repositories.workouts, cache: repositories.personalRecords)
     }
 
-    /// Archives the exercise at `position` (`FR-1.1.5`), which is a soft delete (`G-1.3`).
+    /// Archives the exercise at `position` (`FR-1.1.5`).
+    ///
+    /// **A column of its own, and not a soft delete.** `ExerciseRepository` offers no delete, and
+    /// `save(_:)` carries `deletedAt` across from the stored row rather than taking it from the
+    /// record handed in — so a fixture that archived by stamping `deletedAt` would archive nothing
+    /// and pass whatever the read was set to.
     ///
     /// - Parameter position: Which exercise.
     func archiveExercise(at position: Int) async throws {
@@ -177,7 +182,7 @@ struct PastSession {
                 id: row.id,
                 createdAt: row.createdAt,
                 updatedAt: row.updatedAt,
-                deletedAt: Self.stamp,
+                deletedAt: row.deletedAt,
                 name: row.name,
                 ukrainianName: row.ukrainianName,
                 movement: row.movement,

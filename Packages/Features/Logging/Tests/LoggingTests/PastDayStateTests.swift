@@ -162,13 +162,14 @@ struct PastSessionDayTests {
         #expect(groups[1].count == 1)
     }
 
-    @Test("An archived exercise keeps its name here, as it does on the plan — FR-1.1.5, G-1.3")
+    @Test("An archived exercise still names the row it was lifted under — FR-1.1.5")
     func anArchivedExerciseKeepsItsName() async throws {
         let past = try await PastSession.logged(names: ["Back Squat"], stamped: true)
         try await past.archiveExercise(at: 0)
 
         await past.state.load()
 
+        #expect(past.state.exercises[0].exercise?.isArchived == true)
         #expect(past.state.exercises[0].exercise?.name == "Back Squat")
     }
 }
@@ -315,6 +316,89 @@ struct PastDayEditTests {
             forExerciseID: past.exercises[0].id, includingDeleted: false)
         #expect(cells.allSatisfy { $0.weight == Weight(grams: 60_000) })
         #expect(!past.state.personalRecords.schemes(forSetID: after.id).isEmpty)
+    }
+
+    @Test("A row already answered is not re-marked, so no local no-op outranks a remote edit")
+    func anAnsweredRowIsNotReMarked() async throws {
+        let past = try await PastSession.logged(names: ["Back Squat"], stamped: true)
+        try await past.logSet(at: 0, order: 0)
+        try await past.markDone(at: 0)
+        await past.state.load()
+        let before = try #require(await past.storedEntry(at: 0)).updatedAt
+
+        await past.state.log(
+            rowID: past.state.dayRows[0].id, group: .of(grams: 60_000, reps: 5, sets: 1))
+
+        // The sets moved, so the write happened; the entry did not, because it was already done.
+        // `updatedAt` is `G-2.4`'s conflict key, and a mark rewritten to the value it holds would
+        // let this correction outrank a real edit made on another device.
+        #expect(past.state.exercises[0].sets[0].weight == Weight(grams: 60_000))
+        let after = try #require(await past.storedEntry(at: 0))
+        #expect(after.updatedAt == before)
+    }
+
+    @Test("The day ends when its last row is answered from here, as it does on the checklist")
+    func answeringTheLastRowEndsTheDay() async throws {
+        let past = try await PastSession.logged(
+            names: ["Back Squat", "Bench Press"], stamped: true, isFinished: false)
+        try await past.plan(at: 0, reps: 5, sets: 1)
+        try await past.plan(at: 1, reps: 5, sets: 1)
+        try await past.logSet(at: 0, order: 0, reps: 5)
+        try await past.markDone(at: 0)
+        await past.state.load()
+        #expect(past.state.session?.endedAt == nil)
+        #expect(past.state.adherence == nil)
+
+        await past.state.log(
+            rowID: past.state.dayRows[1].id, group: .of(grams: 100_000, reps: 5, sets: 1))
+
+        // FR-17.9.8 is the day's rule wherever the answer comes from — and until it is written,
+        // FR-17.7.3 withholds the adherence this screen exists to draw.
+        #expect(past.state.session?.endedAt != nil)
+        #expect(past.state.adherence != nil)
+    }
+
+    @Test("A day left with a row unanswered does not end, so a correction never finishes one")
+    func correctingOneRowLeavesAnOpenDayOpen() async throws {
+        let past = try await PastSession.logged(
+            names: ["Back Squat", "Bench Press"], stamped: true, isFinished: false)
+        try await past.logSet(at: 0, order: 0)
+        try await past.markDone(at: 0)
+        await past.state.load()
+
+        await past.state.log(
+            rowID: past.state.dayRows[0].id, group: .of(grams: 60_000, reps: 5, sets: 1))
+
+        #expect(past.state.dayRows[1].answer == .unanswered)
+        #expect(past.state.session?.endedAt == nil)
+    }
+
+    @Test("The group Log rewrites is the whole entry, warmups included — SetGroupRewrite's rule")
+    func theGroupIsTheWholeEntryWarmupsIncluded() async throws {
+        let past = try await PastSession.logged(names: ["Back Squat"], stamped: true)
+        for order in 0..<2 {
+            try await past.logSet(at: 0, order: order, weight: Weight(grams: 40_000), isWarmup: true)
+        }
+        for order in 2..<4 { try await past.logSet(at: 0, order: order) }
+        try await past.markDone(at: 0)
+        await past.state.load()
+
+        // The row draws the working sets only — `DayPerformance` counts no warmup — while the sheet
+        // it opens carries all four, which is what makes the count the lifter lowers the entry's
+        // and not the run's.
+        #expect(past.state.dayRows[0].performed.map(\.sets) == [2])
+        let row = try #require(past.state.editorRow(forRow: past.state.dayRows[0].id))
+        #expect(row.logged.count == 4)
+
+        await past.state.log(
+            rowID: past.state.dayRows[0].id, group: .of(grams: 60_000, reps: 5, sets: 2))
+
+        // Two rows, mapped position by position onto the first two stored — which are the warmups,
+        // now demoted to work. Nothing here is a defect of this screen: it is the rewrite's own
+        // documented rule, pinned so the interaction is asserted rather than incidental.
+        #expect(past.state.exercises[0].sets.count == 2)
+        #expect(past.state.exercises[0].sets.allSatisfy { !$0.isWarmup })
+        #expect(past.state.exercises[0].sets.allSatisfy { $0.weight == Weight(grams: 60_000) })
     }
 
     @Test("What the sheet opens over is the row's plan and the sets already stored — FR-17.7.5")

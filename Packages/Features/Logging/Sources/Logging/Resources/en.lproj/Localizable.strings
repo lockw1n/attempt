@@ -438,14 +438,6 @@
 "logging.session.plan.log.action" = "Log planned set";
 "logging.session.plan.on-target" = "On target";
 
-/* FR-15.2.6, at the foot of a session that is over. The explanation says what the new routine will
-   contain BEFORE the command is tapped, because the answer is not obvious: it is what was lifted,
-   not what was planned, and the two differ exactly on the workouts worth saving. */
-
-
-/* The routine editor's own rule, applied where a name is typed into a prompt instead of a form. */
-/* Where it went: nothing on this screen changes when a routine is written, so the confirmation is
-   the only thing that says the command did anything. */
 "logging.set.training-max-share %@" = "%@ of TM";
 
 /* FR-16.8.2's Next-up card on Train: the program in force, where it has got to, and the one tap
