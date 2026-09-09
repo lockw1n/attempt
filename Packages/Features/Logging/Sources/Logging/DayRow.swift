@@ -20,13 +20,15 @@ public enum DayRowAnswer: Equatable, Sendable {
 
     /// Which of the three a row is in, from the entry's mark and whether anything was performed.
     ///
-    /// **One home for the rule, because two surfaces ask it.** A day's checklist draws the answer
-    /// and `FR-17.8.6`'s rebuild copies per answer, and a second derivation beside the copy would
-    /// be a second definition of *skipped*.
+    /// **The checklist's rule, and this enum's own definition of its cases**, so a screen reading
+    /// a row does not restate it. What counts as performed here is what ``DayPerformance/runs(of:)``
+    /// draws on the *Did* line — a failed set included, per the type comment above. `FR-17.8.6`'s
+    /// rebuild deliberately does not come through here: it asks what numbers there are to *carry*,
+    /// which a failed set has none of, and ``SessionAsRoutine`` says so where it asks.
     ///
     /// - Parameters:
     ///   - marked: Whether the entry carries the lifter's check-off.
-    ///   - performedSomething: Whether any completed working set stands behind it.
+    ///   - performedSomething: Whether any working set stands behind it.
     /// - Returns: The answer.
     static func derived(marked: Bool, performedSomething: Bool) -> DayRowAnswer {
         guard marked else { return .unanswered }

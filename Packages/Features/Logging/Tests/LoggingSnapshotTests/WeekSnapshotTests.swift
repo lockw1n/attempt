@@ -56,6 +56,14 @@
             }
         }
 
+        /// The same card once the rebuild wrote nothing — the sentence sits beside the command
+        /// that issued it, because the retry is another tap at the same button.
+        @Test func nextWeekFailed() throws {
+            try assertSnapshots(named: "Week-next-week-card-error") {
+                fixedEnvironment { NextWeekSection(weekNumber: 3, failed: true, start: {}) }
+            }
+        }
+
         /// `FR-17.8.3`'s card for a workout no program planned.
         @Test func freeWorkout() throws {
             try assertSnapshots(named: "Week-free-workout") {

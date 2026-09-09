@@ -401,23 +401,11 @@ public final class DayStore {
                     id: $0.id, weight: $0.targetWeight, reps: $0.targetReps, sets: $0.targetSets)
             },
             performed: performed,
-            answer: answer(marked: exercise.entry.isMarkedDone, performed: performed),
+            answer: DayRowAnswer.derived(
+                marked: exercise.entry.isMarkedDone, performedSomething: !performed.isEmpty),
             // The runs' own identifiers, which are their first sets' — the identifier the cache
             // names a run by.
             records: performed.flatMap { marks.schemes(forSetID: $0.id) })
-    }
-
-    /// What a row has been answered with (`FR-17.9.6`).
-    ///
-    /// The rule itself is ``DayRowAnswer/derived(marked:performedSomething:)`` — this only says
-    /// which of this row's values answer its two questions.
-    ///
-    /// - Parameters:
-    ///   - marked: Whether the entry carries the lifter's check-off.
-    ///   - performed: The working sets, encoded.
-    /// - Returns: The answer.
-    private static func answer(marked: Bool, performed: [WeekPlanTarget]) -> DayRowAnswer {
-        DayRowAnswer.derived(marked: marked, performedSomething: !performed.isEmpty)
     }
 
     /// The entry a row names, once the session exists.

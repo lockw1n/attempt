@@ -19,6 +19,11 @@ struct ProgramNextWeekTests {
             try await fixture.train(day: day, through: store, grams: 100_000 + day * 5_000)
         }
         let before = try await fixture.currentRoutineIDs()
+        // The cursor is seeded away from the fixture's own 0, which is the only way the assertion
+        // below can tell "carried across" from "written back to zero" — the value this command
+        // used to write (`D-17.10`).
+        let started = try #require(try await fixture.stack.programs.currentRun())
+        try await fixture.stack.programs.save(started.withCursor(2))
 
         let state = fixture.weekState()
         await state.load(openSession: nil)
@@ -29,7 +34,7 @@ struct ProgramNextWeekTests {
         #expect(run.id == fixture.runID)
         #expect(run.weekNumber == ProgramFixture.week + 1)
         // `D-17.10`: the cursor is not written, not even back to the value it holds.
-        #expect(run.nextDayIndex == 0)
+        #expect(run.nextDayIndex == 2)
 
         let after = try await fixture.currentRoutineIDs()
         #expect(after.count == 3)
@@ -267,6 +272,92 @@ struct ProgramNextWeekTests {
         #expect(try await fixture.targets(ofRoutineID: days[0]).map(\.grams) == [110_000])
     }
 
+    /// The week a session belonged to is the session's own column (`TR-17.5`), so last week's
+    /// sessions cannot rebuild this week's days.
+    @Test("Only this week's sessions are read back")
+    func onlyThisWeeksSessionsAreRead() async throws {
+        let fixture = try await ProgramFixture()
+        let store = fixture.store()
+        for day in 0...2 { try await fixture.train(day: day, through: store, grams: 100_000) }
+        let state = fixture.weekState()
+        await state.load(openSession: nil)
+        await state.startNextWeek(openSession: nil)
+        let weekThree = try await fixture.currentRoutineIDs()
+
+        // Week 3: only day 0 is trained, at a different load.
+        try await fixture.train(day: 0, through: store, grams: 120_000)
+        await state.load(openSession: nil)
+        await state.startNextWeek(openSession: nil)
+
+        let weekFour = try await fixture.currentRoutineIDs()
+        #expect(weekFour[0] != weekThree[0])
+        #expect(try await fixture.targets(ofRoutineID: weekFour[0]).first?.grams == 120_000)
+        // Days 1 and 2 were never opened this week, so week 3's routines carry over untouched.
+        #expect(weekFour[1] == weekThree[1])
+        #expect(weekFour[2] == weekThree[2])
+    }
+
+    /// `DOD-17.10`, over `DOD-17.7`'s week: three exercises, three answers, three outcomes.
+    ///
+    /// **The three cases in one day rather than three tests**, because what `FR-17.8.6` says is
+    /// that they are decided *per exercise* — a rule applied per session would pass three separate
+    /// tests and fail this one.
+    @Test("Each exercise's answer decides what it prescribes next week")
+    func nextWeekIsBuiltPerAnswer() async throws {
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 3)
+        // Slot 0 keeps the fixture's 100 kg × 5 × 3 and is answered by the circle; slot 1 is
+        // planned 30 kg × 10 × 3 and answered 30 kg × 8 × 3; slot 2 is skipped.
+        try await fixture.setTarget(day: 0, slot: 1, grams: 30_000, reps: 10, sets: 3)
+        let store = fixture.activeStore()
+        let day = fixture.dayStore(dayIndex: 0, store: store)
+        await day.load()
+        let rows = day.rows.map(\.id)
+        #expect(rows.count == 3)
+        await day.answerAsPlanned(rowID: rows[0])
+        await day.log(
+            rowID: rows[1],
+            group: {
+                let values = SetEntryValues(
+                    weight: Weight(grams: 30_000), reps: 8, rpe: nil, isWarmup: false)
+                return ResolvedSetGroup(
+                    values: values, sets: 3, rows: Array(repeating: values, count: 3))
+            }())
+        await day.skip(rowID: rows[2])
+        let before = try await fixture.currentRoutineIDs()
+        // Seeded away from 0, so `DOD-17.10`'s "the cursor did not move" is a claim about this
+        // command rather than about the fixture's starting value.
+        let started = try #require(try await fixture.stack.programs.currentRun())
+        try await fixture.stack.programs.save(started.withCursor(2))
+
+        let state = fixture.weekState()
+        await state.load(openSession: nil)
+        #expect(state.everyPlannedDayIsDone)
+        await state.startNextWeek(openSession: nil)
+
+        #expect(!state.nextWeekFailed)
+        let after = try await fixture.currentRoutineIDs()
+        #expect(after[0] != before[0])
+        let lifts = fixture.exerciseIDs[0]
+        #expect(
+            try await fixture.prescription(ofRoutineID: after[0]) == [
+                PrescribedTarget(exerciseID: lifts[0], grams: 100_000, reps: 5, sets: 3),
+                PrescribedTarget(exerciseID: lifts[1], grams: 30_000, reps: 8, sets: 3),
+                PrescribedTarget(exerciseID: lifts[2], grams: 100_000, reps: 5, sets: 3),
+            ])
+        let run = try #require(try await fixture.stack.programs.currentRun())
+        #expect(run.weekNumber == WeekFixture.week + 1)
+        #expect(run.nextDayIndex == 2)
+    }
+}
+
+/// `FR-17.8.4`'s rollback: what a refused write leaves behind, and what the card then says.
+///
+/// **A suite of its own** rather than three more cases above, which is `type_body_length`'s
+/// ceiling as much as it is the reading: these are the only tests here that assert about a
+/// week that did *not* turn over.
+@MainActor
+@Suite("Start next week — a refused write")
+struct ProgramNextWeekRollbackTests {
     /// The rollback, with nothing yet attached: the first re-pointing refuses, so every routine
     /// minted so far is taken back out and the week does not turn over.
     @Test("A rebuild that cannot re-point the first day leaves nothing behind")
@@ -333,78 +424,5 @@ struct ProgramNextWeekTests {
         await state.load(openSession: nil)
 
         #expect(!state.nextWeekFailed)
-    }
-
-    /// The week a session belonged to is the session's own column (`TR-17.5`), so last week's
-    /// sessions cannot rebuild this week's days.
-    @Test("Only this week's sessions are read back")
-    func onlyThisWeeksSessionsAreRead() async throws {
-        let fixture = try await ProgramFixture()
-        let store = fixture.store()
-        for day in 0...2 { try await fixture.train(day: day, through: store, grams: 100_000) }
-        let state = fixture.weekState()
-        await state.load(openSession: nil)
-        await state.startNextWeek(openSession: nil)
-        let weekThree = try await fixture.currentRoutineIDs()
-
-        // Week 3: only day 0 is trained, at a different load.
-        try await fixture.train(day: 0, through: store, grams: 120_000)
-        await state.load(openSession: nil)
-        await state.startNextWeek(openSession: nil)
-
-        let weekFour = try await fixture.currentRoutineIDs()
-        #expect(weekFour[0] != weekThree[0])
-        #expect(try await fixture.targets(ofRoutineID: weekFour[0]).first?.grams == 120_000)
-        // Days 1 and 2 were never opened this week, so week 3's routines carry over untouched.
-        #expect(weekFour[1] == weekThree[1])
-        #expect(weekFour[2] == weekThree[2])
-    }
-
-    /// `DOD-17.10`, over `DOD-17.7`'s week: three exercises, three answers, three outcomes.
-    ///
-    /// **The three cases in one day rather than three tests**, because what `FR-17.8.6` says is
-    /// that they are decided *per exercise* — a rule applied per session would pass three separate
-    /// tests and fail this one.
-    @Test("Each exercise's answer decides what it prescribes next week")
-    func nextWeekIsBuiltPerAnswer() async throws {
-        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 3)
-        // Slot 0 keeps the fixture's 100 kg × 5 × 3 and is answered by the circle; slot 1 is
-        // planned 30 kg × 10 × 3 and answered 30 kg × 8 × 3; slot 2 is skipped.
-        try await fixture.setTarget(day: 0, slot: 1, grams: 30_000, reps: 10, sets: 3)
-        let store = fixture.activeStore()
-        let day = fixture.dayStore(dayIndex: 0, store: store)
-        await day.load()
-        let rows = day.rows.map(\.id)
-        #expect(rows.count == 3)
-        await day.answerAsPlanned(rowID: rows[0])
-        await day.log(
-            rowID: rows[1],
-            group: {
-                let values = SetEntryValues(
-                    weight: Weight(grams: 30_000), reps: 8, rpe: nil, isWarmup: false)
-                return ResolvedSetGroup(
-                    values: values, sets: 3, rows: Array(repeating: values, count: 3))
-            }())
-        await day.skip(rowID: rows[2])
-        let before = try await fixture.currentRoutineIDs()
-
-        let state = fixture.weekState()
-        await state.load(openSession: nil)
-        #expect(state.everyPlannedDayIsDone)
-        await state.startNextWeek(openSession: nil)
-
-        #expect(!state.nextWeekFailed)
-        let after = try await fixture.currentRoutineIDs()
-        #expect(after[0] != before[0])
-        let lifts = fixture.exerciseIDs[0]
-        #expect(
-            try await fixture.prescription(ofRoutineID: after[0]) == [
-                PrescribedTarget(exerciseID: lifts[0], grams: 100_000, reps: 5, sets: 3),
-                PrescribedTarget(exerciseID: lifts[1], grams: 30_000, reps: 8, sets: 3),
-                PrescribedTarget(exerciseID: lifts[2], grams: 100_000, reps: 5, sets: 3),
-            ])
-        let run = try #require(try await fixture.stack.programs.currentRun())
-        #expect(run.weekNumber == WeekFixture.week + 1)
-        #expect(run.nextDayIndex == 0)
     }
 }

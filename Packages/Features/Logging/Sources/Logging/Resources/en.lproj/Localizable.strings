@@ -476,7 +476,7 @@
    it: what next week's loads are, that nothing is fixed, and that this week is archived and not
    deleted, are the three things a lifter needs in order to decide — not to be told afterwards. */
 "logging.train.program.week-complete.headline %lld" = "Week %lld is done";
-"logging.train.program.week-complete.message" = "Next week starts from what you lifted this week. Every load stays editable, and this week's routines are archived rather than lost.";
+"logging.train.program.week-complete.message" = "Next week starts from how you answered this one: lifts you logged carry the numbers you did, and lifts you skipped keep their plan. Every load stays editable, and this week's routines are archived rather than lost.";
 "logging.train.program.next-week" = "Start next week";
 
 "logging.train.program.error.message" = "Could not read your program. Try again.";

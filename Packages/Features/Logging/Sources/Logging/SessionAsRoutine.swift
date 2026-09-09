@@ -25,13 +25,19 @@ import RepositoryInterface
 /// target is one the lifter has not decided yet — and dropping the exercise instead would silently
 /// shorten the plan.
 ///
-/// **A skipped exercise keeps the plan it was given, rather than reading as nothing performed**
-/// (`FR-17.8.6`). *Skipped* is ``DayRowAnswer/skipped`` — marked done with no completed working set
-/// — and the sets are then silent about what the lifter meant to do, so the entry's own planned
-/// rows are what is carried forward. They are the rows the day was *started* with rather than the
-/// routine's targets as they read today, which is `FR-16.8.3`: a past session is never altered by a
-/// later plan edit. An entry nobody answered at all is neither, and contributes an empty slot as
-/// before.
+/// **An exercise that was answered and completed nothing keeps the plan it was given, rather than
+/// reading as nothing performed** (`FR-17.8.6`). That is `FR-17.9.6`'s skip, and also the lifter
+/// who attempted it and failed every set: either way the completed sets are silent about what was
+/// meant, so the entry's own planned rows are what is carried forward. They are the rows the day
+/// was *started* with rather than the routine's targets as they read today, which is `FR-16.8.3`:
+/// a past session is never altered by a later plan edit. An entry nobody answered at all is
+/// neither, and contributes an empty slot as before.
+///
+/// **The question here is narrower than ``DayRowAnswer``'s, and asking it through that enum would
+/// be a second definition of *skipped*.** The checklist counts a failed set as work, because its
+/// *Did* line draws one; this asks what numbers there are to carry, and a failed set has none. The
+/// two agree wherever a day is answered through ``DayStore``, which is every program day there is
+/// — but they are not the same question, so they are not written as one.
 struct SessionAsRoutine: Equatable {
     /// One exercise slot, in the order the workout performed it.
     struct Slot: Equatable {
@@ -77,12 +83,13 @@ struct SessionAsRoutine: Equatable {
     /// - Returns: The groups, in order — the performed runs, the planned rows, or none.
     private static func targets(of exercise: SessionExercise) -> [Target] {
         let performed = targets(from: exercise.sets)
-        let answer = DayRowAnswer.derived(
-            marked: exercise.entry.isMarkedDone, performedSomething: !performed.isEmpty)
-        return answer == .skipped ? planned(from: exercise.planned) : performed
+        guard performed.isEmpty else { return performed }
+        // Answered with nothing completed behind it: the plan is the only thing the entry said.
+        // Unanswered said nothing at all, and carries nothing.
+        return exercise.entry.isMarkedDone ? planned(from: exercise.planned) : []
     }
 
-    /// A skipped exercise's own plan, as targets.
+    /// An entry's own plan, as targets.
     ///
     /// - Parameter groups: The entry's planned rows, in
     ///   ``RepositoryInterface/PlannedTargetGroup/order``.
