@@ -62,9 +62,8 @@ Packages/
 │   ├── Dashboard/           e1RM tiles, the recent-PR feed, the week summary, the start-workout
 │   │                        action
 │   ├── Settings/            Preferences, data portability, sync, the bodyweight log
-│   └── Routines/            Authoring a routine — its exercises in order and their target
-│                            groups — managing the library, starting a workout from one, and
-│                            authoring the programs that order routines into a week
+│   └── Routines/            Editing the current week — its days in order, each day's exercises
+│                            and each exercise's target groups — on one screen
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
 Attempt/
 ├── App/                     App entry point and DI wiring
