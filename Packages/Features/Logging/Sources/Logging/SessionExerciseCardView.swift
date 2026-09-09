@@ -316,7 +316,7 @@ struct SessionExerciseCard: View {
             mark: mark,
             markCompleted: markCompleted,
             edit: edit,
-            recordSchemes: { personalRecords.schemes(forSetID: $0) },
+            recordMarks: { personalRecords.marks(forSetID: $0) },
             target: { targets[$0] },
             trainingMax: item.trainingMax,
             // Always, and it is a fact about the screen rather than a value passed down: this card

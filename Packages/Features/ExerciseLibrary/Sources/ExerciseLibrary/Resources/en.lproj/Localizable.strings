@@ -155,8 +155,8 @@
 "exerciselibrary.detail.section.records" = "Personal records";
 "exerciselibrary.detail.records.none" = "Log a set against this exercise and its personal records appear here.";
 "exerciselibrary.detail.records.error" = "This exercise's personal records could not be read.";
-"exerciselibrary.detail.records.rep-max %lld" = "%lld-rep max";
-"exerciselibrary.detail.records.more" = "6–10-rep maxes";
+"exerciselibrary.detail.records.reps %lld" = "%lld reps";
+"exerciselibrary.detail.records.more" = "6–10 reps";
 "exerciselibrary.detail.records.source-hint" = "Shows the session this record was set in.";
 "exerciselibrary.detail.records.more.expanded" = "Expanded";
 "exerciselibrary.detail.records.more.collapsed" = "Collapsed";
@@ -336,15 +336,26 @@
 /* The table's headings. A column is a number of consecutive sets and a row is a rep count, so the
    column carries the multiplication sign and the row carries the noun. */
 "exerciselibrary.records.column %lld" = "× %lld";
+
+/* FR-17.2.3: the one-set column is headed by a word and never "× 1". */
+"exerciselibrary.records.column.single" = "single";
 "exerciselibrary.records.reps-header" = "reps";
 
 /* FR-16.2.1: one scheme, written the way a lifter writes it. */
-"exerciselibrary.records.scheme %lld %lld" = "%1$lld × %2$lld";
+"exerciselibrary.records.scheme %lld %lld" = "%1$lld×%2$lld";
 
 /* G-4.2: one cell, read aloud. The cell draws neither of its headings, so the label carries both —
    "by" rather than the multiplication sign, which VoiceOver would announce as punctuation or not
    at all. */
 "exerciselibrary.records.cell %lld %lld %@ %@" = "%1$lld by %2$lld, %3$@, %4$@";
+
+/* FR-17.2.2 (Q-17.1): the two states a cell can be in besides a plain record. "First" is the word
+   the badge and the feed already use, so the three surfaces agree by sharing it; "Not yet" is a
+   state rather than a number, which G-4.5 needs because a tint cannot carry it. */
+"exerciselibrary.records.cell.first %@" = "First · %@";
+"exerciselibrary.records.cell.not-yet" = "Not yet";
+"exerciselibrary.records.cell.not-yet.label %lld %lld" = "%1$lld by %2$lld, not yet";
+"exerciselibrary.records.cell.first.label %lld %lld %@ %@" = "%1$lld by %2$lld, first time, %3$@, %4$@";
 /* T-16.13 — FR-15.1.4, FR-15.1.5, FR-16.7.2: the coach's number and its history. */
 "exerciselibrary.detail.training-max.section" = "Training max";
 "exerciselibrary.detail.training-max.value" = "Training max";

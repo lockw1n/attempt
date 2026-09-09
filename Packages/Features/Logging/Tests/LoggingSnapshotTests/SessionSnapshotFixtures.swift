@@ -197,17 +197,20 @@
                 loggedSet(index: 38, weight: Weight(grams: 100_000), reps: 5, rpe: 9),
             ]
 
-        /// Which cells each of ``groupedSets``' sets holds a record at (`FR-16.2.4`).
+        /// Which cell each of ``groupedSets``' sets stands at, and in which state (`FR-17.2.2`).
         ///
-        /// **Keyed on the run's first set**, which is what the cache does: the four-set run is named
-        /// by set 32 and holds every cell up to `6 × 4`; the lone fifth set holds the one-set column
-        /// up to `5 × 1`. The warmups hold nothing, which is the ordinary case and draws no badge.
-        static let recordSchemes: [UUID: [RecordScheme]] = [
-            groupedSets[2].id: (1...6).flatMap { reps in
-                (1...4).map { RecordScheme(reps: reps, sets: $0) }
-            },
-            groupedSets[6].id: (1...5).map { RecordScheme(reps: $0, sets: 1) },
+        /// **Keyed on the run's first set, one cell each** (`FR-17.2.1`): the four-set run stands at
+        /// `6 × 4` and the lone fifth set at `6 × 1`; the warmups hold nothing. **One of each
+        /// state**, so the picture settles both badges rather than one of them twice.
+        static let recordSchemes: [UUID: [SchemeMark]] = [
+            groupedSets[2].id: [mark(reps: 6, sets: 4)],
+            groupedSets[6].id: [mark(reps: 6, sets: 1, first: true)],
         ]
+
+        /// One cell a set stands at, in one of `FR-17.2.2`'s two performed states.
+        static func mark(reps: Int, sets: Int, first: Bool = false) -> SchemeMark {
+            SchemeMark(scheme: RecordScheme(reps: reps, sets: sets), isFirstPerformance: first)
+        }
 
         /// `FR-1.2.5`'s outcome, pictured: a working set that fell short between two that did not,
         /// and a warmup that did too.
@@ -286,14 +289,13 @@
 
         /// `FR-1.6.3`'s badge, pictured on the rows.
         ///
-        /// **Both sets hold the one-set column and nothing else**, which is what a lone set can hold
-        /// — so both badges are `FR-16.2.4`'s rep-max spelling, `PR 3RM` and `PR 5RM`, at the two
-        /// ends of the numeral's width. `E1` is the second of ``loggedSets`` and `E4` the first
-        /// working set of ``rampedSets``.
+        /// **Both sets stand in the one-set column**, so both badges take `FR-17.2.3`'s single-set
+        /// spelling — `PR · 3 reps` and `First · 5 reps`, the widest the two words get. `E1` is the
+        /// second of ``loggedSets`` and `E4` the first working set of ``rampedSets``.
         static let personalRecords = SessionRecordMarks(
             bySetID: [
-                identifier("E1"): [RecordScheme(reps: 3, sets: 1)],
-                identifier("E4"): (1...5).map { RecordScheme(reps: $0, sets: 1) },
+                identifier("E1"): [Fixtures.mark(reps: 3, sets: 1)],
+                identifier("E4"): [Fixtures.mark(reps: 5, sets: 1, first: true)],
             ],
             hasLoaded: true
         )

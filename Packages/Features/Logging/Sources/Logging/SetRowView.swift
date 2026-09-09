@@ -38,7 +38,7 @@ struct SetRow: View {
     /// **A single set's cells are not all in the one-set column.** This row also draws the members of
     /// an expanded run, and the run's first set carries every cell the run took — so what the badge
     /// names is the maximal one, not the highest N.
-    let recordSchemes: [RecordScheme]
+    let recordMarks: [SchemeMark]
 
     /// Marks this set as a warmup or as working (`FR-1.2.4`) — the set, then which it becomes, or
     /// `nil` where the row does not offer it.
@@ -364,16 +364,10 @@ struct SetRow: View {
     /// a record is a highlight, not an outcome.
     ///
     /// **The scheme visible, the whole claim in the label.** Which cell this set holds is what a
-    /// lifter actually wants; the badge names the maximal one and VoiceOver says it in words.
+    /// lifter actually wants; the badge names it and VoiceOver says it in words.
     @ViewBuilder private var recordMark: some View {
-        if let badge = RecordBadge(schemes: recordSchemes) {
-            Text(badge.text)
-                .font(Typography.metricLabel.font)
-                .foregroundStyle(ColorToken.onBrandAccent)
-                .padding(.horizontal, Spacing.sm.points)
-                .padding(.vertical, Spacing.xxs.points)
-                .background(ColorToken.brandAccent, in: .capsule)
-                .accessibilityLabel(Text(badge.label))
+        if let badge = RecordBadge(marks: recordMarks) {
+            RecordBadgeView(badge: badge)
         }
     }
 

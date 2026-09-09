@@ -301,7 +301,7 @@ public struct PastSessionView: View {
                         }
                     },
                     edit: { editing = ActiveSessionView.target(editing: $0) },
-                    recordSchemes: { state.personalRecords.schemes(forSetID: $0) },
+                    recordMarks: { state.personalRecords.marks(forSetID: $0) },
                     isSessionOpen: state.session?.isFinished == false
                 )
             }

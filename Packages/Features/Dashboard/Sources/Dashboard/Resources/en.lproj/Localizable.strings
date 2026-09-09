@@ -17,13 +17,13 @@
 "dashboard.recent-records.error" = "Recent personal records could not be read.";
 /* Opens the full list behind the dashboard's card. */
 "dashboard.recent-records.see-all" = "See all";
-/* FR-16.3.3: one entry's label, at its two shapes. A rep max names the top N the run took at a
-   single set and nothing below it — a set of eight that beat every N up to eight is "8RM", where
-   the retired "1–8-rep max" stated eight claims for one performance. A run that set no rep max at
-   all is named by its scheme instead. Neither needs a plural rule: the numeral sits inside the
-   compound, "RM" and "×" being notation rather than nouns that agree with it. */
-"dashboard.recent-records.rep-max %lld" = "%lldRM";
-"dashboard.recent-records.scheme %lld %lld" = "%1$lld × %2$lld";
+/* FR-17.2.3: one entry's label, at its two shapes — the cell the run was performed at, spelled
+   "8 reps" for a single set and "5×5" for a run. "RM" is never written: it is the notation for the
+   at-least-N reading D-17.2 withdrew, and a set of eight is now the 8-rep record alone. Neither
+   form needs a plural rule — English reads oddly only at one rep, which is the compromise every
+   count in this module already makes. */
+"dashboard.recent-records.reps %lld" = "%lld reps";
+"dashboard.recent-records.scheme %lld %lld" = "%1$lld×%2$lld";
 
 /* FR-16.3.3: the set the record came from, written the way the log writes it. */
 "dashboard.recent-records.set %@ %@" = "%1$@ × %2$@";

@@ -48,7 +48,9 @@ struct RecordTriggerTests {
         let (workout, _) = try await loggedSquat()
 
         #expect(try await cached(workout, workout.squat.id, reps: 5) == Weight(grams: 100_000))
-        #expect(try await cached(workout, workout.squat.id, reps: 1) == Weight(grams: 100_000))
+        // Exactly five (`FR-17.2.1`): the cells above and below it are both absences, and asserting
+        // one on each side is what stops this passing over a cache that wrote the whole column.
+        #expect(try await cached(workout, workout.squat.id, reps: 1) == nil)
         #expect(try await cached(workout, workout.squat.id, reps: 6) == nil)
     }
 

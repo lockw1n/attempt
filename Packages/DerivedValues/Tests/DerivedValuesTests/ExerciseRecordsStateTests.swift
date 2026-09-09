@@ -57,7 +57,7 @@ struct ExerciseRecordsStateTests {
 
         #expect(state.hasLoaded)
         #expect(state.failure == nil)
-        #expect(state.repMaxes.map(\.reps) == [1, 2, 3, 4, 5])
+        #expect(state.repMaxes.map(\.reps) == [5])
     }
 
     /// **An exercise with no records and one nothing has looked at are both an empty list**, and a

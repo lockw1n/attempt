@@ -193,22 +193,27 @@ enum ExerciseLibraryStrings {
     /// Why the records could not be read.
     static let recordsError = resource("exerciselibrary.detail.records.error")
 
-    /// One record's row heading — the N it is the record for (`FR-1.6.2`).
+    /// One record's row heading — the N it is the record for (`FR-1.6.2`, `FR-17.2.3`).
     ///
-    /// **The N is the rep count the record stands at, not what the set was performed for**: one
-    /// five-rep set holds the 1RM through the 5RM, so the same set legitimately heads five rows.
+    /// **The N is what the set was performed for, exactly** (`FR-17.2.1`): a five-rep set heads the
+    /// five-rep row and no other. `RM` and "rep max" are both retired with the *at least N* reading
+    /// that made them true.
     ///
     /// - Parameter reps: The N.
     /// - Returns: The heading.
-    static func recordsRepMax(_ reps: Int) -> LocalizedStringResource {
-        resource("exerciselibrary.detail.records.rep-max \(reps)")
+    static func recordsReps(_ reps: Int) -> LocalizedStringResource {
+        resource("exerciselibrary.detail.records.reps \(reps)")
     }
 
-    /// `FR-1.6.2`'s disclosure control over the 6–10RM.
+    /// `FR-1.6.2`'s disclosure control over the 6-to-10-rep records.
     ///
     /// **What is behind it, not "Show" plus what is behind it**, on ``Logging/LoggingStrings``' warmup
     /// heading's rule: the control's label does not change with the fold, so a verb in it would be
     /// wrong in one of the two states.
+    ///
+    /// **It counts reps, because the rows it folds do** (`FR-17.2.3`): they read `6 reps`, `7 reps`,
+    /// so a fold headed "6–10-rep maxes" named them by the notation `D-17.2` retired. Found on the
+    /// author's own screen with the rows already renamed and the fold above them not.
     static let recordsMore = resource("exerciselibrary.detail.records.more")
 
     /// What tapping a record does, as VoiceOver reads it (`G-4.2`).
@@ -425,7 +430,7 @@ enum ExerciseLibraryStrings {
             variationsSection, variationOf,
             historySection, historyNone, historyError, historyMore, historyMoreError,
             recordsSection, recordsNone, recordsNoWorkingSets, recordsError,
-            recordsRepMax(5), recordsMore, recordsSourceHint,
+            recordsReps(5), recordsMore, recordsSourceHint,
             recordsMoreExpanded, recordsMoreCollapsed,
             e1rmSection, e1rmNone, e1rmValue, e1rmError,
             e1rmProvenance("Epley", days: 90),

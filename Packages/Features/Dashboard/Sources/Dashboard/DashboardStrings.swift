@@ -28,30 +28,32 @@ enum DashboardStrings {
     /// The control that opens the full list from the card.
     static let recentRecordsSeeAll = resource("dashboard.recent-records.see-all")
 
-    /// What one entry is the record for, where the run set a rep max — `8RM` (`FR-16.3.3`).
+    /// What one entry is the record for, where the run is a single set — `8 reps` (`FR-17.2.3`).
     ///
-    /// **The top of what it took, never the span of it.** A set of eight that beat every N up to
-    /// eight is an 8RM; writing it "1–8-rep max" states eight claims where the lifter made one, and
-    /// the seven below it are the arithmetic rather than the achievement. That label is retired.
+    /// **`RM` is never written** (`FR-17.2.3`). The notation claims the *at least N* reading
+    /// `D-17.2` withdrew — an `8RM` is a lifter's word for a set of eight that also holds every N
+    /// below it — and the app no longer computes that. `8 reps` states the one thing the run did.
     ///
-    /// **The compound carries no plural**, so no rule file is needed: the numeral sits inside `8RM`.
+    /// **One string with a numeral in it and no plural rule**, on this module's: a record at a
+    /// single rep is the only English case that reads oddly, and Ukrainian's own forms are the
+    /// translator's.
     ///
-    /// - Parameter reps: The highest N the run holds at a single set.
+    /// - Parameter reps: The N the record stands at.
     /// - Returns: The label.
-    static func recentRecordsRepMax(_ reps: Int) -> LocalizedStringResource {
-        resource("dashboard.recent-records.rep-max \(reps)")
+    static func recentRecordsReps(_ reps: Int) -> LocalizedStringResource {
+        resource("dashboard.recent-records.reps \(reps)")
     }
 
-    /// What one entry is the record for, where the run set no single-set rep max at all
-    /// (`FR-16.2.1`).
+    /// What one entry is the record for, where the run is two sets or more (`FR-17.2.3`).
     ///
-    /// **The lifter's own notation, `reps × sets`**, rather than a sentence: a run whose records all
-    /// stand at two sets and up has no N-rep max to name, and "5 × 5" is what the training log it
-    /// came from calls it. The compound carries no plural, so no rule file is needed.
+    /// **The lifter's own notation, `reps×sets`**, rather than a sentence: `5×5` is what the
+    /// training log it came from calls it. Tight rather than spaced, so the badge, the feed and the
+    /// records table all write the scheme the same way. The compound carries no plural, so no rule
+    /// file is needed.
     ///
     /// - Parameters:
-    ///   - reps: The maximal scheme's repetitions.
-    ///   - sets: How many consecutive sets it asks for.
+    ///   - reps: The scheme's repetitions.
+    ///   - sets: How many consecutive sets were performed.
     /// - Returns: The label.
     static func recentRecordsScheme(_ reps: Int, _ sets: Int) -> LocalizedStringResource {
         resource("dashboard.recent-records.scheme \(reps) \(sets)")
@@ -287,7 +289,7 @@ enum DashboardStrings {
     static var all: [LocalizedStringResource] {
         [
             recentRecordsTitle, recentRecordsNone, recentRecordsError, recentRecordsSeeAll,
-            recentRecordsRepMax(3), recentRecordsScheme(5, 5),
+            recentRecordsReps(3), recentRecordsScheme(5, 5),
             recentRecordsSet("145 kg", "8"), recentRecordsRun("100 kg", "5", "5"),
             recentRecordsBaseline, recentRecordsExerciseHint,
             recentRecordsNoneInScope, recentRecordsShowEverything,

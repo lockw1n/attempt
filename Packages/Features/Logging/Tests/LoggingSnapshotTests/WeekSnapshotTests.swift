@@ -311,7 +311,9 @@
                 plan: planned(100_000),
                 performed: [target(95_000, reps: 5, sets: 4)],
                 answer: .logged,
-                records: [RecordScheme(reps: 5, sets: 4)])
+                records: [
+                    SchemeMark(scheme: RecordScheme(reps: 5, sets: 4), isFirstPerformance: false)
+                ])
         }
 
         /// `FR-17.9.6`'s skip.
@@ -349,7 +351,7 @@
             plan: [WeekPlanTarget],
             performed: [WeekPlanTarget] = [],
             answer: DayRowAnswer = .unanswered,
-            records: [RecordScheme] = []
+            records: [SchemeMark] = []
         ) -> DayRow {
             DayRow(
                 id: UUID(),

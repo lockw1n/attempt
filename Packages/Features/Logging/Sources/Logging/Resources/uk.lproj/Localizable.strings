@@ -107,10 +107,14 @@
    so it is correct at 1 and at 6 alike — where the literal «на %lld повторень» would be wrong at 2,
    3 and 4, which are the counts a lifter sets most. The scheme label reads «5 на 5», where «на»
    sits between the two numerals and agrees with neither. */
-"logging.session.set.record.scheme %lld %lld" = "ОР %1$lld×%2$lld";
-"logging.session.set.record.rep-max %lld" = "ОР %lldПМ";
+"logging.session.set.record.scheme %lld %lld" = "ОР · %1$lld×%2$lld";
+"logging.session.set.record.reps %lld" = "ОР · %lld повт.";
+"logging.session.set.first.scheme %lld %lld" = "Уперше · %1$lld×%2$lld";
+"logging.session.set.first.reps %lld" = "Уперше · %lld повт.";
 "logging.session.set.record.scheme.label %lld %lld" = "Особистий рекорд: %1$lld на %2$lld";
-"logging.session.set.record.rep-max.label %lld" = "Особистий рекорд: %lld-повторний максимум";
+"logging.session.set.record.reps.label %lld" = "Особистий рекорд: %lld повторень";
+"logging.session.set.first.scheme.label %lld %lld" = "Уперше: %1$lld на %2$lld";
+"logging.session.set.first.reps.label %lld" = "Уперше: %lld повторень";
 "logging.session.set.warmup.section" = "Розминка";
 "logging.session.set.warmup.label" = "Розминковий підхід";
 "logging.session.set.warmup.hint" = "Нумерується окремо й не входить до ваших робочих підходів.";

@@ -64,7 +64,9 @@ struct ExerciseRecordsSectionTests {
     func unreachedRepCountsAreAbsent() async throws {
         let fixture = TrainingHistory()
         let squat = try await fixture.exercise(named: "Back Squat")
-        // A single and a triple, and nothing else. The 1RM through the 3RM exist; 4 upwards do not.
+        // A single and a triple, and nothing else. Since `FR-17.2.1` those are the 1-rep and 3-rep
+        // records exactly, and the 2-rep cell between them is a gap — which is what makes this a
+        // test about absence rather than about the top of a contiguous run.
         try await fixture.trainWeighted(
             squat, onDay: 0, work: [(reps: 1, kilos: 200), (reps: 3, kilos: 170)])
         let state = fixture.records(of: squat, through: fixture.recomputer())
@@ -72,7 +74,7 @@ struct ExerciseRecordsSectionTests {
         await state.loadRecords()
         let list = ExerciseRecordList(state.repMaxes)
 
-        #expect(list.prominent.map(\.reps) == [1, 2, 3])
+        #expect(list.prominent.map(\.reps) == [1, 3])
         #expect(list.disclosed.isEmpty)
         #expect(!list.isEmpty)
     }
@@ -222,21 +224,44 @@ struct ExerciseRecordsSectionTests {
 
         await state.loadRecords()
 
-        #expect(state.schemeRecords.contains { $0.scheme == RecordScheme(reps: 5, sets: 3) })
+        #expect(state.schemeRecords.map(\.scheme) == [RecordScheme(reps: 5, sets: 3)])
         #expect(
             state.repMaxes.map(\.reps)
                 == state.schemeRecords.filter { $0.scheme.sets == 1 }.map(\.scheme.reps))
-        #expect(state.repMaxes.map(\.reps) == [1, 2, 3, 4, 5])
+        // A run of three stands at three sets and nowhere else (`FR-17.2.1`), so the one-set column
+        // is empty here — the agreement above is over two empty lists, and the test below is what
+        // stops that being the whole claim.
+        #expect(state.repMaxes.isEmpty)
     }
 
-    /// The detail section's glance (`FR-16.2.4`): a run of three shows `2 × 2` and `3 × 3`, and the
-    /// 1RM stays in the rep-max row it already had.
-    @Test("A run of three fills the diagonal up to 3 × 3 and leaves 1 × 1 to the rep-max row")
+    /// The same read where the one-set column is not empty, so the agreement above is anchored.
+    @Test("A single set fills the one-set column, and the two halves still agree")
+    func theOneSetColumnIsTheRepMaxes() async throws {
+        let fixture = TrainingHistory()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        try await fixture.trainWeighted(squat, onDay: 0, work: [(reps: 3, kilos: 170)])
+        let state = fixture.records(of: squat, through: fixture.recomputer())
+
+        await state.loadRecords()
+
+        #expect(state.repMaxes.map(\.reps) == [3])
+        #expect(
+            state.repMaxes.map(\.reps)
+                == state.schemeRecords.filter { $0.scheme.sets == 1 }.map(\.scheme.reps))
+    }
+
+    /// The detail section's glance (`FR-16.2.4`): the diagonal is the equal-by-equal schemes the
+    /// lifter has **performed**, so under `FR-17.2.1` a run of three fills `3 × 3` alone — `2 × 2`
+    /// is a scheme they never did, and putting it on a row of loads would be inventing one.
+    @Test("The diagonal holds the equal schemes performed, and never 1 × 1")
     func aRunFillsTheDiagonal() async throws {
         let fixture = TrainingHistory()
         let squat = try await fixture.exercise(named: "Back Squat")
         try await fixture.trainWeighted(
-            squat, onDay: 0, work: Array(repeating: (reps: 5, kilos: 100), count: 3))
+            squat, onDay: 0, work: Array(repeating: (reps: 3, kilos: 100), count: 3))
+        try await fixture.trainWeighted(
+            squat, onDay: 1, work: Array(repeating: (reps: 5, kilos: 90), count: 5))
+        try await fixture.trainWeighted(squat, onDay: 2, work: [(reps: 1, kilos: 150)])
         let state = fixture.records(of: squat, through: fixture.recomputer())
 
         await state.loadRecords()
@@ -244,7 +269,11 @@ struct ExerciseRecordsSectionTests {
 
         #expect(
             table.diagonal.map(\.scheme)
-                == [RecordScheme(reps: 2, sets: 2), RecordScheme(reps: 3, sets: 3)])
+                == [RecordScheme(reps: 3, sets: 3), RecordScheme(reps: 5, sets: 5)])
+        // `1 × 1` is excluded whatever stands there, which is this property's own rule rather than
+        // a consequence of the fixture — the single above is exactly what makes that assertable.
+        #expect(table.record(at: RecordScheme(reps: 1, sets: 1)) != nil)
+        #expect(!table.diagonal.contains { $0.scheme == RecordScheme(reps: 1, sets: 1) })
     }
 
     /// The table screen's four states, which are the section's five minus the pair it cannot tell

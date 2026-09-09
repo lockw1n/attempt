@@ -10,15 +10,16 @@ import Testing
 /// alone (`FR-1.6.1`, `FR-1.6.4`, `TR-1.6`, `G-1.5`).
 @Suite("Personal record recompute")
 struct PersonalRecordRecomputerTests {
-    @Test("A 5-rep set holds every rep max from 1 to 5, and none above it")
-    func aSetHoldsEveryRepMaxUpToItsReps() async throws {
+    @Test("A 5-rep set holds the 5-rep max and no other")
+    func aSetHoldsOnlyItsOwnRepMax() async throws {
         let fixture = try await oneSession(sets: [working(100_000, 5)])
 
         let records = try await fixture.recomputer.recompute(forExerciseID: fixture.exerciseID)
 
-        #expect(records.repMaxes.map(\.reps) == [1, 2, 3, 4, 5])
+        #expect(records.repMaxes.map(\.reps) == [5])
         #expect(records.repMaxes.allSatisfy { $0.record.weight == Weight(grams: 100_000) })
         #expect(records.repMax(forReps: 6) == nil)
+        #expect(records.repMax(forReps: 1) == nil)
     }
 
     @Test("Warmups and failed sets hold no record")
@@ -32,9 +33,9 @@ struct PersonalRecordRecomputerTests {
 
         let records = try await fixture.recomputer.recompute(forExerciseID: fixture.exerciseID)
 
-        // The heaviest two rows are excluded by `G-1.8`'s two columns, so 100 kg is the 5RM.
+        // The heaviest two rows are excluded by `G-1.8`'s two columns, so 100 kg is the 5-rep max.
         #expect(records.repMax(forReps: 5)?.weight == Weight(grams: 100_000))
-        #expect(records.repMax(forReps: 1)?.weight == Weight(grams: 100_000))
+        #expect(records.repMaxes.map(\.reps) == [5])
     }
 
     @Test("A record is dated by its session's training day, not by when it was entered")
@@ -111,7 +112,7 @@ struct PersonalRecordRecomputerTests {
 
         let cached = try await fixture.log.repositories.personalRecords.personalRecords(
             forExerciseID: fixture.exerciseID, includingDeleted: false)
-        #expect(cached.map(\.repCount) == [1, 2, 3, 4, 5])
+        #expect(cached.map(\.repCount) == [5])
         #expect(
             cached.allSatisfy {
                 $0.computationVersion == PersonalRecordCalculator.computationVersion
@@ -131,9 +132,11 @@ struct PersonalRecordRecomputerTests {
         #expect(records.bestE1RM != nil)
         let cached = try await fixture.log.repositories.personalRecords.personalRecords(
             forExerciseID: fixture.exerciseID, includingDeleted: true)
-        // Every cached row is one of the ten N-rep maxes; nothing else was written.
+        // Every cached row is one of the ten N-rep maxes; nothing else was written. One row, since
+        // `FR-17.2.1` gives a run one cell.
         #expect(cached.allSatisfy { PersonalRecords.repRange.contains($0.repCount) })
-        #expect(cached.count == 5)
+        #expect(cached.count == 1)
+        #expect(cached.map(\.repCount) == [5])
     }
 
     @Test("A different formula gives a different estimate and the same rep maxes")
@@ -173,7 +176,7 @@ struct PersonalRecordRecomputerTests {
 
         let read = try await reader.repMaxes(forExerciseID: fixture.exerciseID)
 
-        #expect(read.map(\.reps) == [1, 2, 3, 4, 5])
+        #expect(read.map(\.reps) == [5])
         // The walk is what `NFR-1.6` is about, so "did not recompute" is asserted as "did not walk".
         #expect(await counting.exerciseWalks == 0)
     }
@@ -194,7 +197,7 @@ struct PersonalRecordRecomputerTests {
 
         let read = try await fixture.recomputer.repMaxes(forExerciseID: fixture.exerciseID)
 
-        #expect(read.map(\.reps) == [1, 2, 3, 4, 5])
+        #expect(read.map(\.reps) == [5])
         #expect(read.allSatisfy { $0.record.weight == Weight(grams: 100_000) })
     }
 
@@ -223,7 +226,10 @@ struct PersonalRecordRecomputerTests {
     /// read as current on the strength of whichever row happened to be checked.
     @Test("One stale row invalidates the whole exercise's cache")
     func oneStaleRowIsEnough() async throws {
-        let fixture = try await oneSession(sets: [working(100_000, 5)])
+        // Three runs at three schemes, so the cache holds three rows: `FR-17.2.1` gives a run one
+        // cell, and a single five-rep set would leave nothing to plant a stale row among.
+        let fixture = try await oneSession(
+            sets: [working(100_000, 5), working(120_000, 3), working(140_000, 1)])
         try await fixture.recomputer.recompute(forExerciseID: fixture.exerciseID)
         var mixed = try await fixture.log.repositories.personalRecords.personalRecords(
             forExerciseID: fixture.exerciseID, includingDeleted: false
@@ -235,6 +241,7 @@ struct PersonalRecordRecomputerTests {
                 achievedAt: $0.achievedAt,
                 computationVersion: PersonalRecordCalculator.computationVersion)
         }
+        #expect(mixed.count == 3)
         mixed[2] = PersonalRecordCacheValues(
             repCount: mixed[2].repCount,
             weight: mixed[2].weight,
@@ -247,7 +254,12 @@ struct PersonalRecordRecomputerTests {
         let read = try await fixture.recomputer.repMaxes(forExerciseID: fixture.exerciseID)
 
         // The planted 999 kg is gone from every rep count, not only from the stale one.
-        #expect(read.allSatisfy { $0.record.weight == Weight(grams: 100_000) })
+        #expect(read.map(\.reps) == [1, 3, 5])
+        #expect(!read.contains { $0.record.weight == Weight(grams: 999_000) })
+        #expect(
+            read.map(\.record.weight) == [
+                Weight(grams: 140_000), Weight(grams: 120_000), Weight(grams: 100_000),
+            ])
     }
 
     // MARK: - FR-1.6.4, the triggers and their scope
@@ -260,7 +272,7 @@ struct PersonalRecordRecomputerTests {
 
         let cached = try await fixture.log.repositories.personalRecords.personalRecords(
             forExerciseID: fixture.exerciseID, includingDeleted: false)
-        #expect(cached.map(\.repCount) == [1, 2, 3, 4, 5])
+        #expect(cached.map(\.repCount) == [5])
     }
 
     /// `FR-1.6.4`'s scope, and `NFR-1.6`'s reason for it: a set edited six sessions back must not

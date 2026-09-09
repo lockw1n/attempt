@@ -45,7 +45,7 @@ struct SetGroupRow: View {
     let edit: (SetEntry) -> Void
 
     /// The schemes one member holds the record at (`FR-1.6.3`, `FR-16.2.4`), or none.
-    var recordSchemes: (UUID) -> [RecordScheme] = { _ in [] }
+    var recordMarks: (UUID) -> [SchemeMark] = { _ in [] }
 
     /// What a routine planned for one member (`FR-15.3.1`), or `nil`.
     var target: (UUID) -> PlannedTargetGroup? = { _ in nil }
@@ -279,19 +279,13 @@ struct SetGroupRow: View {
     /// attributed separately.
     @ViewBuilder private var recordMark: some View {
         if let badge = recordBadge {
-            Text(badge.text)
-                .font(Typography.metricLabel.font)
-                .foregroundStyle(ColorToken.onBrandAccent)
-                .padding(.horizontal, Spacing.sm.points)
-                .padding(.vertical, Spacing.xxs.points)
-                .background(ColorToken.brandAccent, in: .capsule)
-                .accessibilityLabel(Text(badge.label))
+            RecordBadgeView(badge: badge)
         }
     }
 
     /// The badge this run carries, or `nil` where no member holds a record.
     private var recordBadge: RecordBadge? {
-        RecordBadge(schemes: group.members.flatMap { recordSchemes($0.id) })
+        RecordBadge(marks: group.members.flatMap { recordMarks($0.id) })
     }
 
     /// `FR-1.2.8`'s modifiers, which the group cannot mix — see
@@ -392,7 +386,7 @@ struct SetGroupRow: View {
         SetRow(
             numbered: numbered,
             unit: unit,
-            recordSchemes: recordSchemes(numbered.id),
+            recordMarks: recordMarks(numbered.id),
             mark: mark,
             markCompleted: markCompleted,
             edit: edit,

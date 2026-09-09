@@ -45,13 +45,13 @@ public enum TrainingMaxUnresolvedReason: Sendable, Hashable {
     ///
     /// For ``TrainingMaxSource/percentOfE1RM`` every set was refused by ``E1RMCalculator`` or
     /// declined by the formula; for ``TrainingMaxSource/percentOfRepMax(reps:)`` no completed
-    /// working set reached that many reps.
+    /// working set was performed at exactly that many reps (`FR-17.2.1`).
     case noSourceData
 
     /// The configured N is outside ``PersonalRecords/repRange``, so no rep max is computed for it.
     ///
-    /// Distinct from ``noSourceData`` deliberately: "you have never done a set of eight" and "eight
-    /// is not a rep count this version computes" call for different words on screen, and
+    /// Distinct from ``noSourceData`` deliberately: "you have never done a set of exactly eight"
+    /// and "eight is not a rep count this version computes" call for different words on screen, and
     /// ``PersonalRecordCalculator/repMax(forReps:in:)`` answers `nil` to both.
     case repCountOutOfRange(Int)
 

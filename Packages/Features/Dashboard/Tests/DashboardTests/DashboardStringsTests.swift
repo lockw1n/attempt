@@ -99,25 +99,47 @@ struct DashboardStringsTests {
 
     /// The two forms are one label at two shapes, and each has to keep every number it was
     /// given — a translation that dropped one would read as the wrong record.
-    @Test("A rep max and a scheme read as different labels")
+    @Test("A single set and a run read as different labels")
     func theTwoRecordFormsDiffer() {
-        #expect(String(localized: DashboardStrings.recentRecordsRepMax(3)) == "3RM")
-        #expect(String(localized: DashboardStrings.recentRecordsScheme(5, 5)) == "5 × 5")
+        #expect(String(localized: DashboardStrings.recentRecordsReps(3)) == "3 reps")
+        #expect(String(localized: DashboardStrings.recentRecordsScheme(5, 5)) == "5×5")
     }
 
-    /// `FR-16.3.3`: which of the two a row gets is decided off the record, not inside a `View`.
-    ///
-    /// **A span names its top and nothing below it.** A set of eight that beat every N up to eight
-    /// is an 8RM; "1–8-rep max" states eight claims where the lifter made one, and that label is
-    /// retired.
-    ///
-    /// The scheme case is the one the second dimension introduced — a run holding cells at two sets
-    /// and up sets no rep max, and naming one would contradict the lifter's own history.
-    @Test("A feed row is labelled by what the run actually set")
+    /// `FR-17.2.3`: `RM` is never written, and the key that wrote it leaves both catalogues along
+    /// with its English value — `check-translations.sh` compares the two to each other, so a key
+    /// retired from both is invisible to it.
+    @Test("The RM notation is gone from both catalogues")
+    func theRepMaxNotationIsRetired() throws {
+        for localization in ["en", "uk"] {
+            let url = try #require(
+                Bundle.module.url(
+                    forResource: "Localizable",
+                    withExtension: "strings",
+                    subdirectory: nil,
+                    localization: localization
+                ))
+            let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
+            #expect(
+                catalogue["dashboard.recent-records.rep-max %lld"] == nil,
+                "\(localization) kept the key")
+            // The estimated-1RM tile keeps its own `1RM`, which `FR-16.2.5` leaves untouched — so
+            // this is the record label's form specifically: a numeral placeholder against `RM`.
+            #expect(
+                !catalogue.values.contains { $0.contains("%lldRM") || $0.contains("%lldПМ") },
+                "\(localization) still writes a rep max as RM")
+        }
+    }
+
+    /// `FR-17.2.3`: which of the two spellings a row gets is decided off the record's set count,
+    /// not inside a `View` — and the row names the one cell the run holds (`FR-17.2.1`).
+    @Test("A feed row is labelled by the cell the run was performed at")
     func aFeedRowIsLabelledByWhatItSet() {
-        #expect(String(localized: label(reps: 3, sets: 1, repMaxReps: 3...3)) == "3RM")
-        #expect(String(localized: label(reps: 8, sets: 1, repMaxReps: 1...8)) == "8RM")
-        #expect(String(localized: label(reps: 5, sets: 5, repMaxReps: nil)) == "5 × 5")
+        #expect(String(localized: label(reps: 3, sets: 1)) == "3 reps")
+        #expect(String(localized: label(reps: 8, sets: 1)) == "8 reps")
+        #expect(String(localized: label(reps: 5, sets: 5)) == "5×5")
+        // A run of two takes the scheme spelling, so the switch is the set count and not "more than
+        // a handful of sets".
+        #expect(String(localized: label(reps: 5, sets: 2)) == "5×2")
     }
 
     /// `FR-16.3.3`: the set that produced the record, written the way the log writes it.
@@ -144,13 +166,10 @@ struct DashboardStringsTests {
     }
 
     /// One feed row's record, stating only what the labels read.
-    private func record(
-        reps: Int, sets: Int, repMaxReps: ClosedRange<Int>? = nil
-    ) -> RecentRecord {
+    private func record(reps: Int, sets: Int) -> RecentRecord {
         RecentRecord(
             exerciseID: UUID(),
             scheme: RecordScheme(reps: reps, sets: sets),
-            repMaxReps: repMaxReps,
             weight: Weight(grams: 100_000),
             sourceSetID: UUID(),
             achievedAt: Date(timeIntervalSince1970: 1_700_000_000)
@@ -158,9 +177,7 @@ struct DashboardStringsTests {
     }
 
     /// One feed row's label, over a record stating only what the label reads.
-    private func label(
-        reps: Int, sets: Int, repMaxReps: ClosedRange<Int>?
-    ) -> LocalizedStringResource {
-        record(reps: reps, sets: sets, repMaxReps: repMaxReps).feedLabel
+    private func label(reps: Int, sets: Int) -> LocalizedStringResource {
+        record(reps: reps, sets: sets).feedLabel
     }
 }

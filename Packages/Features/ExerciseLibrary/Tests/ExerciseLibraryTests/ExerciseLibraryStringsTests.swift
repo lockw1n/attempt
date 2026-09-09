@@ -26,11 +26,64 @@ struct ExerciseLibraryStringsTests {
     func theSchemeTableCopyReads() {
         #expect(String(localized: ExerciseLibraryStrings.recordsRepsHeader) == "reps")
         #expect(String(localized: ExerciseLibraryStrings.recordsSetColumn(5)) == "× 5")
-        #expect(String(localized: ExerciseLibraryStrings.recordsScheme(5, 5)) == "5 × 5")
+        // `FR-17.2.3`: the one-set column is a word, and never `× 1`.
+        #expect(String(localized: ExerciseLibraryStrings.recordsSetColumn(1)) == "single")
+        #expect(String(localized: ExerciseLibraryStrings.recordsScheme(5, 5)) == "5×5")
         #expect(
             String(
                 localized: ExerciseLibraryStrings.recordsCellLabel(
                     reps: 5, sets: 5, load: "100 kg", date: "1 May")) == "5 by 5, 100 kg, 1 May")
+    }
+
+    /// `FR-17.2.2`'s other two cell states, and `Q-17.1`'s words for them. The two spoken labels
+    /// name their scheme for ``ExerciseLibraryStrings/recordsCellLabel(reps:sets:load:date:)``'s
+    /// reason — a reader moving across a grid carries neither heading with them.
+    @Test("The first-performance and never-performed cells read as states, not as numbers")
+    func theTwoOtherCellStatesRead() {
+        #expect(String(localized: ExerciseLibraryStrings.recordsCellNotYet) == "Not yet")
+        #expect(
+            String(localized: ExerciseLibraryStrings.recordsCellFirst(date: "1 May"))
+                == "First · 1 May")
+        #expect(
+            String(localized: ExerciseLibraryStrings.recordsCellNotYetLabel(reps: 5, sets: 5))
+                == "5 by 5, not yet")
+        #expect(
+            String(
+                localized: ExerciseLibraryStrings.recordsCellFirstLabel(
+                    reps: 5, sets: 5, load: "100 kg", date: "1 May"))
+                == "5 by 5, first time, 100 kg, 1 May")
+    }
+
+    /// `FR-17.2.3`: `RM` and "rep max" are retired as a record's notation, and the key that wrote
+    /// them leaves both catalogues along with its English value — `check-translations.sh` compares
+    /// the two catalogues to each other, so a key retired from both is invisible to it.
+    @Test("The rep-max notation is gone from both catalogues")
+    func theRepMaxNotationIsRetired() throws {
+        for localization in ["en", "uk"] {
+            let url = try #require(
+                Bundle.module.url(
+                    forResource: "Localizable",
+                    withExtension: "strings",
+                    subdirectory: nil,
+                    localization: localization
+                ))
+            let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
+            #expect(
+                catalogue["exerciselibrary.detail.records.rep-max %lld"] == nil,
+                "\(localization) kept the key")
+            #expect(
+                !catalogue.values.contains("%lld-rep max"),
+                "\(localization) still writes a record as a rep max")
+            // The disclosure over the 6–10 rows is the same notation one heading up, and renaming
+            // the rows without it is the miss this assertion exists to catch.
+            #expect(
+                !catalogue.values.contains { $0.localizedCaseInsensitiveContains("rep max") },
+                "\(localization) still writes \"rep max\"")
+            // And the spaced scheme, which `FR-17.2.3` tightens so all three surfaces agree.
+            #expect(
+                !catalogue.values.contains("%1$lld × %2$lld"),
+                "\(localization) still spaces the scheme")
+        }
     }
 
     @Test("The catalogue is this module's, not the app's")

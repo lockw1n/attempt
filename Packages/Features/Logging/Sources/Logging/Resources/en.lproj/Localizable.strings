@@ -193,10 +193,14 @@
    many cells the set holds: the one-set column is a rep max and a lifter writes it "8RM", every
    other cell is a scheme and they write it "5×5". Neither spelling needs a plural rule — the
    numeral sits inside the compound in both. */
-"logging.session.set.record.scheme %lld %lld" = "PR %1$lld×%2$lld";
-"logging.session.set.record.rep-max %lld" = "PR %lldRM";
+"logging.session.set.record.scheme %lld %lld" = "PR · %1$lld×%2$lld";
+"logging.session.set.record.reps %lld" = "PR · %lld reps";
+"logging.session.set.first.scheme %lld %lld" = "First · %1$lld×%2$lld";
+"logging.session.set.first.reps %lld" = "First · %lld reps";
 "logging.session.set.record.scheme.label %lld %lld" = "Personal record, %1$lld by %2$lld";
-"logging.session.set.record.rep-max.label %lld" = "Personal record, %lld-rep max";
+"logging.session.set.record.reps.label %lld" = "Personal record, %lld reps";
+"logging.session.set.first.scheme.label %lld %lld" = "First time, %1$lld by %2$lld";
+"logging.session.set.first.reps.label %lld" = "First time, %lld reps";
 /* FR-1.2.14's collapsible group. A label beside a numeral, so it stays a count in every language
    rather than needing a plural rule. */
 "logging.session.set.warmup.section" = "Warmups";

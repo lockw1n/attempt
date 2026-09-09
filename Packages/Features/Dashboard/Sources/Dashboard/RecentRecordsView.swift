@@ -432,26 +432,20 @@ public struct RecentRecordsSection: View {
 }
 
 extension RecentRecord {
-    /// What one feed row is the record for — the top N it took at a single set, or the scheme itself
-    /// where the run set no rep max at all (`FR-1.6.5`, `FR-16.2.1`).
+    /// What one feed row is the record for — `8 reps` for a single set, `5×5` for a run
+    /// (`FR-17.2.3`).
     ///
-    /// **Two cases, where there were three.** The span a set took in one go is not a third label: a
-    /// set of eight that beat every N up to eight is an **8RM**, and the seven records below it are
-    /// the dominance rule rather than the achievement — see
-    /// ``Dashboard/DashboardStrings/recentRecordsRepMax(_:)``, where "1–8-rep max" is retired.
+    /// **The row's own cell, and there is only one of it** (`FR-17.2.1`). The two cases are two
+    /// spellings of one scheme rather than two kinds of record: which one a row gets is decided by
+    /// its set count alone, and the `RM` notation the single-set case used to carry is retired with
+    /// the dominance rule that made it true.
     ///
-    /// **The scheme case is not a widening of the rep-max one.** A rep max is a claim about a single
-    /// set, and a run whose records all stand at two sets and up — a `100 × 5 × 5` performed after a
-    /// heavier set of five — set none; labelling it with an N would name records the lifter's own
-    /// history contradicts, at a lighter load than the one that holds them.
-    ///
-    /// **Off the `View` deliberately.** The choice between the two sentences is the claim worth
+    /// **Off the `View` deliberately.** The choice between the two spellings is the claim worth
     /// testing, and a claim that lives inside a `View` body can only be closed by a picture.
     var feedLabel: LocalizedStringResource {
-        guard let reps = repMaxReps else {
-            return DashboardStrings.recentRecordsScheme(scheme.reps, scheme.sets)
-        }
-        return DashboardStrings.recentRecordsRepMax(reps.upperBound)
+        scheme.sets == 1
+            ? DashboardStrings.recentRecordsReps(scheme.reps)
+            : DashboardStrings.recentRecordsScheme(scheme.reps, scheme.sets)
     }
 
     /// The set or run that produced it — `145 kg × 8`, `100 kg × 5 × 5` (`FR-16.3.3`).

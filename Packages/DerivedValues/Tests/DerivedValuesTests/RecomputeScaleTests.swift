@@ -86,13 +86,13 @@ struct RecomputeScaleTests {
         #expect(elapsed < Self.budget)
 
         // The measurement is worthless if it computed nothing: the last set is the heaviest, so it
-        // holds all five reachable rep maxes. It holds no *estimate* — every session here is at
-        // least 101 weeks old, so `FR-1.7.1`'s window is empty over this fixture and what the
-        // window itself costs is not part of this number. That read is bounded by the window rather
-        // than by the history, and is asserted off the trigger path in `EstimatedMaxTests`.
+        // holds the one cell its scheme names (`FR-17.2.1`). It holds no *estimate* — every session
+        // here is at least 101 weeks old, so `FR-1.7.1`'s window is empty over this fixture and what
+        // the window itself costs is not part of this number. That read is bounded by the window
+        // rather than by the history, and is asserted off the trigger path in `EstimatedMaxTests`.
         let cached = try await log.repositories.personalRecords.personalRecords(
             forExerciseID: exerciseID, includingDeleted: false)
-        #expect(cached.map(\.repCount) == [1, 2, 3, 4, 5])
+        #expect(cached.map(\.repCount) == [5])
         #expect(cached.allSatisfy { $0.sourceSetID == logged[Self.setCount - 1].id })
     }
 
@@ -139,12 +139,13 @@ struct RecomputeScaleTests {
         #expect(elapsed < Self.budget)
 
         // Worthless unless it computed the table: the last session is the heaviest and its entry is
-        // one run of ten, so it holds every cell up to five reps and the clamped six sets.
+        // one run of ten, so it holds the `5 × 6` cell — six being `setRange`'s clamp — and nothing
+        // else. Fewer rows per run is exactly what `FR-17.2.1` buys the write half of this budget.
         let cached = try await log.repositories.personalRecords.personalRecords(
             forExerciseID: exerciseID, includingDeleted: false)
-        #expect(cached.count == 30)
-        #expect(cached.map(\.setCount).max() == 6)
-        #expect(cached.map(\.repCount).max() == 5)
+        #expect(cached.count == 1)
+        #expect(cached.map(\.setCount) == [6])
+        #expect(cached.map(\.repCount) == [5])
     }
 
     /// The read `G-1.5`'s version exists to make cheap, at the size where cheap matters.
@@ -162,9 +163,13 @@ struct RecomputeScaleTests {
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
 
-        let read = try await reader.repMaxes(forExerciseID: exerciseID)
+        // Read through the whole table rather than the `sets == 1` column, so the assertion is a
+        // cell rather than an N: since `FR-17.2.1` a fixture whose runs are longer than one set
+        // answers an empty column, and an empty answer cannot tell "read the cache" from "walked
+        // and found nothing".
+        let read = try await reader.schemeRecords(forExerciseID: exerciseID)
 
-        #expect(read.map(\.reps) == [1, 2, 3, 4, 5])
+        #expect(read.map(\.scheme) == [RecordScheme(reps: 5, sets: 1)])
         #expect(await counting.exerciseWalks == 0)
     }
 }

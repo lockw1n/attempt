@@ -64,7 +64,7 @@ struct EstimatedMaxTests {
 
         let records = try await recomputer(over: log).recompute(forExerciseID: exerciseID)
 
-        #expect(records.repMaxes.map(\.reps) == [1, 2, 3, 4, 5])
+        #expect(records.repMaxes.map(\.reps) == [5])
         #expect(records.bestE1RM == nil)
         #expect(records.estimate.absence == .noneInWindow)
     }
@@ -241,7 +241,7 @@ struct EstimatedMaxTests {
 
         let repMaxes = try await subject.repMaxes(forExerciseID: exerciseID)
 
-        #expect(repMaxes.map(\.reps) == [1, 2, 3, 4, 5])
+        #expect(repMaxes.map(\.reps) == [5])
         #expect(await counting.windowReads == 0)
     }
 

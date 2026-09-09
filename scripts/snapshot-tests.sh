@@ -65,7 +65,7 @@ cd "$(dirname "$0")/.."
 # the suite's own count where they do not — the latter is a floor that adds nothing, which is the
 # honest setting rather than a number chosen to look like the former.
 #   DesignSystem:    31 tests, 19 reference-backed, 12 harness probes  -> 24, above the 19.
-#   ExerciseLibrary: 40 tests, all of them reference-backed, no probes -> 40, its own count.
+#   ExerciseLibrary: 41 tests, all of them reference-backed, no probes -> 41, its own count.
 #   Logging:         93 tests, 88 reference-backed, a width probe and four layout budgets
 #                                                                    -> 93, its own count.
 #   History:         28 tests, 27 reference-backed, one layout budget -> 28, above the 27.
@@ -86,7 +86,7 @@ cd "$(dirname "$0")/.."
 # from, and a task that adds a snapshot test owes this list the same edit it owes __Snapshots__.
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|24"
-    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|40"
+    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|41"
     "Packages/Features/Logging|Logging|LoggingSnapshotTests|93"
     "Packages/Features/History|History|HistorySnapshotTests|28"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|20"

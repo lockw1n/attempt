@@ -95,8 +95,8 @@
 "exerciselibrary.detail.section.records" = "Особисті рекорди";
 "exerciselibrary.detail.records.none" = "Запишіть підхід із цією вправою — і її особисті рекорди з’являться тут.";
 "exerciselibrary.detail.records.error" = "Не вдалося прочитати особисті рекорди цієї вправи.";
-"exerciselibrary.detail.records.rep-max %lld" = "%lld-повторний максимум";
-"exerciselibrary.detail.records.more" = "6–10-повторні максимуми";
+"exerciselibrary.detail.records.reps %lld" = "%lld повт.";
+"exerciselibrary.detail.records.more" = "6–10 повторень";
 "exerciselibrary.detail.records.source-hint" = "Показує тренування, у якому встановлено цей рекорд.";
 "exerciselibrary.detail.records.more.expanded" = "Розгорнуто";
 "exerciselibrary.detail.records.more.collapsed" = "Згорнуто";
@@ -192,20 +192,23 @@
 
 "exerciselibrary.detail.e1rm.source-hint" = "Показує тренування, у якому записано вихідний підхід.";
 
-
-
-
 "exerciselibrary.records.title" = "Рекорди за схемами";
 
 "exerciselibrary.detail.records.all" = "Усі схеми";
 "exerciselibrary.detail.records.all.hint" = "Показує кожну кількість повторень і підходів, у якій ця вправа має рекорд.";
 
 "exerciselibrary.records.column %lld" = "× %lld";
+"exerciselibrary.records.column.single" = "поодинокі";
 "exerciselibrary.records.reps-header" = "повт.";
 
-"exerciselibrary.records.scheme %lld %lld" = "%1$lld × %2$lld";
+"exerciselibrary.records.scheme %lld %lld" = "%1$lld×%2$lld";
 
 "exerciselibrary.records.cell %lld %lld %@ %@" = "%1$lld на %2$lld, %3$@, %4$@";
+"exerciselibrary.records.cell.first %@" = "Уперше · %@";
+"exerciselibrary.records.cell.not-yet" = "Ще ні";
+"exerciselibrary.records.cell.not-yet.label %lld %lld" = "%1$lld на %2$lld, ще не виконано";
+"exerciselibrary.records.cell.first.label %lld %lld %@ %@" = "%1$lld на %2$lld, уперше, %3$@, %4$@";
+
 /* T-16.13 — FR-15.1.4, FR-15.1.5, FR-16.7.2: the coach's number and its history. */
 "exerciselibrary.detail.training-max.section" = "Тренувальний максимум";
 "exerciselibrary.detail.training-max.value" = "Тренувальний максимум";

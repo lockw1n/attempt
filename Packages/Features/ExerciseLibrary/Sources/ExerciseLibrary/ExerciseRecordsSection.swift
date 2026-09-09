@@ -348,7 +348,7 @@ struct ExerciseRecordRow: View {
     /// width `102.5 kg` needs and the load breaks mid-number.
     private var reading: some View {
         layout {
-            Text(ExerciseLibraryStrings.recordsRepMax(repMax.reps))
+            Text(ExerciseLibraryStrings.recordsReps(repMax.reps))
                 .font(Typography.metricLabel.font)
                 .foregroundStyle(ColorToken.textSecondary)
             Spacer(minLength: Spacing.sm.points)

@@ -129,7 +129,7 @@
                         expandedGroups: [],
                         toggleGroup: { _ in },
                         edit: { _ in },
-                        recordSchemes: { PastFixtures.recordSchemes[$0] ?? [] }
+                        recordMarks: { PastFixtures.recordSchemes[$0] ?? [] }
                     )
                 }
             }
@@ -148,7 +148,7 @@
                         expandedGroups: PastFixtures.notedGroupIDs,
                         toggleGroup: { _ in },
                         edit: { _ in },
-                        recordSchemes: { PastFixtures.recordSchemes[$0] ?? [] }
+                        recordMarks: { PastFixtures.recordSchemes[$0] ?? [] }
                     )
                 }
             }
@@ -281,8 +281,12 @@
         /// (`PersonalRecordCacheEntity.sourceSetID`) — a badge keyed on any other member would draw
         /// nothing, and a fixture that keyed it on all four would picture a rule the store does not
         /// implement.
-        static var recordSchemes: [UUID: [RecordScheme]] {
-            [notedSetList[0].id: [RecordScheme(reps: 6, sets: 4)]]
+        static var recordSchemes: [UUID: [SchemeMark]] {
+            [
+                notedSetList[0].id: [
+                    SchemeMark(scheme: RecordScheme(reps: 6, sets: 4), isFirstPerformance: false)
+                ]
+            ]
         }
 
         /// Every group on ``notedExercise``'s card, so a reference can draw them all open.

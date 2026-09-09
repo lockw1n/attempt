@@ -82,7 +82,7 @@ public struct DayRow: Identifiable, Equatable, Sendable {
     /// **Gathered over the row's runs, and the badge names the maximal one.** The cache names a run
     /// by its first set, which is the identifier ``DayPerformance/runs(of:)`` gives each run — so a
     /// row of five sets holding the 1RM through the 5RM carries one badge, not five.
-    public let records: [RecordScheme]
+    public let records: [SchemeMark]
 
     /// Builds the row.
     ///
@@ -93,7 +93,7 @@ public struct DayRow: Identifiable, Equatable, Sendable {
     ///   - performed: What was logged, encoded.
     ///   - answer: What has been said about it.
     ///   - notes: The distinct notes on its working sets.
-    ///   - records: The schemes its work holds a record at.
+    ///   - records: The cells its work stands at.
     public init(
         id: UUID,
         exercise: Exercise?,
@@ -101,7 +101,7 @@ public struct DayRow: Identifiable, Equatable, Sendable {
         performed: [WeekPlanTarget] = [],
         answer: DayRowAnswer = .unanswered,
         notes: [String] = [],
-        records: [RecordScheme] = []
+        records: [SchemeMark] = []
     ) {
         self.id = id
         self.exercise = exercise
@@ -169,7 +169,7 @@ extension DayRow {
             notes: DayPerformance.notes(of: exercise.sets),
             // The runs' own identifiers, which are their first sets' — the identifier the cache
             // names a run by.
-            records: performed.flatMap { marks.schemes(forSetID: $0.id) })
+            records: performed.flatMap { marks.marks(forSetID: $0.id) })
     }
 }
 

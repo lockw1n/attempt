@@ -188,7 +188,7 @@ struct PastSessionRecordTests {
         await past.state.load()
 
         #expect(past.state.personalRecords.hasLoaded)
-        #expect(!past.state.personalRecords.schemes(forSetID: heaviest.id).isEmpty)
+        #expect(!past.state.personalRecords.marks(forSetID: heaviest.id).isEmpty)
     }
 
     @Test("A run since beaten carries none — the cache's truth is 'holds it now' — FR-17.7.2")
@@ -197,14 +197,14 @@ struct PastSessionRecordTests {
         let first = try await past.logSet(at: 0, order: 0, weight: Weight(grams: 100_000), reps: 5)
         await past.recomputer.setDidChange(inEntryID: past.entries[0].id)
         await past.state.load()
-        #expect(!past.state.personalRecords.schemes(forSetID: first.id).isEmpty)
+        #expect(!past.state.personalRecords.marks(forSetID: first.id).isEmpty)
 
         // A heavier set at the same scheme, logged later against the same exercise.
         try await past.logSet(at: 0, order: 1, weight: Weight(grams: 150_000), reps: 5)
         await past.recomputer.setDidChange(inEntryID: past.entries[0].id)
         await past.state.load()
 
-        #expect(past.state.personalRecords.schemes(forSetID: first.id).isEmpty)
+        #expect(past.state.personalRecords.marks(forSetID: first.id).isEmpty)
     }
 }
 
@@ -304,7 +304,7 @@ struct PastDayEditTests {
         await past.recomputer.setDidChange(inEntryID: past.entries[0].id)
         await past.state.load()
         let before = try #require(past.state.exercises[0].sets.first)
-        #expect(!past.state.personalRecords.schemes(forSetID: before.id).isEmpty)
+        #expect(!past.state.personalRecords.marks(forSetID: before.id).isEmpty)
 
         // The same row corrected down: SetGroupRewrite announces, so the cache no longer claims a
         // 100 kg record for an exercise whose only set is now 60 kg.
@@ -315,7 +315,7 @@ struct PastDayEditTests {
         let cells = try await past.repositories.personalRecords.personalRecords(
             forExerciseID: past.exercises[0].id, includingDeleted: false)
         #expect(cells.allSatisfy { $0.weight == Weight(grams: 60_000) })
-        #expect(!past.state.personalRecords.schemes(forSetID: after.id).isEmpty)
+        #expect(!past.state.personalRecords.marks(forSetID: after.id).isEmpty)
     }
 
     @Test("A row already answered is not re-marked, so no local no-op outranks a remote edit")

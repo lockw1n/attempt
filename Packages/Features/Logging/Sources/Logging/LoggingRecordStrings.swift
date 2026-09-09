@@ -1,76 +1,120 @@
 import Foundation
 
-/// ``LoggingStrings``' sixth file — `FR-1.6.3`'s personal-record badge, `FR-16.2.4`'s wording.
+/// ``LoggingStrings``' sixth file — `FR-1.6.3`'s personal-record badge, `FR-17.2.3`'s wording.
 ///
 /// **The same type in a sixth file, on `LoggingPastSessionStrings.swift`'s argument**: one enum is
 /// what keeps a module's copy in one place, and `file_length` is what keeps that one place readable.
 ///
-/// A file of four strings, because the seam is the requirement rather than the size: a personal
+/// A file of eight strings, because the seam is the requirement rather than the size: a personal
 /// record is `FR-1.6`'s, not `FR-1.2`'s, and it reaches this module only because the badge is drawn
 /// on a set row.
 ///
-/// **The badge names one scheme, and there are two spellings of one.** The one-set column is
-/// `FR-1.6.1`'s rep max and a lifter writes it `8RM`; every other cell is a scheme and they write it
-/// `5×5`. Two strings rather than one with a `× 1` in it: nobody calls their heaviest single a
-/// "1 × 1", and a badge that did would be the app's notation rather than theirs.
+/// **Two spellings by two states, which is why there are four badges and four labels.** A cell at
+/// one set is written `8 reps` and every other cell `5×5` — never `8RM`, which claims the *at least
+/// N* reading `D-17.2` withdrew, and never `× 1`, which nobody writes. Crossing that with
+/// `FR-17.2.2`'s record and first-performance states gives the four, and they are four strings
+/// rather than a word interpolated into a form: a translator needs the whole phrase to inflect.
 extension LoggingStrings {
-    // MARK: - The personal-record badge (FR-1.6.3, FR-16.2.4)
+    // MARK: - The personal-record badge (FR-1.6.3, FR-17.2.2, FR-17.2.3)
 
-    /// The badge over a run, as it is drawn on the line — `PR 5×5`.
+    /// The record badge over a run, as it is drawn on the line — `PR · 5×5`.
     ///
     /// **Short, and the row's width is the whole reason.** What it means in full is
     /// ``setPersonalRecordSchemeLabel(reps:sets:)``, which VoiceOver reads and the line does not have
     /// to hold.
     ///
     /// - Parameters:
-    ///   - reps: The maximal scheme's repetitions.
+    ///   - reps: The scheme's repetitions.
     ///   - sets: How many consecutive sets it stands at.
     /// - Returns: The badge.
     static func setPersonalRecordScheme(reps: Int, sets: Int) -> LocalizedStringResource {
         resource("logging.session.set.record.scheme \(reps) \(sets)")
     }
 
-    /// The badge over a single set — `PR 8RM`, the one-set column's own spelling.
+    /// The record badge over a single set — `PR · 8 reps`.
     ///
     /// - Parameter reps: The N the record stands at.
     /// - Returns: The badge.
-    static func setPersonalRecordRepMax(_ reps: Int) -> LocalizedStringResource {
-        resource("logging.session.set.record.rep-max \(reps)")
+    static func setPersonalRecordReps(_ reps: Int) -> LocalizedStringResource {
+        resource("logging.session.set.record.reps \(reps)")
     }
 
-    /// The scheme badge as VoiceOver reads it (`G-4.2`) — "personal record, 5 by 5".
+    /// The first-performance badge over a run — `First · 5×5` (`FR-17.2.2`, `Q-17.1`).
+    ///
+    /// **The word the feed already uses**, so the two surfaces agree by sharing it — see
+    /// `dashboard.recent-records.baseline`, which is where *First* was first written.
+    ///
+    /// - Parameters:
+    ///   - reps: The scheme's repetitions.
+    ///   - sets: How many consecutive sets it stands at.
+    /// - Returns: The badge.
+    static func setFirstPerformanceScheme(reps: Int, sets: Int) -> LocalizedStringResource {
+        resource("logging.session.set.first.scheme \(reps) \(sets)")
+    }
+
+    /// The first-performance badge over a single set — `First · 8 reps`.
+    ///
+    /// - Parameter reps: The N.
+    /// - Returns: The badge.
+    static func setFirstPerformanceReps(_ reps: Int) -> LocalizedStringResource {
+        resource("logging.session.set.first.reps \(reps)")
+    }
+
+    /// The record scheme badge as VoiceOver reads it (`G-4.2`) — "personal record, 5 by 5".
     ///
     /// **"by" rather than the multiplication sign**, which VoiceOver announces as punctuation or not
     /// at all depending on the reader's verbosity — the same reason ``DesignSystem/DeltaIndicator``
     /// forces punctuation on rather than trusting it.
     ///
     /// - Parameters:
-    ///   - reps: The maximal scheme's repetitions.
+    ///   - reps: The scheme's repetitions.
     ///   - sets: How many consecutive sets it stands at.
     /// - Returns: The label.
     static func setPersonalRecordSchemeLabel(reps: Int, sets: Int) -> LocalizedStringResource {
         resource("logging.session.set.record.scheme.label \(reps) \(sets)")
     }
 
-    /// The rep-max badge as VoiceOver reads it.
+    /// The record single-set badge as VoiceOver reads it — "personal record, 8 reps".
     ///
-    /// **One string with a numeral in it and no plural rule**, on this module's: the noun is "max"
-    /// and the numeral sits inside the compound before it, which reads the same at every count — the
-    /// pair of forms this replaced existed only because the old label put the numeral beside "rep".
+    /// **One string with a numeral in it and no plural rule**, on this module's: English reads
+    /// "1 reps" only in the one case a record at a single rep is drawn, which is the same compromise
+    /// every count in this module already makes, and Ukrainian's own forms are the translator's.
     ///
     /// - Parameter reps: The N.
     /// - Returns: The label.
-    static func setPersonalRecordRepMaxLabel(_ reps: Int) -> LocalizedStringResource {
-        resource("logging.session.set.record.rep-max.label \(reps)")
+    static func setPersonalRecordRepsLabel(_ reps: Int) -> LocalizedStringResource {
+        resource("logging.session.set.record.reps.label \(reps)")
+    }
+
+    /// The first-performance scheme badge as VoiceOver reads it — "first time, 5 by 5".
+    ///
+    /// - Parameters:
+    ///   - reps: The scheme's repetitions.
+    ///   - sets: How many consecutive sets it stands at.
+    /// - Returns: The label.
+    static func setFirstPerformanceSchemeLabel(reps: Int, sets: Int) -> LocalizedStringResource {
+        resource("logging.session.set.first.scheme.label \(reps) \(sets)")
+    }
+
+    /// The first-performance single-set badge as VoiceOver reads it — "first time, 8 reps".
+    ///
+    /// - Parameter reps: The N.
+    /// - Returns: The label.
+    static func setFirstPerformanceRepsLabel(_ reps: Int) -> LocalizedStringResource {
+        resource("logging.session.set.first.reps.label \(reps)")
     }
 
     /// This file's strings, for ``LoggingStrings/all``.
     static var allRecordStrings: [LocalizedStringResource] {
         [
             setPersonalRecordScheme(reps: 5, sets: 5),
-            setPersonalRecordRepMax(8),
+            setPersonalRecordReps(8),
+            setFirstPerformanceScheme(reps: 5, sets: 5),
+            setFirstPerformanceReps(8),
             setPersonalRecordSchemeLabel(reps: 5, sets: 5),
-            setPersonalRecordRepMaxLabel(8),
+            setPersonalRecordRepsLabel(8),
+            setFirstPerformanceSchemeLabel(reps: 5, sets: 5),
+            setFirstPerformanceRepsLabel(8),
         ]
     }
 }

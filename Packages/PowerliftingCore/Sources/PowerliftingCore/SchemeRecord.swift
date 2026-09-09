@@ -4,14 +4,14 @@
 /// 100 kg and `4 × 1` at 100 kg are different cells, and `FR-1.6.1`'s ten rep maxes are one column
 /// of the sixty cells ``SchemeRecordCalculator`` fills.
 ///
-/// **``sets`` is how many consecutive sets were required, not how many were performed.** A run of
-/// five sets holds the two-set scheme as surely as the five-set one — see
-/// ``SchemeRecordCalculator``'s dominance rule.
+/// **``reps`` and ``sets`` are what was performed, exactly** (`FR-17.2.1`). A run of five sets of
+/// five is the `5 × 5` cell and no other: it is not evidence about `3 × 2`, because more could have
+/// been lifted for `3 × 2`.
 public struct RecordScheme: Sendable, Hashable, Comparable {
-    /// The N: at least this many repetitions, per set.
+    /// The N: exactly this many repetitions, per set.
     public let reps: Int
 
-    /// How many consecutive sets at that rep count the scheme asks for.
+    /// How many consecutive sets at that rep count were performed.
     public let sets: Int
 
     /// Creates a scheme. Neither bound is validated; see ``SchemeRecordCalculator`` for the ranges
@@ -29,11 +29,10 @@ public struct RecordScheme: Sendable, Hashable, Comparable {
     /// The maximal scheme among `schemes` — the one a badge names (`FR-16.2.4`) — or `nil` for
     /// none.
     ///
-    /// **Largest `reps × sets`, with the scheme order (`<`) breaking a tie.** For the cells one run holds that is the
-    /// same answer the plain order gives, the run's own corner dominating every other cell it set in
-    /// both dimensions; the product is what the requirement asks for and what stays right if a
-    /// caller ever hands this cells that are not one run's — `10 × 1` orders above `5 × 3` and is
-    /// the smaller performance.
+    /// **Largest `reps × sets`, with the scheme order (`<`) breaking a tie.** Since `FR-17.2.1` a
+    /// run holds exactly one cell, so every caller here hands this one scheme or none and the choice
+    /// is trivial — it is kept because the rule is what stays right if a caller ever hands this
+    /// cells that are not one run's: `10 × 1` orders above `5 × 3` and is the smaller performance.
     ///
     /// - Parameter schemes: The cells, in any order.
     /// - Returns: The maximal one, or `nil` where there are none.
@@ -59,7 +58,7 @@ public struct SetRun: Sendable, Hashable {
     ///
     /// Zero upwards, on ``SetRecord/reps``' rule: a failed set records the reps it reached, which
     /// can be none. A run below ``PersonalRecords/repRange`` sets no record rather than being
-    /// refused, and one above it clamps — see ``SchemeRecordCalculator/records(in:)``.
+    /// refused, and one above it clamps — see ``SchemeRecordCalculator/cell(for:)``.
     public let reps: Int
 
     /// How many sets it holds — the `× 4`.
@@ -73,10 +72,10 @@ public struct SetRun: Sendable, Hashable {
     /// Zero-based, and a valid index into that collection where the caller built this from one; a
     /// hand-built run is not checked, as ``PersonalRecord/setOffset`` is not.
     ///
-    /// The first rather than the last, and that choice is what keeps one run one record: the set
-    /// that *completed* a scheme differs per cell — two sets complete the two-set scheme, five the
-    /// five-set one — so a per-cell answer would give one run several identities and split it into
-    /// several events wherever records are listed as events.
+    /// The first rather than the last, and that choice is what makes a run's identity readable
+    /// before the run is over: the set that *completed* it is not known until the run ends, so a
+    /// badge keyed on the last set would move down the card as the lifter logged, and a feed keyed
+    /// on it would reorder a session's events after the fact.
     public let setOffset: Int
 
     /// Creates a run.
@@ -116,12 +115,12 @@ public struct SchemeRecord: Sendable, Hashable {
     }
 }
 
-/// `FR-16.2.2`'s dominance rule: what a table of scheme records is, given the runs behind it.
+/// `FR-17.2.1`'s rule: what a table of scheme records is, given the runs behind it.
 ///
-/// **A run `W × R × S` establishes `W` at every cell with reps ≤ R and sets ≤ S.** That is
-/// `FR-1.6.1`'s "at least N reps" extended to a second dimension: five sets of five at 100 kg is a
-/// three-set-of-two performance too, and refusing to say so would leave a lifter's `2 × 3` empty
-/// while their `5 × 5` stands at the same load.
+/// **A run `W × R × S` establishes `W` at the `(R, S)` cell and at no other.** A load lifted for
+/// `5 × 5` is not a `3 × 3` record — more could have been lifted for `3 × 3` — so a cell no run
+/// reached reads as never performed rather than as an implied record. `FR-16.2.2`'s dominance
+/// reading is withdrawn, and `FR-1.6.1`'s "at least N reps" with it.
 ///
 /// **The collection is ordered, and the order is chronological**, on
 /// ``PersonalRecordCalculator``'s rule — this module has no `Date`, so *earlier* means *earlier in
@@ -136,7 +135,7 @@ public struct SchemeRecordCalculator: Sendable {
     /// **Six, and the bound is a product decision rather than an arithmetic one.** The table is
     /// `repRange × setRange` cells per exercise and every one of them is a stored row, so the
     /// second dimension is what multiplies the cache; a run longer than six sets is not a scheme
-    /// anybody trains against, and it still sets every cell up to six.
+    /// anybody trains against, and it records at six rather than being refused.
     public static let setRange: ClosedRange<Int> = 1...6
 
     /// Creates a calculator. It reads no setting — which is what keeps `TR-0.3.9`'s cache legal
@@ -146,13 +145,14 @@ public struct SchemeRecordCalculator: Sendable {
     /// The corner cell `run` reaches — its own scheme, clamped to the table — or `nil` where it
     /// reaches no cell at all.
     ///
-    /// **The one place a run is turned into a cell**, so the table's bounds are stated once. A run
-    /// past either bound clamps rather than being refused: eight sets of twelve is a record at
-    /// `10 × 6`, and the cells above the bounds are not cells. A run below the rep floor — a set of
-    /// none, which a failed set records — reaches nothing.
+    /// **The one place a run is turned into a cell**, so the table's bounds are stated once, and
+    /// since `FR-17.2.1` it is the only cell the run reaches. A run past either bound clamps rather
+    /// than being refused: eight sets of twelve is a record at `10 × 6`, and the cells above the
+    /// bounds are not cells. A run below the rep floor — a set of none, which a failed set records
+    /// — reaches nothing.
     ///
     /// - Parameter run: The run.
-    /// - Returns: The maximal cell it holds, or `nil`.
+    /// - Returns: The cell it holds, or `nil`.
     public static func cell(for run: SetRun) -> RecordScheme? {
         let reps = min(run.reps, PersonalRecords.repRange.upperBound)
         let sets = min(run.count, Self.setRange.upperBound)
@@ -163,32 +163,26 @@ public struct SchemeRecordCalculator: Sendable {
 
     /// Every scheme record `runs` holds, ascending by ``SchemeRecord/scheme``.
     ///
-    /// A run reaching past either bound **clamps** rather than being refused — see ``cell(for:)``,
-    /// which is where that rule lives.
+    /// **One cell per run** (`FR-17.2.1`), which is ``cell(for:)``'s. A run reaching past either
+    /// bound **clamps** rather than being refused, and that rule lives there too.
     ///
     /// - Parameter runs: One exercise's runs of consecutive equal completed working sets, oldest
     ///   first. Warmups, failures and the runs they interrupt are the caller's to exclude — see
     ///   ``SetRun``.
-    /// - Returns: The records, one per cell any run reached.
+    /// - Returns: The records, one per cell some run was performed at.
     public func records(in runs: [SetRun]) -> [SchemeRecord] {
         var held: [RecordScheme: SchemeRecord] = [:]
         for run in runs {
-            guard let corner = Self.cell(for: run) else { continue }
-            for repCount in PersonalRecords.repRange.lowerBound...corner.reps {
-                for setCount in Self.setRange.lowerBound...corner.sets {
-                    let scheme = RecordScheme(reps: repCount, sets: setCount)
-                    // Strict, which *is* the tie-break: repeating a record is not setting one, so an
-                    // equal load later leaves the earlier run holding the cell — and leaves the
-                    // beaten load untouched, which is what stops a repeat reading as an improvement
-                    // over itself.
-                    if let standing = held[scheme], run.weight <= standing.weight { continue }
-                    held[scheme] = SchemeRecord(
-                        scheme: scheme,
-                        weight: run.weight,
-                        setOffset: run.setOffset,
-                        previousWeight: held[scheme]?.weight)
-                }
-            }
+            guard let scheme = Self.cell(for: run) else { continue }
+            // Strict, which *is* the tie-break: repeating a record is not setting one, so an equal
+            // load later leaves the earlier run holding the cell — and leaves the beaten load
+            // untouched, which is what stops a repeat reading as an improvement over itself.
+            if let standing = held[scheme], run.weight <= standing.weight { continue }
+            held[scheme] = SchemeRecord(
+                scheme: scheme,
+                weight: run.weight,
+                setOffset: run.setOffset,
+                previousWeight: held[scheme]?.weight)
         }
         return held.values.sorted { $0.scheme < $1.scheme }
     }

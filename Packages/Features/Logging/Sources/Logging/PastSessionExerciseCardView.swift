@@ -50,7 +50,7 @@ struct PastSessionExerciseCard: View {
     /// ``SessionRecordMarks/read(over:from:)``. A run since beaten carries no badge, which is what
     /// the requirement asks for and is also the only claim a screen about last month can honestly
     /// make: the table is rebuilt from the log and remembers no history of its own.
-    var recordSchemes: (UUID) -> [RecordScheme] = { _ in [] }
+    var recordMarks: (UUID) -> [SchemeMark] = { _ in [] }
 
     /// Whether the session this card belongs to has yet to end (`FR-16.4.1`).
     ///
@@ -104,7 +104,7 @@ struct PastSessionExerciseCard: View {
             mark: nil,
             markCompleted: nil,
             edit: edit,
-            recordSchemes: recordSchemes,
+            recordMarks: recordMarks,
             // `FR-15.3.1`'s line, where a routine planned this set. A free workout plans nothing
             // and this map is empty for it, which costs the card no line at all — the state reads
             // the targets either way, because a workout started from a routine carries no program

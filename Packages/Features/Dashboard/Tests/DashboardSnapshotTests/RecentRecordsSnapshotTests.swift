@@ -92,7 +92,7 @@
             run(exerciseID: retired, reps: 5, sets: 5, kilos: 100, daysAgo: 30, beating: 95),
         ]
 
-        /// One rep-max entry, spelled out once so a field nothing in the picture turns on is not
+        /// One single-set entry, spelled out once so a field nothing in the picture turns on is not
         /// repeated.
         private static func entry(
             exerciseID: UUID,
@@ -104,7 +104,6 @@
             RecentRecord(
                 exerciseID: exerciseID,
                 scheme: RecordScheme(reps: reps.upperBound, sets: 1),
-                repMaxReps: reps,
                 weight: Weight(grams: Int(kilos * 1000)),
                 sourceSetID: sourceSetID(daysAgo),
                 achievedAt: day.addingTimeInterval(-Double(daysAgo) * 86_400),
@@ -112,7 +111,7 @@
             )
         }
 
-        /// One entry for a run that set no rep max — `FR-16.2.1`'s second dimension on the feed.
+        /// One entry for a run of two sets or more — the scheme spelling of the same label.
         private static func run(
             exerciseID: UUID,
             reps: Int,
@@ -124,7 +123,6 @@
             RecentRecord(
                 exerciseID: exerciseID,
                 scheme: RecordScheme(reps: reps, sets: sets),
-                repMaxReps: nil,
                 weight: Weight(grams: Int(kilos * 1000)),
                 sourceSetID: sourceSetID(daysAgo),
                 achievedAt: day.addingTimeInterval(-Double(daysAgo) * 86_400),
