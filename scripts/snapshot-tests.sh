@@ -64,7 +64,12 @@ cd "$(dirname "$0")/.."
 # notice nothing the parity check does not. Set it above that count where such tests exist, and at
 # the suite's own count where they do not — the latter is a floor that adds nothing, which is the
 # honest setting rather than a number chosen to look like the former.
-#   DesignSystem:    31 tests, 19 reference-backed, 12 harness probes  -> 24, above the 19.
+#   DesignSystem:    35 tests, 21 reference-backed, 14 harness probes  -> 35, its own count.
+#                     T-1.92 added four probes for TR-1.12's blank guard and found BOTH halves of
+#                     this row stale while paying them: the floor read 24 against 31 tests, and the
+#                     derivation read 19 reference-backed against 84 references, which is 21. Seven
+#                     tests could have vanished unnoticed. Set to its own count now, as every other
+#                     suite is — "above the 19" was a margin that only ever grew.
 #   ExerciseLibrary: 42 tests, all of them reference-backed, no probes -> 42, its own count.
 #   Logging:         93 tests, 88 reference-backed, a width probe and four layout budgets
 #                                                                    -> 93, its own count.
@@ -85,7 +90,7 @@ cd "$(dirname "$0")/.."
 # 15), each drifting one task at a time. `git grep -c '@Test' -- <suite>` is the count to set it
 # from, and a task that adds a snapshot test owes this list the same edit it owes __Snapshots__.
 SUITES=(
-    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|24"
+    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|35"
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|42"
     "Packages/Features/Logging|Logging|LoggingSnapshotTests|93"
     "Packages/Features/History|History|HistorySnapshotTests|28"

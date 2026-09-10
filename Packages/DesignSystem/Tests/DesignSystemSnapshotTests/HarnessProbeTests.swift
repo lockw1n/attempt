@@ -126,6 +126,101 @@
             }
         }
 
+        // TR-1.12's blank guard, in both directions and at both of the points it sits.
+        //
+        // THE DEFECT IT CLOSES IS THE ONE THIS SUITE'S OTHER PROBES CANNOT SEE. Every test above
+        // asks whether the comparison can fail. None can ask whether the two things compared say
+        // anything, and `compare` tests dimensions before pixels — so a reference recorded blank
+        // agrees with a blank render on both counts and matches forever. T-15.06 cleared the two
+        // blanks that were on `dev` and left the class untouched; this is the class.
+        //
+        // NO TOLERANCE AND NO OPT-OUT, because T-1.92 measured that none is needed: 0 of the 992
+        // references in the tree had four or fewer distinct pixel values. See ``Bitmap/isUniform``.
+
+        /// The predicate's negative direction. Without it, an `isUniform` that answered `true` for
+        /// everything would satisfy every assertion below.
+        @Test func realContentIsNotUniform() throws {
+            let card = try Snapshot.render(
+                Card { Text(verbatim: "Card content") }, appearance: .dark, typeSize: .default)
+            #expect(!card.isUniform)
+        }
+
+        /// The positive direction, on the case the design question actually asked about: an empty
+        /// state over a flat background, which is the one legitimate view that could render this way.
+        @Test func anEmptyRenderIsUniform() throws {
+            let blank = try Snapshot.render(EmptyView(), appearance: .dark, typeSize: .default)
+            #expect(blank.isUniform)
+            #expect(!blank.pixels.isEmpty)
+        }
+
+        /// **The guard fires rather than recording**, which is the half that stops a blank entering
+        /// the tree at all. `withKnownIssue` is the instrument: it fails unless an issue is raised,
+        /// so this test passes only while the guard works.
+        @Test func recordingIsRefusedForABlankRender() throws {
+            let suite = try ScratchSuite()
+            withKnownIssue {
+                try assertSnapshots(named: "blank", testFile: suite.testFile) { EmptyView() }
+            }
+            // And nothing was written — the whole point, since a file recorded here is a file that
+            // matches itself forever.
+            #expect(
+                !FileManager.default.fileExists(
+                    atPath: suite.reference("blank.dark.default").path))
+        }
+
+        /// **The guard fires on a blank already committed**, which is the half that sweeps what is
+        /// there. Distinct from the probe above: that one never reaches the comparison, and a fix
+        /// applied only at recording time would leave every existing blank matching.
+        @Test func aBlankReferenceIsRejectedRatherThanMatched() throws {
+            let suite = try ScratchSuite()
+            // A blank reference for all four configurations, written by hand — which is exactly
+            // what the harness used to do for us.
+            let blank = try Snapshot.render(EmptyView(), appearance: .dark, typeSize: .default)
+            try FileManager.default.createDirectory(
+                at: suite.snapshots, withIntermediateDirectories: true)
+            for appearance in SnapshotAppearance.allCases {
+                for typeSize in SnapshotTypeSize.allCases {
+                    try Snapshot.pngData(blank).write(
+                        to: suite.reference("blank.\(appearance.rawValue).\(typeSize.rawValue)"))
+                }
+            }
+            // Rendering the same blank view: identical dimensions, identical pixels, so `compare`
+            // returns nil and the run is green without the guard.
+            #expect(Snapshot.compare(blank, blank) == nil)
+            withKnownIssue {
+                try assertSnapshots(named: "blank", testFile: suite.testFile) { EmptyView() }
+            }
+        }
+
+        /// A scratch directory shaped like a suite's, so `assertSnapshots` resolves its references
+        /// there instead of into this package's committed tree.
+        ///
+        /// **`testFile:` is passed deliberately, which is the one thing the harness's own doc
+        /// comment warns against** — pointing a run at another directory's references is exactly
+        /// what these two probes need, and it is the only way to exercise the guard without
+        /// committing a blank to prove a blank is refused.
+        private struct ScratchSuite {
+            /// The notional test file, whose directory resolves the references beside it.
+            let testFile: String
+
+            /// Where `assertSnapshots` will look — the three stripped components are what
+            /// `Snapshot.failureDirectory(forTestFile:)` expects, so a failing probe leaves its
+            /// artefacts here too rather than in the package.
+            let snapshots: URL
+
+            init() throws {
+                let root = URL(filePath: NSTemporaryDirectory())
+                    .appending(path: "blank-guard-\(UUID().uuidString)")
+                    .appending(path: "Tests/Suite")
+                try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+                testFile = root.appending(path: "Probe.swift").path
+                snapshots = root.appending(path: "__Snapshots__")
+            }
+
+            /// One reference file by name.
+            func reference(_ name: String) -> URL { snapshots.appending(path: "\(name).png") }
+        }
+
         /// A replica of ``Card``'s body with its two token choices opened up, so a mutation can be
         /// rendered without editing the component.
         ///
