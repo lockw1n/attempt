@@ -36,18 +36,44 @@
 #                  numeric entry — check 2 would fail on it too, but as "unexpected host" rather
 #                  than as "this module types numbers with no keyboard set", and the second is the
 #                  diagnosis.
+#   4  fields      The set of files DECLARING a text field is EXACTLY the recorded one — all of
+#                  them, numeric and textual alike.
+#
+# WHAT THE FIRST THREE LET THROUGH, WHICH IS WHY THERE IS A FOURTH. T-1.92's review found the gap by
+# probing it: a numeric field added to a module that ALREADY has a recorded host, setting no keyboard
+# modifier at all, passes checks 1, 2 and 3 together. Check 1 sees no `.keyboardType(`; check 2
+# enumerates the files that CALL `decimalKeyboard()`, so a field calling nothing is invisible to it;
+# check 3 is module-granular, and Logging is already typed. A field with no modifier gets the default
+# alphanumeric keyboard, which carries a `.` key in EVERY locale — strictly worse than the
+# `.numbersAndPunctuation` bypass check 1 does catch. This header used to claim check 2 covered that
+# case. It does not: check 2 catches an unrecorded host that is CORRECTLY routed, which is the
+# harmless direction of the same edit.
+#
+# So check 4 records every declaration site, because nothing mechanical can tell a numeric field from
+# a textual one. That is the point rather than a weakness — a field added anywhere fails this gate
+# until someone answers the question, and the answer is one of two edits: NUMERIC, route it through
+# `decimalKeyboard()` and add it to HOSTS as well as to TEXT_FIELDS; TEXTUAL, add it to TEXT_FIELDS
+# alone. The pattern is deliberately broad: `TextField(` also matches a wrapper call site such as
+# `LabelledTextField(`, which is a place a numeric field can be added without the word TextField
+# appearing on its own.
 #
 # Checks 2 and 3 do not subsume each other in the other direction either: 3 is module-granular and
-# would pass a sixth field added inside Logging, which is exactly the per-set fan-out case, and 2
-# catches that.
+# would pass a sixth CORRECTLY ROUTED field added inside Logging, and 2 catches that.
+#
+# WHAT CHECK 4 STILL DOES NOT SEE, stated because the claim it replaced was too strong and that is
+# what made it dangerous. Check 4 is FILE-granular, so a second field added inside a file already in
+# TEXT_FIELDS is invisible to it — a numeric one dropped into `SessionSummaryView.swift`, say, which
+# is recorded here because it takes a note. Nothing in this script counts fields per file, and
+# counting them would be a floor, which is the shape this gate was written to avoid. The gate
+# narrows the population a review has to read; it does not remove the reading.
 #
 # THE POPULATION IS `git ls-files`, for check-no-third-party.sh's two reasons: it is the set CI
 # checks out, and a directory walk descends into Packages/*/.build.
 #
-# WHEN THIS GATE IS SUPPOSED TO FAIL: a task adds or removes a numeric field. Update HOSTS in the
-# same commit, and — if the new host does NOT route through `decimalKeyboard()` — reopen the
-# author's answer rather than adding an exception, because the answer was given about a keyboard
-# that cannot produce the refusal.
+# WHEN THIS GATE IS SUPPOSED TO FAIL: a task adds or removes a field of any kind. Update TEXT_FIELDS
+# in the same commit, and HOSTS too where the field takes numbers. If a numeric field does NOT route
+# through `decimalKeyboard()`, reopen the author's answer rather than adding an exception, because
+# the answer was given about a keyboard that cannot produce the refusal.
 
 set -euo pipefail
 
@@ -77,6 +103,27 @@ HOSTS=(
     "Packages/Features/Routines/Sources/Routines/RoutineGroupRow.swift"
     "Packages/Features/Settings/Sources/Settings/BodyweightEntryFormView.swift"
 )
+
+# Every file that declares a field, as of T-1.92. Sorted, for the same reason HOSTS is. The five
+# HOSTS above are a subset: the other seven take text — a name, a note, a search term — and are
+# recorded here so that a numeric field added among them cannot arrive unremarked.
+TEXT_FIELDS=(
+    "Packages/DesignSystem/Sources/DesignSystem/SearchField.swift"
+    "Packages/Features/ExerciseLibrary/Sources/ExerciseLibrary/ExerciseDetailView.swift"
+    "Packages/Features/ExerciseLibrary/Sources/ExerciseLibrary/ExerciseFormView.swift"
+    "Packages/Features/ExerciseLibrary/Sources/ExerciseLibrary/LabelledTextField.swift"
+    "Packages/Features/ExerciseLibrary/Sources/ExerciseLibrary/TrainingMaxEditorView.swift"
+    "Packages/Features/Logging/Sources/Logging/EquipmentProfileEditorView.swift"
+    "Packages/Features/Logging/Sources/Logging/SessionSummaryView.swift"
+    "Packages/Features/Logging/Sources/Logging/SetEditorFieldsView.swift"
+    "Packages/Features/Logging/Sources/Logging/SetModifierListEditor.swift"
+    "Packages/Features/Routines/Sources/Routines/RoutineGroupRow.swift"
+    "Packages/Features/Routines/Sources/Routines/WeekEditorView.swift"
+    "Packages/Features/Settings/Sources/Settings/BodyweightEntryFormView.swift"
+)
+
+# Broad on purpose — it matches `LabelledTextField(` as well as `TextField(`. See the header.
+FIELD_RE='TextField\('
 
 # Where `decimalKeyboard()` is defined. It is the one file allowed to name `keyboardType`, and it is
 # not a host.
@@ -134,6 +181,22 @@ check_inventory() {
         fail "inventory" "G-3.4: the decimalKeyboard() hosts are not the recorded set."
         echo "          left column = in the tree but not in HOSTS; right = recorded but gone:" >&2
         sed 's/^/          /' <<<"$diff" >&2
+        return 1
+    fi
+    return 0
+}
+
+check_fields() {
+    local found expected diff
+    found="$(files_matching "$FIELD_RE" "$@")"
+    expected="$(printf '%s\n' "${TEXT_FIELDS[@]}" | sort)"
+    diff="$(comm -3 <(printf '%s\n' "$found") <(printf '%s\n' "$expected") || true)"
+    if [[ -n "$diff" ]]; then
+        fail "fields" "G-3.4: the files declaring a field are not the recorded set."
+        echo "          left column = in the tree but not in TEXT_FIELDS; right = recorded but gone:" >&2
+        sed 's/^/          /' <<<"$diff" >&2
+        echo "          A field that takes NUMBERS also needs decimalKeyboard() and a HOSTS entry;" >&2
+        echo "          one that takes text needs only the TEXT_FIELDS line. Neither is automatic." >&2
         return 1
     fi
     return 0
@@ -217,6 +280,19 @@ EOF
     cat >"$other_dir/FormatsOnly.swift" <<'EOF'
 Text(LocalizedNumberField.render(value, locale: locale))
 EOF
+    # THE CASE CHECK 4 EXISTS FOR, and it is in the recorded host's OWN module deliberately — that
+    # is what makes checks 1, 2 and 3 all pass on it. A numeric field with no keyboard modifier at
+    # all, which is worse than the bypass above: no modifier means the default alphanumeric keyboard,
+    # which carries a `.` key in every locale.
+    cat >"$host_dir/UnguardedField.swift" <<'EOF'
+TextField(text: $draft.loadText) { Text("Load") }
+var load: Double? { LocalizedNumberField.decimal(loadText, locale: locale) }
+EOF
+    # A wrapper call site. `LabelledTextField(` declares no `TextField` by that name, and is still a
+    # place a numeric field can be added — which is why FIELD_RE is broad.
+    cat >"$host_dir/Wrapper.swift" <<'EOF'
+LabelledTextField(text: $draft.nameText, label: "Name")
+EOF
     # A sixth host, correctly routed and simply not recorded. This is check 2's whole point and it
     # is NOT the bypass fixture: a host that types its own field never calls `decimalKeyboard()` at
     # all, so it is invisible to the inventory and is check 1's to catch. The self-test's first
@@ -228,8 +304,10 @@ EOF
 
     # `HOSTS` and `DEFINITION` are absolute in the real run and scratch-relative here.
     real_hosts=("${HOSTS[@]}")
+    real_text_fields=("${TEXT_FIELDS[@]}")
     real_definition="$DEFINITION"
     HOSTS=("$host_dir/BodyweightEntryFormView.swift")
+    TEXT_FIELDS=("$host_dir/BodyweightEntryFormView.swift")
     DEFINITION="$scratch/none"
     # `module_of` strips the scratch prefix's Packages/... shape, which the fixtures reproduce.
     module_of() { sed -E "s#^.*(Packages/(Features/)?[^/]+)/Sources/.*#\1#" <<<"$1"; }
@@ -274,9 +352,28 @@ EOF
     collect "$(printf '%s\n%s\n' "$host_dir/BodyweightEntryFormView.swift" "$other_dir/FormatsOnly.swift")"
     expect "…a module that only formats" 0 check_coverage "${FILES[@]}"
 
+    collect "$host_dir/BodyweightEntryFormView.swift"
+    expect "fields" 0 check_fields "${FILES[@]}"
+    collect "$(printf '%s\n%s\n' "$host_dir/BodyweightEntryFormView.swift" "$host_dir/Wrapper.swift")"
+    expect "…a wrapper call site appears" 1 check_fields "${FILES[@]}"
+    TEXT_FIELDS=("$host_dir/BodyweightEntryFormView.swift" "$host_dir/Vanished.swift")
+    collect "$host_dir/BodyweightEntryFormView.swift"
+    expect "…a recorded field disappears" 1 check_fields "${FILES[@]}"
+    TEXT_FIELDS=("$host_dir/BodyweightEntryFormView.swift")
+
+    # THE REGRESSION, ASSERTED AS ONE. The unguarded numeric field is invisible to all three of the
+    # original checks and caught by the fourth. Each direction is stated, because "check 4 fires" on
+    # its own would not record what the other three were found to miss.
+    collect "$(printf '%s\n%s\n' "$host_dir/BodyweightEntryFormView.swift" "$host_dir/UnguardedField.swift")"
+    expect "an unguarded numeric field: bypass"    0 check_bypass "${FILES[@]}"
+    expect "…                       inventory"    0 check_inventory "${FILES[@]}"
+    expect "…                        coverage"    0 check_coverage "${FILES[@]}"
+    expect "…                          fields"    1 check_fields "${FILES[@]}"
+
     expect "an empty population" 1 gate "bypass" "file(s)" check_bypass
 
     HOSTS=("${real_hosts[@]}")
+    TEXT_FIELDS=("${real_text_fields[@]}")
     DEFINITION="$real_definition"
 
     echo
@@ -284,7 +381,7 @@ EOF
         echo "$failures self-test case(s) failed — this gate does not do what its header claims." >&2
         exit 1
     fi
-    echo "all three checks fire, and none fires on a clean tree."
+    echo "all four checks fire, and none fires on a clean tree."
     exit 0
 fi
 
@@ -294,6 +391,7 @@ collect "$(git ls-files -- 'Packages/*/Sources/*.swift' 'Attempt/*.swift')"
 gate "bypass" "source file(s), decimalKeyboard() the only route" check_bypass ${FILES[@]+"${FILES[@]}"}
 gate "inventory" "source file(s), ${#HOSTS[@]} recorded host(s)" check_inventory ${FILES[@]+"${FILES[@]}"}
 gate "coverage" "source file(s), every parsing module typed" check_coverage ${FILES[@]+"${FILES[@]}"}
+gate "fields" "source file(s), ${#TEXT_FIELDS[@]} recorded field site(s)" check_fields ${FILES[@]+"${FILES[@]}"}
 
 echo
 if (( failures > 0 )); then
