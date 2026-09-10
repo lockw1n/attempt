@@ -10,11 +10,14 @@ import SwiftUI
 /// screen's own body is a `ScrollView`, and the harness draws a placeholder for anything
 /// UIKit-backed.
 ///
-/// **The numbers come first.** The training max, the estimate, the records and the history are what
+/// **The numbers come first.** The estimate, the training max, the records and the history are what
 /// a screen is opened to check; the movement, the bar and the sides are static and already known to
-/// whoever owns the exercise. The training max keeps the estimate directly beneath it — the coach's
-/// number and the observed one are two claims about the same lift, and reading them in that order is
-/// what stops either being taken for the other (`FR-15.1.5`).
+/// whoever owns the exercise. The estimate leads and the training max sits directly beneath it —
+/// the observed number and the coach's are two claims about the same lift, and reading them one
+/// under the other is what stops either being taken for the other (`FR-15.1.5`). **The estimate is
+/// first because it is the only one of the two every exercise has** (`FR-17.5.1`): the training max
+/// led until review finding 07, which cost 128 accessories a screen opening on the absence of a
+/// number nobody had promised them.
 ///
 /// **`FR-1.1.5`'s archive control is last, below all of them.** It is the one command here that
 /// changes what the rest of the app shows, and the foot of a screen is where a command like that is
@@ -53,13 +56,13 @@ struct ExerciseDetailSections: View {
             if detail.exercise.isArchived {
                 ExerciseArchivedBadge()
             }
+            ExerciseEstimateSection(exerciseID: exerciseID, records: records, settings: settings)
             TrainingMaxSection(
                 exerciseID: exerciseID,
                 trainingMaxes: trainingMaxes,
                 settings: settings,
                 records: records
             )
-            ExerciseEstimateSection(exerciseID: exerciseID, records: records, settings: settings)
             // The set count is handed down, because it is what separates the two "nothing to show"
             // sentences and this screen is the only place it has already been read.
             //

@@ -54,6 +54,23 @@ struct ExerciseLibraryStringsTests {
                 == "5 by 5, first time, 100 kg, 1 May")
     }
 
+    /// `FR-17.5.1` and `FR-17.5.2`: the absent line's two halves, the command said twice at two
+    /// lengths, and the field that no longer repeats the sheet's title.
+    ///
+    /// **The sheet's title and its first field are asserted to differ**, which is the whole of
+    /// review finding 15's copy half: *Training max* as navigation title, section heading, prompt
+    /// and VoiceOver label is one word said four times before anything is typed.
+    @Test("The training max line is three words, and the sheet names itself once")
+    func theTrainingMaxLineAndSheetCopyRead() {
+        #expect(String(localized: ExerciseLibraryStrings.trainingMaxNoneLine) == "No training max")
+        #expect(String(localized: ExerciseLibraryStrings.trainingMaxSetOneAction) == "Set one")
+        // The same command in full, which is what VoiceOver is given: "Set one" read out on its
+        // own is a fragment of the line it was written to end.
+        #expect(String(localized: ExerciseLibraryStrings.trainingMaxSetAction) == "Set training max")
+        #expect(String(localized: ExerciseLibraryStrings.trainingMaxFormTitle) == "Training max")
+        #expect(String(localized: ExerciseLibraryStrings.trainingMaxWeightLabel) == "Weight")
+    }
+
     /// `FR-17.2.3`: `RM` and "rep max" are retired as a record's notation, and the key that wrote
     /// them leaves both catalogues along with its English value — `check-translations.sh` compares
     /// the two catalogues to each other, so a key retired from both is invisible to it.

@@ -141,6 +141,13 @@ struct TrainingMaxEditorContent: View {
     /// The unit the number is entered in (`G-3.1`).
     let unit: MassUnit
 
+    /// Whether the number's field holds the keyboard (`FR-17.5.2`).
+    ///
+    /// **Taken on appearance, so the first tap is a digit rather than the field.** A sheet whose
+    /// only reason to exist is one number and which opens with nothing focused costs a tap before
+    /// anything can be typed — review finding 15.
+    @FocusState private var isEnteringWeight: Bool
+
     /// The number, the day it takes effect, then the note.
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.lg.points) {
@@ -152,6 +159,7 @@ struct TrainingMaxEditorContent: View {
                     .accessibilityLabel(Text(ExerciseLibraryStrings.trainingMaxWeightLabel))
                     .textFieldStyle(.plain)
                     .decimalKeyboard()
+                    .focused($isEnteringWeight)
                     .font(Typography.numericValue.font)
                     .foregroundStyle(ColorToken.textPrimary)
                     Text(ExerciseLibraryStrings.trainingMaxUnitSymbol(for: unit))
@@ -200,5 +208,10 @@ struct TrainingMaxEditorContent: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Whether focus takes from here is a UIKit behaviour and nothing in the test bundle can
+        // see it: a sheet's content appears before its presentation settles, and focus asked for
+        // too early is dropped with no diagnostic. Verified on the simulator, which is the only
+        // instrument there is for it.
+        .onAppear { isEnteringWeight = true }
     }
 }

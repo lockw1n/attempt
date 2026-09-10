@@ -214,10 +214,13 @@
 "exerciselibrary.detail.training-max.since %@" = "Чинний із %@";
 "exerciselibrary.detail.training-max.since-note %@ %@" = "Чинний із %1$@ · %2$@";
 "exerciselibrary.detail.training-max.none" = "Тренувального максимуму ще немає. Задайте його, і записану вагу можна буде читати як відсоток від нього.";
+"exerciselibrary.detail.training-max.none-line" = "Максимуму немає";
 "exerciselibrary.detail.training-max.not-yet" = "Чинного тренувального максимуму ще немає. Усі зміни нижче набувають чинності пізніше.";
+"exerciselibrary.detail.training-max.not-yet-line" = "Чинного максимуму ще немає";
 "exerciselibrary.detail.training-max.error" = "Не вдалося прочитати тренувальний максимум цієї вправи.";
 "exerciselibrary.detail.training-max.write-error" = "Не вдалося зберегти цей тренувальний максимум.";
 "exerciselibrary.detail.training-max.set-action" = "Задати тренувальний максимум";
+"exerciselibrary.detail.training-max.set-one" = "Задати";
 "exerciselibrary.detail.training-max.change-action" = "Змінити тренувальний максимум";
 "exerciselibrary.detail.training-max.history" = "Історія";
 "exerciselibrary.detail.training-max.history.expanded" = "Показано";
@@ -225,7 +228,7 @@
 "exerciselibrary.detail.training-max.change %@ %@" = "%1$@ → %2$@";
 "exerciselibrary.detail.training-max.first %@" = "Задано %@";
 "exerciselibrary.detail.training-max.form.title" = "Тренувальний максимум";
-"exerciselibrary.detail.training-max.form.weight" = "Тренувальний максимум";
+"exerciselibrary.detail.training-max.form.weight" = "Вага";
 "exerciselibrary.detail.training-max.form.date" = "Чинний від";
 "exerciselibrary.detail.training-max.form.date-hint" = "Записана вага читається відносно тренувального максимуму, чинного в день тренування.";
 "exerciselibrary.detail.training-max.form.note" = "Примітка";
