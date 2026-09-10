@@ -29,13 +29,18 @@ extension ActiveSessionStore {
     ///
     /// - Parameter entryIDs: The exercises to answer, in the order they are drawn.
     public func answerAsPlanned(inEntryIDs entryIDs: [UUID]) async {
-        let previous = pendingWrite
-        let write = Task { [weak self] in
-            await previous?.value
-            await self?.writeAnswersAsPlanned(inEntryIDs: entryIDs)
+        // `NFR-1.2`'s own interval, and it spans the whole chain rather than the write: what the
+        // budget is written about is the wait between the tap and the row re-reading, which is
+        // `writeAnswersAsPlanned` plus the `loadExercises()` it ends in.
+        await PerformanceSignpost.answer.measure {
+            let previous = pendingWrite
+            let write = Task { [weak self] in
+                await previous?.value
+                await self?.writeAnswersAsPlanned(inEntryIDs: entryIDs)
+            }
+            pendingWrite = write
+            await write.value
         }
-        pendingWrite = write
-        await write.value
     }
 
     /// ``answerAsPlanned(inEntryIDs:)`` for the one row the circle was tapped on.

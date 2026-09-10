@@ -149,7 +149,11 @@ public actor PersonalRecordRecomputer {
     /// - Throws: Whatever the repositories throw reading the sets or writing the cache.
     @discardableResult
     public func recompute(forExerciseID exerciseID: UUID) async throws -> ExerciseRecords {
-        let records = try await recomputed(exerciseID, writingCache: true)
+        // `NFR-1.6`'s own interval. The walk is what the budget is written about; `publish` below
+        // is a fan-out to subscribers and is not the recomputation.
+        let records = try await PerformanceSignpost.recompute.measure {
+            try await recomputed(exerciseID, writingCache: true)
+        }
         publish(.exercise(exerciseID))
         return records
     }
