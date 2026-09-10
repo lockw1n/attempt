@@ -119,8 +119,12 @@ extension ActiveSessionStore {
         do {
             let changed = try await SetGroupRewrite(repository: repository)
                 .rewrite(inEntryID: entryID, to: rows)
-            try await markDone(entryID: entryID, ofSessionID: current.id)
+            // Announced before the entry is marked done, not after: the sets have already moved by
+            // here, and a `markDone` that throws would otherwise leave the cache holding records for
+            // sets that are gone with nothing left to tell it (`FR-1.6.4`). It is the order
+            // ``SetGroupRewrite`` itself used to announce in, and the one ``PastSessionState`` keeps.
             if changed { announceSetChange(inEntryID: entryID) }
+            try await markDone(entryID: entryID, ofSessionID: current.id)
             exercisesWriteFailure = nil
         } catch {
             exercisesWriteFailure = String(describing: error)

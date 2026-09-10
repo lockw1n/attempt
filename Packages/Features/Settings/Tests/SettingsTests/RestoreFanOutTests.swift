@@ -26,11 +26,17 @@ struct RestoreFanOutTests {
     /// so a per-session fan-out and a per-exercise one cannot produce the same number.
     private static let sessionsOfTheSquat = 6
 
-    /// A backup of a log training one exercise repeatedly and another twice.
-    private static func manySessions() async throws -> TrainingLogArchive {
+    /// A backup of a log training one exercise repeatedly, another twice, and a third never.
+    ///
+    /// **The untrained exercise is what separates the two fan-outs that both answer "once each".**
+    /// A fixture whose catalogue is exactly its trained set cannot tell one walk per *trained*
+    /// exercise from one walk per *catalogue* exercise — and the second is the whole-catalogue sweep
+    /// `NFR-17.2` took off the launch path, measured at 0.56 s and 1.41 s over the author's log.
+    private static func manySessions() async throws -> Fixture {
         let log = ExportLog()
         let squat = try await log.exercise(named: "Back Squat")
         let bench = try await log.exercise(named: "Bench Press")
+        let untrained = try await log.exercise(named: "Overhead Press")
         for day in 0..<sessionsOfTheSquat {
             let session = try await log.session(daysAgo: day)
             let entry = try await log.entry(squat, in: session)
@@ -40,28 +46,42 @@ struct RestoreFanOutTests {
                 _ = try await log.set(in: other, order: 0, grams: 80_000, reps: 5)
             }
         }
-        return try await log.backup.archive(takenAt: ExportLog.epoch)
+        return Fixture(
+            archive: try await log.backup.archive(takenAt: ExportLog.epoch),
+            trained: [squat.id, bench.id],
+            untrained: untrained.id)
     }
 
-    @Test("A restore recomputes each exercise once, however many sessions trained it")
+    /// The backup, the exercises its sessions train, and the one in its catalogue that they do not.
+    private struct Fixture {
+        let archive: TrainingLogArchive
+        let trained: Set<UUID>
+        let untrained: UUID
+    }
+
+    @Test("A restore recomputes each trained exercise once, however many sessions trained it")
     func eachExerciseIsRecomputedOnce() async throws {
-        let archive = try await Self.manySessions()
+        let fixture = try await Self.manySessions()
         let target = InMemoryRepositoryStack()
         let counting = CountingRecordCache(wrapped: target.personalRecords)
 
-        try await Self.restore(into: target, cache: counting).restore(archive)
+        try await Self.restore(into: target, cache: counting).restore(fixture.archive)
 
         // Two exercises, two recomputes — not eight, which is what one per session over the six
         // squat days and the two bench ones would have cost.
         #expect(await counting.writes.count == 2)
-        #expect(Set(await counting.writes) == Set(archive.exercises.map(\.id)))
+        #expect(Set(await counting.writes) == fixture.trained)
+        // And not three: the exercise the file carries but never trained is not walked, which is
+        // what says the announcement is read off `entries` rather than off the catalogue.
+        #expect(!(await counting.writes).contains(fixture.untrained))
+        #expect(fixture.archive.exercises.contains { $0.id == fixture.untrained })
     }
 
     /// **The restore still leaves a usable cache**, which the count above cannot say on its own: a
     /// fan-out removed by announcing nothing would satisfy it perfectly.
     @Test("And the records it wrote are the ones the log earned")
     func theCacheIsRebuilt() async throws {
-        let archive = try await Self.manySessions()
+        let archive = try await Self.manySessions().archive
         let target = InMemoryRepositoryStack()
 
         try await Self.restore(into: target, cache: target.personalRecords).restore(archive)

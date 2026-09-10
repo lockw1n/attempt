@@ -119,6 +119,45 @@ struct SetGroupRewriteTests {
         #expect(entries.first?.isMarkedDone == false)
     }
 
+    /// **The announcement is owed by the write that moved the sets, not by the one that marks the
+    /// row done** (`FR-1.6.4`). Since the rewrite stopped announcing for itself, the host has to
+    /// place its own announcement on the same side of the mark-done that ``SetGroupRewrite`` used to
+    /// — otherwise a refused mark leaves the cache holding the loads the lifter has just replaced,
+    /// and nothing left to correct it: the stale rows still carry this build's
+    /// `computationVersion`, so the re-read after the failure reads them rather than walking.
+    @Test("A rewrite whose mark-done is refused still tells the recomputer its sets moved")
+    func aRefusedMarkDoneStillAnnounces() async throws {
+        let workout = try await Workout.started()
+        await workout.store.addExercise(id: workout.squat.id)
+        let entryID = try #require(workout.store.exercises.first).id
+        let sessionID = try #require(workout.store.session).id
+        // One set rather than a group, so the row is left unmarked and the rewrite's mark-done is
+        // the write that gets refused rather than a no-op.
+        await workout.store.addSet(
+            toEntryID: entryID,
+            values: SetEntryValues(
+                weight: Weight(grams: 80_000), reps: 5, rpe: nil, isWarmup: false))
+        await workout.store.settleRecordRefresh()
+
+        let refusing = SetWriteRefusingRepository(
+            wrapped: workout.repositories.workouts, refusingFrom: .max, refusesEntrySaves: true)
+        let store = ActiveSessionStore.over(workout.repositories, workouts: refusing)
+        await store.adopt(sessionID: sessionID)
+        await store.loadExercises()
+
+        await store.rewriteGroup(
+            inEntryID: entryID,
+            rows: [SetEntryValues(weight: Weight(grams: 100_000), reps: 5, rpe: nil, isWarmup: false)])
+        await store.settleRecordRefresh()
+
+        // The mark is what failed, and it is reported.
+        #expect(store.exercisesWriteFailure != nil)
+        // And the cache holds the load the lifter now has, not the one they replaced.
+        let cached = try await workout.repositories.personalRecords.personalRecords(
+            forExerciseID: workout.squat.id, includingDeleted: false)
+        #expect(cached.map(\.weight.grams).max() == 100_000)
+    }
+
     @Test("A member nobody attempted comes back completed, because the sheet answered for it")
     func aPendingMemberIsCompletedByTheRewrite() async throws {
         // FR-16.4.4 and TR-17.4 together: a skip is *derived* from a row marked done with no
@@ -298,6 +337,13 @@ private struct SetWriteRefusingRepository: WorkoutRepository, PlannedTargetRepos
     /// How many set saves succeed before the rest refuse.
     let refusingFrom: Int
 
+    /// Whether an ``ExerciseEntry`` save refuses — the mark-done at the end of a group write.
+    ///
+    /// Its own switch rather than a second count: the two failures are on opposite sides of the
+    /// announcement a rewrite owes (`FR-1.6.4`), so a double that could not separate them could not
+    /// say which side had gone wrong.
+    var refusesEntrySaves = false
+
     /// How many have been attempted. A reference type, the repository being a value.
     let attempts = Counter()
 
@@ -358,7 +404,10 @@ private struct SetWriteRefusingRepository: WorkoutRepository, PlannedTargetRepos
     func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
         try await wrapped.entry(id: id, includingDeleted: includingDeleted)
     }
-    func save(_ entry: ExerciseEntry) async throws { try await wrapped.save(entry) }
+    func save(_ entry: ExerciseEntry) async throws {
+        if refusesEntrySaves { throw RepositoryError.recordNotFound(id: entry.id) }
+        try await wrapped.save(entry)
+    }
     func deleteExerciseEntry(id: UUID) async throws {
         try await wrapped.deleteExerciseEntry(id: id)
     }

@@ -25,9 +25,12 @@ extension ActiveSessionStore {
     /// marks are published after the write, so a re-read cannot overwrite a fresher answer with one
     /// taken before the recompute landed.
     ///
-    /// **A workout that has been swapped underneath drops its refresh.** The marks are keyed on sets
-    /// this session holds, so publishing them against another workout would be
-    /// ``forgetExercises()``'s claim undone.
+    /// **A workout that has been swapped underneath drops its refresh**, and it is a belt on top of
+    /// braces rather than the thing holding the trousers up: a session change goes through
+    /// ``forgetExercises()``, so ``refreshRecordMarks()``'s own guard already declines to publish,
+    /// and a read that did get through would be taken over the exercises now held and so would be
+    /// right about them. What this adds is that a walk announced against one workout never publishes
+    /// under another's name — cheap, and one fewer thing to reason about.
     ///
     /// - Parameter entryID: The exercise entry the set was written against.
     func announceSetChange(inEntryID entryID: UUID) {
