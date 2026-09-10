@@ -376,6 +376,23 @@ packages that fetch are also tested at `-O`, in CI and in the local chain:
 screen and the export-compliance declaration live in `Config/Info.plist`, a
 partial plist merged under the generated one.
 
+**Performance numbers come off a device or simulator, not out of a test.**
+`xcodebuild` will not host an SPM test bundle on a device destination, so the
+instrument is the shipping binary under `OSSignposter`:
+
+```bash
+./scripts/measure-device.sh devices           # what is connected
+./scripts/measure-device.sh install           # Release build -> the device
+./scripts/measure-device.sh launch 4          # cold launch, n runs, unattended
+./scripts/measure-device.sh signposts 60      # signpost intervals while you drive it
+./scripts/measure-device.sh hitches 30        # scroll hitches while you scroll History
+```
+
+`ATTEMPT_DEVICE=<udid>` picks the device when more than one is connected, and
+is also how a booted simulator is measured. `scripts/make-scale-backup.py`
+grows a real backup to a target set count (`--sets`, default 15,000) to restore
+as a fixture.
+
 ## Conventions
 
 **Concurrency.** Packages build with `.defaultIsolation(nil)`, so declarations are
