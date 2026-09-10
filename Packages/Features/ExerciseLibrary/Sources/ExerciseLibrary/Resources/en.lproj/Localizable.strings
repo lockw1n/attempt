@@ -363,11 +363,12 @@
 "exerciselibrary.detail.training-max.none" = "No training max yet. Set one and a logged load can be read as a percentage of it.";
 "exerciselibrary.detail.training-max.none-line" = "No training max";
 "exerciselibrary.detail.training-max.not-yet" = "No training max in force yet. The changes below all take effect on a later date.";
-"exerciselibrary.detail.training-max.not-yet-line" = "No training max in force yet";
+"exerciselibrary.detail.training-max.not-yet-line" = "None in force yet";
 "exerciselibrary.detail.training-max.error" = "This exercise's training max could not be read.";
 "exerciselibrary.detail.training-max.write-error" = "This training max could not be saved.";
 "exerciselibrary.detail.training-max.set-action" = "Set training max";
 "exerciselibrary.detail.training-max.set-one" = "Set one";
+"exerciselibrary.detail.training-max.change-one" = "Change";
 "exerciselibrary.detail.training-max.change-action" = "Change training max";
 "exerciselibrary.detail.training-max.history" = "History";
 "exerciselibrary.detail.training-max.history.expanded" = "Shown";

@@ -103,14 +103,14 @@ struct TrainingMaxSectionTests {
     func theNeverEnteredAbsenceIsShortAndStillExplains() {
         #expect(TrainingMaxScreenState.none(history: []).absence == .never)
         #expect(String(localized: TrainingMaxAbsence.never.line) == "No training max")
-        guard let hint = TrainingMaxAbsence.never.hint else {
-            Issue.record("The short line is a shortening, so there is a sentence behind it.")
-            return
-        }
         #expect(
-            String(localized: hint)
+            String(localized: TrainingMaxAbsence.never.hint)
                 == "No training max yet. Set one and a logged load can be read as a percentage "
                 + "of it.")
+        // Nothing has been entered, so the offer is to set one — said short on the button and in
+        // full to VoiceOver.
+        #expect(String(localized: TrainingMaxAbsence.never.command) == "Set one")
+        #expect(String(localized: TrainingMaxAbsence.never.commandLabel) == "Set training max")
     }
 
     /// The other absence, and it is a different statement: the lifter has entered a number, and
@@ -122,20 +122,26 @@ struct TrainingMaxSectionTests {
         let entry = Self.entry(effectiveFrom: .now)
 
         #expect(TrainingMaxScreenState.none(history: [entry]).absence == .notInForceYet)
+        // No subject in the line: this one is drawn inside the card, under a heading already
+        // reading `Training max`. The hint is where the whole sentence is.
+        #expect(String(localized: TrainingMaxAbsence.notInForceYet.line) == "None in force yet")
         #expect(
-            String(localized: TrainingMaxAbsence.notInForceYet.line)
-                == "No training max in force yet")
-        guard let hint = TrainingMaxAbsence.notInForceYet.hint else {
-            Issue.record("The short line is a shortening, so there is a sentence behind it.")
-            return
-        }
-        #expect(
-            String(localized: hint)
+            String(localized: TrainingMaxAbsence.notInForceYet.hint)
                 == "No training max in force yet. The changes below all take effect on a later "
                 + "date.")
+        // THE COMMAND IS A CHANGE, NOT A SET, and this is the assertion the sentence's own argument
+        // implies: the lifter has entered numbers, they are listed directly below this line, and
+        // offering to "set one" over them calls the entries they made nothing.
+        #expect(String(localized: TrainingMaxAbsence.notInForceYet.command) == "Change")
+        #expect(
+            String(localized: TrainingMaxAbsence.notInForceYet.commandLabel)
+                == "Change training max")
         // Neither absence borrows the other's words: they are different statements about the same
-        // exercise, and a history of three called "no training max" would call it nothing.
+        // exercise, in the sentence and in the command alike.
         #expect(TrainingMaxAbsence.never.line != TrainingMaxAbsence.notInForceYet.line)
+        #expect(TrainingMaxAbsence.never.command != TrainingMaxAbsence.notInForceYet.command)
+        #expect(
+            TrainingMaxAbsence.never.commandLabel != TrainingMaxAbsence.notInForceYet.commandLabel)
     }
 
     /// The line is drawn for an absence and for nothing else: a number, a spinner and a diagnostic

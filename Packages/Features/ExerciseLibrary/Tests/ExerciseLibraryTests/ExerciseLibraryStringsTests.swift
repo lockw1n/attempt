@@ -64,9 +64,13 @@ struct ExerciseLibraryStringsTests {
     func theTrainingMaxLineAndSheetCopyRead() {
         #expect(String(localized: ExerciseLibraryStrings.trainingMaxNoneLine) == "No training max")
         #expect(String(localized: ExerciseLibraryStrings.trainingMaxSetOneAction) == "Set one")
-        // The same command in full, which is what VoiceOver is given: "Set one" read out on its
-        // own is a fragment of the line it was written to end.
+        #expect(String(localized: ExerciseLibraryStrings.trainingMaxChangeOneAction) == "Change")
+        // The same two commands in full, which is what VoiceOver is given: two words written to
+        // end a line are a fragment read out on their own.
         #expect(String(localized: ExerciseLibraryStrings.trainingMaxSetAction) == "Set training max")
+        #expect(
+            String(localized: ExerciseLibraryStrings.trainingMaxChangeAction)
+                == "Change training max")
         #expect(String(localized: ExerciseLibraryStrings.trainingMaxFormTitle) == "Training max")
         #expect(String(localized: ExerciseLibraryStrings.trainingMaxWeightLabel) == "Weight")
     }

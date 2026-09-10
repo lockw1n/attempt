@@ -177,11 +177,17 @@ struct TrainingMaxEditorContent: View {
                 // Unbounded in both directions, unlike the bodyweight form's: a training max is
                 // announced for a block that has not started yet as often as it is backdated, and
                 // `trainingMax(forExerciseID:on:)` resolves a future entry as one not yet in force.
+                //
+                // `.labelsHidden()` on the note field's rule, and for `FR-17.5.2`'s reason one row
+                // up: the section heading already says *In force from*, and the picker repeating it
+                // is the same word twice in one card. Hidden rather than deleted, because it is
+                // still what VoiceOver announces the control by (`G-4.2`).
                 DatePicker(selection: $draft.effectiveFrom, displayedComponents: .date) {
                     Text(ExerciseLibraryStrings.trainingMaxDateLabel)
                         .font(Typography.body.font)
                         .foregroundStyle(ColorToken.textPrimary)
                 }
+                .labelsHidden()
                 .tint(ColorToken.brandAccent)
                 Text(ExerciseLibraryStrings.trainingMaxDateHint)
                     .font(Typography.caption.font)

@@ -216,11 +216,12 @@
 "exerciselibrary.detail.training-max.none" = "Тренувального максимуму ще немає. Задайте його, і записану вагу можна буде читати як відсоток від нього.";
 "exerciselibrary.detail.training-max.none-line" = "Максимуму немає";
 "exerciselibrary.detail.training-max.not-yet" = "Чинного тренувального максимуму ще немає. Усі зміни нижче набувають чинності пізніше.";
-"exerciselibrary.detail.training-max.not-yet-line" = "Чинного максимуму ще немає";
+"exerciselibrary.detail.training-max.not-yet-line" = "Чинного ще немає";
 "exerciselibrary.detail.training-max.error" = "Не вдалося прочитати тренувальний максимум цієї вправи.";
 "exerciselibrary.detail.training-max.write-error" = "Не вдалося зберегти цей тренувальний максимум.";
 "exerciselibrary.detail.training-max.set-action" = "Задати тренувальний максимум";
 "exerciselibrary.detail.training-max.set-one" = "Задати";
+"exerciselibrary.detail.training-max.change-one" = "Змінити";
 "exerciselibrary.detail.training-max.change-action" = "Змінити тренувальний максимум";
 "exerciselibrary.detail.training-max.history" = "Історія";
 "exerciselibrary.detail.training-max.history.expanded" = "Показано";

@@ -51,7 +51,11 @@ enum TrainingMaxScreenState: Equatable {
 
     /// Which absence this is, or `nil` where a number, a spinner or a diagnostic is drawn instead.
     ///
-    /// - Returns: The sentence the line says, as a case.
+    /// **The one place `history.isEmpty` decides anything.** The view asks this and never re-reads
+    /// the array: the two absences differ in their sentence *and* in their command, and a second
+    /// reader is how those two halves came apart.
+    ///
+    /// - Returns: The absence, and with it the words the line and its command get.
     var absence: TrainingMaxAbsence? {
         guard case .none(let history) = self else { return nil }
         return history.isEmpty ? .never : .notInForceYet
@@ -203,9 +207,9 @@ struct TrainingMaxReading: View {
     /// other state keeps the heading — including the absence that has a history under it, which
     /// needs one for the disclosure to be the history *of* something.
     @ViewBuilder var body: some View {
-        if case .none(let history) = state, history.isEmpty {
+        if let absence = state.absence, absence == .never {
             VStack(alignment: .leading, spacing: Spacing.sm.points) {
-                absentLine(.never)
+                absentLine(absence)
                 writeFailure
             }
         } else {
@@ -226,7 +230,12 @@ struct TrainingMaxReading: View {
             command(Text(ExerciseLibraryStrings.trainingMaxChangeAction))
             disclosedHistory(history)
         case .none(let history):
-            absentLine(.notInForceYet)
+            // Which absence this is comes from ``TrainingMaxScreenState/absence`` rather than from
+            // `history` again: the rule has one home, and the view reading it a second time is how
+            // the line and its command came to disagree.
+            if let absence = state.absence {
+                absentLine(absence)
+            }
             disclosedHistory(history)
         case .failed:
             ErrorStateView(
@@ -259,34 +268,28 @@ struct TrainingMaxReading: View {
     ///
     /// - Parameter absence: Which of the two absences this is.
     /// - Returns: The line.
-    @ViewBuilder private func absentLine(_ absence: TrainingMaxAbsence) -> some View {
+    private func absentLine(_ absence: TrainingMaxAbsence) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Spacing.sm.points) {
             sentence(absence)
             Button(action: change) {
-                Text(ExerciseLibraryStrings.trainingMaxSetOneAction)
+                Text(absence.command)
             }
             .buttonStyle(.secondaryAction)
-            // Said in full, because "Set one" is a fragment of the line beside it and VoiceOver
-            // reads a control on its own.
-            .accessibilityLabel(Text(ExerciseLibraryStrings.trainingMaxSetAction))
+            .accessibilityLabel(Text(absence.commandLabel))
         }
     }
 
-    /// The line's own words, with the sentence they were shortened from where there is one.
+    /// The line's own words, with the sentence they were shortened from behind them.
     ///
     /// - Parameter absence: Which of the two absences this is.
     /// - Returns: The text.
-    @ViewBuilder private func sentence(_ absence: TrainingMaxAbsence) -> some View {
-        let line = Text(absence.line)
+    private func sentence(_ absence: TrainingMaxAbsence) -> some View {
+        Text(absence.line)
             .font(Typography.body.font)
             .foregroundStyle(ColorToken.textSecondary)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-        if let hint = absence.hint {
-            line.accessibilityHint(Text(hint))
-        } else {
-            line
-        }
+            .accessibilityHint(Text(absence.hint))
     }
 
     /// `FR-15.1.4`'s history behind its disclosure, where the exercise has any.

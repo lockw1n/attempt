@@ -50,6 +50,11 @@ extension ExerciseLibraryStrings {
     /// the exercise *has* a training max the lifter entered, and what it has not got is one in
     /// force yet. Saying "no training max" over a history of three would call the lifter's own
     /// entries nothing.
+    ///
+    /// **It names no subject, because this line is the only one drawn inside the card**, under a
+    /// heading already reading *Training max*. Naming it again ran the line onto a second row at
+    /// the default type size beside its command, which is the shape ``trainingMaxNoneLine`` exists
+    /// to avoid. The whole sentence survives as the hint.
     static let trainingMaxNotYetLine = resource("exerciselibrary.detail.training-max.not-yet-line")
 
     /// What the changes under it are waiting for — ``trainingMaxNotYetLine``'s whole sentence, read
@@ -62,17 +67,27 @@ extension ExerciseLibraryStrings {
     /// The change could not be stored. Nothing moved, so the retry is the same command.
     static let trainingMaxWriteError = resource("exerciselibrary.detail.training-max.write-error")
 
-    /// The line's own command (`FR-17.5.1`), two words because it sits inside a sentence.
+    /// The line's own command where nothing has ever been entered (`FR-17.5.1`), two words because
+    /// it sits inside a sentence.
     ///
     /// **Its VoiceOver label is ``trainingMaxSetAction``**, which is the same command said in full:
     /// "Set one" reads as a fragment out of the line it was written for.
     static let trainingMaxSetOneAction = resource("exerciselibrary.detail.training-max.set-one")
 
+    /// The line's own command where entries exist and none is in force yet (`FR-17.5.1`).
+    ///
+    /// **Not ``trainingMaxSetOneAction``, and the difference is the lifter's own history.** Offering
+    /// to *set one* over a list of numbers they have already set calls those entries nothing —
+    /// which is ``trainingMaxNotYetLine``'s argument, applied to the command rather than only to
+    /// the sentence. Its VoiceOver label is ``trainingMaxChangeAction``.
+    static let trainingMaxChangeOneAction =
+        resource("exerciselibrary.detail.training-max.change-one")
+
     /// The command where there is no number yet, said in full — the card's label until `FR-17.5.1`
     /// made that state a line, and ``trainingMaxSetOneAction``'s label since.
     static let trainingMaxSetAction = resource("exerciselibrary.detail.training-max.set-action")
 
-    /// The command where there is one (`FR-16.7.2`).
+    /// The command where there is one (`FR-16.7.2`), and ``trainingMaxChangeOneAction``'s label.
     static let trainingMaxChangeAction =
         resource("exerciselibrary.detail.training-max.change-action")
 
@@ -179,7 +194,7 @@ extension ExerciseLibraryStrings {
             trainingMaxSection, trainingMaxValue, trainingMaxNone, trainingMaxNoneLine,
             trainingMaxNotYet, trainingMaxNotYetLine, trainingMaxError,
             trainingMaxWriteError, trainingMaxSetAction, trainingMaxSetOneAction,
-            trainingMaxChangeAction,
+            trainingMaxChangeAction, trainingMaxChangeOneAction,
             trainingMaxHistory, trainingMaxHistoryExpanded, trainingMaxHistoryCollapsed,
             trainingMaxSince("1 May"), trainingMaxSince("1 May", note: "coach"),
             trainingMaxChange(from: "170 kg", to: "180 kg"), trainingMaxFirst("180 kg"),
