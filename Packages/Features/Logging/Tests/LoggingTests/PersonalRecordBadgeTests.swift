@@ -225,32 +225,50 @@ struct PersonalRecordBadgeTests {
     /// where `boundsRefuse` already holds it: the defect was a badge, and what a badge says is the
     /// end of a pipeline — the calculator, the cache, the marks read, `RecordBadge(marks:)`. A
     /// refusal at the head of it is not evidence about the tail.
-    @Test("A run past the rep bound draws no badge, rather than a badge naming a clamped cell")
-    func aRunPastTheRepBoundDrawsNoBadge() async throws {
+    ///
+    /// **Both bounds, since they are one rule read in two dimensions.** The walk only ever saw the
+    /// rep half, and a test shaped around what was seen would leave the set half asserted nowhere
+    /// but at the calculator — which is precisely the substitution the paragraph above refuses.
+    @Test("A run past either bound draws no badge, rather than a badge naming a clamped cell")
+    func aRunPastEitherBoundDrawsNoBadge() async throws {
+        // The rep bound, which is the one the walk saw: twelve reps against a table ending at ten.
+        let (long, longFirst) = try await runOfSquats(reps: 12, count: 3)
+        // No cell at all — not the 10-rep row, and not the one-set column either.
+        #expect(marks(long, longFirst.id).isEmpty)
+        #expect(repMaxMarks(long, longFirst.id).isEmpty)
+        #expect(badge(long, longFirst.id) == nil)
+
+        // The set bound, in the other dimension and on the same argument — eight sets is not six.
+        // Asserted here because ``cell(for:)``'s refusal covers both bounds and this test's own
+        // premise is that the head of the pipeline is not evidence about its tail: until T-1.92's
+        // review only the rep half had a badge-end assertion, so half the claim rested on the
+        // argument it was written to distrust.
+        let (many, manyFirst) = try await runOfSquats(reps: 5, count: 7)
+        #expect(marks(many, manyFirst.id).isEmpty)
+        #expect(repMaxMarks(many, manyFirst.id).isEmpty)
+        #expect(badge(many, manyFirst.id) == nil)
+
+        // And each run just inside its own bound still badges, so what is asserted above is the
+        // bound rather than the fixture failing to write anything.
+        let (atRepBound, atRepBoundFirst) = try await runOfSquats(reps: 10, count: 3)
+        #expect(badge(atRepBound, atRepBoundFirst.id)?.scheme == RecordScheme(reps: 10, sets: 3))
+        let (atSetBound, atSetBoundFirst) = try await runOfSquats(reps: 5, count: 6)
+        #expect(badge(atSetBound, atSetBoundFirst.id)?.scheme == RecordScheme(reps: 5, sets: 6))
+    }
+
+    /// A workout holding one run of `count` identical sets at `reps`, and the set the run starts at.
+    ///
+    /// One load for every fixture here, because the bound under test is the run's shape and a second
+    /// varying quantity would be a second reason a mark could be absent.
+    private func runOfSquats(reps: Int, count: Int) async throws -> (Workout, SetEntry) {
         let (workout, entryID) = try await startedSquat()
-        for _ in 0..<3 {
+        for _ in 0..<count {
             await workout.store.addSet(
                 toEntryID: entryID,
                 values: SetEntryValues(
-                    weight: Weight(grams: 120_000), reps: 12, rpe: nil, isWarmup: false))
+                    weight: Weight(grams: 120_000), reps: reps, rpe: nil, isWarmup: false))
         }
-
-        let first = try await loggedSet(workout, entryID, at: 0)
-        // No cell at all — not the 10-rep row, and not the one-set column either.
-        #expect(marks(workout, first.id).isEmpty)
-        #expect(repMaxMarks(workout, first.id).isEmpty)
-        #expect(badge(workout, first.id) == nil)
-        // And the run just inside the bound still badges, so what is asserted above is the bound
-        // rather than the fixture failing to write anything.
-        let (inside, insideEntryID) = try await startedSquat()
-        for _ in 0..<3 {
-            await inside.store.addSet(
-                toEntryID: insideEntryID,
-                values: SetEntryValues(
-                    weight: Weight(grams: 120_000), reps: 10, rpe: nil, isWarmup: false))
-        }
-        let insideFirst = try await loggedSet(inside, insideEntryID, at: 0)
-        #expect(badge(inside, insideFirst.id)?.scheme == RecordScheme(reps: 10, sets: 3))
+        return (workout, try await loggedSet(workout, entryID, at: 0))
     }
 
     /// Dropping the workout drops the marks with it: a badge is a claim about the workout on screen.
