@@ -212,8 +212,11 @@ public actor PersonalRecordRecomputer {
     ///
     /// A failure is swallowed, for ``setDidChange(inEntryID:)``'s reason.
     ///
+    /// Internal rather than private on ``workouts``' rule: `FR-1.11.4`'s bulk trigger lives in
+    /// its own file and is the same refresh, once per exercise instead of once per session.
+    ///
     /// - Parameter exerciseID: The exercise whose sets moved.
-    private func refreshRecords(forExerciseID exerciseID: UUID) async {
+    func refreshRecords(forExerciseID exerciseID: UUID) async {
         guard (try? await walked(exerciseID, writingCache: true)) != nil else { return }
         publish(.exercise(exerciseID))
     }
@@ -369,17 +372,7 @@ public actor PersonalRecordRecomputer {
         // that is what it computed. See ``writeGenerations``.
         if writingCache, writeGenerations[exerciseID] == generation {
             try await cache.replacePersonalRecords(
-                forExerciseID: exerciseID,
-                with: schemeRecords.map {
-                    PersonalRecordCacheValues(
-                        repCount: $0.scheme.reps,
-                        setCount: $0.scheme.sets,
-                        weight: $0.record.weight,
-                        sourceSetID: $0.record.sourceSetID,
-                        achievedAt: $0.record.achievedAt,
-                        previousWeight: $0.previous,
-                        computationVersion: PersonalRecordCalculator.computationVersion)
-                })
+                forExerciseID: exerciseID, with: Self.cacheValues(for: schemeRecords))
         }
 
         return Walk(

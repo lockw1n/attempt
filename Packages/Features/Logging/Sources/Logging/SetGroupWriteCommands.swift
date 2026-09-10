@@ -109,7 +109,7 @@ extension ActiveSessionStore {
         } catch {
             exercisesWriteFailure = String(describing: error)
         }
-        if written > 0 { await records.setDidChange(inEntryID: entryID) }
+        if written > 0 { announceSetChange(inEntryID: entryID) }
         await loadExercises()
     }
 
@@ -117,9 +117,10 @@ extension ActiveSessionStore {
     private func writeRewrittenGroup(inEntryID entryID: UUID, rows: [SetEntryValues]) async {
         guard let current = session else { return }
         do {
-            try await SetGroupRewrite(repository: repository, records: records)
+            let changed = try await SetGroupRewrite(repository: repository)
                 .rewrite(inEntryID: entryID, to: rows)
             try await markDone(entryID: entryID, ofSessionID: current.id)
+            if changed { announceSetChange(inEntryID: entryID) }
             exercisesWriteFailure = nil
         } catch {
             exercisesWriteFailure = String(describing: error)

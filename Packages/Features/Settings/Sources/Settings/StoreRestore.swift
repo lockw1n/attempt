@@ -194,10 +194,16 @@ struct StoreRestore {
     ///
     /// **`TR-0.3.9`'s cached records are not in the file and are recomputed afterwards** (`G-1.4`).
     /// Left out, every personal-record badge and estimated-max tile would read whatever the device
-    /// held before the restore until the next qualifying set was logged. The recompute is per
-    /// restored session, which is the granularity that touches only the exercises the file actually
-    /// trained, and it swallows its own failures for the reason `PersonalRecordRecomputer` gives:
-    /// the cache is then stale rather than wrong, and a stale one recomputes on the next read.
+    /// held before the restore until the next qualifying set was logged. It swallows its own
+    /// failures for the reason `PersonalRecordRecomputer` gives: the cache is then stale rather than
+    /// wrong, and a stale one recomputes on the next read.
+    ///
+    /// **Once per distinct exercise, after every session has landed** — not once per session, which
+    /// is what it was and what made a large restore quadratic. An exercise trained fifty times was
+    /// walked fifty times, and each walk read a store the previous ones had grown; measured, five
+    /// times the sets cost twenty-one times the time, so a lifter with three years of training
+    /// could not restore a backup at all. The exercises come off `archive.entries`, which is already
+    /// in hand and is at least as wide as walking the sessions was.
     ///
     /// - Parameter archive: The file, already accepted by ``archive(from:)``.
     /// - Returns: What was written.
@@ -212,7 +218,7 @@ struct StoreRestore {
             try await settings.restorePreferences(from: restored)
         }
 
-        for session in archive.sessions { await records.sessionDidChange(id: session.id) }
+        await records.exercisesDidChange(ids: archive.entries.map(\.exerciseID))
         return BackupSummary(archive)
     }
 

@@ -355,9 +355,11 @@ struct PersonalRecordRecomputerTests {
 
         await recomputer.sessionDidChange(id: entry.sessionID)
 
+        // One row, and it is the confirmed-zero marker rather than a record: the discard left the
+        // exercise holding nothing, and *that* is what the walk stored (`OUT-17.4`).
         let squatCache = try await log.repositories.personalRecords.personalRecords(
             forExerciseID: squat, includingDeleted: false)
-        #expect(squatCache.isEmpty)
+        #expect(squatCache.map(\.isConfirmedZero) == [true])
         // The other exercise trained that day was in a different session and is untouched.
         let benchSets = try await log.repositories.workouts.sets(
             forExerciseID: bench, includingDeleted: false)

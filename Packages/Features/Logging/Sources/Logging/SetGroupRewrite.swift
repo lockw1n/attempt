@@ -28,22 +28,22 @@ import RepositoryInterface
 /// left that way a whole group of them would be marked done with no completed working set behind
 /// it — which is how a skip is derived (`TR-17.4`), so the sheet's answer would read as *Skipped*.
 ///
-/// **One announcement, at the end, and only where something moved** (`NFR-17.3`, `FR-1.6.4`).
+/// **It announces nothing, and the host does** (`FR-1.6.4`, `NFR-1.2`). ``LoggedSetWriter``'s rule
+/// is the opposite one and stays right for it — an edit reachable from two screens is announced by
+/// the writer so neither can forget. The difference is timing rather than reachability: this is on
+/// `NFR-1.2`'s budget from a workout in progress, where the announcement is made without waiting,
+/// and off it from a past session, where waiting is what keeps that screen's badge in the same
+/// interaction. A writer cannot pick between those, so it returns whether anything moved and lets
+/// each host answer for itself.
 public struct SetGroupRewrite: Sendable {
     /// The sets, and the entries they are read by.
     private let repository: any WorkoutRepository
 
-    /// What is told that the group moved.
-    private let records: PersonalRecordRecomputer
-
     /// Builds the rewrite over the repository the sets live in.
     ///
-    /// - Parameters:
-    ///   - repository: Sessions, their entries and their sets.
-    ///   - records: The app's one recompute actor.
-    public init(repository: any WorkoutRepository, records: PersonalRecordRecomputer) {
+    /// - Parameter repository: Sessions, their entries and their sets.
+    public init(repository: any WorkoutRepository) {
         self.repository = repository
-        self.records = records
     }
 
     /// Rewrites the entry's sets to `rows`.
@@ -83,7 +83,6 @@ public struct SetGroupRewrite: Sendable {
             try await repository.deleteSet(id: surplus.id)
             changed = true
         }
-        if changed { await records.setDidChange(inEntryID: entryID) }
         return changed
     }
 

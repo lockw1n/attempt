@@ -154,7 +154,7 @@ extension ActiveSessionStore {
         do {
             for entryID in entryIDs {
                 try await writeAnswerAsPlanned(inEntryID: entryID, ofSessionID: current.id)
-                await records.setDidChange(inEntryID: entryID)
+                announceSetChange(inEntryID: entryID)
             }
             exercisesWriteFailure = nil
         } catch {
@@ -206,7 +206,7 @@ extension ActiveSessionStore {
                 // — it is not completed — so removing one changes nothing the cache holds, and an
                 // announcement per skipped row would be a catalogue walk per tap.
                 if !pending.isEmpty {
-                    await records.setDidChange(inEntryID: entryID)
+                    announceSetChange(inEntryID: entryID)
                 }
             }
             exercisesWriteFailure = nil

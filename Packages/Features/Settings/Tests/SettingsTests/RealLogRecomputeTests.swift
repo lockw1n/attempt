@@ -70,12 +70,13 @@ struct RealLogRecomputeTests {
         let archive = try StoreRestore.archive(from: data)
         let clock = ContinuousClock()
 
-        // The restore is reported, never asserted on. Its fan-out is `O(sessions × per-exercise
-        // walk)` — `StoreRestore.restore(_:)` calls `sessionDidChange(id:)` once per restored
-        // session and each one refreshes every exercise that session touched, so an exercise
-        // trained fifty times is walked fifty times over its whole history. That shape is not the
-        // one `NFR-16.1` budgets; printing it beside the figure that is, is what makes the
-        // difference visible.
+        // The restore is reported, never asserted on — it is a whole-catalogue sweep, which is not
+        // the shape `NFR-16.1` budgets, and printing it beside the figure that is keeps the
+        // difference visible. **T-1.93 took the fan-out out of it**: it announced once per restored
+        // session and each announcement walked every exercise that session touched, so an exercise
+        // trained fifty times was walked fifty times over its whole history. It is now one walk per
+        // distinct exercise, after every session has landed. The figure below is what that costs;
+        // `RestoreFanOutTests` is what holds the shape, since a clock cannot.
         let restoreElapsed = try await clock.measure {
             try await RealLogBackup.restore(into: stack, records: recomputer).restore(archive)
         }
@@ -128,7 +129,11 @@ struct RealLogRecomputeTests {
         let slowest = slowestIndex.map { perExercise[$0] } ?? .zero
         let slowestSets = slowestIndex.flatMap { setCounts[catalogue[$0].id] } ?? 0
 
+        // `OUT-17.4`'s markers are dropped once, here, and every claim below is about records.
+        // One is written per exercise holding none — 132 of them on a catalogue this size — so a
+        // count that kept them would report a cache four times the size of the records in it.
         let cached = try await stack.personalRecords.personalRecords(includingDeleted: false)
+            .filter { !$0.isConfirmedZero }
         // What the write side costs now that a run writes one cell (`FR-17.2.1`). A row at one set
         // is `FR-1.6.1`'s column; the rest are the schemes this lifter actually trains in groups,
         // where under the withdrawn dominance rule they were the rectangle beneath every one.
@@ -220,6 +225,12 @@ struct RealLogRecomputeTests {
     /// row, not two, and a scheme performed only at a load already standing writes nothing at all;
     /// so the cache is properly contained in what was performed, and asserting equality would fail
     /// on every tie the log holds.
+    ///
+    /// **`OUT-17.4`'s markers are already out of `cached` when this is called**, and they have to
+    /// be: the marker occupies the `0 × 0` cell precisely because nothing can be performed there, so
+    /// it is *by construction* a row at a scheme never performed — the exact thing this catches.
+    /// Excluded at the caller's read rather than tolerated in the predicate here, so what is
+    /// compared is still every row claiming a record.
     ///
     /// - Parameters:
     ///   - stack: The restored store.

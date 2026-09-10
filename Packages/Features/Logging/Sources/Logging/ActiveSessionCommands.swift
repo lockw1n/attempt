@@ -393,7 +393,7 @@ extension ActiveSessionStore {
                     completedAt: now
                 )
             )
-            await records.setDidChange(inEntryID: entryID)
+            announceSetChange(inEntryID: entryID)
             exercisesWriteFailure = nil
         } catch {
             exercisesWriteFailure = String(describing: error)

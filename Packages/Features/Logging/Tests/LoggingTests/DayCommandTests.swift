@@ -338,6 +338,10 @@ struct DayCommandTests {
         await day.answerAsPlanned(rowID: try #require(day.rows.first).id)
 
         #expect(day.isDone)
+        // The answer announces without waiting (`NFR-1.2`), so the badge is what the refresh chain
+        // publishes rather than what the tap returned — and the assertion has to wait for it or it
+        // is asserting on whichever continuation ran first.
+        await day.store.settleRecordRefresh()
         #expect(!(try #require(day.rows.first).records.isEmpty))
     }
 
@@ -349,6 +353,7 @@ struct DayCommandTests {
 
         await day.skipRemaining()
 
+        await day.store.settleRecordRefresh()
         #expect(try #require(day.rows.first).records.isEmpty)
     }
 }

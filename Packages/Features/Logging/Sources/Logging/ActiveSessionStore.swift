@@ -105,12 +105,29 @@ public final class ActiveSessionStore {
 
     /// Which of the workout's sets hold a personal record (`FR-1.6.3`).
     ///
-    /// **Refreshed inside ``loadExercises()`` rather than by a call of its own**, which is what makes
-    /// the badge appear in the same interaction the set was logged in. Every writer of a set column
-    /// already `await`s `PersonalRecordRecomputer.setDidChange(inEntryID:)` and *then* re-reads the
-    /// list, so by the time this runs the recompute has written the cache and the read below is a
-    /// cache hit — the confirmed answer, with no optimistic mark to correct afterwards.
-    private(set) var personalRecords = SessionRecordMarks()
+    /// **Read inside ``loadExercises()``, and again behind the write that moved it** (`NFR-1.2`).
+    /// It used to be only the first, because every set writer `await`ed
+    /// `PersonalRecordRecomputer.setDidChange(inEntryID:)` before re-reading the list — the
+    /// confirmed answer inside the interaction that logged the set, with no optimistic mark to
+    /// correct. Measured on a three-year store that cost 147 ms of a 221 ms tap, against a budget of
+    /// 100 ms: the walk is `NFR-1.6`'s and it was being spent inside a budget five times smaller.
+    /// The logging commands now announce without waiting (``announceSetChange(inEntryID:)``), so the
+    /// row appears on the cache's previous answer and this lands a moment later. Still confirmed and
+    /// never optimistic — what moved is when, not what.
+    ///
+    /// Settable across the module rather than only within this file, on ``exercisesWriteFailure``'s
+    /// rule: the refresh that publishes it is in `SessionRecordRefresh.swift`, and `private` is
+    /// file-scoped. Nothing outside `Logging` can write it.
+    var personalRecords = SessionRecordMarks()
+
+    /// The chain the recompute and the badge re-read run in, behind the write (`NFR-1.2`).
+    ///
+    /// Its own chain rather than ``pendingWrite``'s, which is the whole point: a command that joined
+    /// this one would be waiting for the walk again.
+    ///
+    /// Internal rather than private because the three methods over it live in a file of their own —
+    /// `private` is file-scoped, and this type is four files.
+    var recordRefresh: Task<Void, Never>?
 
     /// The unit a load is entered and shown in (`G-3.1`, `G-3.2`, `FR-1.10.2`).
     ///

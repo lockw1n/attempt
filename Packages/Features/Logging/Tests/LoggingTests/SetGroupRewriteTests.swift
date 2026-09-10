@@ -131,15 +131,10 @@ struct SetGroupRewriteTests {
         try await workout.repositories.workouts.save(
             Self.pending(entryID: entryID, grams: 80_000, reps: 5))
 
-        try await SetGroupRewrite(
-            repository: workout.repositories.workouts,
-            records: PersonalRecordRecomputer(
-                workouts: workout.repositories.workouts,
-                cache: workout.repositories.personalRecords)
-        )
-        .rewrite(
-            inEntryID: entryID,
-            to: [SetEntryValues(weight: Weight(grams: 80_000), reps: 4, rpe: nil, isWarmup: false)])
+        try await SetGroupRewrite(repository: workout.repositories.workouts)
+            .rewrite(
+                inEntryID: entryID,
+                to: [SetEntryValues(weight: Weight(grams: 80_000), reps: 4, rpe: nil, isWarmup: false)])
 
         let stored = try await workout.repositories.workouts.sets(
             forEntryID: entryID, includingDeleted: false)
@@ -269,13 +264,8 @@ struct SetGroupRewriteTests {
         /// - Returns: Whether anything was written.
         @discardableResult
         func rewrite(to rows: [SetEntryValues]) async throws -> Bool {
-            try await SetGroupRewrite(
-                repository: workout.repositories.workouts,
-                records: PersonalRecordRecomputer(
-                    workouts: workout.repositories.workouts,
-                    cache: workout.repositories.personalRecords)
-            )
-            .rewrite(inEntryID: entryID, to: rows)
+            try await SetGroupRewrite(repository: workout.repositories.workouts)
+                .rewrite(inEntryID: entryID, to: rows)
         }
 
         /// The entry's sets, in order.

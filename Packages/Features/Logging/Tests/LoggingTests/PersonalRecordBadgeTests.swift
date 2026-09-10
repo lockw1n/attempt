@@ -10,13 +10,19 @@ import Testing
 /// `FR-1.6.3` — the badge appears on a set the moment it is logged.
 ///
 /// **"The same interaction" is what these are actually about, and it is a claim about the write
-/// path rather than about a view.** Every command that writes a set column `await`s
-/// `PersonalRecordRecomputer.setDidChange(inEntryID:)` and *then* calls `loadExercises()`, which is
-/// where the marks are read; so a single `await` on the command is the whole interaction, and a mark
-/// that is not there when it returns is a mark the user would have had to refresh to see.
+/// path rather than about a view.** The logging commands hand the recompute to
+/// `ActiveSessionStore.announceSetChange(inEntryID:)` and return without waiting for it, so the
+/// interaction is the command's `await` *plus* that chain — which is what
+/// `settleRecordRefresh()` below waits for. A mark that is not there once it has settled is a mark
+/// the user would have had to refresh to see.
 ///
-/// That ordering is why nothing here is optimistic: the value read is the recomputed one, from
-/// `G-1.5`'s cache, and there is no provisional mark to correct afterwards.
+/// **Every read here settles first, and none of them may stop doing so.** The walk behind a set is
+/// `NFR-1.6`'s budget and the tap is `NFR-1.2`'s, five times smaller; an assertion taken on the
+/// command's own `await` would pass or fail on which continuation the main actor happened to run
+/// first, which is a race that passes far more often than it fails.
+///
+/// Nothing here is optimistic even so: the value read is the recomputed one, from `G-1.5`'s cache,
+/// and there is no provisional mark to correct afterwards. What moved is when it is published.
 @MainActor
 @Suite("Personal record badge")
 struct PersonalRecordBadgeTests {
@@ -28,20 +34,21 @@ struct PersonalRecordBadgeTests {
         return (workout, card.id)
     }
 
-    /// The cells the store says `setID` stands at.
-    private func marks(_ workout: Workout, _ setID: UUID) -> [SchemeMark] {
-        workout.store.personalRecords.marks(forSetID: setID)
+    /// The cells the store says `setID` stands at, once the recompute behind the write has landed.
+    private func marks(_ workout: Workout, _ setID: UUID) async -> [SchemeMark] {
+        await workout.store.settleRecordRefresh()
+        return workout.store.personalRecords.marks(forSetID: setID)
     }
 
     /// The N's among them that stand at a single set — `FR-1.6.1`'s column of `FR-16.2.1`'s table,
     /// which since `FR-17.2.1` is at most one N.
-    private func repMaxMarks(_ workout: Workout, _ setID: UUID) -> [Int] {
-        marks(workout, setID).filter { $0.scheme.sets == 1 }.map(\.scheme.reps)
+    private func repMaxMarks(_ workout: Workout, _ setID: UUID) async -> [Int] {
+        await marks(workout, setID).filter { $0.scheme.sets == 1 }.map(\.scheme.reps)
     }
 
     /// What the badge over `setID` says, or `nil` where none is drawn.
-    private func badge(_ workout: Workout, _ setID: UUID) -> RecordBadge? {
-        RecordBadge(marks: marks(workout, setID))
+    private func badge(_ workout: Workout, _ setID: UUID) async -> RecordBadge? {
+        RecordBadge(marks: await marks(workout, setID))
     }
 
     /// The set logged at `position` under `entryID`.
@@ -65,14 +72,14 @@ struct PersonalRecordBadgeTests {
         // Nothing else is called: no reload, no navigation. The one command is the interaction.
         let logged = try await loggedSet(workout, entryID, at: 0)
         // One N, since `FR-17.2.1`: a set of five is the five-rep record and nothing below it.
-        #expect(repMaxMarks(workout, logged.id) == [5])
-        #expect(badge(workout, logged.id)?.scheme == RecordScheme(reps: 5, sets: 1))
+        #expect(await repMaxMarks(workout, logged.id) == [5])
+        #expect(await badge(workout, logged.id)?.scheme == RecordScheme(reps: 5, sets: 1))
         // The first time this scheme is performed it is `FR-16.2.3`'s baseline, so the badge says
         // *First* rather than *PR* — which is what keeps it agreeing with the feed (`FR-16.3.4`).
-        #expect(badge(workout, logged.id)?.isFirstPerformance == true)
-        #expect(String(localized: try #require(badge(workout, logged.id)).text) == "First · 5 reps")
+        #expect(await badge(workout, logged.id)?.isFirstPerformance == true)
+        #expect(String(localized: try #require(await badge(workout, logged.id)).text) == "First · 5 reps")
         #expect(
-            String(localized: try #require(badge(workout, logged.id)).label)
+            String(localized: try #require(await badge(workout, logged.id)).label)
                 == "First time, 5 reps")
     }
 
@@ -86,7 +93,7 @@ struct PersonalRecordBadgeTests {
             values: SetEntryValues(
                 weight: Weight(grams: 80_000), reps: 5, rpe: nil, isWarmup: false))
         let first = try await loggedSet(workout, entryID, at: 0)
-        #expect(badge(workout, first.id)?.isFirstPerformance == true)
+        #expect(await badge(workout, first.id)?.isFirstPerformance == true)
 
         await workout.store.addSet(
             toEntryID: entryID,
@@ -94,12 +101,12 @@ struct PersonalRecordBadgeTests {
                 weight: Weight(grams: 90_000), reps: 5, rpe: nil, isWarmup: false))
 
         let heavier = try await loggedSet(workout, entryID, at: 1)
-        let mark = try #require(badge(workout, heavier.id))
+        let mark = try #require(await badge(workout, heavier.id))
         #expect(mark.isFirstPerformance == false)
         #expect(String(localized: mark.text) == "PR · 5 reps")
         #expect(String(localized: mark.label) == "Personal record, 5 reps")
         // And the beaten set keeps no badge at all — the cache holds one row per cell.
-        #expect(marks(workout, first.id).isEmpty)
+        #expect(await marks(workout, first.id).isEmpty)
     }
 
     /// **The requirement's own example.** A set that beats an existing 3RM takes the badge, and the
@@ -113,7 +120,7 @@ struct PersonalRecordBadgeTests {
             values: SetEntryValues(
                 weight: Weight(grams: 100_000), reps: 3, rpe: nil, isWarmup: false))
         let first = try await loggedSet(workout, entryID, at: 0)
-        #expect(repMaxMarks(workout, first.id) == [3])
+        #expect(await repMaxMarks(workout, first.id) == [3])
 
         await workout.store.addSet(
             toEntryID: entryID,
@@ -121,8 +128,8 @@ struct PersonalRecordBadgeTests {
                 weight: Weight(grams: 110_000), reps: 3, rpe: nil, isWarmup: false))
 
         let heavier = try await loggedSet(workout, entryID, at: 1)
-        #expect(repMaxMarks(workout, heavier.id) == [3])
-        #expect(marks(workout, first.id).isEmpty)
+        #expect(await repMaxMarks(workout, heavier.id) == [3])
+        #expect(await marks(workout, first.id).isEmpty)
     }
 
     /// A warmup is not the work, so it holds no record — the same exclusion every derived value in
@@ -137,7 +144,7 @@ struct PersonalRecordBadgeTests {
                 weight: Weight(grams: 60_000), reps: 5, rpe: nil, isWarmup: true))
 
         let logged = try await loggedSet(workout, entryID, at: 0)
-        #expect(marks(workout, logged.id).isEmpty)
+        #expect(await marks(workout, logged.id).isEmpty)
         #expect(workout.store.personalRecords.bySetID.isEmpty)
     }
 
@@ -152,11 +159,11 @@ struct PersonalRecordBadgeTests {
             values: SetEntryValues(
                 weight: Weight(grams: 100_000), reps: 5, rpe: nil, isWarmup: false))
         let logged = try await loggedSet(workout, entryID, at: 0)
-        #expect(!marks(workout, logged.id).isEmpty)
+        #expect(!(await marks(workout, logged.id)).isEmpty)
 
         await workout.store.markSet(id: logged.id, inEntryID: entryID, isWarmup: true)
 
-        #expect(marks(workout, logged.id).isEmpty)
+        #expect(await marks(workout, logged.id).isEmpty)
     }
 
     /// **Nothing has looked and nothing holds a record are the same empty dictionary**, so the flag
@@ -186,9 +193,9 @@ struct PersonalRecordBadgeTests {
         }
 
         let first = try await loggedSet(workout, entryID, at: 0)
-        let mark = try #require(badge(workout, first.id))
+        let mark = try #require(await badge(workout, first.id))
         #expect(mark.scheme == RecordScheme(reps: 5, sets: 3))
-        #expect(marks(workout, first.id).count == 1)
+        #expect(await marks(workout, first.id).count == 1)
         #expect(String(localized: mark.text) == "First · 5×3")
         #expect(String(localized: mark.label) == "First time, 5 by 3")
     }
@@ -211,8 +218,8 @@ struct PersonalRecordBadgeTests {
         }
 
         let runStart = try await loggedSet(workout, entryID, at: 1)
-        #expect(repMaxMarks(workout, runStart.id).isEmpty)
-        #expect(badge(workout, runStart.id)?.scheme == RecordScheme(reps: 5, sets: 2))
+        #expect(await repMaxMarks(workout, runStart.id).isEmpty)
+        #expect(await badge(workout, runStart.id)?.scheme == RecordScheme(reps: 5, sets: 2))
     }
 
     /// **T-17.03's simulator walk, as an assertion.** The walk saw `First · 10×3` on a group written
@@ -234,9 +241,9 @@ struct PersonalRecordBadgeTests {
         // The rep bound, which is the one the walk saw: twelve reps against a table ending at ten.
         let (long, longFirst) = try await runOfSquats(reps: 12, count: 3)
         // No cell at all — not the 10-rep row, and not the one-set column either.
-        #expect(marks(long, longFirst.id).isEmpty)
-        #expect(repMaxMarks(long, longFirst.id).isEmpty)
-        #expect(badge(long, longFirst.id) == nil)
+        #expect(await marks(long, longFirst.id).isEmpty)
+        #expect(await repMaxMarks(long, longFirst.id).isEmpty)
+        #expect(await badge(long, longFirst.id) == nil)
 
         // The set bound, in the other dimension and on the same argument — eight sets is not six.
         // Asserted here because ``cell(for:)``'s refusal covers both bounds and this test's own
@@ -244,16 +251,16 @@ struct PersonalRecordBadgeTests {
         // review only the rep half had a badge-end assertion, so half the claim rested on the
         // argument it was written to distrust.
         let (many, manyFirst) = try await runOfSquats(reps: 5, count: 7)
-        #expect(marks(many, manyFirst.id).isEmpty)
-        #expect(repMaxMarks(many, manyFirst.id).isEmpty)
-        #expect(badge(many, manyFirst.id) == nil)
+        #expect(await marks(many, manyFirst.id).isEmpty)
+        #expect(await repMaxMarks(many, manyFirst.id).isEmpty)
+        #expect(await badge(many, manyFirst.id) == nil)
 
         // And each run just inside its own bound still badges, so what is asserted above is the
         // bound rather than the fixture failing to write anything.
         let (atRepBound, atRepBoundFirst) = try await runOfSquats(reps: 10, count: 3)
-        #expect(badge(atRepBound, atRepBoundFirst.id)?.scheme == RecordScheme(reps: 10, sets: 3))
+        #expect(await badge(atRepBound, atRepBoundFirst.id)?.scheme == RecordScheme(reps: 10, sets: 3))
         let (atSetBound, atSetBoundFirst) = try await runOfSquats(reps: 5, count: 6)
-        #expect(badge(atSetBound, atSetBoundFirst.id)?.scheme == RecordScheme(reps: 5, sets: 6))
+        #expect(await badge(atSetBound, atSetBoundFirst.id)?.scheme == RecordScheme(reps: 5, sets: 6))
     }
 
     /// A workout holding one run of `count` identical sets at `reps`, and the set the run starts at.
@@ -279,6 +286,7 @@ struct PersonalRecordBadgeTests {
             toEntryID: entryID,
             values: SetEntryValues(
                 weight: Weight(grams: 100_000), reps: 5, rpe: nil, isWarmup: false))
+        await workout.store.settleRecordRefresh()
         #expect(!workout.store.personalRecords.bySetID.isEmpty)
 
         await workout.store.discard()

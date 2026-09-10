@@ -93,7 +93,10 @@ public final class DayStore {
     private let week: Int
 
     /// The workout the answers are written into.
-    private let store: ActiveSessionStore
+    /// Internal rather than private so a test can settle the badge:
+    /// ``ActiveSessionStore/announceSetChange(inEntryID:)`` publishes behind the answer (`NFR-1.2`),
+    /// and an assertion about ``DayRow/records`` taken on the command's own `await` is a race.
+    let store: ActiveSessionStore
 
     /// The programs, their days and the run in force.
     private let programs: any ProgramRepository
