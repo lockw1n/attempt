@@ -40,8 +40,9 @@ struct ExerciseSchemeTable: Equatable {
     /// Lays one exercise's records out.
     ///
     /// - Parameter records: What the recompute produced, in any order. Anything outside the two
-    ///   ranges is dropped rather than trusted: the calculator clamps, so a cell beyond them is a
-    ///   row this build did not write.
+    ///   ranges is dropped rather than trusted: since `FR-17.2.1` the calculator refuses a run past
+    ///   either bound rather than clamping it, so a cell beyond them is a row this build did not
+    ///   write — a stale one this rules version was supposed to have dropped.
     init(_ records: [DatedSchemeRecord]) {
         let inside = records.filter {
             Self.repRange.contains($0.scheme.reps) && Self.setRange.contains($0.scheme.sets)

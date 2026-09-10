@@ -215,6 +215,44 @@ struct PersonalRecordBadgeTests {
         #expect(badge(workout, runStart.id)?.scheme == RecordScheme(reps: 5, sets: 2))
     }
 
+    /// **T-17.03's simulator walk, as an assertion.** The walk saw `First · 10×3` on a group written
+    /// `12,0 kg × 12 × 3` — the badge naming the cell a twelve-rep run had been clamped to, two
+    /// centimetres from the numeral `12`. That was the withdrawn dominance rule's clamp, and the
+    /// same task's review replaced it with `FR-17.2.1`'s refusal before the finding was ever acted
+    /// on, which is why the fix has no commit of its own to point at.
+    ///
+    /// Pinned **here** rather than only at ``PowerliftingCore/SchemeRecordCalculator/cell(for:)``,
+    /// where `boundsRefuse` already holds it: the defect was a badge, and what a badge says is the
+    /// end of a pipeline — the calculator, the cache, the marks read, `RecordBadge(marks:)`. A
+    /// refusal at the head of it is not evidence about the tail.
+    @Test("A run past the rep bound draws no badge, rather than a badge naming a clamped cell")
+    func aRunPastTheRepBoundDrawsNoBadge() async throws {
+        let (workout, entryID) = try await startedSquat()
+        for _ in 0..<3 {
+            await workout.store.addSet(
+                toEntryID: entryID,
+                values: SetEntryValues(
+                    weight: Weight(grams: 120_000), reps: 12, rpe: nil, isWarmup: false))
+        }
+
+        let first = try await loggedSet(workout, entryID, at: 0)
+        // No cell at all — not the 10-rep row, and not the one-set column either.
+        #expect(marks(workout, first.id).isEmpty)
+        #expect(repMaxMarks(workout, first.id).isEmpty)
+        #expect(badge(workout, first.id) == nil)
+        // And the run just inside the bound still badges, so what is asserted above is the bound
+        // rather than the fixture failing to write anything.
+        let (inside, insideEntryID) = try await startedSquat()
+        for _ in 0..<3 {
+            await inside.store.addSet(
+                toEntryID: insideEntryID,
+                values: SetEntryValues(
+                    weight: Weight(grams: 120_000), reps: 10, rpe: nil, isWarmup: false))
+        }
+        let insideFirst = try await loggedSet(inside, insideEntryID, at: 0)
+        #expect(badge(inside, insideFirst.id)?.scheme == RecordScheme(reps: 10, sets: 3))
+    }
+
     /// Dropping the workout drops the marks with it: a badge is a claim about the workout on screen.
     @Test("Discarding the workout clears the marks")
     func discardingClearsTheMarks() async throws {

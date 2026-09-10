@@ -209,14 +209,20 @@ struct PersonalRecordE1RMTests {
         #expect(unguarded.bestE1RM(in: [try workingSet(load, reps: 5)])?.weight == load)
     }
 
-    @Test("Reps outside the formula's range cost the estimate but not the rep max")
-    func repsOutsideTheFormulaRangeStillSetARepMax() throws {
+    /// **The name is what T-17.03's rewrite left half wrong**, and it is worth a line because the
+    /// two are not the same kind of thing: that task changed what is *true* here — an over-long set
+    /// used to clamp down to the 10-rep row and now reaches nothing — while the name went on
+    /// asserting the old behaviour over a body that had stopped doing it. Nothing in the toolchain
+    /// reads a test's name against its body.
+    @Test("Reps outside the formula's range cost the estimate and the rep max alike")
+    func repsOutsideTheFormulaRangeSetNoRepMaxEither() throws {
         let longSet = try workingSet(Weight(grams: 100_000), reps: 11)
         let records = calculator.records(in: [longSet])
         #expect(records.bestE1RM == nil)
-        // Exact reps and no clamp: `repMax(forReps:in:)` reads a set's own count, so an 11-rep set
-        // sets no rep max at all. `SchemeRecordCalculator.cell(for:)` is where the table's clamp
-        // lives, and it is the only thing that clamps.
+        // Exact reps and no clamp anywhere: `repMax(forReps:in:)` reads a set's own count, so an
+        // 11-rep set sets no rep max — and since `FR-17.2.1`
+        // `SchemeRecordCalculator.cell(for:)` refuses such a run rather than clamping it, so the
+        // two computations of `FR-1.6.1` now agree at every N instead of disagreeing past ten.
         #expect(records.repMaxes.isEmpty)
         #expect(records.repMax(forReps: 10) == nil)
     }

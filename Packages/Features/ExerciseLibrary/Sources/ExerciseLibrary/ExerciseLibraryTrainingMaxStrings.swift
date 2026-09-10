@@ -6,7 +6,8 @@ import PowerliftingCore
 /// A file of its own rather than more of ``ExerciseLibraryStrings``, which had reached SwiftLint's
 /// length ceiling. Same type, same catalogue, same key convention.
 extension ExerciseLibraryStrings {
-    /// The section's heading, above the estimate's.
+    /// The section's heading, below the estimate's — the estimate leads, being the only one of the
+    /// two every exercise has (`FR-17.5.1`).
     static let trainingMaxSection = resource("exerciselibrary.detail.training-max.section")
 
     /// The number's own label, beside it — `G-4.5`'s word, so the number is never told from the

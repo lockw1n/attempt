@@ -473,10 +473,10 @@ extension RecentRecord {
     /// decided by the record's set count alone, and a claim that lives inside a `View` body can only
     /// be closed by a picture.
     ///
-    /// **The record's own scheme, which is the run's shape clamped to the table's bounds.** The
-    /// cache stores a cell rather than a performance, so a set taken to twelve reps reads `× 10`
-    /// here: what the row states is the record it set, and the twelve-rep set is one tap away on the
-    /// exercise's own screen.
+    /// **The record's own scheme, which since `FR-17.2.1` is the run's own shape.** The cache stores
+    /// a cell rather than a performance, and a run outside the table's bounds now reaches no cell at
+    /// all rather than the corner one — so a set taken to twelve reps produces no record and no row
+    /// here, where it used to produce one reading `× 10`.
     ///
     /// - Parameters:
     ///   - load: The record load, formatted for the row's locale.
