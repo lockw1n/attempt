@@ -156,10 +156,17 @@
         /// **The guard fires rather than recording**, which is the half that stops a blank entering
         /// the tree at all. `withKnownIssue` is the instrument: it fails unless an issue is raised,
         /// so this test passes only while the guard works.
+        ///
+        /// **`matching:` is what makes that true rather than nearly true.** A bare `withKnownIssue`
+        /// is satisfied by *any* issue, and this run raises others when the guard is off — one per
+        /// reference recorded. Naming the diagnostic is the difference between asserting that
+        /// something went wrong and asserting that the guard is what noticed.
         @Test func recordingIsRefusedForABlankRender() throws {
             let suite = try ScratchSuite()
-            withKnownIssue {
+            try withKnownIssue {
                 try assertSnapshots(named: "blank", testFile: suite.testFile) { EmptyView() }
+            } matching: {
+                $0.isBlankRenderRefusal
             }
             // And nothing was written — the whole point, since a file recorded here is a file that
             // matches itself forever.
@@ -171,24 +178,40 @@
         /// **The guard fires on a blank already committed**, which is the half that sweeps what is
         /// there. Distinct from the probe above: that one never reaches the comparison, and a fix
         /// applied only at recording time would leave every existing blank matching.
+        ///
+        /// **This probe's first version could not fail, and the way it could not is worth keeping.**
+        /// It rendered one blank at `.dark`/`.default` and wrote that bitmap into all four
+        /// configuration slots — so the two `accessibility3` references disagreed on *size* with
+        /// what was rendered against them, `compare` raised two issues, and `withKnownIssue` was
+        /// satisfied by the size mismatch. With ``Bitmap/isUniform`` hard-wired to `false` — the
+        /// guard removed entirely — it still passed. Both halves of the repair matter: each
+        /// reference is now rendered at its own configuration, so nothing but the guard can raise
+        /// anything, and `matching:` names the diagnostic so a future accident cannot borrow
+        /// another issue the way this one did.
         @Test func aBlankReferenceIsRejectedRatherThanMatched() throws {
             let suite = try ScratchSuite()
-            // A blank reference for all four configurations, written by hand — which is exactly
-            // what the harness used to do for us.
-            let blank = try Snapshot.render(EmptyView(), appearance: .dark, typeSize: .default)
             try FileManager.default.createDirectory(
                 at: suite.snapshots, withIntermediateDirectories: true)
+            // A blank reference for all four configurations, each rendered AT ITS OWN — which is
+            // what the harness would have written, and what makes the comparison below agree on
+            // both axes.
             for appearance in SnapshotAppearance.allCases {
                 for typeSize in SnapshotTypeSize.allCases {
+                    let blank = try Snapshot.render(
+                        EmptyView(), appearance: appearance, typeSize: typeSize)
+                    #expect(blank.isUniform)
+                    // Identical dimensions, identical pixels: `compare` returns nil for this
+                    // configuration, so the run is green without the guard. Asserted four times
+                    // over, because one configuration agreeing says nothing about the other three.
+                    #expect(Snapshot.compare(blank, blank) == nil)
                     try Snapshot.pngData(blank).write(
                         to: suite.reference("blank.\(appearance.rawValue).\(typeSize.rawValue)"))
                 }
             }
-            // Rendering the same blank view: identical dimensions, identical pixels, so `compare`
-            // returns nil and the run is green without the guard.
-            #expect(Snapshot.compare(blank, blank) == nil)
-            withKnownIssue {
+            try withKnownIssue {
                 try assertSnapshots(named: "blank", testFile: suite.testFile) { EmptyView() }
+            } matching: {
+                $0.isBlankReferenceRejection
             }
         }
 
@@ -358,6 +381,39 @@
             // would also be satisfied by a stray point of padding.
             let grew = withRetry.height - withoutRetry.height
             #expect(Double(grew) >= TouchTarget.standard.points * Snapshot.scale)
+        }
+    }
+
+    /// Which blank diagnostic an issue is, if either (`TR-1.12`).
+    ///
+    /// **The instrument `withKnownIssue`'s `matching:` closure needs, and it exists because the
+    /// absence of one cost a probe its ability to fail.** A bare `withKnownIssue` accepts any issue
+    /// at all, so a probe that raises a second issue by accident is green on that one instead of on
+    /// the failure it was written to prove — which is exactly what happened to
+    /// `aBlankReferenceIsRejectedRatherThanMatched`.
+    ///
+    /// Two properties rather than one predicate taking a string, so the guard's two ends cannot be
+    /// asserted with each other's marker — the render one is defined as the diagnostic that is *not*
+    /// the reference one, which is the only way to tell them apart by prefix.
+    ///
+    /// **Neither marker names the reference.** The harness's `name` at the point it raises these is
+    /// the per-configuration one — `blank.dark.default`, not `blank` — and a marker written against
+    /// the name a probe passes to `assertSnapshots` matches nothing. That mistake makes a probe fail
+    /// loudly rather than pass quietly, which is the right way round for a matcher.
+    extension Issue {
+        /// Whether this is ``blankRenderDiagnostic(named:bitmap:)`` — recording refused.
+        fileprivate nonisolated var isBlankRenderRefusal: Bool {
+            carries("SNAPSHOT BLANK ") && !isBlankReferenceRejection
+        }
+
+        /// Whether this is ``blankReferenceDiagnostic(named:at:)`` — a committed blank rejected.
+        fileprivate nonisolated var isBlankReferenceRejection: Bool {
+            carries("SNAPSHOT BLANK REFERENCE ")
+        }
+
+        /// Whether any of this issue's comments contains `marker`.
+        private nonisolated func carries(_ marker: String) -> Bool {
+            comments.contains { $0.rawValue.contains(marker) }
         }
     }
 

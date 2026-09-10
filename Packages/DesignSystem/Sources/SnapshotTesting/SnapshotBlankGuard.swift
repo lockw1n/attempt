@@ -31,10 +31,14 @@
         /// one — including for a genuinely empty state on a flat ground, which was the case the
         /// measurement was taken to settle.
         ///
-        /// An empty bitmap is **not** uniform. Nothing renders to zero pixels, and answering `true`
-        /// would make the guard reject a case it has no evidence about.
+        /// **A single pixel is uniform; nothing at all is not.** Nothing renders to zero pixels,
+        /// and answering `true` there would make the guard reject a case it has no evidence about —
+        /// whereas a one-pixel rendering is a blank by any reading, so the bound is four bytes
+        /// rather than eight. A count that is not a whole number of RGBA pixels is malformed, which
+        /// is likewise not evidence of a blank. Neither is reachable through this module's
+        /// renderer, which draws at a fixed width; both are stated because the predicate is public.
         public var isUniform: Bool {
-            guard pixels.count >= 8 else { return false }
+            guard pixels.count >= 4, pixels.count.isMultiple(of: 4) else { return false }
             return !stride(from: 4, to: pixels.count, by: 4).contains { pixel in
                 (0..<4).contains { pixels[$0] != pixels[pixel + $0] }
             }
