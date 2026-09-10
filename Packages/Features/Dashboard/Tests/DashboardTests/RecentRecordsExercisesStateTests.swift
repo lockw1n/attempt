@@ -61,8 +61,14 @@ struct RecentRecordsExercisesStateTests {
         #expect(fixture.state.choices.filter(\.isTiled).map(\.exerciseID) == [fixture.kickback])
     }
 
-    /// `NFR-1.8`: a tick is stored as it is made, with no Save button to forget.
-    @Test("A tick is written straight through, and unticking takes it back out")
+    /// `NFR-1.8`: a tick is stored as it is made, with no Save button to forget — **and the row on
+    /// screen follows it**, which is the half a store assertion cannot see.
+    ///
+    /// ``RecentRecordsExercisesState/toggle(_:)`` ends in a re-read, and that call is what moves
+    /// ``RecentRecordsExercisesState/choices``. Without it the write lands, the feed is told, and
+    /// the switch the lifter just flipped stays where it was (`FR-17.3.3`) — a screen whose whole
+    /// job is that list, reported as working by every other assertion here.
+    @Test("A tick is written straight through, and the row on screen follows it")
     func aTickWritesThrough() async throws {
         let fixture = try await chosen()
         await fixture.state.load()
@@ -72,9 +78,11 @@ struct RecentRecordsExercisesStateTests {
             try await fixture.repositories.settings.settings().recentRecordsExerciseIDs
                 == [fixture.kickback])
         #expect(fixture.state.writeFailure == nil)
+        #expect(fixture.state.choices.filter(\.isTiled).map(\.exerciseID) == [fixture.kickback])
 
         await fixture.state.toggle(fixture.kickback)
         #expect(try await fixture.repositories.settings.settings().recentRecordsExerciseIDs == [])
+        #expect(fixture.state.choices.allSatisfy { !$0.isTiled })
     }
 
     /// `FR-16.5.3`: the search narrows the sections, and the population it narrows is unchanged —

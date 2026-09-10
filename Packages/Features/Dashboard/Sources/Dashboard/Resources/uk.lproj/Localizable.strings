@@ -79,7 +79,7 @@
 "dashboard.recent-records.scope.chosen" = "Вибрані";
 "dashboard.recent-records.scope.detail.dashboard-lifts" = "Бере ті самі вправи, для яких ви показуєте орієнтовний 1ПМ, — один вибір працює для обох.";
 "dashboard.recent-records.scope.detail.every-exercise" = "Показує кожну вправу, яку ви записували.";
-"dashboard.recent-records.scope.detail.chosen" = "Показує вправи, які ви виберете тут, незалежно від головного екрана.";
+"dashboard.recent-records.scope.detail.chosen" = "Показує вправи, які ви виберете нижче, незалежно від головного екрана.";
 
 "dashboard.recent-records.exercises.title" = "Вправи в цій стрічці";
 "dashboard.recent-records.exercises.choose" = "Вибрати вправи";

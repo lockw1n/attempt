@@ -143,7 +143,7 @@
 "dashboard.recent-records.scope.chosen" = "Chosen";
 "dashboard.recent-records.scope.detail.dashboard-lifts" = "Follows the lifts you tile an estimated 1RM for, so one choice covers both.";
 "dashboard.recent-records.scope.detail.every-exercise" = "Reports on every exercise you have logged.";
-"dashboard.recent-records.scope.detail.chosen" = "Reports on the lifts you pick here, whatever the dashboard shows.";
+"dashboard.recent-records.scope.detail.chosen" = "Reports on the lifts you choose below, whatever the dashboard shows.";
 
 /* FR-17.3.3's pushed picker: the row that opens it, its own title, and the two states it can be in.
    The row's second line is the count, so the reader knows how many lifts are chosen without opening
