@@ -53,6 +53,18 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | xcbeautify --renderer github-actions || exit ${PIPESTATUS[0]}
 
+      # TR-1.12 (T-1.94): the app target's own bundle — the launch sequence, and the class of
+      # defect a snapshot reference cannot see, a modifier attached to the screen rather than to
+      # one of its parts. It runs here rather than in `Package tests` because it is the one suite
+      # in the repository that needs a host application: `AppDependencies`, `AttemptApp` and
+      # `RootTabView` are in the app target and reachable from nothing else.
+      #
+      # Through the script, never a bare `xcodebuild test`. The accessibility tree a hosted view
+      # publishes is empty unless the destination has an accessibility client, and an empty tree
+      # reads exactly like a screen whose controls were deleted — see the script's header.
+      - name: Test the app target
+        run: ./scripts/app-tests.sh
+
   # G-6.3: tests run on every push, and this job failing blocks the merge.
   # Runs the packages directly with SwiftPM rather than through the Xcode scheme. The packages
   # are linked into Attempt.xcodeproj as of T-0.03, but a domain suite has no reason to need a

@@ -18,16 +18,36 @@
 		D3432948301E887D00DC20FF /* Settings in Frameworks */ = {isa = PBXBuildFile; productRef = D3432938301E887D00DC20FF /* Settings */; };
 		D3432948301E887E00DC20FF /* Routines in Frameworks */ = {isa = PBXBuildFile; productRef = D3432938301E887E00DC20FF /* Routines */; };
 		D3432949301E887D00DC20FF /* SeedImport in Frameworks */ = {isa = PBXBuildFile; productRef = D3432939301E887D00DC20FF /* SeedImport */; };
+		D3432A20301E887E00DC20FF /* PowerliftingCore in Frameworks */ = {isa = PBXBuildFile; productRef = D3432A10301E887E00DC20FF /* PowerliftingCore */; };
+		D3432A21301E887E00DC20FF /* Persistence in Frameworks */ = {isa = PBXBuildFile; productRef = D3432A11301E887E00DC20FF /* Persistence */; };
+		D3432A22301E887E00DC20FF /* RepositoryInterface in Frameworks */ = {isa = PBXBuildFile; productRef = D3432A12301E887E00DC20FF /* RepositoryInterface */; };
+		D3432A23301E887E00DC20FF /* Logging in Frameworks */ = {isa = PBXBuildFile; productRef = D3432A13301E887E00DC20FF /* Logging */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D3432A0A301E887E00DC20FF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D3432902301E887D00DC20FF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D3432909301E887D00DC20FF;
+			remoteInfo = Attempt;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		D343290A301E887D00DC20FF /* Attempt.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Attempt.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3432A02301E887E00DC20FF /* AttemptTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AttemptTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D343290C301E887D00DC20FF /* Attempt */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Attempt;
+			sourceTree = "<group>";
+		};
+		D3432A03301E887E00DC20FF /* AttemptTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AttemptTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -51,6 +71,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D3432A05301E887E00DC20FF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D3432A20301E887E00DC20FF /* PowerliftingCore in Frameworks */,
+				D3432A21301E887E00DC20FF /* Persistence in Frameworks */,
+				D3432A22301E887E00DC20FF /* RepositoryInterface in Frameworks */,
+				D3432A23301E887E00DC20FF /* Logging in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -58,6 +89,7 @@
 			isa = PBXGroup;
 			children = (
 				D343290C301E887D00DC20FF /* Attempt */,
+				D3432A03301E887E00DC20FF /* AttemptTests */,
 				D343290B301E887D00DC20FF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -66,6 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				D343290A301E887D00DC20FF /* Attempt.app */,
+				D3432A02301E887E00DC20FF /* AttemptTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -106,6 +139,32 @@
 			productReference = D343290A301E887D00DC20FF /* Attempt.app */;
 			productType = "com.apple.product-type.application";
 		};
+		D3432A01301E887E00DC20FF /* AttemptTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D3432A06301E887E00DC20FF /* Build configuration list for PBXNativeTarget "AttemptTests" */;
+			buildPhases = (
+				D3432A04301E887E00DC20FF /* Sources */,
+				D3432A05301E887E00DC20FF /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D3432A09301E887E00DC20FF /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D3432A03301E887E00DC20FF /* AttemptTests */,
+			);
+			name = AttemptTests;
+			packageProductDependencies = (
+				D3432A10301E887E00DC20FF /* PowerliftingCore */,
+				D3432A11301E887E00DC20FF /* Persistence */,
+				D3432A12301E887E00DC20FF /* RepositoryInterface */,
+				D3432A13301E887E00DC20FF /* Logging */,
+			);
+			productName = AttemptTests;
+			productReference = D3432A02301E887E00DC20FF /* AttemptTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -118,6 +177,10 @@
 				TargetAttributes = {
 					D3432909301E887D00DC20FF = {
 						CreatedOnToolsVersion = 26.6;
+					};
+					D3432A01301E887E00DC20FF = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = D3432909301E887D00DC20FF;
 					};
 				};
 			};
@@ -143,6 +206,7 @@
 				D3432928301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Settings" */,
 				D3432929301E887E00DC20FF /* XCLocalSwiftPackageReference "Packages/Features/Routines" */,
 				D3432929301E887D00DC20FF /* XCLocalSwiftPackageReference "Packages/SeedImport" */,
+				D3432A0B301E887E00DC20FF /* XCLocalSwiftPackageReference "Packages/RepositoryInterface" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D343290B301E887D00DC20FF /* Products */;
@@ -150,6 +214,7 @@
 			projectRoot = "";
 			targets = (
 				D3432909301E887D00DC20FF /* Attempt */,
+				D3432A01301E887E00DC20FF /* AttemptTests */,
 			);
 		};
 /* End PBXProject section */
@@ -172,7 +237,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D3432A04301E887E00DC20FF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D3432A09301E887E00DC20FF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D3432909301E887D00DC20FF /* Attempt */;
+			targetProxy = D3432A0A301E887E00DC20FF /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		D3432913301E887E00DC20FF /* Debug */ = {
@@ -368,6 +448,52 @@
 			};
 			name = Release;
 		};
+		D3432A07301E887E00DC20FF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 54A7S98K2Q;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = lockw1n.AttemptTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Attempt.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Attempt";
+			};
+			name = Debug;
+		};
+		D3432A08301E887E00DC20FF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 54A7S98K2Q;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = lockw1n.AttemptTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Attempt.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Attempt";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -385,6 +511,15 @@
 			buildConfigurations = (
 				D3432916301E887E00DC20FF /* Debug */,
 				D3432917301E887E00DC20FF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D3432A06301E887E00DC20FF /* Build configuration list for PBXNativeTarget "AttemptTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D3432A07301E887E00DC20FF /* Debug */,
+				D3432A08301E887E00DC20FF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -436,6 +571,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/Features/Routines;
 		};
+		D3432A0B301E887E00DC20FF /* XCLocalSwiftPackageReference "Packages/RepositoryInterface" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/RepositoryInterface;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -482,6 +621,22 @@
 		D3432939301E887D00DC20FF /* SeedImport */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SeedImport;
+		};
+		D3432A10301E887E00DC20FF /* PowerliftingCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PowerliftingCore;
+		};
+		D3432A11301E887E00DC20FF /* Persistence */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Persistence;
+		};
+		D3432A12301E887E00DC20FF /* RepositoryInterface */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RepositoryInterface;
+		};
+		D3432A13301E887E00DC20FF /* Logging */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Logging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
