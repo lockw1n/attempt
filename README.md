@@ -260,9 +260,8 @@ Note that a bare `swift build` does **not** fail on warnings — that gate lives
 the script, not in the manifests.
 
 Every package has a Swift Testing target (`@Test` / `#expect`, not XCTest) — the feature modules
-included, each with a unit suite and a snapshot suite. The app target has no
-tests; it is a composition root, and the Xcode project has no test target for it (Q-1.3) — anything
-that needs a unit test lives under `Packages/` instead.
+included, each with a unit suite and a snapshot suite. Anything that can be tested
+from a package is, and lives under `Packages/`.
 
 ```bash
 swift test --package-path Packages/PowerliftingCore
@@ -298,6 +297,28 @@ skips with a message saying how to supply one; point it at a backup the app wrot
 ```bash
 ATTEMPT_REAL_BACKUP=/path/to/backup.json swift test --package-path Packages/Features/Settings
 ```
+
+**The app target has its own bundle too.** `AttemptTests` is an XCTest bundle *hosted*
+by `Attempt`, which is what makes `AppDependencies` and `RootTabView` reachable — a
+package suite has no host application and no `UIWindowScene`, so it can neither run
+the launch sequence nor build a UIView hierarchy. Two things live there and nothing
+else should: the launch sequence over a real store, and the class of defect a
+snapshot reference cannot see (a modifier attached to the screen rather than to one
+of its parts).
+
+```bash
+./scripts/app-tests.sh                            # a booted simulator, or the first available
+./scripts/app-tests.sh --device 'iPhone lockw1n'  # a connected phone
+```
+
+Always through the script, never a bare `xcodebuild test`: a hosted view answers
+`accessibilityElements` with an **empty array** unless the destination has an
+accessibility client, so a screen with every control intact reads exactly like one
+whose controls were deleted. The script sets `ApplicationAccessibilityEnabled` on
+every run. It reads the accessibility tree, so it proves a screen's parts are still
+wired to the screen and never that they can be touched — a control that publishes
+no accessibility element, or one that is covered, mis-sized or behind a gesture that
+wins, is invisible to it.
 
 `PowerliftingCore` is held to ≥ 90% line coverage. The script counts only files
 under the package's `Sources/`, and requires `python3`:
@@ -377,8 +398,9 @@ screen and the export-compliance declaration live in `Config/Info.plist`, a
 partial plist merged under the generated one.
 
 **Performance numbers come off a device or simulator, not out of a test.**
-`xcodebuild` will not host an SPM test bundle on a device destination, so the
-instrument is the shipping binary under `OSSignposter`:
+`xcodebuild` will not host an *SPM* test bundle on a device destination, so the
+instrument is the shipping binary under `OSSignposter`. (`AttemptTests` is hosted by
+the app and so should not hit that refusal; no device run has confirmed it yet.)
 
 ```bash
 ./scripts/measure-device.sh devices           # what is connected
