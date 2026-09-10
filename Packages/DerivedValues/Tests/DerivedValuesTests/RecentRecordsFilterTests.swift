@@ -7,6 +7,10 @@ import Testing
 @testable import DerivedValues
 
 /// `FR-16.3`'s configuration, applied: what the feed reports on once the settings row narrows it.
+///
+/// **`FR-17.3.1` withdrew the "logged at least three times" threshold**, so what used to be three
+/// tests of a derived scheme set is one test that a scheme performed twice reaches the feed, plus
+/// the assertion that the read never touches a set history at all (`NFR-17.2`).
 @Suite("Recent records — the feed's configuration")
 struct RecentRecordsFilterTests {
     /// A log holding a squat programme and one accessory lift, with the cache written for both.
@@ -44,8 +48,11 @@ struct RecentRecordsFilterTests {
             }
         }
         let kickback = try await log.exercise(named: "Triceps Kickback")
-        // One light single, once, and never before: a baseline at a scheme trained once.
-        try await log.session(of: kickback, on: weeksAgo(1), sets: [working(10_000, 12)])
+        // One light single, once, and never before: a baseline at a scheme trained once. Ten reps
+        // rather than the twelve this fixture used to carry — twelve is outside `PersonalRecords`'
+        // rep range, so since `FR-17.2.1` it sets no record at all and the accessory this suite is
+        // about would never reach the feed to be scoped in or out of it.
+        try await log.session(of: kickback, on: weeksAgo(1), sets: [working(10_000, 10)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
             cache: log.repositories.personalRecords,
@@ -113,7 +120,7 @@ struct RecentRecordsFilterTests {
         let feed = try await fixture.recomputer.recentRecords(
             limit: 5,
             filter: RecentRecordsFilter(
-                exerciseIDs: scope, schemes: .derived, showsBaselines: true))
+                exerciseIDs: scope, schemes: .everyScheme, showsBaselines: true))
 
         #expect(scope == [fixture.kickback])
         #expect(feed.map(\.exerciseID) == [fixture.kickback])
@@ -122,16 +129,15 @@ struct RecentRecordsFilterTests {
     /// The scope narrows on identifiers, so a lifter whose dashboard names the accessory sees it —
     /// the same selection, obeyed by the tiles and by the feed (`FR-16.3.1`).
     ///
-    /// The two other filters are relaxed on the row rather than in a hand-built filter, because
-    /// under the shipped defaults a lift performed once passes neither: it is a baseline, and its
-    /// scheme is one run short of being derived. What is under test here is the scope alone.
+    /// The baseline flag is relaxed on the row rather than in a hand-built filter, because under the
+    /// shipped defaults a lift performed once is still hidden by it (`FR-16.3.4`). The scheme rule
+    /// is left alone: since `FR-17.3.1` its shipped value narrows nothing, which is the point.
     @Test("A dashboard naming the accessory puts it back in the feed")
     func theScopeFollowsTheDashboard() async throws {
         let fixture = try await programme()
         var stored = try await fixture.log.repositories.settings.settings()
         stored.dashboardExerciseIDs = [fixture.kickback]
         stored.recentRecordsShowsBaselines = true
-        stored.recentRecordsSchemes = .chosen([RecordScheme(reps: 10, sets: 1)])
         try await fixture.log.repositories.settings.save(stored)
         let filter = try await shippedFilter(fixture)
 
@@ -148,108 +154,154 @@ struct RecentRecordsFilterTests {
         let hidden = try await fixture.recomputer.recentRecords(
             limit: 5,
             filter: RecentRecordsFilter(
-                exerciseIDs: [fixture.kickback], schemes: .derived, showsBaselines: false))
+                exerciseIDs: [fixture.kickback], schemes: .everyScheme, showsBaselines: false))
         let shown = try await fixture.recomputer.recentRecords(
             limit: 5,
             filter: RecentRecordsFilter(
-                exerciseIDs: [fixture.kickback],
-                schemes: .chosen([RecordScheme(reps: 10, sets: 1)]),
-                showsBaselines: true))
+                exerciseIDs: [fixture.kickback], schemes: .everyScheme, showsBaselines: true))
 
         #expect(hidden.isEmpty)
         #expect(shown.count == 1)
     }
 
-    /// `FR-16.3.2`'s threshold, counted in runs: two performances of a scheme is not enough and
-    /// three is, and the boundary is the assertion rather than the direction.
-    @Test("A scheme trained twice derives nothing; a third run derives it")
-    func theDerivedThresholdIsThree() async throws {
+    /// `FR-17.3.1`, the whole of it: **a scheme performed twice reaches the feed.**
+    ///
+    /// The old threshold was three *runs* of a cell, and this fixture is deliberately one short of
+    /// it — two sessions of `5 × 5`, the second heavier. Under `FR-16.3.2` the improvement the
+    /// workout badges was filtered out of the feed, which is review finding 02.
+    ///
+    /// **The heavy single anchors it.** A test that only asserted the `5 × 5` appears would pass for
+    /// a filter that admitted everything *and* for one that still admitted nothing but was reading
+    /// an empty cache — so the fixture also holds a scheme performed exactly once, which the same
+    /// widened rule has to admit for the same reason.
+    @Test("A scheme performed twice reaches the feed")
+    func everySchemeAdmitsASecondPerformance() async throws {
         let log = TrainingLog()
         let squat = try await log.exercise(named: "Back Squat")
-        for (week, grams) in [(6, 120_000), (4, 130_000)] {
+        for (week, grams) in [(4, 80_000), (2, 90_000)] {
             try await log.session(
-                of: squat, on: weeksAgo(week), sets: (0..<3).map { _ in working(grams, 5) })
+                of: squat, on: weeksAgo(week), sets: (0..<5).map { _ in working(grams, 5) })
         }
-        let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts,
-            cache: log.repositories.personalRecords,
-            now: { fixtureNow })
-
-        #expect(try await recomputer.derivedSchemes(forExerciseID: squat).isEmpty)
-
-        try await log.session(
-            of: squat, on: weeksAgo(2), sets: (0..<3).map { _ in working(140_000, 5) })
-
-        let derived = try await recomputer.derivedSchemes(forExerciseID: squat)
-        #expect(derived == [RecordScheme(reps: 5, sets: 3)])
-    }
-
-    /// A run establishes sixty cells by dominance and is one performance of one scheme. Counting
-    /// cells would put `1 × 1` over the threshold after three sessions of anything, and the filter
-    /// would stop filtering.
-    @Test("Dominance does not count: three runs derive their own cell and no other")
-    func dominatedCellsAreNotCounted() async throws {
-        let log = TrainingLog()
-        let squat = try await log.exercise(named: "Back Squat")
-        for week in [6, 4, 2] {
-            try await log.session(
-                of: squat, on: weeksAgo(week), sets: (0..<3).map { _ in working(140_000, 5) })
-        }
-        let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts,
-            cache: log.repositories.personalRecords,
-            now: { fixtureNow })
-
-        let derived = try await recomputer.derivedSchemes(forExerciseID: squat)
-
-        #expect(derived == [RecordScheme(reps: 5, sets: 3)])
-        #expect(!derived.contains(RecordScheme(reps: 1, sets: 1)))
-    }
-
-    /// A run past either bound clamps rather than being refused, so the cell it derives is the
-    /// table's corner — the same clamp the records themselves are computed through.
-    @Test("A run past the table's bounds derives the clamped cell")
-    func aRunPastTheBoundsClamps() async throws {
-        let log = TrainingLog()
-        let squat = try await log.exercise(named: "Back Squat")
-        for week in [6, 4, 2] {
-            try await log.session(
-                of: squat, on: weeksAgo(week), sets: (0..<8).map { _ in working(60_000, 12) })
-        }
-        let recomputer = PersonalRecordRecomputer(
-            workouts: log.repositories.workouts,
-            cache: log.repositories.personalRecords,
-            now: { fixtureNow })
-
-        #expect(
-            try await recomputer.derivedSchemes(forExerciseID: squat)
-                == [RecordScheme(reps: 10, sets: 6)])
-    }
-
-    /// The derived set filters the feed as well as being computable: a scheme the lifter has
-    /// performed once holds a record and does not appear.
-    @Test("Derived schemes keep a habitual scheme and drop a one-off")
-    func derivedSchemesFilterTheFeed() async throws {
-        let log = TrainingLog()
-        let squat = try await log.exercise(named: "Back Squat")
-        for (week, grams) in [(8, 120_000), (6, 130_000), (4, 140_000)] {
-            try await log.session(
-                of: squat, on: weeksAgo(week), sets: (0..<3).map { _ in working(grams, 5) })
-        }
-        // A one-off heavy single, newer than every 5 × 3 above.
         try await log.session(of: squat, on: weeksAgo(1), sets: [working(200_000, 1)])
         let recomputer = PersonalRecordRecomputer(
             workouts: log.repositories.workouts,
             cache: log.repositories.personalRecords,
             now: { fixtureNow })
         try await recomputer.recompute(forExerciseID: squat)
+
+        let feed = try await recomputer.recentRecords(
+            limit: 10,
+            filter: RecentRecordsFilter(
+                exerciseIDs: nil, schemes: .everyScheme, showsBaselines: true))
+
+        // The 5 × 5 is the improvement — it beat 80 kg — and it is what `FR-17.3.1` is about.
+        let fiveByFive = feed.first { $0.scheme == RecordScheme(reps: 5, sets: 5) }
+        #expect(fiveByFive?.weight == Weight(grams: 90_000))
+        #expect(fiveByFive?.previous == Weight(grams: 80_000))
+        #expect(feed.contains { $0.scheme == RecordScheme(reps: 1, sets: 1) })
+    }
+
+    /// The other half of `FR-17.3.2`: the chosen list is still a narrowing, and it is the only one
+    /// of the three that touches schemes now.
+    ///
+    /// Same fixture as above, so the two tests differ in the filter and in nothing else — which is
+    /// what makes this an assertion about the filter rather than about two logs.
+    @Test("A chosen scheme list still narrows the feed")
+    func aChosenListStillNarrows() async throws {
+        let log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        for (week, grams) in [(4, 80_000), (2, 90_000)] {
+            try await log.session(
+                of: squat, on: weeksAgo(week), sets: (0..<5).map { _ in working(grams, 5) })
+        }
+        try await log.session(of: squat, on: weeksAgo(1), sets: [working(200_000, 1)])
+        let recomputer = PersonalRecordRecomputer(
+            workouts: log.repositories.workouts,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
+        try await recomputer.recompute(forExerciseID: squat)
+
+        let feed = try await recomputer.recentRecords(
+            limit: 10,
+            filter: RecentRecordsFilter(
+                exerciseIDs: nil,
+                schemes: .chosen([RecordScheme(reps: 5, sets: 5)]),
+                showsBaselines: true))
+
+        #expect(feed.map(\.scheme) == [RecordScheme(reps: 5, sets: 5)])
+    }
+
+    /// `NFR-17.2`: **the feed reads the cache and never a set history**, whatever the filter says.
+    ///
+    /// The walk this asserts is gone is `FR-16.3.2`'s derived schemes, which ran once per distinct
+    /// exercise among the events examined — under `.everyExercise` that was the whole catalogue, on
+    /// the tab the app launches into.
+    ///
+    /// **Anchored on a non-empty feed.** A counting fake reporting zero walks over a feed that came
+    /// back empty would say nothing at all: the read could have been short-circuited by the limit,
+    /// or by a cache the fixture never wrote.
+    @Test("The feed walks no exercise's sets, at any scope")
+    func theFeedReadsOnlyTheCache() async throws {
+        let log = TrainingLog()
+        for (name, week) in [("Back Squat", 4), ("Bench Press", 3), ("Deadlift", 2)] {
+            let lift = try await log.exercise(named: name)
+            try await log.session(of: lift, on: weeksAgo(week), sets: [working(100_000, 5)])
+            try await log.session(of: lift, on: weeksAgo(week - 1), sets: [working(110_000, 5)])
+            let seeding = PersonalRecordRecomputer(
+                workouts: log.repositories.workouts,
+                cache: log.repositories.personalRecords,
+                now: { fixtureNow })
+            try await seeding.recompute(forExerciseID: lift)
+        }
+        let counting = CountingWorkouts(wrapped: log.repositories.workouts)
+        let reader = PersonalRecordRecomputer(
+            workouts: counting,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
+
+        let feed = try await reader.recentRecords(
+            limit: 10,
+            filter: RecentRecordsFilter(
+                exerciseIDs: nil, schemes: .everyScheme, showsBaselines: true))
+
+        #expect(feed.count == 3)
+        #expect(await counting.exerciseWalks == 0)
+    }
+
+    /// `DOD-17.2`'s feed half: a lift improved today is on the feed today, under the row that
+    /// ships rather than under a filter this test wrote.
+    ///
+    /// **`90 × 5 × 5` after `80 × 5 × 5`**, which is the same run `FR-17.2.1`'s badge draws — so the
+    /// badge and the feed are being asserted about one event. The lift is named on the dashboard,
+    /// because `FR-16.3.1`'s shipped scope is the dashboard's lifts.
+    @Test("A record set today appears on the feed today, under the shipped settings")
+    func todaysRecordIsOnTheFeedToday() async throws {
+        let log = TrainingLog()
+        let squat = try await log.exercise(named: "Back Squat")
+        try await log.session(
+            of: squat, on: weeksAgo(1), sets: (0..<5).map { _ in working(80_000, 5) })
+        try await log.session(
+            of: squat, on: fixtureNow, sets: (0..<5).map { _ in working(90_000, 5) })
+        var stored = try await log.repositories.settings.settings()
+        stored.dashboardExerciseIDs = [squat]
+        try await log.repositories.settings.save(stored)
+        let recomputer = PersonalRecordRecomputer(
+            workouts: log.repositories.workouts,
+            cache: log.repositories.personalRecords,
+            now: { fixtureNow })
+        try await recomputer.recompute(forExerciseID: squat)
+
         let filter = RecentRecordsFilter(
-            exerciseIDs: nil, schemes: .derived, showsBaselines: true)
+            exerciseIDs: await RecentRecordsFilter.scope(of: stored) { [] },
+            schemes: stored.recentRecordsSchemes,
+            showsBaselines: stored.recentRecordsShowsBaselines)
+        let feed = try await recomputer.recentRecords(
+            limit: RecentRecordsState.cardLimit, filter: filter)
 
-        let feed = try await recomputer.recentRecords(limit: 10, filter: filter)
-
-        #expect(feed.allSatisfy { $0.scheme == RecordScheme(reps: 5, sets: 3) })
-        #expect(!feed.contains { $0.weight == Weight(grams: 200_000) })
+        #expect(feed.count == 1)
+        #expect(feed.first?.scheme == RecordScheme(reps: 5, sets: 5))
+        #expect(feed.first?.weight == Weight(grams: 90_000))
+        #expect(feed.first?.achievedAt == fixtureNow)
     }
 
     /// The limit counts what survives, not what was considered.
@@ -326,7 +378,7 @@ struct RecentRecordsFilterTests {
         let feed = try await fixture.recomputer.recentRecords(
             limit: 5,
             filter: RecentRecordsFilter(
-                exerciseIDs: scope, schemes: .derived, showsBaselines: true))
+                exerciseIDs: scope, schemes: .everyScheme, showsBaselines: true))
 
         #expect(scope == [])
         #expect(feed.isEmpty)

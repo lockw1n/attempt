@@ -1,3 +1,4 @@
+import AppNavigation
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -5,8 +6,8 @@ import Testing
 
 @testable import History
 
-/// The calendar's reads (`FR-1.5.3`) — which days are marked, what selecting one shows, what a tap
-/// on an empty day does, and where the two chevrons stop.
+/// The calendar's reads (`FR-1.5.3`) — which days are marked, where a marked day's tap goes
+/// (`FR-17.11.2`), and where the two chevrons stop.
 @MainActor
 @Suite("Calendar")
 struct CalendarStateTests {
@@ -75,28 +76,6 @@ struct CalendarStateTests {
             .filter(state.hasTraining(on:))
         // 1 January is a training day and is not a cell of December's grid, so it is not drawn.
         #expect(marked == [TrainingLog.day(2025, 12, 31)])
-    }
-
-    @Test("A failed read of one day costs the screen that day and not the grid")
-    func aFailedDayReadKeepsTheMarkers() async throws {
-        var log = TrainingLog()
-        let squat = try await log.exercise(named: "Back Squat")
-        let session = try await log.session(on: TrainingLog.day(2026, 1, 9))
-        try await log.entry(squat, in: session)
-
-        let state = log.calendarState(
-            today: TrainingLog.day(2026, 1, 20),
-            workouts: FlakyWorkoutRepository(wrapping: log.repositories.workouts, failingAfter: 0)
-        )
-        await state.load()
-        await state.select(TrainingLog.day(2026, 1, 9))
-
-        #expect(state.trainingDays == [TrainingLog.day(2026, 1, 9)])
-        #expect(CalendarScreenState.current(state.phase, trainingDays: 1) == .ready)
-        guard case .failed = state.day else {
-            Issue.record("expected the day to have failed, got \(state.day)")
-            return
-        }
     }
 
     @Test("A failed read of the sessions is the screen's error state, with nothing marked")
@@ -201,15 +180,15 @@ struct CalendarStateTests {
 
         let state = log.calendarState(today: TrainingLog.day(2026, 1, 20))
         await state.load()
-        await state.select(TrainingLog.day(2026, 1, 9))
+        let grid = state.grid
 
         state.adopt(TrainingLog.utc)
 
-        #expect(state.selectedDay == TrainingLog.day(2026, 1, 9))
+        #expect(state.grid == grid)
         #expect(state.trainingDays == [TrainingLog.day(2026, 1, 9)])
     }
 
-    @Test("Two sessions on one day are one marker with both rows beneath it")
+    @Test("Two sessions on one day are one marker")
     func aDayWithTwoSessionsIsStillOneMarker() async throws {
         var log = TrainingLog()
         try await log.exercise(named: "Back Squat")
@@ -218,40 +197,10 @@ struct CalendarStateTests {
 
         let state = log.calendarState(today: TrainingLog.day(2026, 1, 20))
         await state.load()
-        await state.select(TrainingLog.day(2026, 1, 9))
 
-        // One marker for two sessions, and both rows under it: the grid marks days, so a second
-        // session on a marked day adds a row rather than a dot.
+        // One marker for two sessions: the grid marks days, so a second session on a marked day
+        // adds a row to the week that day opens (`FR-17.11.2`) rather than a dot here.
         #expect(state.trainingDays == [TrainingLog.day(2026, 1, 9)])
-        guard case .loaded(let rows) = state.day else {
-            Issue.record("expected the day's rows, got \(state.day)")
-            return
-        }
-        #expect(rows.count == 2)
-    }
-
-    @Test("Two sessions under one identifier are one row, not a ForEach keyed on both (G-2.5)")
-    func duplicateSessionIdentifiersAreOneRow() async throws {
-        var log = TrainingLog()
-        let squat = try await log.exercise(named: "Back Squat")
-        let session = try await log.session(on: TrainingLog.day(2026, 1, 9))
-        try await log.entry(squat, in: session)
-        // The pair a local `save` cannot write. The day's section is a `ForEach` keyed on this
-        // identifier, which renders neither of a duplicated pair correctly — the same reason the
-        // session list deduplicates the same read.
-        let foreign = ForeignWorkoutLog(holding: [session, session], over: log.repositories.workouts)
-
-        let state = log.calendarState(today: TrainingLog.day(2026, 1, 20), workouts: foreign)
-        await state.load()
-        await state.select(TrainingLog.day(2026, 1, 9))
-
-        #expect(state.trainingDays == [TrainingLog.day(2026, 1, 9)])
-        guard case .loaded(let rows) = state.day else {
-            Issue.record("expected the day's rows, got \(state.day)")
-            return
-        }
-        #expect(rows.count == 1)
-        #expect(rows.map(\.id) == [session.id])
     }
 
     @Test("A month the history no longer reaches is clamped to the nearest one that survives")
@@ -322,19 +271,19 @@ struct CalendarStateTests {
         #expect(state.trainingDays == [TrainingLog.day(2026, 1, 9)])
     }
 
-    @Test("The unit is the settings row's, read on every appearance")
-    func theUnitFollowsTheSetting() async throws {
-        var log = TrainingLog()
-        try await log.exercise(named: "Back Squat")
-        try await log.session(on: TrainingLog.day(2026, 1, 9))
+    @Test("A marked day's tap opens the week containing it, with that day named (FR-17.11.2)")
+    func aMarkedDayOpensItsOwnWeek() {
+        // `DOD-17.11`'s route half. The rest of that claim is `WeekHistoryStateTests`' — that the
+        // week a year back is the one drawn and that the day is marked — and this is the join
+        // between them: which `Route` the cell hands its `NavigationLink`. Nothing else can assert
+        // it, a link's value being unreadable from a test, and the previous owner of this edge
+        // (`CalendarState.select(_:)`) retired with the day section.
+        let day = TrainingLog.day(2025, 1, 8)
 
-        let state = log.calendarState(today: TrainingLog.day(2026, 1, 20))
-        await state.load()
-        #expect(state.displayUnit == .kilograms)
-
-        try await log.setDisplayUnit(.pounds)
-        await state.load()
-
-        #expect(state.displayUnit == .pounds)
+        #expect(CalendarDayDestination.route(for: day) == .history(.week(containing: day)))
+        // THE DAY ITSELF, NOT ITS WEEK: a week start depends on the calendar in force, and a stack
+        // restored on a device set differently would name an instant that is no longer any week's
+        // beginning — see `HistoryRoute.week(containing:)`.
+        #expect(CalendarDayDestination.route(for: day).tab == .history)
     }
 }

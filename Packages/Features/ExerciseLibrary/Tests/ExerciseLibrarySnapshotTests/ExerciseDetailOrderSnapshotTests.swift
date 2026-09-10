@@ -107,6 +107,11 @@
 
     extension SilentStore: WorkoutRepository {
         func sessions(
+            forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+        ) async throws -> [WorkoutSession] {
+            []
+        }
+        func sessions(
             in range: ClosedRange<Date>, includingDeleted: Bool
         ) async throws -> [WorkoutSession] { [] }
         func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? { nil }

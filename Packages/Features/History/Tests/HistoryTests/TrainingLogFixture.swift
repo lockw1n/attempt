@@ -214,10 +214,20 @@ struct TrainingLog {
     ///     that arrived by sync or restore was not written by this app and need not be one.
     ///   - notes: The session note (`FR-1.2.9`).
     ///   - enteredOn: When the row was created. Later than `date` is `FR-1.2.1`'s backdating.
+    ///   - run: The program run the workout was started from, or `nil` for a free workout.
+    ///   - week: Which week of that run, where there is one (`FR-16.8.3`).
+    ///   - dayIndex: Which day of that week, counted from zero — a row carrying one of the two
+    ///     without the other has no position at all, which is `WorkoutSession/programPosition`'s
+    ///     own rule.
     /// - Returns: The record.
     @discardableResult
     func session(
-        on date: Date, notes: String = "", enteredOn: Date? = nil
+        on date: Date,
+        notes: String = "",
+        enteredOn: Date? = nil,
+        run: UUID? = nil,
+        week: Int? = nil,
+        dayIndex: Int? = nil
     ) async throws -> WorkoutSession {
         let created = enteredOn ?? date
         let session = WorkoutSession(
@@ -230,8 +240,10 @@ struct TrainingLog {
             endedAt: date.addingTimeInterval(3_600),
             notes: notes,
             bodyweight: nil,
-            programRunID: nil,
-            scheduledWorkoutID: nil
+            programRunID: run,
+            scheduledWorkoutID: nil,
+            weekNumber: week,
+            dayIndex: dayIndex
         )
         try await repositories.workouts.save(session)
         return session
@@ -252,10 +264,30 @@ struct TrainingLog {
     ) -> CalendarState {
         CalendarState(
             workouts: workouts ?? repositories.workouts,
-            exercises: repositories.exercises,
-            settings: repositories.settings,
             calendar: calendar,
             today: today
+        )
+    }
+
+    /// The week view's state, over this store.
+    ///
+    /// - Parameters:
+    ///   - calendar: The calendar the weeks are cut in.
+    ///   - anchor: The day the screen was opened at, or `nil` for the tab's own week mode.
+    ///   - workouts: The workout repository to read through, for the cases that need one that
+    ///     refuses. Defaults to this store's own.
+    /// - Returns: A fresh state that has read nothing yet.
+    func weekState(
+        calendar: Calendar = TrainingLog.utc,
+        containing anchor: Date? = nil,
+        workouts: (any WorkoutRepository)? = nil
+    ) -> WeekHistoryState {
+        WeekHistoryState(
+            workouts: workouts ?? repositories.workouts,
+            exercises: repositories.exercises,
+            settings: repositories.settings,
+            containing: anchor,
+            calendar: calendar
         )
     }
 

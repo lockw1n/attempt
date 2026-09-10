@@ -102,7 +102,7 @@ public struct UserSettings: StoredRecord {
     /// place to say which lifts matter, and this is what a lifter who wants the two to differ uses.
     public var recentRecordsExerciseIDs: [UUID]?
 
-    /// Which schemes that feed reports on (`FR-16.3.2`).
+    /// Which schemes that feed reports on (`FR-17.3.2`).
     public var recentRecordsSchemes: RecentRecordsSchemes
 
     /// Whether the feed shows records at a scheme performed for the first time (`FR-16.3.4`).
@@ -132,7 +132,7 @@ public struct UserSettings: StoredRecord {
         dashboardExerciseIDs: [UUID]? = nil,
         recentRecordsScope: RecentRecordsScope = UserSettings.defaultRecentRecordsScope,
         recentRecordsExerciseIDs: [UUID]? = nil,
-        recentRecordsSchemes: RecentRecordsSchemes = .derived,
+        recentRecordsSchemes: RecentRecordsSchemes = .everyScheme,
         recentRecordsShowsBaselines: Bool = UserSettings.defaultRecentRecordsShowsBaselines
     ) {
         self.id = id
@@ -332,7 +332,7 @@ extension UserSettings {
     /// ``Exercise``'s rule: an omitted key and a null one decode alike, and the shorter of the two
     /// is what a settings row that has never been configured actually is. ``recentRecordsSchemes``
     /// is written as the two parallel columns it is stored in, so the wire and the store carry one
-    /// shape rather than two — absent on both means derived.
+    /// shape rather than two — absent on both means every scheme.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)

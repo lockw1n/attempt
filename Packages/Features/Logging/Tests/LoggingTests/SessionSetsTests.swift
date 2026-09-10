@@ -167,7 +167,7 @@ struct SessionSetsTests {
         #expect(workout.store.exercises.first?.sets.first?.reps == 0)
     }
 
-    @Test("Two taps of Log set in flight together are two sets, not one")
+    @Test("Two taps of Log in flight together are two sets, not one")
     func concurrentWritesAreChained() async throws {
         let workout = try await Workout.started()
         await workout.store.addExercise(id: workout.squat.id)

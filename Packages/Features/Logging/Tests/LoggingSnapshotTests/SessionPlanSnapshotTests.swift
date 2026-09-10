@@ -143,18 +143,17 @@
                 .padding(.top, Spacing.lg.points)
                 SetEditorFields(
                     draft: .constant(draft),
-                    hasInput: .constant(true),
-                    isEditing: true,
+                    mode: .set(isEditing: true),
                     vocabulary: Fixtures.vocabulary,
                     equipment: Fixtures.equipment
                 )
                 .padding(Spacing.lg.points)
                 SetEditorCommands(
-                    isLoggable: draft.isLoggable,
-                    showsRefusal: !draft.isLoggable && !draft.isBlank,
-                    isEditing: true,
+                    showsRefusal: !draft.isLoggable,
+                    mode: .set(isEditing: true),
                     log: {},
                     cancel: {},
+                    skip: nil,
                     delete: {}
                 )
             }

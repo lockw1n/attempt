@@ -98,6 +98,22 @@ extension WorkoutSessionEntity {
         }
     }
 
+    /// The sessions one run stamped with `week` (`TR-17.5`).
+    ///
+    /// **Here rather than at the fetch site, on the same rule as the four above**: the predicate is
+    /// written against this concrete type, so nothing the optimizer does to a generic context can
+    /// reach it (`T-1.90`).
+    ///
+    /// - Parameters:
+    ///   - runID: The program run the session was started under.
+    ///   - week: The week number stamped on it.
+    /// - Returns: The predicate.
+    static func inProgramRun(_ runID: UUID, week: Int) -> Predicate<WorkoutSessionEntity> {
+        #Predicate<WorkoutSessionEntity> { entity in
+            entity.programRunID == runID && entity.weekNumber == week
+        }
+    }
+
     static func softDeleted(onOrBefore cutoff: Date) -> Predicate<WorkoutSessionEntity> {
         #Predicate<WorkoutSessionEntity> { entity in
             if let deletedAt = entity.deletedAt {

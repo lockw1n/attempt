@@ -1,26 +1,11 @@
 /* Logging, Ukrainian (FR-1.14.1). The keys and the reasoning behind each string are in en.lproj
    beside this file. The table has to stay complete: a missing key renders its own identifier. */
 
-"logging.train.empty.headline" = "Немає активного тренування";
-"logging.train.empty.message" = "Почніть сьогоднішнє тренування або виберіть попередню дату, щоб записати те, яке ви вже провели.";
-"logging.train.start.action" = "Почати тренування";
-
 "logging.train.date.section" = "Дата тренування";
 "logging.train.date.picker" = "Тренувальний день";
 "logging.train.date.hint" = "Сьогодні, якщо ви не записуєте тренування з попереднього дня.";
 
-"logging.train.in-progress.section" = "Триває";
-"logging.train.planned.section" = "Заплановано";
 "logging.train.in-progress.day" = "Тренувальний день";
-"logging.train.in-progress.started" = "Початок";
-"logging.train.in-progress.resume" = "Продовжити тренування";
-"logging.train.planned.open" = "Відкрити тренування";
-
-"logging.train.library.action" = "Переглянути вправи";
-"logging.train.routines.action" = "Програми";
-
-"logging.train.error.headline" = "Тренування недоступні";
-"logging.train.error.message" = "Не вдалося прочитати ваші тренування.";
 
 "logging.train.start-error.message" = "Не вдалося почати це тренування. Спробуйте ще раз.";
 
@@ -76,16 +61,16 @@
 "logging.session.exercises.write-error.message" = "Не вдалося зберегти. Нічого не втрачено — спробуйте ще раз.";
 
 "logging.session.set.empty" = "Підходів ще не записано.";
-"logging.session.set.add.action" = "Додати підхід";
+"logging.session.set.add.action" = "Записати";
 "logging.session.set.repeat.action" = "Повторити підхід";
-"logging.session.set.editor.title" = "Записати підхід";
+"logging.session.set.editor.title" = "Записати";
 "logging.session.set.weight.label" = "Вага";
 "logging.session.set.reps.label" = "Повторення";
 "logging.session.set.rpe.label" = "RPE";
 "logging.session.set.rpe.hint" = "Необов’язково, від 1 до 10";
 "logging.session.set.notes.label" = "Нотатка";
 "logging.session.set.notes.hint" = "Необов’язково";
-"logging.session.set.confirm.action" = "Записати підхід";
+"logging.session.set.confirm.action" = "Зберегти";
 "logging.session.set.cancel.action" = "Скасувати";
 "logging.session.set.weight.increase" = "Збільшити вагу";
 "logging.session.set.weight.decrease" = "Зменшити вагу";
@@ -96,6 +81,7 @@
 "logging.session.set.unit.pounds" = "фнт";
 "logging.session.set.position %lld" = "Підхід %lld";
 "logging.session.set.reps %lld" = "Повторень %lld";
+"logging.session.set.note %@" = "Нотатка: %@";
 "logging.session.set.rpe %@" = "RPE %@";
 
 /* FR-16.1.1's set groups. The badge keeps the en dash the English catalogue draws — it is drawn
@@ -116,15 +102,16 @@
 
 /* «ОР» for особистий рекорд, the way the English badge is «PR».
 
-   NEITHER LABEL NEEDS A PLURAL RULE, AND THAT IS NOT AN OVERSIGHT. The compound
-   «%lld-повторний максимум» is an adjective agreeing with «максимум» rather than with the numeral,
-   so it is correct at 1 and at 6 alike — where the literal «на %lld повторень» would be wrong at 2,
-   3 and 4, which are the counts a lifter sets most. The scheme label reads «5 на 5», where «на»
-   sits between the two numerals and agrees with neither. */
-"logging.session.set.record.scheme %lld %lld" = "ОР %1$lld×%2$lld";
-"logging.session.set.record.rep-max %lld" = "ОР %lldПМ";
+   THE FOUR KEYS HERE NEED NO PLURAL RULE AND THE FOUR IN THE .stringsdict DO. These four are the
+   scheme spellings: «5 на 5» puts «на» between two numerals, agreeing with neither. The rep
+   spellings count a noun — the compound «%lld-повторний максимум» that used to stand here agreed
+   with «максимум» rather than with the numeral and so was right at every count, and the literal
+   «%lld повторень» that replaced it is wrong at 2, 3 and 4, which are the counts a lifter sets
+   most. So they moved to the .stringsdict, where Ukrainian's four categories can be spelled. */
+"logging.session.set.record.scheme %lld %lld" = "ОР · %1$lld×%2$lld";
+"logging.session.set.first.scheme %lld %lld" = "Уперше · %1$lld×%2$lld";
 "logging.session.set.record.scheme.label %lld %lld" = "Особистий рекорд: %1$lld на %2$lld";
-"logging.session.set.record.rep-max.label %lld" = "Особистий рекорд: %lld-повторний максимум";
+"logging.session.set.first.scheme.label %lld %lld" = "Уперше: %1$lld на %2$lld";
 "logging.session.set.warmup.section" = "Розминка";
 "logging.session.set.warmup.label" = "Розминковий підхід";
 "logging.session.set.warmup.hint" = "Нумерується окремо й не входить до ваших робочих підходів.";
@@ -263,41 +250,14 @@
 "logging.session.plan.log.action" = "Записати запланований підхід";
 "logging.session.plan.on-target" = "У ціль";
 
-"logging.past-session.save-routine.section" = "Зберегти як програму";
-"logging.past-session.save-routine.explanation" = "Створює програму з цього тренування: вправи в тому порядку, у якому ви їх робили, і ту вагу та повторення, які ви справді підняли. Розминочні та незавершені підходи не враховуються.";
-"logging.past-session.save-routine.action" = "Зберегти як програму";
-
-"logging.past-session.save-routine.title" = "Назвіть цю програму";
-"logging.past-session.save-routine.prompt" = "Важкий день присідань";
-"logging.past-session.save-routine.confirm" = "Зберегти";
-"logging.past-session.save-routine.cancel" = "Скасувати";
-
-"logging.past-session.save-routine.name-required.message" = "Програмі потрібна назва. Нічого не збережено.";
-"logging.past-session.save-routine.write-error.message" = "Не вдалося зберегти програму. Спробуйте ще раз.";
-"logging.past-session.save-routine.saved %@" = "«%@» збережено до ваших програм.";
 "logging.set.training-max-share %@" = "%@ від ТМ";
-
-/* FR-16.8.2 — курс на вкладці «Тренування». */
-"logging.train.program.section" = "Далі";
-"logging.train.program.week-day %lld %lld" = "Тиждень %1$lld · День %2$lld";
-"logging.train.program.start" = "Почати";
-"logging.train.program.skip" = "Пропустити день";
-
-"logging.train.program.archived.headline" = "Програму цього дня заархівовано";
-"logging.train.program.archived.message" = "Призначте дню іншу програму в курсі або пропустіть його.";
-
-"logging.train.program.no-days.headline" = "У курсі ще немає днів";
-"logging.train.program.no-days.message" = "Додайте день — обрана програма й буде тим, що запропонує «Тренування».";
 
 /* FR-16.8.4. */
 "logging.train.program.week-complete.headline %lld" = "Тиждень %lld завершено";
-"logging.train.program.week-complete.message" = "Наступний тиждень починається з того, що ви підняли цього. Кожну вагу можна змінити, а цьоготижневі програми буде заархівовано, а не втрачено.";
+"logging.train.program.week-complete.message" = "Наступний тиждень починається з того, як ви відповіли на цей: записані вправи переносять ваші числа, а пропущені зберігають свій план. Кожну вагу можна змінити, а цьоготижневі програми буде заархівовано, а не втрачено.";
 "logging.train.program.next-week" = "Почати наступний тиждень";
 
-"logging.train.program.error.message" = "Не вдалося прочитати курс. Спробуйте ще раз.";
-"logging.train.program.skip-error.message" = "Не вдалося пропустити день. Спробуйте ще раз.";
 "logging.train.program.next-week-error.message" = "Не вдалося почати наступний тиждень. Нічого не змінено — спробуйте ще раз.";
-"logging.train.program.advance-error.message" = "Тренування збережено, але курс досі показує цей день. Пропустіть його або завершіть ще раз.";
 
 /* FR-16.8.3 / DOD-16.1. */
 "logging.session.program.week-day %lld %lld" = "Тиждень %1$lld · День %2$lld";
@@ -309,3 +269,71 @@
 "logging.session.finish.pending.remove" = "Видалити";
 "logging.session.finish.pending.keep" = "Залишити невиконаними";
 "logging.session.finish.pending.cancel" = "Повернутися до тренування";
+
+/* FR-17.8: the week root. */
+"logging.week.heading %lld" = "Тиждень %lld";
+"logging.week.edit.action" = "Редагувати тиждень";
+"logging.week.menu.action" = "Ще";
+"logging.week.library.action" = "Бібліотека вправ";
+"logging.week.free-workout.action" = "Вільне тренування";
+"logging.week.free-workout.title" = "Вільне тренування";
+"logging.week.day %lld" = "День %lld";
+"logging.week.day.start" = "Почати";
+"logging.week.day.continue" = "Продовжити";
+"logging.week.day.progress %lld %lld" = "%1$lld з %2$lld виконано";
+"logging.week.day.done %@" = "Виконано · %@";
+"logging.week.plan.line %@ %@" = "%1$@ · %2$@";
+"logging.week.plan.target %@ %lld %lld" = "%1$@ × %2$lld × %3$lld";
+"logging.week.plan.target-open %lld %lld" = "%1$lld × %2$lld";
+"logging.week.plan.target.separator" = ", ";
+"logging.week.empty.headline" = "Тиждень ще не заплановано";
+"logging.week.empty.message" = "Заплануйте тиждень — і кожен тренувальний день з’явиться тут, готовий до відмітки.";
+"logging.week.plan.action" = "Запланувати тиждень";
+"logging.week.error.headline" = "Тиждень недоступний";
+"logging.week.error.message" = "Не вдалося прочитати ваш план.";
+
+/* FR-17.9: one day of the week. */
+"logging.day.plan.heading" = "Заплановано";
+"logging.day.row.done" = "Виконано";
+"logging.day.empty.headline" = "На цей день нічого не заплановано";
+"logging.day.empty.message" = "У цей день немає чого робити. Відредагуйте тиждень і призначте програму.";
+"logging.day.error.headline" = "День недоступний";
+"logging.day.error.message" = "Не вдалося прочитати цей день.";
+
+/* FR-17.9's day checklist (T-17.11). */
+"logging.day.row.skipped" = "Пропущено";
+"logging.day.row.as-planned %@" = "%@ · як заплановано";
+"logging.day.row.planned %@" = "План: %@";
+"logging.day.row.did %@" = "Виконано: %@";
+"logging.day.circle.action" = "Записати як заплановано";
+"logging.day.log.action" = "Записати";
+"logging.day.skip.action" = "Пропустити цю вправу";
+"logging.day.log-remaining.action" = "Записати решту як заплановано";
+"logging.day.skip-remaining.action" = "Пропустити решту";
+"logging.day.log-remaining.confirm.action" = "Записати";
+"logging.day.skip-remaining.confirm.action" = "Пропустити";
+"logging.day.remaining.confirm.cancel" = "Продовжити";
+"logging.day.unanswerable %@" = "Цим вправам ще потрібна вага: %@";
+"logging.day.unanswerable.separator" = ", ";
+"logging.day.menu.action" = "Дії з днем";
+"logging.day.change-date.action" = "Змінити дату";
+"logging.day.change-date.done" = "Готово";
+"logging.day.add-exercise.action" = "Додати вправу";
+"logging.day.no-rows.headline" = "У цьому дні ще нічого немає";
+"logging.day.no-rows.message" = "Додайте вправу, щоб почати записувати.";
+
+/* FR-17.1 — аркуш «Записати». */
+"logging.session.set.editor.question" = "Що ви зробили?";
+"logging.session.set.sets.label" = "Підходи";
+"logging.session.set.sets.increase" = "Додати підхід";
+"logging.session.set.sets.decrease" = "Прибрати підхід";
+"logging.session.set.planned.label" = "За планом";
+"logging.session.set.actual.label" = "Фактично";
+"logging.session.set.details.label" = "Деталі кожного підходу";
+"logging.session.set.save-done.action" = "Зберегти як виконане";
+
+/* FR-17.9.4 — відхилення поруч із фактично виконаним. */
+"logging.session.set.deviation.line %@ %@" = "%1$@ · %2$@";
+"logging.session.set.deviation.weight %@" = "%@";
+"logging.session.set.deviation.as-planned" = "як заплановано";
+"logging.session.set.deviation.separator" = ", ";

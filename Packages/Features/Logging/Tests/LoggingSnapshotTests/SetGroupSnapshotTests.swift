@@ -39,10 +39,11 @@
         }
 
         @Test func setGroupRecordBadge() throws {
-            // `FR-16.2.4`: the badge names the maximal scheme the run set. The working group of four
-            // carries **PR 6×4** and the lone fifth set **PR 6RM** — two spellings of one badge, and
-            // the picture is what settles that the collapsed line has room for both beside the
-            // rating and the numbers it already draws.
+            // `FR-17.2.2`, `FR-17.2.3`: the badge names the cell the run was performed at, in one of
+            // two states. The working group of four carries **PR · 6×4** and the lone fifth set
+            // **First · 6 reps** — two spellings and two states in one picture, which is what settles
+            // that the collapsed line has room for the longer of them beside the rating and the
+            // numbers it already draws.
             try assertSnapshots(named: "Session-set-groups-record") {
                 fixedEnvironment {
                     groupRows(Fixtures.groupedSets, schemes: Fixtures.recordSchemes)
@@ -115,7 +116,7 @@
         private func groupRows(
             _ sets: [SetEntry],
             expanded: Set<UUID> = [],
-            schemes: [UUID: [RecordScheme]] = [:],
+            schemes: [UUID: [SchemeMark]] = [:],
             logsNext: Bool = false,
             isSessionOpen: Bool = false
         ) -> some View {
@@ -132,7 +133,7 @@
                         mark: { _, _ in },
                         markCompleted: { _, _ in },
                         edit: { _ in },
-                        recordSchemes: { schemes[$0] ?? [] },
+                        recordMarks: { schemes[$0] ?? [] },
                         isSessionOpen: isSessionOpen,
                         logNext: logsNext && group.id == working.last?.id ? {} : nil
                     )

@@ -266,6 +266,18 @@ enum LoggingStrings {
         resource("logging.session.set.reps \(reps)")
     }
 
+    /// `FR-1.2.3`'s note on one set, wherever a row draws it (`FR-17.7.4`).
+    ///
+    /// **Labelled rather than drawn bare.** A sentence under a row of numerals is read by VoiceOver
+    /// straight after them with nothing saying what it is, and on screen it would be the only
+    /// unlabelled prose on a card of measurements.
+    ///
+    /// - Parameter note: What the lifter wrote.
+    /// - Returns: The line.
+    static func setNote(_ note: String) -> LocalizedStringResource {
+        resource("logging.session.set.note \(note)")
+    }
+
     /// One set on `FR-1.2.10`'s strip — a load and a repetition count, already rendered.
     ///
     /// **A format string rather than an interpolation** (`G-3.4`): the multiplication sign is a
@@ -387,13 +399,10 @@ enum LoggingStrings {
     /// Every string this module can show, for the test that proves each one resolves.
     static var all: [LocalizedStringResource] {
         [
-            trainEmptyHeadline, trainEmptyMessage, trainStartAction, trainDateSection,
-            trainDatePicker, trainDateHint, trainInProgressSection, trainPlannedSection,
+            trainDateSection,
+            trainDatePicker, trainDateHint,
             trainInProgressDay,
-            trainInProgressStarted, trainInProgressResume, trainPlannedOpen, trainLibraryAction,
-            trainRoutinesAction,
-            trainErrorHeadline,
-            trainErrorMessage, trainStartErrorMessage, sessionTitle, sessionTitleDay("Sep 4"),
+            trainStartErrorMessage, sessionTitle, sessionTitleDay("Sep 4"),
             sessionStarted, sessionEmptyHeadline, sessionEmptyMessage,
             sessionFinishAction, sessionFinishPendingTitle(1), sessionFinishPendingTitle(3),
             sessionFinishPendingMessage, sessionFinishPendingRemove, sessionFinishPendingKeep,
@@ -413,7 +422,7 @@ enum LoggingStrings {
             setListEmpty, setAddAction, setRepeatAction, setEditorTitle, setWeightLabel,
             setRepsLabel, setRPELabel, setRPEHint, setNotesLabel, setNotesHint, setConfirmAction,
             setCancelAction, setWeightIncrease, setWeightDecrease, setRepsIncrease, setRepsDecrease,
-            setInvalidMessage, setPosition(1), setReps(5), setRPE(""),
+            setInvalidMessage, setPosition(1), setReps(5), setRPE(""), setNote(""),
             setEditorEditTitle, setSaveAction, setEditAction, setDeleteAction,
             setDeleteConfirmTitle, setDeleteConfirmMessage, setDeleteConfirmAction,
             setDeleteConfirmCancel,
@@ -421,7 +430,7 @@ enum LoggingStrings {
             setWarmupHint,
         ] + allModifierStrings + allPlateStrings + allEquipmentStrings + allPastSessionStrings
             + allRecordStrings + allPlanStrings + allSetGroupStrings
-            + allProgramStrings
+            + allProgramStrings + allWeekStrings + allDayStrings + allLogSheetStrings
             + MassUnit.allCases.map(setUnitSymbol(for:))
             + [true, false].map(setMarkAction(isWarmup:))
             + [SetOutcome.completed, .failed, .pending].map(setOutcome)

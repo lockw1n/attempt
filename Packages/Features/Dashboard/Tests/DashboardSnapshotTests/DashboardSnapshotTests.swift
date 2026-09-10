@@ -166,10 +166,12 @@
 
         @Test func firstLaunch() throws {
             // FR-1.13.2, and the one reference where what is NOT in the picture is the assertion:
-            // no section cards, and one action rather than the separate "Start workout" button
-            // above them.
+            // no section cards, and the screen's only accent (FR-16.6.4) spent on the one action an
+            // install with nothing in it can be given. `D-17.11` withdrew the separate "Start
+            // workout" button that used to sit above the sections, so this is also the only
+            // Dashboard reference in which any filled command appears at all.
             try assertSnapshots(named: "Dashboard-first-launch") {
-                FirstLaunchReading(start: {})
+                FirstLaunchReading(plan: {})
             }
         }
 

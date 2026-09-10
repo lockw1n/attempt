@@ -113,37 +113,27 @@ struct SessionSummaryLine: View {
 
 /// The two ways a workout ends (`FR-1.2.11`, `FR-1.2.12`).
 ///
-/// Taking closures rather than the store, so both commands are picturable without one behind them.
+/// Taking closures rather than the store, so the command is picturable without one behind them.
 ///
-/// **Finish is the primary action and discard is not styled as one.** They are not two options: one
-/// keeps the workout and one throws it away, and a pair of matching buttons is how the second gets
-/// tapped by accident. `FR-1.2.12`'s confirmation is the other half of that, and it is the caller's.
+/// **Discard has left this section** (`FR-17.9.7`): it is in the screen's overflow menu, beside the
+/// training day the retired root took away — see ``SessionOverflowMenu``. A destructive control
+/// standing under the primary one was how it got tapped by accident, which is the same argument
+/// that kept it unstyled, taken one step further.
 struct SessionCommandsSection: View {
-    /// Whether the last write failed. The workout is unchanged when it did, so both commands still
-    /// ask for the same thing and the retry is the same tap.
+    /// Whether the last write failed. The workout is unchanged when it did, so the command still
+    /// asks for the same thing and the retry is the same tap.
     let hasFailed: Bool
 
     /// Ends the workout and keeps it.
     let finish: () -> Void
 
-    /// Asks whether to throw it away.
-    let discard: () -> Void
-
-    /// Both commands, and a failed write beneath them.
+    /// The command, and a failed write beneath it.
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md.points) {
             Button(action: finish) {
                 Text(LoggingStrings.sessionFinishAction)
             }
             .buttonStyle(.primaryAction(.fill))
-
-            Button(action: discard) {
-                Text(LoggingStrings.sessionDiscardAction)
-                    .font(Typography.actionLabel.font)
-                    .foregroundStyle(ColorToken.negative)
-                    .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points)
-            }
-            .buttonStyle(.plain)
 
             if hasFailed {
                 // The shared error component rather than a local label, and the workout stays on
@@ -188,6 +178,14 @@ struct SessionNotesFold: View {
     /// Whether the last attempt to store it failed. The typed text stays on screen either way, so
     /// the retry is another tap at the same command.
     let hasFailed: Bool
+
+    /// How much weight **Save note** is drawn at (`FR-16.6.4`) — see
+    /// ``SessionNoteEditor/saveEmphasis``, whose question this forwards rather than answering.
+    ///
+    /// **The host answers, and the two hosts differ.** An active session spends its accent on
+    /// **Finish workout** directly below this fold, so it asks for `.secondary`; `history.session`
+    /// has no filled command of its own and this is it (`FR-17.7.1`).
+    let saveEmphasis: StateActionEmphasis
 
     /// Stores what the field holds.
     let save: () -> Void
@@ -246,23 +244,19 @@ struct SessionNotesFold: View {
     }
 
     /// The field itself, and what can be done with what is in it.
-    ///
-    /// **Secondary**: this fold sits directly above **Finish workout**, which is the active
-    /// session's one filled accent (`FR-16.6.4`).
     @ViewBuilder private var editor: some View {
         SessionNoteEditor(
-            draft: $draft, hasFailed: hasFailed, saveEmphasis: .secondary, save: save)
+            draft: $draft, hasFailed: hasFailed, saveEmphasis: saveEmphasis, save: save)
     }
 }
 
 /// `FR-1.2.9`'s note field and the two commands that commit it — the part both screens that hold a
 /// note draw the same way.
 ///
-/// **Shared because the field is the same field, and its container is not.** The workout in
-/// progress folds it at the foot (``SessionNotesFold``); a past session gives it a headed section
-/// of its own (``SessionNotesSection``), where nothing is competing for the first screen. What is
-/// inside is one thing either way, and two copies of a `3...10`-line `TextField` would be two
-/// places to keep a `lineLimit` in step.
+/// **Shared because the field is the same field and its host is not.** Both screens that hold a
+/// note fold it at the foot (``SessionNotesFold``, `FR-16.6.1`, `FR-17.7.1`); what differs is what
+/// else is on the screen, which is what ``saveEmphasis`` is for. Two copies of a `3...10`-line
+/// `TextField` would be two places to keep a `lineLimit` in step.
 ///
 /// **A `TextField(axis: .vertical)` rather than a `TextEditor`**, for the reason the exercise notes
 /// give: an editor brings its own scroll view, and inside either screen's `ScrollView` that is two
@@ -284,7 +278,7 @@ struct SessionNoteEditor: View {
     /// **The host answers, because the host is the only layer that knows what else the screen
     /// draws.** This view has two of them and they differ: an active session spends its accent on
     /// **Finish workout** below the fold, where a past session has no filled command of its own and
-    /// this is it.
+    /// this is it (`FR-17.7.1`).
     let saveEmphasis: StateActionEmphasis
 
     /// Stores what the field holds.
@@ -366,34 +360,5 @@ struct SessionNoteEditor: View {
                 .frame(minHeight: TouchTarget.standard.points)
         }
         .buttonStyle(.plain)
-    }
-}
-
-/// `FR-1.2.9`'s note under a heading of its own, for a screen with room for one.
-///
-/// **The past session's shape, not the workout in progress's.** Nothing competes for the first
-/// screen of a session that is over — there is no set to log and no **Finish** to reach — so the
-/// note keeps the headed section it has always had, and ``SessionNotesFold`` is the other answer,
-/// for the screen where `NFR-16.3` is spending the same space on a set row.
-///
-/// **Its Save is `history.session`'s one filled accent** (`FR-16.6.4`): the screen draws no other
-/// filled command — a finished workout's own **Finish workout** is secondary — and this is the one
-/// thing on it that commits anything.
-struct SessionNotesSection: View {
-    /// The field, and what it is being compared against.
-    @Binding var draft: SessionNoteDraft
-
-    /// Whether the last attempt to store it failed.
-    let hasFailed: Bool
-
-    /// Stores what the field holds.
-    let save: () -> Void
-
-    /// The heading, then the field on a card beneath it.
-    var body: some View {
-        GroupedSection(Text(LoggingStrings.sessionNotesSection)) {
-            SessionNoteEditor(
-                draft: $draft, hasFailed: hasFailed, saveEmphasis: .primary, save: save)
-        }
     }
 }

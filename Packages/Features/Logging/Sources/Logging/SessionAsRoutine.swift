@@ -21,8 +21,23 @@ import RepositoryInterface
 ///
 /// **Every entry becomes a slot even when nothing under it qualifies.** The exercises a workout
 /// trained, in the order it trained them, are the routine's shape; a slot with no targets is the
-/// same "short rather than wrong" routine `RoutineEditorState.everyGroupResolves` already allows,
-/// and dropping the exercise instead would silently shorten the plan.
+/// same "short rather than wrong" routine `Routines`' own editor already allows — a slot with no
+/// target is one the lifter has not decided yet — and dropping the exercise instead would silently
+/// shorten the plan.
+///
+/// **An exercise that was answered and completed nothing keeps the plan it was given, rather than
+/// reading as nothing performed** (`FR-17.8.6`). That is `FR-17.9.6`'s skip, and also the lifter
+/// who attempted it and failed every set: either way the completed sets are silent about what was
+/// meant, so the entry's own planned rows are what is carried forward. They are the rows the day
+/// was *started* with rather than the routine's targets as they read today, which is `FR-16.8.3`:
+/// a past session is never altered by a later plan edit. An entry nobody answered at all is
+/// neither, and contributes an empty slot as before.
+///
+/// **The question here is narrower than ``DayRowAnswer``'s, and asking it through that enum would
+/// be a second definition of *skipped*.** The checklist counts a failed set as work, because its
+/// *Did* line draws one; this asks what numbers there are to carry, and a failed set has none. The
+/// two agree wherever a day is answered through ``DayStore``, which is every program day there is
+/// — but they are not the same question, so they are not written as one.
 struct SessionAsRoutine: Equatable {
     /// One exercise slot, in the order the workout performed it.
     struct Slot: Equatable {
@@ -35,8 +50,12 @@ struct SessionAsRoutine: Equatable {
 
     /// One target group: a load, its reps, and how many sets of it were done back to back.
     struct Target: Equatable {
-        /// The load on one implement (`TR-0.2.3`).
-        let weight: Weight
+        /// The load on one implement (`TR-0.2.3`), or `nil` where the plan named none.
+        ///
+        /// **Optional because a *carried* plan may be**: a performed group always has a load, and a
+        /// skipped exercise's planned rows are `FR-15.2.2`'s targets, which are free to leave the
+        /// load for the session to decide. Dropping those would shorten the plan silently.
+        let weight: Weight?
 
         /// Repetitions per set.
         let reps: Int
@@ -48,13 +67,35 @@ struct SessionAsRoutine: Equatable {
     /// The slots, in entry order.
     let slots: [Slot]
 
-    /// Reads a session's exercises as a routine.
+    /// Reads a session's exercises as a routine, per answer (`FR-17.8.6`).
     ///
-    /// - Parameter exercises: The session's exercises, in entry order.
+    /// - Parameter exercises: The session's exercises, in entry order, each carrying the targets
+    ///   the day was started with (``SessionExercise/planned``).
     init(_ exercises: [SessionExercise]) {
         slots = exercises.map {
-            Slot(exerciseID: $0.entry.exerciseID, groups: Self.targets(from: $0.sets))
+            Slot(exerciseID: $0.entry.exerciseID, groups: Self.targets(of: $0))
         }
+    }
+
+    /// What one exercise prescribes next week, chosen by what was said about it.
+    ///
+    /// - Parameter exercise: The entry, its sets and the targets it was planned with.
+    /// - Returns: The groups, in order — the performed runs, the planned rows, or none.
+    private static func targets(of exercise: SessionExercise) -> [Target] {
+        let performed = targets(from: exercise.sets)
+        guard performed.isEmpty else { return performed }
+        // Answered with nothing completed behind it: the plan is the only thing the entry said.
+        // Unanswered said nothing at all, and carries nothing.
+        return exercise.entry.isMarkedDone ? planned(from: exercise.planned) : []
+    }
+
+    /// An entry's own plan, as targets.
+    ///
+    /// - Parameter groups: The entry's planned rows, in
+    ///   ``RepositoryInterface/PlannedTargetGroup/order``.
+    /// - Returns: The groups, in that order.
+    private static func planned(from groups: [PlannedTargetGroup]) -> [Target] {
+        groups.map { Target(weight: $0.targetWeight, reps: $0.targetReps, sets: $0.targetSets) }
     }
 
     /// Compresses one exercise's sets into target groups.

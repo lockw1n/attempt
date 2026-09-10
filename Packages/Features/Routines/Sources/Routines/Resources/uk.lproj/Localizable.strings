@@ -1,29 +1,49 @@
-/* Українська для модуля програм тренувань (G-3.4, FR-15.2). Кожен ключ має відповідник у
-   en.lproj — ключ без пари показує сам себе. */
+/* Українська для модуля тижневого плану (G-3.4, FR-15.2, FR-17.10). Кожен ключ має відповідник у
+   en.lproj — ключ без пари показує сам себе. Ключі зі словами `editor` і `group` залишилися від
+   екранів, які прибрав T-17.12: перейменування ключа коштує перекладу, тому вони зберігають
+   написання, під яким їх перекладали. */
 
-"routines.list.title" = "Програми";
-"routines.list.new" = "Нова програма";
+"routines.week.title" = "Редагувати тиждень";
+"routines.week.default-name" = "Мій тиждень";
+"routines.week.name.label" = "Тиждень";
+"routines.week.name.prompt" = "Блок присідань";
+"routines.week.save" = "Зберегти";
+"routines.week.name-required.message" = "Спершу дайте тижню назву.";
+"routines.week.write-error.message" = "Не вдалося зберегти зміну. Спробуйте ще раз.";
 
-"routines.list.empty.headline" = "Програм ще немає";
-"routines.list.empty.message" = "Програма — це план одного тренувального дня: вправи по порядку і те, що робити в кожній.";
+"routines.week.error.headline" = "Не вдалося завантажити тиждень";
+"routines.week.error.message" = "Читання не вдалося. Спробуйте ще раз.";
 
-"routines.list.error.headline" = "Не вдалося завантажити програми";
-"routines.list.error.message" = "Читання не вдалося. Спробуйте ще раз.";
+"routines.week.empty.headline" = "Днів ще немає";
+"routines.week.empty.message" = "Тиждень — це дні, у які ви тренуєтесь, по порядку. Додайте день і впишіть вправи, які робите в цей день.";
+"routines.week.day.add" = "Додати день";
 
-"routines.list.start" = "Почати тренування";
-"routines.list.start.in-progress.message" = "Завершіть або скасуйте поточне тренування, перш ніж починати нове.";
-"routines.list.start.write-error.message" = "Не вдалося почати тренування. Спробуйте ще раз.";
+"routines.day.number %lld" = "День %lld";
+"routines.day.default-name %lld" = "День %lld";
+"routines.day.duplicate.name %@" = "%@ (копія)";
+"routines.day.archived" = "План цього дня зник";
+"routines.day.unnamed" = "День без назви";
 
-"routines.list.row.unnamed" = "Програма без назви";
+"routines.day.menu" = "Дії з днем";
+"routines.day.rename" = "Перейменувати день";
+"routines.day.duplicate" = "Дублювати день";
+"routines.day.up" = "Перемістити день раніше";
+"routines.day.down" = "Перемістити день пізніше";
+"routines.day.remove" = "Видалити день";
 
-"routines.editor.create.title" = "Нова програма";
-"routines.editor.edit.title" = "Редагувати програму";
+"routines.day.rename.title" = "Перейменувати день";
+"routines.day.rename.prompt" = "Важкий день присідань";
 
-"routines.editor.name.label" = "Назва";
-"routines.editor.name.prompt" = "Важкий день присідань";
-"routines.editor.name.caption" = "Програмі потрібна назва.";
+"routines.day.remove.title" = "Видалити цей день?";
+"routines.day.remove.message" = "Він зникне з тижня. Тренування, які ви вже записали в цей день, залишаться без змін.";
 
-"routines.editor.exercises.section" = "Вправи";
+"routines.cancel" = "Скасувати";
+
+"routines.day.expanded" = "Розгорнуто";
+"routines.day.collapsed" = "Згорнуто";
+
+"routines.day.name-required.message" = "Дню потрібна назва. Нічого не перейменовано.";
+
 "routines.editor.exercises.empty.headline" = "Вправ ще немає";
 "routines.editor.exercises.empty.message" = "Додайте вправи цього дня в тому порядку, у якому їх виконуєте.";
 "routines.editor.exercise.add" = "Додати вправу";
@@ -31,8 +51,11 @@
 "routines.editor.exercise.unnamed" = "Невідома вправа";
 "routines.editor.move.up" = "Перемістити вище";
 "routines.editor.move.down" = "Перемістити нижче";
+"routines.exercise.menu" = "Дії з вправою";
 
 "routines.editor.group.heading %lld" = "Ціль %lld";
+"routines.target.menu" = "Дії з ціллю";
+"routines.target.separator" = "×";
 
 "routines.editor.group.weight.label" = "Вага";
 "routines.editor.group.weight.prompt" = "Вирішити на тренуванні";
@@ -43,82 +66,6 @@
 "routines.editor.group.remove" = "Прибрати ціль";
 "routines.editor.group.up" = "Перемістити ціль вище";
 "routines.editor.group.down" = "Перемістити ціль нижче";
-"routines.editor.group.refusal" = "Кожній цілі потрібні повторення й підходи. Вагу можна залишити порожньою.";
 
 "routines.editor.group.unit.kilograms" = "кг";
 "routines.editor.group.unit.pounds" = "фунт";
-
-"routines.editor.save" = "Зберегти програму";
-
-"routines.editor.error.headline" = "Не вдалося завантажити програму";
-"routines.editor.error.message" = "Читання не вдалося. Спробуйте ще раз.";
-"routines.editor.missing.headline" = "Цієї програми більше немає";
-"routines.editor.missing.message" = "Її видалено, або її ніколи не було.";
-"routines.editor.write.error" = "Не вдалося зберегти програму. Спробуйте ще раз.";
-
-"routines.list.duplicate" = "Дублювати";
-"routines.list.rename" = "Перейменувати";
-"routines.list.archive" = "Архівувати";
-"routines.list.cancel" = "Скасувати";
-
-"routines.list.rename.title" = "Перейменувати програму";
-
-"routines.list.archive.title" = "Архівувати цю програму?";
-"routines.list.archive.message" = "Вона назавжди зникне зі списку програм. Тренування, які ви вже записали за нею, залишаться без змін.";
-
-"routines.list.manage.name-required.message" = "Програмі потрібна назва. Нічого не перейменовано.";
-"routines.list.manage.write-error.message" = "Не вдалося зберегти зміну. Спробуйте ще раз.";
-
-"routines.list.duplicate.name %@" = "%@ (копія)";
-
-/* FR-16.8.1 — курси. «Програма» тут уже зайнята розкладом одного дня, тому багатотижневий план
-   називається курсом. */
-"routines.programs.link" = "Курси";
-"routines.programs.title" = "Курси";
-"routines.programs.new" = "Новий курс";
-"routines.programs.new.title" = "Новий курс";
-"routines.programs.new.prompt" = "Назва";
-"routines.programs.new.create" = "Створити";
-
-"routines.programs.empty.headline" = "Курсів ще немає";
-"routines.programs.empty.message" = "Курс — це тиждень тренувань: програми по порядку. «Тренування» пропонує наступну.";
-
-"routines.programs.error.headline" = "Не вдалося завантажити курси";
-"routines.programs.error.message" = "Читання не вдалося. Спробуйте ще раз.";
-
-"routines.programs.name-required.message" = "Спершу дайте курсу назву.";
-"routines.programs.write-error.message" = "Не вдалося зберегти курс. Спробуйте ще раз.";
-
-"routines.programs.current" = "Поточний";
-"routines.programs.row.unnamed" = "Курс без назви";
-
-"routines.program-editor.title" = "Курс";
-"routines.program-editor.name.label" = "Назва";
-"routines.program-editor.name.prompt" = "Назва";
-"routines.program-editor.note.label" = "Нотатка";
-"routines.program-editor.note.prompt" = "Те, що варто пам’ятати про цей курс";
-"routines.program-editor.save" = "Зберегти";
-
-"routines.program-editor.days.section" = "Дні";
-"routines.program-editor.days.empty.headline" = "Днів ще немає";
-"routines.program-editor.days.empty.message" = "Оберіть програму нижче — вона стане першим днем курсу.";
-
-"routines.program-editor.add.section" = "Додати день";
-"routines.program-editor.add.empty.headline" = "Немає програм для додавання";
-"routines.program-editor.add.empty.message" = "Курс складається з програм. Створіть програму — і вона з’явиться тут.";
-
-"routines.program-editor.day.remove" = "Видалити день";
-"routines.program-editor.day.up" = "Перемістити день раніше";
-"routines.program-editor.day.down" = "Перемістити день пізніше";
-"routines.program-editor.day.number %lld" = "День %lld";
-
-"routines.program-editor.day.archived" = "Заархівована програма";
-
-"routines.program-editor.make-current" = "Зробити поточним";
-"routines.program-editor.is-current" = "Це ваш поточний курс";
-
-"routines.program-editor.missing.headline" = "Цього курсу більше немає";
-"routines.program-editor.missing.message" = "Його видалено. Поверніться до списку й оберіть інший.";
-"routines.program-editor.error.headline" = "Не вдалося завантажити курс";
-"routines.program-editor.error.message" = "Читання не вдалося. Спробуйте ще раз.";
-"routines.program-editor.write-error.message" = "Не вдалося зберегти зміну. Спробуйте ще раз.";

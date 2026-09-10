@@ -14,6 +14,9 @@ enum HistoryStrings {
     static let emptyMessage = resource("history.list.empty.message")
 
     /// The way to make the first one — a tab away, so it is a button rather than a sentence.
+    ///
+    /// **Named for where it goes**: it selects Train, whose root is the week (`FR-17.8`), and it is
+    /// the same words Home's first launch and the week's own empty state offer (`FR-17.8.5`).
     static let emptyAction = resource("history.list.empty.action")
 
     /// A failed read of the list.
@@ -76,7 +79,7 @@ enum HistoryStrings {
     /// What will appear here once there is.
     static let calendarEmptyMessage = resource("history.calendar.empty.message")
 
-    /// The way to make the first one — a tab away, so it is a button rather than a sentence.
+    /// The way to make the first one — ``emptyAction``'s words, on this screen's own key.
     static let calendarEmptyAction = resource("history.calendar.empty.action")
 
     /// A failed read of the sessions the grid marks.
@@ -85,8 +88,53 @@ enum HistoryStrings {
     /// What to do about it.
     static let calendarErrorMessage = resource("history.calendar.error.message")
 
-    /// A failed read of one day's sessions, reported under the grid that is still correct.
-    static let calendarDayError = resource("history.calendar.day.error")
+    /// The week view's own title (`FR-17.11`). A pushed screen names itself.
+    static let weekTitle = resource("history.week.title")
+
+    /// Which of the tab's two readings of the same rows is on screen (`FR-17.11.1`).
+    ///
+    /// The control is a segmented picker, so this names the choice rather than either option.
+    static let modeLabel = resource("history.mode.label")
+
+    /// The chronological log (`FR-1.5.1`).
+    static let modeSessions = resource("history.mode.sessions")
+
+    /// The same rows by calendar week (`FR-17.11.1`).
+    static let modeWeeks = resource("history.mode.weeks")
+
+    /// A week block's heading: its two ends (`FR-17.11.1`).
+    ///
+    /// - Parameters:
+    ///   - start: The week's first day, already rendered — how a date reads is `AppFormat`'s.
+    ///   - end: Its last, rendered with the year.
+    /// - Returns: The heading.
+    static func weekRange(from start: String, to end: String) -> LocalizedStringResource {
+        resource("history.week.range \(start) \(end)")
+    }
+
+    /// What a week's row says where the session carries no program stamp (`FR-17.11.1`).
+    ///
+    /// **Words rather than a blank line**, unlike the log's rows: a week is read as a plan carried
+    /// out, so a day with no position is a fact about that day rather than a missing label.
+    static let weekFreeWorkout = resource("history.week.free")
+
+    /// Nothing has been logged in this week or before it (`FR-1.13.2`).
+    static let weekEmptyHeadline = resource("history.week.empty.headline")
+
+    /// What will appear here once there is.
+    static let weekEmptyMessage = resource("history.week.empty.message")
+
+    /// The way to make the first one — ``emptyAction``'s words, on this screen's own key.
+    static let weekEmptyAction = resource("history.week.empty.action")
+
+    /// A failed read of the weeks.
+    static let weekErrorHeadline = resource("history.week.error.headline")
+
+    /// What to do about it.
+    static let weekErrorMessage = resource("history.week.error.message")
+
+    /// A failed read of the weeks before the ones on screen, reported under them.
+    static let weekMoreErrorMessage = resource("history.week.more.error")
 
     /// A grid cell's VoiceOver label for a day training was logged on.
     ///
@@ -193,8 +241,12 @@ enum HistoryStrings {
             matchExercise, matchSessionNote, matchSetNote,
             calendarTitle, calendarEarlier, calendarLater,
             calendarEmptyHeadline, calendarEmptyMessage, calendarEmptyAction,
-            calendarErrorHeadline, calendarErrorMessage, calendarDayError,
+            calendarErrorHeadline, calendarErrorMessage,
             calendarDayTrained(date: ""), calendarDayUntrained(date: ""),
+            weekTitle, modeLabel, modeSessions, modeWeeks,
+            weekRange(from: "", to: ""), weekFreeWorkout,
+            weekEmptyHeadline, weekEmptyMessage, weekEmptyAction,
+            weekErrorHeadline, weekErrorMessage, weekMoreErrorMessage,
             metricsSummary(sets: 1, volume: ""),
             programWeekAndDay(week: 2, day: 1),
             sessionFinish, sessionFinishError, sessionPendingTitle(1), sessionPendingTitle(3),

@@ -53,7 +53,12 @@ func sessionRecord(
     // Finished by default, so an uncompleted set in a fixture is a *failed* one rather than a
     // pending one (`FR-16.4.1`) — the feed drops pending sets, and a fixture written open would
     // test that exclusion rather than whatever it was written for.
-    endedAt: Date? = fixtureCreatedAt
+    endedAt: Date? = fixtureCreatedAt,
+    // The program stamp `FR-16.8.3` writes, and `TR-17.5`'s query reads. Unstamped by default:
+    // most fixtures here are workouts logged outside a plan, and `nil` is what those carry.
+    programRunID: UUID? = nil,
+    weekNumber: Int? = nil,
+    dayIndex: Int? = nil
 ) -> WorkoutSession {
     WorkoutSession(
         id: id,
@@ -65,8 +70,10 @@ func sessionRecord(
         endedAt: endedAt,
         notes: notes,
         bodyweight: nil,
-        programRunID: nil,
-        scheduledWorkoutID: nil
+        programRunID: programRunID,
+        scheduledWorkoutID: nil,
+        weekNumber: weekNumber,
+        dayIndex: dayIndex
     )
 }
 

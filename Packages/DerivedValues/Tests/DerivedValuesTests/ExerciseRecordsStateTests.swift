@@ -57,7 +57,7 @@ struct ExerciseRecordsStateTests {
 
         #expect(state.hasLoaded)
         #expect(state.failure == nil)
-        #expect(state.repMaxes.map(\.reps) == [1, 2, 3, 4, 5])
+        #expect(state.repMaxes.map(\.reps) == [5])
     }
 
     /// **An exercise with no records and one nothing has looked at are both an empty list**, and a
@@ -393,6 +393,11 @@ actor GatedWorkouts: WorkoutRepository {
     }
 
     func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
+    func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] {
         try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
@@ -425,6 +430,11 @@ actor GatedWorkouts: WorkoutRepository {
 struct RefusingWorkouts: WorkoutRepository {
     let failure: RepositoryError
 
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        throw failure
+    }
     func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] { throw failure }

@@ -93,6 +93,85 @@ struct TrainingMaxSectionTests {
         #expect(history.map(\.id) == [next.id])
     }
 
+    // MARK: - The absent line's two sentences (FR-17.5.1)
+
+    /// The state 132 exercises are in at a fresh install, and the one review finding 07 was about.
+    /// Three words on screen and the sentence they were shortened from behind them — the two are
+    /// asserted against literals rather than against each other, because two resources that had
+    /// come out the same string would satisfy a comparison of the pair.
+    @Test("An exercise that has never had one gets the short line, with its sentence still read")
+    func theNeverEnteredAbsenceIsShortAndStillExplains() {
+        #expect(TrainingMaxScreenState.none(history: []).absence == .never)
+        #expect(String(localized: TrainingMaxAbsence.never.line) == "No training max")
+        #expect(
+            String(localized: TrainingMaxAbsence.never.hint)
+                == "No training max yet. Set one and a logged load can be read as a percentage "
+                + "of it.")
+        // Nothing has been entered, so the offer is to set one — said short on the button and in
+        // full to VoiceOver.
+        #expect(String(localized: TrainingMaxAbsence.never.command) == "Set one")
+        #expect(String(localized: TrainingMaxAbsence.never.commandLabel) == "Set training max")
+    }
+
+    /// The other absence, and it is a different statement: the lifter has entered a number, and
+    /// what it has not done yet is take effect. Shortened for the same reason and not the same
+    /// cause — this sentence ran to five lines at the default type size, which is a paragraph with
+    /// a button floating beside it rather than a line.
+    @Test("A history dated entirely ahead of today says so, in a line and then in full")
+    func theNotInForceAbsenceIsItsOwnSentence() {
+        let entry = Self.entry(effectiveFrom: .now)
+
+        #expect(TrainingMaxScreenState.none(history: [entry]).absence == .notInForceYet)
+        // No subject in the line: this one is drawn inside the card, under a heading already
+        // reading `Training max`. The hint is where the whole sentence is.
+        #expect(String(localized: TrainingMaxAbsence.notInForceYet.line) == "None in force yet")
+        #expect(
+            String(localized: TrainingMaxAbsence.notInForceYet.hint)
+                == "No training max in force yet. The changes below all take effect on a later "
+                + "date.")
+        // THE COMMAND IS A CHANGE, NOT A SET, and this is the assertion the sentence's own argument
+        // implies: the lifter has entered numbers, they are listed directly below this line, and
+        // offering to "set one" over them calls the entries they made nothing.
+        #expect(String(localized: TrainingMaxAbsence.notInForceYet.command) == "Change")
+        #expect(
+            String(localized: TrainingMaxAbsence.notInForceYet.commandLabel)
+                == "Change training max")
+        // Neither absence borrows the other's words: they are different statements about the same
+        // exercise, in the sentence and in the command alike.
+        #expect(TrainingMaxAbsence.never.line != TrainingMaxAbsence.notInForceYet.line)
+        #expect(TrainingMaxAbsence.never.command != TrainingMaxAbsence.notInForceYet.command)
+        #expect(
+            TrainingMaxAbsence.never.commandLabel != TrainingMaxAbsence.notInForceYet.commandLabel)
+    }
+
+    /// The line is drawn for an absence and for nothing else: a number, a spinner and a diagnostic
+    /// each have their own shape, and only the absent state loses the section heading with it.
+    @Test("A number, a first read and a failure are not absences")
+    func onlyTheAbsentStatesDrawALine() {
+        let entry = Self.entry(effectiveFrom: .now)
+
+        #expect(TrainingMaxScreenState.ready(entry, history: [entry]).absence == nil)
+        #expect(TrainingMaxScreenState.loading.absence == nil)
+        #expect(TrainingMaxScreenState.failed.absence == nil)
+    }
+
+    /// One history row, for the states that need one and do not care what it says.
+    ///
+    /// - Parameter effectiveFrom: The day it takes effect.
+    /// - Returns: The entry.
+    private static func entry(effectiveFrom: Date) -> TrainingMaxHistoryEntry {
+        TrainingMaxHistoryEntry(
+            id: UUID(),
+            createdAt: effectiveFrom,
+            updatedAt: effectiveFrom,
+            deletedAt: nil,
+            exerciseID: UUID(),
+            effectiveFrom: effectiveFrom,
+            oldWeight: nil,
+            newWeight: Weight(grams: 180_000),
+            reason: "")
+    }
+
     // MARK: - The history as it is drawn (FR-15.1.4)
 
     /// `oldWeight` is written once and never revisited, so a change backdated between two existing

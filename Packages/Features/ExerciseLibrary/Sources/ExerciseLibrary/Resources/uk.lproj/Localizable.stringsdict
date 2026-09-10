@@ -26,5 +26,27 @@
 			<string>%lld підходу</string>
 		</dict>
 	</dict>
+	<!-- The row heading keeps the abbreviation «повт.», which is invariant at every count; the four
+	     categories are spelled anyway, a missing one silently falling back to `other`. -->
+	<key>exerciselibrary.detail.records.reps %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld повт.</string>
+			<key>few</key>
+			<string>%lld повт.</string>
+			<key>many</key>
+			<string>%lld повт.</string>
+			<key>other</key>
+			<string>%lld повт.</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

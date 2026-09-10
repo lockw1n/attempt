@@ -264,6 +264,12 @@ private actor SwitchableWorkouts: WorkoutRepository {
     }
 
     func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        guard !isRefusing else { throw failure }
+        return try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
+    func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] {
         guard !isRefusing else { throw failure }

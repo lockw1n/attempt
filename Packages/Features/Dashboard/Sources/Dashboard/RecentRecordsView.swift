@@ -125,8 +125,9 @@ struct RecentRecordsFeed: View {
             // requirement is written against.
             InsufficientDataView(
                 message: Text(DashboardStrings.recentRecordsNoneInScope),
-                // Secondary: this is a section of `tab.home`, which spends its one accent on
-                // `FR-1.9.4`'s **Start workout** above it (`FR-16.6.4`).
+                // Secondary: this is a section of `tab.home`, which since `D-17.11` withdrew
+                // `FR-1.9.4` spends no accent at all in this shape (`FR-16.6.4`). A filled offer
+                // here would become the screen's only one, which is not what it is.
                 action: StateAction(
                     Text(DashboardStrings.recentRecordsShowEverything), emphasis: .secondary
                 ) {
@@ -375,6 +376,25 @@ public struct RecentRecordsView: View {
         }
         .background(ColorToken.background)
         .navigationTitle(Text(DashboardStrings.recentRecordsTitle))
+        .toolbar { settingsLink }
+    }
+
+    /// `FR-17.3.3`'s way from the feed to what narrows it.
+    ///
+    /// **Here and not on the card**, which is the same split the card's **See all** row makes: the
+    /// dashboard is four sections and a control belonging to one of them would read as the screen's.
+    /// A reader who wants to know why a record is missing is on this screen already.
+    ///
+    /// **A glyph with a label, not a word**, on the navigation bar's own terms — the label is what
+    /// VoiceOver reads (`G-4.2`), and it is a `Route` rather than a closure because the destination
+    /// is the app target's to compose (`TR-1.3`).
+    @ToolbarContentBuilder private var settingsLink: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            NavigationLink(value: Route.settings(.recentRecords)) {
+                Image(systemName: "slider.horizontal.3")
+                    .accessibilityLabel(Text(DashboardStrings.recentRecordsSettingsAction))
+            }
+        }
     }
 }
 
@@ -431,26 +451,20 @@ public struct RecentRecordsSection: View {
 }
 
 extension RecentRecord {
-    /// What one feed row is the record for — the top N it took at a single set, or the scheme itself
-    /// where the run set no rep max at all (`FR-1.6.5`, `FR-16.2.1`).
+    /// What one feed row is the record for — `8 reps` for a single set, `5×5` for a run
+    /// (`FR-17.2.3`).
     ///
-    /// **Two cases, where there were three.** The span a set took in one go is not a third label: a
-    /// set of eight that beat every N up to eight is an **8RM**, and the seven records below it are
-    /// the dominance rule rather than the achievement — see
-    /// ``Dashboard/DashboardStrings/recentRecordsRepMax(_:)``, where "1–8-rep max" is retired.
+    /// **The row's own cell, and there is only one of it** (`FR-17.2.1`). The two cases are two
+    /// spellings of one scheme rather than two kinds of record: which one a row gets is decided by
+    /// its set count alone, and the `RM` notation the single-set case used to carry is retired with
+    /// the dominance rule that made it true.
     ///
-    /// **The scheme case is not a widening of the rep-max one.** A rep max is a claim about a single
-    /// set, and a run whose records all stand at two sets and up — a `100 × 5 × 5` performed after a
-    /// heavier set of five — set none; labelling it with an N would name records the lifter's own
-    /// history contradicts, at a lighter load than the one that holds them.
-    ///
-    /// **Off the `View` deliberately.** The choice between the two sentences is the claim worth
+    /// **Off the `View` deliberately.** The choice between the two spellings is the claim worth
     /// testing, and a claim that lives inside a `View` body can only be closed by a picture.
     var feedLabel: LocalizedStringResource {
-        guard let reps = repMaxReps else {
-            return DashboardStrings.recentRecordsScheme(scheme.reps, scheme.sets)
-        }
-        return DashboardStrings.recentRecordsRepMax(reps.upperBound)
+        scheme.sets == 1
+            ? DashboardStrings.recentRecordsReps(scheme.reps)
+            : DashboardStrings.recentRecordsScheme(scheme.reps, scheme.sets)
     }
 
     /// The set or run that produced it — `145 kg × 8`, `100 kg × 5 × 5` (`FR-16.3.3`).
@@ -459,10 +473,10 @@ extension RecentRecord {
     /// decided by the record's set count alone, and a claim that lives inside a `View` body can only
     /// be closed by a picture.
     ///
-    /// **The record's own scheme, which is the run's shape clamped to the table's bounds.** The
-    /// cache stores a cell rather than a performance, so a set taken to twelve reps reads `× 10`
-    /// here: what the row states is the record it set, and the twelve-rep set is one tap away on the
-    /// exercise's own screen.
+    /// **The record's own scheme, which since `FR-17.2.1` is the run's own shape.** The cache stores
+    /// a cell rather than a performance, and a run outside the table's bounds now reaches no cell at
+    /// all rather than the corner one — so a set taken to twelve reps produces no record and no row
+    /// here, where it used to produce one reading `× 10`.
     ///
     /// - Parameters:
     ///   - load: The record load, formatted for the row's locale.

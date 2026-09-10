@@ -2,7 +2,6 @@
 
     import DesignSystem
     import Foundation
-    import PowerliftingCore
     import SnapshotTesting
     import SwiftUI
     import Testing
@@ -21,8 +20,12 @@
     //
     // THE GRID CLAMPS DYNAMIC TYPE AT `accessibility1`, and the `accessibility3` reference is where
     // that is visible. It is the one deliberate clamp in this app: seven columns cannot reflow into
-    // a stack without ceasing to be a calendar. What the same reference also has to show is that
-    // nothing *under* the grid is clamped — see the day section's own images.
+    // a stack without ceasing to be a calendar.
+    //
+    // NO DAY SECTION SINCE `FR-17.11.2`. A marked day pushes its week rather than opening its
+    // sessions beneath the grid, so the card and the day-failure references retired with it — the
+    // week's own are `Week-history-*`. The selection ring went with them: nothing is held open under
+    // a grid whose taps leave the screen.
 
     @MainActor
     @Suite("Calendar snapshots")
@@ -40,7 +43,7 @@
             // A month off. Not the empty *state* — the grid is right, and a month with no training
             // in it is a fact a lifter wants to see rather than an apology.
             try assertSnapshots(named: "Calendar-grid-untrained") {
-                CalendarFixtures.grid(trained: [], selected: nil)
+                CalendarFixtures.grid(trained: [])
             }
         }
 
@@ -53,33 +56,15 @@
         }
 
         @Test func dayCells() throws {
-            // G-4.5's three states side by side, which is the picture the rule is actually about:
-            // untrained, trained (a fill and a dot), and trained-and-open (a ring on top). No pair
-            // of them differs by tint alone.
+            // G-4.5's two states side by side, which is the picture the rule is actually about:
+            // untrained, and trained — a fill and a dot, neither of them a tint. There is no third
+            // any more: a tap opens the day's week, so no cell is ever held open (`FR-17.11.2`).
             try assertSnapshots(named: "Calendar-day-cells") {
                 HStack(spacing: Spacing.md.points) {
-                    CalendarFixtures.cell(day: 12, hasTraining: false, isSelected: false)
-                    CalendarFixtures.cell(day: 13, hasTraining: true, isSelected: false)
-                    CalendarFixtures.cell(day: 14, hasTraining: true, isSelected: true)
+                    CalendarFixtures.cell(day: 12, hasTraining: false)
+                    CalendarFixtures.cell(day: 13, hasTraining: true)
                 }
                 .environment(\.locale, CalendarFixtures.locale)
-            }
-        }
-
-        @Test func dayCard() throws {
-            // A session's row inside the day section: the same card the list draws, less its date,
-            // which the section's heading carries instead. The picture that shows the two not
-            // printing the same day twice.
-            try assertSnapshots(named: "Calendar-day-card") {
-                SessionSummaryCard(
-                    summary: CalendarFixtures.session, unit: .kilograms, date: .hidden
-                )
-                .environment(\.locale, CalendarFixtures.locale)
-                // The card's own date is drawn through `Text(_:format:)` even though this reference
-                // hides it, and the fixture's instant is midnight UTC — a different day in every
-                // zone west of it. Every other subject here renders through
-                // `AppFormat.resolved(_:in:)`, which binds the zone and needs no environment.
-                .environment(\.timeZone, .gmt)
             }
         }
 
@@ -117,14 +102,6 @@
                 )
             }
         }
-
-        @Test func oneDayFailed() throws {
-            // Under a grid that is still correct, so no headline — the picture the session list's
-            // next-page failure has, for the same reason.
-            try assertSnapshots(named: "Calendar-day-error") {
-                ErrorStateView(message: Text(HistoryStrings.calendarDayError), retryEmphasis: .secondary, retry: {})
-            }
-        }
     }
 
     /// What these references render.
@@ -155,34 +132,20 @@
         /// month on a machine set west of UTC.
         static var january: Date { day(calendar, 1) ?? Date(timeIntervalSince1970: 0) }
 
-        /// One session's row, as the day section draws it.
-        static let session = SessionSummary(
-            id: UUID(uuidString: "00000000-0000-0000-0000-00000000A001") ?? UUID(),
-            date: january,
-            exerciseNames: ["Back Squat", "Bench Press"],
-            setCount: 8,
-            tonnage: Weight(grams: 7_240_000),
-            notes: ""
-        )
-
-        /// The grid, with `trained` marked and `selected` open.
+        /// The grid, with `trained` marked.
         ///
         /// - Parameters:
         ///   - calendar: Which calendar to lay the month out in.
         ///   - trained: Which days of the month carry training.
-        ///   - selected: Which day is open, if any.
         /// - Returns: The grid.
         static func grid(
             calendar: Calendar = CalendarFixtures.calendar,
-            trained: [Int] = [1, 3, 6, 8, 13, 15, 20, 22, 27, 31],
-            selected: Int? = 13
+            trained: [Int] = [1, 3, 6, 8, 13, 15, 20, 22, 27, 31]
         ) -> some View {
             MonthGridView(
                 grid: MonthGrid(containing: day(calendar, 1) ?? january, in: calendar),
                 trainingDays: Set(trained.compactMap { day(calendar, $0) }),
-                selectedDay: selected.flatMap { day(calendar, $0) },
-                calendar: calendar,
-                select: { _ in }
+                calendar: calendar
             )
             .environment(\.locale, locale)
         }
@@ -192,15 +155,12 @@
         /// - Parameters:
         ///   - day: Which day of January it draws.
         ///   - hasTraining: Whether it is marked.
-        ///   - isSelected: Whether it is open.
         /// - Returns: The cell.
-        static func cell(day number: Int, hasTraining: Bool, isSelected: Bool) -> some View {
+        static func cell(day number: Int, hasTraining: Bool) -> some View {
             CalendarDayCell(
                 day: day(calendar, number) ?? january,
                 calendar: calendar,
-                hasTraining: hasTraining,
-                isSelected: isSelected,
-                select: {}
+                hasTraining: hasTraining
             )
         }
 

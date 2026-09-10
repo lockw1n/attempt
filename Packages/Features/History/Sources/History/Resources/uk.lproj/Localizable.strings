@@ -3,7 +3,7 @@
 
 "history.list.empty.headline" = "Тренувань ще не записано";
 "history.list.empty.message" = "Ваші тренування з’являться тут, найновіші вгорі.";
-"history.list.empty.action" = "Почати тренування";
+"history.list.empty.action" = "Запланувати тиждень";
 
 "history.list.error.headline" = "Історія недоступна";
 "history.list.error.message" = "Не вдалося прочитати ваші минулі тренування. Спробуйте ще раз.";
@@ -33,12 +33,10 @@
 
 "history.calendar.empty.headline" = "Тренувань ще не записано";
 "history.calendar.empty.message" = "Дні, коли ви тренувалися, позначені тут.";
-"history.calendar.empty.action" = "Почати тренування";
+"history.calendar.empty.action" = "Запланувати тиждень";
 
 "history.calendar.error.headline" = "Календар недоступний";
 "history.calendar.error.message" = "Не вдалося прочитати ваші тренувальні дні. Спробуйте ще раз.";
-
-"history.calendar.day.error" = "Не вдалося завантажити тренування за цей день.";
 
 "history.calendar.day.trained %@" = "%1$@, тренування було";
 "history.calendar.day.untrained %@" = "%1$@, без тренування";
@@ -56,3 +54,21 @@
 "history.list.session.pending.cancel" = "Залишити відкритим";
 
 "history.list.session.finish-error" = "Не вдалося завершити це тренування. Спробуйте ще раз.";
+
+"history.mode.label" = "Вигляд";
+"history.mode.sessions" = "Тренування";
+"history.mode.weeks" = "Тижні";
+"history.week.title" = "Тижні";
+
+"history.week.range %@ %@" = "%1$@ – %2$@";
+
+"history.week.free" = "Вільне тренування";
+
+"history.week.empty.headline" = "Ще немає записаних тренувань";
+"history.week.empty.message" = "Ваші тижні з’являться тут, щойно ви потренуєтеся.";
+"history.week.empty.action" = "Запланувати тиждень";
+
+"history.week.error.headline" = "Тижні недоступні";
+"history.week.error.message" = "Не вдалося прочитати ваші тренувальні тижні. Спробуйте ще раз.";
+
+"history.week.more.error" = "Не вдалося завантажити попередні тижні.";

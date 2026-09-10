@@ -11,9 +11,9 @@ import SwiftUI
 /// One session on a card of its own — `FR-1.5.1`'s four facts, wherever a session is drawn outside
 /// the chronological list.
 ///
-/// **The card is a wrapper around ``SessionSummaryRow`` and nothing else**, because the list itself
-/// no longer draws one: its rows sit inside a month's section (`FR-16.6.3`), which is the card. What
-/// still draws a session on its own is the calendar's day and a search result, and both draw this.
+/// **The card is a wrapper around ``SessionSummaryRow`` and nothing else**, because neither list
+/// draws one: their rows sit inside a month's or a week's section (`FR-16.6.3`, `FR-17.11.1`),
+/// which is the card. What still draws a session on its own is a search result.
 ///
 /// Takes the summary and the unit rather than the state, so a reference can render it without a
 /// repository behind it.
@@ -25,6 +25,11 @@ struct SessionSummaryCard: View {
     let unit: MassUnit
 
     /// How the row names its own day. See ``SessionSummaryRow/date``.
+    ///
+    /// No ``SessionSummaryRow/position`` here, deliberately: the card is drawn by a search result
+    /// and by nothing else, and a result is one workout rather than a day of a week, so the only
+    /// reading it ever needs is the row's own default. A pass-through nothing sets would be a
+    /// default a later host inherits without choosing it.
     var date: SessionRowDate = .full
 
     /// Why a search put this row on screen, or `nil` (`FR-1.5.4`).
@@ -70,12 +75,20 @@ struct SessionSummaryRow: View {
 
     /// How much of its own day the row names.
     ///
-    /// **Three answers, because the row is drawn under three different headings** — one that names
-    /// the month (`FR-16.6.3`'s section), one that names the day (the calendar's), and none at all
-    /// (a search result). A row is not free to repeat what the heading above it just said, on
-    /// screen or to VoiceOver, and it is not free to leave a reader unable to say when the workout
-    /// was either.
+    /// **Two answers, because the row is drawn under two kinds of heading** — one that names the
+    /// period it falls in (`FR-16.6.3`'s month, `FR-17.11.1`'s week) and none at all (a search
+    /// result). A row is not free to repeat what the heading above it just said, on screen or to
+    /// VoiceOver, and it is not free to leave a reader unable to say when the workout was either.
     var date: SessionRowDate = .full
+
+    /// Whether a session with no program stamp says so, or draws nothing (`FR-17.11.1`).
+    ///
+    /// **An enum beside ``date``, and for its reason**: the row is drawn under headings that make
+    /// different claims. Under a month it is one workout among a log's, and a workout outside a
+    /// program is the ordinary case there — a label on every second row would be noise. Under a
+    /// *week* the same row is a day of a plan carried out, so a day outside one is a fact about the
+    /// week rather than a missing label.
+    var position: SessionRowPosition = .whenPresent
 
     /// Why a search put this row on screen, or `nil` where the row is not a result (`FR-1.5.4`).
     ///
@@ -118,15 +131,13 @@ struct SessionSummaryRow: View {
         VStack(alignment: .leading, spacing: Spacing.xs.points) {
             headline
 
-            if let position = summary.programPosition {
+            if let line = positionLine {
                 // `FR-16.8.3` read off the session's own columns. Above the exercises because
                 // it says which workout this was rather than what was in it — and this is the
                 // row a lifter used to read "W2D1" off the note below (`DOD-16.1`).
-                Text(
-                    HistoryStrings.programWeekAndDay(week: position.week, day: position.day)
-                )
-                .font(Typography.metricContext.font)
-                .foregroundStyle(ColorToken.textSecondary)
+                Text(line)
+                    .font(Typography.metricContext.font)
+                    .foregroundStyle(ColorToken.textSecondary)
             }
 
             exercises
@@ -307,6 +318,14 @@ struct SessionSummaryRow: View {
         }
     }
 
+    /// What the row says about its place in a program, or `nil` where it says nothing.
+    private var positionLine: LocalizedStringResource? {
+        if let stamp = summary.programPosition {
+            return HistoryStrings.programWeekAndDay(week: stamp.week, day: stamp.day)
+        }
+        return position == .always ? HistoryStrings.weekFreeWorkout : nil
+    }
+
     /// The finished row's two numbers.
     private var metricsSummary: LocalizedStringResource {
         HistoryStrings.metricsSummary(sets: summary.setCount, volume: renderedTonnage)
@@ -320,21 +339,22 @@ struct SessionSummaryRow: View {
 }
 
 /// How much of its own day a session row names — which is decided by whatever heading it sits under
-/// (`FR-16.6.3`).
+/// (`FR-16.6.3`, `FR-17.11.1`).
 ///
-/// An enum rather than a `Bool`, and the third case is why: "under a month heading" and "under no
-/// heading at all" are both rows that must name the day, and they must name different amounts of it.
+/// An enum rather than a `Bool`: "under a month heading" and "under no heading at all" are both rows
+/// that must name the day, and they must name different amounts of it.
+///
+/// **The optional return is not a third case waiting to happen.** A `.hidden` case existed while the
+/// calendar drew a day's sessions under a heading that named the day itself; `FR-17.11.2` retired
+/// that section, and every heading over a row now names a *period* rather than a day. The signature
+/// keeps room for one because a screen that names the day again would need it back.
 enum SessionRowDate: Equatable {
     /// The whole date, for a row standing on its own — a search result.
     case full
 
-    /// The weekday and the day of the month, for a row under a heading that names the month and the
-    /// year already.
+    /// The weekday and the day of the month, for a row under a heading that names a period the day
+    /// falls in: a month's section, or a week's.
     case dayOfMonth
-
-    /// Nothing, for a row under a heading that names the day itself — the calendar's day section,
-    /// where every row is that same day.
-    case hidden
 
     /// The style to render the day in, or `nil` where the row draws none.
     ///
@@ -344,7 +364,21 @@ enum SessionRowDate: Equatable {
         switch self {
         case .full: AppFormat.date(locale: locale)
         case .dayOfMonth: AppFormat.weekdayAndDay(locale: locale)
-        case .hidden: nil
         }
     }
+}
+
+/// Whether a row names its place in a program even when it has none (`FR-17.11.1`).
+///
+/// An enum rather than a `Bool`, on ``SessionRowDate``'s rule: what a row owes depends on the
+/// heading above it, and naming the two readings is what keeps a call site from reading as a flag
+/// whose `true` means nothing in particular.
+enum SessionRowPosition: Equatable {
+    /// The position where the session carries one, and nothing where it does not — the log's rows,
+    /// where a workout outside a program is the ordinary case.
+    case whenPresent
+
+    /// The position, or **Free workout** in its place — a week's rows, where every day is read as
+    /// part of a plan carried out.
+    case always
 }

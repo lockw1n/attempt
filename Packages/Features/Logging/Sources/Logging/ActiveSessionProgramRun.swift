@@ -26,10 +26,13 @@ public struct ProgramSessionStamp: Equatable, Sendable {
     }
 }
 
-/// Starting a program's next day, and moving the cursor on when it is over (`FR-16.8.2`,
-/// `FR-16.8.4`).
+/// Starting a program's next day (`FR-16.8.2`).
 ///
 /// A file of its own beside `ActiveSessionRoutineStart.swift`, whose shape and reason it follows.
+///
+/// **Finishing a workout moves nothing here** (`D-17.10`). The day cursor is retired: a week ends
+/// when every one of its days is answered, which is a question about the sessions rather than about
+/// a number the finish had to remember to write — see ``WeekState/everyPlannedDayIsDone``.
 extension ActiveSessionStore {
     /// Starts the program's day and opens it (`FR-16.8.2`, `NFR-15.3`).
     ///
@@ -55,94 +58,20 @@ extension ActiveSessionStore {
     ) async -> Bool {
         await start(on: day, fromRoutineID: routineID, in: routines, stampedWith: stamp)
     }
-
-    /// Moves the run's cursor past the day the workout just finished belonged to (`FR-16.8.4`).
-    ///
-    /// **`save(_:)`, never `startRun(_:)`.** The second closes every other open run at the incoming
-    /// `startedAt`, which is the invariant a *new* pass needs and exactly wrong for one in progress
-    /// — see `ProgramRepository`'s own two doc comments.
-    ///
-    /// **The cursor only ever moves forward, and never past a day the run is already beyond.** A
-    /// workout backdated into a week the lifter has since advanced out of, or a second session
-    /// logged against a day already finished, would otherwise drag the plan backwards or skip a day
-    /// nobody trained. `nextDayIndex` is a ``RepositoryInterface/ProgramDay/order`` rather than a
-    /// count, so "past this day" is that order plus one whatever the day's position in the list.
-    ///
-    /// **A run that has been closed or deleted is not advanced and is not a failure**: the lifter
-    /// finished a workout belonging to a pass they have since ended, which is a fact about the
-    /// session rather than something the program still has to answer.
-    ///
-    /// - Parameter session: The workout that has just been finished.
-    func advanceProgramRun(after session: WorkoutSession) async {
-        guard let runID = session.programRunID, let dayIndex = session.dayIndex else { return }
-        do {
-            guard let run = try await programs.run(id: runID, includingDeleted: false), run.isOpen,
-                run.nextDayIndex <= dayIndex
-            else {
-                clearProgramAdvanceFailure()
-                return
-            }
-            try await programs.save(run.movedTo(nextDayIndex: dayIndex + 1))
-            clearProgramAdvanceFailure()
-        } catch {
-            // The workout is finished and stored either way. What is left undone is the cursor,
-            // and the screen that draws the next day is where that is reported and retried.
-            programAdvanceFailure = String(describing: error)
-            unadvancedSession = session
-        }
-    }
-
-    /// Tries the cursor write again, over the workout it was owed to (`FR-16.8.4`).
-    ///
-    /// **The retry is what makes the report actionable, and it also retires it.** A lifter who got
-    /// past the stalled day another way — **Skip day**, or the store simply coming back — needs the
-    /// banner gone, and the only thing that can tell is the write itself: ``advanceProgramRun(after:)``
-    /// clears the failure both when it moves the cursor and when it finds the cursor already past
-    /// the day.
-    ///
-    /// Nothing to retry is not a failure: the report has already been retired.
-    public func retryProgramAdvance() async {
-        guard let session = unadvancedSession else { return }
-        await advanceProgramRun(after: session)
-    }
-
-    /// Retires the report and the workout held behind it, which are only ever set together.
-    private func clearProgramAdvanceFailure() {
-        programAdvanceFailure = nil
-        unadvancedSession = nil
-    }
 }
 
 extension ProgramRun {
-    /// This run with its day cursor moved and every other column untouched.
+    /// This run advanced to the next week (`FR-17.8.4`).
     ///
-    /// Rebuilt rather than mutated, the record being a value with `let` properties; the three
-    /// timestamps are carried across because the write path is an upsert that stamps `updatedAt`
-    /// itself.
+    /// **The same row rather than a closed run and a fresh one**: a run is one pass through a
+    /// program and a week is where that pass has got to. What preserves the week a finished session
+    /// belonged to is that session's own column (`FR-16.8.3`), written once at start and never
+    /// again — not a second run row.
     ///
-    /// - Parameter nextDayIndex: The ``RepositoryInterface/ProgramDay/order`` to train next.
-    /// - Returns: The record to store.
-    func movedTo(nextDayIndex: Int) -> ProgramRun {
-        ProgramRun(
-            id: id,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            deletedAt: deletedAt,
-            programID: programID,
-            startedAt: startedAt,
-            endedAt: endedAt,
-            weekNumber: weekNumber,
-            nextDayIndex: nextDayIndex)
-    }
-
-    /// This run advanced to the next week, its day cursor back at the first day (`FR-16.8.4`).
-    ///
-    /// **The same row rather than a closed run and a fresh one**, which is what
-    /// ``RepositoryInterface/ProgramRun/nextDayIndex`` and
-    /// ``RepositoryInterface/ProgramRun/weekNumber`` moving independently already says: a run is one
-    /// pass through a program and a week is where that pass has got to. What preserves the week a
-    /// finished session belonged to is that session's own column (`FR-16.8.3`), written once at
-    /// start and never again — not a second run row.
+    /// **``RepositoryInterface/ProgramRun/nextDayIndex`` is carried across unchanged, and nothing
+    /// writes it any more** (`D-17.10`, `TR-17.4`). The column stays in the schema and in the
+    /// archive; writing it — even back to the value it already holds — would restamp `updatedAt`,
+    /// which is `G-2.4`'s conflict key, and let a local no-op outrank a real remote edit.
     ///
     /// - Returns: The record to store.
     func advancedToNextWeek() -> ProgramRun {
@@ -155,6 +84,6 @@ extension ProgramRun {
             startedAt: startedAt,
             endedAt: endedAt,
             weekNumber: weekNumber + 1,
-            nextDayIndex: 0)
+            nextDayIndex: nextDayIndex)
     }
 }

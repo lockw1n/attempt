@@ -3,30 +3,33 @@ import Localization
 import SwiftUI
 
 /// The set editor's pinned footer: the confirming command, the way out, `FR-1.2.7`'s deletion, and
-/// the refusal that explains a disabled command.
+/// the refusal that explains why it would not go.
 ///
 /// **Pinned outside the scroll view**, which is what keeps `NFR-1.3`'s third tap from costing a
 /// scroll first, and its own type for ``SetEditorFields``' reason.
 ///
-/// The confirming command is disabled rather than absent while the draft does not resolve: a button
-/// that vanished would move **Cancel** under the thumb that was reaching for it.
+/// **The confirming command is never disabled** (`FR-17.1.6`). A form refuses when it is asked to
+/// save, and says why beside the command that refused; a button that greys out as the lifter types
+/// reports a mistake in a field they have not finished filling in, and one that vanishes moves
+/// **Cancel** under the thumb reaching for it.
 struct SetEditorCommands: View {
-    /// Whether the draft resolves — whether the confirming command goes.
-    let isLoggable: Bool
-
-    /// Whether to say why it does not. Separate from ``isLoggable`` because a form nobody has
-    /// filled in yet is not one to complain about.
+    /// Whether to say why the confirming command refused. Set by the save that refused, never by a
+    /// keystroke (`FR-17.1.6`) — see ``SetEditorSheet``.
     let showsRefusal: Bool
 
-    /// Whether the form is editing a logged set rather than adding one (`FR-1.2.7`) — what decides
-    /// the confirming command's words and whether the deletion is offered.
-    let isEditing: Bool
+    /// Which form is drawn — what decides the confirming command's words, whether the skip is
+    /// offered and whether the deletion is.
+    let mode: SetEditorMode
 
-    /// Logs the set, or saves the edit.
+    /// Logs the group, or saves the edit.
     let log: () -> Void
 
     /// Leaves without writing anything.
     let cancel: () -> Void
+
+    /// Records that the lifter is not doing this exercise today (`FR-17.9.6`), or `nil` off a
+    /// checklist row.
+    let skip: (() -> Void)?
 
     /// Soft-deletes the set being edited (`FR-1.2.7`, `G-1.3`). Never called while adding one.
     let delete: () -> Void
@@ -48,14 +51,18 @@ struct SetEditorCommands: View {
                     FieldRefusal(message: Text(LoggingStrings.setInvalidMessage))
                 }
                 Button(action: log) {
-                    Text(
-                        isEditing
-                            ? LoggingStrings.setSaveAction
-                            : LoggingStrings.setConfirmAction
-                    )
+                    Text(mode.confirmLabel)
                 }
+                // A sheet is its own surface, so the filled accent here is not competing with a
+                // screen's (T-16.17).
                 .buttonStyle(.primaryAction(.fill))
-                .disabled(!isLoggable)
+
+                if let skip {
+                    Button(action: skip) {
+                        Text(LoggingStrings.daySkipAction)
+                    }
+                    .buttonStyle(.secondaryAction(.fill))
+                }
 
                 Button(action: cancel) {
                     Text(LoggingStrings.setCancelAction)
@@ -65,7 +72,7 @@ struct SetEditorCommands: View {
                 }
                 .buttonStyle(.plain)
 
-                if isEditing {
+                if mode.isEditing {
                     deleteCommand
                 }
             }

@@ -26,13 +26,13 @@ public struct PersonalRecord: Sendable, Hashable {
     }
 }
 
-/// An N-rep max: the heaviest completed working set performed for **at least** ``reps`` reps
+/// An N-rep max: the heaviest completed working set performed for **exactly** ``reps`` reps
 /// (`TR-0.2.8`, `FR-1.6.1`).
 public struct RepMax: Sendable, Hashable {
-    /// The N this is the record for — not the reps the set was performed for, which may be more.
+    /// The N this is the record for, which is also the reps the set was performed for.
     ///
-    /// A 5-rep set is a candidate for every N from 1 to 5, so one set can hold five records at the
-    /// same weight. That is the definition, not a rounding of it.
+    /// One set holds one N (`FR-17.2.1`). A 5-rep set is the 5RM and no other; the *at least N*
+    /// reading, under which it held five records at one weight, is withdrawn.
     ///
     /// In a value ``PersonalRecordCalculator`` produced this falls within
     /// ``PersonalRecords/repRange``. That is the calculator's guarantee and not this type's — the

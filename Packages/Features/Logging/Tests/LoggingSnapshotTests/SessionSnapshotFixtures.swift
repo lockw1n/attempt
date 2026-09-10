@@ -12,31 +12,39 @@
     // nor the suite beside it runs into `file_length` — the two grow for different reasons, a
     // reference being added and a fixture shape being added.
 
-    /// Pins the process time zone, so a rendered date is the same picture on a developer's machine
-    /// as it is on the CI runner.
+    /// The calendar and time zone every date here is resolved in.
     ///
     /// **A reference that renders a date is otherwise not reproducible**, and the failure is
-    /// asymmetric: recorded in `EDT` and compared in `UTC`, a time renders four hours out and every
-    /// such reference fails on CI alone. `AppFormat`'s styles take a locale and read the process's
-    /// time zone, so the locale is pinned per subject and this is the other half.
-    private let pinnedTimeZone: Bool = {
-        NSTimeZone.default = TimeZone(identifier: "UTC") ?? .gmt
-        return true
+    /// asymmetric: recorded at `UTC-5` and compared at `UTC`, an instant near midnight renders a
+    /// whole day out and every such reference fails on CI alone — which is what `Week-cards` and
+    /// `Week-six-days` did.
+    ///
+    /// **This replaces an `NSTimeZone.default` assignment, which was inert.** Writing that property
+    /// does not move `TimeZone.current`, so a `Date.FormatStyle` carrying no zone of its own went on
+    /// rendering in the recorder's — the pin read as the guarantee it was not. The working half is
+    /// the pair below: a view binds its style to `@Environment(\.calendar)` through
+    /// ``Localization/AppFormat/resolved(_:in:)``, and this is the calendar that lands there.
+    private let gmt: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .gmt
+        return calendar
     }()
 
-    /// A subject whose rendering depends on a locale or a time zone, pinned to both.
+    /// A subject whose rendering depends on a locale, a time zone or a calendar, pinned to all
+    /// three — which is what `HistorySnapshotTests` pins, for the same reason.
     ///
-    /// The locale is the environment's, which is what `AppFormat` reads through the view; the time
-    /// zone is the process's, pinned once above. Here rather than on a suite because both suites in
-    /// this target render dates.
+    /// **The calendar is the half that was missing.** `\.timeZone` reaches a `Text(_:format:)`,
+    /// which is why `Week-free-workout` was reproducible while the two references rendering a date
+    /// *eagerly* were not: a style built in Swift carries the calendar's zone or the device's, and
+    /// nothing here was replacing the device's.
     ///
     /// - Parameter subject: What to render.
     /// - Returns: The subject, pinned.
     func fixedEnvironment(@ViewBuilder _ subject: () -> some View) -> some View {
-        _ = pinnedTimeZone
-        return subject()
+        subject()
             .environment(\.locale, Fixtures.locale)
             .environment(\.timeZone, .gmt)
+            .environment(\.calendar, gmt)
     }
 
     /// The workout these references render, and the two things it takes to render one.
@@ -189,17 +197,20 @@
                 loggedSet(index: 38, weight: Weight(grams: 100_000), reps: 5, rpe: 9),
             ]
 
-        /// Which cells each of ``groupedSets``' sets holds a record at (`FR-16.2.4`).
+        /// Which cell each of ``groupedSets``' sets stands at, and in which state (`FR-17.2.2`).
         ///
-        /// **Keyed on the run's first set**, which is what the cache does: the four-set run is named
-        /// by set 32 and holds every cell up to `6 × 4`; the lone fifth set holds the one-set column
-        /// up to `5 × 1`. The warmups hold nothing, which is the ordinary case and draws no badge.
-        static let recordSchemes: [UUID: [RecordScheme]] = [
-            groupedSets[2].id: (1...6).flatMap { reps in
-                (1...4).map { RecordScheme(reps: reps, sets: $0) }
-            },
-            groupedSets[6].id: (1...5).map { RecordScheme(reps: $0, sets: 1) },
+        /// **Keyed on the run's first set, one cell each** (`FR-17.2.1`): the four-set run stands at
+        /// `6 × 4` and the lone fifth set at `6 × 1`; the warmups hold nothing. **One of each
+        /// state**, so the picture settles both badges rather than one of them twice.
+        static let recordSchemes: [UUID: [SchemeMark]] = [
+            groupedSets[2].id: [mark(reps: 6, sets: 4)],
+            groupedSets[6].id: [mark(reps: 6, sets: 1, first: true)],
         ]
+
+        /// One cell a set stands at, in one of `FR-17.2.2`'s two performed states.
+        static func mark(reps: Int, sets: Int, first: Bool = false) -> SchemeMark {
+            SchemeMark(scheme: RecordScheme(reps: reps, sets: sets), isFirstPerformance: first)
+        }
 
         /// `FR-1.2.5`'s outcome, pictured: a working set that fell short between two that did not,
         /// and a warmup that did too.
@@ -278,14 +289,13 @@
 
         /// `FR-1.6.3`'s badge, pictured on the rows.
         ///
-        /// **Both sets hold the one-set column and nothing else**, which is what a lone set can hold
-        /// — so both badges are `FR-16.2.4`'s rep-max spelling, `PR 3RM` and `PR 5RM`, at the two
-        /// ends of the numeral's width. `E1` is the second of ``loggedSets`` and `E4` the first
-        /// working set of ``rampedSets``.
+        /// **Both sets stand in the one-set column**, so both badges take `FR-17.2.3`'s single-set
+        /// spelling — `PR · 3 reps` and `First · 5 reps`, the widest the two words get. `E1` is the
+        /// second of ``loggedSets`` and `E4` the first working set of ``rampedSets``.
         static let personalRecords = SessionRecordMarks(
             bySetID: [
-                identifier("E1"): [RecordScheme(reps: 3, sets: 1)],
-                identifier("E4"): (1...5).map { RecordScheme(reps: $0, sets: 1) },
+                identifier("E1"): [Fixtures.mark(reps: 3, sets: 1)],
+                identifier("E4"): [Fixtures.mark(reps: 5, sets: 1, first: true)],
             ],
             hasLoaded: true
         )

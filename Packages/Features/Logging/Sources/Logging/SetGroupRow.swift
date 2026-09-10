@@ -45,7 +45,7 @@ struct SetGroupRow: View {
     let edit: (SetEntry) -> Void
 
     /// The schemes one member holds the record at (`FR-1.6.3`, `FR-16.2.4`), or none.
-    var recordSchemes: (UUID) -> [RecordScheme] = { _ in [] }
+    var recordMarks: (UUID) -> [SchemeMark] = { _ in [] }
 
     /// What a routine planned for one member (`FR-15.3.1`), or `nil`.
     var target: (UUID) -> PlannedTargetGroup? = { _ in nil }
@@ -110,8 +110,8 @@ struct SetGroupRow: View {
     /// without reintroducing that is to add one that says what it does.
     ///
     /// **Secondary, on a screen whose one accent is Finish** (`G-7.2`). It is the common action and
-    /// it is not the screen's primary one: `Repeat set`, `Add set` and `Log planned set` sit beneath
-    /// it at the same weight, and the filled button at the foot ends the workout.
+    /// it is not the screen's primary one: `Repeat set` and the card's own `Log` sit beneath it at
+    /// the same weight, and the filled button at the foot ends the workout.
     @ViewBuilder private var logNextCommand: some View {
         if let logNext {
             Button(action: logNext) {
@@ -192,6 +192,7 @@ struct SetGroupRow: View {
                 recordMark
                 trainingMaxShare
                 modifiers
+                note
                 plannedTarget
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -278,19 +279,13 @@ struct SetGroupRow: View {
     /// attributed separately.
     @ViewBuilder private var recordMark: some View {
         if let badge = recordBadge {
-            Text(badge.text)
-                .font(Typography.metricLabel.font)
-                .foregroundStyle(ColorToken.onBrandAccent)
-                .padding(.horizontal, Spacing.sm.points)
-                .padding(.vertical, Spacing.xxs.points)
-                .background(ColorToken.brandAccent, in: .capsule)
-                .accessibilityLabel(Text(badge.label))
+            RecordBadgeView(badge: badge)
         }
     }
 
     /// The badge this run carries, or `nil` where no member holds a record.
     private var recordBadge: RecordBadge? {
-        RecordBadge(schemes: group.members.flatMap { recordSchemes($0.id) })
+        RecordBadge(marks: group.members.flatMap { recordMarks($0.id) })
     }
 
     /// `FR-1.2.8`'s modifiers, which the group cannot mix — see
@@ -305,6 +300,23 @@ struct SetGroupRow: View {
             .foregroundStyle(ColorToken.textTertiary)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// `FR-1.2.3`'s note, which the group cannot mix — see
+    /// ``DerivedValues/SetGrouping/Grain/displayed``, which compares it.
+    ///
+    /// **Here rather than on the member rows, and that is T-16.13's three answers settled.** A run
+    /// is collapsed until asked (`FR-16.1.3`), so a note drawn only underneath is a note nobody
+    /// reads on the ordinary screen; every member carries the same one, so the line above them says
+    /// it once and ``SetRow/statesNote`` keeps them quiet.
+    @ViewBuilder private var note: some View {
+        if !group.record.notes.isEmpty {
+            Text(LoggingStrings.setNote(group.record.notes))
+                .font(Typography.caption.font)
+                .foregroundStyle(ColorToken.textSecondary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -374,12 +386,13 @@ struct SetGroupRow: View {
         SetRow(
             numbered: numbered,
             unit: unit,
-            recordSchemes: recordSchemes(numbered.id),
+            recordMarks: recordMarks(numbered.id),
             mark: mark,
             markCompleted: markCompleted,
             edit: edit,
             trainingMax: trainingMax,
             statesTrainingMaxShare: group.isSingle,
+            statesNote: group.isSingle,
             isSessionOpen: isSessionOpen,
             target: target(numbered.id)
         )

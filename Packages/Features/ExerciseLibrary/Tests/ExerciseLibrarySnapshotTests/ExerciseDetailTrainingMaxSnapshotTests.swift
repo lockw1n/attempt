@@ -22,9 +22,8 @@
             // sharpest claim: a first entry drawn as a change from zero reports a number the lifter
             // never had.
             //
-            // The absent state is not a second reference: it is `T-1.09`'s insufficient-data view
-            // over one sentence, which `ExerciseDetail-estimate-refused` already pictures at both
-            // sizes.
+            // The heading and the card are this state's and not the absent one's, which is the
+            // pairing `ExerciseDetail-training-max-none` exists to hold the other half of.
             try assertSnapshots(named: "ExerciseDetail-training-max") {
                 TrainingMaxReading(
                     state: .ready(
@@ -52,6 +51,29 @@
                     unit: .kilograms,
                     hasFailedWrite: false,
                     showsHistory: .constant(true),
+                    retry: {},
+                    change: {}
+                )
+                .environment(\.locale, DetailFixtures.locale)
+                .environment(\.timeZone, .gmt)
+            }
+        }
+
+        @Test func trainingMaxAbsent() throws {
+            // `FR-17.5.1`'s line, and the state 132 of 132 exercises are in at a fresh install.
+            // What it gates is that this is a LINE: no heading, no card, no symbol, no
+            // insufficient-data block — a caption and a secondary command on one row, which at
+            // `accessibility3` is the one claim here that can break.
+            //
+            // A reference of its own since T-17.06. It was declined until then on the grounds that
+            // the state was `T-1.09`'s shared component and pictured elsewhere; it is now this
+            // screen's own shape, and the shape is the whole of the requirement.
+            try assertSnapshots(named: "ExerciseDetail-training-max-none") {
+                TrainingMaxReading(
+                    state: .none(history: []),
+                    unit: .kilograms,
+                    hasFailedWrite: false,
+                    showsHistory: .constant(false),
                     retry: {},
                     change: {}
                 )

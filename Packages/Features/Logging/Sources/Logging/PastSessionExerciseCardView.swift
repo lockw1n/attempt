@@ -44,6 +44,14 @@ struct PastSessionExerciseCard: View {
     /// Opens `FR-1.2.7`'s editor over one of this card's sets.
     let edit: (SetEntry) -> Void
 
+    /// The schemes one of this card's sets holds a record at (`FR-17.7.2`), or none.
+    ///
+    /// **The cache's truth, which is *holds the record now*** — see
+    /// ``SessionRecordMarks/read(over:from:)``. A run since beaten carries no badge, which is what
+    /// the requirement asks for and is also the only claim a screen about last month can honestly
+    /// make: the table is rebuilt from the log and remembers no history of its own.
+    var recordMarks: (UUID) -> [SchemeMark] = { _ in [] }
+
     /// Whether the session this card belongs to has yet to end (`FR-16.4.1`).
     ///
     /// **Not always `false`, which is what a "past session" screen would suggest.** The screen is
@@ -88,13 +96,6 @@ struct PastSessionExerciseCard: View {
     /// - Parameter group: The run of identical sets, and their numbers.
     /// - Returns: The line.
     private func groupRow(for group: NumberedSetGroup) -> some View {
-        // No record badge here. `FR-1.6.3` puts it on the set "at the moment it is logged", which is
-        // the workout in progress; a past session would need the workout's map read for a screen that
-        // is not logging, and marking an old set as a record it may since have lost is worse than not
-        // marking it. Whichever task first wants records on this screen owns that read.
-        // No target: `FR-15.3.1`'s line belongs to the workout in progress, and this screen has no
-        // planned-target read wired up. Drawing one would need that read; drawing nothing is what a
-        // past session has always shown.
         SetGroupRow(
             group: group,
             unit: unit,
@@ -103,10 +104,19 @@ struct PastSessionExerciseCard: View {
             mark: nil,
             markCompleted: nil,
             edit: edit,
+            recordMarks: recordMarks,
+            // `FR-15.3.1`'s line, where a routine planned this set. A free workout plans nothing
+            // and this map is empty for it, which costs the card no line at all — the state reads
+            // the targets either way, because a workout started from a routine carries no program
+            // stamp and is still drawn here.
+            target: { targets[$0] },
             trainingMax: item.trainingMax,
             isSessionOpen: isSessionOpen
         )
     }
+
+    /// What each of this card's sets was planned against, keyed on the set (`FR-15.3.1`).
+    private var targets: [UUID: PlannedTargetGroup] { item.plannedTargets }
 
     /// This card's sets, each carrying its number within its own sequence (`FR-1.2.14`).
     private var numberedSets: [NumberedSet] { SetNumbering.numbered(item.sets) }

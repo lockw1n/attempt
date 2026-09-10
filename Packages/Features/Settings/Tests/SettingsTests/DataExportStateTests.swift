@@ -184,6 +184,11 @@ struct DataExportStateTests {
 /// A workout repository whose reads all throw — the store failing under an export.
 private struct FailingWorkoutReads: WorkoutRepository {
     func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        throw RepositoryError.recordNotFound(id: UUID())
+    }
+    func sessions(
         in range: ClosedRange<Date>,
         includingDeleted: Bool
     ) async throws -> [WorkoutSession] {
@@ -231,6 +236,11 @@ private actor FailsOnceThenReads: WorkoutRepository {
         self.wrapped = wrapped
     }
 
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
     func sessions(
         in range: ClosedRange<Date>,
         includingDeleted: Bool
@@ -306,6 +316,11 @@ actor GatedWorkoutReads: WorkoutRepository, PlannedTargetRepository {
         held = []
     }
 
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        []
+    }
     func sessions(
         in range: ClosedRange<Date>,
         includingDeleted: Bool

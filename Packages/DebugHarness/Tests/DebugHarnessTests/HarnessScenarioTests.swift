@@ -26,11 +26,13 @@ struct HarnessScenarioTests {
     /// 105 kg × 3 survives from the older session, which the newer one never beat for three reps.
     /// The top single holds the 1RM and the best e1RM alike; what differs between them is the
     /// number, 120 kg lifted against a 124 kg estimate.
+    ///
+    /// **Four rows, not five** (`FR-17.2.1`): the fixture has no set of exactly four reps, so the
+    /// 4-rep max is a gap between two records rather than the 102.5 kg × 5 reaching down into it.
     static let expectedRepMaxes = [
         ExpectedRepMax(reps: 1, grams: 120_000, offset: 7),
         ExpectedRepMax(reps: 2, grams: 112_500, offset: 6),
         ExpectedRepMax(reps: 3, grams: 105_000, offset: 2),
-        ExpectedRepMax(reps: 4, grams: 102_500, offset: 5),
         ExpectedRepMax(reps: 5, grams: 102_500, offset: 5),
     ]
 
@@ -47,9 +49,10 @@ struct HarnessScenarioTests {
             #expect(record.weight == Weight(grams: expected.grams))
             #expect(record.setOffset == expected.offset)
         }
-        // Nothing reached six reps, so `PersonalRecords.repRange`'s upper half is absent rather
-        // than present at a weight of zero.
-        for reps in 6...10 {
+        // Nothing was performed at six reps or more, so `PersonalRecords.repRange`'s upper half is
+        // absent rather than present at a weight of zero — and neither is four, which sits between
+        // two records and is the gap `FR-17.2.1` opened.
+        for reps in [4] + Array(6...10) {
             #expect(report.records.repMax(forReps: reps) == nil)
         }
         let best = try #require(report.records.bestE1RM)
@@ -151,7 +154,7 @@ struct HarnessScenarioTests {
                    1RM  120.0 kg (120000 g)   from set [7]
                    2RM  112.5 kg (112500 g)   from set [6]
                    3RM  105.0 kg (105000 g)   from set [2]
-                   4RM  102.5 kg (102500 g)   from set [5]
+                   4RM  —
                    5RM  102.5 kg (102500 g)   from set [5]
                    6RM  —
                    7RM  —

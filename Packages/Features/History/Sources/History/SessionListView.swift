@@ -6,8 +6,8 @@ import PowerliftingCore
 import RepositoryInterface
 import SwiftUI
 
-/// The History tab's root: every session logged, newest first (`FR-1.5.1`), and `FR-1.5.4`'s search
-/// over the same history as a mode of it.
+/// The History tab's root: every session logged, newest first (`FR-1.5.1`), with `FR-1.5.4`'s search
+/// and `FR-17.11`'s calendar weeks as modes of it.
 ///
 /// The view half of `TR-1.2`'s pattern — it holds ``SessionListState`` in `@State`, reads its phase,
 /// and decides nothing a test would want to ask about.
@@ -37,6 +37,16 @@ public struct SessionListView: View {
     /// History tab's sessions are listed.
     @State private var search: SessionSearchState
 
+    /// `FR-17.11`'s week view over the same rows, likewise a mode rather than a tab (`D-8`).
+    @State private var byWeek: WeekHistoryState
+
+    /// Which of the two is showing, restored from where the tab was last left this launch.
+    ///
+    /// **Seeded from ``HistoryModeMemory`` rather than defaulted here.** `@State` survives a tab
+    /// switch but not the store reopening under it, and the memory is what makes the choice a
+    /// property of the session rather than of this view's lifetime.
+    @State private var mode: HistoryMode = HistoryModeMemory.shared.mode
+
     /// The shell's navigation position, for the empty state's action.
     ///
     /// Optional and read rather than required, on `ExerciseListView`'s rule: a `StateAction` is a
@@ -61,6 +71,9 @@ public struct SessionListView: View {
                 workouts: workouts, exercises: exercises, settings: settings, records: records))
         _search = State(
             initialValue: SessionSearchState(
+                workouts: workouts, exercises: exercises, settings: settings))
+        _byWeek = State(
+            initialValue: WeekHistoryState(
                 workouts: workouts, exercises: exercises, settings: settings))
     }
 
@@ -92,11 +105,26 @@ public struct SessionListView: View {
                 }
             }
         }
-        // `load()` on every appearance, not once: a workout finished in the Train tab has to be
-        // here on the way back.
-        .task {
-            state.nameLanguage = ExerciseNameLanguage(locale)
-            await state.load()
+        // ONE READ, AND IT IS THE MODE'S. `.task(id:)` runs when the view appears *and* when the
+        // identity changes, so this covers both rules at once: `load()` on every appearance — a
+        // workout finished in the Train tab has to be here on the way back — and a load when the
+        // reader on screen changes. Only the mode being drawn reads: the choice is remembered for
+        // the whole launch (``HistoryModeMemory``), so an unconditional list read would make a
+        // reader who chose Weeks pay for a page of summaries nothing draws, on every appearance,
+        // for the rest of the launch. That is the eager load `NFR-1.5` cannot survive, and it is
+        // why ``SessionSearchState`` is lazy in the same body.
+        .task(id: mode) {
+            switch mode {
+            case .sessions:
+                state.nameLanguage = ExerciseNameLanguage(locale)
+                await state.load()
+            case .weeks:
+                // The environment's calendar before the read, for ``CalendarView``'s reason: every
+                // week boundary on this screen is computed in it.
+                byWeek.adopt(calendar)
+                byWeek.nameLanguage = ExerciseNameLanguage(locale)
+                await byWeek.load()
+            }
         }
         // The search's only trigger, keyed on *whether* a search is running rather than on what was
         // typed: it fires on the keystroke that starts one and on a return to a screen left
@@ -118,9 +146,23 @@ public struct SessionListView: View {
     /// dashboard owes too.
     @ViewBuilder private var content: some View {
         if search.isSearching {
+            // The search reads every session, so it answers over the whole history whichever mode
+            // the tab is in — and a result is one workout rather than a week, which is why the
+            // control is not drawn over it.
             results
         } else {
-            browse
+            HistoryModeStack(mode: $mode) {
+                if mode == .weeks {
+                    WeekHistoryContent(state: byWeek)
+                } else {
+                    browse
+                }
+            }
+            .onChange(of: mode) { _, chosen in
+                // Remembered here and nowhere else: a settings column would owe the archive a field
+                // for a convenience (`T-16.14`).
+                HistoryModeMemory.shared.remember(chosen)
+            }
         }
     }
 
@@ -145,8 +187,8 @@ public struct SessionListView: View {
                     Text(HistoryStrings.emptyAction), emphasis: .primary
                 ) {
                     // A tab switch that drops Train to its root, not a push — `D-8`'s one place a
-                    // workout is logged.
-                    navigation?.startWorkout()
+                    // workout is logged. That root is the week, which is what the label names.
+                    navigation?.showTrain()
                 }
             )
         case .ready:

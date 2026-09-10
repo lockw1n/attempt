@@ -41,6 +41,11 @@ actor CountingWorkoutRepository: WorkoutRepository {
         return try await wrapped.entries(forSessionID: sessionID, includingDeleted: includingDeleted)
     }
 
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
     func sessions(in range: ClosedRange<Date>, includingDeleted: Bool) async throws -> [WorkoutSession] {
         sessionListsRead += 1
         return try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
@@ -92,6 +97,11 @@ actor FlakyWorkoutRepository: WorkoutRepository {
         return try await wrapped.entries(forSessionID: sessionID, includingDeleted: includingDeleted)
     }
 
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
     func sessions(in range: ClosedRange<Date>, includingDeleted: Bool) async throws -> [WorkoutSession] {
         try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
     }
@@ -166,6 +176,11 @@ actor GatedWorkoutRepository: WorkoutRepository {
         return try await wrapped.entries(forSessionID: sessionID, includingDeleted: includingDeleted)
     }
 
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
     func sessions(in range: ClosedRange<Date>, includingDeleted: Bool) async throws -> [WorkoutSession] {
         try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
     }

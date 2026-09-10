@@ -198,7 +198,7 @@ public struct ActiveSessionView: View {
         .sheet(item: $editing) { target in
             SetEditorSheet(
                 draft: draft(for: target),
-                isEditing: target.editing != nil,
+                mode: .set(isEditing: target.editing != nil),
                 prescribed: target.prescribed,
                 unit: store.displayUnit,
                 vocabulary: vocabulary,
@@ -212,6 +212,14 @@ public struct ActiveSessionView: View {
             // longer fit the medium one.
             .presentationDetents([.medium, .large])
         }
+        // `FR-17.9.7`'s menu, shared with a day's checklist: the training day this workout
+        // belongs to lost its only control when `FR-17.8.7` took the date picker off Train's root,
+        // and Discard came here with it.
+        .sessionOverflow(
+            date: store.session?.date,
+            changeDate: { day in Task { await store.changeDate(to: day) } },
+            discard: { isConfirmingDiscard = true }
+        )
         .confirmationDialog(
             Text(LoggingStrings.sessionDiscardConfirmTitle),
             isPresented: $isConfirmingDiscard,
@@ -300,17 +308,13 @@ public struct ActiveSessionView: View {
             draft: $noteDraft,
             isExpanded: $areNotesExpanded,
             hasFailed: store.noteWriteFailure != nil,
+            saveEmphasis: .secondary,
             save: { Task { await store.saveNote(noteDraft.text) } }
         )
         // The banner describes one attempt to store one piece of text, so the next keystroke ends
-        // it — including the one that puts the stored note back. Without this it outlives the edit
-        // it belongs to, leaving a retry on screen with nothing left to write.
+        // it — otherwise it outlives the edit, a retry with nothing left to write.
         .onChange(of: noteDraft.text) { store.noteWriteFailure = nil }
-        SessionCommandsSection(
-            hasFailed: writeFailed,
-            finish: { Task { await finish() } },
-            discard: { isConfirmingDiscard = true }
-        )
+        SessionCommandsSection(hasFailed: writeFailed, finish: { Task { await finish() } })
     }
 
     /// The screen's title: its name, and the training day once there is a workout to name one

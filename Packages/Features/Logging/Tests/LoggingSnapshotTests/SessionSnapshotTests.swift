@@ -14,11 +14,11 @@
     // TR-1.12 for this module's two screens, in four configurations each — light and dark (`G-7.1`),
     // default and `accessibility3` (`NFR-1.10`'s own ceiling).
     //
-    // WHAT IS RENDERED AND WHAT IS NOT. The sections, not `TrainingHomeView` or `ActiveSessionView`
-    // themselves: both own a `.task` that reads a store, and `ImageRenderer` has no way to run one.
-    // Between them these references cover every pixel the two screens have of their own — the workout
-    // in progress, its facts, the two commands that end it, the screen-wake control, the date control
-    // and the four placeholders either screen can show instead.
+    // WHAT IS RENDERED AND WHAT IS NOT. The sections, not `ActiveSessionView` itself: it owns a
+    // `.task` that reads a store, and `ImageRenderer` has no way to run one. Between them these
+    // references cover every pixel that screen has of its own — the workout in progress, its
+    // facts, the two commands that end it and the placeholders it can show instead. Train's root
+    // left this suite with `FR-17.8.7`; its references are `WeekSnapshotTests`'.
     //
     // TWO THINGS THESE REFERENCES CANNOT SHOW, both measured rather than assumed. A `NavigationLink`
     // with no `NavigationStack` above it draws as though it led nowhere, so its label is dimmer here
@@ -36,76 +36,6 @@
     @MainActor
     @Suite("Session lifecycle snapshots")
     struct SessionSnapshotTests {
-        // MARK: - Train root (FR-1.2.1, FR-1.2.11, FR-1.13.2)
-
-        // The two way-out cards under the workout — the exercise library (`FR-1.1.1`) and, since
-        // T-15.02, the routines (`FR-15.2.1`). One reference for both, because they are one
-        // component with two labels, and the pair is what has to keep sharing a line: two cards of
-        // one line each at default type, two of two lines at accessibility3.
-        //
-        // Dimmer here than in the app, on this suite's own `NavigationLink` note above.
-        @Test func destinationCards() throws {
-            try assertSnapshots(named: "TrainHome-destinations") {
-                VStack(alignment: .leading) {
-                    DestinationCard(
-                        label: LoggingStrings.trainLibraryAction,
-                        value: .exerciseLibrary(.exerciseList))
-                    DestinationCard(
-                        label: LoggingStrings.trainRoutinesAction,
-                        value: .routines(.routineList))
-                }
-            }
-        }
-
-        @Test func workoutInProgress() throws {
-            try assertSnapshots(named: "Train-in-progress") {
-                fixedEnvironment {
-                    SessionInProgressSection(session: Fixtures.session, lifecycle: .inProgress)
-                }
-            }
-        }
-
-        @Test func noWorkoutYet() throws {
-            // FR-1.13.2's first-launch state. The action is part of the picture: a state that named
-            // the way to a first workout without offering it is the dead end the requirement is
-            // about.
-            try assertSnapshots(named: "Train-empty") {
-                EmptyStateView(
-                    symbolName: "figure.strengthtraining.traditional",
-                    headline: Text(LoggingStrings.trainEmptyHeadline),
-                    message: Text(LoggingStrings.trainEmptyMessage),
-                    action: StateAction(Text(LoggingStrings.trainStartAction), emphasis: .primary) {}
-                )
-            }
-        }
-
-        @Test func workoutDate() throws {
-            try assertSnapshots(named: "Train-date") {
-                fixedEnvironment {
-                    WorkoutDateSection(day: .constant(Fixtures.day))
-                }
-            }
-        }
-
-        @Test func readFailed() throws {
-            try assertSnapshots(named: "Train-error") {
-                ErrorStateView(
-                    headline: Text(LoggingStrings.trainErrorHeadline),
-                    message: Text(LoggingStrings.trainErrorMessage),
-                    retryEmphasis: .primary,
-                    retry: {})
-            }
-        }
-
-        @Test func startFailed() throws {
-            // A failed *write*, and a different picture from the one above on purpose: no headline
-            // and no retry button, because it renders between the start command and the date
-            // control rather than in place of them, and the retry is that command itself.
-            try assertSnapshots(named: "Train-start-error") {
-                ErrorStateView(message: Text(LoggingStrings.trainStartErrorMessage))
-            }
-        }
-
         // MARK: - The workout in progress (FR-1.2.11, FR-1.2.12)
 
         @Test func workoutSummary() throws {
@@ -125,7 +55,7 @@
 
         @Test func commands() throws {
             try assertSnapshots(named: "Session-commands") {
-                SessionCommandsSection(hasFailed: false, finish: {}, discard: {})
+                SessionCommandsSection(hasFailed: false, finish: {})
             }
         }
 
@@ -133,7 +63,7 @@
             // The workout is still on screen beside the failure, which is the part worth a picture:
             // a failed write costs this screen nothing.
             try assertSnapshots(named: "Session-commands-failed") {
-                SessionCommandsSection(hasFailed: true, finish: {}, discard: {})
+                SessionCommandsSection(hasFailed: true, finish: {})
             }
         }
 
@@ -192,7 +122,7 @@
         // MARK: - Sets inside one exercise (FR-1.2.3, FR-1.2.6)
 
         @Test func setEditorBlank() throws {
-            // FR-1.2.3's form as **Add set** opens it: four fields, nothing filled in, and the
+            // FR-1.2.3's form as the card's **Log** opens it: four fields, nothing filled in, and the
             // confirming command disabled. No complaint yet — a form that opened saying what is
             // wrong with it is a form scolding the user for not having typed.
             try assertSnapshots(named: "Session-set-editor-blank") {
@@ -446,7 +376,7 @@
                     SetRow(
                         numbered: numbered,
                         unit: .kilograms,
-                        recordSchemes: records.schemes(forSetID: numbered.id),
+                        recordMarks: records.marks(forSetID: numbered.id),
                         mark: { _, _ in },
                         markCompleted: { _, _ in },
                         edit: { _ in },
@@ -475,21 +405,24 @@
         ///   - isEditing: Whether it is open over a set that already exists (`FR-1.2.7`).
         /// - Returns: The editor, laid out for a reference.
         private func editor(over draft: SetDraft, isEditing: Bool = false) -> some View {
-            VStack(spacing: Spacing.sm.points) {
+            let mode = SetEditorMode.set(isEditing: isEditing)
+            return VStack(spacing: Spacing.sm.points) {
                 SetEditorFields(
                     draft: .constant(draft),
-                    hasInput: .constant(true),
-                    isEditing: isEditing,
+                    mode: mode,
                     vocabulary: Fixtures.vocabulary,
                     equipment: Fixtures.equipment
                 )
                 .padding(Spacing.lg.points)
                 SetEditorCommands(
-                    isLoggable: draft.isLoggable,
-                    showsRefusal: !draft.isLoggable && !draft.isBlank,
-                    isEditing: isEditing,
+                    // The refusal is a submission's, not a keystroke's (`FR-17.1.6`) — a reference
+                    // over an unresolvable draft is a picture of the sheet after the save that
+                    // refused, which is the only moment it is drawn.
+                    showsRefusal: !draft.isLoggable,
+                    mode: mode,
                     log: {},
                     cancel: {},
+                    skip: nil,
                     delete: {}
                 )
             }

@@ -155,8 +155,7 @@
 "exerciselibrary.detail.section.records" = "Personal records";
 "exerciselibrary.detail.records.none" = "Log a set against this exercise and its personal records appear here.";
 "exerciselibrary.detail.records.error" = "This exercise's personal records could not be read.";
-"exerciselibrary.detail.records.rep-max %lld" = "%lld-rep max";
-"exerciselibrary.detail.records.more" = "6–10-rep maxes";
+"exerciselibrary.detail.records.more" = "6–10 reps";
 "exerciselibrary.detail.records.source-hint" = "Shows the session this record was set in.";
 "exerciselibrary.detail.records.more.expanded" = "Expanded";
 "exerciselibrary.detail.records.more.collapsed" = "Collapsed";
@@ -333,28 +332,43 @@
 "exerciselibrary.detail.records.all" = "All schemes";
 "exerciselibrary.detail.records.all.hint" = "Shows every rep and set count this exercise holds a record at.";
 
-/* The table's headings. A column is a number of consecutive sets and a row is a rep count, so the
-   column carries the multiplication sign and the row carries the noun. */
+/* The table's headings. A column is a number of consecutive sets and a row is a rep count, so a
+   column of two sets or more carries the multiplication sign and the row carries the noun.
+   THE ONE-SET COLUMN IS THE EXCEPTION AND IT IS FR-17.2.3's: it is headed by a word, never "× 1",
+   which is not a notation anybody writes their heaviest single in. */
 "exerciselibrary.records.column %lld" = "× %lld";
+"exerciselibrary.records.column.single" = "single";
 "exerciselibrary.records.reps-header" = "reps";
 
 /* FR-16.2.1: one scheme, written the way a lifter writes it. */
-"exerciselibrary.records.scheme %lld %lld" = "%1$lld × %2$lld";
+"exerciselibrary.records.scheme %lld %lld" = "%1$lld×%2$lld";
 
 /* G-4.2: one cell, read aloud. The cell draws neither of its headings, so the label carries both —
    "by" rather than the multiplication sign, which VoiceOver would announce as punctuation or not
    at all. */
 "exerciselibrary.records.cell %lld %lld %@ %@" = "%1$lld by %2$lld, %3$@, %4$@";
+
+/* FR-17.2.2 (Q-17.1): the two states a cell can be in besides a plain record. "First" is the word
+   the badge and the feed already use, so the three surfaces agree by sharing it; "Not yet" is a
+   state rather than a number, which G-4.5 needs because a tint cannot carry it. */
+"exerciselibrary.records.cell.first %@" = "First · %@";
+"exerciselibrary.records.cell.not-yet" = "Not yet";
+"exerciselibrary.records.cell.not-yet.label %lld %lld" = "%1$lld by %2$lld, not yet";
+"exerciselibrary.records.cell.first.label %lld %lld %@ %@" = "%1$lld by %2$lld, first time, %3$@, %4$@";
 /* T-16.13 — FR-15.1.4, FR-15.1.5, FR-16.7.2: the coach's number and its history. */
 "exerciselibrary.detail.training-max.section" = "Training max";
 "exerciselibrary.detail.training-max.value" = "Training max";
 "exerciselibrary.detail.training-max.since %@" = "In force since %@";
 "exerciselibrary.detail.training-max.since-note %@ %@" = "In force since %1$@ · %2$@";
 "exerciselibrary.detail.training-max.none" = "No training max yet. Set one and a logged load can be read as a percentage of it.";
+"exerciselibrary.detail.training-max.none-line" = "No training max";
 "exerciselibrary.detail.training-max.not-yet" = "No training max in force yet. The changes below all take effect on a later date.";
+"exerciselibrary.detail.training-max.not-yet-line" = "None in force yet";
 "exerciselibrary.detail.training-max.error" = "This exercise's training max could not be read.";
 "exerciselibrary.detail.training-max.write-error" = "This training max could not be saved.";
 "exerciselibrary.detail.training-max.set-action" = "Set training max";
+"exerciselibrary.detail.training-max.set-one" = "Set one";
+"exerciselibrary.detail.training-max.change-one" = "Change";
 "exerciselibrary.detail.training-max.change-action" = "Change training max";
 "exerciselibrary.detail.training-max.history" = "History";
 "exerciselibrary.detail.training-max.history.expanded" = "Shown";
@@ -362,7 +376,7 @@
 "exerciselibrary.detail.training-max.change %@ %@" = "%1$@ → %2$@";
 "exerciselibrary.detail.training-max.first %@" = "Set to %@";
 "exerciselibrary.detail.training-max.form.title" = "Training max";
-"exerciselibrary.detail.training-max.form.weight" = "Training max";
+"exerciselibrary.detail.training-max.form.weight" = "Weight";
 "exerciselibrary.detail.training-max.form.date" = "In force from";
 "exerciselibrary.detail.training-max.form.date-hint" = "A logged load is read against the training max in force on the day of the workout.";
 "exerciselibrary.detail.training-max.form.note" = "Note";

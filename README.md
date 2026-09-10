@@ -56,14 +56,14 @@ Packages/
 ├── Features/                Feature modules, one level deeper — the level is load-bearing:
 │                            .swiftlint.yml scopes the no-raw-values rules to this path.
 │   ├── ExerciseLibrary/     The exercise catalogue, including its per-exercise history section
-│   ├── Logging/             The active session and everything logged into it
-│   ├── History/             Past training: sessions, calendar, search
-│   ├── Dashboard/           e1RM tiles, the recent-PR feed, the week summary, the start-workout
-│   │                        action
+│   ├── Logging/             The Train tab — this week, a day, the active session and
+│   │                        everything logged into it
+│   ├── History/             Past training: sessions by month or by week, calendar, search
+│   ├── Dashboard/           e1RM tiles, the recent-PR feed, the week summary, the last-workout
+│   │                        card, and the first-launch state
 │   ├── Settings/            Preferences, data portability, sync, the bodyweight log
-│   └── Routines/            Authoring a routine — its exercises in order and their target
-│                            groups — managing the library, starting a workout from one, and
-│                            authoring the programs that order routines into a week
+│   └── Routines/            Editing the current week — its days in order, each day's exercises
+│                            and each exercise's target groups — on one screen
 └── DebugHarness/            Throwaway end-to-end run: seeds, logs a set, prints PRs and e1RM
 Attempt/
 ├── App/                     App entry point and DI wiring
@@ -335,6 +335,13 @@ deletes the references, records them again and verifies what it wrote:
 ./scripts/snapshot-tests.sh --record
 ```
 
+A rendering whose pixels are all one colour is **never recorded**, and a committed reference that
+is all one colour is **rejected before the comparison** — `ImageRenderer` returns a blank past
+roughly 7,000 pixels of height, and a `ScrollView` rasterises its placeholder at any size, so
+without the guard a blank recorded once would match a blank render forever. The diagnostic names
+which of the two happened and what to do: split the reference rather than shrinking the fixture, or
+snapshot the content view rather than the scroller.
+
 Each suite also has a **minimum test count** in `scripts/snapshot-tests.sh`, so a suite that
 silently stops running is a failure rather than a green zero. Adding a snapshot test means raising
 that number in the same commit; `git grep -c '@Test' -- <suite>` is what to set it from.
@@ -552,6 +559,20 @@ claim is about what ships.
 ./scripts/check-exempt-encryption.sh --self-test
 ```
 
+`check-decimal-keyboard.sh` keeps numeric entry on the decimal keypad (`G-3.4`).
+Four checks over `git ls-files`: no source names `keyboardType` outside the one
+file defining `decimalKeyboard()`; the numeric hosts are an exact set; every
+module that parses a number also types one; and the files declaring a field of
+any kind are an exact set, which is what catches a numeric field added with no
+keyboard modifier at all. **Adding a field fails this gate until the new file is
+recorded** — numeric fields need `decimalKeyboard()` and a `HOSTS` entry, textual
+ones only a `TEXT_FIELDS` entry.
+
+```bash
+./scripts/check-decimal-keyboard.sh
+./scripts/check-decimal-keyboard.sh --self-test   # each check, in both directions
+```
+
 To lint on every build, add a **Run Script** build phase to the `Attempt` target
 with `if which swiftlint > /dev/null; then swiftlint; fi`, and untick "Based on
 dependency analysis".
@@ -565,7 +586,7 @@ dependency analysis".
 | **Build** | audits the app target's build settings, checks the debug harness is excluded from the app (and that the check itself fires), then builds the app |
 | **Package tests** | `PowerliftingCore` with coverage, then every package built and tested with warnings as errors (discovered by glob), the runtime gate and its proof, the warnings-gate proof, the `@unchecked Sendable` audit, then `Persistence`'s tests again at `-O` |
 | **Linux core build** | builds and tests `PowerliftingCore` and `RepositoryInterface` on `ubuntu-latest` in a Swift container |
-| **SwiftLint** | lint, lint-rule verification, format check, the app-target string and translation-completeness checks, the doc-ratio, doc-units and doc-links gates, and the CloudKit and third-party gates — sixteen steps, each gate followed by a self-test that proves it can fail, the export-compliance gate and a throwaway render of the hosted privacy policy |
+| **SwiftLint** | lint, lint-rule verification, format check, the app-target string and translation-completeness checks, the doc-ratio, doc-units and doc-links gates, and the CloudKit, third-party and decimal-keyboard gates — eighteen steps, each gate followed by a self-test that proves it can fail, the export-compliance gate and a throwaway render of the hosted privacy policy |
 | **Component snapshots** | renders every snapshot suite (`DesignSystem`'s components and states, plus each feature module's screens) and compares it against a committed reference, light/dark × default/`accessibility3` |
 
 The first four are **required checks on `main`**, so a red run blocks the

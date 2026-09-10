@@ -98,17 +98,6 @@ public final class ActiveSessionStore {
     /// projection of ``exercises`` is not.
     public private(set) var pendingSetCount = 0
 
-    /// Why the program's day cursor did not move when the last workout was finished
-    /// (`FR-16.8.4`), or `nil`.
-    ///
-    /// A **diagnostic**, not copy (`G-3.4`): the workout *was* stored, and the screen that can say
-    /// what was not is the one drawing the program's next day. **Not cleared by
-    /// ``forgetExercises()``**, being set after that workout has been let go of; retired by
-    /// ``retryProgramAdvance()``, the only thing that knows whether the cursor has since moved.
-    public internal(set) var programAdvanceFailure: String?
-
-    /// The finished workout the report above is owed to, held so it can be retried at all.
-    var unadvancedSession: WorkoutSession?
     /// What each card's "last time" strip is drawn from (`FR-1.2.10`).
     ///
     /// One value rather than three properties — see ``PreviousPerformances``.
@@ -187,7 +176,7 @@ public final class ActiveSessionStore {
     ///
     /// **One chain for the exercises and the sets together**, not one each: a set is written against
     /// an entry, and that entry can be moved or added by the same thumb between two taps of
-    /// **Log set**.
+    /// **Log**.
     var pendingWrite: Task<Void, Never>?
 
     /// Builds the store over the three repositories the workout is assembled from.
@@ -280,37 +269,22 @@ public final class ActiveSessionStore {
         }
     }
 
-    /// Adopts the workout left in progress, if there is one (`FR-1.2.11`).
+    /// Records that something has looked for a workout — see ``hasCheckedForSession``.
     ///
-    /// **What "in progress" means is `endedAt == nil`, and nothing else.** Not a flag, and not a
-    /// date window: a session is finished when it has been finished, so a workout backdated to last
-    /// month and never finished is still the one this app is in the middle of. That is also why the
-    /// read is unbounded — `WorkoutRepository` has no "incomplete sessions" query, so this is every
-    /// live session filtered here, and any window narrow enough to be cheap is a window a real
-    /// backdated session can fall outside of and never be seen again. The rows are dated training
-    /// days, one per workout, so reading them all at launch is a small read rather than a scan of
-    /// the sets.
+    /// **Here rather than a wider setter**, on ``adopt(stored:)``'s rule: `private` is file-scoped,
+    /// and the two methods that ask a locator for a workout live in `SessionLocator.swift`. This
+    /// and the one below name those transitions and nothing else.
+    func noteChecked() { hasCheckedForSession = true }
+
+    /// Adopts what a locator found. See ``noteChecked()`` for why both live here.
     ///
-    /// **Newest first is the repository's order**, so the first match is the most recent day —
-    /// which is the workout a user who force-quit mid-set is coming back to.
-    ///
-    /// A session already held is kept and nothing is read: this runs from a screen's `.task`, which
-    /// SwiftUI re-runs on every tab switch and restored push, and a re-read would race the record
-    /// ``update(_:)`` publishes. ``hasCheckedForSession`` is still set, because the question that
-    /// property answers — has anything looked? — has been answered either way.
-    public func resume() async {
-        defer { hasCheckedForSession = true }
-        guard session == nil else { return }
-        do {
-            session =
-                try await repository
-                .sessions(in: Date.distantPast...Date.distantFuture, includingDeleted: false)
-                .first { $0.endedAt == nil }
-            failure = nil
-        } catch {
-            session = nil
-            failure = String(describing: error)
-        }
+    /// - Parameters:
+    ///   - session: What the locator found, or `nil`.
+    ///   - diagnostic: Why it could not look, or `nil`.
+    func adopt(located session: WorkoutSession?, failure diagnostic: String?) {
+        self.session = session
+        failure = diagnostic
+        hasCheckedForSession = true
         forgetExercises()
     }
 
@@ -408,7 +382,7 @@ public final class ActiveSessionStore {
                 )
             }
             exercises = loaded
-            personalRecords = await recordMarks(over: loaded)
+            personalRecords = await SessionRecordMarks.read(over: loaded, from: records)
             exercisesReadFailure = nil
         } catch {
             exercises = []

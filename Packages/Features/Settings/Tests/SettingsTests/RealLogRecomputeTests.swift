@@ -7,8 +7,9 @@ import Testing
 @testable import DerivedValues
 @testable import Settings
 
-/// `DOD-16.4` and `DOD-16.2`'s restored-log half: the record pipeline measured over the author's own
-/// training log, in a real SwiftData store, restored through the app's own path.
+/// `DOD-16.4`, `DOD-16.2` and `DOD-17.4`'s restored-log half: the record pipeline measured — and,
+/// since `FR-17.2.1`, *checked* — over the author's own training log, in a real SwiftData store,
+/// restored through the app's own path.
 ///
 /// **Off unless a backup is named, because the subject cannot be committed.** It is one lifter's
 /// training history — `G-5.2`'s data stays on their device, and a fixture cannot stand in for it
@@ -85,9 +86,23 @@ struct RealLogRecomputeTests {
         let setCounts = try await RealLogBackup.liveSetCounts(in: stack, over: catalogue)
         let restoredSets = setCounts.values.reduce(0, +)
         #expect(restoredSets >= Self.minimumSets)
-        // Every restored row comes back live (`RecordMapping.swift` rule 1), so the file's whole
-        // set section is what a live read has to find — a lost row is a defect in the restore.
-        #expect(restoredSets == archive.sets.count)
+        // Every restored row comes back live (`RecordMapping.swift` rule 1), so the file's whole set
+        // section is what a live read has to find — a lost row is a defect in the restore. **The
+        // read that says so is the one through the entries**, not the one through the catalogue.
+        //
+        // T-16.16 asserted the catalogue count against the file's section and that claim is unsound:
+        // `sets(forExerciseID:)` applies `FR-16.4.2` and drops a **pending** set — one not completed,
+        // in a session still open — because a set nobody has attempted is not history. So the two
+        // counts differ by exactly the pending sets, and equating the first with the archive fails on
+        // any log holding an open session. Measured on the author's 2026-09-04 backup: 3,065 sets in
+        // the file, 3,065 stored, 3,023 in history, and the 42 between them are the pending sets of
+        // the two sessions they left open. The restore lost nothing.
+        //
+        // Both are still counted, because the pair is what says *which* thing is wrong: a shortfall
+        // through the entries is a row the restore never wrote; a shortfall through the catalogue
+        // alone is `FR-16.4.2` doing its job, and the assertion below names the difference rather
+        // than tolerating it.
+        try await expectTheRestoreLostNothing(stack, archive, inHistory: restoredSets)
 
         // `NFR-16.1`'s own shape: one walk per exercise, which is what a lifter's device does when
         // a cache is cold. `recompute` is unconditional, so this is the full walk rather than the
@@ -114,8 +129,9 @@ struct RealLogRecomputeTests {
         let slowestSets = slowestIndex.flatMap { setCounts[catalogue[$0].id] } ?? 0
 
         let cached = try await stack.personalRecords.personalRecords(includingDeleted: false)
-        // What the second dimension actually cost the write side (`FR-16.2.2`). A row at one set is
-        // the shape that existed before it; everything else is a cell the second dimension added.
+        // What the write side costs now that a run writes one cell (`FR-17.2.1`). A row at one set
+        // is `FR-1.6.1`'s column; the rest are the schemes this lifter actually trains in groups,
+        // where under the withdrawn dominance rule they were the rectangle beneath every one.
         let singleSet = cached.count { $0.setCount == 1 }
         let multiplier = String(
             format: "%.2f", Double(cached.count) / Double(max(singleSet, 1)))
@@ -160,7 +176,152 @@ struct RealLogRecomputeTests {
         // The walk is worthless if it cached nothing, and a log this size has records.
         #expect(!cached.isEmpty)
 
+        try await expectEveryCachedCellWasPerformed(stack, catalogue, cached)
         try await expectTheShippedDefaultsFillTheFeed(stack, recomputer, catalogue, clock)
+    }
+
+    /// The restore's own claim, counted by both joins.
+    ///
+    /// - Parameters:
+    ///   - stack: The restored store.
+    ///   - archive: The decoded backup.
+    ///   - inHistory: How many sets the catalogue read found.
+    /// - Throws: Whatever the repository throws.
+    private func expectTheRestoreLostNothing(
+        _ stack: PersistenceStack,
+        _ archive: TrainingLogArchive,
+        inHistory restoredSets: Int
+    ) async throws {
+        let byEntry = try await RealLogBackup.liveSetCount(
+            in: stack, overEntryIDs: archive.entries.map(\.id))
+        let pending = RealLogBackup.pendingSetCount(in: archive)
+        print(
+            """
+            DOD-16.4 sets:      \(archive.sets.count) in the file, \(byEntry) stored, \
+            \(restoredSets) in history — \(archive.sets.count - restoredSets) pending \
+            (FR-16.4.2), of \(pending) the file says are
+            """)
+        // The restore's own claim: nothing in the file failed to land.
+        #expect(byEntry == archive.sets.count)
+        // And history is the file minus exactly the pending sets, rather than minus something else.
+        #expect(restoredSets == archive.sets.count - pending)
+    }
+
+    /// `DOD-17.4`: over the author's restored log, no cached cell names a scheme they never did.
+    ///
+    /// **The witness is built here rather than read from `SchemeRuns`**, and that is the whole value
+    /// of the check: comparing the cache to the grouping that wrote it would agree by construction.
+    /// The rule is re-stated from `FR-17.2.1` and `NFR-16.2` — a run is consecutive completed
+    /// working sets at one load and one rep count, a dropped set ends the run it interrupted, and
+    /// the corner clamps to the table's bounds — so a disagreement is the engine and the requirement
+    /// disagreeing, not two spellings of one function.
+    ///
+    /// **Subset, not equality.** A cell the lifter performed and then beat at a heavier load is one
+    /// row, not two, and a scheme performed only at a load already standing writes nothing at all;
+    /// so the cache is properly contained in what was performed, and asserting equality would fail
+    /// on every tie the log holds.
+    ///
+    /// - Parameters:
+    ///   - stack: The restored store.
+    ///   - catalogue: Its live exercises.
+    ///   - cached: Every cached record row.
+    /// - Throws: Whatever the repository throws.
+    private func expectEveryCachedCellWasPerformed(
+        _ stack: PersistenceStack,
+        _ catalogue: [Exercise],
+        _ cached: [PersonalRecordCache]
+    ) async throws {
+        var performed: [UUID: Set<RecordScheme>] = [:]
+        for exercise in catalogue {
+            let stored = try await stack.workouts.sets(
+                forExerciseID: exercise.id, includingDeleted: false)
+            performed[exercise.id] = Self.schemesPerformed(in: stored)
+        }
+
+        let invented = cached.filter { row in
+            !(performed[row.exerciseID] ?? []).contains(
+                RecordScheme(reps: row.repCount, sets: row.setCount))
+        }
+        let named = Dictionary(catalogue.map { ($0.id, $0.name) }) { first, _ in first }
+        print(
+            """
+            DOD-17.4 cells: \(cached.count) cached, \(performed.values.reduce(0) { $0 + $1.count }) \
+            distinct schemes performed, \(invented.count) cached at a scheme never performed
+            """)
+        for row in invented.prefix(5) {
+            print(
+                "  invented: \(named[row.exerciseID] ?? "?") at \(row.repCount)×\(row.setCount)")
+        }
+        #expect(invented.isEmpty)
+        // Anchored: an empty cache, or one whose exercises did not resolve, would satisfy the line
+        // above without the check having compared anything.
+        #expect(
+            cached.contains { row in
+                (performed[row.exerciseID] ?? []).contains(
+                    RecordScheme(reps: row.repCount, sets: row.setCount))
+            })
+    }
+
+    /// Every cell `stored` was performed at, by `FR-17.2.1`'s rule stated independently.
+    ///
+    /// **The repository's own order is the chronological one and this must not re-sort it.**
+    /// `SetEntry.order` is a set's position *within its entry*, so sorting one exercise's whole
+    /// history by it interleaves every session's first set, then every session's second — which
+    /// fabricates runs out of sets months apart. Measured: sorting here reported 104 of 119 cached
+    /// cells as never performed, all of them false.
+    ///
+    /// **A run outside either bound is not a cell and is not recorded as one.** `cell(for:)`
+    /// refuses it (`FR-17.2.1`), and the witness has to refuse it here rather than clamp: a witness
+    /// that clamped would call a run of twelve a `10 × n` performance, which is the one claim
+    /// `FR-17.2.1` can be violated at — so the check would agree with the engine by construction
+    /// exactly where it needs to disagree.
+    ///
+    /// - Parameter stored: One exercise's live sets, oldest first, as the repository returned them.
+    /// - Returns: The cells performed at, within the table's bounds.
+    private static func schemesPerformed(in stored: [SetEntry]) -> Set<RecordScheme> {
+        var schemes: Set<RecordScheme> = []
+        var current: [SetEntry] = []
+
+        // One line, because a multi-clause `while` puts its brace where `swift format` wants it and
+        // SwiftLint's `opening_brace` does not — the two disagree and only the condition can yield.
+        let joins: (SetEntry, SetEntry) -> Bool = { $0.weight == $1.weight && $0.reps == $1.reps }
+
+        // And for the same reason, the bounds are one closure rather than a two-clause `if`.
+        let isACell: (Int, Int) -> Bool = {
+            PersonalRecords.repRange.contains($0) && SchemeRecordCalculator.setRange.contains($1)
+        }
+
+        func close() {
+            var index = current.startIndex
+            while index < current.endIndex {
+                var end = index
+                while end + 1 < current.endIndex, joins(current[index], current[end + 1]) {
+                    end += 1
+                }
+                let reps = current[index].reps
+                let sets = end - index + 1
+                if isACell(reps, sets) { schemes.insert(RecordScheme(reps: reps, sets: sets)) }
+                index = end + 1
+            }
+            current = []
+        }
+
+        for set in stored {
+            // A warmup, a failure, or a row this build cannot analyse **ends** the run it stood in
+            // rather than being dropped out of it — filter-then-group would fabricate adjacency.
+            guard !set.isWarmup, set.isCompleted, (try? set.setRecord()) != nil else {
+                close()
+                continue
+            }
+            // And a run never spans two entries: "consecutive" (`NFR-16.2`) is within one session's
+            // work on one exercise, so the last set of Monday's bench and the first of Wednesday's
+            // are not two of a run of two. Measured: without this the witness merged four sets into
+            // a six and reported the real `5 × 4` cell as invented.
+            if let last = current.last, last.entryID != set.entryID { close() }
+            current.append(set)
+        }
+        close()
+        return schemes
     }
 
     /// `DOD-16.2`'s restored-log half, in the store the measurement above already restored.
@@ -236,137 +397,5 @@ struct RealLogRecomputeTests {
         #expect(Set(tiled).count == 3)
         // The whole of finding 04: a log this size cannot leave a default tile with no history.
         #expect(tiled.allSatisfy(Set(mostTrained).contains))
-    }
-}
-
-/// The out-of-band backup this suite measures, and the store it is restored into.
-enum RealLogBackup {
-    /// The environment variable naming the file.
-    nonisolated static let variable = "ATTEMPT_REAL_BACKUP"
-
-    /// The path the author supplied, or `nil` where they supplied none.
-    nonisolated static var path: String? {
-        guard let named = ProcessInfo.processInfo.environment[variable], !named.isEmpty else {
-            return nil
-        }
-        return named
-    }
-
-    /// The file, or `nil` where no path was named.
-    nonisolated static var fileURL: URL? { path.map { URL(fileURLWithPath: $0) } }
-
-    /// What to do about it, carried on the trait and printed when the suite is skipped.
-    nonisolated static let howToSupplyIt: Comment = """
-        Set \(variable) to a full-backup .json file to measure DOD-16.4 and DOD-16.2 over a real \
-        training log.
-        """
-
-    /// Whether there is a backup to measure.
-    nonisolated static var isAvailable: Bool { path != nil }
-
-    /// A real file store in a directory the caller owns and deletes.
-    ///
-    /// **`PersistenceStack`, never a `ModelContainer` built here** — the stack takes the lock that
-    /// stops two concurrent constructions crashing the process, and there is no other supported way
-    /// in from outside `Persistence`.
-    ///
-    /// - Returns: The stack, and the directory holding the store file and its siblings.
-    /// - Throws: Whatever the file manager or `ModelContainer` throws.
-    static func temporaryStore() throws -> (stack: PersistenceStack, directory: URL) {
-        let directory = URL.temporaryDirectory.appending(path: "attempt-real-log-\(UUID())")
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let stack = try PersistenceStack(location: .file(directory.appending(path: "store.sqlite")))
-        return (stack, directory)
-    }
-
-    /// How many live sets the store holds against each exercise, counted the only way the
-    /// repositories allow — through the catalogue, since there is no read that enumerates every set.
-    ///
-    /// **Per exercise rather than one total**, because the total anchors the restore and the
-    /// per-exercise figure is what says how large the input to the asserted recompute was. A bare
-    /// duration cannot say that, and `NFR-16.1`'s budget is written against an input size.
-    ///
-    /// - Parameters:
-    ///   - stack: The store.
-    ///   - catalogue: Its live exercises.
-    /// - Returns: The count for each exercise that has one.
-    /// - Throws: Whatever the repository throws.
-    static func liveSetCounts(
-        in stack: PersistenceStack,
-        over catalogue: [Exercise]
-    ) async throws -> [UUID: Int] {
-        var counts: [UUID: Int] = [:]
-        for exercise in catalogue {
-            counts[exercise.id] = try await stack.workouts.sets(
-                forExerciseID: exercise.id, includingDeleted: false
-            ).count
-        }
-        return counts
-    }
-
-    /// The app's own writer over a real store.
-    ///
-    /// - Parameters:
-    ///   - stack: The store.
-    ///   - records: The recompute actor the restore tells about every session it writes.
-    /// - Returns: The restore.
-    static func restore(
-        into stack: PersistenceStack,
-        records: PersonalRecordRecomputer
-    ) -> StoreRestore {
-        StoreRestore(
-            exercises: stack.exercises,
-            trainingMaxes: stack.trainingMaxes,
-            workouts: stack.workouts,
-            bodyweight: stack.bodyweight,
-            equipment: stack.equipment,
-            routines: stack.routines,
-            programs: stack.programs,
-            settings: stack.settings,
-            records: records)
-    }
-
-    /// `FR-1.9.1`'s selection for a lifter who has made none, which `.dashboardLifts` resolves to.
-    ///
-    /// **A mirror of `DashboardDefaults.exerciseIDs(in:mostTrained:)` and not a second decision.**
-    /// That type is `internal` to the `Dashboard` feature, and a feature package may not depend on
-    /// another one — so the rule cannot be shared with this target without a dependency `T-16.16`'s
-    /// scope forbids. It is copied rather than reinvented: root exercise, barbell, from the seed,
-    /// not archived, name breaking the tie — and, since `FR-16.5.1`, a candidate the lifter has no
-    /// history for replaced by the exercise they train most. If the two ever disagree, this
-    /// measurement is scoped to something the dashboard does not tile, and the fix is to move the
-    /// rule down a layer.
-    ///
-    /// - Parameters:
-    ///   - catalogue: The exercises to choose from.
-    ///   - mostTrained: Every exercise with a completed working set in the lookback window,
-    ///     most-trained first.
-    /// - Returns: One identifier per movement that had a candidate.
-    static func defaultDashboardExerciseIDs(
-        in catalogue: [Exercise], mostTrained: [UUID]
-    ) -> [UUID] {
-        let candidates = [Movement.squat, .bench, .deadlift].map { movement in
-            catalogue
-                .filter {
-                    $0.movement == movement && $0.parentExerciseID == nil
-                        && $0.equipment == .barbell && !$0.isCustom && !$0.isArchived
-                }
-                .min { $0.name < $1.name }?
-                .id
-        }
-        let trained = Set(mostTrained)
-        let kept = candidates.map { candidate -> UUID? in
-            guard let candidate, trained.contains(candidate) else { return nil }
-            return candidate
-        }
-        let reserved = Set(kept.compactMap { $0 })
-        let tileable = Set(catalogue.filter { !$0.isArchived }.map(\.id))
-        var replacements = mostTrained.filter {
-            !reserved.contains($0) && tileable.contains($0)
-        }[...]
-        return zip(kept, candidates).compactMap { keptLift, candidate in
-            if let keptLift { return keptLift }
-            return replacements.popFirst() ?? candidate
-        }
     }
 }

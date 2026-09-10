@@ -72,11 +72,11 @@ enum ExerciseRecordsScreenState: Equatable {
     /// drawing it under no diagnostic would present a stale list as a current one — which is the
     /// distinction `FR-1.13.1` exists to keep.
     ///
-    /// **The whole table decides, not `FR-1.6.1`'s column.** The section now draws the diagonal and
-    /// the link as well as the rep maxes, so the question is whether there is any *cell*. The two are
-    /// empty together today — every run writes the one-set column as well — but that is
-    /// `FR-16.2.2`'s dominance rule holding rather than something this screen may rely on, and it is
-    /// the diagonal that would go missing if it ever stopped.
+    /// **The whole table decides, not `FR-1.6.1`'s column.** The section draws the diagonal and the
+    /// link as well as the rep maxes, so the question is whether there is any *cell*. Since
+    /// `FR-17.2.1` the two are emphatically not empty together: a lifter who only ever trains in
+    /// groups writes no one-set cell at all, so `FR-1.6.1`'s column is empty while the table is
+    /// full. Reading the column would draw the nothing-yet state over a screen with records on it.
     ///
     /// **The *list's* failure, not the merged one.** The two halves read different stores — the
     /// records answer from `G-1.5`'s cache and the estimate walks the history — so a workout store
@@ -348,7 +348,7 @@ struct ExerciseRecordRow: View {
     /// width `102.5 kg` needs and the load breaks mid-number.
     private var reading: some View {
         layout {
-            Text(ExerciseLibraryStrings.recordsRepMax(repMax.reps))
+            Text(ExerciseLibraryStrings.recordsReps(repMax.reps))
                 .font(Typography.metricLabel.font)
                 .foregroundStyle(ColorToken.textSecondary)
             Spacer(minLength: Spacing.sm.points)

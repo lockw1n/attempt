@@ -402,3 +402,13 @@ jobs:
 
       - name: Verify the third-party gate fires
         run: ./scripts/check-no-third-party.sh --self-test
+
+      # G-3.4 (T-1.92): `LocalizedNumberField` says nothing when it refuses, and the answer that no
+      # message is owed rests on `.decimalPad` offering no `.` key in a comma-decimal locale. That
+      # premise is a property of every numeric field in the app, so it decays in a diff about
+      # something else — the same reason the export-compliance declaration above is a gate.
+      - name: Check every numeric field uses the decimal keyboard
+        run: ./scripts/check-decimal-keyboard.sh
+
+      - name: Verify the decimal-keyboard gate fires
+        run: ./scripts/check-decimal-keyboard.sh --self-test

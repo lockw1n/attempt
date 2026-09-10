@@ -40,44 +40,46 @@ private func sharedLog() throws -> [SetRecord] {
 struct PersonalRecordDefinitionTests {
     private let calculator = PersonalRecordCalculator(.epley)
 
-    @Test("A 5-rep set holds every record from the 1RM to the 5RM, and none above it")
-    func aSetCountsTowardEveryRepMaxAtOrBelowItsReps() throws {
+    /// `FR-1.6.1` as `D-17.2` rewrote it: exactly N, so one set is one record and the nine other
+    /// N's stay empty rather than inheriting its load.
+    @Test("A 5-rep set holds the 5RM and nothing else")
+    func aSetHoldsOnlyItsOwnRepMax() throws {
         let log = [try workingSet(Weight(grams: 100_000), reps: 5)]
         let records = calculator.records(in: log)
-        for reps in 1...5 {
-            #expect(records.repMax(forReps: reps) == PersonalRecord(weight: Weight(grams: 100_000), setOffset: 0))
-        }
-        for reps in 6...10 {
+        #expect(records.repMax(forReps: 5) == PersonalRecord(weight: Weight(grams: 100_000), setOffset: 0))
+        for reps in PersonalRecords.repRange where reps != 5 {
             #expect(records.repMax(forReps: reps) == nil)
         }
-        #expect(records.repMaxes.map(\.reps) == [1, 2, 3, 4, 5])
+        #expect(records.repMaxes.map(\.reps) == [5])
     }
 
-    @Test("Fewer reps at a heavier load takes the low N; the lighter set keeps the high N")
+    @Test("A heavier set at fewer reps takes its own N and reaches none below it")
     func heavierForFewerRepsWinsOnlyTheRepsItReached() throws {
         let records = calculator.records(in: try sharedLog())
-        #expect(records.repMax(forReps: 1) == PersonalRecord(weight: Weight(grams: 110_000), setOffset: 2))
         #expect(records.repMax(forReps: 2) == PersonalRecord(weight: Weight(grams: 110_000), setOffset: 2))
-        #expect(records.repMax(forReps: 3) == PersonalRecord(weight: Weight(grams: 100_000), setOffset: 1))
         #expect(records.repMax(forReps: 5) == PersonalRecord(weight: Weight(grams: 100_000), setOffset: 1))
+        // The 110 kg double no longer reaches the 1RM, which is what the withdrawn reading gave it.
+        #expect(records.repMax(forReps: 1) == nil)
+        #expect(records.repMax(forReps: 3) == nil)
         #expect(records.repMax(forReps: 6) == nil)
-        #expect(records.repMaxes.map(\.reps) == [1, 2, 3, 4, 5])
+        #expect(records.repMaxes.map(\.reps) == [2, 5])
     }
 
     @Test("A tie resolves to the earlier set, and a later heavier set still displaces")
     func tiesResolveToTheEarlierSet() throws {
-        // Offsets 1 and 4 are both 100 kg × 5. The 3RM is the tie; the 1RM proves that losing a tie
-        // is not the same as being ignored, since offset 2 is later than offset 1 and wins.
+        // Offsets 1 and 4 are both 100 kg × 5, so the 5RM is the tie and takes the earlier.
         let records = calculator.records(in: try sharedLog())
-        #expect(records.repMax(forReps: 3)?.setOffset == 1)
-        #expect(records.repMax(forReps: 1)?.setOffset == 2)
+        #expect(records.repMax(forReps: 5)?.setOffset == 1)
+        // Losing a tie is not the same as being ignored: a heavier later set at the same N displaces.
+        let displacing = try sharedLog() + [try workingSet(Weight(grams: 105_000), reps: 5)]
+        #expect(calculator.repMax(forReps: 5, in: displacing)?.setOffset == 5)
     }
 
     @Test("Rep counts outside 1...10 are refused rather than answered", arguments: [-1, 0, 11])
     func repMaxIsDefinedOnlyOverTheRequirementsRange(reps: Int) throws {
         let log = try sharedLog()
         #expect(calculator.repMax(forReps: reps, in: log) == nil)
-        #expect(calculator.repMax(forReps: 1, in: log)?.weight == Weight(grams: 110_000))
+        #expect(calculator.repMax(forReps: 2, in: log)?.weight == Weight(grams: 110_000))
     }
 
     @Test("Both entry points answer the same question")
@@ -111,7 +113,7 @@ struct PersonalRecordExclusionTests {
         #expect(calculator.records(in: [warmup]).bestE1RM == nil)
         // The same load logged as working takes both, so the refusal above is the flag's doing.
         let working = try workingSet(Weight(grams: 150_000), reps: 5)
-        #expect(calculator.records(in: [working]).repMax(forReps: 1)?.weight == Weight(grams: 150_000))
+        #expect(calculator.records(in: [working]).repMax(forReps: 5)?.weight == Weight(grams: 150_000))
         #expect(calculator.records(in: [working]).bestE1RM?.weight == Weight(grams: 175_000))
     }
 
@@ -134,7 +136,7 @@ struct PersonalRecordExclusionTests {
         #expect(log[3].weight == Weight(grams: 120_000))
         // Both beat every answer below, so a leak in either filter changes one of them.
         let records = calculator.records(in: log)
-        #expect(records.repMax(forReps: 1)?.weight == Weight(grams: 110_000))
+        #expect(records.repMax(forReps: 2)?.weight == Weight(grams: 110_000))
         #expect(records.bestE1RM?.weight == Weight(grams: 117_333))
     }
 
@@ -184,7 +186,7 @@ struct PersonalRecordE1RMTests {
         let unrated = try sharedLog()
         let rpe = PersonalRecordCalculator(.rpeBased)
         #expect(rpe.bestE1RM(in: unrated) == nil)
-        #expect(rpe.repMax(forReps: 1, in: unrated)?.weight == Weight(grams: 110_000))
+        #expect(rpe.repMax(forReps: 2, in: unrated)?.weight == Weight(grams: 110_000))
         // A rated log estimates, so the nil above is the missing effort rather than the formula.
         let rated = [try ratedWorkingSet(Weight(grams: 100_000), reps: 2, rpe: 9)]
         #expect(rpe.bestE1RM(in: rated) != nil)
@@ -207,13 +209,22 @@ struct PersonalRecordE1RMTests {
         #expect(unguarded.bestE1RM(in: [try workingSet(load, reps: 5)])?.weight == load)
     }
 
-    @Test("Reps outside the formula's range cost the estimate but not the rep max")
-    func repsOutsideTheFormulaRangeStillSetARepMax() throws {
+    /// **The name is what T-17.03's rewrite left half wrong**, and it is worth a line because the
+    /// two are not the same kind of thing: that task changed what is *true* here — an over-long set
+    /// used to clamp down to the 10-rep row and now reaches nothing — while the name went on
+    /// asserting the old behaviour over a body that had stopped doing it. Nothing in the toolchain
+    /// reads a test's name against its body.
+    @Test("Reps outside the formula's range cost the estimate and the rep max alike")
+    func repsOutsideTheFormulaRangeSetNoRepMaxEither() throws {
         let longSet = try workingSet(Weight(grams: 100_000), reps: 11)
         let records = calculator.records(in: [longSet])
         #expect(records.bestE1RM == nil)
-        #expect(records.repMax(forReps: 10)?.weight == Weight(grams: 100_000))
-        #expect(records.repMaxes.count == 10)
+        // Exact reps and no clamp anywhere: `repMax(forReps:in:)` reads a set's own count, so an
+        // 11-rep set sets no rep max — and since `FR-17.2.1`
+        // `SchemeRecordCalculator.cell(for:)` refuses such a run rather than clamping it, so the
+        // two computations of `FR-1.6.1` now agree at every N instead of disagreeing past ten.
+        #expect(records.repMaxes.isEmpty)
+        #expect(records.repMax(forReps: 10) == nil)
     }
 
     @Test("Switching the formula changes the estimate for the same log")
@@ -224,7 +235,7 @@ struct PersonalRecordE1RMTests {
         #expect(PersonalRecordCalculator(.epley).bestE1RM(in: log)?.weight == Weight(grams: 117_333))
         #expect(PersonalRecordCalculator(.brzycki).bestE1RM(in: log)?.weight == Weight(grams: 113_143))
         // The rep maxes read no formula, so they do not move.
-        #expect(PersonalRecordCalculator(.brzycki).repMax(forReps: 1, in: log)?.weight == Weight(grams: 110_000))
+        #expect(PersonalRecordCalculator(.brzycki).repMax(forReps: 2, in: log)?.weight == Weight(grams: 110_000))
     }
 
     @Test("A calculator built with no argument uses the default formula")

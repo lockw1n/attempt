@@ -74,6 +74,19 @@ public enum DashboardRoute: Hashable, Sendable, Codable {
 public enum TrainingRoute: Hashable, Sendable, Codable {
     /// The workout in progress (`FR-1.2.1`). T-1.20 builds it.
     case activeSession
+
+    /// One day of the current week (`FR-17.9`, `TR-17.6`).
+    ///
+    /// **Addressed by the program stamp rather than by a session id**, which is the whole of the
+    /// choice. A day nothing has been logged into has no session at all, so a session id cannot
+    /// name it; the run, the week and the day index are what `FR-16.8.3` stamps and what
+    /// `FR-17.8.2` reads a day's state by. A *past* day stays ``HistoryRoute/session(sessionID:)``
+    /// — that one is a workout that happened rather than a position in a plan — and a free workout
+    /// stays ``activeSession``.
+    ///
+    /// It carries the stamp and not the day, for ``ExerciseLibraryRoute/exerciseDetail(exerciseID:)``'s
+    /// reason: a restored stack is decoded before any store has been read.
+    case day(runID: UUID, week: Int, dayIndex: Int)
 }
 
 /// Destinations pushed from the exercise library (`FR-1.1`).
@@ -81,9 +94,9 @@ public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
     /// The catalogue, grouped by movement, with search and filters (`FR-1.1.1`, `FR-1.1.2`).
     ///
     /// **Pushed onto Train's stack rather than being Train's root**, which is the answer to the
-    /// question ``NavigationState/startWorkout()`` leaves open: the root is the session surface, so
-    /// Home's primary action lands on a workout and not on a catalogue. The library is a place the
-    /// user goes from there.
+    /// question ``NavigationState/showTrain()`` leaves open: the root is the week (`FR-17.8`), so
+    /// anything that selects Train lands on the plan and not on a catalogue. The library is a place
+    /// the user goes from there.
     case exerciseList
 
     /// One exercise's detail (`FR-1.1.6`). T-1.11 builds it.
@@ -156,52 +169,25 @@ public enum ExerciseLibraryRoute: Hashable, Sendable, Codable {
 /// `TR-1.13`'s inventory keys off it, so these screens are written down wherever that inventory
 /// lives (Q-15.1).
 public enum RoutinesRoute: Hashable, Sendable, Codable {
-    /// Every routine the lifter has authored (`FR-15.2.1`).
+    /// The week's plan — the one editor routines and programs collapsed into (`FR-17.10`,
+    /// `TR-17.6`, `D-17.9`).
     ///
-    /// **Pushed onto Train's stack rather than being Train's root**, for
-    /// ``ExerciseLibraryRoute/exerciseList``'s reason: the root is the session surface, so Train
-    /// opens on a workout and not on a plan.
-    case routineList
-
-    /// The editor authoring a new routine (`FR-15.2.1`).
+    /// **The only case here, as of `T-17.12`.** `routineList`, `routineCreate`, `routineEdit`,
+    /// `programList` and `programEdit` retired with the four screens they named (`FR-17.10.6`): a
+    /// day *is* a routine row and a week *is* a program row, so one screen edits both and there is
+    /// nothing left to list or to choose between.
     ///
-    /// **A case of its own rather than ``routineEdit(routineID:)`` with no identifier**, which is
-    /// ``ExerciseLibraryRoute/exerciseCreate``'s argument: an optional payload would make one case
-    /// mean two screens, one that reads a record and one that cannot.
-    case routineCreate
-
-    /// The editor over an existing routine (`FR-15.2.1`, `FR-15.2.2`).
+    /// **A stack stored by an earlier build can name one of those five, and it decodes to nothing
+    /// rather than to something.** ``Route`` throws on a case this version does not know — a
+    /// retired case is exactly that — and ``NavigationSnapshot`` turns the throw into the answer:
+    /// the tab whose stack held it opens at its root, and the other tabs are untouched. Not the
+    /// entry alone, which is the tempting half-measure: dropping `routineEdit` and keeping what
+    /// was pushed over it produces a stack whose depth lies, and here it would leave a lifter on an
+    /// exercise chooser with no editor behind it to choose *into*.
     ///
-    /// Carries the identifier and not the record, for
-    /// ``ExerciseLibraryRoute/exerciseDetail(exerciseID:)``'s reason.
-    ///
-    /// **The draft it holds is not persisted with the stack**, unlike the two Settings editors that
-    /// have no case at all: this screen writes nothing until the lifter saves, so a restored stack
-    /// opens it on what the store holds rather than on what was half-typed in another session.
-    case routineEdit(routineID: UUID)
-
-    /// Every program the lifter has authored (`FR-16.8.1`).
-    ///
-    /// **Under routines rather than under a namespace of its own**, and the reason is what a
-    /// program *is*: an ordered list of routines. It is reached from the routine list, which is
-    /// reached from Train — so the two screens share an area, an entry point and a repository
-    /// pairing, and a third sub-enum would only make `Route`'s own switch longer.
-    ///
-    /// Pushed onto Train's stack, for ``routineList``'s reason.
-    case programList
-
-    /// The editor over one program: its name, its note, and the days it is made of (`FR-16.8.1`).
-    ///
-    /// **No `programCreate` beside it**, which is where this parts company with
-    /// ``routineCreate``/``routineEdit(routineID:)``. A routine is authored in the editor from
-    /// nothing, so the editor genuinely has two modes; a program is a *name* and then a list of
-    /// days, so the list writes the row from a one-field prompt — the shape `FR-15.2.5`'s rename
-    /// already uses — and this screen only ever opens on a program that exists. One case, one
-    /// screen, and the inventory keys off the case.
-    ///
-    /// Carries the identifier and not the record, for
-    /// ``ExerciseLibraryRoute/exerciseDetail(exerciseID:)``'s reason.
-    case programEdit(programID: UUID)
+    /// It carries nothing: which week is being edited is the run in force, one fact about the app
+    /// rather than a parameter of a push.
+    case editWeek
 }
 
 /// Destinations pushed from history (`FR-1.5`).
@@ -216,10 +202,24 @@ public enum HistoryRoute: Hashable, Sendable, Codable {
     /// tap on the back-and-forward chevrons a stack edit. A restored stack opens this screen on the
     /// current month, the same as a fresh push does.
     ///
-    /// **Nor does it carry the selected day.** Selecting a day reveals that day's sessions beneath
-    /// the grid rather than pushing a screen — the sessions are ``session(sessionID:)``'s, and this
-    /// is the step that says *which one* where a day holds two.
+    /// **Nor does it carry the selected day.** A day's tap pushes ``week(containing:)`` — the week
+    /// that day falls in, with the day marked (`FR-17.11.2`) — so there is no selection on the grid
+    /// to carry.
     case calendar
+
+    /// The history a calendar week at a time, opened at the week `date` falls in (`FR-17.11`).
+    ///
+    /// **It carries a day rather than a week**, and the label is the persisted stack format so it is
+    /// chosen once: a week start depends on the calendar in force — the locale's first weekday, and
+    /// the device's time zone — and a stack restored on a device set differently would name an
+    /// instant that is no longer any week's beginning. A *day* survives that: whichever calendar the
+    /// screen is drawn in resolves it to the week it belongs to there, and marks it (`FR-17.11.2`).
+    ///
+    /// **The tab's own week mode is not this case.** It is a control on `SessionListView`, so
+    /// the only thing on this stack is a week reached from the grid. Single backticks: that
+    /// screen is `History`'s, and this module does not depend on it, so a symbol link here
+    /// could only render as plain text.
+    case week(containing: Date)
 }
 
 /// Destinations pushed from settings (`FR-1.10`).
@@ -323,4 +323,16 @@ public enum SettingsRoute: Hashable, Sendable, Codable {
     /// the app can legitimately be restored to. It carries no selection for the same reason that one
     /// does — what is configured is a stored row, not a parameter of a push.
     case recentRecords
+
+    /// Which lifts that feed reports on, under ``recentRecords``' `Chosen` scope (`FR-17.3.3`).
+    ///
+    /// **A second Settings route over a `Dashboard` screen, pushed from the first.** The list used
+    /// to unfold inside ``recentRecords`` and is 132 rows on a seeded install, which put every
+    /// control beneath it out of reach; `FR-17.3.3` makes it a screen, and a screen the app can be
+    /// restored onto needs a case.
+    ///
+    /// **It carries no selection**, like every case here: what is configured is a stored column, and
+    /// a route holding the ticks would restore a lifter into a list that disagreed with the row it
+    /// is drawn from.
+    case recentRecordsExercises
 }

@@ -5,198 +5,161 @@ import PowerliftingCore
 ///
 /// Each entry names a key in `Resources/en.lproj/Localizable.strings` and binds it to this module's
 /// own bundle. The key convention is documented once, in `Localization`.
+///
+/// **This file is the day and everything under it; `ProgramStrings.swift` is the week.** The seam
+/// is the record: a day is a routine row and a week is a program row (`FR-17.10.2`). Single
+/// backticks because that file is a second `extension` of this enum rather than a type of its own.
 enum RoutinesStrings {
-    // MARK: - The list (FR-15.2.1)
+    // MARK: - A day (FR-17.10.1, FR-17.10.4)
 
-    /// The list's own navigation title. The screen's rather than the app target's: it is pushed, so
-    /// there is no tab whose name it could contradict.
-    static let listTitle = resource("routines.list.title")
+    /// *Day 1* — the position, drawn on every day whether or not it has a name.
+    ///
+    /// - Parameter number: Its place in the week, counting from one.
+    /// - Returns: The heading.
+    static func dayNumber(_ number: Int) -> LocalizedStringResource {
+        resource("routines.day.number \(number)")
+    }
 
-    /// The command that opens the editor on a new routine.
-    static let listNewRoutine = resource("routines.list.new")
+    /// What a day added from the foot of the week is called until the lifter renames it.
+    ///
+    /// - Parameter number: Its place in the week, counting from one.
+    /// - Returns: The name.
+    static func dayDefaultName(_ number: Int) -> LocalizedStringResource {
+        resource("routines.day.default-name \(number)")
+    }
 
-    /// The heading when nothing has been authored yet.
-    static let listEmptyHeadline = resource("routines.list.empty.headline")
+    /// What a copy is called. The original's name is the argument and is never looked up — it is
+    /// the lifter's own words.
+    ///
+    /// - Parameter name: The original's name.
+    /// - Returns: The copy's.
+    static func dayDuplicateName(_ name: String) -> LocalizedStringResource {
+        resource("routines.day.duplicate.name \(name)")
+    }
 
-    /// What a routine is, for a lifter who has none.
-    static let listEmptyMessage = resource("routines.list.empty.message")
+    /// A day whose routine has been archived (`FR-15.2.5`), which this screen still draws.
+    static let dayArchived = resource("routines.day.archived")
 
-    /// The heading when the read failed.
-    static let listErrorHeadline = resource("routines.list.error.headline")
+    /// A day whose routine holds no name — a row a store this app did not write can still produce.
+    static let dayUnnamed = resource("routines.day.unnamed")
 
-    /// What to do about a failed read.
-    static let listErrorMessage = resource("routines.list.error.message")
+    /// The per-day menu itself, named for the menu rather than for any item in it (`G-4.2`).
+    static let dayMenu = resource("routines.day.menu")
 
-    /// The command that starts a workout from a routine (`FR-15.2.3`).
-    static let listStartAction = resource("routines.list.start")
+    /// Opens the one-field prompt that retitles a day.
+    static let dayRename = resource("routines.day.rename")
 
-    /// Why no workout was started — there is already one in progress.
-    static let listStartInProgressMessage = resource("routines.list.start.in-progress.message")
+    /// Copies a day, its exercises and their targets.
+    static let dayDuplicate = resource("routines.day.duplicate")
 
-    /// Why no workout was started — the session could not be written.
-    static let listStartWriteErrorMessage = resource("routines.list.start.write-error.message")
+    /// Moves a day one place towards the start of the week.
+    static let dayMoveUp = resource("routines.day.up")
 
-    /// A routine with no name, which the editor cannot save and a foreign row can still hold.
-    static let listUnnamed = resource("routines.list.row.unnamed")
+    /// Moves a day one place towards the end of the week.
+    static let dayMoveDown = resource("routines.day.down")
 
-    // MARK: - Managing the library (FR-15.2.5)
-
-    /// Copies a routine, content and all.
-    static let listDuplicate = resource("routines.list.duplicate")
-
-    /// Opens the one-field prompt that retitles a routine.
-    static let listRename = resource("routines.list.rename")
-
-    /// Takes a routine out of the library without touching what was logged from it.
-    static let listArchive = resource("routines.list.archive")
-
-    /// Backs out of either prompt.
-    static let listCancel = resource("routines.list.cancel")
+    /// Takes a day out of the week (`G-1.3`, soft).
+    static let dayRemove = resource("routines.day.remove")
 
     /// The rename prompt's own title.
-    static let listRenameTitle = resource("routines.list.rename.title")
+    static let dayRenameTitle = resource("routines.day.rename.title")
 
-    /// The rename prompt's placeholder — the editor's, so one field is asked for one way.
-    static let listRenamePrompt = resource("routines.editor.name.prompt")
+    /// The rename prompt's placeholder.
+    static let dayRenamePrompt = resource("routines.day.rename.prompt")
 
-    /// The archive prompt's title, which is the question it asks.
-    static let listArchiveTitle = resource("routines.list.archive.title")
+    /// The removal confirmation's title.
+    static let dayRemoveTitle = resource("routines.day.remove.title")
 
-    /// What archiving costs and what it does not — the sentence that makes the confirmation worth
-    /// showing, this being the one command here with no way back.
-    static let listArchiveMessage = resource("routines.list.archive.message")
+    /// What removing a day does and does not touch.
+    static let dayRemoveMessage = resource("routines.day.remove.message")
 
-    /// Why a rename changed nothing: the field was empty.
-    static let listNameRequiredMessage = resource("routines.list.manage.name-required.message")
+    /// Backs out of either prompt.
+    static let cancel = resource("routines.cancel")
 
-    /// Why a duplicate, rename or archive changed nothing: the store refused the write.
-    static let listManageWriteErrorMessage = resource("routines.list.manage.write-error.message")
+    /// The fold, as a VoiceOver value — there is no expanded trait, and `.isSelected` means a
+    /// chosen filter everywhere else in this app.
+    static let dayExpanded = resource("routines.day.expanded")
 
-    /// What a copy is called, from what the original is called (`FR-15.2.5`).
+    /// See ``dayExpanded``.
+    static let dayCollapsed = resource("routines.day.collapsed")
+
+    /// Why a rename changed nothing: the field held no name.
+    static let dayNameRequiredMessage = resource("routines.day.name-required.message")
+
+    // MARK: - A day's exercises (FR-15.2.1)
+
+    /// The command that pushes the catalogue as this day's chooser.
+    static let exerciseAdd = resource("routines.editor.exercise.add")
+
+    /// The per-exercise menu itself (`G-4.2`).
+    static let exerciseMenu = resource("routines.exercise.menu")
+
+    /// Takes an exercise out of the day.
+    static let exerciseRemove = resource("routines.editor.exercise.remove")
+
+    /// A slot whose catalogue row could not be read, drawn broken rather than dropped.
+    static let exerciseUnnamed = resource("routines.editor.exercise.unnamed")
+
+    /// Moves an exercise one place towards the start of the day.
+    static let exerciseMoveUp = resource("routines.editor.move.up")
+
+    /// Moves an exercise one place towards the end of the day.
+    static let exerciseMoveDown = resource("routines.editor.move.down")
+
+    /// The heading when a day prescribes nothing yet.
+    static let exercisesEmptyHeadline = resource("routines.editor.exercises.empty.headline")
+
+    /// What to do about a day that prescribes nothing.
+    static let exercisesEmptyMessage = resource("routines.editor.exercises.empty.message")
+
+    // MARK: - One target group (FR-15.2.1's amendment, FR-15.2.2)
+
+    /// *Target 1*, *Target 2* — a position rather than a count, which is why it takes no plural.
     ///
-    /// **Resolved against the process locale, not the screen's**, and then *stored* — so the copy
-    /// keeps the wording of the language the lifter duplicated it in, exactly as the name they
-    /// typed themselves would. A name is user data the moment it is written.
-    ///
-    /// - Parameter name: The original routine's name.
-    /// - Returns: The copy's name.
-    static func listDuplicateName(_ name: String) -> LocalizedStringResource {
-        resource("routines.list.duplicate.name \(name)")
-    }
-
-    /// How many exercises a routine prescribes.
-    ///
-    /// **Plural, and the count is an argument** — see the `.stringsdict` beside the catalogue for
-    /// why Ukrainian needs four forms where English needs two.
-    ///
-    /// - Parameter count: The routine's exercise count.
-    /// - Returns: The line under the routine's name.
-    static func listExerciseCount(_ count: Int) -> LocalizedStringResource {
-        resource("routines.list.row.exercises \(count)")
-    }
-
-    // MARK: - The editor (FR-15.2.1, FR-15.2.2)
-
-    /// The editor's title while a routine is being authored.
-    static let editorCreateTitle = resource("routines.editor.create.title")
-
-    /// The editor's title over an existing routine.
-    static let editorEditTitle = resource("routines.editor.edit.title")
-
-    /// The name field's label.
-    static let editorNameLabel = resource("routines.editor.name.label")
-
-    /// The name field's placeholder.
-    static let editorNamePrompt = resource("routines.editor.name.prompt")
-
-    /// Why the save command is off while the name is empty.
-    static let editorNameCaption = resource("routines.editor.name.caption")
-
-    /// The heading over the exercise slots.
-    static let editorExercisesSection = resource("routines.editor.exercises.section")
-
-    /// The heading when the routine has no exercises in it yet.
-    static let editorExercisesEmptyHeadline = resource("routines.editor.exercises.empty.headline")
-
-    /// What to do about a routine with no exercises.
-    static let editorExercisesEmptyMessage = resource("routines.editor.exercises.empty.message")
-
-    /// The command that pushes the catalogue as a chooser.
-    static let editorAddExercise = resource("routines.editor.exercise.add")
-
-    /// The command that drops an exercise from the routine.
-    static let editorRemoveExercise = resource("routines.editor.exercise.remove")
-
-    /// A slot whose catalogue row could not be read — drawn broken rather than dropped.
-    static let editorUnnamedExercise = resource("routines.editor.exercise.unnamed")
-
-    /// Moves an exercise one place earlier.
-    static let editorMoveUp = resource("routines.editor.move.up")
-
-    /// Moves an exercise one place later.
-    static let editorMoveDown = resource("routines.editor.move.down")
-
-    /// One target group's heading, by position — the top set, then the backoffs.
-    ///
-    /// - Parameter position: The group's one-based position within its exercise.
+    /// - Parameter position: Its place in the exercise, counting from one.
     /// - Returns: The heading.
-    static func editorGroupHeading(_ position: Int) -> LocalizedStringResource {
+    static func targetGroupHeading(_ position: Int) -> LocalizedStringResource {
         resource("routines.editor.group.heading \(position)")
     }
 
-    /// The target load's label.
-    static let editorWeightLabel = resource("routines.editor.group.weight.label")
-
-    /// The target load's placeholder, which is where `FR-15.2.2`'s blank target is offered.
-    static let editorWeightPrompt = resource("routines.editor.group.weight.prompt")
-
-    /// The prescribed repetitions' label.
-    static let editorRepsLabel = resource("routines.editor.group.reps.label")
-
-    /// The prescribed sets' label.
-    static let editorSetsLabel = resource("routines.editor.group.sets.label")
-
-    /// The badge on a group whose load is deliberately blank (`FR-15.2.2`).
+    /// The multiplication sign between the three fields — `[105] kg × [4] × [4]` (`FR-17.10.1`).
     ///
-    /// **A word rather than an empty field speaking for itself**, and a word rather than a tint
-    /// (`G-4.5`): a blank load and a load of zero must not be told apart by the absence of
-    /// something.
-    static let editorBlankTarget = resource("routines.editor.group.blank")
+    /// **A resource rather than a literal**, on `LoggingWeekStrings.weekPlanTarget`'s rule: the
+    /// notation is copy, and the one place a translator can decide it does not read that way is the
+    /// catalogue.
+    static let targetSeparator = resource("routines.target.separator")
 
-    /// Adds a target group to an exercise (`FR-15.2.1`'s amendment).
-    static let editorAddGroup = resource("routines.editor.group.add")
+    /// The per-target menu itself (`G-4.2`).
+    static let targetMenu = resource("routines.target.menu")
 
-    /// Drops one target group.
-    static let editorRemoveGroup = resource("routines.editor.group.remove")
+    /// The load field's label, which is also its accessibility label where the notation hides it.
+    static let targetWeightLabel = resource("routines.editor.group.weight.label")
 
-    /// Moves a target group one place earlier.
-    static let editorGroupUp = resource("routines.editor.group.up")
+    /// The load field's placeholder — `FR-15.2.2`'s blank target, said rather than left blank.
+    static let targetWeightPrompt = resource("routines.editor.group.weight.prompt")
 
-    /// Moves a target group one place later.
-    static let editorGroupDown = resource("routines.editor.group.down")
+    /// The repetitions field's label.
+    static let targetRepsLabel = resource("routines.editor.group.reps.label")
 
-    /// Why the save command is off while a group is incomplete.
-    static let editorGroupRefusal = resource("routines.editor.group.refusal")
+    /// The sets field's label.
+    static let targetSetsLabel = resource("routines.editor.group.sets.label")
 
-    /// The command that commits the draft.
-    static let editorSave = resource("routines.editor.save")
+    /// Drawn on a group whose weight is blank — a word and not a tint (`G-4.5`).
+    static let targetBlank = resource("routines.editor.group.blank")
 
-    /// The heading when the editor's read failed.
-    static let editorErrorHeadline = resource("routines.editor.error.headline")
+    /// Adds a second weight/rep/set group to one exercise.
+    static let targetAdd = resource("routines.editor.group.add")
 
-    /// What to do about a failed read.
-    static let editorErrorMessage = resource("routines.editor.error.message")
+    /// Takes one target off an exercise.
+    static let targetRemove = resource("routines.editor.group.remove")
 
-    /// The heading when the routine is no longer there.
-    static let editorMissingHeadline = resource("routines.editor.missing.headline")
+    /// Moves a target one place towards the top set.
+    static let targetMoveUp = resource("routines.editor.group.up")
 
-    /// Why reading again would not help.
-    static let editorMissingMessage = resource("routines.editor.missing.message")
+    /// Moves a target one place towards the backoff.
+    static let targetMoveDown = resource("routines.editor.group.down")
 
-    /// What a failed save says, beside the command that retries it.
-    static let editorWriteError = resource("routines.editor.write.error")
-
-    /// The load's unit, which is the user's display preference rather than a constant (`G-3.1`).
+    /// The unit symbol after the load field (`G-3.1`).
     ///
     /// - Parameter unit: The unit loads are entered in.
     /// - Returns: The symbol.
@@ -211,25 +174,20 @@ enum RoutinesStrings {
     /// catalogue — `ExerciseLibraryStrings`' own suite has the argument for why a list is kept.
     static var allResources: [LocalizedStringResource] {
         [
-            listTitle, listNewRoutine, listEmptyHeadline, listEmptyMessage, listErrorHeadline,
-            listErrorMessage, listStartAction, listStartInProgressMessage,
-            listStartWriteErrorMessage, listUnnamed, listDuplicate, listRename, listArchive,
-            listCancel, listRenameTitle, listRenamePrompt, listArchiveTitle, listArchiveMessage,
-            listNameRequiredMessage, listManageWriteErrorMessage,
-            editorCreateTitle, editorEditTitle, editorNameLabel,
-            editorNamePrompt, editorNameCaption, editorExercisesSection,
-            editorExercisesEmptyHeadline, editorExercisesEmptyMessage, editorAddExercise,
-            editorRemoveExercise, editorUnnamedExercise, editorMoveUp, editorMoveDown,
-            editorWeightLabel, editorWeightPrompt, editorRepsLabel, editorSetsLabel,
-            editorBlankTarget, editorAddGroup, editorRemoveGroup, editorGroupUp, editorGroupDown,
-            editorGroupRefusal, editorSave, editorErrorHeadline, editorErrorMessage,
-            editorMissingHeadline, editorMissingMessage, editorWriteError,
+            dayArchived, dayUnnamed, dayMenu, dayRename, dayDuplicate, dayMoveUp, dayMoveDown,
+            dayRemove, dayRenameTitle, dayRenamePrompt, dayRemoveTitle, dayRemoveMessage, cancel,
+            dayExpanded, dayCollapsed, dayNameRequiredMessage,
+            exerciseAdd, exerciseMenu, exerciseRemove, exerciseUnnamed, exerciseMoveUp,
+            exerciseMoveDown, exercisesEmptyHeadline, exercisesEmptyMessage,
+            targetSeparator, targetMenu, targetWeightLabel, targetWeightPrompt, targetRepsLabel,
+            targetSetsLabel, targetBlank, targetAdd, targetRemove, targetMoveUp, targetMoveDown,
         ]
-            + [listDuplicateName("Push")]
-            + [1, 2].map(listExerciseCount)
-            + [1, 2].map(editorGroupHeading)
+            + [dayDuplicateName("Push")]
+            + [1, 2].map(dayNumber)
+            + [1, 2].map(dayDefaultName)
+            + [1, 2].map(targetGroupHeading)
             + MassUnit.allCases.map(unitSymbol(for:))
-            + allProgramStrings
+            + allWeekStrings
     }
 
     /// Binds a key to this module's catalogue.

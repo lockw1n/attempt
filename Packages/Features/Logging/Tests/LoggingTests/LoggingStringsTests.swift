@@ -18,6 +18,34 @@ struct LoggingStringsTests {
         }
     }
 
+    /// `FR-17.1.6` and `D-17.7`: one word names the sheet, and three spellings are retired.
+    ///
+    /// **A string test rather than a review note**, because the words are the requirement: the row
+    /// command that opens the sheet and the sheet's own heading have to be the same word, and *Add
+    /// set*, *Log set* and *Adjust* have to be gone from **both** catalogues rather than from the
+    /// one a reviewer happened to read.
+    @Test("One word names the Log sheet, and the retired spellings are gone from both catalogues")
+    func oneWordNamesTheSheet() {
+        #expect(String(localized: LoggingStrings.dayLogAction) == "Log")
+        #expect(String(localized: LoggingStrings.setEditorTitle) == "Log")
+        #expect(String(localized: LoggingStrings.setEditorQuestion) == "What did you do?")
+        #expect(String(localized: LoggingStrings.setSaveDoneAction) == "Save as done")
+        // The free workout's edit keeps its own words — this phase does not redesign it
+        // (`OUT-17.8`).
+        #expect(String(localized: LoggingStrings.setEditorEditTitle) == "Edit set")
+
+        // The three retirements, over every string either catalogue can draw. The Ukrainian half is
+        // covered by `everyKeyResolves` above plus `check-translations.sh`: what can be asserted
+        // here is that no English key still spells one of them.
+        let retired = ["Add set", "Log set", "Adjust"]
+        for resource in LoggingStrings.all {
+            let rendered = String(localized: resource)
+            for spelling in retired {
+                #expect(rendered != spelling, "\(resource.key) still reads \(spelling)")
+            }
+        }
+    }
+
     /// `FR-16.4.1`, and the half of it a picture cannot settle: a set nobody attempted announces
     /// itself as *pending*, and the word is not the failed one.
     @Test("A pending set announces itself as pending, not as failed")
@@ -52,10 +80,58 @@ struct LoggingStringsTests {
             String(localized: LoggingStrings.sessionFinishPendingCancel) == "Back to the workout")
     }
 
+    /// `FR-17.9.9`'s two confirmations, whose copy is the whole of the design and which no
+    /// reference can hold: a `confirmationDialog` is presented by the system, and on iOS 26 it
+    /// renders as a popover that drops its cancel — so the count and the destructive word are what
+    /// a lifter is actually asked, and only a string test can see them.
+    @Test("The whole-day commands name their count, and offer a way back that says what it keeps")
+    func theWholeDayCommandsAskByName() {
+        #expect(
+            String(localized: LoggingStrings.dayLogRemainingConfirmTitle(count: 3))
+                == "Log 3 exercises as planned?")
+        #expect(
+            String(localized: LoggingStrings.daySkipRemainingConfirmTitle(count: 2))
+                == "Skip 2 exercises?")
+        // The plural is why both keys are in the stringsdict rather than the table: one exercise
+        // cannot be spelled by substituting a numeral.
+        #expect(
+            String(localized: LoggingStrings.dayLogRemainingConfirmTitle(count: 1))
+                == "Log 1 exercise as planned?")
+        #expect(
+            String(localized: LoggingStrings.daySkipRemainingConfirmTitle(count: 1))
+                == "Skip 1 exercise?")
+        #expect(String(localized: LoggingStrings.dayLogRemainingConfirmAction) == "Log them")
+        #expect(String(localized: LoggingStrings.daySkipRemainingConfirmAction) == "Skip them")
+        // Naming what it keeps rather than saying "cancel", on the discard dialog's rule.
+        #expect(String(localized: LoggingStrings.dayRemainingConfirmCancel) == "Keep going")
+    }
+
+    /// `FR-17.9.7`'s overflow menu, on both of its hosts. A menu is not snapshottable — T-16.04's
+    /// finding on dialogs applies — so its two items and its own name are asserted here.
+    @Test("The overflow menu carries both items, and is named for neither")
+    func theOverflowMenuCarriesBothItems() {
+        #expect(String(localized: LoggingStrings.dayChangeDateAction) == "Change date")
+        #expect(String(localized: LoggingStrings.sessionDiscardAction) == "Discard workout")
+        // Named for the menu rather than for either item in it (`G-4.2`, `NFR-1.10`): a button
+        // announcing itself as **Discard** would be lying about the half that changes a date.
+        let menu = String(localized: LoggingStrings.dayMenuAction)
+        #expect(menu == "Day options")
+        #expect(menu != String(localized: LoggingStrings.dayChangeDateAction))
+        #expect(menu != String(localized: LoggingStrings.sessionDiscardAction))
+    }
+
+    /// `FR-17.9.6`: a skip is an outcome, and it is not the word a done row uses.
+    @Test("Skipped and done are different words")
+    func skippedIsNotDone() {
+        let skipped = String(localized: LoggingStrings.dayRowSkipped)
+        #expect(skipped == "Skipped")
+        #expect(skipped != String(localized: LoggingStrings.dayRowDone))
+    }
+
     @Test("The catalogue is this module's, not the app's")
     func copyComesFromTheModuleBundle() {
         #expect(Bundle.module.localizations.sorted() == ["en", "uk"])
-        #expect(String(localized: LoggingStrings.trainStartAction) == "Start workout")
+        #expect(String(localized: LoggingStrings.weekPlanAction) == "Plan your week")
     }
 
     /// `FR-1.14.1`. `scripts/check-translations.sh` is what holds the whole table complete, key for
@@ -71,7 +147,7 @@ struct LoggingStringsTests {
                 localization: "uk"
             ))
         let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
-        #expect(catalogue["logging.train.start.action"] == "Почати тренування")
+        #expect(catalogue["logging.week.plan.action"] == "Запланувати тиждень")
     }
 
     @Test("The catalogue and the accessors name exactly the same keys")
@@ -121,6 +197,55 @@ struct LoggingStringsTests {
         #expect(
             String(localized: LoggingStrings.sessionPlanTargetOpenLoad(reps: 5))
                 == "Target 5 reps, load your own")
+    }
+
+    /// `FR-17.2.3`: `RM` is never written, and the badge key that wrote it leaves both catalogues
+    /// along with its English value.
+    ///
+    /// **`check-translations.sh` compares the two catalogues to each other**, so a key retired from
+    /// both is invisible to it — this module's badge is where `PR %lldRM` was drawn, and the
+    /// `Dashboard` and `ExerciseLibrary` suites each assert their own half of the same retirement.
+    @Test("The RM notation is gone from both catalogues")
+    func theRepMaxNotationIsRetired() throws {
+        for localization in ["en", "uk"] {
+            let url = try #require(
+                Bundle.module.url(
+                    forResource: "Localizable",
+                    withExtension: "strings",
+                    subdirectory: nil,
+                    localization: localization
+                ))
+            let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
+            for key in [
+                "logging.session.set.record.rep-max %lld",
+                "logging.session.set.record.rep-max.label %lld",
+            ] {
+                #expect(catalogue[key] == nil, "\(localization) kept \(key)")
+            }
+            #expect(
+                !catalogue.values.contains { $0.contains("%lldRM") || $0.contains("%lldПМ") },
+                "\(localization) still writes a rep max as RM")
+            #expect(
+                !catalogue.values.contains { $0.localizedCaseInsensitiveContains("rep max") },
+                "\(localization) still writes \"rep max\"")
+        }
+    }
+
+    @Test("The badge's rep count pluralises, which is what a 1RM is badged with")
+    func theBadgeRepCountPluralises() {
+        // A record at a single rep is the 1RM, so `PR · 1 reps` would be the badge on the most
+        // visible record a lifter sets — and on what VoiceOver reads over it (`G-3.4`).
+        #expect(String(localized: LoggingStrings.setPersonalRecordReps(1)) == "PR · 1 rep")
+        #expect(String(localized: LoggingStrings.setPersonalRecordReps(8)) == "PR · 8 reps")
+        #expect(String(localized: LoggingStrings.setFirstPerformanceReps(1)) == "First · 1 rep")
+        #expect(
+            String(localized: LoggingStrings.setPersonalRecordRepsLabel(1))
+                == "Personal record, 1 rep")
+        #expect(
+            String(localized: LoggingStrings.setFirstPerformanceRepsLabel(1)) == "First time, 1 rep")
+        #expect(
+            String(localized: LoggingStrings.setFirstPerformanceRepsLabel(3))
+                == "First time, 3 reps")
     }
 
     @Test("Keys follow the convention: lowercase, dotted, module-prefixed")

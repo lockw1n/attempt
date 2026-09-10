@@ -1,44 +1,72 @@
-/* Routines (G-3.4, FR-15.2). Keys are <module>.<screen>.<element>[.<role>] — see the Localization
-   module doc. Every key here has a Ukrainian counterpart in uk.lproj beside this file, and has to
-   keep one: a key missing from that table renders its own identifier. The exercise count is in the
-   .stringsdict next to this file, plurals not fitting a flat table. */
+/* Routines (G-3.4, FR-15.2, FR-17.10). Keys are <module>.<screen>.<element>[.<role>] — see the
+   Localization module doc. Every key here has a Ukrainian counterpart in uk.lproj beside this file,
+   and has to keep one: a key missing from that table renders its own identifier.
 
-"routines.list.title" = "Routines";
-"routines.list.new" = "New routine";
+   ONE SCREEN AS OF T-17.12. The routine list, the routine editor, the program list and the program
+   editor retired with FR-17.10.6, and their keys went with them; what survives are the keys whose
+   copy Edit week draws unchanged — a target's three fields, an exercise's commands — which is why
+   some spellings still say `editor` and `group`. Renaming a key costs a translation, not a rename,
+   so they keep the spelling they were translated under. */
 
-/* FR-1.13.2's first launch. It says what a routine IS rather than only that there are none — this
-   is the first screen of a feature nothing else in the app has introduced yet. */
-"routines.list.empty.headline" = "No routines yet";
-"routines.list.empty.message" = "A routine is one training day's plan: the exercises in order, and what to hit on each.";
+/* FR-17.10.1's screen: the current week, edited in place. */
+"routines.week.title" = "Edit week";
+/* What Plan your week authors before the lifter names it. Never blank: Train's root draws this as
+   the heading over the week's cards. */
+"routines.week.default-name" = "My week";
+"routines.week.name.label" = "Week";
+"routines.week.name.prompt" = "Squat block";
+"routines.week.save" = "Save";
+/* The one field on this screen that is held to Save, so the one refusal that names a field. */
+"routines.week.name-required.message" = "Give the week a name first.";
+/* Every other write here goes straight to the store, and they all fail the same way. */
+"routines.week.write-error.message" = "That change could not be saved. Try again.";
 
-"routines.list.error.headline" = "Could not load your routines";
-"routines.list.error.message" = "Something went wrong reading them. Try again.";
+"routines.week.error.headline" = "Could not load your week";
+"routines.week.error.message" = "Something went wrong reading it. Try again.";
 
-/* FR-15.2.3's primary command, and NFR-15.3's first of two taps. */
-"routines.list.start" = "Start workout";
+/* FR-1.13.2's first launch, reached from Plan your week. It says what a week IS, nothing else in
+   the app having introduced one. */
+"routines.week.empty.headline" = "No days yet";
+"routines.week.empty.message" = "A week is the days you train, in order. Add one and fill in the exercises you do on it.";
+"routines.week.day.add" = "Add day";
 
-/* The refusal this command has: there is one workout in progress by construction, so a routine
-   started on top of an unfinished session is refused rather than queued. It names the way out. */
-"routines.list.start.in-progress.message" = "Finish or discard the workout in progress before starting another.";
+/* FR-17.10.4's day. The position is drawn on every day, named or not — an archived routine leaves
+   a day whose heading is all it can say about itself. */
+"routines.day.number %lld" = "Day %lld";
+"routines.day.default-name %lld" = "Day %lld";
+"routines.day.duplicate.name %@" = "%@ (copy)";
+"routines.day.archived" = "This day's plan is gone";
+"routines.day.unnamed" = "Unnamed day";
 
-/* The other way nothing starts, and a different fact: the session could not be written. It names
-   nothing the lifter did, so it asks for the one thing that can help — Logging's own wording for
-   the same failure on the same command. */
-"routines.list.start.write-error.message" = "That workout could not be started. Try again.";
+/* Behind a labelled menu rather than on swipes: a swipe is the one gesture VoiceOver and Switch
+   Control cannot perform (G-4.2). The menu is named for the menu, not for any item in it. */
+"routines.day.menu" = "Day actions";
+"routines.day.rename" = "Rename day";
+"routines.day.duplicate" = "Duplicate day";
+"routines.day.up" = "Move day earlier";
+"routines.day.down" = "Move day later";
+"routines.day.remove" = "Remove day";
 
-/* A name the editor will not save, and a row a store this app did not write may still hold. */
-"routines.list.row.unnamed" = "Unnamed routine";
+"routines.day.rename.title" = "Rename day";
+"routines.day.rename.prompt" = "Heavy squat day";
 
-"routines.editor.create.title" = "New routine";
-"routines.editor.edit.title" = "Edit routine";
+/* Removing a day is soft (G-1.3) and it asks first, because the message is the part worth reading:
+   the workouts already logged from this day copied their targets when they started (TR-15.3), so
+   nothing on History moves. */
+"routines.day.remove.title" = "Remove this day?";
+"routines.day.remove.message" = "It leaves the week. The workouts you already logged on it are kept exactly as they are.";
 
-"routines.editor.name.label" = "Name";
-"routines.editor.name.prompt" = "Heavy squat day";
-/* Under the name field, saying why Save is off. The button is disabled rather than hidden, so the
-   reason has to be somewhere the user is already looking. */
-"routines.editor.name.caption" = "A routine needs a name.";
+"routines.cancel" = "Cancel";
 
-"routines.editor.exercises.section" = "Exercises";
+/* The fold, announced as a VALUE: there is no expanded trait, and .isSelected means a chosen filter
+   everywhere else in this app. */
+"routines.day.expanded" = "Expanded";
+"routines.day.collapsed" = "Collapsed";
+
+/* The rename prompt's field can be emptied, and the week's own rule applies to it. It says what did
+   NOT happen, since the day is still on screen under its old name. */
+"routines.day.name-required.message" = "A day needs a name. Nothing was renamed.";
+
 "routines.editor.exercises.empty.headline" = "No exercises yet";
 "routines.editor.exercises.empty.message" = "Add the exercises this day trains, in the order you do them.";
 "routines.editor.exercise.add" = "Add exercise";
@@ -48,10 +76,15 @@
 "routines.editor.exercise.unnamed" = "Unknown exercise";
 "routines.editor.move.up" = "Move up";
 "routines.editor.move.down" = "Move down";
+"routines.exercise.menu" = "Exercise actions";
 
 /* A group's POSITION, not a count — the top set is 1 and the backoffs follow (FR-15.2.1's
    amendment). A position takes no plural rules in either language. */
 "routines.editor.group.heading %lld" = "Target %lld";
+"routines.target.menu" = "Target actions";
+/* FR-17.10.1's set notation: [105] kg × [4] × [4]. Copy rather than a literal, so a language that
+   does not write it this way has somewhere to say so. */
+"routines.target.separator" = "×";
 
 "routines.editor.group.weight.label" = "Weight";
 /* FR-15.2.2's blank target, offered in the placeholder: an empty field is a plan whose load is
@@ -66,105 +99,6 @@
 "routines.editor.group.remove" = "Remove target";
 "routines.editor.group.up" = "Move target up";
 "routines.editor.group.down" = "Move target down";
-/* Why Save is off. It names the two required fields and says the third is optional, since a blank
-   weight is the one thing on this screen that looks like an omission and is not. */
-"routines.editor.group.refusal" = "Every target needs reps and sets. The weight may be left blank.";
 
 "routines.editor.group.unit.kilograms" = "kg";
 "routines.editor.group.unit.pounds" = "lb";
-
-"routines.editor.save" = "Save routine";
-
-"routines.editor.error.headline" = "Could not load this routine";
-"routines.editor.error.message" = "Something went wrong reading it. Try again.";
-/* No retry beside this one: the identifier resolved to nothing, and reading again resolves to
-   nothing. */
-"routines.editor.missing.headline" = "This routine is gone";
-"routines.editor.missing.message" = "It was deleted, or it was never there.";
-"routines.editor.write.error" = "Could not save this routine. Try again.";
-
-/* FR-15.2.5's three management commands, on the card rather than inside the editor: a routine on
-   the list has no draft, so what they act on is unambiguous. Icon buttons carry these as VoiceOver
-   labels (G-4.2). */
-"routines.list.duplicate" = "Duplicate";
-"routines.list.rename" = "Rename";
-"routines.list.archive" = "Archive";
-"routines.list.cancel" = "Cancel";
-
-"routines.list.rename.title" = "Rename routine";
-
-/* Archive is a soft delete and there is no way back from it in this release, so it asks first and
-   the message says what survives: the workouts already logged from this routine copied their
-   targets when they started (TR-15.3), so nothing in History moves. */
-"routines.list.archive.title" = "Archive this routine?";
-"routines.list.archive.message" = "It leaves your routines for good. The workouts you already logged from it are kept exactly as they are.";
-
-/* The rename prompt's field can be emptied, and the editor's own rule applies to it: a routine
-   needs a name. It says what did NOT happen, since the row is still on screen under its old name. */
-"routines.list.manage.name-required.message" = "A routine needs a name. Nothing was renamed.";
-/* The other way a management command changes nothing, and a different fact: the store refused. It
-   names nothing the lifter did, so it asks for the one thing that can help. */
-"routines.list.manage.write-error.message" = "That change could not be saved. Try again.";
-
-/* What a copy is called. The original's name is the argument and is never looked up — it is the
-   lifter's own words. */
-"routines.list.duplicate.name %@" = "%@ (copy)";
-
-/* FR-16.8.1's programs — an ordered list of the routines above. The link sits on the routine list
-   because that is where a lifter is already looking at the parts a program is made of. */
-"routines.programs.link" = "Programs";
-"routines.programs.title" = "Programs";
-"routines.programs.new" = "New program";
-"routines.programs.new.title" = "New program";
-"routines.programs.new.prompt" = "Name";
-"routines.programs.new.create" = "Create";
-
-/* FR-1.13.2's first launch. It says what a program IS, as the routine list's does, because nothing
-   else in the app has introduced one. */
-"routines.programs.empty.headline" = "No programs yet";
-"routines.programs.empty.message" = "A program is a week of training: the routines you run, in order. Train offers the next one.";
-
-"routines.programs.error.headline" = "Could not load your programs";
-"routines.programs.error.message" = "Something went wrong reading them. Try again.";
-
-"routines.programs.name-required.message" = "Give the program a name first.";
-"routines.programs.write-error.message" = "Could not save the program. Try again.";
-
-/* FR-16.8.1: one program may be current, and that is what Train draws. */
-"routines.programs.current" = "Current";
-"routines.programs.row.unnamed" = "Unnamed program";
-
-/* FR-16.8.1's editor. The name may be cleared here, unlike a routine's — see saveDetails(). */
-"routines.program-editor.title" = "Program";
-"routines.program-editor.name.label" = "Name";
-"routines.program-editor.name.prompt" = "Name";
-"routines.program-editor.note.label" = "Note";
-"routines.program-editor.note.prompt" = "Anything worth remembering about this program";
-"routines.program-editor.save" = "Save";
-
-"routines.program-editor.days.section" = "Days";
-"routines.program-editor.days.empty.headline" = "No days yet";
-"routines.program-editor.days.empty.message" = "Pick a routine below and it becomes this program's first day.";
-
-"routines.program-editor.add.section" = "Add a day";
-"routines.program-editor.add.empty.headline" = "No routines to add";
-"routines.program-editor.add.empty.message" = "A program is made of routines. Write one first, and it will appear here.";
-
-"routines.program-editor.day.remove" = "Remove day";
-"routines.program-editor.day.up" = "Move day earlier";
-"routines.program-editor.day.down" = "Move day later";
-"routines.program-editor.day.number %lld" = "Day %lld";
-
-/* FR-15.2.5's archive reaching a program day: the day survives its routine, and the editor is
-   where it is repointed. */
-"routines.program-editor.day.archived" = "Archived routine";
-
-/* FR-16.8.2: making a program current is what puts its next day on Train. */
-"routines.program-editor.make-current" = "Make current";
-"routines.program-editor.is-current" = "This is your current program";
-
-"routines.program-editor.missing.headline" = "This program is gone";
-"routines.program-editor.missing.message" = "It was deleted. Go back to the list to pick another.";
-"routines.program-editor.error.headline" = "Could not load this program";
-"routines.program-editor.error.message" = "Something went wrong reading it. Try again.";
-"routines.program-editor.write-error.message" = "Could not save the change. Try again.";

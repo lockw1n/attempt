@@ -23,10 +23,16 @@ extension ExerciseLibraryStrings {
 
     /// One column's heading — the set count the column stands at.
     ///
-    /// - Parameter sets: How many consecutive sets the schemes in this column ask for.
+    /// **The one-set column is headed by a word, never `× 1`** (`FR-17.2.3`). Nobody writes their
+    /// heaviest single a "× 1"; the column is the single sets, and saying so is what stops the
+    /// heading reading as a notation the app invented.
+    ///
+    /// - Parameter sets: How many consecutive sets the schemes in this column were performed at.
     /// - Returns: The heading.
     static func recordsSetColumn(_ sets: Int) -> LocalizedStringResource {
-        resource("exerciselibrary.records.column \(sets)")
+        sets == 1
+            ? resource("exerciselibrary.records.column.single")
+            : resource("exerciselibrary.records.column \(sets)")
     }
 
     /// The corner cell, which heads the column of row headings.
@@ -37,11 +43,11 @@ extension ExerciseLibraryStrings {
     /// `.stringsdict`, for a heading a reader takes in once.
     static let recordsRepsHeader = resource("exerciselibrary.records.reps-header")
 
-    /// One scheme named the way a lifter writes it — `5 × 5`.
+    /// One scheme named the way a lifter writes it — `5×5` (`FR-17.2.3`).
     ///
     /// **Their own notation rather than a sentence**, which is what the detail section's diagonal
-    /// rows are headed with: `FR-1.6.1`'s "5-rep max" is the one-set column's spelling and says
-    /// nothing about how many sets, so a two-dimensional record needs the two-dimensional name.
+    /// rows are headed with. Tight rather than spaced, so the badge, the feed and this table all
+    /// write a scheme the same way.
     ///
     /// - Parameters:
     ///   - reps: The N.
@@ -73,12 +79,62 @@ extension ExerciseLibraryStrings {
         resource("exerciselibrary.records.cell \(reps) \(sets) \(load) \(date)")
     }
 
+    /// The caption under a first performance's load — `First · 1 May` (`FR-17.2.2`, `Q-17.1`).
+    ///
+    /// **The word the badge and the feed use**, so all three surfaces agree by sharing it. The cell
+    /// still shows its day: a baseline is a real performance and the date is what makes it one.
+    ///
+    /// - Parameter date: The day it was performed, formatted.
+    /// - Returns: The caption.
+    static func recordsCellFirst(date: String) -> LocalizedStringResource {
+        resource("exerciselibrary.records.cell.first \(date)")
+    }
+
+    /// What a never-performed cell says (`FR-17.2.2`, `Q-17.1`).
+    ///
+    /// **A word rather than a blank or a dash.** `G-4.5` forbids the state being carried by tint,
+    /// and a dash reads as "no data" where this means "not done" — the shortest phrase that is a
+    /// state and not a number.
+    static let recordsCellNotYet = resource("exerciselibrary.records.cell.not-yet")
+
+    /// A never-performed cell as VoiceOver reads it — "5 by 5, not yet" (`G-4.2`).
+    ///
+    /// **It names its scheme for ``recordsCellLabel(reps:sets:load:date:)``'s reason**: a reader
+    /// moving across a grid does not carry the row and column headings with them, and "not yet"
+    /// alone would be a state belonging to nothing.
+    ///
+    /// - Parameters:
+    ///   - reps: The N.
+    ///   - sets: How many consecutive sets at it.
+    /// - Returns: The label.
+    static func recordsCellNotYetLabel(reps: Int, sets: Int) -> LocalizedStringResource {
+        resource("exerciselibrary.records.cell.not-yet.label \(reps) \(sets)")
+    }
+
+    /// A first performance's cell as VoiceOver reads it — "5 by 5, first time, 100 kilograms,
+    /// 1 May" (`G-4.2`).
+    ///
+    /// - Parameters:
+    ///   - reps: The N.
+    ///   - sets: How many consecutive sets at it.
+    ///   - load: The load, formatted.
+    ///   - date: The day, formatted.
+    /// - Returns: The label.
+    static func recordsCellFirstLabel(
+        reps: Int, sets: Int, load: String, date: String
+    ) -> LocalizedStringResource {
+        resource("exerciselibrary.records.cell.first.label \(reps) \(sets) \(load) \(date)")
+    }
+
     /// This file's strings, for ``ExerciseLibraryStrings/all``.
     static var allSchemeRecordStrings: [LocalizedStringResource] {
         [
             recordsTableTitle, recordsAllSchemes, recordsAllSchemesHint,
-            recordsSetColumn(5), recordsRepsHeader, recordsScheme(5, 5),
+            recordsSetColumn(5), recordsSetColumn(1), recordsRepsHeader, recordsScheme(5, 5),
             recordsCellLabel(reps: 5, sets: 5, load: "100 kg", date: "1 May"),
+            recordsCellFirst(date: "1 May"), recordsCellNotYet,
+            recordsCellNotYetLabel(reps: 5, sets: 5),
+            recordsCellFirstLabel(reps: 5, sets: 5, load: "100 kg", date: "1 May"),
         ]
     }
 }

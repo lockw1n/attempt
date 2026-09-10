@@ -4,13 +4,14 @@ import Testing
 
 @testable import Logging
 
-/// Which state each of this module's two screens shows (`FR-1.13.1`).
+/// Which state the workout's exercise list shows (`FR-1.13.1`).
 ///
 /// **The decision, not the rendering.** `TR-1.12`'s references are rendered through `ImageRenderer`,
 /// which cannot run the `.task` that fills the store, so they picture each state in isolation and
-/// say nothing about which one a user is shown. That is the half where the two screens disagreed:
-/// both answer a failed read and a workout that has ended with the same `nil` session, and telling
-/// them apart is what these tests pin.
+/// say nothing about which one a user is shown.
+///
+/// Train's root left this suite with `FR-17.8.7`: its four states are ``WeekState``'s phases now,
+/// and they are asserted in `WeekStateTests` over a real read rather than over a decision function.
 @MainActor
 @Suite("Screen states")
 struct ScreenStateTests {
@@ -56,63 +57,6 @@ struct ScreenStateTests {
             SessionExercisesState.current(
                 hasLoaded: true, exercises: [], readFailure: nil, writeFailure: "boom")
                 == .empty(writeFailed: true))
-    }
-
-    // MARK: - Train root
-
-    @Test("Nothing is shown until something has looked, whatever else is true")
-    func rootLoadsBeforeTheReadAnswers() {
-        #expect(
-            TrainingHomeState.current(
-                hasChecked: false, session: .fixture(), failure: "boom", startWasAttempted: true)
-                == .loading)
-    }
-
-    @Test("A held workout outranks a failure: a failed write costs the root nothing")
-    func rootKeepsTheWorkoutThroughAFailure() {
-        let session = WorkoutSession.fixture()
-
-        #expect(
-            TrainingHomeState.current(
-                hasChecked: true, session: session, failure: "boom", startWasAttempted: false)
-                == .inProgress(session))
-    }
-
-    @Test("A read that failed takes the whole screen")
-    func rootReportsAFailedRead() {
-        #expect(
-            TrainingHomeState.current(
-                hasChecked: true, session: nil, failure: "boom", startWasAttempted: false)
-                == .readFailed)
-    }
-
-    @Test("A start that failed is reported beside the command, not as a failed read")
-    func rootReportsAFailedStartBesideTheCommand() {
-        // The store carries one diagnostic for both operations. Reported as a read, this would tell
-        // the user their workouts are unreadable and offer a retry that re-reads instead of
-        // re-starting — which on success retires the failure and forgets the workout they asked for.
-        #expect(
-            TrainingHomeState.current(
-                hasChecked: true, session: nil, failure: "boom", startWasAttempted: true)
-                == .start(showingStartFailure: true))
-    }
-
-    @Test("Nothing in progress and nothing wrong is the empty state")
-    func rootOffersToStart() {
-        #expect(
-            TrainingHomeState.current(
-                hasChecked: true, session: nil, failure: nil, startWasAttempted: false)
-                == .start(showingStartFailure: false))
-    }
-
-    @Test("A retired failure takes the start error with it, even after a start was attempted")
-    func rootRetiresTheStartFailure() {
-        // The screen's flag outlives the diagnostic — a later read clears `failure` and the error
-        // must go with it rather than sitting under the button until the screen is left.
-        #expect(
-            TrainingHomeState.current(
-                hasChecked: true, session: nil, failure: nil, startWasAttempted: true)
-                == .start(showingStartFailure: false))
     }
 
     // MARK: - The workout in progress

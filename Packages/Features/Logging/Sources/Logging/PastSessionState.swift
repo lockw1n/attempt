@@ -62,6 +62,15 @@ final class PastSessionState {
     /// carrying them in the case would republish the whole screen on every corrected set.
     private(set) var exercises: [SessionExercise] = []
 
+    /// Which of the session's sets hold a record, and at which schemes (`FR-17.7.2`).
+    ///
+    /// **Read once per read of the exercises, not once per row** — ``SessionRecordMarks/read(over:from:)``,
+    /// shared with the workout in progress so the two screens say the same thing about one set.
+    ///
+    /// **Before the first read it is a value that knows it has not looked**, which is what keeps a
+    /// session drawn mid-read from reading as one with no records in it.
+    private(set) var personalRecords = SessionRecordMarks()
+
     /// The last edit or deletion that failed, as the error's description, or `nil`.
     ///
     /// A **diagnostic**, not copy (`G-3.4`), and deliberately not a ``Phase``: a failed write leaves
@@ -79,15 +88,6 @@ final class PastSessionState {
     /// attempt to store one piece of text.
     var noteWriteFailure: String?
 
-    /// What the last attempt to save this workout as a routine did (`FR-15.2.6`), or `nil` where
-    /// none has been made since the last read.
-    ///
-    /// **An outcome rather than a diagnostic, and it keeps the success too** — unlike this screen's
-    /// other three. Nothing on this screen changes when a routine is written: the row lands in
-    /// another tab, so a command that reported only its failures would be indistinguishable from
-    /// one that did nothing at all.
-    var saveAsRoutineOutcome: SaveAsRoutineOutcome?
-
     /// The unit a load is shown in (`G-3.1`, `G-3.2`).
     ///
     /// **Kilograms until the settings row has been read, and after a read that failed** — the
@@ -95,6 +95,34 @@ final class PastSessionState {
     /// than one showing the majority default, and a failure here is nothing this screen can say
     /// anything useful about.
     private(set) var displayUnit: MassUnit = .kilograms
+
+    /// Whether this session was a day of a program (`FR-17.7.6`).
+    ///
+    /// **The stamp decides the shape of the screen**, and it is the session's own columns rather
+    /// than the presence of planned targets: a workout started from a routine outside a program has
+    /// a plan and is not a day, and a day whose every exercise the lifter replaced has no planned
+    /// targets left and still is one.
+    var isPlannedDay: Bool { session?.programPosition != nil }
+
+    /// The day's rows, as the checklist draws them (`FR-17.7.6`).
+    ///
+    /// **Derived rather than kept**, which is ``DayStore/rows``' rule and its reason: a write here
+    /// re-reads ``exercises``, and a second stored copy would be a second answer to keep in step.
+    var dayRows: [DayRow] {
+        exercises.map { DayRow.performed($0, marks: personalRecords) }
+    }
+
+    /// How much of what the routine prescribed was performed as prescribed (`FR-17.7.3`,
+    /// `FR-15.3.3`), or `nil` where there is nothing to report.
+    ///
+    /// **Only once the day is done**, which is what `FR-17.7.3` was rewritten to say (`D-17.6`): a
+    /// day still being answered has rows nobody has reached, and a ratio counting those against the
+    /// lifter would fall as the plan was performed. `nil` for a workout that prescribed nothing, on
+    /// ``SessionAdherence``'s own rule.
+    var adherence: SessionAdherence? {
+        guard let session, session.isFinished else { return nil }
+        return SessionAdherence(exercises)
+    }
 
     /// The session this screen is about — what the route carried.
     @ObservationIgnored let sessionID: UUID
@@ -110,16 +138,15 @@ final class PastSessionState {
     /// What performs `FR-1.2.9`'s note. Built per call, for ``setWriter``'s reason.
     @ObservationIgnored private var noteWriter: SessionNoteWriter { SessionNoteWriter(repository: workouts) }
 
-    @ObservationIgnored private let workouts: any WorkoutRepository
+    /// Sessions, their entries, their sets **and their planned targets** — one value conforming to
+    /// both, as ``ActiveSessionStore/repository`` is.
+    ///
+    /// **Widened for `FR-15.3.1`**: a past day draws each row's plan beside its actual, and the
+    /// plan is the snapshot `TR-15.3` hangs off the entry. Two properties would be two ways to
+    /// reach one store.
+    @ObservationIgnored private let workouts: any WorkoutRepository & PlannedTargetRepository
     @ObservationIgnored private let catalogue: any ExerciseRepository
     @ObservationIgnored private let settings: any SettingsRepository
-
-    /// Where `FR-15.2.6`'s new routine is written.
-    ///
-    /// **A fourth repository rather than a parameter on the command**, unlike
-    /// `ActiveSessionStore.start(on:fromRoutineID:in:)`'s: that store is app-lifetime and reads a
-    /// routine once, where this state is built per screen and the app target already hands it three.
-    @ObservationIgnored let routines: any RoutineRepository
 
     /// What is told that a set moved (`FR-1.6.4`). A past session's sets are edited from here, which
     /// is the History-side half of the trigger `LoggedSetWriter` carries.
@@ -137,15 +164,13 @@ final class PastSessionState {
     ///     because the schema declares no relationships (`G-2.5`) — see ``SessionExercise``.
     ///   - settings: The single settings row, for the unit the loads are shown in.
     ///   - records: The app's one recompute actor (`TR-1.6`).
-    ///   - routines: Where `FR-15.2.6`'s routine is written.
     ///   - trainingMaxes: Where `FR-16.7.1`'s training max is stored.
     init(
         sessionID: UUID,
-        workouts: any WorkoutRepository,
+        workouts: any WorkoutRepository & PlannedTargetRepository,
         catalogue: any ExerciseRepository,
         settings: any SettingsRepository,
         records: PersonalRecordRecomputer,
-        routines: any RoutineRepository,
         trainingMaxes: any TrainingMaxRepository
     ) {
         self.sessionID = sessionID
@@ -153,7 +178,6 @@ final class PastSessionState {
         self.catalogue = catalogue
         self.settings = settings
         self.records = records
-        self.routines = routines
         self.trainingMaxes = trainingMaxes
     }
 
@@ -175,9 +199,6 @@ final class PastSessionState {
         // no longer act on against a screen that has since been rebuilt.
         writeFailure = nil
         noteWriteFailure = nil
-        // The routine outcome goes with them, and for the same reason: it reports one attempt made
-        // against the rows this read is about to replace.
-        saveAsRoutineOutcome = nil
         await loadDisplayUnit()
         do {
             guard let session = try await workouts.session(id: sessionID, includingDeleted: false)
@@ -215,6 +236,89 @@ final class PastSessionState {
     ///   - entryID: The exercise it belongs to.
     func deleteSet(id setID: UUID, inEntryID entryID: UUID) async {
         await write { try await setWriter.delete(id: setID, inEntryID: entryID) }
+    }
+
+    /// Rewrites one row's whole answer to what the Log sheet now says (`FR-17.7.5`).
+    ///
+    /// **``SetGroupRewrite`` and nothing beside it**, which is what makes the past day's edit the
+    /// same write the day's own checklist makes: position by position, a lowered count
+    /// soft-deletes the trailing rows and a raised one appends, nothing unchanged is written
+    /// (`G-2.4`), and every member it touches is marked performed — a member left pending would
+    /// make the answer read as **Skipped** (`TR-17.4`).
+    ///
+    /// **It writes the *performed* sets and never the planned rows.** `FR-16.8.3` keeps a past
+    /// session out of a later plan edit's way, and the converse holds here: correcting what was
+    /// lifted last Tuesday must not change what `FR-16.8.4`'s **Start next week** would have
+    /// proposed from the plan that day was started with.
+    ///
+    /// **The row is marked done, and only where it is not already.** A row being corrected stays
+    /// answered; writing the mark it already carries would restamp `updatedAt`, which is `G-2.4`'s
+    /// conflict key.
+    ///
+    /// **A rowID this screen does not hold writes nothing.** A past day's rows are always entries —
+    /// the session exists by definition, so `DayStore`'s slot-to-entry translation has no work to
+    /// do here — but the row can still have gone away under a stale sheet, and the absent case is
+    /// its own branch rather than a comparison that reads it as answered.
+    ///
+    /// - Parameters:
+    ///   - rowID: The row being answered — an entry, on this screen.
+    ///   - group: What the sheet collected.
+    func log(rowID: UUID, group: ResolvedSetGroup) async {
+        guard let entry = exercises.first(where: { $0.id == rowID })?.entry else { return }
+        await write {
+            try await SetGroupRewrite(repository: workouts, records: records)
+                .rewrite(inEntryID: entry.id, to: group.rows)
+            if !entry.isMarkedDone { try await workouts.save(entry.markedDone) }
+            return true
+        }
+        await endDayIfComplete()
+    }
+
+    /// Ends the day once its last row has been answered (`FR-17.9.8`).
+    ///
+    /// **The same rule the checklist applies, because it is the same day.** `DayStore` ends a day
+    /// at its last answer, and a row answered from here would otherwise leave `endedAt` unwritten
+    /// for good — taking `FR-17.7.3`'s adherence with it, which is withheld until the day is done,
+    /// and leaving every unattempted set on it reading as *pending* rather than failed
+    /// (`FR-16.4.1`).
+    ///
+    /// **Nothing to do on a day that was already over**, which is every ordinary correction: a
+    /// second `endedAt` is a rewrite of a fact that has not changed (`G-2.4`).
+    ///
+    /// **`.keepAsFailed`**, which is the checklist's answer and the only one available here: a
+    /// past day offers no **Finish**, so there is nobody to ask `FR-16.4.3`'s question of.
+    private func endDayIfComplete() async {
+        guard let current = session, current.endedAt == nil, !exercises.isEmpty,
+            exercises.allSatisfy(\.entry.isMarkedDone)
+        else {
+            return
+        }
+        do {
+            let ended = try await SessionFinish(workouts: workouts, records: records)
+                .finish(current, at: .now, resolving: .keepAsFailed)
+            phase = .loaded(
+                try await workouts.session(id: ended.id, includingDeleted: false) ?? ended)
+        } catch {
+            writeFailure = String(describing: error)
+        }
+    }
+
+    /// What the Log sheet opens over `rowID` (`FR-17.7.5`), or `nil` where the screen has no such
+    /// row.
+    ///
+    /// ``DayStore/editorRow(forRow:)``'s answer read off this screen's own join — the plan and the
+    /// sets already stored, which is the whole of what the sheet's row mode needs.
+    ///
+    /// - Parameter rowID: The row.
+    /// - Returns: The row, or `nil`.
+    func editorRow(forRow rowID: UUID) -> SetEditorRow? {
+        guard let exercise = exercises.first(where: { $0.id == rowID }) else { return nil }
+        return SetEditorRow(
+            plan: exercise.planned.map {
+                WeekPlanTarget(
+                    id: $0.id, weight: $0.targetWeight, reps: $0.targetReps, sets: $0.targetSets)
+            },
+            logged: exercise.sets)
     }
 
     /// Stores the session's note (`FR-1.2.9`, `NFR-1.8`).
@@ -271,8 +375,16 @@ final class PastSessionState {
     /// The session's exercises, joined from the three tables a schema with no relationships needs
     /// (`G-2.5`).
     ///
-    /// `includingDeleted: false` at every call site, which is what keeps a soft-deleted entry or set
-    /// off this screen and agrees with what the session list already counted (`G-1.3`).
+    /// `includingDeleted: false` at every call site, which is what keeps a soft-deleted entry or
+    /// set off this screen and agrees with what the session list already counted (`G-1.3`) — and,
+    /// for the catalogue, is what ``ActiveSessionStore`` reads the same rows with. `FR-17.7.6` puts
+    /// the two screens over one day, so the flag has to be the same on both or one lift changes its
+    /// name between them.
+    ///
+    /// **An archived exercise still names the row it was lifted under, and that costs no flag.**
+    /// `FR-1.1.5` archives with a column of its own — `ExerciseRepository` offers no delete at all —
+    /// so a lift retired since is read back here whichever way this is set.
+    ///
     /// - Parameter day: The session's training day, which `FR-16.7.1`'s annotation is resolved at
     ///   — not today, so a training max raised since does not rewrite what this workout's loads
     ///   were a share of.
@@ -288,11 +400,14 @@ final class PastSessionState {
                     exercise: try await catalogue.exercise(
                         id: entry.exerciseID, includingDeleted: false),
                     sets: try await workouts.sets(forEntryID: entry.id, includingDeleted: false),
+                    planned: try await workouts.plannedTargets(
+                        forEntryID: entry.id, includingDeleted: false),
                     trainingMax: try await SessionTrainingMax.inForce(
                         trainingMaxes, forExerciseID: entry.exerciseID, on: day)
                 )
             )
         }
+        personalRecords = await SessionRecordMarks.read(over: loaded, from: records)
         return loaded
     }
 

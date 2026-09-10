@@ -175,5 +175,158 @@
 			<string>%lld sets were not logged</string>
 		</dict>
 	</dict>
+	<!-- FR-17.9.1's day heading and FR-17.9.9's two confirmations (T-17.11). The heading is
+	     positional so a translation can reorder the two numbers; the confirmations are plural on
+	     the only number they carry. -->
+	<key>logging.day.progress %lld %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$lld of %2$#@exercises@ done</string>
+		<key>exercises</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld exercise</string>
+			<key>other</key>
+			<string>%lld exercises</string>
+		</dict>
+	</dict>
+	<key>logging.day.log-remaining.confirm.title %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Log %#@exercises@ as planned?</string>
+		<key>exercises</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld exercise</string>
+			<key>other</key>
+			<string>%lld exercises</string>
+		</dict>
+	</dict>
+	<key>logging.day.skip-remaining.confirm.title %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Skip %#@exercises@?</string>
+		<key>exercises</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld exercise</string>
+			<key>other</key>
+			<string>%lld exercises</string>
+		</dict>
+	</dict>
+	<!-- FR-17.9.4's difference, as a clause. The sign is written by DeltaDirection and arrives
+	     as the first argument, so a translation can put it where the language wants it; the noun
+	     agrees with the count, which a .strings entry cannot express. -->
+	<key>logging.session.set.deviation.reps %@ %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$@%2$#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
+	<key>logging.session.set.deviation.sets %@ %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$@%2$#@sets@</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld set</string>
+			<key>other</key>
+			<string>%lld sets</string>
+		</dict>
+	</dict>
+	<!-- FR-17.2.2 and FR-17.2.3's badge at its one-set spelling, drawn and spoken. A 1RM is the record a
+	     lifter looks at most and it is the case the plural is for: "PR · 1 rep", never "1 reps".
+	     The scheme spellings stay in the .strings beside them — "5×5" agrees with nothing. -->
+	<key>logging.session.set.record.reps %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>PR · %#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
+	<key>logging.session.set.first.reps %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>First · %#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
+	<key>logging.session.set.record.reps.label %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Personal record, %#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
+	<key>logging.session.set.first.reps.label %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>First time, %#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

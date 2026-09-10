@@ -388,6 +388,16 @@
         let reference = referenceDirectory.appending(path: "\(name).png")
 
         guard let referenceData = try? Data(contentsOf: reference) else {
+            // A blank rendering is never written. Recording one is how a blank reference gets into
+            // the tree in the first place, and once it is there nothing downstream can see it — the
+            // comparison below matches a blank against a blank forever.
+            guard !rendered.isUniform else {
+                Issue.record(
+                    Comment(rawValue: blankRenderDiagnostic(named: name, bitmap: rendered)),
+                    sourceLocation: caller.sourceLocation
+                )
+                return
+            }
             try FileManager.default.createDirectory(
                 at: referenceDirectory,
                 withIntermediateDirectories: true
@@ -402,6 +412,16 @@
         }
 
         let referenceBitmap = try Snapshot.bitmap(fromPNG: referenceData)
+        // Before the comparison, never after: `compare` tests dimensions and then pixels, and a
+        // blank reference agrees with a blank render on both. This is the one state the gate cannot
+        // detect by comparing, so it is asserted about the reference itself.
+        guard !referenceBitmap.isUniform else {
+            Issue.record(
+                Comment(rawValue: blankReferenceDiagnostic(named: name, at: reference)),
+                sourceLocation: caller.sourceLocation
+            )
+            return
+        }
         guard let mismatch = Snapshot.compare(referenceBitmap, rendered) else {
             // Counted by scripts/snapshot-tests.sh, which fails a run that compared fewer references
             // than the directory holds — a test count cannot tell a full run from one whose component

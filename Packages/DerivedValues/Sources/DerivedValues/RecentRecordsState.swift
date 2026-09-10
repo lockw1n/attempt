@@ -62,13 +62,12 @@ public final class RecentRecordsState {
     /// **All three narrowings, not the scope alone.** An empty feed offers the wider one
     /// (`FR-16.3.4`), and that offer is only honest where something was actually narrowed — but a
     /// scope of every exercise is not on its own the widest the feed goes: `FR-16.3.4`'s own
-    /// default hides baselines, and `FR-16.3.2`'s chosen list hides cells. A screen reading the
+    /// default hides baselines, and `FR-17.3.2`'s chosen list hides cells. A screen reading the
     /// scope alone tells a lifter whose records are all first-time ones to go and log a working
     /// set, which is the dead end the offer exists to remove.
     ///
-    /// ``RepositoryInterface/RecentRecordsSchemes/derived`` does not count: it is the
-    /// un-configured value, and what it drops it drops from the training log rather than from a
-    /// choice the lifter made.
+    /// ``RepositoryInterface/RecentRecordsSchemes/everyScheme`` does not count, and since
+    /// `FR-17.3.1` that is arithmetic rather than a judgement: it drops nothing at all.
     /// `true` before the first read, because an unconfigured row is narrowed — `FR-16.3.1` scopes
     /// it to the dashboard lifts and `FR-16.3.4` hides baselines. Nothing reads it until
     /// ``hasLoaded``, so this is the safe answer rather than the load-bearing one.
@@ -180,7 +179,7 @@ public final class RecentRecordsState {
             var stored = try await settings.settings()
             stored.recentRecordsScope = .everyExercise
             stored.recentRecordsShowsBaselines = true
-            stored.recentRecordsSchemes = .derived
+            stored.recentRecordsSchemes = .everyScheme
             try await settings.save(stored)
         } catch {
             failure = String(describing: error)
@@ -197,7 +196,7 @@ public final class RecentRecordsState {
     private static func narrows(_ stored: UserSettings) -> Bool {
         stored.recentRecordsScope != .everyExercise
             || !stored.recentRecordsShowsBaselines
-            || stored.recentRecordsSchemes != .derived
+            || stored.recentRecordsSchemes != .everyScheme
     }
 
     /// What `stored` narrows the feed to, with `FR-16.3.1`'s scope resolved to identifiers.
@@ -225,8 +224,9 @@ public final class RecentRecordsState {
     /// **A settings change is taken too, and it did not used to be.** The old reasoning was that a
     /// rep max reads no setting, so nothing a picker does can move one — true of the records and no
     /// longer true of the feed, which reads three settings since `FR-16.3`. That is what carries a
-    /// change made on `settings.recentRecords` back to this screen without it being revisited
-    /// (`TR-1.5`); the cost is that a formula change, which still moves nothing here, reloads it.
+    /// change made on `settings.recentRecords`, or on the lift picker pushed from it
+    /// (`FR-17.3.3`), back to this screen without either being revisited (`TR-1.5`); the cost is
+    /// that a formula change, which still moves nothing here, reloads it.
     public func observeChanges() async {
         for await change in await recomputer.changes() {
             switch change {

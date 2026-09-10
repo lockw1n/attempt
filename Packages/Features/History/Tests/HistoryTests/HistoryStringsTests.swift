@@ -24,6 +24,43 @@ struct HistoryStringsTests {
         #expect(String(localized: HistoryStrings.emptyHeadline) == "No training logged yet")
     }
 
+    /// Both empty states send the reader to Train's root, which is the week (`FR-17.8`) — so they
+    /// offer the week's own words (`FR-17.8.5`), the same ones Home's first launch does.
+    ///
+    /// **Asserted as literals, because no test can compare two modules' catalogues.** Three screens
+    /// in three packages name one destination; a reword in any of them has to fail somewhere, and
+    /// this is where it fails for these two.
+    @Test("Every empty state offers the week's own words")
+    func theEmptyStatesNameTheDestination() {
+        #expect(String(localized: HistoryStrings.emptyAction) == "Plan your week")
+        #expect(String(localized: HistoryStrings.calendarEmptyAction) == "Plan your week")
+        #expect(String(localized: HistoryStrings.weekEmptyAction) == "Plan your week")
+    }
+
+    /// A key the day section took with it when it retired (`FR-17.11.2`).
+    ///
+    /// **`scripts/check-translations.sh` cannot see this**: it compares the two catalogues to each
+    /// other, so a key left in *both* is complete and wrong. ``catalogueAndAccessorsAgree`` covers
+    /// the English half — the accessors no longer name it — and this covers the Ukrainian one, plus
+    /// the copy itself, which is what a key renamed rather than removed would leave behind.
+    @Test("The day section's copy left both catalogues with the screen")
+    func theRetiredDayErrorIsGoneFromBothCatalogues() throws {
+        for localization in ["en", "uk"] {
+            let url = try #require(
+                Bundle.module.url(
+                    forResource: "Localizable",
+                    withExtension: "strings",
+                    subdirectory: nil,
+                    localization: localization
+                ))
+            let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
+            #expect(catalogue["history.calendar.day.error"] == nil)
+            #expect(
+                !catalogue.values.contains("Could not load that day's sessions."),
+                "the retired copy survives in \(localization) under another key")
+        }
+    }
+
     /// `FR-1.14.1`. `scripts/check-translations.sh` is what holds the whole table complete, key for
     /// key; what it cannot say is that the table reached the built bundle, which is the half a
     /// comparison of two files in the repo has no way to see.
@@ -37,7 +74,7 @@ struct HistoryStringsTests {
                 localization: "uk"
             ))
         let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
-        #expect(catalogue["history.list.empty.action"] == "Почати тренування")
+        #expect(catalogue["history.list.empty.action"] == "Запланувати тиждень")
     }
 
     @Test("The catalogue and the accessors name exactly the same keys")

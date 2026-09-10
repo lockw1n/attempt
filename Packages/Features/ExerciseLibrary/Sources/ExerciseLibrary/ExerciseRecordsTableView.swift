@@ -152,10 +152,16 @@ struct SchemeTableGrid: View {
     let sessions: [UUID: UUID]
 
     /// The grid, in its own scroller.
+    ///
+    /// **The indicator is forced visible** (`FR-17.2.5`): a grid clipped at the screen's edge with
+    /// no scrollbar reads as a table that is simply narrow, and a reader has no reason to try
+    /// dragging it. The horizontal scroller is the one place in the app where the affordance is not
+    /// otherwise implied, the page's own vertical scroll being the gesture a reader arrives with.
     var body: some View {
         ScrollView(.horizontal) {
             SchemeGrid(table: table, unit: unit, sessions: sessions)
         }
+        .scrollIndicators(.visible, axes: .horizontal)
     }
 }
 
@@ -208,7 +214,7 @@ struct SchemeGrid: View {
         .fixedSize(horizontal: true, vertical: false)
     }
 
-    /// One cell — the record, or the blank that says the scheme was never performed.
+    /// One cell, in whichever of `FR-17.2.2`'s three states it is in.
     ///
     /// - Parameters:
     ///   - reps: The row.
@@ -216,22 +222,43 @@ struct SchemeGrid: View {
     /// - Returns: The cell.
     @ViewBuilder private func cell(reps: Int, sets: Int) -> some View {
         let scheme = RecordScheme(reps: reps, sets: sets)
-        if let record = table.record(at: scheme) {
+        switch table.state(at: scheme) {
+        case .record(let record), .firstPerformance(let record):
             SchemeRecordCell(
                 record: record,
                 unit: unit,
                 sessionID: sessions[record.record.sourceSetID]
             )
-        } else {
-            // Blank, not zero: `Weight` is signed, so a zero here would be a load the lifter lifted.
-            //
-            // A placeholder rather than nothing at all: `Grid` fills a row's cells in order, so a
-            // row that skipped one would put every cell after it under the wrong column heading. It
-            // is sized to the smallest token so it never widens the column it stands in.
-            Color.clear
-                .frame(width: Spacing.xxs.points, height: Spacing.xxs.points)
-                .accessibilityHidden(true)
+        case .neverPerformed:
+            // A word rather than a blank, which is what `FR-17.2.1` changed: under the withdrawn
+            // dominance rule an empty cell inside a drawn row meant the lifter's own heavier work
+            // had blocked it, and now it means they have never done it — a state, and `G-4.5`
+            // forbids a state being carried by an absence.
+            NeverPerformedCell(scheme: scheme)
         }
+    }
+}
+
+/// A cell for a scheme no run was ever performed at (`FR-17.2.2`, `Q-17.1`).
+///
+/// **A view of its own rather than a branch, so the grid's three states read as three.** It is also
+/// what keeps the cell narrow: the phrase is short, and a cell drawn inline would have inherited
+/// the record cell's two-line frame and pushed every row taller than it needs to be.
+struct NeverPerformedCell: View {
+    /// The cell it stands at — spoken, never drawn, for ``SchemeRecordCell``'s reason.
+    let scheme: RecordScheme
+
+    /// The word.
+    var body: some View {
+        Text(ExerciseLibraryStrings.recordsCellNotYet)
+            .font(Typography.caption.font)
+            .foregroundStyle(ColorToken.textTertiary)
+            .frame(minHeight: TouchTarget.standard.points, alignment: .leading)
+            .accessibilityElement()
+            .accessibilityLabel(
+                Text(
+                    ExerciseLibraryStrings.recordsCellNotYetLabel(
+                        reps: scheme.reps, sets: scheme.sets)))
     }
 }
 
@@ -278,27 +305,58 @@ struct SchemeRecordCell: View {
     }
 
     /// What the cell shows: the load, and the day it was set beneath it.
+    ///
+    /// **The chevron is `FR-17.2.5`'s discoverability**, and it is drawn only where the link exists:
+    /// a cell whose source session did not resolve is not tappable, so a chevron on it would be an
+    /// affordance that does nothing.
+    ///
+    /// **A first performance says so in the caption** (`FR-17.2.2`), sharing the word the badge and
+    /// the feed use rather than being told apart by tint (`G-4.5`).
     private var reading: some View {
         VStack(alignment: .leading, spacing: Spacing.xxs.points) {
             Text(verbatim: renderedLoad)
                 .font(Typography.numericValue.font)
                 .foregroundStyle(ColorToken.textPrimary)
-            Text(verbatim: renderedDate)
-                .font(Typography.caption.font)
-                .foregroundStyle(ColorToken.textTertiary)
+            HStack(spacing: Spacing.xxs.points) {
+                caption
+                    .font(Typography.caption.font)
+                    .foregroundStyle(ColorToken.textTertiary)
+                if sessionID != nil {
+                    Image(systemName: "chevron.forward")
+                        .font(Typography.caption.font)
+                        .foregroundStyle(ColorToken.textTertiary)
+                }
+            }
         }
         .frame(minHeight: TouchTarget.standard.points, alignment: .leading)
         .contentShape(.rect)
     }
 
+    /// The line under the load — the day, or the day with the word that says it is a first.
+    @ViewBuilder private var caption: some View {
+        if isFirstPerformance {
+            Text(ExerciseLibraryStrings.recordsCellFirst(date: renderedDate))
+        } else {
+            Text(verbatim: renderedDate)
+        }
+    }
+
+    /// Whether this cell is `FR-16.2.3`'s baseline rather than a beaten load.
+    private var isFirstPerformance: Bool { record.previous == nil }
+
     /// The whole cell as VoiceOver reads it (`G-4.2`).
     private var label: LocalizedStringResource {
-        ExerciseLibraryStrings.recordsCellLabel(
-            reps: record.scheme.reps,
-            sets: record.scheme.sets,
-            load: renderedLoad,
-            date: renderedDate
-        )
+        isFirstPerformance
+            ? ExerciseLibraryStrings.recordsCellFirstLabel(
+                reps: record.scheme.reps,
+                sets: record.scheme.sets,
+                load: renderedLoad,
+                date: renderedDate)
+            : ExerciseLibraryStrings.recordsCellLabel(
+                reps: record.scheme.reps,
+                sets: record.scheme.sets,
+                load: renderedLoad,
+                date: renderedDate)
     }
 
     /// The load, formatted once — the drawn text and the spoken label are the same number.

@@ -43,6 +43,8 @@ extension RootTabView {
             restoreRoot
         case .recentRecords:
             recentRecordsSettingsRoot
+        case .recentRecordsExercises:
+            recentRecordsExercisesRoot
         case .sync:
             // NO STORE SWITCH HERE, unlike every other case in this function. The switch and the
             // status are facts about the container and the preference rather than rows in it, so a
@@ -64,6 +66,24 @@ extension RootTabView {
         switch dependencies.state {
         case .open(let repositories, let stores):
             RecentRecordsSettingsView(
+                settings: repositories.settings,
+                catalogue: repositories.exercises,
+                records: stores.records)
+        case .failed(let diagnostic):
+            StoreUnavailableScreen(diagnostic: diagnostic)
+        }
+    }
+
+    /// `FR-17.3.3`: which lifts that feed reports on, or the reason it cannot be shown.
+    ///
+    /// The same three dependencies as ``recentRecordsSettingsRoot``, and for the same reasons: the
+    /// screen it pushes from writes the same row, and both hand a tick to the recompute actor so the
+    /// feed re-reads without being revisited (`TR-1.5`).
+    @ViewBuilder
+    private var recentRecordsExercisesRoot: some View {
+        switch dependencies.state {
+        case .open(let repositories, let stores):
+            RecentRecordsExercisesView(
                 settings: repositories.settings,
                 catalogue: repositories.exercises,
                 records: stores.records)

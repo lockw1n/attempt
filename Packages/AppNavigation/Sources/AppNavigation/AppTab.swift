@@ -8,7 +8,7 @@
 /// code change: Q-1.2 resolved the tab set for the whole of Phase 1, and a setting that does not
 /// fit one of these four names has the wrong name.
 public enum AppTab: String, Hashable, Sendable, Codable, CaseIterable, Identifiable {
-    /// The dashboard (`FR-1.9`) — e1RM tiles, last workout, the "Start workout" action.
+    /// The dashboard (`FR-1.9`) — e1RM tiles, last workout, the week's numbers, recent records.
     case home
 
     /// Workout logging (`FR-1.2`), the exercise library (`FR-1.1`) and the plate calculator

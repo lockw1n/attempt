@@ -2,7 +2,7 @@ import Testing
 
 @testable import PowerliftingCore
 
-/// `FR-16.2.2`'s dominance rule and `FR-16.2.3`'s beaten load, over runs a caller has already
+/// `FR-17.2.1`'s performed-only rule and `FR-16.2.3`'s beaten load, over runs a caller has already
 /// grouped.
 @Suite("Scheme records")
 struct SchemeRecordCalculatorTests {
@@ -16,51 +16,94 @@ struct SchemeRecordCalculatorTests {
         records.first { $0.scheme == RecordScheme(reps: reps, sets: sets) }
     }
 
-    // MARK: - FR-16.2.2, dominance in two dimensions
+    // MARK: - FR-17.2.1, one cell per run
 
-    @Test("A five-by-five fills every cell at or below it, and no cell above it")
-    func oneRunFillsItsRectangle() {
+    /// `DOD-17.2`'s calculator half, and the whole of what `D-17.2` changed: the run fills its own
+    /// cell and every cell the withdrawn dominance rule would have filled stays empty.
+    @Test("A five-by-five fills the 5×5 cell and no other")
+    func oneRunFillsOneCell() {
         let records = SchemeRecordCalculator().records(in: [run(100_000, 5, by: 5)])
 
-        #expect(records.count == 25)
-        #expect(records.allSatisfy { $0.weight == Weight(grams: 100_000) })
-        #expect(records.allSatisfy { $0.scheme.reps <= 5 && $0.scheme.sets <= 5 })
+        #expect(records.count == 1)
         #expect(record(records, reps: 5, sets: 5)?.weight == Weight(grams: 100_000))
-        #expect(record(records, reps: 1, sets: 1)?.weight == Weight(grams: 100_000))
+        // The four corners of the rectangle the dominance rule used to claim.
+        #expect(record(records, reps: 1, sets: 1) == nil)
+        #expect(record(records, reps: 5, sets: 1) == nil)
+        #expect(record(records, reps: 1, sets: 5) == nil)
+        #expect(record(records, reps: 3, sets: 3) == nil)
         #expect(record(records, reps: 6, sets: 1) == nil)
-        #expect(record(records, reps: 1, sets: 6) == nil)
     }
 
-    /// The task's own worked example, in one sequence: a heavier but shorter run takes the cells it
-    /// dominates and leaves the rest standing, and a run reaching a new rep count takes only the
-    /// cells nothing had reached.
-    @Test("A heavier shorter run takes only the cells it dominates")
-    func laterRunsTakeOnlyWhatTheyDominate() {
+    /// `DOD-17.3`: a single set of eight is the 8-rep record, and the 5-rep cell reads as never
+    /// performed rather than as an implied record at the same load.
+    @Test("A set of eight fills the 8-rep cell only")
+    func aSingleFillsItsOwnRepCell() {
+        let records = SchemeRecordCalculator().records(in: [run(145_000, 8, by: 1)])
+
+        #expect(records.count == 1)
+        #expect(record(records, reps: 8, sets: 1)?.weight == Weight(grams: 145_000))
+        #expect(record(records, reps: 5, sets: 1) == nil)
+        #expect(record(records, reps: 1, sets: 1) == nil)
+    }
+
+    /// The task's own worked example: two runs at different schemes are two records, and neither is
+    /// evidence about the cell the other names or about the two cells between them.
+    @Test("Two runs at two schemes hold two cells, and the cross terms stay empty")
+    func twoRunsHoldTwoCells() {
+        let records = SchemeRecordCalculator().records(in: [
+            run(90_000, 5, by: 4, at: 0),
+            run(90_000, 4, by: 1, at: 4),
+        ])
+
+        #expect(records.count == 2)
+        #expect(record(records, reps: 5, sets: 4)?.weight == Weight(grams: 90_000))
+        #expect(record(records, reps: 4, sets: 1)?.weight == Weight(grams: 90_000))
+        #expect(record(records, reps: 4, sets: 5) == nil)
+        #expect(record(records, reps: 5, sets: 1) == nil)
+        #expect(record(records, reps: 4, sets: 4) == nil)
+    }
+
+    /// A heavier run at a *different* scheme leaves the standing one alone, where the dominance rule
+    /// would have taken every cell beneath it.
+    @Test("A heavier shorter run takes its own cell and nothing standing")
+    func aHeavierRunTakesOnlyItsOwnCell() {
         let records = SchemeRecordCalculator().records(in: [
             run(100_000, 5, by: 5, at: 0),
             run(105_000, 5, by: 3, at: 5),
             run(100_000, 6, by: 1, at: 8),
         ])
 
+        #expect(records.count == 3)
         #expect(record(records, reps: 5, sets: 3)?.weight == Weight(grams: 105_000))
-        #expect(record(records, reps: 1, sets: 1)?.weight == Weight(grams: 105_000))
-        #expect(record(records, reps: 5, sets: 4)?.weight == Weight(grams: 100_000))
         #expect(record(records, reps: 5, sets: 5)?.weight == Weight(grams: 100_000))
-        // The 6-rep single reaches a rep count nothing had reached, at one set only.
         #expect(record(records, reps: 6, sets: 1)?.weight == Weight(grams: 100_000))
-        #expect(record(records, reps: 6, sets: 2) == nil)
+        #expect(record(records, reps: 1, sets: 1) == nil)
+        #expect(record(records, reps: 5, sets: 4) == nil)
     }
 
-    @Test("A run past either bound clamps rather than being refused")
-    func boundsClamp() {
-        let records = SchemeRecordCalculator().records(in: [run(80_000, 12, by: 8)])
+    /// `FR-17.2.1` in the one place a clamp used to break it: a run outside either bound sets no
+    /// record, where clamping would have claimed the corner cell at a load nobody lifted there.
+    @Test("A run past either bound sets no record rather than clamping to the corner")
+    func boundsRefuse() {
+        #expect(SchemeRecordCalculator().records(in: [run(80_000, 12, by: 8)]).isEmpty)
+        // Each bound on its own, so a refusal is not passing because the other one fired.
+        #expect(SchemeRecordCalculator().records(in: [run(80_000, 12, by: 3)]).isEmpty)
+        #expect(SchemeRecordCalculator().records(in: [run(80_000, 5, by: 8)]).isEmpty)
+        // And the cells just inside both bounds are records, so the refusal is the bound and not
+        // the whole neighbourhood of it.
+        let inside = SchemeRecordCalculator().records(in: [run(80_000, 10, by: 6)])
+        #expect(inside.count == 1)
+        #expect(record(inside, reps: 10, sets: 6)?.weight == Weight(grams: 80_000))
+    }
 
-        #expect(records.count == 60)
-        #expect(records.map(\.scheme.reps).max() == 10)
-        #expect(records.map(\.scheme.sets).max() == 6)
-        #expect(record(records, reps: 10, sets: 6)?.weight == Weight(grams: 80_000))
-        #expect(record(records, reps: 11, sets: 1) == nil)
-        #expect(record(records, reps: 1, sets: 7) == nil)
+    /// The two computations of `FR-1.6.1` agree at every N, including the N's neither reaches —
+    /// which is what the clamp used to break, `repMax(forReps:in:)` never having clamped.
+    @Test("An over-long set sets no rep max through either computation")
+    func anOverLongSetSetsNoRepMaxEitherWay() throws {
+        let eleven = try workingSet(Weight(grams: 100_000), reps: 11)
+
+        #expect(SchemeRecordCalculator().records(in: [run(100_000, 11, by: 1)]).isEmpty)
+        #expect(PersonalRecordCalculator().repMax(forReps: 10, in: [eleven]) == nil)
     }
 
     /// `SetRecord.repsRange` starts at zero, so a completed working set of no reps is storable —
@@ -75,46 +118,55 @@ struct SchemeRecordCalculatorTests {
         #expect(SchemeRecordCalculator().records(in: []).isEmpty)
     }
 
-    /// **What a run holds is a staircase, not a rectangle**, and a reader that describes it as a
-    /// pair of ranges says something false. The most ordinary history there is produces one: a heavy
-    /// single blocks exactly the `1 × 1` cell and nothing else.
-    @Test("A blocked corner leaves a run holding all but one of its cells")
-    func aRunsCellsAreNotARectangle() {
+    /// The history that used to produce a staircase: a heavy single and a volume run now hold one
+    /// cell each, and the cells between them are nobody's.
+    @Test("A heavy single blocks nothing, because it was never in the volume run's way")
+    func aHeavySingleBlocksNothing() {
         let records = SchemeRecordCalculator().records(in: [
             run(140_000, 1, by: 1, at: 0),
             run(100_000, 5, by: 5, at: 1),
         ])
 
-        let volume = records.filter { $0.setOffset == 1 }
-        #expect(volume.count == 24)
-        #expect(!volume.contains { $0.scheme == RecordScheme(reps: 1, sets: 1) })
-        // The corner the volume run did not take is still a record — the single's.
+        #expect(records.count == 2)
         #expect(record(records, reps: 1, sets: 1)?.weight == Weight(grams: 140_000))
-        // And its own bottom-right corner is always held, which is what makes a maximal scheme safe
-        // to read where a pair of ranges is not.
-        #expect(volume.contains { $0.scheme == RecordScheme(reps: 5, sets: 5) })
+        #expect(record(records, reps: 5, sets: 5)?.weight == Weight(grams: 100_000))
+        #expect(records.filter { $0.setOffset == 1 }.count == 1)
     }
 
     // MARK: - FR-16.2.3, the load a record beat
 
+    /// `DOD-17.2`: `90 × 5 × 5` after `80 × 5 × 5` is one record at `5×5`, previous 80, and no other
+    /// cell moved.
     @Test("The first run at a scheme is a baseline; the next heavier one carries what it beat")
     func baselineThenImprovement() {
         let records = SchemeRecordCalculator().records(in: [
-            run(100_000, 5, by: 5, at: 0),
-            run(105_000, 5, by: 5, at: 5),
+            run(80_000, 5, by: 5, at: 0),
+            run(90_000, 5, by: 5, at: 5),
         ])
 
-        #expect(record(records, reps: 5, sets: 5)?.weight == Weight(grams: 105_000))
-        #expect(record(records, reps: 5, sets: 5)?.previousWeight == Weight(grams: 100_000))
-        #expect(records.allSatisfy { $0.previousWeight == Weight(grams: 100_000) })
+        #expect(records.count == 1)
+        #expect(record(records, reps: 5, sets: 5)?.weight == Weight(grams: 90_000))
+        #expect(record(records, reps: 5, sets: 5)?.previousWeight == Weight(grams: 80_000))
+        #expect(record(records, reps: 5, sets: 5)?.setOffset == 5)
     }
 
-    @Test("A first-ever run is a baseline at every cell it fills")
+    @Test("A first-ever run is a baseline at the cell it fills")
     func aFirstRunIsABaseline() {
         let records = SchemeRecordCalculator().records(in: [run(100_000, 5, by: 5)])
 
-        #expect(records.allSatisfy { $0.previousWeight == nil })
+        #expect(records.count == 1)
         #expect(record(records, reps: 5, sets: 5)?.previousWeight == nil)
+        #expect(record(records, reps: 5, sets: 5)?.weight == Weight(grams: 100_000))
+    }
+
+    /// The state a screen has to tell from a baseline and from a record: a cell nothing reached is
+    /// absent, not present at zero (`FR-17.2.2`).
+    @Test("A scheme never performed is absent from the table entirely")
+    func aSchemeNeverPerformedIsAbsent() {
+        let records = SchemeRecordCalculator().records(in: [run(100_000, 5, by: 5)])
+
+        #expect(!records.contains { $0.scheme == RecordScheme(reps: 3, sets: 3) })
+        #expect(record(records, reps: 3, sets: 3) == nil)
     }
 
     /// The tie-break, and the half of it that is easy to lose: an equal load neither takes the cell
@@ -175,19 +227,23 @@ struct SchemeRecordCalculatorTests {
 
     @Test("The table comes back ascending by scheme")
     func theTableIsOrdered() {
-        let records = SchemeRecordCalculator().records(in: [run(100_000, 3, by: 2)])
+        let records = SchemeRecordCalculator().records(in: [
+            run(100_000, 3, by: 2, at: 0),
+            run(120_000, 1, by: 1, at: 2),
+            run(90_000, 3, by: 1, at: 3),
+        ])
 
         #expect(
             records.map(\.scheme) == [
-                RecordScheme(reps: 1, sets: 1), RecordScheme(reps: 1, sets: 2),
-                RecordScheme(reps: 2, sets: 1), RecordScheme(reps: 2, sets: 2),
+                RecordScheme(reps: 1, sets: 1),
                 RecordScheme(reps: 3, sets: 1), RecordScheme(reps: 3, sets: 2),
             ])
     }
 
     /// `FR-16.2.1`: the N-rep max is the `sets == 1` column of this table, so the two must agree on
-    /// the same sets — asserted against `PersonalRecordCalculator`, which is the definition
-    /// `FR-1.6.1` already shipped.
+    /// the same sets — asserted against `PersonalRecordCalculator`, which is `FR-1.6.1`'s own
+    /// definition. Both are exact reps since `D-17.2`, and this is the test that would fail if only
+    /// one of them were moved.
     @Test("The one-set column is the N-rep max the rep-max calculator computes")
     func theOneSetColumnIsTheRepMax() {
         let sets = [
@@ -202,7 +258,7 @@ struct SchemeRecordCalculatorTests {
 
         let column = SchemeRecordCalculator().records(in: runs).filter { $0.scheme.sets == 1 }
 
-        #expect(column.count == 8)
+        #expect(column.count == 3)
         for record in column {
             let repMax = calculator.repMax(forReps: record.scheme.reps, in: sets)
             #expect(repMax?.weight == record.weight)
@@ -211,6 +267,11 @@ struct SchemeRecordCalculatorTests {
         // Anchored, so the loop above cannot pass by comparing two absences.
         #expect(column.first { $0.scheme.reps == 2 }?.weight == Weight(grams: 120_000))
         #expect(column.first { $0.scheme.reps == 8 }?.weight == Weight(grams: 90_000))
+        #expect(column.first { $0.scheme.reps == 5 }?.weight == Weight(grams: 100_000))
+        // And the two calculators agree about an N nothing was performed at, which is the half an
+        // agreement over present cells alone cannot see.
+        #expect(!column.contains { $0.scheme.reps == 1 })
+        #expect(calculator.repMax(forReps: 1, in: sets) == nil)
     }
 }
 
@@ -223,12 +284,16 @@ extension SchemeRecord {
 /// `FR-16.2.4` — which cell a badge names, given the cells a run holds.
 @Suite("Maximal scheme")
 struct MaximalSchemeTests {
-    /// The corner of what a run took: the highest reps at the highest set count.
-    @Test("The maximal scheme of one run's cells is its corner")
-    func theMaximalSchemeIsTheCorner() {
+    /// **The choice is trivial for one run, and that is the point worth pinning.** Since
+    /// `FR-17.2.1` a run holds one cell, so every production caller hands `maximal(of:)` a
+    /// single-element sequence or an empty one; the rule below it survives because the cache is not
+    /// the calculator, and a restored backup can still name one set several times.
+    @Test("One run holds one cell, so the maximal scheme is that cell")
+    func theMaximalSchemeOfOneRunIsItsOnlyCell() {
         let held = SchemeRecordCalculator()
             .records(in: [SetRun(weight: Weight(grams: 100_000), reps: 5, count: 3, setOffset: 0)])
 
+        #expect(held.count == 1)
         #expect(RecordScheme.maximal(of: held.map(\.scheme)) == RecordScheme(reps: 5, sets: 3))
     }
 

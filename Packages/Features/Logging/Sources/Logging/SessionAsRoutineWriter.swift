@@ -45,8 +45,8 @@ struct SessionAsRoutineWriter: Sendable {
 
     /// Writes the plan's slots and their targets under the routine row that already landed.
     ///
-    /// **Positions are renumbered from zero**, on `RoutineListState.duplicate(_:)`'s rule: a stored
-    /// `order` is a position in a list a soft delete may have left gaps in.
+    /// **Positions are renumbered from zero**, on `WeekEditorState.duplicateDay(_:)`'s rule: a
+    /// stored `order` is a position in a list a soft delete may have left gaps in.
     ///
     /// - Parameters:
     ///   - plan: The workout read as a routine.
@@ -73,8 +73,9 @@ struct SessionAsRoutineWriter: Sendable {
                         deletedAt: nil,
                         routineExerciseID: slotID,
                         order: index,
-                        // Never blank: every target here is a load that was actually lifted, so
-                        // `FR-15.2.2`'s "decide it in the session" cannot arise from this path.
+                        // Blank only where the plan being carried forward was (`FR-15.2.2`): a
+                        // performed group is a load that was actually lifted, and a skipped
+                        // exercise's planned rows are copied as they stand.
                         targetWeight: group.weight,
                         targetReps: group.reps,
                         targetSets: group.sets))

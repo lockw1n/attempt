@@ -64,14 +64,22 @@ cd "$(dirname "$0")/.."
 # notice nothing the parity check does not. Set it above that count where such tests exist, and at
 # the suite's own count where they do not — the latter is a floor that adds nothing, which is the
 # honest setting rather than a number chosen to look like the former.
-#   DesignSystem:    31 tests, 19 reference-backed, 12 harness probes  -> 24, above the 19.
-#   ExerciseLibrary: 40 tests, all of them reference-backed, no probes -> 40, its own count.
-#   Logging:         82 tests, 79 reference-backed, a width probe and two layout budgets
-#                                                                    -> 82, its own count.
-#   History:         25 tests, 24 reference-backed, one layout budget -> 25, above the 24.
-#   Dashboard:       20 tests, all of them reference-backed, no probes -> 20, its own count.
+#   DesignSystem:    35 tests, 21 reference-backed, 14 harness probes  -> 35, its own count.
+#                     T-1.92 added four probes for TR-1.12's blank guard and found BOTH halves of
+#                     this row stale while paying them: the floor read 24 against 31 tests, and the
+#                     derivation read 19 reference-backed against 84 references, which is 21. Seven
+#                     tests could have vanished unnoticed. Set to its own count now, as every other
+#                     suite is — "above the 19" was a margin that only ever grew.
+#   ExerciseLibrary: 42 tests, all of them reference-backed, no probes -> 42, its own count.
+#   Logging:         93 tests, 88 reference-backed, a width probe and four layout budgets
+#                                                                    -> 93, its own count.
+#   History:         28 tests, 27 reference-backed, one layout budget -> 28, above the 27.
+#   Dashboard:       21 tests, all of them reference-backed, no probes -> 21, its own count.
 #   Settings:        45 tests, all of them reference-backed, no probes -> 45, its own count.
-#   Routines:        12 tests, all of them reference-backed, no probes -> 12, its own count.
+#   Routines:         4 tests, all of them reference-backed, no probes ->  4, its own count.
+#                     The one floor that has ever gone DOWN: T-17.12 retired four screens for one
+#                     (`FR-17.10.6`), so the suite is a quarter of what it was. A floor left above
+#                     its count fails the run and reads exactly like a missing test.
 # A screen suite added later is the ExerciseLibrary case unless it brings probes of its own, and a
 # screen added to an existing package raises that package's floor rather than adding a row.
 #
@@ -82,13 +90,13 @@ cd "$(dirname "$0")/.."
 # 15), each drifting one task at a time. `git grep -c '@Test' -- <suite>` is the count to set it
 # from, and a task that adds a snapshot test owes this list the same edit it owes __Snapshots__.
 SUITES=(
-    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|24"
-    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|40"
-    "Packages/Features/Logging|Logging|LoggingSnapshotTests|82"
-    "Packages/Features/History|History|HistorySnapshotTests|25"
-    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|20"
+    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|35"
+    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|42"
+    "Packages/Features/Logging|Logging|LoggingSnapshotTests|93"
+    "Packages/Features/History|History|HistorySnapshotTests|28"
+    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|21"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|45"
-    "Packages/Features/Routines|Routines|RoutinesSnapshotTests|12"
+    "Packages/Features/Routines|Routines|RoutinesSnapshotTests|4"
 )
 
 # The iOS version the committed references were rendered on. See the header: bump it only when

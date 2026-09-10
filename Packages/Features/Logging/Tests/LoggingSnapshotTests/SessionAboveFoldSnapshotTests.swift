@@ -157,6 +157,7 @@
                         draft: .constant(Fixtures.storedNote),
                         isExpanded: .constant(false),
                         hasFailed: false,
+                        saveEmphasis: .secondary,
                         save: {}
                     )
                 }
@@ -173,6 +174,7 @@
                         draft: .constant(SessionNoteDraft()),
                         isExpanded: .constant(false),
                         hasFailed: false,
+                        saveEmphasis: .secondary,
                         save: {}
                     )
                 }
@@ -194,6 +196,7 @@
                         draft: .constant(Fixtures.editedNote),
                         isExpanded: .constant(true),
                         hasFailed: true,
+                        saveEmphasis: .secondary,
                         save: {}
                     )
                 }

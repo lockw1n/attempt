@@ -115,14 +115,14 @@ extension RootTabView {
         }
     }
 
-    /// The catalogue as the routine editor's chooser (`FR-15.2.1`), or the reason it cannot be
-    /// shown.
+    /// The catalogue as Edit week's chooser (`FR-17.10.6`), or the reason it cannot be shown.
     ///
     /// **The same join as ``exercisePickerRoot``, one feature over**: `Routines` and
     /// `ExerciseLibrary` do not depend on each other (`TR-1.3`), so the screen that chooses an
     /// exercise and the store that receives one are composed here. The two pickers are two route
     /// cases rather than one with a mode because *this* closure is the whole difference between
-    /// them, and it is chosen from the route alone.
+    /// them, and it is chosen from the route alone. Which day the exercise lands in is the store's
+    /// own answer — the day that is open (``Routines/WeekEditorState/addExercise(id:)``).
     @ViewBuilder
     var routineExercisePickerRoot: some View {
         switch dependencies.state {
@@ -130,7 +130,7 @@ extension RootTabView {
             ExerciseListView(
                 repository: repositories.exercises, workouts: repositories.workouts
             ) { exercise in
-                await stores.routineEditor.addExercise(id: exercise.id)
+                await stores.weekEditor.addExercise(id: exercise.id)
             }
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)

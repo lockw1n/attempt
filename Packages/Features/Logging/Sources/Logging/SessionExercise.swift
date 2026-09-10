@@ -210,7 +210,56 @@ public struct SessionExercise: Identifiable, Equatable, Sendable {
     /// pre-populate nothing at all.
     public var plannedSeed: PlannedSetSeed? {
         guard let group = nextPlannedGroup else { return nil }
-        return PlannedSetSeed(weight: group.targetWeight, reps: group.targetReps)
+        return PlannedSetSeed(
+            weight: group.targetWeight,
+            reps: group.targetReps,
+            sets: Self.plannedRemainder(in: planned, afterWorkingSets: sets.count { !$0.isWarmup }))
+    }
+
+    /// How many sets of the group the next set falls in are still unlogged (`FR-17.1.1`).
+    ///
+    /// **The same walk ``plannedGroup(in:afterWorkingSets:)`` makes, carrying the offset it drops.**
+    /// That function answers *which group*; this answers *how far into it*, and a second walk that
+    /// counted differently is how the form and the target on the row start disagreeing.
+    ///
+    /// - Parameters:
+    ///   - planned: The groups, in order.
+    ///   - consumed: How many working sets precede the one being placed.
+    /// - Returns: The sets left in that group, or one past the end of the plan.
+    static func plannedRemainder(
+        in planned: [PlannedTargetGroup], afterWorkingSets consumed: Int
+    ) -> Int {
+        var remaining = consumed
+        for group in planned {
+            if remaining < group.targetSets { return group.targetSets - remaining }
+            remaining -= group.targetSets
+        }
+        return 1
+    }
+}
+
+extension ExerciseEntry {
+    /// This entry carrying the lifter's check-off (`FR-17.9.3`, `FR-15.3.4`).
+    ///
+    /// **Rebuilt rather than mutated**, the record being a value with `let` properties — and shared
+    /// by the two screens that answer a row, so the nine columns carried across are written once.
+    ///
+    /// **The no-op guard is the caller's, not this property's.** Assigning a `@Model` property
+    /// marks the row changed whatever the value was, so an entry already done must not be saved at
+    /// all (`G-2.4`); a guard here would still hand the caller a value to save, which is the shape
+    /// that goes wrong.
+    var markedDone: ExerciseEntry {
+        ExerciseEntry(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            sessionID: sessionID,
+            exerciseID: exerciseID,
+            order: order,
+            notes: notes,
+            isMarkedDone: true
+        )
     }
 }
 
@@ -231,14 +280,22 @@ public struct PlannedSetSeed: Equatable, Sendable {
     /// The reps prescribed per set in the group the next set falls in.
     public let reps: Int
 
+    /// How many sets of that group are still unlogged (`FR-17.1.1`), at least one.
+    ///
+    /// **The remainder rather than the group's own count**, because the form writes what is left:
+    /// a lifter three sets into a five-set group who opens the sheet is answering for two.
+    public let sets: Int
+
     /// Builds the seed.
     ///
     /// - Parameters:
     ///   - weight: The load prescribed, or `nil`.
     ///   - reps: The reps prescribed.
-    public init(weight: Weight?, reps: Int) {
+    ///   - sets: How many sets of the group are left, defaulting to one.
+    public init(weight: Weight?, reps: Int, sets: Int = 1) {
         self.weight = weight
         self.reps = reps
+        self.sets = max(1, sets)
     }
 }
 

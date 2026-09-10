@@ -12,6 +12,9 @@ struct RouteTests {
     static let exerciseID = UUID(uuidString: "0F5A1E24-9B7D-4C31-8E62-1A2B3C4D5E6F") ?? UUID()
     static let sessionID = UUID(uuidString: "7C1D2E3F-4A5B-4C6D-8E9F-0A1B2C3D4E5F") ?? UUID()
 
+    /// A fixed instant, so nothing here asserts against the day it runs.
+    static let day = Date(timeIntervalSince1970: 1_767_484_800)
+
     static let all: [Route] = [
         .dashboard(.recentPersonalRecords),
         .training(.activeSession),
@@ -20,9 +23,13 @@ struct RouteTests {
         .exerciseLibrary(.exerciseCreate),
         .exerciseLibrary(.exerciseEdit(exerciseID: exerciseID)),
         .exerciseLibrary(.exercisePicker),
+        .exerciseLibrary(.routineExercisePicker),
+        .routines(.editWeek),
         .history(.session(sessionID: sessionID)),
         .history(.calendar),
+        .history(.week(containing: day)),
         .settings(.about),
+        .settings(.recentRecordsExercises),
     ]
 
     /// The keys a route encodes to, outermost first — the case names and the associated-value
@@ -74,13 +81,24 @@ struct RouteTests {
                 == ["exerciseLibrary", "_0", "exercisePicker"]
         )
         #expect(
+            try Self.encodedKeyPath(.routines(.editWeek)) == ["routines", "_0", "editWeek"]
+        )
+        #expect(
             try Self.encodedKeyPath(.history(.calendar)) == ["history", "_0", "calendar"]
         )
         #expect(
             try Self.encodedKeyPath(.history(.session(sessionID: Self.sessionID)))
                 == ["history", "_0", "session", "sessionID"]
         )
+        #expect(
+            try Self.encodedKeyPath(.history(.week(containing: Self.day)))
+                == ["history", "_0", "week", "containing"]
+        )
         #expect(try Self.encodedKeyPath(.settings(.about)) == ["settings", "_0", "about"])
+        #expect(
+            try Self.encodedKeyPath(.settings(.recentRecordsExercises))
+                == ["settings", "_0", "recentRecordsExercises"]
+        )
     }
 
     /// `D-8`/Q-1.2's split, stated as the mapping the shell actually navigates by. The Train pair is
@@ -90,8 +108,11 @@ struct RouteTests {
         #expect(Route.dashboard(.recentPersonalRecords).tab == .home)
         #expect(Route.training(.activeSession).tab == .train)
         #expect(Route.exerciseLibrary(.exerciseDetail(exerciseID: UUID())).tab == .train)
+        #expect(Route.routines(.editWeek).tab == .train)
         #expect(Route.history(.session(sessionID: UUID())).tab == .history)
+        #expect(Route.history(.week(containing: Self.day)).tab == .history)
         #expect(Route.settings(.about).tab == .settings)
+        #expect(Route.settings(.recentRecordsExercises).tab == .settings)
     }
 
     /// The payload has to come back, not just the case: a route that decoded to *some* exercise
@@ -125,6 +146,26 @@ struct RouteTests {
         let json = Data(#"{"crossTraining":{"_0":{"class":{}}}}"#.utf8)
         #expect(throws: (any Error).self) {
             try JSONDecoder().decode(Route.self, from: json)
+        }
+    }
+
+    /// A RETIRED case is an unknown case, and it is the only kind this app has actually shipped:
+    /// build 1.0 (1) wrote these five spellings, `T-17.12` removed them (`FR-17.10.6`), and a stack
+    /// stored under that build still names them. The five are listed rather than sampled because
+    /// each is a different payload shape, and one carrying an identifier is the one a lenient
+    /// decoder would be most tempted to keep.
+    @Test(
+        "a routines case retired with its screen fails to decode",
+        arguments: [
+            #"{"routines":{"_0":{"routineList":{}}}}"#,
+            #"{"routines":{"_0":{"routineCreate":{}}}}"#,
+            #"{"routines":{"_0":{"routineEdit":{"routineID":"0F5A1E24-9B7D-4C31-8E62-1A2B3C4D5E6F"}}}}"#,
+            #"{"routines":{"_0":{"programList":{}}}}"#,
+            #"{"routines":{"_0":{"programEdit":{"programID":"0F5A1E24-9B7D-4C31-8E62-1A2B3C4D5E6F"}}}}"#,
+        ])
+    func retiredRoutinesCaseThrows(json: String) {
+        #expect(throws: (any Error).self) {
+            try JSONDecoder().decode(Route.self, from: Data(json.utf8))
         }
     }
 }

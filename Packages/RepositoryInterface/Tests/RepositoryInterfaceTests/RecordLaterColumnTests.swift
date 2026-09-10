@@ -73,7 +73,7 @@ struct RecordLaterColumnTests {
         #expect(record.recentRecordsScope == .dashboardLifts)
         #expect(record.recentRecordsShowsBaselines == false)
         #expect(record.recentRecordsExerciseIDs == nil)
-        #expect(record.recentRecordsSchemes == .derived)
+        #expect(record.recentRecordsSchemes == .everyScheme)
         // The neighbours a decoder that threw over an absent preference could not have kept.
         #expect(record.theme == .dark)
         #expect(record.displayUnit == .pounds)

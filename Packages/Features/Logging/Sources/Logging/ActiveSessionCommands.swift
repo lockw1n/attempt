@@ -276,8 +276,8 @@ extension ActiveSessionStore {
     /// - Parameter write: The set to log, or the rewrite to apply.
     func write(_ write: SetEditorWrite) async {
         switch write {
-        case .add(let entryID, let values):
-            await addSet(toEntryID: entryID, values: values)
+        case .add(let entryID, let rows):
+            await addSets(toEntryID: entryID, rows: rows)
         case .rewrite(let setID, let entryID, let values):
             await editSet(id: setID, inEntryID: entryID, to: values)
         }
@@ -357,7 +357,7 @@ extension ActiveSessionStore {
     ///
     /// It shares the chain with the exercise commands rather than having one of its own: a set is
     /// written against an entry, and an entry can be moved or added by the same thumb between two
-    /// taps of **Log set**.
+    /// taps of **Log**.
     func writeAddedSet(toEntryID entryID: UUID, values: SetEntryValues) async {
         guard session != nil else { return }
         do {

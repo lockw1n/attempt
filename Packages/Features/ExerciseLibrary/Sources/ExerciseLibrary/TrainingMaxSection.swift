@@ -48,6 +48,18 @@ enum TrainingMaxScreenState: Equatable {
         guard let current = state.current else { return .none(history: state.history) }
         return .ready(current, history: state.history)
     }
+
+    /// Which absence this is, or `nil` where a number, a spinner or a diagnostic is drawn instead.
+    ///
+    /// **The one place `history.isEmpty` decides anything.** The view asks this and never re-reads
+    /// the array: the two absences differ in their sentence *and* in their command, and a second
+    /// reader is how those two halves came apart.
+    ///
+    /// - Returns: The absence, and with it the words the line and its command get.
+    var absence: TrainingMaxAbsence? {
+        guard case .none(let history) = self else { return nil }
+        return history.isEmpty ? .never : .notInForceYet
+    }
 }
 
 /// One history row and the entry it actually follows (`FR-15.1.4`).
@@ -85,9 +97,12 @@ struct TrainingMaxHistoryReading: Identifiable, Equatable {
 /// This exercise's training max, its history, and the sheet that changes it (`FR-15.1.4`,
 /// `FR-15.1.5`, `FR-16.7.2`).
 ///
-/// **Above the estimate, and that is the point of the pair.** The coach's number and the observed
-/// one are two different claims about the same lift, and the one a lifter trains off goes first;
-/// reading them one under the other is what stops either being mistaken for the other.
+/// **Below the estimate, which is the number the screen is opened for** (`FR-17.5.1`). The coach's
+/// number and the observed one are two claims about the same lift and are still read one under the
+/// other, so nothing is mistaken for the other; what changed is which of them goes first, because
+/// only one of the two exists on every exercise. Until review finding 07 the order was the reverse,
+/// on the argument that a lifter trains off the coach's number — true of the four lifts that have
+/// one, and paid for by 128 accessories opening on the absence of one.
 struct TrainingMaxSection: View {
     /// The section's own state.
     @State private var state: TrainingMaxSectionState
@@ -183,42 +198,98 @@ struct TrainingMaxReading: View {
     /// `G-3.3`'s step, from the app rather than from this view.
     @Environment(\.displayPrecision) private var displayPrecision
 
-    /// The heading, whichever of the four states is current, and the command that changes it.
-    var body: some View {
-        GroupedSection(Text(ExerciseLibraryStrings.trainingMaxSection)) {
-            switch state {
-            case .loading:
-                LoadingStateView()
-            case .ready(let current, let history):
-                inForce(current)
-                command(Text(ExerciseLibraryStrings.trainingMaxChangeAction))
-                disclosedHistory(history)
-            case .none(let history):
-                // T-1.09's insufficient-data view rather than its empty one: nothing was removed
-                // from a list here — a value the app cannot compute has simply never been given.
-                InsufficientDataView(
-                    message: Text(
-                        history.isEmpty
-                            ? ExerciseLibraryStrings.trainingMaxNone
-                            : ExerciseLibraryStrings.trainingMaxNotYet))
-                command(
-                    Text(
-                        history.isEmpty
-                            ? ExerciseLibraryStrings.trainingMaxSetAction
-                            : ExerciseLibraryStrings.trainingMaxChangeAction))
-                disclosedHistory(history)
-            case .failed:
-                ErrorStateView(
-                    message: Text(ExerciseLibraryStrings.trainingMaxError),
-                    retryEmphasis: .secondary,
-                    retry: retry)
+    /// A line where there is nothing to report, and the heading over a card where there is
+    /// (`FR-17.5.1`).
+    ///
+    /// **The state 132 exercises are in has no heading of its own**, and that is what makes it one
+    /// line: a heading reading *Training max* over a line reading *No training max* is the sentence
+    /// twice and a card drawn around the pair of them. Every other state fills a card, so every
+    /// other state keeps the heading — including the absence that has a history under it, which
+    /// needs one for the disclosure to be the history *of* something.
+    @ViewBuilder var body: some View {
+        if let absence = state.absence, absence == .never {
+            VStack(alignment: .leading, spacing: Spacing.sm.points) {
+                absentLine(absence)
+                writeFailure
             }
-            if hasFailedWrite {
-                // No retry closure: nothing was stored and the sheet stayed open over it, so the
-                // way to try again is the command directly above this.
-                ErrorStateView(message: Text(ExerciseLibraryStrings.trainingMaxWriteError))
+        } else {
+            GroupedSection(Text(ExerciseLibraryStrings.trainingMaxSection)) {
+                content
+                writeFailure
             }
         }
+    }
+
+    /// Whichever of the four states is current, inside the card.
+    @ViewBuilder private var content: some View {
+        switch state {
+        case .loading:
+            LoadingStateView()
+        case .ready(let current, let history):
+            inForce(current)
+            command(Text(ExerciseLibraryStrings.trainingMaxChangeAction))
+            disclosedHistory(history)
+        case .none(let history):
+            // Which absence this is comes from ``TrainingMaxScreenState/absence`` rather than from
+            // `history` again: the rule has one home, and the view reading it a second time is how
+            // the line and its command came to disagree.
+            if let absence = state.absence {
+                absentLine(absence)
+            }
+            disclosedHistory(history)
+        case .failed:
+            ErrorStateView(
+                message: Text(ExerciseLibraryStrings.trainingMaxError),
+                retryEmphasis: .secondary,
+                retry: retry)
+        }
+    }
+
+    /// The last write's failure, wherever the state drew itself.
+    ///
+    /// No retry closure: nothing was stored and the sheet stayed open over it, so the way to try
+    /// again is the command this sits under.
+    @ViewBuilder private var writeFailure: some View {
+        if hasFailedWrite {
+            ErrorStateView(message: Text(ExerciseLibraryStrings.trainingMaxWriteError))
+        }
+    }
+
+    /// The absent state: the sentence, and the command that ends it (`FR-17.5.1`).
+    ///
+    /// **A caption with an inline command, and deliberately not one of `T-1.09`'s state components**
+    /// (`FR-1.13.1`) — the set editor's `FieldRefusal` is the same exception for the same reason. An
+    /// icon, a heading and two lines of explanation is the shape a screen uses when the thing the
+    /// reader came for is missing; a training max is not what this screen is opened for, and drawing
+    /// its absence at that size made 132 exercises open on an apology.
+    ///
+    /// **Secondary, never the accent** — this screen spends its one filled button on the notes save
+    /// (`FR-16.6.4`), and the line inherits the full-width command's reason for being `.plain`.
+    ///
+    /// - Parameter absence: Which of the two absences this is.
+    /// - Returns: The line.
+    private func absentLine(_ absence: TrainingMaxAbsence) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.sm.points) {
+            sentence(absence)
+            Button(action: change) {
+                Text(absence.command)
+            }
+            .buttonStyle(.secondaryAction)
+            .accessibilityLabel(Text(absence.commandLabel))
+        }
+    }
+
+    /// The line's own words, with the sentence they were shortened from behind them.
+    ///
+    /// - Parameter absence: Which of the two absences this is.
+    /// - Returns: The text.
+    private func sentence(_ absence: TrainingMaxAbsence) -> some View {
+        Text(absence.line)
+            .font(Typography.body.font)
+            .foregroundStyle(ColorToken.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityHint(Text(absence.hint))
     }
 
     /// `FR-15.1.4`'s history behind its disclosure, where the exercise has any.

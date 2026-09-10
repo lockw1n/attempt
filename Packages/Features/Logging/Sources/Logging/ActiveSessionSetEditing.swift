@@ -60,8 +60,10 @@ extension ActiveSessionView {
 
     /// ``draft(for:)`` with the unit and the locale passed rather than read off the screen.
     ///
-    /// **The choice between the three initialisers is this function's whole content.** A plan comes
-    /// first and is the only one whose load can be blank (`FR-15.2.3`); between the other two it is
+    /// **The choice between the four initialisers is this function's whole content.** A checklist
+    /// row comes first, because it is the only one that knows how many sets there are and what is
+    /// already logged against them (`FR-17.9.4`, `FR-17.7.5`). A plan is next and is the only one
+    /// whose load can be blank (`FR-15.2.3`); between the other two it is
     /// the note that separates them — an edit is the *same* set, so a form that opened without the
     /// note would delete it on the next confirm, while a duplicate is a set that has not been
     /// performed and repeating a note puts words in the user's mouth.
@@ -72,6 +74,9 @@ extension ActiveSessionView {
     ///   - locale: The locale to render the numbers in.
     /// - Returns: The draft.
     static func draft(for target: SetEditorTarget, unit: MassUnit, locale: Locale) -> SetDraft {
+        if let row = target.row {
+            return SetDraft(answering: row, unit: unit, locale: locale)
+        }
         if let planned = target.planned {
             return SetDraft(planning: planned, unit: unit, locale: locale)
         }
@@ -166,11 +171,14 @@ extension ActiveSessionView {
     ///   - target: What the editor was open over.
     /// - Returns: The write, or `nil` where the draft does not resolve.
     static func write(_ draft: SetDraft, over target: SetEditorTarget) -> SetEditorWrite? {
-        guard let values = draft.resolved else { return nil }
+        guard let group = draft.resolvedGroup else { return nil }
         guard let setID = target.editing else {
-            return .add(entryID: target.entryID, values: values)
+            return .add(entryID: target.entryID, rows: group.rows)
         }
-        return .rewrite(setID: setID, entryID: target.entryID, values: values)
+        // An edit is over one row that exists, so the count field is not drawn and the group is
+        // one — see ``SetEditorMode/offersSetCount``. Reading `values` rather than the first row
+        // keeps that true whatever a caller passes.
+        return .rewrite(setID: setID, entryID: target.entryID, values: group.values)
     }
 
     /// Soft-deletes the set the editor is open over and closes it (`FR-1.2.7`, `G-1.3`).

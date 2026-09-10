@@ -112,6 +112,26 @@ struct NavigationSnapshotTests {
         #expect(decoded.selectedTab == .train)
     }
 
+    /// The same rule over the one stack this app has actually shipped and then broken: build
+    /// 1.0 (1) could write `routines/routineEdit` onto Train, and `T-17.12` retired the case with
+    /// its screen (`FR-17.10.6`). The stack Train held is dropped and Train opens at its root —
+    /// **not** the entry alone, which would leave the routine exercise chooser pushed over nothing
+    /// to choose into. History, which named no retired case, is untouched.
+    @Test("a stack naming a route case retired with its screen opens that tab at its root")
+    func retiredRouteDropsItsStack() throws {
+        var object = try Self.encodedObject(Self.populated)
+        var stacks = try #require(object["stacks"] as? [[String: Any]])
+        stacks[0]["routes"] = [
+            ["routines": ["_0": ["routineEdit": ["routineID": Self.sessionID.uuidString]]]],
+            ["exerciseLibrary": ["_0": ["routineExercisePicker": [String: Any]()]]],
+        ]
+        object["stacks"] = stacks
+
+        let decoded = try Self.decode(object)
+        #expect(decoded.stacks[.train] == nil)
+        #expect(decoded.stacks[.history]?.first == .history(.session(sessionID: Self.sessionID)))
+    }
+
     /// An unreadable tab in a stack entry takes that entry with it, for the same reason: there is no
     /// tab to put the routes on.
     @Test("a stack under an unknown tab is dropped")

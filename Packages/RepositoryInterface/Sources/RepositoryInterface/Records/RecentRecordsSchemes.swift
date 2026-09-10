@@ -1,38 +1,30 @@
 import Foundation
 import PowerliftingCore
 
-/// Which schemes `FR-1.6.5`'s feed reports on (`FR-16.3.2`).
+/// Which schemes `FR-1.6.5`'s feed reports on (`FR-17.3.1`, `FR-17.3.2`).
 ///
-/// **Two cases and no third for "all", deliberately.** `FR-16.3.2` offers derived or chosen, and
-/// "every scheme" is what ``chosen(_:)`` with the whole table says — a case meaning it would be a
-/// second spelling of a selection the user can already make, and one nothing in the requirement
-/// asks for.
+/// **``everyScheme`` is the un-configured value**, which is what lets the stored columns carry this
+/// in their absence rather than in a discriminator of their own: no chosen list means every scheme.
+/// A lifter who ticks nothing is `.chosen([])` and sees an empty feed, which is a choice they made.
 ///
-/// **``derived`` is the un-configured value**, which is what lets the stored columns carry this in
-/// their absence rather than in a discriminator of their own: no chosen list means derived. A lifter
-/// who ticks nothing is `.chosen([])` and sees an empty feed, which is a choice they made.
+/// **The case name is not stored** — see ``stored(reps:sets:)`` — so it is free to say what the case
+/// means. It used to be `derived`, and to mean "whatever you have logged three times"; `FR-17.3.1`
+/// withdrew that threshold, and what the case selects is now the whole of `FR-16.2.1`'s table.
 public enum RecentRecordsSchemes: Sendable, Hashable {
-    /// Whatever the lifter has actually trained — see ``derivedThreshold``.
-    case derived
+    /// Every cell, narrowing nothing.
+    case everyScheme
 
     /// Exactly these cells, whatever the history says.
     case chosen([RecordScheme])
 
-    /// How many times a scheme has to have been performed before ``derived`` shows records at it
-    /// (`FR-16.3.2`).
-    ///
-    /// **Three, from the requirement, and it counts *runs* rather than cells.** A `100 × 5 × 5`
-    /// establishes sixty cells by dominance (`FR-16.2.2`) and is one performance of one scheme; a
-    /// threshold counting cells would make `1 × 1` the most-trained scheme of every lifter alive.
-    public static let derivedThreshold = 3
-
-    /// The cells chosen, or `nil` where the schemes are derived. The stored shape.
+    /// The cells chosen, or `nil` where every scheme is reported. The stored shape.
     public var chosenSchemes: [RecordScheme]? {
         guard case .chosen(let schemes) = self else { return nil }
         return schemes
     }
 
-    /// The value two stored columns describe — chosen where both are present, derived otherwise.
+    /// The value two stored columns describe — chosen where both are present, every scheme
+    /// otherwise.
     ///
     /// **Zipped rather than indexed, so a mismatched pair truncates instead of trapping.** The two
     /// columns are written together and can only disagree in a store this app did not write, where
@@ -43,7 +35,7 @@ public enum RecentRecordsSchemes: Sendable, Hashable {
     ///   - sets: The set-count column.
     /// - Returns: The choice those two columns carry.
     public static func stored(reps: [Int]?, sets: [Int]?) -> Self {
-        guard let reps, let sets else { return .derived }
+        guard let reps, let sets else { return .everyScheme }
         return .chosen(zip(reps, sets).map { RecordScheme(reps: $0, sets: $1) })
     }
 }

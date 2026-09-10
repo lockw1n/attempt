@@ -1,3 +1,4 @@
+import AppNavigation
 import DerivedValues
 import DesignSystem
 import Foundation
@@ -46,10 +47,6 @@ public struct RecentRecordsSettingsView: View {
     /// The screen's own state.
     @State private var state: RecentRecordsSettingsState
 
-    /// The locale the exercise names are resolved in (`FR-1.14.2`), handed to the state before its
-    /// read.
-    @Environment(\.locale) private var locale
-
     /// Builds the screen.
     ///
     /// - Parameters:
@@ -67,9 +64,12 @@ public struct RecentRecordsSettingsView: View {
     }
 
     /// The three states, and the read that fills them.
+    ///
+    /// **The read runs on every appearance rather than once**, which is what makes the chosen-lift
+    /// count on ``RecentRecordsSettingsForm`` true after a visit to the screen it opens: that
+    /// picker writes the settings row and pops back here (`FR-17.3.3`, `TR-1.5`).
     public var body: some View {
-        @Bindable var state = state
-        return ScrollView {
+        ScrollView {
             VStack(alignment: .leading, spacing: Spacing.lg.points) {
                 switch RecentRecordsSettingsScreenState.current(state) {
                 case .loading:
@@ -82,14 +82,11 @@ public struct RecentRecordsSettingsView: View {
                 case .ready(let settings):
                     RecentRecordsSettingsForm(
                         settings: settings,
-                        exerciseSearchText: $state.exerciseSearchText,
-                        exerciseSections: state.exerciseSections,
-                        hasExercises: !state.exerciseChoices.isEmpty,
+                        chosenExerciseCount: settings.recentRecordsExerciseIDs?.count ?? 0,
                         schemes: state.schemeChoices,
                         hasFailedWrite: state.writeFailure != nil,
                         apply: { change in Task { await state.apply(change) } },
-                        toggleExercise: { id in Task { await state.toggleExercise(id) } },
-                        setSchemesDerived: { on in Task { await state.setSchemesDerived(on) } },
+                        setSchemesChosen: { on in Task { await state.setSchemesChosen(on) } },
                         toggleScheme: { scheme in Task { await state.toggleScheme(scheme) } })
                 }
             }
@@ -98,10 +95,7 @@ public struct RecentRecordsSettingsView: View {
         }
         .background(ColorToken.background)
         .navigationTitle(Text(DashboardStrings.recentRecordsSettingsTitle))
-        .task {
-            state.nameLanguage = ExerciseNameLanguage(locale)
-            await state.load()
-        }
+        .task { await state.load() }
     }
 }
 
@@ -114,18 +108,12 @@ struct RecentRecordsSettingsForm: View {
     /// The row every control reads its selection from.
     let settings: UserSettings
 
-    /// What the user typed into the `.chosen` list's search field.
-    @Binding var exerciseSearchText: String
-
-    /// The exercises the chosen scope can name, as `FR-16.5.3`'s two sections.
-    let exerciseSections: [ExerciseChoiceSection]
-
-    /// Whether the catalogue holds anything to choose among at all.
+    /// How many lifts the pushed picker has ticked — the second line of the row that opens it.
     ///
-    /// **Measured on the catalogue rather than on ``exerciseSections``**, because a search that
-    /// matched nothing and a store with nothing in it are different facts wanting different
-    /// answers — the first has a query to clear, which ``ExerciseChoiceList`` offers itself.
-    let hasExercises: Bool
+    /// **Read off the stored column rather than off a loaded catalogue**, which is what lets this
+    /// screen stop reading the exercises at all: the count is a fact about the row, and the list it
+    /// counts belongs to the screen behind ``chooseLifts``.
+    let chosenExerciseCount: Int
 
     /// The schemes in scope, and which are ticked.
     let schemes: [RecentRecordsSchemeChoice]
@@ -136,11 +124,8 @@ struct RecentRecordsSettingsForm: View {
     /// Moves one field on the stored row.
     let apply: (@escaping (inout UserSettings) -> Void) -> Void
 
-    /// Adds or removes one exercise from the chosen list.
-    let toggleExercise: (UUID) -> Void
-
-    /// Switches the schemes between derived and chosen.
-    let setSchemesDerived: (Bool) -> Void
+    /// Switches the schemes between every scheme and a chosen list.
+    let setSchemesChosen: (Bool) -> Void
 
     /// Adds or removes one scheme from the chosen list.
     let toggleScheme: (RecordScheme) -> Void
@@ -154,12 +139,11 @@ struct RecentRecordsSettingsForm: View {
             ErrorStateView(message: Text(DashboardStrings.recentRecordsSettingsWriteError))
         }
         scope
-        if settings.recentRecordsScope == .chosen { chosenExercises }
         schemeSection
         baselines
     }
 
-    /// `FR-16.3.1`: which exercises the feed reports on.
+    /// `FR-16.3.1`: which exercises the feed reports on, and the way to the list under `.chosen`.
     private var scope: some View {
         GroupedSection(Text(DashboardStrings.recentRecordsScopeTitle)) {
             Picker(selection: binding(\.recentRecordsScope)) {
@@ -170,51 +154,65 @@ struct RecentRecordsSettingsForm: View {
                 Text(DashboardStrings.recentRecordsScopeTitle)
             }
             .pickerStyle(.segmented)
-            caption(DashboardStrings.recentRecordsScopeDetail)
+            // FR-17.3.3: the sentence is about the option selected, not about the first one.
+            caption(DashboardStrings.recentRecordsScopeDetail(for: settings.recentRecordsScope))
+            if settings.recentRecordsScope == .chosen { chooseLifts }
         }
     }
 
-    /// The `.chosen` scope's own list — revealed by the picker above rather than pushed.
+    /// `FR-17.3.3`'s row: the count of chosen lifts, and the screen that changes it.
     ///
-    /// **Inline rather than a screen of its own**, unlike `FR-1.9.1`'s tile picker: this list is
-    /// meaningful only under one of three scopes, and a row leading to a chooser that the current
-    /// scope ignores is the dead end `SettingsLandingView` hides the Health row to avoid. What was
-    /// shared with `FR-1.9.1`'s picker is the *view*, ``ExerciseChoiceList``, so the two lists
-    /// search and section alike without this one being pushed.
+    /// **A push rather than the inline list T-16.07 shipped**, which is review finding 08: the
+    /// catalogue is 132 rows, and unfolding them between the scope picker and the schemes made
+    /// every other control on this screen unreachable without a long scroll. T-16.07's argument
+    /// against pushing — a row leading to a chooser the current scope ignores is a dead end — is
+    /// answered by drawing the row only under `.chosen` rather than by keeping the list inline.
     ///
-    /// **It keeps its own heading over the shared view.** The sections inside are headed
-    /// **Trained** and **Everything else**, which say how the rows are ordered and not what the
-    /// list is for — and this screen's other three sections are all named, so two unnamed cards
-    /// between the scope picker and the schemes would read as belonging to neither.
-    @ViewBuilder private var chosenExercises: some View {
-        if hasExercises {
-            ExerciseChoiceList(
-                title: DashboardStrings.recentRecordsExercisesTitle,
-                searchText: $exerciseSearchText,
-                sections: exerciseSections,
-                toggle: toggleExercise)
-        } else {
-            GroupedSection(Text(DashboardStrings.recentRecordsExercisesTitle)) {
-                EmptyStateView(headline: Text(DashboardStrings.recentRecordsExercisesEmpty))
+    /// **Its own link rather than `Settings`' ``SettingsLinkRow``**, because `TR-1.3` keeps the two
+    /// feature modules from importing each other and this is the only row of its shape here.
+    private var chooseLifts: some View {
+        NavigationLink(value: Route.settings(.recentRecordsExercises)) {
+            HStack {
+                VStack(alignment: .leading, spacing: Spacing.xxs.points) {
+                    Text(DashboardStrings.recentRecordsExercisesChoose)
+                        .font(Typography.body.font)
+                        .foregroundStyle(ColorToken.textPrimary)
+                    Text(DashboardStrings.recentRecordsExercisesCount(chosenExerciseCount))
+                        .font(Typography.caption.font)
+                        .foregroundStyle(ColorToken.textSecondary)
+                }
+                Spacer(minLength: Spacing.sm.points)
+                Image(systemName: "chevron.right")
+                    .font(Typography.caption.font)
+                    .foregroundStyle(ColorToken.textTertiary)
+                    .accessibilityHidden(true)
             }
+            .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points, alignment: .leading)
+            .contentShape(.rect)
         }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
     }
 
-    /// `FR-16.3.2`: derived from the log, or the lifter's own list.
+    /// `FR-17.3.2`: every scheme, or the lifter's own list.
+    ///
+    /// **Off is the un-configured position and it narrows nothing**, which is the whole of what
+    /// `FR-17.3.1` changed here: the toggle used to say **Follow my training** and to mean a
+    /// threshold, and a record the workout badged could fail it.
     private var schemeSection: some View {
         GroupedSection(Text(DashboardStrings.recentRecordsSchemesTitle)) {
             Toggle(
                 isOn: Binding(
-                    get: { settings.recentRecordsSchemes == .derived },
-                    set: { setSchemesDerived($0) })
+                    get: { settings.recentRecordsSchemes != .everyScheme },
+                    set: { setSchemesChosen($0) })
             ) {
-                Text(DashboardStrings.recentRecordsSchemesDerived)
+                Text(DashboardStrings.recentRecordsSchemesOnlyThese)
                     .font(Typography.body.font)
                     .foregroundStyle(ColorToken.textPrimary)
             }
             .tint(ColorToken.brandAccent)
             caption(DashboardStrings.recentRecordsSchemesDetail)
-            if settings.recentRecordsSchemes != .derived { schemeChoices }
+            if settings.recentRecordsSchemes != .everyScheme { schemeChoices }
         }
     }
 

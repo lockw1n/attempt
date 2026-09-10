@@ -17,20 +17,24 @@ struct SchemeRecordRecomputeTests {
 
     // MARK: - FR-16.2.1, the runs the engine counts
 
-    @Test("Five consecutive fives fill the rectangle, and the cache holds all of it")
-    func aRunFillsItsRectangle() async throws {
+    @Test("Five consecutive fives fill the 5×5 cell, and the cache holds that one row")
+    func aRunFillsItsOwnCell() async throws {
         let fixture = try await oneSession(
             sets: Array(repeating: working(100_000, 5), count: 5))
 
         let records = try await fixture.recomputer.recompute(forExerciseID: fixture.exerciseID)
 
-        #expect(records.schemeRecords.count == 25)
+        #expect(records.schemeRecords.count == 1)
         #expect(cell(records, 5, 5)?.record.weight == Weight(grams: 100_000))
         #expect(cell(records, 5, 6) == nil)
+        // The cells the withdrawn dominance rule filled, end to end through the store.
+        #expect(cell(records, 5, 1) == nil)
+        #expect(cell(records, 1, 1) == nil)
         let cached = try await fixture.log.repositories.personalRecords.personalRecords(
             forExerciseID: fixture.exerciseID, includingDeleted: false)
-        #expect(cached.count == 25)
-        #expect(cached.map(\.setCount).max() == 5)
+        #expect(cached.count == 1)
+        #expect(cached.map(\.setCount) == [5])
+        #expect(cached.map(\.repCount) == [5])
     }
 
     /// The trap `T-16.01`'s review named: grouping a list the failures have already been dropped
@@ -173,16 +177,18 @@ struct SchemeRecordRecomputeTests {
 
     // MARK: - FR-1.6.x and FR-16.2.5, what did not change
 
+    /// The read is the `sets == 1` column, and since `FR-17.2.1` a run of five is not in it at all:
+    /// the volume run sets no rep max, and the single of three sets exactly one.
     @Test("The rep-max read is the one-set column and nothing else")
     func repMaxesAreTheOneSetColumn() async throws {
         let fixture = try await oneSession(
-            sets: Array(repeating: working(100_000, 5), count: 5))
+            sets: Array(repeating: working(100_000, 5), count: 5) + [working(120_000, 3)])
         try await fixture.recomputer.recompute(forExerciseID: fixture.exerciseID)
 
         let repMaxes = try await fixture.recomputer.repMaxes(forExerciseID: fixture.exerciseID)
 
-        #expect(repMaxes.map(\.reps) == [1, 2, 3, 4, 5])
-        #expect(repMaxes.allSatisfy { $0.record.weight == Weight(grams: 100_000) })
+        #expect(repMaxes.map(\.reps) == [3])
+        #expect(repMaxes.allSatisfy { $0.record.weight == Weight(grams: 120_000) })
     }
 
     /// `FR-16.2.5`: a scheme record never feeds e1RM. Four identical sets estimate exactly what one
@@ -202,10 +208,11 @@ struct SchemeRecordRecomputeTests {
         #expect(fromRun.record?.sourceSetID != nil)
     }
 
-    /// `FR-1.6.5`'s feed over `FR-16.2`'s table, end to end: a run can set records at two sets and
-    /// up while setting no rep max at all, and the feed has to say so rather than name five.
-    @Test("A volume run under a heavier single sets no rep max, and the feed reports none")
-    func aVolumeRunUnderASingleSetsNoRepMax() async throws {
+    /// `FR-17.2.1` end to end, over a real store: two runs at two schemes are two records, and each
+    /// names the cell it was actually performed at. Under the withdrawn dominance rule the heavier
+    /// single held five rep maxes and blocked the volume run out of the one-set column entirely.
+    @Test("A single and a volume run hold one cell each, and the rep-max column holds one N")
+    func twoRunsHoldTwoCells() async throws {
         let log = TrainingLog()
         let exerciseID = try await log.exercise()
         try await log.session(of: exerciseID, on: weeksAgo(2), sets: [working(140_000, 5)])
@@ -217,11 +224,15 @@ struct SchemeRecordRecomputeTests {
         let feed = try await recomputer.recentRecords(limit: 10)
         let volume = try #require(feed.first { $0.weight == Weight(grams: 100_000) })
 
-        #expect(volume.repMaxReps == nil)
         #expect(volume.scheme == RecordScheme(reps: 5, sets: 5))
-        // Anchored against the rep maxes themselves: every one of them is the heavier single's.
+        #expect(feed.count == 2)
+        #expect(
+            feed.first { $0.weight == Weight(grams: 140_000) }?.scheme
+                == RecordScheme(reps: 5, sets: 1))
+        // The rep-max column is one N — the single's — rather than the five it used to be, and the
+        // volume run adds none of its own.
         let repMaxes = try await recomputer.repMaxes(forExerciseID: exerciseID)
-        #expect(repMaxes.map(\.reps) == [1, 2, 3, 4, 5])
+        #expect(repMaxes.map(\.reps) == [5])
         #expect(repMaxes.allSatisfy { $0.record.weight == Weight(grams: 140_000) })
     }
 

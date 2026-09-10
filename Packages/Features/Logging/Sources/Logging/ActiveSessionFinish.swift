@@ -76,11 +76,11 @@ extension ActiveSessionStore {
             report(error)
             return
         }
-        guard let finished = session else { return }
+        // Nothing follows the release. `D-17.10` retired the program's day cursor and with it the
+        // prompt that stood here: a week is over when every one of its days is answered, which
+        // `FR-17.8.4`'s card on Train asks of the sessions rather than of a number this had to
+        // remember to write.
         releaseHeldSession()
-        // After the clear, which retires every diagnostic: this one is about the workout that
-        // has just ended rather than the one now held (none).
-        await advanceProgramRun(after: finished)
     }
 
     /// Discards the workout in progress (`FR-1.2.12`).

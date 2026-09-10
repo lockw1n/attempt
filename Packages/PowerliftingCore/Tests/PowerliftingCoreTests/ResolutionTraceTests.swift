@@ -73,10 +73,17 @@ private func tracedConfiguration(
             progressionIncrement: nil))
 }
 
-/// One 110 kg double, which Epley estimates at 117 333 g and Brzycki at 113 143 g — the figures
-/// `PersonalRecordCalculatorTests` pins — and which holds the 1RM and 2RM at 110 000 g.
+/// A 100 kg single and a 110 kg double, which Epley estimates at 117 333 g and Brzycki at 113 143 g
+/// — the figures `PersonalRecordCalculatorTests` pins.
+///
+/// **Two N's at two loads** (`FR-17.2.1`): the 1RM is 100 000 g and the 2RM 110 000 g, which is what
+/// lets a trace test tell a carried N from a hardcoded one. Under the withdrawn dominance rule the
+/// double alone held both at one weight, and a resolver reading the wrong N was invisible.
 private func tracedLog() throws -> [SetRecord] {
-    [try workingSet(Weight(grams: 110_000), reps: 2)]
+    [
+        try workingSet(Weight(grams: 100_000), reps: 1),
+        try workingSet(Weight(grams: 110_000), reps: 2),
+    ]
 }
 
 // MARK: - The chain the requirement names
@@ -390,18 +397,18 @@ struct TrainingMaxTraceTests {
 
     @Test("A derived training max traces the source, the percentage and the rule")
     func aDerivedTrainingMaxTracesEveryStep() throws {
-        // A 2-rep set holds the 1RM at the weight lifted, so the source is 110 000 g rather than an
+        // A 2-rep set holds the 2RM at the weight lifted, so the source is 110 000 g rather than an
         // estimate. 110 000 × 0.9 = 99 000, which is 39.6 steps of 2.5 kg and rounds up to 100 000.
         let rule = try roundingRule(Increments.twoAndAHalfKilograms, .nearest)
         let traced = resolver.traced(
-            try tracedConfiguration(.percentOfRepMax(reps: 1)), from: try tracedLog())
+            try tracedConfiguration(.percentOfRepMax(reps: 2)), from: try tracedLog())
         #expect(
             traced.resolution
                 == .resolved(
                     TrainingMax(weight: Weight(grams: 100_000), sourceWeight: Weight(grams: 110_000))))
         #expect(
             traced.trace.steps == [
-                .basis(.repMax(reps: 1), Weight(grams: 110_000)),
+                .basis(.repMax(reps: 2), Weight(grams: 110_000)),
                 .scaled(by: 0.9, from: Weight(grams: 110_000), to: Weight(grams: 99_000)),
                 .rounded(rule, from: Weight(grams: 99_000), to: Weight(grams: 100_000)),
             ])
@@ -410,12 +417,11 @@ struct TrainingMaxTraceTests {
         #expect(
             traced.trace.steps.contains(
                 .basis(.bestEstimatedOneRepMax(formula: .epley), Weight(grams: 110_000))) == false)
-        // The N is carried rather than assumed: a 2-rep set holds the 2RM at the same weight, so the
-        // arithmetic is identical here and only the basis differs. Without a second N a hardcoded
-        // `reps: 1` passes everything above.
+        // The N is carried rather than assumed, and since `FR-17.2.1` the two N's stand at two
+        // different loads — so a hardcoded `reps: 2` fails on the weight as well as on the basis.
         #expect(
-            resolver.traced(try tracedConfiguration(.percentOfRepMax(reps: 2)), from: try tracedLog())
-                .trace.steps.first == .basis(.repMax(reps: 2), Weight(grams: 110_000)))
+            resolver.traced(try tracedConfiguration(.percentOfRepMax(reps: 1)), from: try tracedLog())
+                .trace.steps.first == .basis(.repMax(reps: 1), Weight(grams: 100_000)))
         #expect(expectContiguous(traced.trace, "a derived training max") == 2)
     }
 

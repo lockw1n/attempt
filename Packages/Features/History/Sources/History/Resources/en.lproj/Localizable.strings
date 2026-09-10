@@ -6,11 +6,15 @@
 /* FR-1.13.2's first launch. The headline says what there is none of; the message says the one thing
    that makes one, and the action is that thing — a tab away, which is why it is worth a button
    rather than a sentence.
+   The action names the DESTINATION, not the wish: it selects Train, whose root is the week
+   (FR-17.8), so "Start a workout" would name something the screen it lands on does not do. Same
+   words as Home's first launch and as the week's own empty state (FR-17.8.5) — one destination,
+   one name for it.
    NOT "finished workouts": the list carries the workout in progress too, so a message promising
    only finished ones would be contradicted by the first row the user ever sees. */
 "history.list.empty.headline" = "No training logged yet";
 "history.list.empty.message" = "Your workouts appear here, newest first.";
-"history.list.empty.action" = "Start a workout";
+"history.list.empty.action" = "Plan your week";
 
 /* A failed read of the whole list. Copy, not the diagnostic: what the store said is for the log,
    not for the screen (G-3.4). */
@@ -69,15 +73,11 @@
    back through earlier ones, and there are none. */
 "history.calendar.empty.headline" = "No training logged yet";
 "history.calendar.empty.message" = "The days you train are marked here.";
-"history.calendar.empty.action" = "Start a workout";
+"history.calendar.empty.action" = "Plan your week";
 
 /* A failed read of the sessions the grid marks. Copy, not the diagnostic (G-3.4). */
 "history.calendar.error.headline" = "Calendar unavailable";
 "history.calendar.error.message" = "Your training days could not be read. Try again.";
-
-/* A failed read of *one day's* sessions, shown under a grid that is still correct and still marked.
-   It names the half that failed, for the reason history.list.more.error does. */
-"history.calendar.day.error" = "Could not load that day's sessions.";
 
 /* A grid cell's VoiceOver label. The cell draws one or two digits, so the date is spoken in full;
    and the marker is a fill plus a dot, neither of which VoiceOver reads — this sentence is the
@@ -114,3 +114,38 @@
    underneath the list. Copy rather than the diagnostic behind it (`G-3.4`); the list stays on
    screen beside it and the retry is another tap on the row's own command. */
 "history.list.session.finish-error" = "That workout could not be finished. Try again.";
+
+/* FR-17.11's week view — the same rows read a calendar week at a time. A mode of the History tab
+   rather than a tab of its own (D-8), and a screen of its own when a calendar day is tapped
+   (FR-17.11.2), which is why there is both a picker's copy and a title.
+   The picker's label names the CHOICE rather than either option: a segmented control announces its
+   own two segments, and "View" is what a screen reader needs before them (G-4.2). */
+"history.mode.label" = "View";
+"history.mode.sessions" = "Sessions";
+"history.mode.weeks" = "Weeks";
+"history.week.title" = "Weeks";
+
+/* A week block's heading. The YEAR IS ON THE FAR END ONLY: that is how a range is written, and a
+   heading saying 2026 twice spends half its width on it. Positional, so a translation can order the
+   two ends as its grammar wants — and a locale that writes ranges the other way round can. */
+"history.week.range %@ %@" = "%1$@ – %2$@";
+
+/* A day in the week with no program stamp on it (FR-17.11.1). WORDS RATHER THAN A BLANK LINE,
+   unlike the log's rows: a week is read as a plan carried out, so a day outside one is a fact about
+   that day rather than a label that failed to load. */
+"history.week.free" = "Free workout";
+
+/* Nothing logged in this week or before it. The same fact the list's empty state reports, in this
+   view's own words — the week view is reached with nothing in it only on a first launch, the
+   calendar's own day tap being what opens it otherwise. */
+"history.week.empty.headline" = "No training logged yet";
+"history.week.empty.message" = "Your weeks appear here once you have trained.";
+"history.week.empty.action" = "Plan your week";
+
+/* A failed read of the weeks. Copy, not the diagnostic (G-3.4). */
+"history.week.error.headline" = "Weeks unavailable";
+"history.week.error.message" = "Your training weeks could not be read. Try again.";
+
+/* A failed read of the weeks BEFORE the ones on screen, shown under them. It names the half that
+   failed, for the reason history.list.more.error does. */
+"history.week.more.error" = "Could not load earlier weeks.";

@@ -70,6 +70,31 @@ struct FeedSortKey: Comparable {
     }
 }
 
+/// Where a session sits among the ones sharing a week — its training day, then the instant it was
+/// started, then its own id (`TR-17.5`).
+///
+/// A struct rather than a tuple, for ``FeedPosition``'s reason: three members is one past the lint
+/// ceiling for a tuple, and naming them says whose date it is.
+struct SessionOrder: Comparable {
+    let date: Date
+    let startedAt: Date
+    let id: String
+
+    /// A session's place. One never tracked live sorts earliest in its own day, claiming nothing
+    /// about having happened after one that was.
+    ///
+    /// - Parameter entity: The row.
+    init(_ entity: WorkoutSessionEntity) {
+        self.date = entity.date
+        self.startedAt = entity.startedAt ?? .distantPast
+        self.id = entity.id.uuidString
+    }
+
+    static func < (lhs: SessionOrder, rhs: SessionOrder) -> Bool {
+        (lhs.date, lhs.startedAt, lhs.id) < (rhs.date, rhs.startedAt, rhs.id)
+    }
+}
+
 /// `WorkoutRepository` over SwiftData (`TR-0.4.2`, `FR-1.2`).
 ///
 /// Three levels joined by `UUID` columns, because `G-2.5` forbids relationships — so the cascade
@@ -94,6 +119,24 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     func session(id: UUID, includingDeleted: Bool) throws -> WorkoutSession? {
         try modelContext.row(WorkoutSessionEntity.self, id: id, includingDeleted: includingDeleted)?
             .record
+    }
+
+    /// The run's sessions for one week, newest first.
+    ///
+    /// **Ordered on ``SessionOrder``, which is ``sessions(in:includingDeleted:)``' key with the session's start
+    /// between the day and the tiebreak.** Two days of one week logged on one date tie on `date`
+    /// alone, and falling through to a minted identifier there would order them by nothing.
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) throws -> [WorkoutSession] {
+        try modelContext.rows(
+            WorkoutSessionEntity.self,
+            matching: WorkoutSessionEntity.inProgramRun(runID, week: week),
+            includingDeleted: includingDeleted
+        )
+        .sortedDeterministically { SessionOrder($0) }
+        .reversed()
+        .map(\.record)
     }
 
     func save(_ session: WorkoutSession) throws {

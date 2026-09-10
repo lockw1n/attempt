@@ -1,14 +1,7 @@
 /* Logging (G-3.4). Keys are <module>.<screen>.<element>[.<role>] — see the Localization module doc.
-   The two screens are the Train root, where a workout is started or resumed, and the workout
-   itself. Every key here has a Ukrainian counterpart in uk.lproj beside this file, and has to
+   The two screens are the Train root, which draws the week and its days (FR-17.8), and the
+   workout itself. Every key here has a Ukrainian counterpart in uk.lproj beside this file, and has to
    keep one: a key missing from that table renders its own identifier. */
-
-/* Nothing is in progress. FR-1.13.2's first-launch guidance: the headline says what there is none
-   of and the message names both ways to make one, since backdating is the half a new user would not
-   guess. */
-"logging.train.empty.headline" = "No workout in progress";
-"logging.train.empty.message" = "Start today's workout, or pick an earlier date to log one you have already done.";
-"logging.train.start.action" = "Start workout";
 
 "logging.train.date.section" = "Workout date";
 "logging.train.date.picker" = "Training day";
@@ -16,30 +9,9 @@
    which day the workout counts as, not when it was typed in. */
 "logging.train.date.hint" = "Today, unless you are logging a workout from an earlier day.";
 
-"logging.train.in-progress.section" = "In progress";
 /* FR-16.6.5 — the same card over a workout dated ahead of today. It has been written and not
    performed, and "In progress" over it would say the lifter is mid-workout. */
-"logging.train.planned.section" = "Planned";
 "logging.train.in-progress.day" = "Training day";
-"logging.train.in-progress.started" = "Started";
-/* FR-1.2.11: the way back into a workout the app came back to. "Resume" rather than "Open", because
-   the workout was interrupted — by a relaunch, a force-quit or a walk to the rack. */
-"logging.train.in-progress.resume" = "Resume workout";
-/* FR-16.6.5 — the same link over a workout dated ahead of today. "Resume" would claim it had
-   been begun; "Start workout" is FR-1.2.1's command, which writes a session that already
-   exists here. */
-"logging.train.planned.open" = "Open workout";
-
-"logging.train.library.action" = "Browse exercises";
-/* FR-15.2.1, beside the library. "Routines" rather than "Plans": a routine is one training day,
-   and a plan reads like the week. */
-"logging.train.routines.action" = "Routines";
-
-/* The read failed — the screen does not know whether a workout is in progress, so this one takes
-   the whole screen. A sentence for the user; the diagnostic is never shown. */
-"logging.train.error.headline" = "Workouts unavailable";
-"logging.train.error.message" = "Your workouts could not be read just now.";
-
 /* The start failed, which is a *write* and not a phase: it renders beside the command that issued
    it, with the date control still on screen, so the retry is another tap at the same button rather
    than a workout the user has to ask for again. Never the read's copy — nothing was unreadable. */
@@ -148,11 +120,11 @@
    fills one in. The editor is presented rather than pushed — NFR-1.4 wants every logging control
    in the lower two-thirds, and a card can be anywhere the user scrolled it to. */
 "logging.session.set.empty" = "No sets logged yet.";
-"logging.session.set.add.action" = "Add set";
+"logging.session.set.add.action" = "Log";
 /* FR-1.2.6, and the action the whole screen is shaped around: it opens the editor already filled
    in from the last set, so repeat-adjust-confirm is three taps (NFR-1.3). */
 "logging.session.set.repeat.action" = "Repeat set";
-"logging.session.set.editor.title" = "Log set";
+"logging.session.set.editor.title" = "Log";
 "logging.session.set.weight.label" = "Weight";
 "logging.session.set.reps.label" = "Reps";
 "logging.session.set.rpe.label" = "RPE";
@@ -162,7 +134,7 @@
 "logging.session.set.rpe.hint" = "Optional, 1 to 10";
 "logging.session.set.notes.label" = "Note";
 "logging.session.set.notes.hint" = "Optional";
-"logging.session.set.confirm.action" = "Log set";
+"logging.session.set.confirm.action" = "Save";
 "logging.session.set.cancel.action" = "Cancel";
 /* Accessibility labels: all four controls draw a glyph and have no visible title (G-4.2). */
 "logging.session.set.weight.increase" = "Increase weight";
@@ -181,6 +153,7 @@
 /* VoiceOver's label for the numeral after the multiplication sign, which is decorative and hidden.
    A label beside a number rather than a plural, for the same reason "Sets" above is one. */
 "logging.session.set.reps %lld" = "Reps %lld";
+"logging.session.set.note %@" = "Note: %@";
 /* A logged set's rating. The number arrives already rendered, so it is the locale's. */
 "logging.session.set.rpe %@" = "RPE %@";
 
@@ -214,16 +187,20 @@
    happen, and "Mark as warmup" on a set that already is one is the opposite instruction. */
 "logging.session.set.mark-warmup" = "Mark as warmup";
 "logging.session.set.mark-working" = "Mark as working";
-/* FR-1.6.3's and FR-16.2.4's badge, and what VoiceOver reads in its place. Short on the row
-   because the line is already spending its width on the load and two 44pt controls; the label
-   carries the whole claim. Two spellings of one badge, chosen on the set count rather than on how
-   many cells the set holds: the one-set column is a rep max and a lifter writes it "8RM", every
-   other cell is a scheme and they write it "5×5". Neither spelling needs a plural rule — the
-   numeral sits inside the compound in both. */
-"logging.session.set.record.scheme %lld %lld" = "PR %1$lld×%2$lld";
-"logging.session.set.record.rep-max %lld" = "PR %lldRM";
+/* FR-1.6.3's, FR-17.2.2's and FR-17.2.3's badge, and what VoiceOver reads in its place. Short on
+   the row because the line is already spending its width on the load and two 44pt controls; the
+   label carries the whole claim. Four badges and four labels: two spellings — a cell at one set is
+   written "8 reps" and every other cell "5×5", never "8RM" and never "× 1" — crossed with the two
+   states a performed cell can be in, a record and a first performance.
+
+   THE TWO SCHEME SPELLINGS ARE HERE AND THE TWO REP ONES ARE IN THE .stringsdict. "5×5" and
+   "5 by 5" carry no noun that agrees with a numeral; "%lld reps" does, and it is drawn at one rep
+   on every 1RM a lifter sets, which is the most-looked-at record there is. Same argument as
+   logging.session.plan.reps-delta, one requirement later. */
+"logging.session.set.record.scheme %lld %lld" = "PR · %1$lld×%2$lld";
+"logging.session.set.first.scheme %lld %lld" = "First · %1$lld×%2$lld";
 "logging.session.set.record.scheme.label %lld %lld" = "Personal record, %1$lld by %2$lld";
-"logging.session.set.record.rep-max.label %lld" = "Personal record, %lld-rep max";
+"logging.session.set.first.scheme.label %lld %lld" = "First time, %1$lld by %2$lld";
 /* FR-1.2.14's collapsible group. A label beside a numeral, so it stays a count in every language
    rather than needing a plural rule. */
 "logging.session.set.warmup.section" = "Warmups";
@@ -449,55 +426,15 @@
 "logging.session.plan.log.action" = "Log planned set";
 "logging.session.plan.on-target" = "On target";
 
-/* FR-15.2.6, at the foot of a session that is over. The explanation says what the new routine will
-   contain BEFORE the command is tapped, because the answer is not obvious: it is what was lifted,
-   not what was planned, and the two differ exactly on the workouts worth saving. */
-"logging.past-session.save-routine.section" = "Save as routine";
-"logging.past-session.save-routine.explanation" = "Builds a routine from this workout: the exercises in the order you did them, and the weights and reps you actually lifted. Warmups and sets you did not complete are left out.";
-"logging.past-session.save-routine.action" = "Save as routine";
-
-"logging.past-session.save-routine.title" = "Name this routine";
-"logging.past-session.save-routine.prompt" = "Heavy squat day";
-"logging.past-session.save-routine.confirm" = "Save";
-"logging.past-session.save-routine.cancel" = "Cancel";
-
-/* The routine editor's own rule, applied where a name is typed into a prompt instead of a form. */
-"logging.past-session.save-routine.name-required.message" = "A routine needs a name. Nothing was saved.";
-"logging.past-session.save-routine.write-error.message" = "That routine could not be saved. Try again.";
-/* Where it went: nothing on this screen changes when a routine is written, so the confirmation is
-   the only thing that says the command did anything. */
-"logging.past-session.save-routine.saved %@" = "Saved “%@” to your routines.";
 "logging.set.training-max-share %@" = "%@ of TM";
-
-/* FR-16.8.2's Next-up card on Train: the program in force, where it has got to, and the one tap
-   that starts it. The week and the day are positional so a translation can reorder them. */
-"logging.train.program.section" = "Next up";
-"logging.train.program.week-day %lld %lld" = "Week %1$lld · Day %2$lld";
-"logging.train.program.start" = "Start";
-"logging.train.program.skip" = "Skip day";
-
-/* FR-15.2.5's archive reaching a program day: the row is kept and the routine behind it is gone,
-   so the card says which of the two ways past it the lifter has. */
-"logging.train.program.archived.headline" = "This day's routine was archived";
-"logging.train.program.archived.message" = "Point the day at another routine in the program, or skip it and carry on.";
-
-"logging.train.program.no-days.headline" = "This program has no days yet";
-"logging.train.program.no-days.message" = "Add a day to it, and the routine you pick is what Train offers next.";
 
 /* FR-16.8.4. The message is said before the command is tapped rather than in a confirmation after
    it: what next week's loads are, that nothing is fixed, and that this week is archived and not
    deleted, are the three things a lifter needs in order to decide — not to be told afterwards. */
 "logging.train.program.week-complete.headline %lld" = "Week %lld is done";
-"logging.train.program.week-complete.message" = "Next week starts from what you lifted this week. Every load stays editable, and this week's routines are archived rather than lost.";
+"logging.train.program.week-complete.message" = "Next week starts from how you answered this one: lifts you logged carry the numbers you did, and lifts you skipped keep their plan. Every load stays editable, and this week's routines are archived rather than lost.";
 "logging.train.program.next-week" = "Start next week";
-
-"logging.train.program.error.message" = "Could not read your program. Try again.";
-"logging.train.program.skip-error.message" = "Could not skip the day. Try again.";
 "logging.train.program.next-week-error.message" = "Could not start next week. Nothing was changed — try again.";
-
-/* The workout itself was finished and stored; only the program's cursor did not move. The sentence
-   says both halves, because a lifter who reads "could not finish" would go looking for the workout. */
-"logging.train.program.advance-error.message" = "Your workout was saved, but the program still shows this day. Skip it or try finishing again.";
 
 /* FR-16.8.3 / DOD-16.1: the week and day are read off the session's own columns, so a session note
    no longer has to carry them. */
@@ -518,3 +455,73 @@
 "logging.session.finish.pending.remove" = "Remove them";
 "logging.session.finish.pending.keep" = "Keep as failed";
 "logging.session.finish.pending.cancel" = "Back to the workout";
+
+/* FR-17.8: the week root. */
+"logging.week.heading %lld" = "Week %lld";
+"logging.week.edit.action" = "Edit week";
+"logging.week.menu.action" = "More";
+"logging.week.library.action" = "Exercise library";
+"logging.week.free-workout.action" = "Free workout";
+"logging.week.free-workout.title" = "Free workout";
+"logging.week.day %lld" = "Day %lld";
+"logging.week.day.start" = "Start";
+"logging.week.day.continue" = "Continue";
+"logging.week.day.progress %lld %lld" = "%1$lld of %2$lld done";
+"logging.week.day.done %@" = "Done · %@";
+"logging.week.plan.line %@ %@" = "%1$@ · %2$@";
+"logging.week.plan.target %@ %lld %lld" = "%1$@ × %2$lld × %3$lld";
+"logging.week.plan.target-open %lld %lld" = "%1$lld × %2$lld";
+"logging.week.plan.target.separator" = ", ";
+"logging.week.empty.headline" = "No week planned yet";
+"logging.week.empty.message" = "Plan your week and every training day shows up here, ready to tick off.";
+"logging.week.plan.action" = "Plan your week";
+"logging.week.error.headline" = "This week unavailable";
+"logging.week.error.message" = "Your plan could not be read just now.";
+
+/* FR-17.9: one day of the week. */
+"logging.day.plan.heading" = "Planned";
+"logging.day.row.done" = "Done";
+"logging.day.empty.headline" = "Nothing planned for this day";
+"logging.day.empty.message" = "There is nothing to do on this day. Edit the week to give it a routine.";
+"logging.day.error.headline" = "Day unavailable";
+"logging.day.error.message" = "This day could not be read just now.";
+
+/* FR-17.9's day checklist (T-17.11). */
+"logging.day.row.skipped" = "Skipped";
+"logging.day.row.as-planned %@" = "%@ · as planned";
+"logging.day.row.planned %@" = "Planned %@";
+"logging.day.row.did %@" = "Did %@";
+"logging.day.circle.action" = "Log as planned";
+"logging.day.log.action" = "Log";
+"logging.day.skip.action" = "Skip this exercise";
+"logging.day.log-remaining.action" = "Log remaining as planned";
+"logging.day.skip-remaining.action" = "Skip remaining";
+"logging.day.log-remaining.confirm.action" = "Log them";
+"logging.day.skip-remaining.confirm.action" = "Skip them";
+"logging.day.remaining.confirm.cancel" = "Keep going";
+"logging.day.unanswerable %@" = "These still need a load: %@";
+"logging.day.unanswerable.separator" = ", ";
+"logging.day.menu.action" = "Day options";
+"logging.day.change-date.action" = "Change date";
+"logging.day.change-date.done" = "Done";
+"logging.day.add-exercise.action" = "Add exercise";
+"logging.day.no-rows.headline" = "Nothing in this day yet";
+"logging.day.no-rows.message" = "Add an exercise to start logging into it.";
+
+/* FR-17.1's Log sheet. One word names it — Log — on the row command that opens it and on its
+   own heading (FR-17.1.6); Add set, Log set and Adjust are retired everywhere (D-17.7). */
+"logging.session.set.editor.question" = "What did you do?";
+"logging.session.set.sets.label" = "Sets";
+"logging.session.set.sets.increase" = "Add a set";
+"logging.session.set.sets.decrease" = "Remove a set";
+"logging.session.set.planned.label" = "Planned";
+"logging.session.set.actual.label" = "Actual";
+"logging.session.set.details.label" = "Per-set details";
+"logging.session.set.save-done.action" = "Save as done";
+
+/* FR-17.9.4's difference, called out beside what was actually done. The separator is a string
+   rather than a comma: not every language joins clauses with one (G-3.4). */
+"logging.session.set.deviation.line %@ %@" = "%1$@ · %2$@";
+"logging.session.set.deviation.weight %@" = "%@";
+"logging.session.set.deviation.as-planned" = "as planned";
+"logging.session.set.deviation.separator" = ", ";

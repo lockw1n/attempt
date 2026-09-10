@@ -10,6 +10,11 @@ struct FailingWorkoutRepository: WorkoutRepository {
     private var failure: RepositoryError { .recordNotFound(id: UUID()) }
 
     func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        throw failure
+    }
+    func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] { throw failure }
     func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? { throw failure }
@@ -58,6 +63,11 @@ actor FlakyWorkoutRepository: WorkoutRepository {
             forSessionID: sessionID, includingDeleted: includingDeleted)
     }
 
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
     func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] {
@@ -155,6 +165,11 @@ actor GatedWorkoutRepository: WorkoutRepository {
     }
 
     func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
+    func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] {
         try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
@@ -225,12 +240,23 @@ actor CountingWorkoutRepository: WorkoutRepository {
     /// How many times the whole history has been read.
     private(set) var sessionReads = 0
 
+    /// How many times an exercise's whole set history has been walked.
+    ///
+    /// **The read `NFR-17.5` forbids**, and the only way to assert its absence is to count it: a
+    /// screen that never makes it is indistinguishable from one that does, on its output alone.
+    private(set) var exerciseSetReads = 0
+
     private let wrapped: any WorkoutRepository
 
     init(wrapping wrapped: any WorkoutRepository) {
         self.wrapped = wrapped
     }
 
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
     func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] {
@@ -261,7 +287,9 @@ actor CountingWorkoutRepository: WorkoutRepository {
     func save(_ set: SetEntry) async throws { try await wrapped.save(set) }
     func deleteSet(id: UUID) async throws { try await wrapped.deleteSet(id: id) }
     func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
-        try await wrapped.sets(forExerciseID: exerciseID, includingDeleted: includingDeleted)
+        exerciseSetReads += 1
+        return try await wrapped.sets(
+            forExerciseID: exerciseID, includingDeleted: includingDeleted)
     }
 }
 
@@ -286,6 +314,14 @@ struct ForeignWorkoutLog: WorkoutRepository {
         self.wrapped = wrapped
     }
 
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        held.filter {
+            $0.programRunID == runID && $0.weekNumber == week
+                && (includingDeleted || $0.deletedAt == nil)
+        }
+    }
     func sessions(
         in range: ClosedRange<Date>, includingDeleted: Bool
     ) async throws -> [WorkoutSession] {

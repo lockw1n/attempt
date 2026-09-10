@@ -4,7 +4,7 @@ import Testing
 @testable import AppNavigation
 
 /// What the shell does, as opposed to what it stores: selecting a tab, pushing onto the right one,
-/// and the one behaviour `D-8` bought — "Start workout" being a navigation and not a screen.
+/// and the one behaviour `D-8` bought — going training being a navigation and not a screen.
 @Suite("Navigation state")
 @MainActor
 struct NavigationStateTests {
@@ -44,15 +44,18 @@ struct NavigationStateTests {
         #expect(state.selectedTab == .settings)
     }
 
-    /// `FR-1.9.4` under `D-8`: the dashboard's primary action goes to Train, at Train's root — not
-    /// onto whatever Train was left showing, and not into a logging surface presented from Home.
-    @Test("start workout switches to Train and lands on its root")
-    func startWorkoutNavigates() {
+    /// `D-8`: every offer to go training lands on Train's root — not on whatever Train was left
+    /// showing, and not on a logging surface presented from the tab that offered it.
+    ///
+    /// The callers are `FR-1.13.2`'s **Plan your week** on Home and History's two empty states;
+    /// `FR-1.9.4`'s Start workout was the fourth until `D-17.11` withdrew it.
+    @Test("showing Train switches to it and lands on its root")
+    func showTrainNavigates() {
         let state = NavigationState()
         state.navigate(to: .exerciseLibrary(.exerciseDetail(exerciseID: UUID())))
         state.selectedTab = .home
 
-        state.startWorkout()
+        state.showTrain()
 
         #expect(state.selectedTab == .train)
         #expect(state.path(for: .train).isEmpty)

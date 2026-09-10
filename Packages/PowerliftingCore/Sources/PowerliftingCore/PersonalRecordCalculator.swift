@@ -1,8 +1,9 @@
 /// N-rep maxes and the best estimated one-rep maximum for one exercise's logged sets (`TR-0.2.8`).
 ///
-/// **An N-rep max is the heaviest completed working set performed for *at least* N reps.** A 5-rep
-/// set at 100 kg therefore holds the 1RM through the 5RM, not only the 5RM. Reading it as "for
-/// exactly N reps" is the subtle wrong answer, and it silently loses records.
+/// **An N-rep max is the heaviest completed working set performed for *exactly* N reps**
+/// (`FR-1.6.1`, rewritten by `D-17.2`). A 5-rep set at 100 kg holds the 5RM and nothing else: it is
+/// not evidence about the 3RM, because more could have been lifted for three. The *at least N*
+/// reading it replaced filled every N below one good set with a load nobody attempted there.
 ///
 /// **The collection is ordered, and the order is chronological.** Nothing here has a timestamp
 /// (`NFR-0.2`), so *earlier* means *earlier in the collection supplied* — which is how a tie
@@ -52,9 +53,11 @@ public struct PersonalRecordCalculator: Sendable {
     /// would version half a row; the number lives here because this is where `G-1.5`'s reader
     /// already looks.
     ///
-    /// **2 since `TR-16.1`**: the cell key gained a set count and the row gained the load it beat, so
-    /// identical sets produce a different row from the one version 1 wrote.
-    public static let computationVersion = 2
+    /// **3 since `TR-17.1`**: `FR-16.2.2`'s dominance rule is withdrawn, so a run now writes one
+    /// cell where it wrote up to sixty. Every row version 2 produced is a claim this build does not
+    /// make — the rows are dropped rather than migrated (`FR-17.2.4`), because there is no way to
+    /// tell a dominance-derived row from a performed one after the fact.
+    public static let computationVersion = 3
 
     /// Every record `sets` holds.
     ///
@@ -67,7 +70,14 @@ public struct PersonalRecordCalculator: Sendable {
         return PersonalRecords(repMaxes: repMaxes, bestE1RM: bestE1RM(in: sets))
     }
 
-    /// The heaviest completed working set in `sets` performed for at least `reps` reps.
+    /// The heaviest completed working set in `sets` performed for exactly `reps` reps.
+    ///
+    /// **Exactly, and it is the whole of `D-17.2`.** A set taken to eight is the 8-rep max and not
+    /// the 5-rep one; asking for an N nothing was performed at answers `nil` rather than reaching
+    /// down to a heavier set at more reps. It is the `sets == 1` column of
+    /// ``SchemeRecordCalculator``'s table, computed from sets rather than from runs, and the two
+    /// have to agree — `PersonalRecordRecomputer` reads that column rather than calling this, so
+    /// the only caller a disagreement would reach is `TrainingMaxResolver`'s `.percentOfRepMax`.
     ///
     /// A negative weight is a candidate like any other: an assisted pull-up genuinely is a lighter
     /// lift than an unassisted one, and `Comparable` already ranks −20 kg below −10 kg. The sign
@@ -81,7 +91,7 @@ public struct PersonalRecordCalculator: Sendable {
     public func repMax(forReps reps: Int, in sets: [SetRecord]) -> PersonalRecord? {
         guard PersonalRecords.repRange.contains(reps) else { return nil }
         return best(in: sets) { set in
-            set.isWarmup || !set.isCompleted || set.reps < reps ? nil : set.weight
+            set.isWarmup || !set.isCompleted || set.reps != reps ? nil : set.weight
         }
     }
 

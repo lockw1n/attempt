@@ -15,15 +15,16 @@ import Testing
 //
 // `sourceLog` carries three properties at once: the warmup is the heaviest set in it, so a leak
 // changes an answer; the best estimate is *not* the last set, so reading the wrong one is visible;
-// and no set exceeds five reps, so a six-rep source is a real absence rather than a range refusal.
+// and no set is performed at six reps, so a six-rep source is a real absence rather than a range
+// refusal.
 
 /// One exercise's sets, oldest first.
 ///
 /// | # | set | |
 /// |---|---|---|
 /// | 0 | 150 kg × 5, warmup | heavier than everything: a leak takes every record |
-/// | 1 | 100 kg × 5 | holds the 3RM–5RM |
-/// | 2 | 110 kg × 2 | holds the 1RM–2RM, and the best e1RM at 117 333 |
+/// | 1 | 100 kg × 5 | holds the 5RM, and only that one (`FR-17.2.1`) |
+/// | 2 | 110 kg × 2 | holds the 2RM, and the best e1RM at 117 333 |
 /// | 3 | 100 kg × 5 | the *last* set, and estimates lower than offset 2 at 116 667 |
 private func sourceLog() throws -> [SetRecord] {
     [
@@ -72,9 +73,11 @@ struct TrainingMaxSourceTests {
     @Test("% of best N-rep max reads the rep max for that N, warmups excluded")
     func percentOfRepMaxReadsTheRecordForThatN() throws {
         let log = try sourceLog()
-        // 110 000 × 0.9 = 99 000, which is not a multiple of 2.5 kg and rounds up to 100 000.
+        // 110 000 × 0.9 = 99 000, which is not a multiple of 2.5 kg and rounds up to 100 000. The N
+        // is two rather than one because a rep max is exact reps (`FR-17.2.1`) and no set in this
+        // log is a single — the 1RM is a real absence here, asserted below.
         #expect(
-            resolver.resolve(try configuration(.percentOfRepMax(reps: 1)), from: log)
+            resolver.resolve(try configuration(.percentOfRepMax(reps: 2)), from: log)
                 == .resolved(
                     TrainingMax(weight: Weight(grams: 100_000), sourceWeight: Weight(grams: 110_000))))
         // 100 000 × 0.9 = 90 000, already on the grid. Were the 150 kg warmup a candidate this
@@ -83,6 +86,10 @@ struct TrainingMaxSourceTests {
             resolver.resolve(try configuration(.percentOfRepMax(reps: 5)), from: log)
                 == .resolved(
                     TrainingMax(weight: Weight(grams: 90_000), sourceWeight: Weight(grams: 100_000))))
+        // And the N the 110 kg double used to reach by dominance now reaches nothing.
+        #expect(
+            resolver.resolve(try configuration(.percentOfRepMax(reps: 1)), from: log)
+                == .unresolvable(.noSourceData))
     }
 
     @Test("A manual training max is the number entered — neither the percentage nor the rule apply")
@@ -177,9 +184,9 @@ struct TrainingMaxOrderingTests {
     @Test("The progression increment is carried and never applied")
     func theProgressionIncrementDoesNotMoveTheAnswer() throws {
         let log = try sourceLog()
-        let plain = try configuration(.percentOfRepMax(reps: 1))
+        let plain = try configuration(.percentOfRepMax(reps: 2))
         let progressing = try configuration(
-            .percentOfRepMax(reps: 1), progressionIncrement: Increments.twoAndAHalfKilograms)
+            .percentOfRepMax(reps: 2), progressionIncrement: Increments.twoAndAHalfKilograms)
         // `FR-1.5.1.3` applies this on block completion, which rewrites the configuration. Applying
         // it at resolution would add one increment on every read.
         #expect(progressing.progressionIncrement == Increments.twoAndAHalfKilograms)
@@ -256,7 +263,7 @@ struct TrainingMaxRefusalTests {
         #expect(PersonalRecords.repRange.contains(reps) == false)
         // The same log resolves for an N inside the range, so the refusal is the N and not the log.
         #expect(
-            resolver.resolve(try configuration(.percentOfRepMax(reps: 1)), from: log)
+            resolver.resolve(try configuration(.percentOfRepMax(reps: 2)), from: log)
                 == .resolved(
                     TrainingMax(weight: Weight(grams: 100_000), sourceWeight: Weight(grams: 110_000))))
     }
@@ -264,7 +271,7 @@ struct TrainingMaxRefusalTests {
     @Test("An N nobody reached is a different answer from an N nobody computes")
     func anUnreachedRepCountIsNotAnOutOfRangeOne() throws {
         let log = try sourceLog()
-        // Six is inside `repRange`, and no set in the log reached it.
+        // Six is inside `repRange`, and no set in the log was performed at it.
         #expect(PersonalRecords.repRange.contains(6))
         #expect(
             resolver.resolve(try configuration(.percentOfRepMax(reps: 6)), from: log)
@@ -366,11 +373,16 @@ struct TrainingMaxFormulaTests {
             TrainingMaxResolver(.brzycki).resolve(e1rm, from: log)
                 == .resolved(
                     TrainingMax(weight: Weight(grams: 101_829), sourceWeight: Weight(grams: 113_143))))
-        // Rep maxes read logged loads, so they do not move.
-        let repMax = try configuration(.percentOfRepMax(reps: 1), increment: Increments.oneGram)
+        // Rep maxes read logged loads, so they do not move. Anchored to a resolved answer rather
+        // than only to the two agreeing, which two refusals would satisfy.
+        let repMax = try configuration(.percentOfRepMax(reps: 2), increment: Increments.oneGram)
         #expect(
             TrainingMaxResolver(.brzycki).resolve(repMax, from: log)
                 == TrainingMaxResolver(.epley).resolve(repMax, from: log))
+        #expect(
+            TrainingMaxResolver(.brzycki).resolve(repMax, from: log)
+                == .resolved(
+                    TrainingMax(weight: Weight(grams: 99_000), sourceWeight: Weight(grams: 110_000))))
     }
 
     @Test("A resolver built with no argument reads the default formula")

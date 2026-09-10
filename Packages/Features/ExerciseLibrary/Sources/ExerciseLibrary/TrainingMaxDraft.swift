@@ -54,6 +54,12 @@ struct TrainingMaxDraft: Equatable {
     var weightText: String = ""
 
     /// The day the number takes effect. Today unless the user backdates it.
+    ///
+    /// **Today, and it stays today** (`FR-17.5.2`). Review finding 15 observed that a coach's
+    /// number usually predates the evening it is typed in, and it is right — but there is no day
+    /// the app can guess it from, and every wrong guess is silently wrong: a load logged before the
+    /// invented date is read against the *previous* training max, and nothing on any screen says
+    /// so. Today is wrong in the same cases and wrong visibly, one field away from the fix.
     var effectiveFrom: Date
 
     /// Why it changed — `coach`, or whatever the lifter wrote. Empty is allowed and common.
