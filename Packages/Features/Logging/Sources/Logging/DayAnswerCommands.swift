@@ -27,20 +27,19 @@ extension ActiveSessionStore {
     /// runs behind whatever is queued ahead of it, and how many sets are already stored is what
     /// decides which planned group the next one falls in.
     ///
+    /// **`NFR-1.2`'s interval is one layer up, on ``DayStore``.** It was here first and it stopped
+    /// too early: the exercise list this re-reads is not what a planned day draws, so the wait the
+    /// budget is about — tap to *row* re-read — ends in `DayStore.reload()`, outside this call.
+    ///
     /// - Parameter entryIDs: The exercises to answer, in the order they are drawn.
     public func answerAsPlanned(inEntryIDs entryIDs: [UUID]) async {
-        // `NFR-1.2`'s own interval, and it spans the whole chain rather than the write: what the
-        // budget is written about is the wait between the tap and the row re-reading, which is
-        // `writeAnswersAsPlanned` plus the `loadExercises()` it ends in.
-        await PerformanceSignpost.answer.measure {
-            let previous = pendingWrite
-            let write = Task { [weak self] in
-                await previous?.value
-                await self?.writeAnswersAsPlanned(inEntryIDs: entryIDs)
-            }
-            pendingWrite = write
-            await write.value
+        let previous = pendingWrite
+        let write = Task { [weak self] in
+            await previous?.value
+            await self?.writeAnswersAsPlanned(inEntryIDs: entryIDs)
         }
+        pendingWrite = write
+        await write.value
     }
 
     /// ``answerAsPlanned(inEntryIDs:)`` for the one row the circle was tapped on.

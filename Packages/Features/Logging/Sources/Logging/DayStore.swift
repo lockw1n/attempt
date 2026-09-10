@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -163,8 +164,20 @@ public final class DayStore {
     /// **It is the first answer that creates the session**, and the two are one chain: the start
     /// copies the routine's slots onto entries, and this then answers the entry that slot became.
     ///
+    /// **`NFR-1.2`'s interval, and it starts at the tap rather than at the write.** The budget is
+    /// the wait between the circle being tapped and the row having re-read, so it has to contain
+    /// ``startIfNeeded()`` — the first answer of the day creates the session, and that is the
+    /// slowest one there is — as well as the reload the row is actually redrawn from.
+    ///
     /// - Parameter rowID: The row the circle was tapped on.
     public func answerAsPlanned(rowID: UUID) async {
+        await PerformanceSignpost.answer.measure { await performAnswerAsPlanned(rowID: rowID) }
+    }
+
+    /// ``answerAsPlanned(rowID:)``'s body, split out only so the interval above can bracket it.
+    ///
+    /// - Parameter rowID: The row the circle was tapped on.
+    private func performAnswerAsPlanned(rowID: UUID) async {
         unanswerable = []
         guard await startIfNeeded(), let entryID = entryID(forRow: rowID) else { return }
         await store.answerAsPlanned(inEntryID: entryID)
@@ -193,7 +206,15 @@ public final class DayStore {
     /// session at the *first answer*, and a day whose every remaining row names no load has no
     /// answer to give — starting it anyway would write a workout holding nothing, which the week's
     /// card then reads as in progress forever.
+    ///
+    /// **`NFR-1.2`'s interval on its largest N.** `NFR-17.3` is the reason this is one chain, and
+    /// this is the answer that exercises it hardest — every remaining row of the day at once.
     public func logRemainingAsPlanned() async {
+        await PerformanceSignpost.answer.measure { await performLogRemainingAsPlanned() }
+    }
+
+    /// ``logRemainingAsPlanned()``'s body, split out only so the interval above can bracket it.
+    private func performLogRemainingAsPlanned() async {
         let remaining = rows.filter { $0.answer == .unanswered }
         let answerable = remaining.filter(\.hasCircle)
         // The result is owed either way: the lifter asked for the rest to be answered and is still
@@ -239,10 +260,22 @@ public final class DayStore {
     /// sheet over an answer is the *only* way to change one — the circle is inert by then — so a
     /// save that appended would double the work every time a lifter corrected a rep count.
     ///
+    /// **`NFR-1.2`'s interval on the sheet's Save as done** — the requirement's other named path,
+    /// and the one that writes N rows for a single tap.
+    ///
     /// - Parameters:
     ///   - rowID: The row being logged against.
     ///   - group: What the sheet collected — the form's answer and the rows it writes.
     func log(rowID: UUID, group: ResolvedSetGroup) async {
+        await PerformanceSignpost.answer.measure { await performLog(rowID: rowID, group: group) }
+    }
+
+    /// ``log(rowID:group:)``'s body, split out only so the interval above can bracket it.
+    ///
+    /// - Parameters:
+    ///   - rowID: The row being logged against.
+    ///   - group: What the sheet collected — the form's answer and the rows it writes.
+    private func performLog(rowID: UUID, group: ResolvedSetGroup) async {
         unanswerable = []
         guard await startIfNeeded(), let entryID = entryID(forRow: rowID) else { return }
         // Asked about the *entry*, never about `rowID`. A day with no session draws the routine's

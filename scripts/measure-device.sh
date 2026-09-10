@@ -2,14 +2,19 @@
 #
 # T-1.83 / NFR-1.1, NFR-1.2, NFR-1.5, NFR-1.6, DOD-1.2: take this phase's performance numbers on a
 # real phone, repeatably.
-#
+# USAGE
 #   scripts/measure-device.sh devices                 # what is connected, and what to pass below
 #   scripts/measure-device.sh install                 # Release build -> the device
 #   scripts/measure-device.sh launch [runs]           # NFR-1.1, cold launch, unattended
-#   scripts/measure-device.sh signposts [seconds]     # NFR-1.2 and NFR-1.6, while you drive it
+#   scripts/measure-device.sh signposts [seconds]     # NFR-1.2, NFR-1.6, NFR-17.4, while you drive it
 #   scripts/measure-device.sh hitches [seconds]       # NFR-1.5, while you scroll History
 #
-#   ATTEMPT_DEVICE=<udid>  picks the device when more than one is connected.
+#   ATTEMPT_DEVICE=<udid>  picks the device when more than one is connected, and is also how a
+#                          booted SIMULATOR is measured: pass its UDID. Every figure in this task's
+#                          table that says "simulator" was taken that way, so it is a documented
+#                          route rather than a workaround. `hitches` is the exception — a simulator
+#                          renders on the Mac's GPU, so NFR-1.5 has no answer there at all.
+# END USAGE
 #
 # WHY A SCRIPT. `T-1.81` asked this task to decide between giving the launch sequence a test target
 # and making the by-hand run "a named, repeatable step rather than something each task improvises".
@@ -93,6 +98,25 @@ xctrace_udid() {
         | head -1
 }
 
+# A recording that produced nothing, refused before anything reads it as an empty measurement.
+#
+# BY SIZE, BECAUSE NEITHER FILE TEST ANSWERS THE QUESTION. A `.trace` is a bundle, so `-d` is true
+# the moment `xctrace` creates the directory — which it does before it discovers it has no device to
+# record — and `-s` on a directory is true for the directory entry itself whatever is inside. The
+# first version of this guard was `[[ -s "$out"/* ]] || [[ -d "$out" ]]`, which passes on an empty
+# directory and therefore could not fail at all. A real recording is megabytes; the floor is set
+# where nothing that recorded anything can fall below it.
+require_trace() {
+    local out="$1" kilobytes
+    kilobytes=$(du -sk "$out" 2>/dev/null | awk '{ print $1 }')
+    if [[ -z "$kilobytes" || "$kilobytes" -lt 8 ]]; then
+        echo "measure-device.sh: $out recorded nothing (${kilobytes:-0} KB)." >&2
+        echo "measure-device.sh: the commonest cause is the wrong UDID — xctrace wants the" >&2
+        echo "  hardware one (00008130-...), not devicectl's CoreDevice UUID (EE0672E2-...)." >&2
+        exit 1
+    fi
+}
+
 # Everything an App Launch trace calls launching, summed — every lifecycle period before the app
 # reaches `Foreground - Active`, which is the first frame being on screen.
 #
@@ -159,8 +183,7 @@ cmd_launch() {
         # launch. Fail on the record rather than on the parse, where the cause is still visible.
         xcrun xctrace record --device "$trace_udid" --template "App Launch" \
             --launch "$BUNDLE_ID" --output "$out" --time-limit 15s >/dev/null
-        [[ -s "$out/"* ]] 2>/dev/null || [[ -d "$out" ]] \
-            || { echo "measure-device.sh: run $run recorded nothing" >&2; exit 1; }
+        require_trace "$out"
         printf '  run %d: ' "$run"
         launch_milliseconds "$out"
         rm -rf "$out"
@@ -216,47 +239,79 @@ stream_signposts() {
 
 # Begin/end pairs turned into durations, per requirement.
 #
-# **Paired per (category, name) as a FIFO, not by signpost id.** `OSSignposter` here uses the
-# exclusive id, so concurrent intervals of the same name would be indistinguishable — which is
-# accurate for these three, each of which is serialised by the actor or the main actor it runs on.
-# A fourth that can genuinely overlap itself needs `makeSignpostID()` and this needs revisiting.
+# PAIRED BY SIGNPOST ID, BECAUSE THESE INTERVALS OVERLAP. The first version paired per
+# (category, name) in arrival order, on the argument that each interval is serialised by the actor
+# or the main actor it runs on. That is false in both directions an interval can overlap itself:
+# every write command spans an `await` on the write queued ahead of it — the reason a chain of
+# pending writes exists at all — and the recomputer is a reentrant `actor`. FIFO pairing over a
+# nested pair reports two durations that belong to neither interval: a 1000 ms answer with a 10 ms
+# one inside it comes back as 990 and 20. `PerformanceSignpost` now stamps each interval with
+# `makeSignpostID()`, and this pairs on that.
+#
+# AN UNPAIRED END OR BEGIN IS COUNTED AND SAID, NOT DROPPED. A window that opens or closes across
+# an interval produces one of each, which is ordinary; a large count means the pairing is wrong
+# rather than the window short, and it takes a printed number to tell those apart.
 summarise_signposts() {
     tr -d '\0' <"$1" | python3 -c '
 import re, sys, datetime
 LINE = re.compile(
-    r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+) Sp .*\[[^:]+:(\S+)\] \[[^]]*?(begin|end)\] (\w+)")
-pending, done = {}, []
+    r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+) Sp .*"
+    r"\[[^:]+:(\S+)\] \[spid ([^,]+), [^]]*?(begin|end)\] (\w+)")
+LOOSE = re.compile(r" Sp .*\[[^]]*?(begin|end)\] \w+")
+pending, done, orphans, loose = {}, [], 0, 0
 for line in sys.stdin:
     found = LINE.search(line)
     if not found:
+        loose += 1 if LOOSE.search(line) else 0
         continue
-    stamp, category, kind, name = found.groups()
+    stamp, category, spid, kind, name = found.groups()
     when = datetime.datetime.strptime(stamp, "%Y-%m-%d %H:%M:%S.%f")
-    key = (category, name)
+    key = (category, name, spid)
     if kind == "begin":
-        pending.setdefault(key, []).append(when)
-    elif pending.get(key):
-        done.append((category, (when - pending[key].pop(0)).total_seconds() * 1000))
+        pending[key] = when
+    elif key in pending:
+        done.append((category, (when - pending.pop(key)).total_seconds() * 1000))
+    else:
+        orphans += 1
 if not done:
-    print("  no signpost fired. Drive the app while it records.")
+    if loose:
+        print(f"  {loose} signpost line(s) carried no readable spid, so nothing could be paired.")
+        print("  The log format changed; fix LINE in summarise_signposts before trusting a number.")
+    else:
+        print("  no signpost fired. Drive the app while it records.")
     raise SystemExit(1)
 for category in sorted({entry[0] for entry in done}):
     values = sorted(entry[1] for entry in done if entry[0] == category)
     print(f"  {category:9s} n={len(values):3d}  min={values[0]:7.1f}  "
           f"median={values[len(values) // 2]:7.1f}  max={values[-1]:7.1f} ms")
+if orphans or pending:
+    print(f"  ({orphans} end(s) and {len(pending)} begin(s) fell outside the window.)")
 '
 }
 
 # NFR-1.5. Needs the 15,000-set fixture already restored on the device.
+#
+# `--launch`, NOT `--attach`, AND `xctrace`'S OWN SPELLING OF THE UDID. Both halves are this task's
+# own traps and this subcommand carried both of them until they were fixed: `xctrace record
+# --attach` by bundle id refuses outright ("Cannot find process matching name"), and handed
+# `devicectl`'s CoreDevice UUID rather than the hardware UDID `xctrace` writes a 0-byte trace and
+# carries on. Neither failure says anything, which is why `|| true` is gone from here as well —
+# a swallowed error and an empty measurement look identical afterwards.
+#
+# THE APP IS LAUNCHED, SO THE SCROLLING STARTS AFTER IT IS UP. The window covers the launch too;
+# it is a hitch measurement over a scroll, and the first second of it is not that.
 cmd_hitches() {
     local udid="$1" seconds="${2:-30}"
     mkdir -p "$TRACES"
     local out="$TRACES/hitches.trace"
     rm -rf "$out"
-    echo "measure-device.sh: recording. Scroll the History list hard for ${seconds}s."
-    xcrun xctrace record --device "$udid" --template "Animation Hitches" \
-        --attach "$BUNDLE_ID" --output "$out" --time-limit "${seconds}s" || true
+    echo "measure-device.sh: NFR-1.5 on $(describe_device "$udid"), Release."
+    echo "measure-device.sh: recording ${seconds}s. The app launches — go to History and scroll hard."
+    xcrun xctrace record --device "$(xctrace_udid)" --template "Animation Hitches" \
+        --launch "$BUNDLE_ID" --output "$out" --time-limit "${seconds}s" >/dev/null
+    require_trace "$out"
     echo "measure-device.sh: $out"
+    echo "measure-device.sh: open it in Instruments; NFR-1.5 is the hitch rate over the scroll."
 }
 
 command="${1:-}"
@@ -269,7 +324,9 @@ case "$command" in
     signposts) cmd_signposts "$(resolve_device)" "${1:-60}" ;;
     hitches) cmd_hitches "$(resolve_device)" "${1:-30}" ;;
     *)
-        sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'
+        # Delimited rather than counted: a line added to the usage block above used to have to be
+        # paid for by hand here, and was not — the block gained NFR-17.4 and this range did not.
+        sed -n '/^# USAGE$/,/^# END USAGE$/p' "$0" | sed '1d;$d' | sed 's/^# \{0,1\}//'
         exit 64
         ;;
 esac

@@ -10,8 +10,8 @@ import Testing
 /// Writes a restored store to a directory the caller names, so a real log can be put in front of
 /// the app on a simulator or a device.
 ///
-/// **It produces an artefact rather than asserting a claim, and that is what it is for.** `T-1.83`
-/// has to measure `NFR-1.5` and `NFR-1.6` against ~15,000 sets *in the running app*, and the app's
+/// **It produces an artefact rather than asserting a claim, and that is what it is for.**
+/// `NFR-1.5` and `NFR-1.6` are measured against ~15,000 sets *in the running app*, and the app's
 /// only door for a log that size is `FR-1.11.4`'s restore — which is a screen, driven by a finger.
 /// A store file can be copied into a container instead, and this is the only place in the
 /// repository that can write one: `Settings` owns ``StoreRestore`` and the archive reader, and

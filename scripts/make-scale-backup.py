@@ -22,10 +22,15 @@ was built from does. It also inherits the distribution that matters to the measu
 exercises, how many sets per session, how the history clusters — which a uniform generator would
 flatten into something no lifter has.
 
-WHAT IT DOES NOT INHERIT. The copies are free workouts: `programRunID` is cleared on every
-replicated session, because a run is not replicated and a session naming one that does not exist
-is the dangling reference the restore refuses. The catalogue, the settings row and the bodyweight
-readings are carried once, unreplicated — they are not what either requirement scales.
+WHAT IT DOES NOT INHERIT. The copies are free workouts: every column that gives a session a
+position inside a program is cleared. NOT because the reference would dangle — `programRuns` is
+carried, so a copy naming one would resolve — but because a run is a *place*: `SessionLocator`
+finds a day by `(runID, week, dayIndex)`, and five generations of sessions all claiming week 3
+day 2 of the one run would give that lookup five answers to a question with one. The week and day
+numbers go with the run for the same reason, and so does `scheduledWorkoutID`; what is left is
+what a workout logged outside any program looks like, which is a shape the app already holds. The
+catalogue, the settings row and the bodyweight readings are carried once, unreplicated — they are
+not what either requirement scales.
 
 IDS ARE DERIVED, NOT RANDOM. Every copied row's id is `uuid5(namespace, original-id + copy-index)`,
 so two runs over the same source produce the same file. A measurement you cannot re-take against
@@ -49,15 +54,24 @@ SECONDS_PER_DAY = 86_400
 LOG_SECTIONS = ("sessions", "entries", "sets")
 
 # Which keys on a replicated row hold a date. `date` is the session's own; everything else in these
-# records ends in `At`. Listed rather than pattern-matched so that a section gaining a date column
-# fails loudly here instead of silently keeping the original's timestamp.
-DATE_KEYS = frozenset({"date", "createdAt", "updatedAt", "startedAt", "finishedAt", "deletedAt"})
+# records ends in `At`.
+#
+# The list is enumerated rather than pattern-matched, and `unlisted_dates` is what makes that safe.
+# Its first version claimed a list would make a new date column "fail loudly" and nothing failed:
+# the shift is `DATE_KEYS & row.keys()`, which skips an unlisted key in silence. Two were being
+# skipped when that was written — `SetEntry.completedAt`, and `WorkoutSession.endedAt` under a name
+# no record has ever had — so every copy kept the original's finish time while its start moved
+# years back.
+DATE_KEYS = frozenset(
+    {"date", "createdAt", "updatedAt", "deletedAt", "startedAt", "endedAt", "completedAt"}
+)
 
 # The keys that name another row, per section — what has to be remapped in step with the ids.
 FOREIGN_KEYS = {"entries": ("sessionID",), "sets": ("entryID",)}
 
-# Cleared on a copy, for the reason in this file's header.
-CLEARED_ON_COPY = ("programRunID",)
+# Cleared on a copy, for the reason in this file's header: a copy is a free workout, and these four
+# are what place a session inside a program.
+CLEARED_ON_COPY = ("programRunID", "weekNumber", "dayIndex", "scheduledWorkoutID")
 
 
 def copied_id(original: str, index: int) -> str:
@@ -73,8 +87,34 @@ def span_seconds(sessions: list) -> float:
     return (max(dates) - min(dates)) + SECONDS_PER_DAY
 
 
+def unlisted_dates(archive: dict) -> set:
+    """Date-shaped keys in the replicated sections that ``DATE_KEYS`` does not name.
+
+    A key ending in `At`, or spelled `date`, holds a date in every record these sections carry.
+    Anything matching that and absent from the list would be copied forward unshifted, which is
+    what the list is enumerated to prevent — so the enumeration is checked against the file rather
+    than trusted.
+    """
+    found = set()
+    for section in LOG_SECTIONS:
+        for row in archive.get(section) or []:
+            found |= {
+                key
+                for key in row
+                if (key == "date" or key.endswith("At")) and key not in DATE_KEYS
+            }
+    return found
+
+
 def replicate(archive: dict, copies: int) -> dict:
     """The source with `copies` extra generations of its log stacked backwards in time."""
+    unlisted = unlisted_dates(archive)
+    if unlisted:
+        raise SystemExit(
+            "make-scale-backup.py: unlisted date column(s) "
+            + ", ".join(sorted(unlisted))
+            + " — add them to DATE_KEYS, or every copy keeps the original's timestamp"
+        )
     out = dict(archive)
     shift = span_seconds(archive["sessions"])
     for section in LOG_SECTIONS:
@@ -131,9 +171,25 @@ def self_test() -> None:
         "formatVersion": 2,
         "exportedAt": 0,
         "exercises": [{"id": "E1"}],
-        "sessions": [{"id": "S1", "date": 100.0, "createdAt": 100.0, "programRunID": "R1"}],
+        # Every date column a session and a set carry, because a fixture stamping one instant
+        # cannot tell a shifted column from a skipped one — `endedAt` and `completedAt` were both
+        # being skipped under exactly such a fixture.
+        "sessions": [
+            {
+                "id": "S1",
+                "date": 100.0,
+                "createdAt": 100.0,
+                "startedAt": 100.0,
+                "endedAt": 105.0,
+                "programRunID": "R1",
+                "weekNumber": 3,
+                "dayIndex": 2,
+            }
+        ],
         "entries": [{"id": "N1", "sessionID": "S1", "createdAt": 100.0, "exerciseID": "E1"}],
-        "sets": [{"id": "T1", "entryID": "N1", "createdAt": 100.0, "weight": 1000}],
+        "sets": [
+            {"id": "T1", "entryID": "N1", "createdAt": 100.0, "completedAt": 104.0, "weight": 1000}
+        ],
     }
     grown = replicate(source, 2)
     check(grown)
@@ -141,9 +197,19 @@ def self_test() -> None:
     assert len(grown["exercises"]) == 1, "the catalogue must not be replicated"
     copy = grown["sessions"][1]
     assert copy["id"] != "S1", "a copy must not reuse an id"
-    assert copy["programRunID"] is None, "a copy must not name a run that was not replicated"
+    assert copy["programRunID"] is None, "a copy must not keep the run it was logged in"
+    assert copy["weekNumber"] is None and copy["dayIndex"] is None, "nor the place inside it"
     assert copy["date"] < 100.0, "a copy must be older than what it was copied from"
+    assert copy["endedAt"] < 105.0, "every date column moves, not only the listed-first ones"
+    assert grown["sets"][1]["completedAt"] < 104.0, "a copied set cannot finish when its source did"
     assert grown["sets"][1]["entryID"] == grown["entries"][1]["id"], "the remap must be in step"
+    unlisted = dict(source, sets=[dict(source["sets"][0], syncedAt=1.0)])
+    try:
+        replicate(unlisted, 1)
+    except SystemExit as refusal:
+        assert "syncedAt" in str(refusal), refusal
+    else:
+        raise AssertionError("an unlisted date column must stop the run, not be copied forward")
     assert copied_id("S1", 1) == copied_id("S1", 1), "ids must be derived, not random"
     assert copies_for({"sets": [0] * 3000}, 15000) == 4, "3000 x 5 is the first size over 15000"
     assert copies_for({"sets": [0] * 15000}, 15000) == 0, "a source already at target needs none"

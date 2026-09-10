@@ -25,7 +25,13 @@ public struct PerformanceSignpost: Sendable {
     /// look at.
     public static let subsystem = "lockw1n.Attempt"
 
-    /// `NFR-1.2`: an answer on a planned day, from the tap to the row having re-read. Budget 100 ms.
+    /// `NFR-1.2`: an answer, from the tap to the row having re-read. Budget 100 ms.
+    ///
+    /// **It belongs on whichever command owns the re-read, which is not the same layer on both
+    /// halves of the requirement.** A free workout's set commands re-read the list themselves, so
+    /// the interval sits on them; a planned day's answer writes through those commands and then
+    /// re-reads the *day*, one layer up, so an interval on the write alone would stop before the
+    /// row the lifter is watching has changed.
     public static let answer = PerformanceSignpost("answer", category: "NFR-1.2")
 
     /// `NFR-1.6`: one exercise's records and estimate recomputed. Budget 500 ms, off the main actor.
@@ -61,6 +67,15 @@ public struct PerformanceSignpost: Sendable {
     /// accuracy: a nonisolated measure would refuse an actor-isolated body outright, and any hop it
     /// introduced would be counted inside the interval as if the work had taken that long.
     ///
+    /// **Every interval carries its own id, because these overlap.** The default is
+    /// `OSSignpostID.exclusive`, which asserts that no two intervals of this name are ever open at
+    /// once — and that is false here in both directions an interval can overlap itself: the write
+    /// commands each span an `await` on the queued write ahead of them, which is why they hold a
+    /// chain of pending writes at all, and the recomputer is an `actor` whose body suspends, so a
+    /// second call enters while the first is waiting. Overlapping intervals sharing one id cannot
+    /// be told apart by anything reading them, and a reader pairing them in arrival order reports
+    /// two durations that belong to neither.
+    ///
     /// - Parameters:
     ///   - isolation: The caller's actor, filled in by the compiler. Never passed by hand.
     ///   - body: The work being measured.
@@ -70,7 +85,7 @@ public struct PerformanceSignpost: Sendable {
         isolation: isolated (any Actor)? = #isolation,
         _ body: () async throws -> T
     ) async rethrows -> T {
-        let state = signposter.beginInterval(name)
+        let state = signposter.beginInterval(name, id: signposter.makeSignpostID())
         defer { signposter.endInterval(name, state) }
         return try await body()
     }
