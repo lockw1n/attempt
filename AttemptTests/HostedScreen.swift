@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// A SwiftUI view hosted in a real window, on a real `UIWindowScene` (`TR-1.12`).
+/// A SwiftUI view hosted in a real window, on a real `UIWindowScene` (`G-6.3`).
 ///
 /// **This is the whole reason the bundle is hosted rather than a package suite.** A bare SwiftPM
 /// test bundle has no scene, so `UIHostingController` there builds no `UIView` hierarchy and no
@@ -135,18 +135,36 @@ final class HostedScreen {
             .filter { seen.insert($0).inserted }
     }
 
+    /// What activating an element did.
+    ///
+    /// **Three cases rather than a `Bool`**, because two of them are different defects and the
+    /// combined answer names only the first: a control that is absent from the tree is a screen
+    /// that did not draw it, and a control that is in the tree and declines to answer is a screen
+    /// that drew it disabled or inert. A message asserting the first over the second is the same
+    /// misattribution this type's ``accessibilityRemedy`` exists to prevent one layer up.
+    enum Activation: Equatable {
+        /// No element carried that label with a button's traits.
+        case notFound
+
+        /// The element was there and `accessibilityActivate()` declined.
+        case refused
+
+        /// The element answered.
+        case activated
+    }
+
     /// Activates the first element labelled `label`, the way VoiceOver's double-tap does.
     ///
     /// - Parameter label: The element's accessibility label.
-    /// - Returns: Whether an element with that label was found and answered.
+    /// - Returns: Which of the three things happened.
     @discardableResult
-    func activate(label: String) -> Bool {
+    func activate(label: String) -> Activation {
         guard
             let element = accessibilityElements().first(where: {
                 $0.accessibilityLabel == label && $0.accessibilityTraits.contains(.button)
             })
-        else { return false }
-        return element.accessibilityActivate()
+        else { return .notFound }
+        return element.accessibilityActivate() ? .activated : .refused
     }
 
     /// Walks one node of the accessibility tree.

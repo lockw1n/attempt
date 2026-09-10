@@ -7,7 +7,14 @@ import Testing
 
 @testable import Attempt
 
-/// That a screen's parts are still wired to the screen (`TR-1.12`, `DOD-17.6`).
+/// That a screen's parts are still wired to the screen (`FR-1.2.3`, `G-6.3`).
+///
+/// **Not `TR-1.12` and not `DOD-17.6`.** `TR-1.12` is the snapshot requirement, T-1.08's, and this
+/// suite exists for what a snapshot reference cannot see — keying it there would tick the one claim
+/// it argues against making. `DOD-17.6`'s literal reading wants an XCUITest, which T-1.94 declined
+/// to build; the requirement is met by a `DayStore` walk plus a simulator pass and is not advanced
+/// here. What is advanced is `FR-1.2.3`: that the control which adds a set still reaches the editor
+/// that takes one.
 ///
 /// **The defect this exists for.** `T-17.11` deleted two modifiers from `ActiveSessionView` — the
 /// `.sheet(item:)` that raises the set editor and the `.onChange` that follows the note draft — and
@@ -18,21 +25,32 @@ import Testing
 /// proof the parts are still wired together.**
 ///
 /// **What it does not cover, in `check-doc-links.sh`'s own words for its own blind spot.** That
-/// script says extraction reads the built module, so a link in a `private` member's doc comment is
-/// not in the graph and is never checked, whatever `--minimum-access-level` says. Here: activation
-/// reads the accessibility tree, so **a control that publishes no accessibility element is not in
-/// the tree and is never checked, whatever the screen draws** — and neither is a control that is in
-/// the tree but covered, mis-sized, or behind a gesture that wins. This proves that a screen's parts
-/// are still wired to the screen, never that they can be touched.
+/// script says extraction reads the built module, so a link in a `private` or `internal` member's
+/// doc comment is not in the graph and is never checked, whatever `--minimum-access-level` says.
+/// Here: activation reads the accessibility tree, so **a control that publishes no accessibility
+/// element is not in the tree and is never checked, whatever the screen draws** — and neither is a
+/// control that is in the tree but covered, mis-sized, or behind a gesture that wins. This proves
+/// that a screen's parts are still wired to the screen, never that they can be touched.
+///
+/// **Serialized, because the scene is shared and there is only one.** ``HostedScreen`` puts its
+/// window on the app's own `UIWindowScene` and makes it key; two tests suspending in `settle()`
+/// interleave whatever the actor, so a second window would take key from the first mid-test and a
+/// presentation raised from a controller whose window is no longer key can quietly fail to appear.
+/// Same argument as ``LaunchSequenceTests``' one layer down, over a different piece of
+/// process-global state.
 @MainActor
-@Suite("Screen wiring (TR-1.12)")
+@Suite("Screen wiring (FR-1.2.3)", .serialized)
 struct ScreenWiringTests {
     /// Tapping a card's Log control raises the set editor over the workout.
     ///
-    /// The fixture is the app's own composition root over an in-memory store, so what is exercised
-    /// is the screen as `RootTabView` builds it rather than a hand-assembled copy of it — T-16.17's
-    /// finding, that a fixture assembling a shared component's parts is a second place the screen's
-    /// decision lives.
+    /// **The stores come from the app's own composition root; the call does not.** `AppDependencies`
+    /// builds every store the screen is handed, so none of them is a hand-assembled stand-in —
+    /// T-16.17's finding, that a fixture assembling a shared component's parts is a second place the
+    /// screen's decision lives. But `RootTabView.activeSessionRoot` is `private`, so the three
+    /// arguments below are still a *copy* of the call it makes, and a screen that gained a fourth
+    /// argument there would leave this fixture compiling against the old shape of the same screen.
+    /// The copy is one line long and reviewable; the claim it supports is about the modifiers on the
+    /// screen rather than about the arguments to it, which is why the copy is tolerable here.
     @Test("The active session's Log control presents the set editor")
     func theLogControlPresentsTheSetEditor() async throws {
         let fixture = try await SessionFixture()
@@ -52,14 +70,26 @@ struct ScreenWiringTests {
         try #require(!screen.accessibilityElements().isEmpty, "\(HostedScreen.accessibilityRemedy)")
         #expect(screen.presented == nil, "nothing may be presented before the control is used")
 
-        let label = LoggingCopy.string(forKey: "logging.session.set.add.action")
-        let found = screen.activate(label: label)
-        #expect(
-            found,
-            """
-            no activatable element labelled "\(label)". \
-            What the screen published: \(screen.activatableLabels())
-            """)
+        let label = try LoggingCopy.string(forKey: "logging.session.set.add.action")
+        // Named per case rather than as a `Bool`: "not in the tree" is a screen that did not draw
+        // the control, "refused" is a screen that drew it inert, and a message asserting the first
+        // over the second sends the next reader looking in the wrong place.
+        switch screen.activate(label: label) {
+        case .activated:
+            break
+        case .notFound:
+            Issue.record(
+                """
+                no activatable element labelled "\(label)". \
+                What the screen published: \(screen.activatableLabels())
+                """)
+        case .refused:
+            Issue.record(
+                """
+                the element labelled "\(label)" is in the tree and declined to activate — \
+                the screen drew the control disabled or inert, it is not missing.
+                """)
+        }
         await screen.settle()
 
         // The assertion the deleted `.sheet(item:)` fails. Anchored to a literal rather than to a
@@ -74,6 +104,12 @@ struct ScreenWiringTests {
     /// existing at all, which is what `T-1.82`'s two surviving modifier mutations need and what a
     /// bare SwiftPM bundle cannot produce (T-1.08 measured `UIHostingController` rendering no view
     /// hierarchy without a scene).
+    ///
+    /// **It cannot fail on its own, and that is not what it is for.** Every claim here is implied by
+    /// the test above — a named control that activates is a non-empty tree with a control in it — so
+    /// no defect reddens this one alone. What it buys is the *reading*: when both go red the tree
+    /// was never published, and when only the first does the tree was published and the wiring was
+    /// gone. `T-1.82` inherits the second of those as its starting point.
     @Test("A hosted active session publishes an accessibility tree with controls in it")
     func aHostedSessionPublishesAnAccessibilityTree() async throws {
         let fixture = try await SessionFixture()
@@ -150,20 +186,59 @@ struct SessionFixture {
 /// for a string whose home is the `.strings` file, and would break on a copy change that broke
 /// nothing. Reading the shipped bundle also proves the bundle shipped — a resource that failed to
 /// copy renders a key where a word should be, which is invisible to every other gate here.
+///
+/// **That last claim needs the key-level check below to be true at all**, and it is the reason this
+/// type is more than one line. `localizedString(forKey:value:table:)` answers with **the key
+/// itself** when the key is missing and `value` is empty — and `LoggingStrings` resolves against
+/// this same bundle, so the screen would draw the key too. Both sides then agree on
+/// `"logging.session.set.add.action"`, the label matches, and a `.strings` file that never shipped
+/// passes as a screen that works. Two lookups agreeing on the same wrong answer is `T-16.07`'s
+/// family, one layer out from the store: the `preconditionFailure` catches a missing *bundle*, and
+/// only the comparison against `key` catches a missing *key*.
 enum LoggingCopy {
+    /// What can be wrong with the copy before a screen is ever asked about it.
+    ///
+    /// **Thrown rather than a `preconditionFailure`**, which is what this was first written as: a
+    /// trap kills the process and takes every other suite's result with it, and a resource fault is
+    /// exactly the failure that most needs the rest of the run to still report. One test goes red,
+    /// and its message says the resource rather than the screen.
+    enum CopyFailure: Error, CustomStringConvertible {
+        /// The whole resource bundle is missing from the app — CLAUDE.md's `SeedContent` trap.
+        case bundleMissing
+
+        /// The bundle is there and holds no copy for this key.
+        case keyMissing(String)
+
+        /// What went wrong, and where to look.
+        var description: String {
+            switch self {
+            case .bundleMissing:
+                "Logging_Logging.bundle is not in the app bundle — the resource did not copy."
+            case .keyMissing(let key):
+                """
+                Logging_Logging.bundle has no copy for "\(key)": the lookup answered with the key. \
+                The bundle shipped and the string did not — a renamed key, or an en.lproj that \
+                failed to copy. The screen draws the key too, so this must not read as a control \
+                that was not found.
+                """
+            }
+        }
+    }
+
     /// One string from `Logging`'s bundle.
     ///
     /// - Parameter key: The key as `LoggingStrings` spells it.
-    /// - Returns: The English copy.
-    static func string(forKey key: String) -> String {
+    /// - Returns: The English copy, which is never the key.
+    /// - Throws: ``CopyFailure`` if the bundle or the key is missing.
+    static func string(forKey key: String) throws -> String {
         guard
             let url = Bundle.main.url(forResource: "Logging_Logging", withExtension: "bundle"),
             let bundle = Bundle(url: url)
         else {
-            // A failure here is the resource-bundle trap CLAUDE.md records for `SeedContent`, and
-            // it must not read as "the control was not found".
-            preconditionFailure("Logging_Logging.bundle is not in the app bundle")
+            throw CopyFailure.bundleMissing
         }
-        return bundle.localizedString(forKey: key, value: nil, table: nil)
+        let copy = bundle.localizedString(forKey: key, value: nil, table: nil)
+        guard copy != key else { throw CopyFailure.keyMissing(key) }
+        return copy
     }
 }

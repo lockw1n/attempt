@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 #
-# T-1.94 / TR-1.12: run the app target's own test bundle.
+# T-1.94 / G-6.3: run the app target's own test bundle (TR-1.10, NFR-1.7, FR-1.2.3).
+#
+# NOT `TR-1.12`. That is the snapshot requirement and it is T-1.08's; this bundle exists for the
+# class of defect a snapshot reference cannot see, so keying it there would tick the one claim it
+# argues against making.
 #
 #   scripts/app-tests.sh                       # the booted simulator, or the first available one
 #   scripts/app-tests.sh --device 'iPhone lockw1n'
@@ -27,6 +31,13 @@
 # never checked, whatever the screen draws. Neither is a control that IS in the tree but is covered,
 # mis-sized, or behind a gesture that wins. A finger sees those; nothing here does. This proves that
 # a screen's parts are still wired to the screen, never that they can be touched.
+#
+# WHEN IT RUNS, AND WHEN IT DOES NOT. CI's `build` job, which triggers on `main` only — so this
+# gate is enforced at the first `dev` -> `main` merge and not before, and T-17.11's defect (the
+# class it was built for) landed on `dev`. It is deliberately NOT in CLAUDE.md's verification chain:
+# that chain holds every `lint`-job gate cheap enough to run by hand, and this one is a whole app
+# build. Run it by hand after a task that changes how a screen attaches its parts — the modifiers
+# on a view, not the views under them, which is the only diff this can see and a reference cannot.
 
 set -euo pipefail
 

@@ -5,14 +5,28 @@ import Testing
 
 @testable import Attempt
 
-/// The app's own launch sequence, over a store on disk (`TR-1.10`, `TR-1.12`).
+/// The app's own launch sequence, over a store on disk (`TR-1.10`, `NFR-1.7`).
+///
+/// **Not `TR-1.12`**, which is the snapshot requirement and T-1.08's; nothing here renders anything.
 ///
 /// **What this reaches that no package suite can.** `PersistenceTests.FirstLaunchIdentityTests`
 /// already holds `TR-1.10` at the `PersistenceStack` level and says so: what it could not reach is
 /// `AppDependencies` — the composition root, the sync decision made before anything opens, the seed
-/// import and the preference adoption that run on every launch. Those live in the app target, which
+/// import and the preference adoption that run on every launch. That lives in the app target, which
 /// had no test bundle until this one. The claim here is therefore about the *sequence*, not about
 /// the mint: the mint is `Persistence`'s and is tested there.
+///
+/// **`AttemptApp` itself is still unreached, and this suite cannot reach it.** It is `@main`, so
+/// nothing can host it, and it attaches ``AppDependencies/importSeedCatalogue()`` and
+/// ``AppDependencies/adoptStoredPreferences()`` as two `.task` modifiers on the root view —
+/// which is precisely `T-17.11`'s class, a modifier attached to the screen rather than to one of
+/// its parts. ``launch(at:)`` below calls the two functions directly, so it is a **copy** of that
+/// attachment and not a reading of it: delete either `.task` from `AttemptApp` and every test here
+/// stays green. `ScreenWiringTests` closes that class for a pushed screen and this suite does not
+/// close it for the root one. **The instrument that would is an XCUITest**, which T-1.94 declined
+/// for `DOD-17.6`'s reasons; until one exists, the two `.task` lines in `AttemptApp` are held by
+/// review alone. Recorded here rather than in `docs/` because this file is where the question gets
+/// asked.
 ///
 /// **Serialized, and it moves a real preference.** `AppDependencies` reads
 /// `AppSyncControl.isEnabled()` against `UserDefaults.standard` before it opens anything, and for a
@@ -21,7 +35,7 @@ import Testing
 /// ``SyncPreferenceGuard`` turns it off for the duration and puts back exactly what was there.
 /// Because that is process-wide state, the suite runs one test at a time.
 @MainActor
-@Suite("Launch sequence (TR-1.10, TR-1.12)", .serialized)
+@Suite("Launch sequence (TR-1.10, NFR-1.7)", .serialized)
 struct LaunchSequenceTests {
     /// The whole of `AttemptApp`'s launch work, minus the window: open, seed, adopt.
     ///
@@ -29,7 +43,9 @@ struct LaunchSequenceTests {
     /// - Returns: What the launch produced.
     private func launch(at url: URL) async -> AppDependencies {
         let dependencies = AppDependencies(location: .file(url))
-        // The same two calls `AttemptApp` attaches to the root view, in the order it attaches them.
+        // A COPY of the two calls `AttemptApp` attaches to the root view, in the order it attaches
+        // them — not a reading of them. Nothing here fails if either `.task` is deleted; see the
+        // suite's own doc comment for why that hole is open and what would close it.
         await dependencies.importSeedCatalogue()
         await dependencies.adoptStoredPreferences()
         return dependencies
@@ -59,7 +75,12 @@ struct LaunchSequenceTests {
         // column holds. Spelled out rather than imported: that constant is `internal` to
         // `Persistence`, and a sentinel a test reads from the code under test agrees with
         // whatever that code does.
-        #expect(settings.userID != UUID(uuidString: "00000000-0000-0000-0000-000000000000"))
+        //
+        // COMPARED AS STRINGS, because `UUID(uuidString:)` is failable and `userID` is not: a
+        // typo in the literal makes the initialiser `nil`, a non-nil UUID is `!=` nil, and the
+        // assertion can then never fail. T-0.15's family, with the optional on the literal's side
+        // — so the literal is anchored as text, which cannot silently become "no value at all".
+        #expect(settings.userID.uuidString != "00000000-0000-0000-0000-000000000000")
         // Anchored to a literal rather than to another read of the same column: `count > 0` is
         // satisfied by a store that seeded one row, and the shipped catalogue holds hundreds.
         let catalogue = try await repositories.exercises.exercises(includingDeleted: false)
