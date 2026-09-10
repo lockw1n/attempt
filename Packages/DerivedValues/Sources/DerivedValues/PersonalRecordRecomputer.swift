@@ -149,11 +149,7 @@ public actor PersonalRecordRecomputer {
     /// - Throws: Whatever the repositories throw reading the sets or writing the cache.
     @discardableResult
     public func recompute(forExerciseID exerciseID: UUID) async throws -> ExerciseRecords {
-        // `NFR-1.6`'s own interval. The walk is what the budget is written about; `publish` below
-        // is a fan-out to subscribers and is not the recomputation.
-        let records = try await PerformanceSignpost.recompute.measure {
-            try await recomputed(exerciseID, writingCache: true)
-        }
+        let records = try await recomputed(exerciseID, writingCache: true)
         publish(.exercise(exerciseID))
         return records
     }
@@ -319,6 +315,26 @@ public actor PersonalRecordRecomputer {
     ///
     /// Internal rather than private on ``workouts``' rule, so the reads can live in their own file.
     func walked(_ exerciseID: UUID, writingCache: Bool) async throws -> Walk {
+        // `NFR-1.6`'S INTERVAL, AND IT IS HERE RATHER THAN ON ``recompute(forExerciseID:)``
+        // BECAUSE THAT IS NOT THE PATH THE APP TAKES. A logged set reaches
+        // ``setDidChange(inEntryID:)``, which calls `refreshRecords`, which calls this directly —
+        // so an interval on the public trigger measures a call the lifter never makes and stays
+        // silent on the one they do. Measured 2026-09-10 by driving the app under Instruments,
+        // which is the only instrument that could have caught it. Every path shares this walk:
+        // both triggers, and `repMaxes`/`schemeRecords`' cold reads.
+        try await PerformanceSignpost.recompute.measure {
+            try await walking(exerciseID, writingCache: writingCache)
+        }
+    }
+
+    /// ``walked(_:writingCache:)``'s body, split out only so the interval above can bracket it.
+    ///
+    /// - Parameters:
+    ///   - exerciseID: The exercise to walk.
+    ///   - writingCache: Whether the walk claims the write generation and stores what it finds.
+    /// - Returns: What the walk found.
+    /// - Throws: Whatever the repositories throw.
+    private func walking(_ exerciseID: UUID, writingCache: Bool) async throws -> Walk {
         // Claimed before the first `await`, and only by a call that intends to write: two reads that
         // never touch the row cannot supersede each other.
         let generation = writingCache ? claimWriteGeneration(exerciseID) : 0

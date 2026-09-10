@@ -148,6 +148,15 @@ extension ActiveSessionStore {
     ///   - entryID: The exercise to log against.
     ///   - values: What the set records — load, repetitions, rating, kind and note.
     public func addSet(toEntryID entryID: UUID, values: SetEntryValues) async {
+        // `NFR-1.2`'s interval on the free workout's half of the requirement: the
+        // command writes and the row re-reads inside it.
+        await PerformanceSignpost.answer.measure { await performAddSet(toEntryID: entryID, values: values) }
+    }
+
+    /// ``addSet(toEntryID:values:)``'s body.
+    ///
+    /// Split out only so the interval above can bracket the whole command.
+    private func performAddSet(toEntryID entryID: UUID, values: SetEntryValues) async {
         let previous = pendingWrite
         let write = Task { [weak self] in
             await previous?.value

@@ -168,21 +168,83 @@ cmd_launch() {
     echo "measure-device.sh: process creation to first frame, under Instruments. NFR-1.1 budget 1.5 s."
 }
 
-# NFR-1.2 and NFR-1.6, from the signposts `PerformanceSignpost` emits.
+# NFR-1.2, NFR-1.6 and NFR-17.4, from the signposts `PerformanceSignpost` emits.
+#
+# THE UNIFIED LOG RATHER THAN A TRACE, AND THAT IS A CORRECTION RATHER THAN A PREFERENCE.
+# `xctrace record --attach` was the obvious instrument and it does not work here: attached to a
+# simulator process it ignores its own `--time-limit` and has to be killed, and by bundle id it
+# refuses outright ("Cannot find process matching name"). Signposts are unified-log entries, so
+# `log stream --signpost` reads the same events, streams them as text, needs no attach, and costs
+# kilobytes where a trace costs a fifth of a gigabyte. Measured 2026-09-10, both ways.
 cmd_signposts() {
     local udid="$1" seconds="${2:-60}"
     mkdir -p "$TRACES"
-    local out="$TRACES/signposts.trace"
-    rm -rf "$out"
+    local out="$TRACES/signposts.log"
     cat <<'DRIVE'
 measure-device.sh: recording. While it runs, on the phone:
-  NFR-1.2  open Train > today and tap a planned exercise's circle. Do it several times.
-  NFR-1.6  log a set on an exercise with a long history, which triggers a recompute.
-Each interval appears under os_signpost, category NFR-1.2 or NFR-1.6.
+  NFR-1.2   tap a planned exercise's circle, and log a set in a free workout.
+  NFR-1.6   both of the above trigger a recompute; a long-history lift is the interesting one.
+  NFR-17.4  leave the Train tab and come back, which re-reads the week.
 DRIVE
-    xcrun xctrace record --device "$udid" --template "Logging" \
-        --attach "$BUNDLE_ID" --output "$out" --time-limit "${seconds}s" || true
-    echo "measure-device.sh: $out"
+    stream_signposts "$udid" "$seconds" >"$out" 2>&1 || true
+    summarise_signposts "$out"
+}
+
+# The stream itself, which is spelled differently for the two kinds of device.
+#
+# **Backgrounded and killed rather than run under `timeout`**, which macOS does not ship — the
+# GNU coreutils spelling is `gtimeout` and is not there either on a stock machine, so a script that
+# reached for it would fail on the only kind of host that can talk to an iPhone.
+stream_signposts() {
+    local udid="$1" seconds="$2"
+    local predicate="subsystem == \"$BUNDLE_ID\""
+    if xcrun simctl list devices 2>/dev/null | grep -q "$udid"; then
+        xcrun simctl spawn "$udid" \
+            log stream --style compact --signpost --predicate "$predicate" &
+    else
+        xcrun log stream --device "$(xctrace_udid)" \
+            --style compact --signpost --predicate "$predicate" &
+    fi
+    local streamer=$!
+    sleep "$seconds"
+    # SIGINT, NOT SIGTERM. `log stream` writes to a pipe here, so its output is block-buffered;
+    # terminated it dies with the buffer unflushed and a short window reports no signposts at all,
+    # which is indistinguishable from the app not having been driven. Interrupted, it flushes.
+    kill -INT "$streamer" 2>/dev/null || true
+    wait "$streamer" 2>/dev/null || true
+}
+
+# Begin/end pairs turned into durations, per requirement.
+#
+# **Paired per (category, name) as a FIFO, not by signpost id.** `OSSignposter` here uses the
+# exclusive id, so concurrent intervals of the same name would be indistinguishable — which is
+# accurate for these three, each of which is serialised by the actor or the main actor it runs on.
+# A fourth that can genuinely overlap itself needs `makeSignpostID()` and this needs revisiting.
+summarise_signposts() {
+    tr -d '\0' <"$1" | python3 -c '
+import re, sys, datetime
+LINE = re.compile(
+    r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+) Sp .*\[[^:]+:(\S+)\] \[[^]]*?(begin|end)\] (\w+)")
+pending, done = {}, []
+for line in sys.stdin:
+    found = LINE.search(line)
+    if not found:
+        continue
+    stamp, category, kind, name = found.groups()
+    when = datetime.datetime.strptime(stamp, "%Y-%m-%d %H:%M:%S.%f")
+    key = (category, name)
+    if kind == "begin":
+        pending.setdefault(key, []).append(when)
+    elif pending.get(key):
+        done.append((category, (when - pending[key].pop(0)).total_seconds() * 1000))
+if not done:
+    print("  no signpost fired. Drive the app while it records.")
+    raise SystemExit(1)
+for category in sorted({entry[0] for entry in done}):
+    values = sorted(entry[1] for entry in done if entry[0] == category)
+    print(f"  {category:9s} n={len(values):3d}  min={values[0]:7.1f}  "
+          f"median={values[len(values) // 2]:7.1f}  max={values[-1]:7.1f} ms")
+'
 }
 
 # NFR-1.5. Needs the 15,000-set fixture already restored on the device.
