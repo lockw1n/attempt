@@ -7,6 +7,12 @@
 /// **``reps`` and ``sets`` are what was performed, exactly** (`FR-17.2.1`). A run of five sets of
 /// five is the `5 × 5` cell and no other: it is not evidence about `3 × 2`, because more could have
 /// been lifted for `3 × 2`.
+///
+/// **Both fields are unguarded here and bounded where one is computed.** A scheme built by hand
+/// takes any `Int` in either — repetitions per set, and consecutive sets at that count. Every
+/// scheme this module *computes* lies within ``PersonalRecords/repRange`` repetitions and
+/// ``SchemeRecordCalculator/setRange`` sets, which is where ``SchemeRecordCalculator/cell(for:)``
+/// refuses a run outside them rather than clamping it (`NFR-0.3`, `FR-17.2.1`).
 public struct RecordScheme: Sendable, Hashable, Comparable {
     /// The N: exactly this many repetitions, per set.
     public let reps: Int
@@ -14,8 +20,7 @@ public struct RecordScheme: Sendable, Hashable, Comparable {
     /// How many consecutive sets at that rep count were performed.
     public let sets: Int
 
-    /// Creates a scheme. Neither bound is validated; see ``SchemeRecordCalculator`` for the ranges
-    /// a computed record falls in.
+    /// Creates a scheme. Neither bound is validated — see the type's own note.
     public init(reps: Int, sets: Int) {
         self.reps = reps
         self.sets = sets
