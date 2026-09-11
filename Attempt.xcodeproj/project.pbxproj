@@ -22,6 +22,7 @@
 		D3432A21301E887E00DC20FF /* Persistence in Frameworks */ = {isa = PBXBuildFile; productRef = D3432A11301E887E00DC20FF /* Persistence */; };
 		D3432A22301E887E00DC20FF /* RepositoryInterface in Frameworks */ = {isa = PBXBuildFile; productRef = D3432A12301E887E00DC20FF /* RepositoryInterface */; };
 		D3432A23301E887E00DC20FF /* Logging in Frameworks */ = {isa = PBXBuildFile; productRef = D3432A13301E887E00DC20FF /* Logging */; };
+		D3432A24301E887E00DC20FF /* DesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = D3432A14301E887E00DC20FF /* DesignSystem */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,6 +80,7 @@
 				D3432A21301E887E00DC20FF /* Persistence in Frameworks */,
 				D3432A22301E887E00DC20FF /* RepositoryInterface in Frameworks */,
 				D3432A23301E887E00DC20FF /* Logging in Frameworks */,
+				D3432A24301E887E00DC20FF /* DesignSystem in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -160,6 +162,7 @@
 				D3432A11301E887E00DC20FF /* Persistence */,
 				D3432A12301E887E00DC20FF /* RepositoryInterface */,
 				D3432A13301E887E00DC20FF /* Logging */,
+				D3432A14301E887E00DC20FF /* DesignSystem */,
 			);
 			productName = AttemptTests;
 			productReference = D3432A02301E887E00DC20FF /* AttemptTests.xctest */;
@@ -385,11 +388,11 @@
 				DEVELOPMENT_TEAM = 54A7S98K2Q;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Attempt reads your body mass from Health so your weigh-ins and their seven-day average are in one place. Imported readings are kept with the rest of your log.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Attempt never writes to Health. Your weigh-ins and training log stay in the app, and this permission is never requested.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -422,11 +425,11 @@
 				DEVELOPMENT_TEAM = 54A7S98K2Q;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Attempt reads your body mass from Health so your weigh-ins and their seven-day average are in one place. Imported readings are kept with the rest of your log.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Attempt never writes to Health. Your weigh-ins and training log stay in the app, and this permission is never requested.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -637,6 +640,10 @@
 		D3432A13301E887E00DC20FF /* Logging */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Logging;
+		};
+		D3432A14301E887E00DC20FF /* DesignSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DesignSystem;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
