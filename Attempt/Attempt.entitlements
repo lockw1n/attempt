@@ -21,5 +21,23 @@
 	<array>
 		<string>CloudKit</string>
 	</array>
+	<!-- T-1.86 / DOD-1.4: WHICH DATABASE A BUILD REACHES, and the only reason this key exists.
+	     Without it the environment comes from how the build was signed: a distribution-signed
+	     build (TestFlight, App Store) reaches Production and a development-signed one — Xcode's
+	     Run, on the phone or the simulator — reaches Development. Those are two separate
+	     databases with two separate schemas, so two such builds never see each other's rows, and
+	     DOD-1.4's "two devices" cannot be demonstrated with the phone on TestFlight and the
+	     simulator on Xcode. Pinning it to Production is what makes them one device pair.
+
+	     THE PRICE, stated because it is not recoverable by deleting an app: every Debug build now
+	     writes to the lifter's real private database. Anything a development build creates —
+	     a restored fixture, a synthetic store, a scratch session — mirrors to the real account
+	     and is not purged by uninstalling. Restoring a scale backup with sync ON is the specific
+	     way to lose an afternoon to it; turn sync off in Settings first (T-1.83's state E).
+
+	     Production is additive-only, which is the other half of the price: a record type or field
+	     that reaches it can never be deleted, only Development can be reset. -->
+	<key>com.apple.developer.icloud-container-environment</key>
+	<string>Production</string>
 </dict>
 </plist>
