@@ -297,6 +297,9 @@ struct DayCommandTests {
 
         await day.load()
 
+        // Anchored on a positive first, because every claim below is an absence: delete the plan
+        // read from `load()` and the three of them go on passing over a day that read nothing.
+        #expect(day.rows.count == 2)
         #expect(!day.isStarted)
         #expect(!store.isActive)
         #expect(!store.isInProgress)

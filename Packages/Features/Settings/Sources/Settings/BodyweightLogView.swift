@@ -325,7 +325,7 @@ struct BodyweightHealthImportCard: View {
                     .disabled(phase == .importing)
                     // G-4.3, and HealthAccessView's Open Health has the same fix for the
                     // same reason: unstyled, a `Button`'s target is its text's line height.
-                    .buttonStyle(.secondaryAction(.intrinsic))
+                    .buttonStyle(.secondaryAction)
                 Text(SettingsStrings.bodyweightHealthDetail)
                     .font(Typography.caption.font)
                     .foregroundStyle(ColorToken.textSecondary)

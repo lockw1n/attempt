@@ -95,6 +95,10 @@ extension ActiveSessionStore {
     /// What that costs is stated on ``isActive``: a held row is not a workout in progress, so
     /// anything asking whether the lifter is still lifting — `NFR-1.9`'s idle timer is the one that
     /// got it wrong — reads ``isInProgress`` instead.
+    ///
+    /// **Nothing puts `endedAt` back**, so a day edited after it is done is edited with the idle
+    /// timer released. That is the wording's own consequence rather than an oversight: the day has
+    /// ended, and the lifter editing it is not mid-set.
     func endDay() async {
         guard let current = session, current.endedAt == nil else { return }
         do {
