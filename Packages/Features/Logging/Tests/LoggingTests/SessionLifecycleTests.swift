@@ -30,6 +30,8 @@ struct SessionLifecycleTests {
         #expect(stored.startedAt != nil)
         #expect(store.failure == nil)
         #expect(store.isActive)
+        // NFR-1.9: a workout that has started and not ended is the one case both readings agree on.
+        #expect(store.isInProgress)
         #expect(store.hasCheckedForSession)
     }
 
@@ -163,6 +165,10 @@ struct SessionLifecycleTests {
 
         #expect(store.session == nil)
         #expect(!store.isActive)
+        // NFR-1.9's narrower reading agrees with the wider one here, and that is the claim: the
+        // free workout releases the row it finishes, so the fix a planned day needed must not have
+        // changed anything for this path.
+        #expect(!store.isInProgress)
         #expect(store.failure == nil)
         let stored = try #require(await repository.session(id: started.id, includingDeleted: false))
         #expect(stored.endedAt != nil)

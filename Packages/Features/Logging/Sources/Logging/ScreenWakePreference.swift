@@ -37,10 +37,12 @@ public final class ScreenWakePreference {
     /// while the user reads the exercise library, and the session alone would ignore the toggle
     /// `NFR-1.9` asks for.
     ///
-    /// - Parameter isActive: Whether a workout is in progress — ``ActiveSessionStore/isActive``.
+    /// - Parameter isInProgress: Whether a workout has been started and not yet ended —
+    ///   ``ActiveSessionStore/isInProgress``, which is `NFR-1.9`'s reading of "active" and not
+    ///   ``ActiveSessionStore/isActive``'s wider one.
     /// - Returns: `true` while both hold.
-    public func keepsScreenAwake(duringSession isActive: Bool) -> Bool {
-        isEnabled && isActive
+    public func keepsScreenAwake(duringSession isInProgress: Bool) -> Bool {
+        isEnabled && isInProgress
     }
 
     /// What the preference's earlier `UserDefaults` home holds, or `nil` where it was never

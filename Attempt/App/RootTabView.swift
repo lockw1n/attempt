@@ -365,9 +365,12 @@ struct RootTabView: View {
 
     /// Whether the idle timer is held off right now (`NFR-1.9`) — a workout in progress, and the
     /// preference left on. A store that did not open keeps no workout, so it never holds it off.
+    ///
+    /// `isInProgress` rather than `isActive`: a finished day's row stays held so its checklist can
+    /// draw it, and the timer must not stay held with it.
     private var keepsScreenAwake: Bool {
         guard case .open(_, let stores) = dependencies.state else { return false }
-        return stores.screenWake.keepsScreenAwake(duringSession: stores.activeSession.isActive)
+        return stores.screenWake.keepsScreenAwake(duringSession: stores.activeSession.isInProgress)
     }
 
     /// The scheme every tab is drawn in (`FR-1.10.2`). A store that did not open has no stored

@@ -259,6 +259,49 @@ struct DayCommandTests {
         #expect(live == nil)
     }
 
+    // MARK: - NFR-1.9
+
+    @Test("A day that has ended is still held, and is no longer a workout in progress")
+    func aFinishedDayIsHeldButNotInProgress() async throws {
+        // `NFR-1.9`, and the defect the phone measured: `endDay()` keeps the row on purpose so the
+        // checklist can draw it, and the idle timer read that held row as a workout in progress —
+        // so a phone left alone after the last answer never locked. The two readings are asserted
+        // together here, because it is their disagreement that is the fix.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 2)
+        let store = fixture.activeStore()
+        let day = fixture.dayStore(dayIndex: 0, store: store)
+        await day.load()
+        await day.answerAsPlanned(rowID: try #require(day.rows.first).id)
+        #expect(store.isInProgress)
+        #expect(ScreenWakePreference().keepsScreenAwake(duringSession: store.isInProgress))
+
+        await day.answerAsPlanned(rowID: try #require(day.rows.last).id)
+
+        #expect(day.isDone)
+        // Held, so `FR-17.7.5`'s read-only day still draws and **Log** still edits it.
+        #expect(store.isActive)
+        #expect(store.session != nil)
+        // And released, so the screen dims.
+        #expect(!store.isInProgress)
+        #expect(!ScreenWakePreference().keepsScreenAwake(duringSession: store.isInProgress))
+    }
+
+    @Test("A day nobody has answered holds no workout, so it holds no screen either")
+    func anUnansweredDayIsNotInProgress() async throws {
+        // The other end of `NFR-1.9`'s wording, decided rather than inherited: a day that is open
+        // and unanswered has no session row at all (`FR-17.9.5`), the lifter is reading a plan, and
+        // the screen may dim. The first answer takes the hold back — asserted above.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 2)
+        let store = fixture.activeStore()
+        let day = fixture.dayStore(dayIndex: 0, store: store)
+
+        await day.load()
+
+        #expect(!day.isStarted)
+        #expect(!store.isActive)
+        #expect(!store.isInProgress)
+    }
+
     // MARK: - DOD-17.6's walk
 
     @Test("Three days of a week, one tap per exercise, every day done")

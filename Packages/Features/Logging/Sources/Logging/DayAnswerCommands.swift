@@ -92,6 +92,9 @@ extension ActiveSessionStore {
     ///
     /// **The session is kept held, unlike ``finish(resolving:)``.** The day's screen goes on drawing
     /// it — a done day is read-only rather than gone, and **Log** still edits it (`FR-17.7.5`).
+    /// What that costs is stated on ``isActive``: a held row is not a workout in progress, so
+    /// anything asking whether the lifter is still lifting — `NFR-1.9`'s idle timer is the one that
+    /// got it wrong — reads ``isInProgress`` instead.
     func endDay() async {
         guard let current = session, current.endedAt == nil else { return }
         do {
