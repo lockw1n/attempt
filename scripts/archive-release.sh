@@ -14,13 +14,14 @@
 # App Store Connect listing. Those are outward-facing writes against the author's account; this
 # prints what they need and stops.
 #
-# THE CLOUDKIT ENVIRONMENT FOLLOWS THE SIGNING, NOT A BUILD SETTING. The app pins no
-# `com.apple.developer.icloud-container-environment` key on purpose (T-1.70 measured this against
-# the real container): a development-signed build reaches the CloudKit *Sandbox*, a
-# distribution-signed one reaches *Production*. So this script's export method is what decides
-# which schema the build talks to, and `DOD-1.4`'s "Production, not Development" is satisfied by
-# archiving and exporting for the store rather than by setting anything. Do not add that key to
-# make it explicit — a wrong value there is invisible until two devices fail to sync.
+# THE CLOUDKIT ENVIRONMENT IS PINNED IN THE ENTITLEMENTS, NOT CHOSEN BY THIS SCRIPT.
+# `Attempt/Attempt.entitlements` sets `com.apple.developer.icloud-container-environment` to
+# `Production`, so every build reaches the Production database however it was signed — an archive
+# exported here and a Debug build run from Xcode alike. Without the key the environment would follow
+# the signing (development-signed → Development, distribution-signed → Production), and a TestFlight
+# install and a simulator build could never see each other's rows. So `DOD-1.4`'s "Production, not
+# Development" does not depend on this script's export method. The price of the pin is stated beside
+# the key; do not remove it to make a Debug build "safe" — that splits the device pair again.
 #
 # SIGNING. As of T-1.72 the only identity on the author's machine is
 # `Apple Development: aleksey.kotsuba@gmail.com (ZPZ5J3H9WT)`. An App Store export needs an
@@ -110,8 +111,10 @@ cat <<'NEXT'
 ------------------------------------------------------------------------------
 STILL TO DO BY HAND — none of it is a build step, and this script does none of it.
 
-1. UPLOAD. Xcode → Window → Organizer → the archive above → Distribute App →
-   TestFlight & App Store. Or `xcrun altool`/`notarytool` with an app-specific
+1. UPLOAD. The archive is under build/, not Xcode's Archives folder, so
+   Organizer does not list it until it is opened: `open build/Attempt.xcarchive`
+   (or the BUILD_DIR you set). Then Xcode → Window → Organizer → that archive →
+   Distribute App → TestFlight & App Store. Or `xcrun altool`/`notarytool` with an app-specific
    password. Uploading is an outward-facing write; it is deliberately not here.
 
 2. APP PRIVACY LABEL (G-5.3). The answers, from what the shipped build actually
