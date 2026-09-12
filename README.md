@@ -1,6 +1,9 @@
 # Attempt
 
-A SwiftUI app for iOS.
+A SwiftUI app for iOS. It ships as **TotalCraft** — the name on the App Store, on the home
+screen and in every string a lifter reads; *Attempt* is the codename, and it is what the
+repository, the Xcode target and scheme, the bundle identifier `lockw1n.Attempt` and the
+iCloud container are called.
 
 ## Requirements
 

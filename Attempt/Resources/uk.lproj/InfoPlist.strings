@@ -1,6 +1,6 @@
 /* The Info.plist half, Ukrainian (FR-1.14.1, TR-1.9). The reason this file exists at all is in
    en.lproj beside it: INFOPLIST_KEY_* bakes a literal into the generated Info.plist, and this is
    what makes it translatable. */
-"NSHealthShareUsageDescription" = "Attempt читає вашу масу тіла зі «Здоров’я», щоб зважування та їхнє середнє за сім днів були в одному місці. Імпортовані значення зберігаються разом із рештою вашого щоденника.";
+"NSHealthShareUsageDescription" = "TotalCraft читає вашу масу тіла зі «Здоров’я», щоб зважування та їхнє середнє за сім днів були в одному місці. Імпортовані значення зберігаються разом із рештою вашого щоденника.";
 
-"NSHealthUpdateUsageDescription" = "Attempt нічого не записує у «Здоров’я». Ваші зважування та щоденник тренувань залишаються в застосунку, і цей дозвіл ніколи не запитується.";
+"NSHealthUpdateUsageDescription" = "TotalCraft нічого не записує у «Здоров’я». Ваші зважування та щоденник тренувань залишаються в застосунку, і цей дозвіл ніколи не запитується.";

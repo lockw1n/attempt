@@ -22,7 +22,7 @@
     struct BackupSnapshotTests {
         /// A file that does not exist, with counts that read as a real first month of training.
         static let file = BackupFile(
-            url: URL(filePath: "/tmp/Attempt-backup-2026-08-28.json"),
+            url: URL(filePath: "/tmp/TotalCraft-backup-2026-08-28.json"),
             workoutCount: 12,
             recordCount: 431,
             deletedCount: 7)

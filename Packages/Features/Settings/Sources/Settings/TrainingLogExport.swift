@@ -121,6 +121,6 @@ enum TrainingLogExportWriter {
     ///   - timeZone: The zone that date is read in.
     /// - Returns: A file name with no extension.
     static func name(for exportedAt: Date, timeZone: TimeZone = .current) -> String {
-        "Attempt-training-log-\(TrainingLogCSV.day(exportedAt, in: timeZone))"
+        "TotalCraft-training-log-\(TrainingLogCSV.day(exportedAt, in: timeZone))"
     }
 }

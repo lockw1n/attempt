@@ -23,8 +23,8 @@
     struct DataExportSnapshotTests {
         /// Two files that do not exist, with counts that read as a real first month of training.
         static let files = TrainingLogExportFiles(
-            csv: URL(filePath: "/tmp/Attempt-training-log-2026-08-28.csv"),
-            json: URL(filePath: "/tmp/Attempt-training-log-2026-08-28.json"),
+            csv: URL(filePath: "/tmp/TotalCraft-training-log-2026-08-28.csv"),
+            json: URL(filePath: "/tmp/TotalCraft-training-log-2026-08-28.json"),
             sessionCount: 12,
             setCount: 148)
 

@@ -66,8 +66,8 @@ struct TrainingLogExportTests {
             into: scratch.url,
             timeZone: .gmt)
 
-        #expect(files.csv.lastPathComponent == "Attempt-training-log-2025-07-06.csv")
-        #expect(files.json.lastPathComponent == "Attempt-training-log-2025-07-06.json")
+        #expect(files.csv.lastPathComponent == "TotalCraft-training-log-2025-07-06.csv")
+        #expect(files.json.lastPathComponent == "TotalCraft-training-log-2025-07-06.json")
         #expect(files.sessionCount == 1)
         #expect(files.setCount == 3)
 
@@ -104,6 +104,6 @@ struct TrainingLogExportTests {
         #expect(fresh.setCount == 2)
         #expect(!FileManager.default.fileExists(atPath: stale.csv.path))
         #expect(FileManager.default.fileExists(atPath: fresh.csv.path))
-        #expect(fresh.csv.lastPathComponent == "Attempt-training-log-2025-07-07.csv")
+        #expect(fresh.csv.lastPathComponent == "TotalCraft-training-log-2025-07-07.csv")
     }
 }
