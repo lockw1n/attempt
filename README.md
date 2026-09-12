@@ -299,12 +299,20 @@ ATTEMPT_REAL_BACKUP=/path/to/backup.json swift test --package-path Packages/Feat
 ```
 
 **The app target has its own bundle too.** `AttemptTests` is an XCTest bundle *hosted*
-by `Attempt`, which is what makes `AppDependencies` and `RootTabView` reachable — a
-package suite has no host application and no `UIWindowScene`, so it can neither run
-the launch sequence nor build a UIView hierarchy. Two things live there and nothing
-else should: the launch sequence over a real store, and the class of defect a
-snapshot reference cannot see (a modifier attached to the screen rather than to one
-of its parts).
+by `Attempt`, which is what makes `AppDependencies` and a real `UIWindowScene`
+reachable — a package suite has no host application, so it can neither run the launch
+sequence nor build a UIView hierarchy. Two things live there and nothing else should:
+the launch sequence over a real store, and the class of defect a snapshot reference
+cannot see (a modifier attached to the screen rather than to one of its parts).
+
+**`RootTabView` itself is not buildable there.** It needs `AppNavigation`, which this
+target does not link, and linking it is an Xcode project change. So a decision written
+as a computed property on that view is testable by nothing: put it in a plain type
+under `Attempt/App/` instead — `ScreenWakePolicy` is the worked example — and the
+production expression becomes the tested one.
+
+Both `Attempt/` and `AttemptTests/` are synchronized root groups, so a new file joins
+its target by living in the directory; there is no `project.pbxproj` entry to add.
 
 ```bash
 ./scripts/app-tests.sh                            # a booted simulator, or the first available
@@ -400,7 +408,7 @@ partial plist merged under the generated one.
 **Performance numbers come off a device or simulator, not out of a test.**
 `xcodebuild` will not host an *SPM* test bundle on a device destination, so the
 instrument is the shipping binary under `OSSignposter`. (`AttemptTests` is hosted by
-the app and does not hit that refusal — confirmed on a phone, 8 tests in 1.19 s.)
+the app and does not hit that refusal — confirmed on a phone, 8 tests in 1.19 s; 10 now.)
 
 `signposts` works on a booted simulator only. Its device branch is broken —
 it reaches for a `log stream --device` option that does not exist — and it fails by
