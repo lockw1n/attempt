@@ -400,7 +400,13 @@ partial plist merged under the generated one.
 **Performance numbers come off a device or simulator, not out of a test.**
 `xcodebuild` will not host an *SPM* test bundle on a device destination, so the
 instrument is the shipping binary under `OSSignposter`. (`AttemptTests` is hosted by
-the app and so should not hit that refusal; no device run has confirmed it yet.)
+the app and does not hit that refusal — confirmed on a phone, 8 tests in 1.19 s.)
+
+`signposts` works on a booted simulator only. Its device branch is broken —
+it reaches for a `log stream --device` option that does not exist — and it fails by
+printing "no signpost fired" rather than by saying so. `launch` and `hitches` do
+work on a device; `launch` aborts the batch if any run records an empty trace, so
+drive it as repeated `launch 1` calls when that happens.
 
 ```bash
 ./scripts/measure-device.sh devices           # what is connected
@@ -568,12 +574,19 @@ either as an argument:
 
 ```bash
 ./scripts/check-cloudkit-schema.sh
-./scripts/check-cloudkit-schema.sh --allow-missing TrainingMaxConfigEntity
+./scripts/check-cloudkit-schema.sh --allow-missing SomeEntity
 ```
 
 `--allow-missing` names entities whose table nothing writes yet, so they cannot
 have a record type. It fails if a name given there turns out to be present — a
-stale excuse is worse than none.
+stale excuse is worse than none. **Nothing needs it today**: all 17 record types
+are deployed, so the plain invocation is the standing one.
+
+It answers two questions — do the two environments agree, and does every `@Model`
+type have a record type. It does **not** ask whether every `@Model` *property* has
+a field, and CloudKit creates a field only on the first export of a non-`nil`
+value, so a deployed schema can pass this check and still be missing columns the
+model declares.
 
 And one dependency gate: every package dependency is a local `path:` one, so no
 tracked `Package.swift` names a remote dependency, a registry package or a binary
