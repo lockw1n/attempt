@@ -14,10 +14,21 @@
     // NO `NavigationStack` AROUND THESE — this repo's standing finding, written out in the Health
     // suite. `ImageRenderer` draws none of a UIKit-backed container's content.
     //
-    // SEVEN STATES DRAWN AS SIX. `reading` and `restoring` are one component with two sentences, so
+    // NINE STATES DRAWN AS EIGHT. `reading` and `restoring` are one component with two sentences, so
     // the layout claim is made once; which sentence each phase resolves is `SettingsStringsTests`'
-    // to answer. The three refusals are likewise one layout — `RestoreStateTests` is where the
-    // three headline/message pairs are held apart.
+    // to answer.
+    //
+    // ALL THREE REFUSALS ARE DRAWN, WHICH REVERSES THIS FILE'S EARLIER CALL — written here because
+    // this is where the next reader will ask why three references picture one layout. It used to
+    // draw `notABackup` alone and say the three were one layout, with `RestoreStateTests` holding
+    // the headline/message pairs apart. Both halves of that are true and neither is what these
+    // references are for: the mapping is which key each refusal resolves, the layout is one claim,
+    // and what is left over is the SENTENCES — three different pairs, of which one was drawn
+    // anywhere. T-1.91 priced it. The rename shipped "It is not AN TotalCraft backup" into
+    // `unreadable`'s message, where no reference, no parity check and no floor could see it, while
+    // `Restore-refused` looked like coverage of the refused state; and `futureVersion`'s headline is
+    // the longest of the three, which is where `G-4.1`'s wrap bites and which the new name made
+    // three characters longer.
 
     @MainActor
     @Suite("Restore snapshots")
@@ -107,6 +118,20 @@
             // FR-1.13.1's error state, and the retry is the picker: nothing this screen could do
             // again would make the same bytes acceptable.
             try Self.assertRestore(named: "Restore-refused", .refused(.notABackup))
+        }
+
+        @Test func refusedAsUnreadable() throws {
+            // Not a backup this app can parse at all, which is the one refusal that does not know
+            // WHY: damaged, or never ours. The sentence says both and promises the device is
+            // untouched.
+            try Self.assertRestore(named: "Restore-refused-unreadable", .refused(.unreadable))
+        }
+
+        @Test func refusedAsNewer() throws {
+            // A backup from a later version. The refusal is deliberate rather than a parse failure —
+            // reading it here could only get it partly right — so the way out is an update, not
+            // another file.
+            try Self.assertRestore(named: "Restore-refused-future", .refused(.futureVersion(2)))
         }
 
         @Test func failed() throws {

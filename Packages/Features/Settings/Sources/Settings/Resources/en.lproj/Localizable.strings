@@ -298,7 +298,7 @@
 "settings.restore.refused.future.headline" = "That backup is from a newer TotalCraft";
 "settings.restore.refused.future.message" = "This file was written by a later version of the app. Update TotalCraft, then restore it — reading it here could only get it partly right.";
 "settings.restore.refused.unreadable.headline" = "That file cannot be read";
-"settings.restore.refused.unreadable.message" = "It is not an TotalCraft backup, or the copy is damaged. Nothing on this device has been changed.";
+"settings.restore.refused.unreadable.message" = "It is not a TotalCraft backup, or the copy is damaged. Nothing on this device has been changed.";
 
 /* Not a refusal: rows are already written. Every write is keyed on the record's own identifier, so
    the same file run twice lands the same store rather than a second copy of it — but safe is all

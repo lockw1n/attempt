@@ -66,17 +66,57 @@ public struct SettingsLandingView: View {
                 case .failed:
                     failure
                 }
-                recentRecords
-                equipment
-                bodyweight
-                data
-                about
+                SettingsLandingLinks(isHealthAvailable: isHealthAvailable)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Spacing.lg.points)
         }
         .background(ColorToken.background)
         .task { await state.load() }
+    }
+
+    /// The failed phase, and the retry out of it — `FR-1.13.1`'s shared component (`T-1.09`).
+    ///
+    /// The button is the reason ``SettingsLandingState/Phase/failed(_:)`` is recoverable: `.task`
+    /// runs once per view identity, and a screen whose only read failed would otherwise stay
+    /// broken for as long as the tab is alive. The phase's diagnostic is deliberately not drawn:
+    /// it is a diagnostic and not a sentence written for the user (`G-3.4`).
+    private var failure: some View {
+        ErrorStateView(
+            headline: Text(SettingsStrings.loadErrorTitle),
+            message: Text(SettingsStrings.loadErrorMessage),
+            // Primary: the retry is the only command this screen offers in the failed phase — the
+            // five sections below the switch are all links, and none of them spends the accent
+            // (`FR-16.6.4`).
+            retryEmphasis: .primary,
+            retry: { Task { await state.load() } })
+    }
+}
+
+/// Every row on the Settings landing that opens another screen (`FR-1.10`–`FR-1.12`).
+///
+/// Split out of ``SettingsLandingView`` for ``SettingsPreferencesForm``'s reason, one screen later:
+/// the screen itself is a `.task` over a repository, so a reference through it is a reference of a
+/// spinner, and these five sections are a pure function of one `Bool`. Everything here sits outside
+/// the phase switch on purpose — each section's own comment says why — so a failed read of the
+/// settings row takes away none of it.
+struct SettingsLandingLinks: View {
+    /// Whether this device has a health source at all — the one thing these rows ask of it.
+    ///
+    /// `false` draws `FR-1.10.4`'s row away rather than dimming it, `T-1.51`'s rule for the same
+    /// fact.
+    let isHealthAvailable: Bool
+
+    /// The five sections, in the order a lifter meets them.
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.lg.points) {
+            recentRecords
+            equipment
+            bodyweight
+            data
+            about
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// `FR-16.3`'s way into what the recent-PR feed reports on.
@@ -190,22 +230,5 @@ public struct SettingsLandingView: View {
                 label: SettingsStrings.aboutRow,
                 detail: SettingsStrings.aboutDetail)
         }
-    }
-
-    /// The failed phase, and the retry out of it — `FR-1.13.1`'s shared component (`T-1.09`).
-    ///
-    /// The button is the reason ``SettingsLandingState/Phase/failed(_:)`` is recoverable: `.task`
-    /// runs once per view identity, and a screen whose only read failed would otherwise stay
-    /// broken for as long as the tab is alive. The phase's diagnostic is deliberately not drawn:
-    /// it is a diagnostic and not a sentence written for the user (`G-3.4`).
-    private var failure: some View {
-        ErrorStateView(
-            headline: Text(SettingsStrings.loadErrorTitle),
-            message: Text(SettingsStrings.loadErrorMessage),
-            // Primary: the retry is the only command this screen offers in the failed phase — the
-            // five sections below the switch are all links, and none of them spends the accent
-            // (`FR-16.6.4`).
-            retryEmphasis: .primary,
-            retry: { Task { await state.load() } })
     }
 }
