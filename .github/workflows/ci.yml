@@ -413,6 +413,19 @@ jobs:
       - name: Verify the CloudKit gate fires
         run: ./scripts/check-cloudkit.sh --self-test
 
+      # TR-1.7 (T-1.95): every @Model PROPERTY has a deployed CloudKit field, which is a different
+      # question from the step above's "every @Model type has a record type" — and the one that was
+      # false for 23 columns while every other check reported green. CoreData creates a field lazily
+      # on the first export of a non-nil value, so an undeployed column costs nothing until a lifter
+      # writes one and then ends that install's sync permanently. --offline reads the committed
+      # schema snapshot rather than the container, so this step needs no management token and no
+      # network; the networked run is what keeps the snapshot honest, and it is a release step.
+      - name: Check every @Model property has a deployed field
+        run: ./scripts/check-cloudkit-schema.sh --offline
+
+      - name: Verify the schema-completeness gate fires
+        run: ./scripts/check-cloudkit-schema.sh --self-test
+
       # G-5.1, and the fact-checker for two sentences the About screen ships inside the binary
       # (G-5.3). Every dependency here is a local path package, so no third party can be told
       # anything — a property that holds by construction and decays with one `.package(url:` in a
