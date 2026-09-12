@@ -35,13 +35,13 @@ CLAIMS = ["storage", "health", "tracking"]
 
 LANGUAGES = [
     ("en", "English", "Privacy",
-     "This page is the hosted copy of Attempt's privacy policy, required by the App Store "
+     "This page is the hosted copy of TotalCraft's privacy policy, required by the App Store "
      "listing. The same policy ships inside the app under Settings → About, where it "
      "describes the exact build you are running. Where the two differ, the copy inside your "
      "build is the one that describes your build; this page describes the current release."),
     ("uk", "Українська",
      "Конфіденційність",
-     "Ця сторінка — розміщена в мережі копія політики конфіденційності Attempt, якої вимагає App Store. Та сама політика постачається всередині застосунку — Налаштування → Про застосунок, де вона описує саме вашу збірку. Якщо ці дві копії розбігаються, вашу збірку описує та, що всередині; ця сторінка описує поточний випуск."),
+     "Ця сторінка — розміщена в мережі копія політики конфіденційності TotalCraft, якої вимагає App Store. Та сама політика постачається всередині застосунку — Налаштування → Про застосунок, де вона описує саме вашу збірку. Якщо ці дві копії розбігаються, вашу збірку описує та, що всередині; ця сторінка описує поточний випуск."),
 ]
 
 ENTRY = re.compile(r'^"([^"]+)"\s*=\s*"((?:[^"\\]|\\.)*)"\s*;', re.MULTILINE)
@@ -64,7 +64,7 @@ def render():
         "<head>",
         '<meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
-        "<title>Attempt — Privacy</title>",
+        "<title>TotalCraft — Privacy</title>",
         "<style>",
         ":root { color-scheme: light dark; --ink: #1a1a1c; --dim: #5a5a62; --bg: #efeff3; "
         "--accent: #b04400; }",
@@ -81,7 +81,7 @@ def render():
         "</style>",
         "</head>",
         "<body>",
-        "<h1>Attempt</h1>",
+        "<h1>TotalCraft</h1>",
         '<p class="note">Privacy policy</p>',
     ]
 

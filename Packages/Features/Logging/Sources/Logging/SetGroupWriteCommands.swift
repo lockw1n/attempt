@@ -109,7 +109,7 @@ extension ActiveSessionStore {
         } catch {
             exercisesWriteFailure = String(describing: error)
         }
-        if written > 0 { await records.setDidChange(inEntryID: entryID) }
+        if written > 0 { announceSetChange(inEntryID: entryID) }
         await loadExercises()
     }
 
@@ -117,8 +117,13 @@ extension ActiveSessionStore {
     private func writeRewrittenGroup(inEntryID entryID: UUID, rows: [SetEntryValues]) async {
         guard let current = session else { return }
         do {
-            try await SetGroupRewrite(repository: repository, records: records)
+            let changed = try await SetGroupRewrite(repository: repository)
                 .rewrite(inEntryID: entryID, to: rows)
+            // Announced before the entry is marked done, not after: the sets have already moved by
+            // here, and a `markDone` that throws would otherwise leave the cache holding records for
+            // sets that are gone with nothing left to tell it (`FR-1.6.4`). It is the order
+            // ``SetGroupRewrite`` itself used to announce in, and the one ``PastSessionState`` keeps.
+            if changed { announceSetChange(inEntryID: entryID) }
             try await markDone(entryID: entryID, ofSessionID: current.id)
             exercisesWriteFailure = nil
         } catch {

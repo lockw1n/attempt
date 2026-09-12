@@ -54,6 +54,39 @@
             }
         }
 
+        /// `G-4.1`'s wrap, in the component's own suite rather than only in a host's.
+        ///
+        /// **The fixture is the Dashboard's shape, deliberately.** `MetricTile-with-context` above
+        /// carries a `DeltaIndicator` alone — short, so it neither truncated before the fix nor
+        /// changed after it, and a suite holding only that pictures a tile the fix does nothing to.
+        /// What `T-1.82` measured is the line *following* a delta: two context children, the second
+        /// a phrase long enough to need a second line at `accessibility3`.
+        ///
+        /// **The container is the host's, and that is the half that makes it fail.** The same tile
+        /// alone in a `Card` is wide enough that the phrase fits on one line, so the fix does
+        /// nothing to it and the reference pins nothing — measured, by deleting the modifier and
+        /// watching that version pass. `GroupedSection`'s insets are what narrow it to where the
+        /// wrap is needed.
+        ///
+        /// Both of `MetricTile`'s `fixedSize` modifiers are pinned here, each probed by deletion:
+        /// the `context`'s, which is `G-4.1`'s wrap, and the numeral's, which is what stops the
+        /// flexible `Text` paying for the inflexible sibling (`G-7.5`). Only the `accessibility3`
+        /// pair moves — at default Dynamic Type the phrase fits, which is why the defect was
+        /// invisible until the accessibility pass.
+        @Test func metricTileContextWraps() throws {
+            try assertSnapshots(named: "MetricTile-context-wraps") {
+                GroupedSection(Text(verbatim: "Estimated maxes")) {
+                    MetricTile(
+                        label: Text(verbatim: "Barbell Back Squat"),
+                        value: Text(verbatim: "182.5 kg")
+                    ) {
+                        DeltaIndicator(.increase, value: "2.5 kg")
+                        Text(verbatim: "Training max 175.0 kg")
+                    }
+                }
+            }
+        }
+
         @Test func metricTileValueOnly() throws {
             try assertSnapshots(named: "MetricTile-value-only") {
                 Card {

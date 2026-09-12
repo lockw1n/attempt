@@ -46,9 +46,20 @@ public struct MetricTile<Context: View>: View {
                 // there is nothing a smaller floor would save.
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
+                // And this is what keeps it the anchor once `context` below is fixed. A `Text`
+                // carrying `minimumScaleFactor` is the *flexible* participant in the stack's height
+                // negotiation, so an inflexible sibling is satisfied at its expense — fixing the
+                // context alone shrank a 182.5 kg to smaller than its own label. Both fixed, and
+                // neither yields: G-4.1 gets its wrap and G-7.5 keeps its numeral.
+                .fixedSize(horizontal: false, vertical: true)
             context
                 .font(Typography.metricContext.font)
                 .foregroundStyle(ColorToken.textSecondary)
+                // G-4.1. Without this the line takes its ideal height — one line — and the rest
+                // of the phrase is truncated rather than wrapped, which is what `Training max
+                // 175.0 kg` did at accessibility3. Here rather than at each call site: one line for
+                // every host at once. The numeral above carries the same modifier, and must.
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)

@@ -10,9 +10,12 @@ import RepositoryInterface
 extension PersonalRecordRecomputer {
     /// One exercise's N-rep maxes, from the cache when it is current (`FR-1.6.1`, `G-1.5`).
     ///
-    /// **An empty cache is recomputed**, because a table cannot tell "nothing has computed this yet"
-    /// from "this exercise holds no records"; the walk it costs is the cheap one, since an exercise
-    /// with no sets has no entries to fetch them through.
+    /// **An empty cache is recomputed and a marked one is not** (`OUT-17.4`). A table can now tell
+    /// "nothing has computed this yet" from "this exercise holds no records", because a walk that
+    /// finds nothing writes ``RepositoryInterface/PersonalRecordCacheMarker``'s row to say so — so
+    /// an exercise trained only for warmups, or only past the rep range, stops walking its whole
+    /// history on every read. `T-1.40`'s reasoning for the old answer was sound about the exercise
+    /// it considered, one with no sets at all, and that is the one case the marker does not change.
     ///
     /// **A miss recomputes but announces nothing.** Publication belongs to the triggers below. A
     /// read that published would be told to read again by every subscriber it woke, and an exercise
@@ -56,11 +59,13 @@ extension PersonalRecordRecomputer {
         }
     }
 
-    /// One exercise's cached rows, or `nil` where this build did not compute all of them (`G-1.5`).
+    /// One exercise's cached records, or `nil` where this build did not compute them (`G-1.5`).
     ///
-    /// **Empty counts as "not current"**, because a table cannot tell "nothing has computed this
-    /// yet" from "this exercise holds no records"; the walk it costs is the cheap one, since an
-    /// exercise with no sets has no entries to fetch them through.
+    /// **Empty is still "not current", and an empty answer is not empty rows** (`OUT-17.4`). A walk
+    /// that finds no record writes ``RepositoryInterface/PersonalRecordCacheMarker``'s row, so the
+    /// table distinguishes the two: no rows at all means nothing has computed this exercise, and the
+    /// marker alone means something has and there is nothing to hold. The marker is stripped here,
+    /// so the callers above see the empty list rather than a row claiming a record it does not hold.
     private func currentCache(_ exerciseID: UUID) async throws -> [PersonalRecordCache]? {
         let cached = try await cache.personalRecords(
             forExerciseID: exerciseID, includingDeleted: false)
@@ -69,7 +74,7 @@ extension PersonalRecordRecomputer {
             && cached.allSatisfy {
                 $0.computationVersion == PersonalRecordCalculator.computationVersion
             }
-        return current ? cached : nil
+        return current ? cached.filter { !$0.isConfirmedZero } : nil
     }
 
     /// One exercise's best estimate, under the formula and window in force (`FR-1.7.1`).
@@ -108,7 +113,10 @@ extension PersonalRecordRecomputer {
         limit: Int, filter: RecentRecordsFilter = .unfiltered
     ) async throws -> [RecentRecord] {
         guard limit > 0 else { return [] }
+        // The markers are dropped before anything groups: every confirmed-zero exercise's row names
+        // the same set, so a feed that kept them would read one event holding all of them.
         let cached = try await cache.personalRecords(includingDeleted: false)
+            .filter { !$0.isConfirmedZero }
         let scoped =
             filter.exerciseIDs.map { ids in cached.filter { ids.contains($0.exerciseID) } } ?? cached
         // Grouped without a bound, because the bound counts what survives: a limit applied here

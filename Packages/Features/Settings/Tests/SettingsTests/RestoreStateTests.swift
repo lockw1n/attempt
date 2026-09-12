@@ -32,7 +32,7 @@ struct RestoreStateTests {
     /// - Returns: The file's URL.
     static func file(_ data: Data, in scratch: ScratchDirectory) throws -> URL {
         try FileManager.default.createDirectory(at: scratch.url, withIntermediateDirectories: true)
-        let url = scratch.url.appending(path: "Attempt-backup-2025-07-06.json")
+        let url = scratch.url.appending(path: "TotalCraft-backup-2025-07-06.json")
         try data.write(to: url)
         return url
     }

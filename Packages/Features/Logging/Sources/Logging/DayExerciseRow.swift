@@ -172,7 +172,10 @@ struct DayExerciseRow: View {
                 Image(systemName: "ellipsis.circle")
                     .font(Typography.body.font)
                     .foregroundStyle(ColorToken.textSecondary)
-                    .frame(width: TouchTarget.standard.points, height: TouchTarget.logging.points)
+                    // G-4.3's logging target on both axes, not just the height: this menu is
+                    // the only route to Log and Skip this exercise, so it is reached mid-set
+                    // with the phone at arm's length — which is what the 60 pt figure is for.
+                    .frame(width: TouchTarget.logging.points, height: TouchTarget.logging.points)
                     .contentShape(.rect)
             }
             .accessibilityLabel(Text(LoggingStrings.dayMenuAction))

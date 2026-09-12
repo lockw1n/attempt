@@ -53,6 +53,22 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | xcbeautify --renderer github-actions || exit ${PIPESTATUS[0]}
 
+      # G-6.3 / TR-1.10, NFR-1.7, FR-1.2.3 (T-1.94): the app target's own bundle — the launch
+      # sequence, and the class of defect a snapshot reference cannot see, a modifier attached to
+      # the screen rather than to one of its parts. It runs here rather than in `Package tests`
+      # because it is the one suite in the repository that needs a host application:
+      # `AppDependencies` and `RootTabView` are in the app target and reachable from nothing else.
+      #
+      # NOT `TR-1.12`, which is the snapshot requirement and is T-1.08's. This bundle exists for
+      # what a snapshot reference cannot see, so keying it there would tick the one claim it argues
+      # against making.
+      #
+      # Through the script, never a bare `xcodebuild test`. The accessibility tree a hosted view
+      # publishes is empty unless the destination has an accessibility client, and an empty tree
+      # reads exactly like a screen whose controls were deleted — see the script's header.
+      - name: Test the app target
+        run: ./scripts/app-tests.sh
+
   # G-6.3: tests run on every push, and this job failing blocks the merge.
   # Runs the packages directly with SwiftPM rather than through the Xcode scheme. The packages
   # are linked into Attempt.xcodeproj as of T-0.03, but a domain suite has no reason to need a
@@ -346,8 +362,13 @@ jobs:
       # TR-0.6.2's formatter half. `swift format` ships with the toolchain, so there is nothing to
       # install. Config is `.swift-format`: 4-space indent and a 120-column limit, matching
       # `.editorconfig` and SwiftLint's `line_length` rather than the tool's own defaults.
+      #
+      # `AttemptTests` is named here explicitly. Unlike SwiftLint, which takes its population from
+      # `.swiftlint.yml`'s `included:`, the formatter's population is this argument list — so a
+      # directory added to one is not added to the other, and T-1.94's bundle arrived gated by
+      # SwiftLint and ungated by the formatter until this line said otherwise.
       - name: Check formatting
-        run: swift format lint --strict --recursive Attempt Packages
+        run: swift format lint --strict --recursive Attempt AttemptTests Packages
 
       # Holds the doc-comment trim in place: `///` lines against code lines across every
       # Packages/**/Sources tree, aggregated. Deliberately not per-file — that would measure how
@@ -391,6 +412,19 @@ jobs:
 
       - name: Verify the CloudKit gate fires
         run: ./scripts/check-cloudkit.sh --self-test
+
+      # TR-1.7 (T-1.95): every @Model PROPERTY has a deployed CloudKit field, which is a different
+      # question from the step above's "every @Model type has a record type" — and the one that was
+      # false for 23 columns while every other check reported green. CoreData creates a field lazily
+      # on the first export of a non-nil value, so an undeployed column costs nothing until a lifter
+      # writes one and then ends that install's sync permanently. --offline reads the committed
+      # schema snapshot rather than the container, so this step needs no management token and no
+      # network; the networked run is what keeps the snapshot honest, and it is a release step.
+      - name: Check every @Model property has a deployed field
+        run: ./scripts/check-cloudkit-schema.sh --offline
+
+      - name: Verify the schema-completeness gate fires
+        run: ./scripts/check-cloudkit-schema.sh --self-test
 
       # G-5.1, and the fact-checker for two sentences the About screen ships inside the binary
       # (G-5.3). Every dependency here is a local path package, so no third party can be told

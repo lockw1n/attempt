@@ -327,7 +327,8 @@ struct ExerciseRecordsSectionTests {
     func theTableScreenReportsItsOwnStates() async throws {
         let fixture = TrainingHistory()
         let squat = try await fixture.exercise(named: "Back Squat")
-        let state = fixture.records(of: squat, through: fixture.recomputer())
+        let recomputer = fixture.recomputer()
+        let state = fixture.records(of: squat, through: recomputer)
 
         #expect(ExerciseRecordsTableState.current(state) == .loading)
 
@@ -335,6 +336,12 @@ struct ExerciseRecordsSectionTests {
         #expect(ExerciseRecordsTableState.current(state) == .nothingYet)
 
         try await fixture.trainWeighted(squat, onDay: 0, work: [(reps: 5, kilos: 100)])
+        // Announced, because since `OUT-17.4` the cache is the answer rather than a shortcut past
+        // one. The read above left the confirmed-zero marker standing, which is what stops an
+        // exercise with no qualifying record walking its history forever — so a fixture writing
+        // sets behind the recomputer's back now reads back what it was told, exactly as a set the
+        // app logged without announcing would. Every production writer announces (`FR-1.6.4`).
+        try await recomputer.recompute(forExerciseID: squat.id)
         await state.loadRecords()
         #expect(ExerciseRecordsTableState.current(state) == .ready)
     }

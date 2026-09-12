@@ -40,6 +40,10 @@ struct RecordTriggerTests {
             toEntryID: card.id,
             values: SetEntryValues(
                 weight: Weight(grams: grams), reps: 5, rpe: nil, isWarmup: false))
+        // `addSet` announces without waiting (`NFR-1.2`), so the cache this suite reads is only
+        // settled once the store's refresh chain has run. Every assertion below is about the cache
+        // rather than about the tap, so they all wait here rather than each on its own.
+        await workout.store.settleRecordRefresh()
         return (workout, card.id)
     }
 

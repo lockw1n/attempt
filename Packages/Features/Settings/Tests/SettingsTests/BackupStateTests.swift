@@ -82,7 +82,7 @@ struct BackupStateTests {
         let file = try #require(Self.file(of: state.phase))
         let expected = BackupWriter.name(for: ExportLog.epoch, timeZone: .current)
         #expect(file.url.lastPathComponent == "\(expected).json")
-        #expect(expected.hasPrefix("Attempt-backup-"))
+        #expect(expected.hasPrefix("TotalCraft-backup-"))
     }
 
     @Test("A failed read is the error state and writes nothing")
@@ -129,7 +129,7 @@ struct BackupStateTests {
         #expect(fresh.deletedCount == stale.deletedCount + 1)
         #expect(!FileManager.default.fileExists(atPath: stale.url.path))
         #expect(FileManager.default.fileExists(atPath: fresh.url.path))
-        #expect(fresh.url.lastPathComponent == "Attempt-backup-2025-07-07.json")
+        #expect(fresh.url.lastPathComponent == "TotalCraft-backup-2025-07-07.json")
     }
 
     // **The second preparation is never awaited before the count is read**, and that is the whole

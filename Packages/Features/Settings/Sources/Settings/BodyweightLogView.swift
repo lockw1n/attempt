@@ -323,6 +323,9 @@ struct BodyweightHealthImportCard: View {
             VStack(alignment: .leading, spacing: Spacing.sm.points) {
                 Button(action: run) { Text(SettingsStrings.bodyweightHealthAction) }
                     .disabled(phase == .importing)
+                    // G-4.3, and HealthAccessView's Open Health has the same fix for the
+                    // same reason: unstyled, a `Button`'s target is its text's line height.
+                    .buttonStyle(.secondaryAction)
                 Text(SettingsStrings.bodyweightHealthDetail)
                     .font(Typography.caption.font)
                     .foregroundStyle(ColorToken.textSecondary)

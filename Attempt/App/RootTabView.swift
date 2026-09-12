@@ -363,11 +363,13 @@ struct RootTabView: View {
         }
     }
 
-    /// Whether the idle timer is held off right now (`NFR-1.9`) — a workout in progress, and the
-    /// preference left on. A store that did not open keeps no workout, so it never holds it off.
+    /// Whether the idle timer is held off right now (`NFR-1.9`).
+    ///
+    /// **The decision is ``ScreenWakePolicy``'s and not this view's**, which is what gives it a
+    /// test: this view cannot be built in the app's test bundle, and the reading it passes is the
+    /// whole of the defect that type's doc comment describes.
     private var keepsScreenAwake: Bool {
-        guard case .open(_, let stores) = dependencies.state else { return false }
-        return stores.screenWake.keepsScreenAwake(duringSession: stores.activeSession.isActive)
+        ScreenWakePolicy.keepsScreenAwake(in: dependencies.state)
     }
 
     /// The scheme every tab is drawn in (`FR-1.10.2`). A store that did not open has no stored

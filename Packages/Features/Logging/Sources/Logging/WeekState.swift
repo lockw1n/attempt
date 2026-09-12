@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import PowerliftingCore
 import RepositoryInterface
@@ -237,6 +238,16 @@ public final class WeekState {
     ///   holds it: a second query for it would be a second answer to a question `TR-1.2` gave the
     ///   store.
     public func load(openSession: WorkoutSession?) async {
+        // `NFR-17.4`'s interval. The requirement is that this read walks no set history —
+        // `theWeekReadNeverWalksSets` proves that with a counting fake — and this is the time
+        // nothing ever took for it.
+        await PerformanceSignpost.week.measure { await loadWeek(openSession: openSession) }
+    }
+
+    /// ``load(openSession:)``'s body, split out only so the interval above can bracket it.
+    ///
+    /// - Parameter openSession: The workout in progress, or `nil`.
+    private func loadWeek(openSession: WorkoutSession?) async {
         if phase == .loading { return }
         phase = .loading
         // FR-17.8.3, Q-17.5: only a workout no program started, and only while it is open.

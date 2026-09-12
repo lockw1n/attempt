@@ -4,6 +4,16 @@
 #
 #   scripts/snapshot-tests.sh              # compare against the committed references
 #   scripts/snapshot-tests.sh --record     # regenerate every reference, then verify the new set
+#   scripts/snapshot-tests.sh Settings     # one suite only — see NARROWING, below
+#   scripts/snapshot-tests.sh --record Settings
+#
+# NARROWING, AND WHY THE BARE FORM IS STILL THE GATE. A suite name selects one entry of SUITES by
+# its package directory or its target, and narrows BOTH the recording and the verification. It
+# exists because `--record` is otherwise all-or-nothing: a task that changed one module's copy would
+# have to delete and re-render all seven suites' references to re-record four images, which bakes
+# every unrelated drift in the tree into the same commit. T-1.91's review is where that cost was
+# paid and the argument written down. A narrowed run says so in its last line and proves nothing
+# about the suites it skipped, so the run that backs a claim is the bare one.
 #
 # ONE SCRIPT, SEVERAL SUITES. The harness is one library (DesignSystem's SnapshotTesting target) and
 # every package that renders anything has its own test target and its own __Snapshots__ beside it —
@@ -64,7 +74,7 @@ cd "$(dirname "$0")/.."
 # notice nothing the parity check does not. Set it above that count where such tests exist, and at
 # the suite's own count where they do not — the latter is a floor that adds nothing, which is the
 # honest setting rather than a number chosen to look like the former.
-#   DesignSystem:    35 tests, 21 reference-backed, 14 harness probes  -> 35, its own count.
+#   DesignSystem:    36 tests, 22 reference-backed, 14 harness probes  -> 36, its own count.
 #                     T-1.92 added four probes for TR-1.12's blank guard and found BOTH halves of
 #                     this row stale while paying them: the floor read 24 against 31 tests, and the
 #                     derivation read 19 reference-backed against 84 references, which is 21. Seven
@@ -75,7 +85,12 @@ cd "$(dirname "$0")/.."
 #                                                                    -> 93, its own count.
 #   History:         28 tests, 27 reference-backed, one layout budget -> 28, above the 27.
 #   Dashboard:       21 tests, all of them reference-backed, no probes -> 21, its own count.
-#   Settings:        45 tests, all of them reference-backed, no probes -> 45, its own count.
+#   Settings:        49 tests, all of them reference-backed, no probes -> 49, its own count.
+#                     T-1.91's review added four: the landing's two link states, and the restore's
+#                     other two refusal reasons. Neither gap was visible from here — parity and the
+#                     floor both agreed with a suite that drew four of the module's five screens and
+#                     one of its three refusals. What found them was a rename moving copy that is
+#                     drawn in exactly those places and nowhere else.
 #   Routines:         4 tests, all of them reference-backed, no probes ->  4, its own count.
 #                     The one floor that has ever gone DOWN: T-17.12 retired four screens for one
 #                     (`FR-17.10.6`), so the suite is a quarter of what it was. A floor left above
@@ -90,12 +105,12 @@ cd "$(dirname "$0")/.."
 # 15), each drifting one task at a time. `git grep -c '@Test' -- <suite>` is the count to set it
 # from, and a task that adds a snapshot test owes this list the same edit it owes __Snapshots__.
 SUITES=(
-    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|35"
+    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|36"
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|42"
     "Packages/Features/Logging|Logging|LoggingSnapshotTests|93"
     "Packages/Features/History|History|HistorySnapshotTests|28"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|21"
-    "Packages/Features/Settings|Settings|SettingsSnapshotTests|45"
+    "Packages/Features/Settings|Settings|SettingsSnapshotTests|49"
     "Packages/Features/Routines|Routines|RoutinesSnapshotTests|4"
 )
 
@@ -133,15 +148,42 @@ DESTINATION="${SNAPSHOT_DESTINATION:-$(resolved_destination)}"
 echo "==> rendering against $DESTINATION (iOS $SNAPSHOT_IOS)"
 
 RECORD=0
+ONLY=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --record) RECORD=1; shift ;;
         -h|--help)
             awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "${BASH_SOURCE[0]}"
             exit 0 ;;
-        *) echo "snapshot-tests.sh: unknown option '$1'" >&2; exit 64 ;;
+        -*) echo "snapshot-tests.sh: unknown option '$1'" >&2; exit 64 ;;
+        *)
+            if [[ -n "$ONLY" ]]; then
+                echo "snapshot-tests.sh: one suite at a time, got '$ONLY' and '$1'." >&2
+                exit 64
+            fi
+            ONLY="$1"; shift ;;
     esac
 done
+
+# The suites this run covers: all of them, or the one named. Matched against the package's own
+# directory name and against the target, because both spellings are what a task file or a CLAUDE.md
+# entry ends up carrying — "Settings", "SettingsSnapshotTests" and "Packages/Features/Settings" all
+# name the same row.
+SELECTED=()
+for suite in "${SUITES[@]}"; do
+    IFS='|' read -r package _ target _ <<< "$suite"
+    if [[ -z "$ONLY" || "$ONLY" == "$package" || "$ONLY" == "$target" || "$ONLY" == "${package##*/}" ]]; then
+        SELECTED+=("$suite")
+    fi
+done
+if (( ${#SELECTED[@]} == 0 )); then
+    echo "snapshot-tests.sh: no suite named '$ONLY'. The list is:" >&2
+    for suite in "${SUITES[@]}"; do
+        IFS='|' read -r package _ target _ <<< "$suite"
+        echo "  ${package##*/}  ($target, in $package)" >&2
+    done
+    exit 64
+fi
 
 log=$(mktemp -t snapshot-tests)
 trap 'rm -f "$log"' EXIT
@@ -196,7 +238,7 @@ report_failure() {
 }
 
 if (( RECORD )); then
-    for suite in "${SUITES[@]}"; do
+    for suite in "${SELECTED[@]}"; do
         IFS='|' read -r package scheme target _ <<< "$suite"
         directory=$(references_dir "$package" "$target")
         echo "==> deleting $directory"
@@ -214,7 +256,7 @@ if (( RECORD )); then
 fi
 
 total=0
-for suite in "${SUITES[@]}"; do
+for suite in "${SELECTED[@]}"; do
     IFS='|' read -r package scheme target minimum <<< "$suite"
     directory=$(references_dir "$package" "$target")
 
@@ -255,4 +297,9 @@ for suite in "${SUITES[@]}"; do
     total=$(( total + references ))
 done
 
-echo "${#SUITES[@]} snapshot suites passed, comparing $total references."
+if (( ${#SELECTED[@]} == ${#SUITES[@]} )); then
+    echo "${#SUITES[@]} snapshot suites passed, comparing $total references."
+else
+    echo "${#SELECTED[@]} of ${#SUITES[@]} snapshot suites passed, comparing $total references."
+    echo "NARROWED to '$ONLY' — this run says nothing about the other suites. The gate is the bare form."
+fi

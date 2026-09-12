@@ -148,18 +148,18 @@
    is ever listed there was not settled, so the copy names the place and leaves the last step
    unclaimed rather than sending someone to look for a row that may not exist. */
 "settings.landing.health.row" = "Health access";
-"settings.landing.health.detail" = "What Attempt reads from Health, and how to change it";
+"settings.landing.health.detail" = "What TotalCraft reads from Health, and how to change it";
 "settings.health.title" = "Health access";
 "settings.health.status.title" = "Status";
 "settings.health.status.not-asked" = "Not requested";
 "settings.health.status.answered" = "Requested";
-"settings.health.disclosure.detail" = "Attempt only reads body mass, and only on this device. iOS does not tell an app whether a health read was allowed, so this screen can say that the request was made and no more. If an import brings back nothing, that may mean access was declined, or that Health holds no weigh-ins.";
+"settings.health.disclosure.detail" = "TotalCraft only reads body mass, and only on this device. iOS does not tell an app whether a health read was allowed, so this screen can say that the request was made and no more. If an import brings back nothing, that may mean access was declined, or that Health holds no weigh-ins.";
 "settings.health.prompt.title" = "Where the prompt comes from";
-"settings.health.prompt.detail" = "Attempt asks for body mass the first time you import from Health, and never at launch.";
+"settings.health.prompt.detail" = "TotalCraft asks for body mass the first time you import from Health, and never at launch.";
 "settings.health.prompt.row.detail" = "Import from Health lives here";
 "settings.health.change.title" = "Changing it";
 "settings.health.change.action" = "Open Health";
-"settings.health.change.path" = "In Health, tap your picture, then Apps under Privacy. Access cannot be asked for a second time from inside Attempt.";
+"settings.health.change.path" = "In Health, tap your picture, then Apps under Privacy. Access cannot be asked for a second time from inside TotalCraft.";
 "settings.health.change.failed" = "Health did not open from here. Open the Health app from the Home Screen, then tap your picture and Apps under Privacy.";
 "settings.health.unavailable.headline" = "Health is not on this device";
 "settings.health.unavailable.message" = "There is no health data here to read, so there is no access to hold.";
@@ -169,7 +169,7 @@
 /* FR-1.10.5: About. The row into it sits at the bottom of the landing, after the preferences and
    the two logs — it is the one thing here that is about the app rather than about the lifter. */
 "settings.landing.about.title" = "About";
-"settings.landing.about.row" = "About Attempt";
+"settings.landing.about.row" = "About TotalCraft";
 "settings.landing.about.detail" = "Version, acknowledgements and privacy.";
 
 "settings.about.title" = "About";
@@ -186,7 +186,7 @@
    package, so there is no licence to reproduce. The second is what is genuinely someone else's —
    the estimators and the RPE chart are published work this app implements. */
 "settings.about.acknowledgements.title" = "Acknowledgements";
-"settings.about.acknowledgements.code" = "Attempt bundles no third-party code. Everything it runs was written for it.";
+"settings.about.acknowledgements.code" = "TotalCraft bundles no third-party code. Everything it runs was written for it.";
 "settings.about.acknowledgements.formulas" = "Its one-rep-max estimators and its RPE chart are their authors' published work, implemented here from the literature rather than licensed.";
 
 /* Privacy (FR-1.10.5, G-5.1 – G-5.4). Every sentence is about the build the version above names,
@@ -194,8 +194,8 @@
    newer or older than the binary it ships in, and it cannot go stale without the build going
    with it. Whichever task turns on sync, telemetry or an account owns rewriting it. */
 "settings.about.privacy.title" = "Privacy";
-"settings.about.privacy.storage" = "Your training log is stored on this device. iCloud sync is on unless you turn it off, and while it is on a copy is also kept in your own private iCloud, where only you can read it. There is no account with us and no server of ours behind it — nothing you log is sent to Attempt.";
-"settings.about.privacy.health" = "Body mass is read from Health only after you allow it, and only when you ask for an import. Attempt writes nothing back to Health. Each imported reading becomes a weigh-in in your log, kept and synced like everything else you record.";
+"settings.about.privacy.storage" = "Your training log is stored on this device. iCloud sync is on unless you turn it off, and while it is on a copy is also kept in your own private iCloud, where only you can read it. There is no account with us and no server of ours behind it — nothing you log is sent to TotalCraft.";
+"settings.about.privacy.health" = "Body mass is read from Health only after you allow it, and only when you ask for an import. TotalCraft writes nothing back to Health. Each imported reading becomes a weigh-in in your log, kept and synced like everything else you record.";
 "settings.about.privacy.tracking" = "There is no analytics, no advertising and no tracking. No third party is told anything about you or your training.";
 "settings.about.privacy.currency" = "This policy describes the build named above. It ships inside the app, so it is never newer or older than the version you are running.";
 
@@ -237,7 +237,7 @@
 "settings.landing.backup.detail" = "One file with every record on this device.";
 
 "settings.backup.title" = "Backup";
-"settings.backup.intro" = "A complete copy of everything Attempt holds on this device — your workouts, your exercises, your gyms and your settings. Nothing is sent anywhere: the file is yours to keep.";
+"settings.backup.intro" = "A complete copy of everything TotalCraft holds on this device — your workouts, your exercises, your gyms and your settings. Nothing is sent anywhere: the file is yours to keep.";
 
 "settings.backup.file.title" = "Backup file (JSON)";
 "settings.backup.file.detail" = "Every field of every row, exactly as stored. Not made for reading — it is the file that keeps everything.";
@@ -265,7 +265,7 @@
 "settings.restore.title" = "Restore";
 
 "settings.restore.waiting.headline" = "No file chosen";
-"settings.restore.waiting.message" = "Pick the JSON file Attempt wrote when you last backed up. Choosing a file changes nothing on its own — you will see what is in it first.";
+"settings.restore.waiting.message" = "Pick the JSON file TotalCraft wrote when you last backed up. Choosing a file changes nothing on its own — you will see what is in it first.";
 "settings.restore.choose" = "Choose a backup file";
 "settings.restore.reading" = "Reading the file…";
 
@@ -274,9 +274,9 @@
    this file has never heard of stays where it is. */
 "settings.restore.confirm.title" = "This writes over what is on this device";
 "settings.restore.confirm.detail" = "Every record in this file replaces the one it matches here. Records this file does not contain are left as they are. There is no undo.";
-/* G-1.3, stated rather than left silent: the file carries what was deleted, and Attempt has no way
+/* G-1.3, stated rather than left silent: the file carries what was deleted, and TotalCraft has no way
    to put a record back as deleted. A lifter who backed up 7 deleted records gets 7 ordinary ones. */
-"settings.restore.confirm.deleted" = "Records you had deleted before this backup was taken come back as ordinary records. Attempt cannot put a record back as deleted.";
+"settings.restore.confirm.deleted" = "Records you had deleted before this backup was taken come back as ordinary records. TotalCraft cannot put a record back as deleted.";
 "settings.restore.confirm.action" = "Replace my data";
 "settings.restore.confirm.other" = "Choose a different file";
 
@@ -294,11 +294,11 @@
 /* Three refusals rather than one message, because each asks for something different: a newer app,
    the other file, or a different copy of this one. */
 "settings.restore.refused.export.headline" = "That is an export, not a backup";
-"settings.restore.refused.export.message" = "This file holds your training log for reading elsewhere, not everything Attempt needs to put a device back. Look for the file named Attempt-backup.";
-"settings.restore.refused.future.headline" = "That backup is from a newer Attempt";
-"settings.restore.refused.future.message" = "This file was written by a later version of the app. Update Attempt, then restore it — reading it here could only get it partly right.";
+"settings.restore.refused.export.message" = "This file holds your training log for reading elsewhere, not everything TotalCraft needs to put a device back. Look for the file named TotalCraft-backup.";
+"settings.restore.refused.future.headline" = "That backup is from a newer TotalCraft";
+"settings.restore.refused.future.message" = "This file was written by a later version of the app. Update TotalCraft, then restore it — reading it here could only get it partly right.";
 "settings.restore.refused.unreadable.headline" = "That file cannot be read";
-"settings.restore.refused.unreadable.message" = "It is not an Attempt backup, or the copy is damaged. Nothing on this device has been changed.";
+"settings.restore.refused.unreadable.message" = "It is not a TotalCraft backup, or the copy is damaged. Nothing on this device has been changed.";
 
 /* Not a refusal: rows are already written. Every write is keyed on the record's own identifier, so
    the same file run twice lands the same store rather than a second copy of it — but safe is all
@@ -329,7 +329,7 @@
 
 /* G-3.4: the failure says what a lifter can do, and never shows the error. There is nothing to fix
    here, so the sentence says the one true reassuring thing instead of inventing an action. */
-"settings.sync.status.failed.detail" = "Attempt will keep trying. Everything you log stays on this device either way.";
+"settings.sync.status.failed.detail" = "TotalCraft will keep trying. Everything you log stays on this device either way.";
 
 "settings.sync.last %@" = "Last synced %@";
 "settings.sync.last.never" = "Not synced yet";
@@ -341,5 +341,5 @@
 /* FR-1.12.3. cloudKitDatabase is fixed when the store is opened, so the switch is recorded now and
    applied at the next start. Said plainly rather than hidden: a toggle that silently did nothing
    until relaunch is the same kind of untrue-in-the-binary sentence G-5.3 exists to prevent. */
-"settings.sync.restart.on" = "Sync starts the next time you open Attempt.";
-"settings.sync.restart.off" = "Sync stops the next time you open Attempt. Nothing on this device is removed.";
+"settings.sync.restart.on" = "Sync starts the next time you open TotalCraft.";
+"settings.sync.restart.off" = "Sync stops the next time you open TotalCraft. Nothing on this device is removed.";

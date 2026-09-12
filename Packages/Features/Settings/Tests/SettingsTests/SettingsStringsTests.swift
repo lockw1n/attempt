@@ -86,6 +86,45 @@ struct SettingsStringsTests {
         }
     }
 
+    /// `G-5.3`: the refusal that tells a lifter which file to look for names the prefix the writer
+    /// actually writes.
+    ///
+    /// The two are literals in different files — ``BackupWriter/name(for:timeZone:)`` and
+    /// `settings.restore.refused.export.message`, in both languages — and until T-1.91's review
+    /// nothing held them together, so a rename of either left the copy naming a file that is never
+    /// written. No literal prefix here on purpose: `BackupStateTests` is where that anchor belongs,
+    /// and a second one would make a deliberate rename fail in three places instead of one.
+    @Test("The restore refusal names the prefix the backup writer uses")
+    func refusalNamesTheBackupFilePrefix() throws {
+        let written = BackupWriter.name(for: Date(timeIntervalSince1970: 0), timeZone: .gmt)
+        let prefix = written.split(separator: "-").prefix(2).joined(separator: "-")
+        #expect(!prefix.isEmpty)
+        #expect(written.hasPrefix(prefix))
+
+        for localization in ["en", "uk"] {
+            let catalogue = try Self.catalogue(localization)
+            let message = try #require(catalogue["settings.restore.refused.export.message"])
+            #expect(
+                message.contains(prefix),
+                "the \(localization) refusal does not name \(prefix)")
+        }
+    }
+
+    /// One of this module's two catalogues, read as a dictionary.
+    ///
+    /// - Parameter localization: `en` or `uk`.
+    /// - Returns: Every key it declares, with its copy.
+    private static func catalogue(_ localization: String) throws -> [String: String] {
+        let url = try #require(
+            Bundle.module.url(
+                forResource: "Localizable",
+                withExtension: "strings",
+                subdirectory: nil,
+                localization: localization
+            ))
+        return try #require(NSDictionary(contentsOf: url) as? [String: String])
+    }
+
     /// Every key in one of this module's two catalogue files.
     ///
     /// `NSDictionary` reads both forms each file takes: the text SwiftPM copies, and the binary

@@ -20,6 +20,13 @@ struct SettingsLinkRow: View {
     let detail: LocalizedStringResource
 
     /// The label, the detail under it, and the chevron.
+    ///
+    /// **Both lines take `fixedSize` vertically (`G-4.1`), and the pair is deliberate.** Without it a
+    /// detail whose ideal single line is a little wider than the row truncates instead of wrapping —
+    /// measured on `settings.landing.sync.detail`, which lost four words at the default size while
+    /// wrapping cleanly at `accessibility3`, so no accessibility pass could have found it. Giving the
+    /// modifier to one line alone makes the other the flexible participant and moves the truncation
+    /// rather than ending it.
     var body: some View {
         NavigationLink(value: route) {
             HStack {
@@ -27,9 +34,11 @@ struct SettingsLinkRow: View {
                     Text(label)
                         .font(Typography.body.font)
                         .foregroundStyle(ColorToken.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(detail)
                         .font(Typography.caption.font)
                         .foregroundStyle(ColorToken.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: Spacing.sm.points)
                 Image(systemName: "chevron.right")

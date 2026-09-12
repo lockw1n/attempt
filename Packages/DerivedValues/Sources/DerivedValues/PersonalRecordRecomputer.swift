@@ -212,8 +212,11 @@ public actor PersonalRecordRecomputer {
     ///
     /// A failure is swallowed, for ``setDidChange(inEntryID:)``'s reason.
     ///
+    /// Internal rather than private on ``workouts``' rule: `FR-1.11.4`'s bulk trigger lives in
+    /// its own file and is the same refresh, once per exercise instead of once per session.
+    ///
     /// - Parameter exerciseID: The exercise whose sets moved.
-    private func refreshRecords(forExerciseID exerciseID: UUID) async {
+    func refreshRecords(forExerciseID exerciseID: UUID) async {
         guard (try? await walked(exerciseID, writingCache: true)) != nil else { return }
         publish(.exercise(exerciseID))
     }
@@ -315,6 +318,26 @@ public actor PersonalRecordRecomputer {
     ///
     /// Internal rather than private on ``workouts``' rule, so the reads can live in their own file.
     func walked(_ exerciseID: UUID, writingCache: Bool) async throws -> Walk {
+        // `NFR-1.6`'S INTERVAL, AND IT IS HERE RATHER THAN ON ``recompute(forExerciseID:)``
+        // BECAUSE THAT IS NOT THE PATH THE APP TAKES. A logged set reaches
+        // ``setDidChange(inEntryID:)``, which calls `refreshRecords`, which calls this directly —
+        // so an interval on the public trigger measures a call the lifter never makes and stays
+        // silent on the one they do. Measured 2026-09-10 by driving the app under Instruments,
+        // which is the only instrument that could have caught it. Every path shares this walk:
+        // both triggers, and `repMaxes`/`schemeRecords`' cold reads.
+        try await PerformanceSignpost.recompute.measure {
+            try await walking(exerciseID, writingCache: writingCache)
+        }
+    }
+
+    /// ``walked(_:writingCache:)``'s body, split out only so the interval above can bracket it.
+    ///
+    /// - Parameters:
+    ///   - exerciseID: The exercise to walk.
+    ///   - writingCache: Whether the walk claims the write generation and stores what it finds.
+    /// - Returns: What the walk found.
+    /// - Throws: Whatever the repositories throw.
+    private func walking(_ exerciseID: UUID, writingCache: Bool) async throws -> Walk {
         // Claimed before the first `await`, and only by a call that intends to write: two reads that
         // never touch the row cannot supersede each other.
         let generation = writingCache ? claimWriteGeneration(exerciseID) : 0
@@ -349,17 +372,7 @@ public actor PersonalRecordRecomputer {
         // that is what it computed. See ``writeGenerations``.
         if writingCache, writeGenerations[exerciseID] == generation {
             try await cache.replacePersonalRecords(
-                forExerciseID: exerciseID,
-                with: schemeRecords.map {
-                    PersonalRecordCacheValues(
-                        repCount: $0.scheme.reps,
-                        setCount: $0.scheme.sets,
-                        weight: $0.record.weight,
-                        sourceSetID: $0.record.sourceSetID,
-                        achievedAt: $0.record.achievedAt,
-                        previousWeight: $0.previous,
-                        computationVersion: PersonalRecordCalculator.computationVersion)
-                })
+                forExerciseID: exerciseID, with: Self.cacheValues(for: schemeRecords))
         }
 
         return Walk(

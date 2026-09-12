@@ -58,6 +58,12 @@ final class HistoryModeMemory {
 ///
 /// A view of its own rather than a `@ViewBuilder` on ``SessionListView``, on this module's usual
 /// rule: a reference must not need the repositories that screen builds its state over.
+///
+/// **`.segmented` is 32 pt tall and does not grow with Dynamic Type, and that is accepted**
+/// (`G-4.3`, the author's call). It is `UISegmentedControl` — Apple's control at Apple's size,
+/// which cannot be made 44 pt without abandoning `.segmented` altogether. `G-4.3` is about the
+/// targets this app draws; replacing this one would invent an affordance the platform already has,
+/// and 32 pt is only its short axis — it spans the screen. Do not re-file it.
 struct HistoryModeControl: View {
     /// Which mode is showing.
     @Binding var mode: HistoryMode

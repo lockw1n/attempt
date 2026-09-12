@@ -8,6 +8,7 @@
 # scripts/verify-lint-rules.sh does exactly that, and proves each rule below actually fires.
 included:
   - Attempt
+  - AttemptTests
   - Packages
 
 excluded:

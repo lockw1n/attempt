@@ -181,6 +181,10 @@ struct HealthAccessReading: View {
         GroupedSection(Text(SettingsStrings.healthChangeTitle)) {
             VStack(alignment: .leading, spacing: Spacing.sm.points) {
                 Button(action: openHealth) { Text(SettingsStrings.healthOpenAction) }
+                    // G-4.3. A bare `Button` in a `VStack` is targetable only over its
+                    // text's line height, and this is the screen's one route to the switch
+                    // it exists to explain. The style carries `TouchTarget.standard` itself.
+                    .buttonStyle(.secondaryAction)
                 Text(SettingsStrings.healthChangePath)
                     .font(Typography.caption.font)
                     .foregroundStyle(ColorToken.textSecondary)

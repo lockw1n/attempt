@@ -1,6 +1,9 @@
 # Attempt
 
-A SwiftUI app for iOS.
+A SwiftUI app for iOS. It ships as **TotalCraft** — the name on the App Store, on the home
+screen and in every string a lifter reads; *Attempt* is the codename, and it is what the
+repository, the Xcode target and scheme, the bundle identifier `lockw1n.Attempt` and the
+iCloud container are called.
 
 ## Requirements
 
@@ -260,9 +263,8 @@ Note that a bare `swift build` does **not** fail on warnings — that gate lives
 the script, not in the manifests.
 
 Every package has a Swift Testing target (`@Test` / `#expect`, not XCTest) — the feature modules
-included, each with a unit suite and a snapshot suite. The app target has no
-tests; it is a composition root, and the Xcode project has no test target for it (Q-1.3) — anything
-that needs a unit test lives under `Packages/` instead.
+included, each with a unit suite and a snapshot suite. Anything that can be tested
+from a package is, and lives under `Packages/`.
 
 ```bash
 swift test --package-path Packages/PowerliftingCore
@@ -298,6 +300,36 @@ skips with a message saying how to supply one; point it at a backup the app wrot
 ```bash
 ATTEMPT_REAL_BACKUP=/path/to/backup.json swift test --package-path Packages/Features/Settings
 ```
+
+**The app target has its own bundle too.** `AttemptTests` is an XCTest bundle *hosted*
+by `Attempt`, which is what makes `AppDependencies` and a real `UIWindowScene`
+reachable — a package suite has no host application, so it can neither run the launch
+sequence nor build a UIView hierarchy. Two things live there and nothing else should:
+the launch sequence over a real store, and the class of defect a snapshot reference
+cannot see (a modifier attached to the screen rather than to one of its parts).
+
+**`RootTabView` itself is not buildable there.** It needs `AppNavigation`, which this
+target does not link, and linking it is an Xcode project change. So a decision written
+as a computed property on that view is testable by nothing: put it in a plain type
+under `Attempt/App/` instead — `ScreenWakePolicy` is the worked example — and the
+production expression becomes the tested one.
+
+Both `Attempt/` and `AttemptTests/` are synchronized root groups, so a new file joins
+its target by living in the directory; there is no `project.pbxproj` entry to add.
+
+```bash
+./scripts/app-tests.sh                            # a booted simulator, or the first available
+./scripts/app-tests.sh --device 'iPhone lockw1n'  # a connected phone
+```
+
+Always through the script, never a bare `xcodebuild test`: a hosted view answers
+`accessibilityElements` with an **empty array** unless the destination has an
+accessibility client, so a screen with every control intact reads exactly like one
+whose controls were deleted. The script sets `ApplicationAccessibilityEnabled` on
+every run. It reads the accessibility tree, so it proves a screen's parts are still
+wired to the screen and never that they can be touched — a control that publishes
+no accessibility element, or one that is covered, mis-sized or behind a gesture that
+wins, is invisible to it.
 
 `PowerliftingCore` is held to ≥ 90% line coverage. The script counts only files
 under the package's `Sources/`, and requires `python3`:
@@ -375,6 +407,30 @@ packages that fetch are also tested at `-O`, in CI and in the local chain:
 `xcodebuild` mint the distribution identity). It does not upload. The launch
 screen and the export-compliance declaration live in `Config/Info.plist`, a
 partial plist merged under the generated one.
+
+**Performance numbers come off a device or simulator, not out of a test.**
+`xcodebuild` will not host an *SPM* test bundle on a device destination, so the
+instrument is the shipping binary under `OSSignposter`. (`AttemptTests` is hosted by
+the app and does not hit that refusal — confirmed on a phone, 8 tests in 1.19 s; 10 now.)
+
+`signposts` works on a booted simulator only. Its device branch is broken —
+it reaches for a `log stream --device` option that does not exist — and it fails by
+printing "no signpost fired" rather than by saying so. `launch` and `hitches` do
+work on a device; `launch` aborts the batch if any run records an empty trace, so
+drive it as repeated `launch 1` calls when that happens.
+
+```bash
+./scripts/measure-device.sh devices           # what is connected
+./scripts/measure-device.sh install           # Release build -> the device
+./scripts/measure-device.sh launch 4          # cold launch, n runs, unattended
+./scripts/measure-device.sh signposts 60      # signpost intervals while you drive it
+./scripts/measure-device.sh hitches 30        # scroll hitches while you scroll History
+```
+
+`ATTEMPT_DEVICE=<udid>` picks the device when more than one is connected, and
+is also how a booted simulator is measured. `scripts/make-scale-backup.py`
+grows a real backup to a target set count (`--sets`, default 15,000) to restore
+as a fixture.
 
 ## Conventions
 
@@ -517,9 +573,9 @@ the other:
 ./scripts/check-cloudkit.sh --self-test   # each check, in both directions
 ```
 
-That one runs in CI. Its companion cannot, because it talks to CloudKit:
-`check-cloudkit-schema.sh` exports the container's Development and Production
-schemas with `cktool`, diffs them, and checks the record types found against the
+That one runs in CI. Its companion, `check-cloudkit-schema.sh`, talks to CloudKit:
+it exports the container's Development and Production schemas with `cktool`,
+diffs them, and checks both the record types and the fields found against the
 same `@Model` parse. Run it after deploying a schema from the CloudKit Console —
 the Console leaves no evidence, so this is what makes "the schema is deployed" a
 checkable claim rather than a memory. It needs a management token in the keychain
@@ -529,12 +585,40 @@ either as an argument:
 
 ```bash
 ./scripts/check-cloudkit-schema.sh
-./scripts/check-cloudkit-schema.sh --allow-missing TrainingMaxConfigEntity
+./scripts/check-cloudkit-schema.sh --allow-missing SomeEntity
 ```
 
 `--allow-missing` names entities whose table nothing writes yet, so they cannot
 have a record type. It fails if a name given there turns out to be present — a
-stale excuse is worse than none.
+stale excuse is worse than none. **Nothing needs it today**: all 17 record types
+are deployed, so the plain invocation is the standing one.
+
+It answers three questions — do the two environments agree, does every `@Model`
+type have a record type, and does every `@Model` *property* have a field of the
+type it declares. The third matters because CloudKit creates a field only on the
+first export of a non-`nil` value, while a Production schema can only be added to
+from the Console: a column nothing has written yet has no field, and the first
+row that writes one cannot create it, so that install's mirroring stops for good.
+
+Because that third question needs only the model and a schema — not the container
+— it also runs offline, against a snapshot of the deployed schema committed at
+`Config/cloudkit-schema.ckdb`. That form is in the verification chain, needs no
+token and no network, and is what a diff that adds a `@Model` property fails
+against:
+
+```bash
+./scripts/check-cloudkit-schema.sh --offline     # the chain gate
+./scripts/check-cloudkit-schema.sh --self-test   # each direction, over a fixture
+./scripts/check-cloudkit-schema.sh --complete /tmp/complete.ckdb
+./scripts/check-cloudkit-schema.sh --refresh     # re-record the snapshot
+```
+
+`--complete` writes a schema file with every missing field added, for
+`cktool import-schema --environment development`; `--refresh` re-records the
+snapshot once a deployment has landed, and refuses while the two environments
+still disagree. The networked run is what keeps the snapshot honest, so the
+offline gate is a claim about the container only for as long as the two are run
+together.
 
 And one dependency gate: every package dependency is a local `path:` one, so no
 tracked `Package.swift` names a remote dependency, a registry package or a binary

@@ -27,6 +27,10 @@ extension ActiveSessionStore {
     /// runs behind whatever is queued ahead of it, and how many sets are already stored is what
     /// decides which planned group the next one falls in.
     ///
+    /// **`NFR-1.2`'s interval is one layer up, on ``DayStore``.** It was here first and it stopped
+    /// too early: the exercise list this re-reads is not what a planned day draws, so the wait the
+    /// budget is about — tap to *row* re-read — ends in `DayStore.reload()`, outside this call.
+    ///
     /// - Parameter entryIDs: The exercises to answer, in the order they are drawn.
     public func answerAsPlanned(inEntryIDs entryIDs: [UUID]) async {
         let previous = pendingWrite
@@ -88,6 +92,13 @@ extension ActiveSessionStore {
     ///
     /// **The session is kept held, unlike ``finish(resolving:)``.** The day's screen goes on drawing
     /// it — a done day is read-only rather than gone, and **Log** still edits it (`FR-17.7.5`).
+    /// What that costs is stated on ``isActive``: a held row is not a workout in progress, so
+    /// anything asking whether the lifter is still lifting — `NFR-1.9`'s idle timer is the one that
+    /// got it wrong — reads ``isInProgress`` instead.
+    ///
+    /// **Nothing puts `endedAt` back**, so a day edited after it is done is edited with the idle
+    /// timer released. That is the wording's own consequence rather than an oversight: the day has
+    /// ended, and the lifter editing it is not mid-set.
     func endDay() async {
         guard let current = session, current.endedAt == nil else { return }
         do {
@@ -150,7 +161,7 @@ extension ActiveSessionStore {
         do {
             for entryID in entryIDs {
                 try await writeAnswerAsPlanned(inEntryID: entryID, ofSessionID: current.id)
-                await records.setDidChange(inEntryID: entryID)
+                announceSetChange(inEntryID: entryID)
             }
             exercisesWriteFailure = nil
         } catch {
@@ -202,7 +213,7 @@ extension ActiveSessionStore {
                 // — it is not completed — so removing one changes nothing the cache holds, and an
                 // announcement per skipped row would be a catalogue walk per tap.
                 if !pending.isEmpty {
-                    await records.setDidChange(inEntryID: entryID)
+                    announceSetChange(inEntryID: entryID)
                 }
             }
             exercisesWriteFailure = nil

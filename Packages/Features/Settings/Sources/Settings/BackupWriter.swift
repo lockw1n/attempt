@@ -71,6 +71,6 @@ enum BackupWriter {
     ///   - timeZone: The zone that date is read in.
     /// - Returns: A file name with no extension.
     static func name(for takenAt: Date, timeZone: TimeZone = .current) -> String {
-        "Attempt-backup-\(TrainingLogCSV.day(takenAt, in: timeZone))"
+        "TotalCraft-backup-\(TrainingLogCSV.day(takenAt, in: timeZone))"
     }
 }

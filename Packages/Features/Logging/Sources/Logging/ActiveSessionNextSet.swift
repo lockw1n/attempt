@@ -1,3 +1,4 @@
+import DerivedValues
 import Foundation
 import RepositoryInterface
 
@@ -40,6 +41,15 @@ extension ActiveSessionStore {
     ///   - entryID: The exercise to log against.
     ///   - setID: The set to copy — the last member of the group the button is attached to.
     public func logNextSet(inEntryID entryID: UUID, copying setID: UUID) async {
+        // `NFR-1.2`'s interval on the free workout's half of the requirement: the
+        // command writes and the row re-reads inside it.
+        await PerformanceSignpost.answer.measure { await performLogNextSet(inEntryID: entryID, copying: setID) }
+    }
+
+    /// ``logNextSet(inEntryID:copying:)``'s body.
+    ///
+    /// Split out only so the interval above can bracket the whole command.
+    private func performLogNextSet(inEntryID entryID: UUID, copying setID: UUID) async {
         let previous = pendingWrite
         let write = Task { [weak self] in
             await previous?.value
