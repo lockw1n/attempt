@@ -562,9 +562,9 @@ the other:
 ./scripts/check-cloudkit.sh --self-test   # each check, in both directions
 ```
 
-That one runs in CI. Its companion cannot, because it talks to CloudKit:
-`check-cloudkit-schema.sh` exports the container's Development and Production
-schemas with `cktool`, diffs them, and checks the record types found against the
+That one runs in CI. Its companion, `check-cloudkit-schema.sh`, talks to CloudKit:
+it exports the container's Development and Production schemas with `cktool`,
+diffs them, and checks both the record types and the fields found against the
 same `@Model` parse. Run it after deploying a schema from the CloudKit Console —
 the Console leaves no evidence, so this is what makes "the schema is deployed" a
 checkable claim rather than a memory. It needs a management token in the keychain
@@ -582,11 +582,32 @@ have a record type. It fails if a name given there turns out to be present — a
 stale excuse is worse than none. **Nothing needs it today**: all 17 record types
 are deployed, so the plain invocation is the standing one.
 
-It answers two questions — do the two environments agree, and does every `@Model`
-type have a record type. It does **not** ask whether every `@Model` *property* has
-a field, and CloudKit creates a field only on the first export of a non-`nil`
-value, so a deployed schema can pass this check and still be missing columns the
-model declares.
+It answers three questions — do the two environments agree, does every `@Model`
+type have a record type, and does every `@Model` *property* have a field of the
+type it declares. The third matters because CloudKit creates a field only on the
+first export of a non-`nil` value, while a Production schema can only be added to
+from the Console: a column nothing has written yet has no field, and the first
+row that writes one cannot create it, so that install's mirroring stops for good.
+
+Because that third question needs only the model and a schema — not the container
+— it also runs offline, against a snapshot of the deployed schema committed at
+`Config/cloudkit-schema.ckdb`. That form is in the verification chain, needs no
+token and no network, and is what a diff that adds a `@Model` property fails
+against:
+
+```bash
+./scripts/check-cloudkit-schema.sh --offline     # the chain gate
+./scripts/check-cloudkit-schema.sh --self-test   # each direction, over a fixture
+./scripts/check-cloudkit-schema.sh --complete /tmp/complete.ckdb
+./scripts/check-cloudkit-schema.sh --refresh     # re-record the snapshot
+```
+
+`--complete` writes a schema file with every missing field added, for
+`cktool import-schema --environment development`; `--refresh` re-records the
+snapshot once a deployment has landed, and refuses while the two environments
+still disagree. The networked run is what keeps the snapshot honest, so the
+offline gate is a claim about the container only for as long as the two are run
+together.
 
 And one dependency gate: every package dependency is a local `path:` one, so no
 tracked `Package.swift` names a remote dependency, a registry package or a binary

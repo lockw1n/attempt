@@ -111,13 +111,22 @@ actor AppSyncControl: SyncControl {
             ? SyncStatus(phase: .idle, lastSucceededAt: lastSucceededAt)
             : SyncStatus(phase: .off, lastSucceededAt: lastSucceededAt)
         guard isRunning else { return }
+        // THE STREAM IS BUILT HERE AND THE LOOP MERELY DRAINS IT, which narrows the window this
+        // type exists to close. `AppDependencies` opens the store on the line after this one, and
+        // an event posted while it does reaches only an observer that already exists — so building
+        // the stream inside the task body would put a hop between launch and listening. It is
+        // NARROWED, NOT CLOSED: `CloudKitSyncEvents` registers its own observation on a task of its
+        // own, so a `.setup` event posted during the store's construction can still predate it.
+        // Nothing on screen depends on that one — an import or export reports separately, and it is
+        // those that move `lastSucceededAt`.
+        let stream = events()
         // NOT HELD IN A PROPERTY, AND THE COMPILER IS WHY: an actor's `init` is nonisolated, so
         // assigning to a stored property after a closure has captured `self` is rejected outright
         // — "Cannot access property 'observation' here in nonisolated initializer". The loop ends
         // itself instead, on the first event after the control is gone, which is the same lifetime
         // a cancelling `deinit` would have given it.
         Task { [weak self] in
-            for await event in events() {
+            for await event in stream {
                 guard let self else { break }
                 await self.record(event)
             }
@@ -164,6 +173,15 @@ actor AppSyncControl: SyncControl {
     ///   - id: The follower's own key, so it can stop.
     ///   - continuation: Where its statuses go.
     private func follow(_ id: UUID, _ continuation: AsyncStream<SyncStatus>.Continuation) {
+        // THE STREAM CAN BE GONE BEFORE THIS RUNS, and without this guard that leaks. Registering
+        // and unregistering are two hops onto the actor, and `onTermination` fires whenever the
+        // consumer stops — including before this one arrives, in which case the removal is applied
+        // to a key nothing has added yet and the continuation is then registered for the life of
+        // the process. `onTermination` cancels this task, so asking is one line.
+        guard !Task.isCancelled else {
+            continuation.finish()
+            return
+        }
         continuation.yield(current)
         // A store that is not mirroring will never be told about an attempt, so there is nothing
         // further to say and the stream ends rather than being held open for the life of a screen.

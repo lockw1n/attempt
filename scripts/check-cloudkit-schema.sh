@@ -41,7 +41,7 @@
 #                                      since a stale excuse is how the next reader concludes a table
 #                                      is unreachable long after it stopped being.
 #   3  Every @Model PROPERTY has a     T-1.95. Checks 1 and 2 ask about TABLES, and on 2026-09-11
-#      field.                          this script reported "production matches development
+#      field, of the declared type.     this script reported "production matches development
 #                                      field-for-field" while sync was dead: 23 columns across all
 #                                      17 record types had no field in either environment, 16 of
 #                                      them CD_deletedAt. NSPersistentCloudKitContainer creates a
@@ -157,6 +157,25 @@ declared_record_types() {
 # property nothing here can check, and silently dropping it is how check 3 would come to report
 # green over the next CD_deletedAt. `SchemaV1` is lightweight-migration-only, so the set of legal
 # column types is small and closed; a new one is a schema decision, and it is meant to stop here.
+#
+# AND NEITHER IS AN UNREADABLE DECLARATION, WHICH IS THE SAME RULE ONE STEP EARLIER. The first
+# version of this parse matched one exact shape — access modifiers, `var`, a name, a type
+# annotation — and every declaration that missed it was dropped without a word: `var restSeconds =
+# 90` (a perfectly ordinary mirrored column, since nothing in this repo requires an annotation) and
+# `@Attribute(.externalStorage) var blob: Data = Data()` both left the gate reporting green over a
+# column with no field, which is the exact defect T-1.95 exists to end. So EVERY declaration at the
+# body level is now classified into one of five, and the fifth is a failure:
+#
+#   stored     a name, a type, and no brace before the `=`  ->  the field it mirrors to
+#   @Transient declared not to mirror                       ->  skipped, and it IS a skip
+#   computed   a brace before any `=`                       ->  skipped; not a column
+#   static     not an instance property                     ->  skipped; not a column
+#   anything else                                           ->  UNPARSED, and check 3 fails
+#
+# The four skips are each decidable from the line itself, which is what makes them safe; the fifth
+# is the residue, and a residue that fails is the only version of this parse that can be trusted to
+# have seen every column. Comment lines are dropped before any of it — the self-test's fixture names
+# `var decoy: Int` inside a doc comment for exactly that reason.
 declared_fields() {
     awk '
         BEGIN {
@@ -178,20 +197,56 @@ declared_fields() {
             entity = $0
             sub(/^final class /, "", entity)
             sub(/[^A-Za-z0-9_].*$/, "", entity)
-            inside = 1; pending = 0; next
+            inside = 1; pending = 0; attrs = ""; next
         }
         inside && /^}/ { inside = 0 }
-        inside && /^    (private\(set\) |public |internal |fileprivate |package )*var [A-Za-z0-9_]+ *:/ {
-            name = $0
-            sub(/^.*var /, "", name)
-            sub(/ *:.*$/, "", name)
-            type = $0
-            sub(/^[^:]*: */, "", type)
-            sub(/ *=.*$/, "", type)
-            sub(/ *$/, "", type)
+        # Body level only: exactly four spaces, then something. A nested type or a closure indents
+        # further and declares nothing this schema carries.
+        inside && /^    [^ ]/ {
+            line = $0
+            sub(/^    /, "", line)
+            # A comment, even one that names a property in prose.
+            if (line ~ /^\/\//) { attrs = ""; next }
+            # An attribute on its own line belongs to the declaration under it.
+            if (line ~ /^@[A-Za-z0-9_]+(\([^)]*\))?[[:space:]]*$/) { attrs = attrs line " "; next }
+            head = attrs line
+            attrs = ""
+            if (head !~ /(^|[[:space:]])var[[:space:]]/) next
+            # NOT MIRRORED, so it owes no field. The one skip that is about CoreData rather than
+            # about Swift, and the reason this runs before the modifiers are stripped.
+            if (head ~ /(^|[[:space:]])@Transient([[:space:](]|$)/) next
+            rest = head
+            while (match(rest, /^@[A-Za-z0-9_]+(\([^)]*\))?[[:space:]]+/)) {
+                rest = substr(rest, RSTART + RLENGTH)
+            }
+            while (match(rest, /^(private\(set\)|private|public|internal|fileprivate|package|final|lazy|nonisolated)[[:space:]]+/)) {
+                rest = substr(rest, RSTART + RLENGTH)
+            }
+            if (rest ~ /^static[[:space:]]/) next
+            if (rest !~ /^var [A-Za-z0-9_]+[[:space:]]*:/) {
+                printf "CD_%s\tCD_?\tUNPARSED:%s\n", entity, line
+                next
+            }
+            name = rest
+            sub(/^var /, "", name)
+            sub(/[[:space:]]*:.*$/, "", name)
+            type = rest
+            sub(/^[^:]*:[[:space:]]*/, "", type)
+            # A brace before any assignment is a computed property; an assignment first is a stored
+            # one with a default, which every column here has (SchemaV1 rule 1).
+            brace = index(type, "{")
+            assign = index(type, "=")
+            if (brace > 0 && (assign == 0 || brace < assign)) next
+            if (assign > 0) type = substr(type, 1, assign - 1)
+            sub(/[[:space:]]+$/, "", type)
             sub(/\?$/, "", type)
+            if (type == "") {
+                printf "CD_%s\tCD_%s\tUNPARSED:%s\n", entity, name, line
+                next
+            }
             printf "CD_%s\tCD_%s\t%s\n", entity, name, (type in spell ? spell[type] : "UNMAPPED:" type)
         }
+        inside { attrs = "" }
     ' "$@" | sort -u
 }
 
@@ -214,14 +269,23 @@ exported_record_types() {
         | awk '{ print $3 }' | sort -u; } || true
 }
 
-# Every CD_ field of every CD_ record type in an export, as `record type<TAB>field`.
+# Every CD_ field of every CD_ record type in an export, as `record type<TAB>field<TAB>spelling`.
 #
 # CD_entityName IS COREDATA'S OWN AND IS NOT DECLARED ANYWHERE, which is why this comparison only
 # ever runs one way: declared-and-absent is the defect, deployed-and-undeclared is the framework.
+#
+# THE SPELLING IS CARRIED because a field of the wrong type fails exactly as a missing one does, one
+# export later — the sentence --complete's own safety argument rests on. Comparing names alone would
+# say nothing about it, and an import that guessed a spelling wrongly would report green for good.
 exported_fields() {
     awk '
         /RECORD TYPE CD_[A-Za-z0-9_]+/ { type = $3; next }
-        /^[[:space:]]*CD_[A-Za-z0-9_]+[[:space:]]/ { printf "%s\t%s\n", type, $1 }
+        /^[[:space:]]*CD_[A-Za-z0-9_]+[[:space:]]/ {
+            spell = ""
+            for (i = 2; i <= NF; i++) spell = spell (i > 2 ? " " : "") $i
+            sub(/,$/, "", spell)
+            printf "%s\t%s\t%s\n", type, $1, spell
+        }
     ' "$1" | sort -u
 }
 
@@ -262,7 +326,7 @@ ok() { printf '  ok    %-22s %s\n' "$1" "$2"; }
 check_fields() {
     local schema="$1" label="$2"
     shift 2
-    local declared unmapped missing
+    local declared exported unreadable missing mistyped
     if (( $# == 0 )); then
         set -- $(entity_sources)
     fi
@@ -273,18 +337,28 @@ check_fields() {
         return 1
     fi
 
-    unmapped="$(awk -F'\t' '$3 ~ /^UNMAPPED:/ { print $1 "." $2 " is " substr($3, 10) }' <<<"$declared")"
-    if [[ -n "$unmapped" ]]; then
-        fail "field coverage" "Swift types this check has no CloudKit spelling for:"
-        sed 's/^/        /' <<<"$unmapped" >&2
-        echo "        Add the spelling to declared_fields(), copying it from a column of the same" >&2
-        echo "        type in an export. Until then nothing can be said about these fields." >&2
+    # Both residues, reported together: a type with no spelling, and a declaration the parse could
+    # not read at all. Neither can be skipped — see declared_fields()'s own note.
+    unreadable="$(awk -F'\t' '
+        $3 ~ /^UNMAPPED:/ { printf "%s.%s is %s, which has no CloudKit spelling here\n", $1, $2, substr($3, 10) }
+        $3 ~ /^UNPARSED:/ { printf "%s: %s\n", $1, substr($3, 10) }
+    ' <<<"$declared")"
+    if [[ -n "$unreadable" ]]; then
+        fail "field coverage" "declarations this check cannot turn into a field:"
+        sed 's/^/        /' <<<"$unreadable" >&2
+        cat >&2 <<'UNREADABLE'
+        A type with no spelling: add it to declared_fields(), copied from a column of the same
+        Swift type in an export. A declaration that could not be read: give it an explicit type
+        annotation, which is what every column in SchemaV1 has. Until then nothing can be said
+        about these fields, and a silent skip here is the defect this gate exists to catch.
+UNREADABLE
         return 1
     fi
 
+    exported="$(exported_fields "$schema")"
     missing="$(comm -23 \
         <(cut -f1,2 <<<"$declared") \
-        <(exported_fields "$schema"))"
+        <(cut -f1,2 <<<"$exported"))"
 
     if [[ -n "$missing" ]]; then
         fail "field coverage" "@Model properties with no field in $label:"
@@ -306,8 +380,32 @@ MISSING
         return 1
     fi
 
+    # The field is there; is it the column the model will try to write? Matched in awk rather than
+    # with `join`, which would need both sides sorted the same way and has no opinion to offer here.
+    mistyped="$(awk -F'\t' '
+        NR == FNR { deployed[$1 "\t" $2] = $3; next }
+        ($1 "\t" $2) in deployed && deployed[$1 "\t" $2] != $3 {
+            printf "%s.%s  declared %s  deployed %s\n", $1, $2, $3, deployed[$1 "\t" $2]
+        }
+    ' <(printf '%s\n' "$exported") <(printf '%s\n' "$declared"))"
+
+    if [[ -n "$mistyped" ]]; then
+        fail "field coverage" "fields deployed as a different type in $label:"
+        sed 's/^/        /' <<<"$mistyped" >&2
+        cat >&2 <<'MISTYPED'
+
+        A field of the wrong type fails on export exactly as a missing one does, and Production is
+        deploy-only, so the client cannot correct it. Either the spelling in declared_fields() is
+        wrong for that Swift type — check it against a column of the same type in the export — or
+        the field was imported from a schema that guessed, and the container needs the field
+        renamed and re-added in the Console. A CloudKit field's type cannot be changed in place.
+
+MISTYPED
+        return 1
+    fi
+
     ok "field coverage" \
-        "all $(wc -l <<<"$declared" | tr -d ' ') @Model properties have a field in $label"
+        "all $(wc -l <<<"$declared" | tr -d ' ') @Model properties have a field of the declared type in $label"
 }
 
 # --self-test: check 3 in both directions, over a scratch tree. `find` rather than `git ls-files`,
@@ -322,12 +420,20 @@ if [[ "$mode" == "self-test" ]]; then
     trap 'rm -rf "$scratch"' EXIT
     mkdir -p "$scratch/entities" "$scratch/empty"
 
+    # EVERY DECLARATION SHAPE THE PARSE CLASSIFIES, in one fixture: two plain stored properties, a
+    # `private(set)` one, one behind an attribute, and then the three that are deliberately NOT
+    # columns — @Transient, computed, static. The passing case below is what asserts all three are
+    # skipped, since the schema beside it carries no field for any of them.
     cat >"$scratch/entities/Alpha.swift" <<'EOF'
 @Model
 final class AlphaEntity: StoredEntity {
     var id: UUID = UUID()
     var deletedAt: Date?
     private(set) var tags: [String] = []
+    @Attribute(.externalStorage) var blob: Data = Data()
+    @Transient var scratch: Int = 0
+    var derived: Int { count * 2 }
+    static var fallback: Int { 0 }
     /// A doc comment naming `var decoy: Int` in prose, which must not be parsed as a property.
     var count: Int = 0
 }
@@ -340,6 +446,7 @@ EOF
 DEFINE SCHEMA
 
     RECORD TYPE CD_AlphaEntity (
+        CD_blob       BYTES QUERYABLE SORTABLE,
         CD_count      INT64 QUERYABLE SORTABLE,
         CD_deletedAt  TIMESTAMP QUERYABLE SORTABLE,
         CD_entityName STRING QUERYABLE SEARCHABLE SORTABLE,
@@ -351,8 +458,18 @@ DEFINE SCHEMA
 EOF
     # The exact shape this task was written for: the optional column nothing has ever written.
     grep -v 'CD_deletedAt' "$scratch/complete.ckdb" >"$scratch/lazy.ckdb"
+    # The same shape for a property declared behind an attribute — the column is ordinary, and the
+    # first version of this parse dropped the declaration without a word.
+    grep -v 'CD_blob' "$scratch/complete.ckdb" >"$scratch/no-blob.ckdb"
+    # A field that IS there and is the wrong column: it fails on export exactly as a missing one.
+    sed 's/CD_count      INT64 QUERYABLE SORTABLE/CD_count      STRING QUERYABLE SEARCHABLE SORTABLE/' \
+        "$scratch/complete.ckdb" >"$scratch/mistyped.ckdb"
     sed 's/var count: Int = 0/var count: Decimal = 0/' "$scratch/entities/Alpha.swift" \
         >"$scratch/unmapped.swift"
+    # NOTHING IN THIS REPO REQUIRES AN ANNOTATION, so this is a legal mirrored column — and the
+    # shape that left the gate reporting green over a field it had never heard of.
+    sed 's/var count: Int = 0/var count = 0/' "$scratch/entities/Alpha.swift" \
+        >"$scratch/inferred.swift"
 
     expect() {
         local label="$1" want="$2"; shift 2
@@ -371,7 +488,10 @@ EOF
     echo "self-test — check 3, in both directions"
     expect "field coverage" 0 check_fields "$scratch/complete.ckdb" fixture "$scratch/entities/Alpha.swift"
     expect "…a lazily-created column" 1 check_fields "$scratch/lazy.ckdb" fixture "$scratch/entities/Alpha.swift"
+    expect "…a column behind an attribute" 1 check_fields "$scratch/no-blob.ckdb" fixture "$scratch/entities/Alpha.swift"
+    expect "…a field of the wrong type" 1 check_fields "$scratch/mistyped.ckdb" fixture "$scratch/entities/Alpha.swift"
     expect "…an unmapped Swift type" 1 check_fields "$scratch/complete.ckdb" fixture "$scratch/unmapped.swift"
+    expect "…a property with no annotation" 1 check_fields "$scratch/complete.ckdb" fixture "$scratch/inferred.swift"
     # A parse that finds nothing must fail rather than agree with an empty schema — the same
     # green-while-enforcing-nothing failure check 2's own emptiness guard exists to prevent.
     expect "…an empty parse" 1 check_fields "$scratch/complete.ckdb" fixture "$scratch/empty"
@@ -381,7 +501,8 @@ EOF
         echo "$failures self-test case(s) failed — this gate does not do what its header claims." >&2
         exit 1
     fi
-    echo "check 3 fires on a missing field and on an unmapped type, and not on a complete schema."
+    echo "check 3 fires on a missing field, a mistyped one, an unmapped type and a declaration it"
+    echo "cannot read — and not on a complete schema whose non-columns it correctly skips."
     exit 0
 fi
 
@@ -396,7 +517,7 @@ if [[ "$mode" == "offline" || "$mode" == "complete" ]]; then
 
     if [[ "$mode" == "complete" ]]; then
         declared="$(declared_fields $(entity_sources))"
-        if grep -q 'UNMAPPED:' <<<"$declared"; then
+        if grep -qE '(UNMAPPED|UNPARSED):' <<<"$declared"; then
             check_fields "$SNAPSHOT" "the snapshot" || true
             exit 1
         fi
