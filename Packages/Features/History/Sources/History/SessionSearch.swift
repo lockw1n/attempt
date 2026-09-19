@@ -80,7 +80,7 @@ struct SessionMatch: Identifiable, Equatable, Sendable {
 enum SessionSearch {
     /// `text` with its surrounding whitespace removed — what the rest of this type takes.
     ///
-    /// Whitespace-only input is no search at all, for `ExerciseListState`'s reason: otherwise the
+    /// Whitespace-only input is no search at all, for `ExerciseNameSearch`'s reason: otherwise the
     /// first space typed empties the screen.
     ///
     /// - Parameter text: What the user typed.
@@ -108,7 +108,7 @@ enum SessionSearch {
 
     /// Where `query` appears in one session, or `nil` if it does not appear at all.
     ///
-    /// **`localizedStandardContains` throughout**, for `ExerciseListState`'s reason: it ignores case
+    /// **`localizedStandardContains` throughout**, for `ExerciseNameSearch`'s reason: it ignores case
     /// *and* diacritics, so "sumo" finds "Sumó" and a Turkish locale does not lose the dotted I. A
     /// hand-rolled `lowercased().contains` is a different search and a worse one.
     ///
