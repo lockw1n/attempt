@@ -371,6 +371,9 @@ Either form takes one suite, named by its package directory or target, when a ch
 module — `./scripts/snapshot-tests.sh --record Settings`. A narrowed run proves nothing about the
 suites it skipped, so the bare command is the one that backs a claim.
 
+The script runs every suite in UTC, the CI runner's zone, so references recorded on any machine
+match CI. A bare `xcodebuild test` runs in the machine's own zone and can draw a date a day off.
+
 A rendering whose pixels are all one colour is **never recorded**, and a committed reference that
 is all one colour is **rejected before the comparison** — `ImageRenderer` returns a blank past
 roughly 7,000 pixels of height, and a `ScrollView` rasterises its placeholder at any size, so
