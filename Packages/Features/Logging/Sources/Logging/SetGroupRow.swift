@@ -5,7 +5,7 @@ import PowerliftingCore
 import RepositoryInterface
 import SwiftUI
 
-/// A run of identical sets on one line — `100,0 kg × 6 × 4` (`FR-16.1.1`, `FR-16.1.3`).
+/// A run of identical sets on one line — `100 kg × 6 × 4` (`FR-16.1.1`, `FR-16.1.3`).
 ///
 /// **A group of one is a row, not a group of one.** A single set is drawn by ``SetRow`` exactly as
 /// it always was: it has nothing to collapse, and a disclosure control over one set would be a tap
