@@ -363,7 +363,7 @@ struct SetGroupRow: View {
     /// The rating, where the group carries one.
     ///
     /// **Below the values rather than beside them, at every size** — unlike ``SetRow/rating``, which
-    /// keeps the line until `NFR-1.10`'s ceiling. Measured: this line carries one numeral pair more
+    /// keeps the line below `.xxxLarge`. Measured: this line carries one numeral pair more
     /// than that one does, and with the rating beside it `100.0 kg` broke across two lines at the
     /// **default** type size, which is T-1.23's finding reached one field earlier.
     @ViewBuilder private var rating: some View {

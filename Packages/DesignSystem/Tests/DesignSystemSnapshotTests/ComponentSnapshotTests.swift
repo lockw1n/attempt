@@ -81,7 +81,7 @@
                         value: Text(verbatim: "182.5 kg")
                     ) {
                         DeltaIndicator(.increase, value: "2.5 kg")
-                        Text(verbatim: "Training max 175.0 kg")
+                        Text(verbatim: "Training max 177.5 kg")
                     }
                 }
             }

@@ -166,8 +166,9 @@ struct SetRow: View {
     /// same argument that made the exercise reorder a pair of buttons rather than a drag.
     ///
     /// **The same kind of layout switch as the row itself, one size sooner** (``valuesLayout``), and
-    /// for the same measured reason: at `accessibility3` a rating pushed to the trailing edge takes the width `102.5 kg` needs, and
-    /// the load breaks mid-number. Stacked, the rating goes underneath and the load stays one word.
+    /// for the same kind of measured reason: from `.xxxLarge` a rating beside the load takes the
+    /// width `102.5 kg` needs, and the load breaks mid-number. Stacked, the rating goes underneath
+    /// and the load stays one word.
     /// Combining is applied over the whole subtree, so the announcement is unchanged either way.
     ///
     /// **The width is claimed with a `frame` rather than a `Spacer`**, which is what lets one
