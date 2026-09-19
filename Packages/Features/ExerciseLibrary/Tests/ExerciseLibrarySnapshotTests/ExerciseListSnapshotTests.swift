@@ -232,14 +232,40 @@
             }
         }
 
+        // THE SCREEN'S OWN VIEW, NOT A HAND-BUILT `EmptyStateView`. The three references below
+        // picture a decision — which of the two ways out leads, and whether the second is offered —
+        // and a fixture that assembled the state itself would picture the fixture's answer instead
+        // (`T-16.17`). `ExerciseNoMatchState` exists so there is something to render here.
+        //
+        // AND NO PICKER VARIANT, deliberately: `FR-18.1.3` puts the same door on the list and on
+        // both pickers, and this state reads nothing that would tell them apart — a
+        // `ExerciseList-picker-no-matches` reference would come back byte-identical to its
+        // neighbour, which is the pair `T-17.15` deleted one of. What differs between browsing and
+        // picking is where saving lands, and that is `AttemptTests`' hosted walk.
         @Test func nothingMatched() throws {
             try assertSnapshots(named: "ExerciseList-no-matches") {
-                EmptyStateView(
-                    symbolName: "magnifyingglass",
-                    headline: Text(ExerciseLibraryStrings.noMatchesHeadline),
-                    message: Text(ExerciseLibraryStrings.noMatchesMessage),
-                    action: StateAction(Text(ExerciseLibraryStrings.noMatchesAction), emphasis: .primary) {}
-                )
+                ExerciseNoMatchState(
+                    nameToCreate: "rear delt fly", create: { _ in }, clearFilters: {})
+            }
+        }
+
+        @Test func nothingMatchedOnFiltersAlone() throws {
+            // Nothing was typed, so there is no name to create and Clear filters is the whole
+            // answer — and it takes the accent back (`FR-18.1.3`).
+            try assertSnapshots(named: "ExerciseList-no-matches-filters-only") {
+                ExerciseNoMatchState(nameToCreate: nil, create: { _ in }, clearFilters: {})
+            }
+        }
+
+        @Test func nothingMatchedOnALongName() throws {
+            // The label quotes the lifter's own text and nothing bounds its length. At
+            // `accessibility3` this is the reference that shows the button is still a button: one
+            // line, its middle given up, the closing quote intact.
+            try assertSnapshots(named: "ExerciseList-no-matches-long-name") {
+                ExerciseNoMatchState(
+                    nameToCreate: "задня дельта в тренажері сидячи вузьким хватом",
+                    create: { _ in },
+                    clearFilters: {})
             }
         }
 

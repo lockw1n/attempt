@@ -437,6 +437,20 @@ public final class ExerciseListState {
         return !showsArchived && !exercises.isEmpty && exercises.allSatisfy(\.isArchived)
     }
 
+    /// The name **Create "‹typed›"** would author, or `nil` where there is nothing to create
+    /// (`FR-18.1.3`).
+    ///
+    /// **`nil` is the answer whenever the search field is empty**, which is what makes the door a
+    /// search's and not a filter's: a no-match caused by filters alone has no name in it, and
+    /// offering to create the empty string would author a row the save would refuse anyway.
+    ///
+    /// Trimmed, and its inner runs of whitespace collapsed, so the name stored is the name the label
+    /// quoted — a stray double space typed mid-search is not part of what the lifter meant to name.
+    public var nameToCreate: String? {
+        let words = searchText.split(whereSeparator: \.isWhitespace)
+        return words.isEmpty ? nil : words.joined(separator: " ")
+    }
+
     /// Drops the search text and every filter — the action on the "nothing matched" state.
     ///
     /// ``showsArchived`` is untouched; see its own note for why it is not one of these.

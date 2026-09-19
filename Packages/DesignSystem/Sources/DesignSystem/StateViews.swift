@@ -16,6 +16,7 @@ public struct EmptyStateView: View {
     private let headline: Text
     private let message: Text?
     private let action: StateAction?
+    private let secondaryAction: StateAction?
 
     /// Builds the state.
     ///
@@ -25,16 +26,22 @@ public struct EmptyStateView: View {
     ///   - headline: What there is none of, in the caller's words.
     ///   - message: One line on how to get some, where the headline does not already say it.
     ///   - action: The way to create the first one.
+    ///   - secondaryAction: A second way out, drawn below ``action`` — a search that matched nothing
+    ///     offers creating what was typed and, beneath it, clearing the search. Omitted, nothing is
+    ///     drawn, which is what every state with one way out already draws; it carries its own
+    ///     emphasis, so the default adds no accent.
     public init(
         symbolName: String? = nil,
         headline: Text,
         message: Text? = nil,
-        action: StateAction? = nil
+        action: StateAction? = nil,
+        secondaryAction: StateAction? = nil
     ) {
         self.symbolName = symbolName
         self.headline = headline
         self.message = message
         self.action = action
+        self.secondaryAction = secondaryAction
     }
 
     /// The scaffold this view configures.
@@ -44,7 +51,8 @@ public struct EmptyStateView: View {
             symbolName: symbolName,
             headline: headline,
             message: message,
-            action: action
+            action: action,
+            secondaryAction: secondaryAction
         )
     }
 

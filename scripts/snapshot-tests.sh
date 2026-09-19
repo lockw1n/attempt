@@ -80,7 +80,7 @@ cd "$(dirname "$0")/.."
 #                     derivation read 19 reference-backed against 84 references, which is 21. Seven
 #                     tests could have vanished unnoticed. Set to its own count now, as every other
 #                     suite is — "above the 19" was a margin that only ever grew.
-#   ExerciseLibrary: 42 tests, all of them reference-backed, no probes -> 42, its own count.
+#   ExerciseLibrary: 44 tests, all of them reference-backed, no probes -> 44, its own count.
 #   Logging:         93 tests, 88 reference-backed, a width probe and four layout budgets
 #                                                                    -> 93, its own count.
 #   History:         28 tests, 27 reference-backed, one layout budget -> 28, above the 27.
@@ -106,7 +106,7 @@ cd "$(dirname "$0")/.."
 # from, and a task that adds a snapshot test owes this list the same edit it owes __Snapshots__.
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|36"
-    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|42"
+    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|44"
     "Packages/Features/Logging|Logging|LoggingSnapshotTests|93"
     "Packages/Features/History|History|HistorySnapshotTests|28"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|21"

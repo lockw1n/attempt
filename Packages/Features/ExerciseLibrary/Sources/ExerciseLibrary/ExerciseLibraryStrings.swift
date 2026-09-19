@@ -92,6 +92,17 @@ enum ExerciseLibraryStrings {
     /// The way back out of a search that matched nothing.
     static let noMatchesAction = resource("exerciselibrary.list.no-matches.action")
 
+    /// The way *through* a search that matched nothing: create what was typed (`FR-18.1.3`).
+    ///
+    /// **The name is the argument and it is the lifter's own text**, which is why it is quoted: the
+    /// sentence has to survive a name that is a single word, a phrase, or the whole search.
+    ///
+    /// - Parameter name: What was typed, trimmed and collapsed.
+    /// - Returns: The command.
+    static func noMatchesCreate(_ name: String) -> LocalizedStringResource {
+        resource("exerciselibrary.list.no-matches.create \(name)")
+    }
+
     /// The heading when the catalogue could not be read.
     static let errorHeadline = resource("exerciselibrary.list.error.headline")
 
@@ -424,6 +435,7 @@ enum ExerciseLibraryStrings {
             emptyHeadline, emptyMessage,
             archivedOnlyHeadline, archivedOnlyMessage,
             noMatchesHeadline, noMatchesMessage, noMatchesAction,
+            noMatchesCreate("Rear delt fly"),
             errorHeadline, errorMessage,
             detailSection, detailMovement, detailEquipment, detailBar, detailLaterality,
             detailOrigin, detailArchivedBadge,

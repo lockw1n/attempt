@@ -100,7 +100,7 @@ nonisolated enum StateKind: Sendable, CaseIterable {
     }
 }
 
-/// The one action a state placeholder may offer — "Log your first workout", "Try again".
+/// A command a state placeholder offers — "Log your first workout", "Try again".
 ///
 /// A struct rather than two parameters, so a caller cannot pass a label with no handler or a
 /// handler with no label.
@@ -108,6 +108,9 @@ public struct StateAction {
     let label: Text
     let emphasis: StateActionEmphasis
     let handler: () -> Void
+
+    /// Whether the label is bounded in height and gives up its middle when it does not fit.
+    private(set) var truncatesInMiddle = false
 
     /// Builds the action.
     ///
@@ -123,6 +126,21 @@ public struct StateAction {
         self.label = label
         self.emphasis = emphasis
         self.handler = handler
+    }
+
+    /// The same action, with a label bounded at two lines that loses its middle rather than growing.
+    ///
+    /// For a label quoting the user's own text — **Create "‹typed›"** — whose length nothing here
+    /// bounds: unbounded, it pushes the rest of the state off the screen at a large text size, and
+    /// cut at the end it loses the closing quote that says where the quotation stops. **Two lines
+    /// rather than one**, because at `accessibility3` on the narrowest screen one line leaves four
+    /// characters of a name either side of the ellipsis, which names nothing.
+    ///
+    /// - Returns: The action, truncating in the middle.
+    public func truncatingInMiddle() -> StateAction {
+        var copy = self
+        copy.truncatesInMiddle = true
+        return copy
     }
 }
 
@@ -142,7 +160,8 @@ public enum StateActionEmphasis: Equatable, Sendable {
     case secondary
 }
 
-/// The layout all five state views share: indicator, copy, at most one action.
+/// The layout all five state views share: indicator, copy, and an action — two, on the empty state
+/// alone.
 ///
 /// Internal, because the five kinds are the API. A caller reaching for the scaffold directly would
 /// be able to build a sixth state, which is the thing `FR-1.13.1` is trying to stop.
@@ -156,19 +175,22 @@ struct StateScaffold: View {
     let headline: Text?
     let message: Text?
     let action: StateAction?
+    let secondaryAction: StateAction?
 
     init(
         kind: StateKind,
         symbolName: String? = nil,
         headline: Text? = nil,
         message: Text? = nil,
-        action: StateAction? = nil
+        action: StateAction? = nil,
+        secondaryAction: StateAction? = nil
     ) {
         self.kind = kind
         self.symbolName = symbolName
         self.headline = headline
         self.message = message
         self.action = action
+        self.secondaryAction = secondaryAction
     }
 
     /// The heading actually shown: the caller's where it gave one, otherwise the kind's fallback.
@@ -201,8 +223,15 @@ struct StateScaffold: View {
             if resolvedHeadline != nil || resolvedMessage != nil {
                 copy
             }
-            if let action {
-                actionButton(action)
+            if action != nil || secondaryAction != nil {
+                VStack(spacing: Spacing.sm.points) {
+                    if let action {
+                        actionButton(action)
+                    }
+                    if let secondaryAction {
+                        actionButton(secondaryAction)
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity)
@@ -214,7 +243,13 @@ struct StateScaffold: View {
     /// - Parameter action: The command.
     /// - Returns: The button.
     @ViewBuilder private func actionButton(_ action: StateAction) -> some View {
-        let button = Button(action: action.handler) { action.label }
+        let button = Button(action: action.handler) {
+            if action.truncatesInMiddle {
+                action.label.lineLimit(2).truncationMode(.middle)
+            } else {
+                action.label
+            }
+        }
         switch action.emphasis {
         case .primary: button.buttonStyle(.primaryAction)
         case .secondary: button.buttonStyle(.secondaryAction)

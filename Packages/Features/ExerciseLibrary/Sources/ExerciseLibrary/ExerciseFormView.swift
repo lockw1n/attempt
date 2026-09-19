@@ -35,8 +35,20 @@ public struct ExerciseFormView: View {
     ///   - mode: Whether this authors a new exercise or edits an existing one.
     ///   - repository: Where the catalogue and the edited record come from. `Persistence`'s
     ///     implementation in the app; anything conforming in a test or a preview.
-    public init(mode: ExerciseFormMode, repository: any ExerciseRepository) {
-        _state = State(initialValue: ExerciseFormState(mode: mode, repository: repository))
+    ///   - initialName: What the name fields open on, for a form reached from a search that matched
+    ///     nothing (`FR-18.1.3`).
+    ///   - onSave: What the screen that opened this one does with the stored row — the picker's
+    ///     selection (`FR-18.1.4`). It also owns the exit when it is supplied; see
+    ///     ``ExerciseFormState/dismissesItselfOnSave``.
+    public init(
+        mode: ExerciseFormMode,
+        repository: any ExerciseRepository,
+        initialName: String = "",
+        onSave: ((Exercise) async -> Void)? = nil
+    ) {
+        _state = State(
+            initialValue: ExerciseFormState(
+                mode: mode, repository: repository, initialName: initialName, onSave: onSave))
     }
 
     /// The form, or whichever of the screen's three other states is current.
@@ -57,7 +69,7 @@ public struct ExerciseFormView: View {
         // The save is what ends this screen, and the state is what knows the save landed — a
         // dismissal driven from the button would fire on a write that failed.
         .onChange(of: state.didSave) { _, saved in
-            if saved { dismiss() }
+            if saved && state.dismissesItselfOnSave { dismiss() }
         }
     }
 
