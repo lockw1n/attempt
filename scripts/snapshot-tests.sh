@@ -192,9 +192,14 @@ references_dir() { echo "$1/Tests/$2/__Snapshots__"; }
 
 run_suite() {
     local package="$1" scheme="$2" target="$3"
+    # TEST_RUNNER_TZ reaches the test process as TZ, so every reference renders in UTC — the runner's
+    # own zone — wherever the suite runs. A fixture's `\.timeZone` environment reaches
+    # `Text(_:format:)` but never a date a view formats into a String itself, and the fixtures' epoch
+    # is 22:13 UTC: a Mac east of Greenwich recorded the next day, and CI failed on the reference.
+    # Measured: `NSTimeZone.default` set inside the process does not reach `Date.FormatStyle`.
     (
         cd "$package"
-        xcodebuild test \
+        TEST_RUNNER_TZ=UTC xcodebuild test \
             -scheme "$scheme" \
             -destination "$DESTINATION" \
             -only-testing:"$target"
