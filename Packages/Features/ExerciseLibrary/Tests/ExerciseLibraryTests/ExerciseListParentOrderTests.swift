@@ -22,6 +22,7 @@ struct ExerciseListParentOrderTests {
         Fixtures.exercise(
             name: "Belt Squat", movement: .other, parentExerciseID: backSquatID, isCustom: true),
         Fixtures.exercise(name: "Leg Press", movement: .other),
+        Fixtures.exercise(name: "Front Pause Squat", movement: .squat),
     ]
 
     private func loaded() async -> ExerciseListState {
@@ -34,7 +35,7 @@ struct ExerciseListParentOrderTests {
     func parentLeadsItsSection() async {
         let state = await loaded()
         let squats = state.groups.first { $0.movement == .squat }?.exercises.map(\.name)
-        #expect(squats == ["Back Squat", "Box Squat", "Pause Squat", "Hack Squat"])
+        #expect(squats == ["Back Squat", "Box Squat", "Pause Squat", "Front Pause Squat", "Hack Squat"])
     }
 
     @Test("A variation filed under another movement sits in that section by its own name")
@@ -47,9 +48,10 @@ struct ExerciseListParentOrderTests {
     @Test("A search or an archived parent that leaves the parent out puts its variations among the roots")
     func variationsWithoutTheirParent() async {
         let state = await loaded()
-        state.searchText = "squat"
-        state.movementFilter = .squat
-        #expect(state.names == ["Back Squat", "Box Squat", "Pause Squat", "Hack Squat"])
+        // "pause" drops Back Squat, so Pause Squat is a root and sorts after Front Pause Squat by
+        // its own name, where under its absent parent it would lead.
+        state.searchText = "pause"
+        #expect(state.names == ["Front Pause Squat", "Pause Squat"])
 
         let archivedParent = Self.catalogue.map { exercise in
             exercise.id == Self.backSquatID
@@ -60,6 +62,6 @@ struct ExerciseListParentOrderTests {
         let hidden = ExerciseListState.overCatalogue(ScriptedExerciseRepository(exercises: archivedParent))
         await hidden.load()
         let squats = hidden.groups.first { $0.movement == .squat }?.exercises.map(\.name)
-        #expect(squats == ["Box Squat", "Hack Squat", "Pause Squat"])
+        #expect(squats == ["Box Squat", "Front Pause Squat", "Hack Squat", "Pause Squat"])
     }
 }

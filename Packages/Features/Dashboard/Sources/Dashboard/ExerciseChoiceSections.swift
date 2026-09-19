@@ -8,7 +8,7 @@ struct ExerciseChoiceSection: Identifiable, Sendable, Equatable {
         /// Exercises with a completed working set in the lookback window, most recent first.
         case trained
 
-        /// Everything else in the catalogue, by name.
+        /// Everything else in the catalogue, each parent followed by its variations (`FR-18.1.2`).
         case everythingElse
     }
 
@@ -28,9 +28,11 @@ struct ExerciseChoiceSection: Identifiable, Sendable, Equatable {
 /// come back and in what order — testable only where the answer is computed, and shared by the two
 /// screens that draw this list rather than restated on each.
 ///
-/// **Two orderings, coexisting rather than one replacing the other.** `FR-1.14.2`'s alphabetical
-/// order in the screen's own locale is what the caller hands in and what **Everything else** keeps;
-/// recency is a second ordering, and it applies inside **Trained** only. The alternative — ranking
+/// **Two orderings, coexisting rather than one replacing the other.** **Everything else** takes
+/// ``RepositoryInterface/ExerciseDisplayOrder``'s, applied here to the rows the section holds
+/// rather than inherited from the caller — a variation whose parent the search or **Trained** took
+/// away is then a root by its own name, not a row under a parent the section does not draw
+/// (`FR-18.1.2`). Recency is a second ordering, and it applies inside **Trained** only. The alternative — ranking
 /// the whole list by recency — would leave the catalogue's 130-odd untrained rows in whatever order
 /// the tie-break happened to give them, which is no order a reader can scan.
 ///
@@ -50,7 +52,7 @@ enum ExerciseChoiceSections {
     /// where it actually is.
     ///
     /// - Parameters:
-    ///   - choices: Every row the screen may show, already in `FR-1.14.2`'s order.
+    ///   - choices: Every row the screen may show, in any order.
     ///   - query: What the user typed. Whitespace-only is no search at all — otherwise the first
     ///     space typed empties the screen.
     /// - Returns: The sections with rows in them, **Trained** first.
@@ -71,7 +73,11 @@ enum ExerciseChoiceSections {
                     == .orderedAscending
             }
             .map(\.choice)
-        let rest = found.filter { $0.lastTrained == nil }
+        let rest = ExerciseDisplayOrder.sorted(
+            found.filter { $0.lastTrained == nil },
+            id: \.exerciseID,
+            parentID: \.parentExerciseID,
+            name: \.name)
         return [
             ExerciseChoiceSection(kind: .trained, choices: trained),
             ExerciseChoiceSection(kind: .everythingElse, choices: rest),

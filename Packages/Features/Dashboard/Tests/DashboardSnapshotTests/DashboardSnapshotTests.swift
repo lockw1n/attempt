@@ -275,15 +275,17 @@
             TiledExerciseChoice(
                 exerciseID: id(1),
                 name: "Back Squat",
+                parentExerciseID: nil,
                 isTiled: true,
                 lastTrained: day.addingTimeInterval(-2 * 86_400)),
             TiledExerciseChoice(
                 exerciseID: id(2),
                 name: "Bench Press",
+                parentExerciseID: nil,
                 isTiled: true,
                 lastTrained: day.addingTimeInterval(-9 * 86_400)),
             TiledExerciseChoice(
-                exerciseID: id(3), name: "Deadlift", isTiled: false, lastTrained: nil),
+                exerciseID: id(3), name: "Deadlift", parentExerciseID: nil, isTiled: false, lastTrained: nil),
         ]
 
         /// Those rows split as `FR-16.5.3` draws them: two trained, one not.

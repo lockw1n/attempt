@@ -99,11 +99,46 @@ struct ExerciseChoiceSectionsTests {
         #expect(names(ExerciseChoiceSections.sections(choices, matching: "SUMO")[0]) == ["Sumó Deadlift"])
     }
 
+    /// `FR-18.1.2` inside **Everything else**, over rows handed in already in the rule's order for
+    /// the whole catalogue — so the section must re-order what is left, not keep what it was given.
+    @Test("Everything else leads with a parent, and a variation whose parent is elsewhere is a root")
+    func everythingElseOrdersParentFirstOverWhatItHolds() {
+        let back = UUID()
+        let bench = UUID()
+        let catalogue = [
+            choice("Air Squat", daysAgo: nil),
+            choice("Back Squat", id: back, daysAgo: 2),
+            choice("Box Squat", parent: back, daysAgo: nil),
+            choice("Tempo Squat", parent: back, daysAgo: nil),
+            choice("Bench Press", id: bench, daysAgo: nil),
+            choice("Close-Grip Bench", parent: bench, daysAgo: nil),
+            choice("Hack Squat", daysAgo: nil),
+        ]
+
+        let sections = ExerciseChoiceSections.sections(catalogue, matching: "")
+        #expect(names(sections[0]) == ["Back Squat"])
+        #expect(
+            names(sections[1]) == [
+                "Air Squat", "Bench Press", "Close-Grip Bench", "Box Squat", "Hack Squat",
+                "Tempo Squat",
+            ])
+
+        let searched = ExerciseChoiceSections.sections(catalogue, matching: "bench")
+        #expect(searched.map(\.kind) == [.everythingElse])
+        #expect(names(searched[0]) == ["Bench Press", "Close-Grip Bench"])
+
+        let squats = ExerciseChoiceSections.sections(catalogue, matching: "squat")
+        #expect(names(squats[1]) == ["Air Squat", "Box Squat", "Hack Squat", "Tempo Squat"])
+    }
+
     /// One row, trained `daysAgo` days before ``fixtureNow`` or not at all.
-    private func choice(_ name: String, daysAgo: Int?) -> TiledExerciseChoice {
+    private func choice(
+        _ name: String, id: UUID = UUID(), parent: UUID? = nil, daysAgo: Int?
+    ) -> TiledExerciseChoice {
         TiledExerciseChoice(
-            exerciseID: UUID(),
+            exerciseID: id,
             name: name,
+            parentExerciseID: parent,
             isTiled: false,
             lastTrained: daysAgo.map { fixtureNow.addingTimeInterval(-Double($0) * 86_400) })
     }
