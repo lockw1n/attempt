@@ -27,9 +27,13 @@ public struct EmptyStateView: View {
     ///   - message: One line on how to get some, where the headline does not already say it.
     ///   - action: The way to create the first one.
     ///   - secondaryAction: A second way out, drawn below ``action`` — a search that matched nothing
-    ///     offers creating what was typed and, beneath it, clearing the search. Omitted, nothing is
-    ///     drawn, which is what every state with one way out already draws; it carries its own
-    ///     emphasis, so the default adds no accent.
+    ///     offers creating what was typed and, beneath it, clearing the search.
+    ///
+    ///     **Defaulted, where ``StateAction``'s `emphasis` is not** (`T-16.17`), and the two are not
+    ///     the same question. A defaulted emphasis draws a weight nobody chose; a defaulted second
+    ///     action draws *nothing*, which is what a state with one way out already draws, and it is
+    ///     the same default ``action`` itself carries. Requiring one and not the other would be the
+    ///     asymmetry, not the fix for it.
     public init(
         symbolName: String? = nil,
         headline: Text,

@@ -377,8 +377,10 @@ public final class ExerciseFormState {
         }
         writeFailure = nil
         editedRecord = record
-        // Before the flag, because the flag is what pops the screens: the selection has to have
-        // landed by the time the surface underneath is on screen again (`FR-18.1.4`).
+        // Before the flag, because `didSave` is this form's record that the save is *finished* and
+        // the selection is part of what it owes (`FR-18.1.4`). Set first, it would be observably
+        // true while the exercise had not reached the day yet, and every reader of it — the view's
+        // dismissal, a test — would be reading a save that is still running.
         await onSave?(record)
         didSave = true
     }

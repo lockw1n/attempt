@@ -26,10 +26,23 @@ import UIKit
 ///
 /// **Serialized, for ``ScreenWiringTests``' reason**: the scene is shared and a second key window
 /// mid-test changes what the first one's presentation does.
+///
+/// **What these walks do not cover is the exit**, and it is worth saying where it went instead.
+/// `FR-18.1.4` also asks that the lifter comes back to the screen that opened the picker, which
+/// means removing the picker's own route — and `AttemptTests` does not link `AppNavigation`
+/// (`T-1.96`), so no fixture here can put a real shell above the screen. That decision therefore
+/// lives in ``AppNavigation/NavigationState/pop(_:)``, a plain type with its own tests, which is
+/// the same answer `T-1.96` reached for `ScreenWakePolicy`. Hosted bare, these screens take that
+/// method's `false` and fall back to ``SwiftUI/EnvironmentValues/dismiss``.
 @MainActor
 @Suite("Creating from a picker's no-match (FR-18.1.3, FR-18.1.4)", .serialized)
 struct ExerciseCreationFromPickerTests {
     /// The Train tab's picker: what is created lands in the workout in progress.
+    ///
+    /// **`DOD-18.2`'s count is this walk's, and it is two**: Create and Save, and nothing else
+    /// after typing. ``HostedScreen/createFromNoMatch(named:storedIn:)`` activates exactly those
+    /// two controls, so the budget of three is read off the walk rather than asserted beside it —
+    /// a third tap here would be a third `activateOrRecord` call.
     @Test("The day's picker adds the exercise it just created to the workout")
     func theDayPickerAddsWhatItCreated() async throws {
         let app = try PickerFixture()
@@ -89,6 +102,39 @@ struct ExerciseCreationFromPickerTests {
             saved, and the week's plan did not get it: the picker's select was not called with the \
             new row (FR-18.1.4). Day \(dayID) was open; the week prescribes \(planned.count) \
             exercises.
+            """)
+    }
+
+    /// The browsing list's own door: nothing is selected, and what is left to be right is the list.
+    ///
+    /// **This is the test that says whether the list re-reads after the form above it pops**
+    /// (`FR-1.1.3`). A push does not take this screen out of the hierarchy, so whether its `.task`
+    /// runs a second time on the way back down is a property of SwiftUI rather than of anything
+    /// here — and the answer decides whether `ExerciseListView` owes itself an explicit re-read.
+    /// The search text is still what was typed, so the row created under it is the row the list
+    /// must now be able to draw.
+    @Test("The browsing list draws the exercise it just created, on the way back down")
+    func theListShowsWhatItJustCreated() async throws {
+        let app = try PickerFixture()
+        let screen = HostedScreen(
+            NavigationStack {
+                ExerciseListView(
+                    repository: app.repositories.exercises, workouts: app.repositories.workouts)
+            }
+        )
+        defer { screen.dismantle() }
+        try await app.seedTheCatalogue()
+
+        _ = try await screen.createFromNoMatch(
+            named: "Rear delt fly", storedIn: app.repositories.exercises)
+        await screen.settle()
+
+        let labels = screen.activatableLabels()
+        #expect(
+            labels.contains(where: { $0.contains("Rear delt fly") }),
+            """
+            saved, and the list came back without it (FR-1.1.3): the catalogue this screen holds is \
+            the one it read before the form was pushed. What it publishes: \(labels)
             """)
     }
 

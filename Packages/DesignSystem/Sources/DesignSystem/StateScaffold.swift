@@ -132,9 +132,12 @@ public struct StateAction {
     ///
     /// For a label quoting the user's own text — **Create "‹typed›"** — whose length nothing here
     /// bounds: unbounded, it pushes the rest of the state off the screen at a large text size, and
-    /// cut at the end it loses the closing quote that says where the quotation stops. **Two lines
-    /// rather than one**, because at `accessibility3` on the narrowest screen one line leaves four
-    /// characters of a name either side of the ellipsis, which names nothing.
+    /// cut at the end it loses the closing quote that says where the quotation stops.
+    ///
+    /// **Two lines rather than one**, so the command and the quotation each get one at a large text
+    /// size and the verb is never what gets cut. It does not buy much of the name back — the
+    /// reference at `accessibility3` shows three characters either side of the ellipsis — and it is
+    /// not meant to: what is bounded here is the button, not the name.
     ///
     /// - Returns: The action, truncating in the middle.
     public func truncatingInMiddle() -> StateAction {

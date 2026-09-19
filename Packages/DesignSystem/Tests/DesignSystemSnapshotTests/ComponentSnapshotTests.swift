@@ -193,6 +193,33 @@
             }
         }
 
+        // THE SCAFFOLD'S TWO-ACTION LAYOUT, WHICH ONLY THE EMPTY STATE OFFERS. The screens that use
+        // it picture their own decision — which way out leads, and whether the second is offered at
+        // all — and a reference over a screen cannot say whether a *stacked pair* is what
+        // `DesignSystem` draws, because a screen only ever passes one pair. This one pins the
+        // spacing between them and that the second keeps the weight it was given.
+        //
+        // The label is deliberately long enough to need `truncatingInMiddle()`: that modifier has
+        // no other reference in this suite, and the `accessibility3` configuration is where a label
+        // that stopped truncating would push the actions apart.
+        @Test func emptyWithTwoActions() throws {
+            try assertSnapshots(named: "State-empty-two-actions") {
+                EmptyStateView(
+                    symbolName: "magnifyingglass",
+                    headline: Text(verbatim: "No matches"),
+                    message: Text(verbatim: "Nothing matches this search and these filters."),
+                    action: StateAction(
+                        Text(verbatim: "Create “rear delt fly on the cable machine”"),
+                        emphasis: .primary
+                    ) {}
+                    .truncatingInMiddle(),
+                    secondaryAction: StateAction(
+                        Text(verbatim: "Clear search and filters"), emphasis: .secondary
+                    ) {}
+                )
+            }
+        }
+
         // READ THE COMMITTED IMAGE BEFORE READING A DIFF OF IT. `ImageRenderer` cannot rasterise a
         // `ProgressView` — it is UIKit-backed, and the renderer draws its unsupported-view placeholder
         // (a yellow prohibition sign) in its place. The reference is therefore deterministic and green,

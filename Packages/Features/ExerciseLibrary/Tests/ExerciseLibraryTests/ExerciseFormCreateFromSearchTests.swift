@@ -73,6 +73,26 @@ struct ExerciseFormCreateFromSearchTests {
         #expect(state.dismissesItselfOnSave == false)
     }
 
+    /// The ordering, not just the call: a reader that sees ``ExerciseFormState/didSave`` must be
+    /// able to rely on the selection having landed, which is the whole reason the two lines are in
+    /// the order they are in.
+    @Test("The save is not finished until the selection has landed")
+    func theFlagFollowsTheSelection() async {
+        let probe = FlagProbe()
+        let state = await form(initialName: "Rear delt fly", onSave: probe.record(_:))
+        probe.form = state
+
+        await state.save()
+
+        #expect(state.didSave)
+        #expect(
+            probe.flagDuringSelection == false,
+            """
+            didSave was already true while the selection was still running, or the selection never \
+            ran at all (FR-18.1.4).
+            """)
+    }
+
     @Test("A save that failed selects nothing")
     func failedSaveSelectsNothing() async {
         let selected = Selection()
@@ -104,6 +124,25 @@ struct ExerciseFormCreateFromSearchTests {
     }
 
     // MARK: - Fixtures
+
+    /// What ``ExerciseFormState/didSave`` read as while the selection was still running.
+    ///
+    /// **Starts at `true`, which is the failing value**, so a selection that never ran at all fails
+    /// the same assertion as one that ran too late — the probe cannot pass by doing nothing.
+    @MainActor private final class FlagProbe {
+        /// The form under test, set after it is built because the closure is built first.
+        weak var form: ExerciseFormState?
+
+        /// The flag as the selection saw it.
+        private(set) var flagDuringSelection = true
+
+        /// Reads the flag at the moment the picker would be writing the exercise away.
+        ///
+        /// - Parameter exercise: The stored row, unused — the claim is about the ordering.
+        func record(_ exercise: Exercise) async {
+            flagDuringSelection = form?.didSave ?? true
+        }
+    }
 
     /// What the picker did with the saved row.
     ///

@@ -105,4 +105,35 @@ struct NavigationStateTests {
         #expect(state.path(for: .train).isEmpty)
         #expect(state.path(for: .settings).count == 1)
     }
+
+    /// ``NavigationState/pop(_:)`` is the decrement ``NavigationState/popToRoot(_:)`` is not: one
+    /// screen, and the tab it was asked about (`FR-18.1.4`).
+    @Test("popping takes the topmost route off that tab alone")
+    func popsOneScreen() {
+        let state = NavigationState()
+        state.navigate(to: .training(.activeSession))
+        state.navigate(to: .exerciseLibrary(.exercisePicker))
+        state.navigate(to: .settings(.about))
+
+        #expect(state.pop(.train))
+
+        #expect(state.path(for: .train) == [.training(.activeSession)])
+        #expect(state.path(for: .settings).count == 1)
+    }
+
+    /// The answer a caller with another way out needs: nothing was popped, so take it.
+    ///
+    /// **A tab at its root and a tab never pushed on are the same answer**, and both are reachable
+    /// — a screen hosted with no shell at all asks this of a state that has never been navigated.
+    @Test("popping a stack already at its root pops nothing and says so")
+    func popsNothingAtTheRoot() {
+        let state = NavigationState()
+        state.navigate(to: .training(.activeSession))
+
+        #expect(state.pop(.train))
+
+        #expect(state.pop(.train) == false)
+        #expect(state.pop(.history) == false)
+        #expect(state.path(for: .train).isEmpty)
+    }
 }

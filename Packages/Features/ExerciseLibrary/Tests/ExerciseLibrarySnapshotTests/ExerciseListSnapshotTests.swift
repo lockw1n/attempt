@@ -259,8 +259,9 @@
 
         @Test func nothingMatchedOnALongName() throws {
             // The label quotes the lifter's own text and nothing bounds its length. At
-            // `accessibility3` this is the reference that shows the button is still a button: one
-            // line, its middle given up, the closing quote intact.
+            // `accessibility3` this is the reference that shows the button is still a button, and
+            // that the whole state still fits above it: two lines, the middle of the name given up,
+            // the closing quote intact.
             try assertSnapshots(named: "ExerciseList-no-matches-long-name") {
                 ExerciseNoMatchState(
                     nameToCreate: "задня дельта в тренажері сидячи вузьким хватом",

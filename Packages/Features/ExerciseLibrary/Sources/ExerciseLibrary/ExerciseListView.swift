@@ -120,7 +120,9 @@ public struct ExerciseListView: View {
             }
         }
         // `refresh()`, not `load()`: an exercise created or edited above this screen has to be here
-        // on the way back down (`FR-1.1.3`, `FR-1.1.4`). See the method's own note.
+        // on the way back down (`FR-1.1.3`, `FR-1.1.4`), and this runs again to put it there — a
+        // push takes the screen off the display, so appearing again is what re-reads. See the
+        // method's own note, and `theListShowsWhatItJustCreated` for the claim under test.
         //
         // The language is handed over before the read rather than watched for changes: iOS restarts
         // the app when its language changes, so there is no running screen to update.
@@ -131,13 +133,11 @@ public struct ExerciseListView: View {
         // Not `.navigationDestination(for:)`: the form is reached from this screen with a payload
         // this screen holds, and the stack's own vocabulary is the persisted one. See
         // ``nameBeingCreated``.
-        // The form pops itself in the browsing case, and this is what re-reads behind it: a push
-        // does not take this screen out of the hierarchy, so its own `.task` does not run again and
-        // the exercise just created would be missing from the list that asked for it.
-        .onChange(of: nameBeingCreated) { _, name in
-            guard name == nil else { return }
-            Task { await state.refresh() }
-        }
+        //
+        // No re-read is wired to this form popping, and that is measured: `.task` above runs again
+        // on the way back down, so the exercise just created is in the list that asked for it.
+        // `AttemptTests`' `theListShowsWhatItJustCreated` is the measurement — it passes with an
+        // explicit re-read here and without one, which is why there is not one.
         .navigationDestination(item: $nameBeingCreated) { name in
             ExerciseFormView(
                 mode: .create,
@@ -227,10 +227,9 @@ public struct ExerciseListView: View {
     /// pop (`FR-18.1.4`).
     ///
     /// **The chooser's own ``select``, run on a row that did not exist when the picker opened** —
-    /// which is the whole of what "saving selects it" means: the same write and the same exit as
-    /// tapping a row, so the two doors out of this screen cannot drift apart. ``dismiss`` here is
-    /// the picker's, and taking it pops the form standing on it too, which is what puts the lifter
-    /// back on the day rather than on a catalogue they are done with.
+    /// which is the whole of what "saving selects it" means: the same write as tapping a row, so the
+    /// two doors out of this screen cannot write different things. The *exit* is the one place they
+    /// differ, and ``popPastTheForm()`` is why.
     ///
     /// Browsing, there is nothing to select: the form pops itself and this list re-reads, exactly as
     /// it does after the toolbar's Create.
@@ -250,21 +249,13 @@ public struct ExerciseListView: View {
     /// Removing the picker's own route takes the stack back to the day in one move, form included,
     /// because the form is presented *by* this screen and goes down with it.
     ///
-    /// Falls back to ``dismiss`` where there is no shell — a preview or a snapshot, which has no
-    /// stack to pop and nothing above it either.
+    /// The removal itself is ``AppNavigation/NavigationState/pop(_:)``'s, where it can be tested;
+    /// what is decided here is only which exit to take. Falls back to ``dismiss`` where there is no
+    /// shell to pop — a preview or a snapshot, which has nothing above it either.
     private func popPastTheForm() {
         nameBeingCreated = nil
-        guard let navigation else {
-            dismiss()
-            return
-        }
-        var path = navigation.path(for: navigation.selectedTab)
-        guard !path.isEmpty else {
-            dismiss()
-            return
-        }
-        path.removeLast()
-        navigation.setPath(path, for: navigation.selectedTab)
+        let popped = navigation.map { $0.pop($0.selectedTab) } ?? false
+        if !popped { dismiss() }
     }
 
     /// What one row does when tapped, or `nil` where the row is a push.
