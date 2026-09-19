@@ -39,14 +39,8 @@ public enum ExerciseDisplayOrder {
         for exercise in exercises where !roots.contains(exercise.id) {
             runs[root(of: exercise.id, among: roots, in: byID), default: []].append(exercise)
         }
-        let orderedRoots = byName(exercises.filter { roots.contains($0.id) }, in: language)
-        // A row stored twice under one identifier is two roots with one run, and the run follows
-        // the last of them — once, so the output holds exactly what the input did.
-        let lastIndex = Dictionary(
-            orderedRoots.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { _, last in last })
-        return orderedRoots.enumerated().flatMap { index, root in
-            lastIndex[root.id] == index ? [root] + byName(runs[root.id] ?? [], in: language) : [root]
-        }
+        return byName(exercises.filter { roots.contains($0.id) }, in: language)
+            .flatMap { [$0] + byName(runs[$0.id] ?? [], in: language) }
     }
 
     /// Whether `id` starts a run: its parent is not in the input, or following parents leads back

@@ -19,6 +19,7 @@ func makeExercise(
     name: String = "Low-bar back squat",
     ukrainianName: String? = nil,
     movement: Movement = .squat,
+    parentExerciseID: UUID? = nil,
     implementCount: Int = 2,
     isArchived: Bool = true
 ) -> Exercise {
@@ -30,7 +31,7 @@ func makeExercise(
         name: name,
         ukrainianName: ukrainianName,
         movement: movement,
-        parentExerciseID: nil,
+        parentExerciseID: parentExerciseID,
         equipment: .barbell,
         laterality: .unilateral,
         barType: .safetySquat,
