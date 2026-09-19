@@ -1,4 +1,5 @@
 import Foundation
+import RepositoryInterface
 
 /// One of the picker's two sections (`FR-16.5.3`).
 struct ExerciseChoiceSection: Identifiable, Sendable, Equatable {
@@ -56,8 +57,8 @@ enum ExerciseChoiceSections {
     static func sections(
         _ choices: [TiledExerciseChoice], matching query: String
     ) -> [ExerciseChoiceSection] {
-        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        let found = choices.filter { matches($0, query: query) }
+        // The row's `name` is already the one it shows (`FR-1.14.3`), which is what the rule asks for.
+        let found = choices.filter { ExerciseNameSearch.matches($0.name, query: query) }
         // Paired with its date rather than sorted on an optional, so the comparator has no branch
         // for a value the split has already excluded — the section is defined by the date being
         // there, and a `?? .distantPast` would be an unreachable answer to that question.
@@ -85,20 +86,5 @@ enum ExerciseChoiceSections {
 
         /// The row.
         let choice: TiledExerciseChoice
-    }
-
-    /// Whether one row's name matches what the user typed.
-    ///
-    /// `localizedStandardContains`, `ExerciseListState.matchesSearch(_:)`'s rule and for its
-    /// reasons: it ignores case *and* diacritics, and it is matched against the name the row is
-    /// actually showing (`FR-1.14.3`) rather than against either of the record's two fields.
-    ///
-    /// - Parameters:
-    ///   - choice: The row.
-    ///   - query: The search text, already trimmed.
-    /// - Returns: Whether to show it.
-    private static func matches(_ choice: TiledExerciseChoice, query: String) -> Bool {
-        guard !query.isEmpty else { return true }
-        return choice.name.localizedStandardContains(query)
     }
 }

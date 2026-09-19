@@ -76,6 +76,20 @@ struct ExerciseChoiceSectionsTests {
         #expect(ExerciseChoiceSections.sections(choices, matching: "   ").count == 2)
     }
 
+    /// Any-word would also find "Bench Press"; one substring would find nothing.
+    @Test("The search matches every typed word, in any order (FR-18.1.1)")
+    func searchMatchesEveryWord() {
+        let choices = [
+            choice("Bench Press", daysAgo: 3),
+            choice("Close-Grip Bench Press", daysAgo: nil),
+            choice("Barbell Row", daysAgo: nil),
+        ]
+
+        let found = ExerciseChoiceSections.sections(choices, matching: "bench  grip ")
+        #expect(found.map(\.kind) == [.everythingElse])
+        #expect(found.flatMap(names) == ["Close-Grip Bench Press"])
+    }
+
     /// `FR-1.14.3` says the name shown, and `localizedStandardContains` is what makes a query
     /// without diacritics find one with them.
     @Test("The search ignores case and diacritics")
