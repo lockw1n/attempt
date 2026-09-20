@@ -230,6 +230,27 @@
 			<string>%lld вправи</string>
 		</dict>
 	</dict>
+	<!-- FR-18.5.2 — питання лише там, де рядок містить роботу. -->
+	<key>logging.day.row.reset.confirm.title %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Вилучити %#@sets@?</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld записаний підхід</string>
+			<key>few</key>
+			<string>%lld записані підходи</string>
+			<key>many</key>
+			<string>%lld записаних підходів</string>
+			<key>other</key>
+			<string>%lld записаних підходів</string>
+		</dict>
+	</dict>
 	<key>logging.day.skip-remaining.confirm.title %lld</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

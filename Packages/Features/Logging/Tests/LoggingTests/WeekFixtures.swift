@@ -402,34 +402,6 @@ func freeWorkoutSession(endedAt: Date? = nil) -> WorkoutSession {
 /// **An extension rather than three more members**, the struct being at `type_body_length`'s
 /// ceiling: these are shapes a particular claim needs rather than part of what a week *is*.
 extension WeekFixture {
-    /// Adds a second target group to a day's **first** slot prescribing reps and no load.
-    ///
-    /// **A backoff on a row that already has a load**, which is the case
-    /// ``DayRowCircle/isOffered(answer:plan:)``'s "every group has to name a load, not merely the
-    /// first" exists for — and the one ``addOpenLoadSlot(day:)`` cannot produce, that adding a
-    /// whole row instead.
-    ///
-    /// - Parameter day: The `ProgramDay.order` whose first slot gains the group.
-    /// - Throws: Whatever the repository throws.
-    func addOpenLoadBackoff(day: Int) async throws {
-        let slots = try await stack.routines.exercises(
-            forRoutineID: routineIDs[day], includingDeleted: false)
-        guard let slot = slots.first else { throw WeekFixtureFailure.noEntries }
-        let groups = try await stack.routines.targetGroups(
-            forRoutineExerciseID: slot.id, includingDeleted: false)
-        try await stack.routines.save(
-            RoutineTargetGroup(
-                id: UUID(),
-                createdAt: weekFixtureDay,
-                updatedAt: weekFixtureDay,
-                deletedAt: nil,
-                routineExerciseID: slot.id,
-                order: groups.count,
-                targetWeight: nil,
-                targetReps: 8,
-                targetSets: 2))
-    }
-
     /// A completed warmup set, as a lifter who warmed up and stopped leaves one.
     ///
     /// - Parameters:

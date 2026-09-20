@@ -45,6 +45,29 @@ extension LoggingStrings {
     /// Recording that the lifter is not doing this exercise today (`FR-17.9.6`).
     static let daySkipAction = resource("logging.day.skip.action")
 
+    /// Taking a row's answer back (`FR-18.5.1`).
+    ///
+    /// **It names the state it returns the row to rather than the answer it removes**, because one
+    /// word has to be true of both: a skipped row and a logged row are reset by the same command,
+    /// and *Undo skip* would read as a lie on the second.
+    static let dayRowResetAction = resource("logging.day.row.reset.action")
+
+    /// The confirmation it asks for, naming how much work would go (`FR-18.5.2`).
+    ///
+    /// Only a row that holds completed sets asks — see ``DayView/resetConfirmation(for:)``.
+    ///
+    /// - Parameter count: How many working sets would be removed.
+    /// - Returns: The question.
+    static func dayRowResetConfirmTitle(count: Int) -> LocalizedStringResource {
+        resource("logging.day.row.reset.confirm.title \(count)")
+    }
+
+    /// Going ahead with it.
+    static let dayRowResetConfirmAction = resource("logging.day.row.reset.confirm.action")
+
+    /// Backing out, spelled out rather than a bare *Cancel* — ``dayRemainingConfirmCancel``'s rule.
+    static let dayRowResetConfirmCancel = resource("logging.day.row.reset.confirm.cancel")
+
     // MARK: - The whole-day commands (FR-17.9.9, FR-17.8.8)
 
     /// Logging everything that is left exactly as planned.
@@ -154,6 +177,10 @@ extension LoggingStrings {
             dayCircleAction,
             dayLogAction,
             daySkipAction,
+            dayRowResetAction,
+            dayRowResetConfirmTitle(count: 6),
+            dayRowResetConfirmAction,
+            dayRowResetConfirmCancel,
             dayLogRemainingAction,
             daySkipRemainingAction,
             dayLogRemainingConfirmTitle(count: 3),

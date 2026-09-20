@@ -248,7 +248,22 @@ extension ExerciseEntry {
     /// marks the row changed whatever the value was, so an entry already done must not be saved at
     /// all (`G-2.4`); a guard here would still hand the caller a value to save, which is the shape
     /// that goes wrong.
-    var markedDone: ExerciseEntry {
+    var markedDone: ExerciseEntry { marked(done: true) }
+
+    /// This entry with the check-off taken back (`FR-18.5.1`).
+    ///
+    /// **The inverse of ``markedDone``, and the whole of what a reset writes on the entry.** What is
+    /// *unanswered* is derived from this mark and the sets behind it (``DayRowAnswer``), so there is
+    /// no second column to clear — see `TR-18.2`.
+    ///
+    /// The no-op guard is the caller's here too, for the reason one line up.
+    var notMarkedDone: ExerciseEntry { marked(done: false) }
+
+    /// The nine columns carried across, with the check-off set either way.
+    ///
+    /// - Parameter done: Whether the entry carries it.
+    /// - Returns: The record to save.
+    private func marked(done: Bool) -> ExerciseEntry {
         ExerciseEntry(
             id: id,
             createdAt: createdAt,
@@ -258,7 +273,7 @@ extension ExerciseEntry {
             exerciseID: exerciseID,
             order: order,
             notes: notes,
-            isMarkedDone: true
+            isMarkedDone: done
         )
     }
 }

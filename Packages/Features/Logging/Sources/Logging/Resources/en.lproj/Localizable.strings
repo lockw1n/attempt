@@ -496,6 +496,12 @@
 "logging.day.circle.action" = "Log as planned";
 "logging.day.log.action" = "Log";
 "logging.day.skip.action" = "Skip this exercise";
+
+/* FR-18.5's per-row undo. It names the state the row returns to, one word being true of both a
+   skipped row and a logged one. */
+"logging.day.row.reset.action" = "Reset to unanswered";
+"logging.day.row.reset.confirm.action" = "Remove them";
+"logging.day.row.reset.confirm.cancel" = "Keep the answer";
 "logging.day.log-remaining.action" = "Log remaining as planned";
 "logging.day.skip-remaining.action" = "Skip remaining";
 "logging.day.log-remaining.confirm.action" = "Log them";

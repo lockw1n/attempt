@@ -210,6 +210,24 @@
 			<string>%lld exercises</string>
 		</dict>
 	</dict>
+	<!-- FR-18.5.2: asked only where the row holds work, and it names how much, because there is
+	     no undo of the reset. -->
+	<key>logging.day.row.reset.confirm.title %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Remove %#@sets@?</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld logged set</string>
+			<key>other</key>
+			<string>%lld logged sets</string>
+		</dict>
+	</dict>
 	<key>logging.day.skip-remaining.confirm.title %lld</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

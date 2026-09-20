@@ -37,6 +37,11 @@ struct DayExerciseRow: View {
     /// Records that the lifter is not doing it today (`FR-17.9.6`), or `nil` — see ``answer``.
     var skip: (() -> Void)?
 
+    /// Takes the row's answer back (`FR-18.5.1`), or `nil` — see ``answer``. Absent on a past day
+    /// for the same reason the other two are, and on History by `OUT-18.10`: a workout that is over
+    /// is read except through **Log**.
+    var reset: (() -> Void)?
+
     /// Whether the row keeps `FR-17.9.2`'s circle's width when it has no circle (`FR-18.3.1`).
     ///
     /// **The scheme's column is the day's, not the row's.** A circle is 60 pt of the row's trailing
@@ -61,6 +66,16 @@ struct DayExerciseRow: View {
     /// Whether this row draws `FR-17.9.2`'s circle at all — the row must have one to offer and a
     /// surface that takes the write (`FR-17.7.6`).
     private var drawsCircle: Bool { row.hasCircle && answer != nil }
+
+    /// Which commands this row's `⋯` holds, in order (`FR-17.9.3`, `FR-17.9.6`, `FR-18.5.1`).
+    ///
+    /// **Worked out in a value rather than as `if`s inside the `Menu`**, on
+    /// ``SessionMenuContents``' rule and for its measured reason: a menu is readable from nothing —
+    /// neither a content snapshot nor a hosted walk can see an item that has not been presented —
+    /// so *which item is there in which state* has to be a claim a test can call.
+    private var menuContents: DayRowMenuContents {
+        DayRowMenuContents(answer: row.answer, offersSkip: skip != nil, offersReset: reset != nil)
+    }
 
     /// Whether this row actually keeps the circle's width.
     ///
@@ -255,9 +270,24 @@ struct DayExerciseRow: View {
                 .accessibilityLabel(Text(LoggingStrings.dayCircleAction))
             }
             Menu {
-                Button(action: log) { Text(LoggingStrings.dayLogAction) }
-                if row.answer == .unanswered, let skip {
-                    Button(action: skip) { Text(LoggingStrings.daySkipAction) }
+                ForEach(menuContents.items, id: \.self) { item in
+                    switch item {
+                    case .log:
+                        Button(action: log) { Text(LoggingStrings.dayLogAction) }
+                    // The `if let`s unwrap rather than decide: which items there are is
+                    // ``menuContents``'s answer, and an item drawn with no handler behind it would
+                    // be a menu row that does nothing when it is pressed.
+                    case .skip:
+                        if let skip {
+                            Button(action: skip) { Text(LoggingStrings.daySkipAction) }
+                        }
+                    case .reset:
+                        if let reset {
+                            Button(role: .destructive, action: reset) {
+                                Text(LoggingStrings.dayRowResetAction)
+                            }
+                        }
+                    }
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")

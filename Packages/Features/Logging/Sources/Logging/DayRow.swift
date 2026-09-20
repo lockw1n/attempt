@@ -115,6 +115,17 @@ public struct DayRow: Identifiable, Equatable, Sendable {
     /// Whether the row carries `FR-17.9.2`'s circle — see ``DayRowCircle``.
     public var hasCircle: Bool { DayRowCircle.isOffered(answer: answer, plan: plan) }
 
+    /// How many working sets this row's answer stands on (`FR-18.5.2`).
+    ///
+    /// **What a reset would remove, as the lifter can see it.** The confirmation names this number,
+    /// and a row that reads zero is one whose answer was a skip — which is why that one resets
+    /// without asking.
+    ///
+    /// **Counted off ``performed``, which is the *Did* line's own runs**, so the question and the
+    /// picture cannot disagree: warmups are not the work anywhere in this app (``DayPerformance``),
+    /// and a count that included them would offer to remove six sets from a row displaying four.
+    public var loggedSetCount: Int { performed.reduce(0) { $0 + $1.sets } }
+
     /// Whether what was logged is exactly what was planned (`FR-17.9.3`).
     ///
     /// **Compared on the load, the reps and the count, and never on the group's identity.** The two
@@ -197,6 +208,53 @@ enum DayRowCircle {
     /// - Returns: Whether the circle is offered.
     static func isOffered(answer: DayRowAnswer, plan: [WeekPlanTarget]) -> Bool {
         answer == .unanswered && !plan.isEmpty && plan.allSatisfy { $0.weight != nil }
+    }
+}
+
+/// One command in a day row's menu, in the order it reads them (`FR-17.9.3`, `FR-17.9.6`,
+/// `FR-18.5.1`).
+enum DayRowMenuItem: Hashable, Sendable {
+    /// `FR-17.9.3`'s set editor, which every row offers on every surface.
+    case log
+
+    /// `FR-17.9.6`'s per-row skip, while the row is unanswered.
+    case skip
+
+    /// `FR-18.5.1`'s undo of either answer, once there is one. Always last, being the destructive
+    /// one.
+    case reset
+}
+
+/// What a day row's overflow menu holds, given what the row has been answered with and what the
+/// surface takes (`FR-18.5.1`).
+///
+/// **A value rather than a chain of `if`s inside the `Menu`**, on ``SessionMenuContents``' rule and
+/// for the reason that type measured on iOS 26.5: a menu is readable from nothing — its commands
+/// are not in a content snapshot, and a hosted walk reaches them only by presenting a popover into
+/// a window the host does not own. So *which item is there in which state* is asserted here.
+///
+/// **Skip and Reset are the two halves of one question and never both offered.** A row is answered
+/// or it is not: offering both would put the command that gives an answer beside the one that takes
+/// it away, which is `F-09`'s slip in miniature.
+struct DayRowMenuContents: Equatable, Sendable {
+    /// The commands, in order.
+    let items: [DayRowMenuItem]
+
+    /// Works out which commands apply.
+    ///
+    /// **The surface decides whether the write is offered at all and the answer decides which**
+    /// (`FR-17.7.6`): a past day passes neither handler, so its rows offer **Log** alone — which is
+    /// `OUT-18.10`'s "not from History" said where the row is built rather than as a second flag.
+    ///
+    /// - Parameters:
+    ///   - answer: What has been said about the row.
+    ///   - offersSkip: Whether the surface takes `FR-17.9.6`'s write.
+    ///   - offersReset: Whether it takes `FR-18.5.1`'s.
+    init(answer: DayRowAnswer, offersSkip: Bool, offersReset: Bool) {
+        var items: [DayRowMenuItem] = [.log]
+        if answer == .unanswered, offersSkip { items.append(.skip) }
+        if answer != .unanswered, offersReset { items.append(.reset) }
+        self.items = items
     }
 }
 

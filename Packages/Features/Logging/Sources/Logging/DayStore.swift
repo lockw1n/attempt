@@ -199,6 +199,25 @@ public final class DayStore {
         await reload()
     }
 
+    /// Takes one exercise's answer back (`FR-18.5.1`).
+    ///
+    /// **No ``startIfNeeded()``, unlike every other command here.** A day nobody has logged into
+    /// has no answer to take back, so a reset that created the session would write a workout from
+    /// an undo — and it writes nothing there without a guard of its own, ``entryID(forRow:)``
+    /// having no entry to map a plan slot onto until the session exists. (A guard on the session
+    /// was written here first and no test could tell it from its absence, which is what a probe is
+    /// for.) **And no ``finishIfComplete()``**: a row this has just un-answered is a row the day is
+    /// not complete without, so the call could only ever decline — the re-opening the other way is
+    /// the store command's (`FR-18.5.3`).
+    ///
+    /// - Parameter rowID: The row.
+    public func reset(rowID: UUID) async {
+        unanswerable = []
+        guard let entryID = entryID(forRow: rowID) else { return }
+        await store.resetExercise(inEntryID: entryID)
+        await reload()
+    }
+
     /// Logs every unanswered exercise that has a load exactly as planned (`FR-17.9.9`).
     ///
     /// **One chain, one re-read, and a result.** The rows it cannot answer are the ones whose plan

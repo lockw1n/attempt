@@ -170,6 +170,38 @@ public struct DayView: View {
         } message: {
             Text(LoggingStrings.dayResetConfirmMessage)
         }
+        // `FR-18.5.2`: asked only where the row holds work, and it names how much. A skipped row
+        // has none, so ``resetConfirmation(for:)`` sends it straight through.
+        .confirmationDialog(
+            Text(LoggingStrings.dayRowResetConfirmTitle(count: resetting?.setCount ?? 0)),
+            isPresented: isConfirmingRowReset,
+            titleVisibility: .visible
+        ) {
+            Button(role: .destructive) {
+                guard let rowID = resetting?.rowID else { return }
+                Task { await day.reset(rowID: rowID) }
+            } label: {
+                Text(LoggingStrings.dayRowResetConfirmAction)
+            }
+            Button(role: .cancel) {
+            } label: {
+                Text(LoggingStrings.dayRowResetConfirmCancel)
+            }
+        }
+    }
+
+    /// Whether a row's reset has to ask first, and what it would say (`FR-18.5.2`).
+    ///
+    /// **A function rather than a condition inside the command**, on ``menuContents(date:progress:)``'s
+    /// rule: *which rows ask* is the requirement, and written inline it would be a claim no test can
+    /// call. There is no undo of the reset — the sets are soft-deleted and nothing in the app brings
+    /// one back — which is why a row carrying work asks at all, and why one carrying none does not.
+    ///
+    /// - Parameter row: The row whose answer is being taken back.
+    /// - Returns: What the question would name, or `nil` where none is owed.
+    static func resetConfirmation(for row: DayRow) -> DayRowResetTarget? {
+        guard row.loggedSetCount > 0 else { return nil }
+        return DayRowResetTarget(rowID: row.id, setCount: row.loggedSetCount)
     }
 
     /// What this screen's `⋯` holds (`FR-17.9.7`, `FR-18.4.4`, `FR-18.4.5`).
@@ -202,6 +234,16 @@ public struct DayView: View {
 
     /// Whether **Reset day** is asking (`FR-18.4.5`, `FR-1.2.12`).
     @State private var isConfirmingReset = false
+
+    /// Which row's **Reset to unanswered** is asking, and how many sets it would remove
+    /// (`FR-18.5.1`, `FR-18.5.2`), or `nil`.
+    @State private var resetting: DayRowResetTarget?
+
+    /// That, as the dialog's own presentation. Dismissing it is the question going away rather than
+    /// an answer, so nothing is written.
+    private var isConfirmingRowReset: Binding<Bool> {
+        Binding(get: { resetting != nil }, set: { if !$0 { resetting = nil } })
+    }
 
     /// Which of the exercise's two names reads, and which locale the editor's numbers are in.
     @Environment(\.locale) private var locale
@@ -266,7 +308,8 @@ public struct DayView: View {
             unit: store.displayUnit,
             answer: { rowID in Task { await day.answerAsPlanned(rowID: rowID) } },
             log: { rowID in open(rowID) },
-            skip: { rowID in Task { await day.skip(rowID: rowID) } })
+            skip: { rowID in Task { await day.skip(rowID: rowID) } },
+            reset: { rowID in requestReset(rowID) })
         // Not on a day that has ended: a finished day is read-only except through **Log**
         // (`FR-17.7.5`), and a row added to it would arrive unanswered under a heading that had
         // already counted every row — `n of m` disagreeing with the **Done** its card reads.
@@ -322,36 +365,25 @@ public struct DayView: View {
     /// A row the day no longer holds opens nothing: it went away underneath the checklist, which is
     /// every command here's rule.
     ///
+    /// Takes a row's answer back, asking first where there is work to remove (`FR-18.5.1`).
+    ///
+    /// A row the day no longer holds resets nothing, on ``open(_:)``'s rule below.
+    ///
+    /// - Parameter rowID: The row.
+    private func requestReset(_ rowID: UUID) {
+        guard let row = day.rows.first(where: { $0.id == rowID }) else { return }
+        guard let target = Self.resetConfirmation(for: row) else {
+            Task { await day.reset(rowID: rowID) }
+            return
+        }
+        resetting = target
+    }
+
     /// - Parameter rowID: The row.
     private func open(_ rowID: UUID) {
         guard let row = day.editorRow(forRow: rowID) else { return }
         editing = DayLogTarget(
             rowID: rowID, row: row, prescribed: day.prescribed(forRow: rowID))
-    }
-}
-
-/// Which row the Log sheet is open over (`FR-17.9.3`, `FR-17.9.4`).
-///
-/// **The row rather than the entry**, because the sheet can be opened on a day that has no session
-/// yet: the first answer creates it, and the row is what survives that (see
-/// ``DayStore/log(rowID:group:)``).
-struct DayLogTarget: Identifiable, Equatable {
-    /// The row.
-    let rowID: UUID
-
-    /// The plan, what is already logged, and whether the row is answered — what the sheet's row
-    /// mode is drawn from.
-    let row: SetEditorRow
-
-    /// What the routine prescribed for the next set, drawn above the fields (`FR-15.3.1`).
-    let prescribed: PlannedTargetGroup?
-
-    /// The row's identity is the sheet's.
-    var id: UUID { rowID }
-
-    /// The same thing in the shape the shared editor takes.
-    var editorTarget: SetEditorTarget {
-        SetEditorTarget(entryID: rowID, prescribed: prescribed, row: row)
     }
 }
 
@@ -379,6 +411,9 @@ struct DayChecklistSection: View {
     /// Records that the lifter is not doing one row today (`FR-17.9.6`), or `nil` — see ``answer``.
     var skip: ((UUID) -> Void)?
 
+    /// Takes one row's answer back (`FR-18.5.1`), or `nil` — see ``answer``.
+    var reset: ((UUID) -> Void)?
+
     var body: some View {
         GroupedSection(
             Text(LoggingStrings.dayProgress(done: progress.answered, of: progress.total))
@@ -392,6 +427,7 @@ struct DayChecklistSection: View {
                     answer: answer.map { command in { command(row.id) } },
                     log: { log(row.id) },
                     skip: skip.map { command in { command(row.id) } },
+                    reset: reset.map { command in { command(row.id) } },
                     reservesCircle: reservesCircle)
             }
         }

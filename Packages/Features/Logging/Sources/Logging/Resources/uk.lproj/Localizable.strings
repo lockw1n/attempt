@@ -310,6 +310,11 @@
 "logging.day.circle.action" = "Записати як заплановано";
 "logging.day.log.action" = "Записати";
 "logging.day.skip.action" = "Пропустити цю вправу";
+
+/* FR-18.5 — скасування відповіді для одного рядка. */
+"logging.day.row.reset.action" = "Скинути відповідь";
+"logging.day.row.reset.confirm.action" = "Вилучити їх";
+"logging.day.row.reset.confirm.cancel" = "Залишити відповідь";
 "logging.day.log-remaining.action" = "Записати решту як заплановано";
 "logging.day.skip-remaining.action" = "Пропустити решту";
 "logging.day.log-remaining.confirm.action" = "Записати";
