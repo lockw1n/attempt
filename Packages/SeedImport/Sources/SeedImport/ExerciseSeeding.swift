@@ -72,12 +72,22 @@ extension Exercise {
     /// **A kept column is kept unconditionally, so the catalogue cannot correct one.** Nothing
     /// stored records whether a column holds a user's edit or the value the seed last wrote, and
     /// with no such column a later revision cannot tell a rename it must preserve from a name it
-    /// should fix. Renaming an entry in a published catalogue therefore reaches no installed app.
-    /// Distinguishing the two needs a column, and columns are cheap only before rows exist.
+    /// should fix. Distinguishing the two needs a column, and columns are cheap only before rows
+    /// exist.
+    ///
+    /// **``Exercise/name`` is the one kept column with a way out, and the way out is in the payload
+    /// rather than in the store** (`FR-18.2.1`, `TR-18.1`). An entry lists the names it used to
+    /// carry, and a stored name still equal to one of them is a name nobody has touched — so it
+    /// becomes the entry's current name, and every other stored name is kept, which is `FR-1.1.4`'s
+    /// rename surviving every revision. Both languages, by the same rule. Equality is exact after
+    /// trimming and folds neither case nor diacritics: a lifter who retyped the name with a capital
+    /// has touched it. Two devices importing the same revision each rewrite the same name to the
+    /// same value, which is last-write-wins over identical bytes and costs nothing.
     ///
     /// **``Exercise/ukrainianName`` is neither, and it is the only column that is not.** It is
     /// *filled* — taken from the entry where the row holds nothing, kept where the row holds
-    /// something. Both of the other two rules break on it: re-supplied, it would undo a Ukrainian
+    /// something (and corrected, above, where what it holds is a former name). Both of the other two
+    /// rules break on it: re-supplied, it would undo a Ukrainian
     /// name the user typed, the way an unconditionally re-supplied ``Exercise/name`` would undo
     /// `FR-1.1.4`'s rename; kept, it would never reach a single row on an installed app, since every
     /// built-in already exists there and the catalogue's translations arrive in a later revision by
@@ -94,8 +104,8 @@ extension Exercise {
             createdAt: createdAt,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
-            name: name,
-            ukrainianName: ukrainianName ?? entry.ukrainianName,
+            name: Exercise.corrected(name, to: entry.name, ifFormerly: entry.formerNames),
+            ukrainianName: correctedUkrainianName(from: entry),
             movement: entry.movement,
             parentExerciseID: entry.parentExerciseID,
             equipment: entry.equipment,
@@ -105,6 +115,34 @@ extension Exercise {
             isCustom: isCustom,
             isArchived: isArchived,
             notes: notes)
+    }
+
+    /// `stored` replaced by `current` when it is still one of `former`, and kept otherwise.
+    ///
+    /// Trimmed on both sides because leading or trailing whitespace is not an edit anyone made on
+    /// purpose; nothing else is normalised, for the reason ``reseeded(from:)`` gives.
+    private static func corrected(
+        _ stored: String,
+        to current: String,
+        ifFormerly former: [String]
+    ) -> String {
+        let trimmed = stored.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isUntouched = former.contains {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed
+        }
+        return isUntouched ? current : stored
+    }
+
+    /// ``Exercise/ukrainianName`` after the fill and the correction, in that order of precedence.
+    ///
+    /// A row holding nothing is filled, as it always was. A row holding a former name is corrected —
+    /// but only towards a name the entry actually carries: an entry that lists a former Ukrainian
+    /// name and no current one would otherwise *clear* the column, which is a worse answer than
+    /// leaving the old name standing.
+    private func correctedUkrainianName(from entry: SeedExercise) -> String? {
+        guard let stored = ukrainianName else { return entry.ukrainianName }
+        guard let current = entry.ukrainianName else { return stored }
+        return Exercise.corrected(stored, to: current, ifFormerly: entry.formerUkrainianNames)
     }
 
     /// `self` hidden from the pickers, with its logged history intact (`FR-1.1.5`, `G-1.3`).

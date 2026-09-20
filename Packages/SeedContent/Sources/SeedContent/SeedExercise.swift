@@ -22,6 +22,26 @@ public struct SeedExercise: Decodable, Equatable, Sendable {
     /// shows its English one, which is the same answer a store row with nothing in the column gives.
     public let ukrainianName: String?
 
+    /// The English names this entry used to carry, newest first (`FR-18.2.1`).
+    ///
+    /// Empty for every entry the catalogue has never renamed, which today is all of them. It is a
+    /// list rather than one name so that a second correction does not strand the installs that only
+    /// ever saw the first: an entry renamed twice lists both, and a store sitting on either is
+    /// brought forward.
+    ///
+    /// **This is the only thing that tells a lifter's rename from an older revision's seed.** The
+    /// store records neither, so without it ``name`` is kept unconditionally and a corrected name
+    /// reaches fresh installs alone. What the importer does with the list is its own business; this
+    /// package only carries it.
+    public let formerNames: [String]
+
+    /// The Ukrainian names this entry used to carry, newest first (`FR-18.2.1`).
+    ///
+    /// The same list, one language over, on the same rule. Kept separate because a lifter may have
+    /// retyped one of the two and not the other, and a correction to either must reach the untouched
+    /// one without disturbing the touched one.
+    public let formerUkrainianNames: [String]
+
     /// ``PowerliftingCore/Movement``'s raw value.
     public let movementRawValue: String
 
@@ -66,6 +86,8 @@ public struct SeedExercise: Decodable, Equatable, Sendable {
         case id
         case name
         case ukrainianName
+        case formerNames
+        case formerUkrainianNames
         case movementRawValue = "movement"
         case parentExerciseID
         case equipmentRawValue = "equipment"
@@ -81,6 +103,12 @@ public struct SeedExercise: Decodable, Equatable, Sendable {
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
         ukrainianName = try container.decodeIfPresent(String.self, forKey: .ukrainianName)
+        // Absent is empty, not a new schema: `schemaVersion` stays 1 because an added optional key
+        // is one an older reader would ignore rather than choke on, and the file is bundled with the
+        // reader anyway — no old reader ever meets a new file.
+        formerNames = try container.decodeIfPresent([String].self, forKey: .formerNames) ?? []
+        formerUkrainianNames =
+            try container.decodeIfPresent([String].self, forKey: .formerUkrainianNames) ?? []
         movementRawValue = try container.decode(String.self, forKey: .movementRawValue)
         parentExerciseID = try container.decodeIfPresent(UUID.self, forKey: .parentExerciseID)
         equipmentRawValue = try container.decode(String.self, forKey: .equipmentRawValue)
