@@ -25,7 +25,7 @@ An empty result is the only passing result. Every failure prints a line naming t
 | Key | Type | |
 |---|---|---|
 | `schemaVersion` | integer | Which *shape* the document is in. Bumped only when a reader of the previous version could not cope. A reader refuses a version it does not know. |
-| `revision` | integer ≥ 1 | Which *edition* of the content it is. Bumped on every published change, including one that leaves `schemaVersion` alone. |
+| `revision` | integer ≥ 1 | Which *edition* of the content it is. Bumped on every published change, including one that leaves `schemaVersion` alone. **A device refuses a served payload whose revision is not higher than the one it already holds**, so an edit that forgets the bump cannot reach an install that cached the previous edition — the bundled copy's number is pinned by a test for that reason. |
 | `exercises` | array | The entries, in authoring order. Order is not a contract: nothing may assume a parent precedes its variations. |
 
 Two numbers rather than one, because one cannot answer both questions. A content edit that bumped a
@@ -51,9 +51,9 @@ check in `TR-0.5.3`.
 | Key | Type | Required | |
 |---|---|---|---|
 | `id` | UUID string | yes | **Permanent.** It lands in users' logged history, so regenerating one orphans every set logged against it. |
-| `name` | string | yes | Non-blank. A lifter may rename a built-in exercise (`FR-1.1.4`), and a later revision **never overwrites a stored name** — correcting one is done through `formerNames` below and no other way. |
-| `ukrainianName` | string | no | The displayed name in Ukrainian (`FR-1.14.2`). Non-blank when present; absent is a name the app shows in English. The shipped catalogue translates every entry and a test holds it to that, but a fetched payload need not. Name the movement and the implement, **never the muscle** (`OUT-18.1`). |
-| `formerNames` | array of strings | no | Names this entry used to ship under (`FR-18.2.1`). On import a stored name is replaced by `name` only where it still **equals** one of these, trimmed, matching case and diacritics exactly — so a lifter's own rename survives and a correction still reaches phones that already seeded the old one. Each must be non-blank, and none may be any entry's current `name`: the match is on the string alone, so a name that moved between entries would retitle the wrong row. |
+| `name` | string | yes | Non-blank, **which the validator enforces**. A lifter may rename a built-in exercise (`FR-1.1.4`), and a later revision **never overwrites a stored name** — correcting one is done through `formerNames` below and no other way. |
+| `ukrainianName` | string | no | The displayed name in Ukrainian (`FR-1.14.2`); absent is a name the app shows in English. Name the movement and the implement, **never the muscle** (`OUT-18.1`). **The validator does not read this key**, so nothing refuses a blank or untranslated one on either route: the shipped catalogue is held to a translation on every entry by its own tests, and a fetched payload is held to nothing. |
+| `formerNames` | array of strings | no | Names this entry used to ship under (`FR-18.2.1`). On import a stored name is replaced by `name` only where it still **equals** one of these, trimmed, matching case and diacritics exactly — so a lifter's own rename survives and a correction still reaches phones that already seeded the old one. **Only the row sharing this entry's `id` is ever rewritten**: the importer resolves the stored row by id and compares names only within it, so a former name cannot reach a different exercise that happens to read alike. Each must be non-blank, **which the validator enforces**; none should be any entry's current `name`, which it does not — a still-live former name is an authoring mistake leaving two rows that read alike, and only a test over the shipped catalogue catches it. |
 | `formerUkrainianNames` | array of strings | no | The same, for `ukrainianName`. The two lists are per-language and never cross. |
 | `movement` | string | yes | A `Movement` raw value. |
 | `parentExerciseID` | UUID string | no | The entry this one varies (`FR-1.1.7`). Absent for a root exercise; must name an entry in the same document; the parent chains may not close on themselves. |

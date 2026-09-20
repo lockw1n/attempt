@@ -201,10 +201,17 @@ struct BundledCatalogueTests {
     // thing holding it: `entry(named:)` below fails a duplicate as a lookup, which catches one only
     // where a test happens to name that row. A catalogue edit is exactly when a duplicate arrives,
     // so `FR-18.2.3`'s revision is the right place to stop relying on that.
+    //
+    // Compared trimmed, here and in `translationsAreDistinct` below, because the claim is about
+    // what a lifter reads in a picker: two names differing only by a trailing space are one name to
+    // them, and nothing refuses a padded one — `SeedCatalogueValidator` reads blankness and not
+    // padding, and the importer stores what the payload says.
     @Test("No two entries share an English name")
     func namesAreDistinct() throws {
         let catalogue = try decoded()
-        let names = catalogue.exercises.map(\.name)
+        let names = catalogue.exercises.map {
+            $0.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
         var seen: Set<String> = []
         let repeated = names.filter { !seen.insert($0).inserted }
 
@@ -221,7 +228,9 @@ struct BundledCatalogueTests {
     @Test("No two entries share a Ukrainian name")
     func translationsAreDistinct() throws {
         let catalogue = try decoded()
-        let translations = catalogue.exercises.compactMap(\.ukrainianName)
+        let translations = catalogue.exercises.compactMap {
+            $0.ukrainianName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
         var seen: Set<String> = []
         let repeated = translations.filter { !seen.insert($0).inserted }
 

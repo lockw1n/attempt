@@ -46,23 +46,31 @@ struct SeedFormerNameTests {
         #expect(SeedCatalogueValidator.validate(try fixture("former-names")).isEmpty)
     }
 
-    @Test("The shipped catalogue lists one former Ukrainian name, and is still schema 1")
+    @Test("The shipped catalogue is revision 4, lists one former Ukrainian name, and is schema 1")
     func theShippedCatalogueListsOne() throws {
-        // **The two counts are a tripwire.** `T-18.04` set both to 0 and said the second would go
-        // red at `T-18.05`; it did, and `FR-18.2.2` raised it to 1 rather than deleting the line.
-        // Whoever corrects the next name moves the number again for the same reason: a count that
-        // is allowed to drift is a count that cannot tell a deliberate correction from a former
-        // name added by a bad merge.
+        // **The three numbers are a tripwire.** `T-18.04` set both counts to 0 and said the second
+        // would go red at `T-18.05`; it did, and `FR-18.2.2` raised it to 1 rather than deleting
+        // the line. Whoever corrects the next name moves them again for the same reason: a count
+        // that is allowed to drift is a count that cannot tell a deliberate correction from a
+        // former name added by a bad merge.
+        //
+        // **`revision` is here because the correction does not travel without it.** `exercises.json`
+        // ships by two routes (`TR-0.5.1`, `TR-0.5.2`), and `ContentFetcher` refuses a served
+        // payload whose revision is not higher than the one already in use — so a name corrected
+        // at an unchanged revision never replaces a cached copy of the previous edition, and every
+        // test in this package stays green while it fails to arrive. Nothing else pins this number:
+        // `CatalogueRevisions` guards the *frozen* revision-3 fixture, not the file that ships.
         //
         // The English count stays 0 — `FR-18.2.3`'s audit was of the Ukrainian column only, and
         // the author declined every candidate but the rear delt (`T-18.05`'s approval gate,
         // 2026-09-20), so revision 4 differs from 3 by one entry and the revision number.
         //
-        // The schema expectation is the one that must not move whatever the counts do: an added
+        // The schema expectation is the one that must not move whatever the rest do: an added
         // optional key is not a new schema.
         let catalogue = try JSONDecoder().decode(SeedCatalogue.self, from: BundledCatalogue.data())
 
         #expect(catalogue.schemaVersion == SeedCatalogue.supportedSchemaVersion)
+        #expect(catalogue.revision == 4)
         #expect(catalogue.exercises.count(where: { !$0.formerNames.isEmpty }) == 0)
         #expect(catalogue.exercises.count(where: { !$0.formerUkrainianNames.isEmpty }) == 1)
     }
@@ -86,11 +94,18 @@ struct SeedFormerNameTests {
         #expect(entry.formerNames.isEmpty)
     }
 
-    // `Exercise.reseeded(from:)` corrects a stored name that still **equals** one of the entry's
-    // former names, and `contains` matches on the string alone — never on the id. So a former name
-    // that is some *other* row's current name renames the wrong exercise: a lifter who has both
-    // would find the one they never touched silently retitled to the other's new name, and there is
-    // no way back because the store records nothing about where a name came from.
+    // **This does not guard against a wrong-row rename, because there is none to guard against.**
+    // `Exercise.corrected(_:to:ifFormerly:)` does match on the string alone, but `SeedImporter`
+    // has already resolved the stored row by the entry's `id` before calling it, so a former name
+    // is only ever compared against the one exercise it belongs to. It cannot reach a different
+    // row that happens to read alike, whatever it spells.
+    //
+    // What it guards is authoring, and the mistake is one of two. Either the entry took a name
+    // that is still live elsewhere — in which case the catalogue now ships two rows reading alike,
+    // which `namesAreDistinct` and `translationsAreDistinct` forbid — or the list was filled in
+    // from the wrong entry, and the correction it describes will never fire. `SeedCatalogueValidator`
+    // compares a former name against nothing, so neither is refused on the fetched route
+    // (`TR-0.5.2`), where this test cannot see the payload at all.
     //
     // It cannot happen in revision 4, where the one former name is *Махи в тренажері в нахилі* and
     // no entry carries it any more. It becomes possible the first time a name is *moved* between
@@ -103,8 +118,9 @@ struct SeedFormerNameTests {
             value.trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
-        // Trimmed on both sides because that is what the correction compares — a former name
-        // padded with a space would pass an untrimmed check here and still rename the row.
+        // Trimmed on both sides because that is the comparison the correction itself makes, so a
+        // former name padded with a space is the same authoring mistake as an unpadded one and has
+        // to fail here too.
         let currentEnglish = Set(entries.map { trimmed($0.name) })
         let currentUkrainian = Set(entries.compactMap { $0.ukrainianName.map(trimmed) })
         let formerEnglish = entries.flatMap(\.formerNames).map(trimmed)
