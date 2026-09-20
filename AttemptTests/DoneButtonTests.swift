@@ -30,6 +30,39 @@ struct DoneButtonTests {
     /// module and what is asserted here is what VoiceOver says rather than which key it came from.
     static let done = "Done"
 
+    /// What the screen the day is pushed from is titled.
+    static let rootTitle = "Week"
+
+    /// What a back button to that screen can read.
+    ///
+    /// **Two spellings rather than one**, because iOS labels a back button with the previous
+    /// screen's title and falls back to the word *Back* where that title is too long to fit. Which
+    /// of the two arrives is a layout answer and is not the claim; that one of them is there at
+    /// all is.
+    static let backLabels: Set<String> = [rootTitle, "Back"]
+
+    /// The day as it is actually reached — pushed onto a stack rather than hosted as its root.
+    ///
+    /// **A root has no back button**, and `FR-18.4.2` places the `⋯` *beside* one. Every other
+    /// test here hosts its screen at a root, which is enough for "is this control on the screen"
+    /// and is not enough for "what is it next to".
+    struct PushedDay<Day: View>: View {
+        /// The screen under test.
+        let day: Day
+
+        /// Pushed on the first layout pass, and never popped: what is under test is the pushed
+        /// arrangement rather than the push.
+        @State private var isPushed = true
+
+        var body: some View {
+            NavigationStack {
+                Color.clear
+                    .navigationTitle(DoneButtonTests.rootTitle)
+                    .navigationDestination(isPresented: $isPushed) { day }
+            }
+        }
+    }
+
     /// `FR-18.4.1`: the planned day names its exit.
     @Test("A planned day carries Done, and it answers")
     func theDayCarriesDone() async throws {
@@ -102,7 +135,8 @@ struct DoneButtonTests {
             """)
     }
 
-    /// `FR-18.4.2`: the `⋯` moved leading, and the only witness is where it is drawn.
+    /// `FR-18.4.2`: the `⋯` moved leading, **beside Back**, and the only witness is where each
+    /// is drawn.
     ///
     /// **Not the order the tree publishes them in, which is measured and is not a side.** The
     /// first version of this test asserted that the menu is read before Done, on the reasoning
@@ -113,17 +147,33 @@ struct DoneButtonTests {
     ///
     /// **The day is answered first**, because the menu is drawn only once there is a workout to
     /// change the date of or discard — an unanswered day has neither (see `sessionOverflow`).
-    @Test("The day's menu is drawn leading, and Done trailing")
+    /// Measured: with the day unanswered the only element labelled *Day options* is the **row's**
+    /// menu, on the row's own line, and the bar carries Back and Done alone.
+    ///
+    /// **And the day is hosted pushed rather than as a stack's root**, which is the only
+    /// arrangement that has a back button in it to be beside. The scope question this task carried
+    /// was whether a `.topBarLeading` item *supplements* the back button on iOS 26 or *replaces*
+    /// it; a screen hosted at a root answers neither, because there is no back button in its tree
+    /// either way, so a leading item that had swallowed one would leave every assertion here
+    /// green. Measured on iOS 26.5, pushed and answered: Back at x 16–60, the `⋯` at 76–112, Done
+    /// at 317–382. That is what the `back` requirement below holds; the ordering expectations are
+    /// the smaller half.
+    @Test("The day's menu is drawn leading, beside Back, and Done trailing")
     func theMenuIsLeadingOfDone() async throws {
         let app = try await DayFixture()
-        let screen = HostedScreen(NavigationStack { app.dayView() })
+        let screen = HostedScreen(PushedDay(day: app.dayView()))
         defer { screen.dismantle() }
-        await screen.settle()
+        await screen.settle(turns: 8)
 
         try #require(
             !screen.accessibilityElements().isEmpty,
             Comment(rawValue: HostedScreen.accessibilityRemedy))
-        try #require(screen.activate(label: DayFixture.circle) == .activated)
+        try #require(
+            screen.activate(label: DayFixture.circle) == .activated,
+            """
+            the day drew no circle to answer, so it has no workout and the toolbar's menu is not \
+            drawn at all. What it offers: \(screen.activatableLabels())
+            """)
         await screen.settle()
 
         let done = try #require(
@@ -133,7 +183,7 @@ struct DoneButtonTests {
             offers: \(screen.activatableLabels())
             """)
         let bar = done.accessibilityFrame
-        // The bar's `⋯`, not a row's: both read *Day options*, and the one being placed is the
+        // The bar's `⋯`, not the row's: both read *Day options*, and the one being placed is the
         // one drawn on the same line as Done.
         let menu = try #require(
             screen.elements(labelled: DayFixture.menu).first(where: {
@@ -143,11 +193,28 @@ struct DoneButtonTests {
             the day drew no overflow menu on the bar, so there is no side for it to be on. Menus \
             at: \(screen.elements(labelled: DayFixture.menu).map(\.accessibilityFrame))
             """)
+        let back = try #require(
+            screen.accessibilityElements().first(where: {
+                Self.backLabels.contains($0.accessibilityLabel ?? "")
+                    && $0.accessibilityTraits.contains(.button)
+            }),
+            """
+            the pushed day published no back button, so the leading `⋯` replaced it rather than \
+            joining it (FR-18.4.2) — and Back is no longer a way out of the day. What the screen \
+            offers: \(screen.activatableLabels())
+            """)
+
         #expect(
             menu.accessibilityFrame.maxX <= bar.minX,
             """
             the menu is not leading of Done (FR-18.4.2). Menu at \(menu.accessibilityFrame), \
             Done at \(bar).
+            """)
+        #expect(
+            back.accessibilityFrame.maxX <= menu.accessibilityFrame.minX,
+            """
+            the menu is not beside Back but in front of it (FR-18.4.2). Back at \
+            \(back.accessibilityFrame), menu at \(menu.accessibilityFrame).
             """)
     }
 
