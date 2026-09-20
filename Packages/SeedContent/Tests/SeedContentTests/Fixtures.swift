@@ -37,7 +37,7 @@ struct BrokenFixture: Sendable, CustomTestStringConvertible {
 ///
 /// The four vocabulary entries are why: `laterality` is the only one of the four whose domain type
 /// throws on an unrecognised spelling, so a validator exercised on it alone looks like it works.
-/// `everyFailureKindHasAFixture` and `everyVocabularyFieldHasAFixture` are what stop a twelfth
+/// `everyFailureKindHasAFixture` and `everyVocabularyFieldHasAFixture` are what stop the next
 /// failure or a fifth vocabulary from being half-covered.
 let brokenFixtures: [BrokenFixture] = [
     BrokenFixture("duplicate-id", .duplicateID(squatID)),
@@ -71,6 +71,10 @@ let brokenFixtures: [BrokenFixture] = [
     BrokenFixture("unsupported-schema-version", .unsupportedSchemaVersion(2)),
     BrokenFixture("non-positive-revision", .nonPositiveRevision(0)),
     BrokenFixture("blank-name", .blankName(squatID)),
+    // The Ukrainian list rather than the English one, and the key is asserted rather than only the
+    // kind: a rule that reported whichever list it looked at first would pass on the other fixture.
+    BrokenFixture(
+        "blank-former-name", .blankFormerName(exercise: squatID, key: "formerUkrainianNames")),
     BrokenFixture("too-few-exercises", .tooFewExercises(count: 0, minimum: 1)),
     // Both containers reject an unrecognised key, and both are exercised: the entry is where a typo
     // actually happens, the root is where nothing would ever notice one. The entry's location is

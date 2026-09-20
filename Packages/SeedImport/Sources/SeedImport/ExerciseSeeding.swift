@@ -69,11 +69,15 @@ extension Exercise {
     /// the question rather than answering to it. The audit columns are copied so that a caller can
     /// compare this against the stored row and learn whether the import has anything to write.
     ///
-    /// **A kept column is kept unconditionally, so the catalogue cannot correct one.** Nothing
-    /// stored records whether a column holds a user's edit or the value the seed last wrote, and
-    /// with no such column a later revision cannot tell a rename it must preserve from a name it
-    /// should fix. Distinguishing the two needs a column, and columns are cheap only before rows
-    /// exist.
+    /// **A kept column is kept unconditionally unless the payload can name what the seed wrote.**
+    /// Nothing stored records whether a column holds a user's edit or the value the seed last put
+    /// there, so on the store alone a later revision cannot tell a rename it must preserve from a
+    /// name it should fix. A column recording that would answer it, and columns are cheap only
+    /// before rows exist — but it is not the only answer. A column whose past values the *payload*
+    /// can enumerate is one an entry can settle from outside the store, which is what
+    /// ``Exercise/name`` does below. ``Exercise/notes`` and ``Exercise/isArchived`` cannot follow
+    /// it: free text the catalogue never authored, and a flag it never wrote, so there is no former
+    /// value for an entry to list.
     ///
     /// **``Exercise/name`` is the one kept column with a way out, and the way out is in the payload
     /// rather than in the store** (`FR-18.2.1`, `TR-18.1`). An entry lists the names it used to

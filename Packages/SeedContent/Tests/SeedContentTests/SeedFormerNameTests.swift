@@ -49,8 +49,13 @@ struct SeedFormerNameTests {
     @Test("The shipped catalogue lists no former name, and is still schema 1")
     func theShippedCatalogueListsNone() throws {
         // The claim the two keys are added on: today's entries carry neither, so the file has to
-        // decode unchanged. When `T-18.05` gives one a former name this test says so rather than
-        // breaking — the count is what moves, not the schema.
+        // decode unchanged.
+        //
+        // **The two counts are a tripwire, and `T-18.05` is expected to trip the second one.** It
+        // lands `FR-18.2.2` — one former Ukrainian name in the shipped file — which turns the last
+        // expectation red on purpose; that task raises the number to 1 rather than deleting the
+        // line. The schema expectation is the one that must not move whatever the counts do: an
+        // added optional key is not a new schema.
         let catalogue = try JSONDecoder().decode(SeedCatalogue.self, from: BundledCatalogue.data())
 
         #expect(catalogue.schemaVersion == SeedCatalogue.supportedSchemaVersion)

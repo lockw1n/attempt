@@ -34,6 +34,14 @@ public enum SeedValidationFailure: Equatable, Sendable {
     /// A name that is empty or only whitespace, which no picker can display.
     case blankName(UUID)
 
+    /// A former name that is empty or only whitespace, in the list `key` names (`FR-18.2.1`).
+    ///
+    /// Refused for the reason ``blankName(_:)`` is, one list over, and with one more: the importer
+    /// matches a stored name against this list, so the only row a blank entry could ever claim as
+    /// untouched is one whose own name is blank — which ``blankName(_:)`` already refuses to ship.
+    /// It is an authoring slip that can do nothing but harm, so it is caught where it is written.
+    case blankFormerName(exercise: UUID, key: String)
+
     /// A `parentExerciseID` naming an entry the payload does not contain.
     case danglingParent(exercise: UUID, parent: UUID)
 
@@ -56,7 +64,8 @@ extension SeedValidationFailure {
     ///
     /// It exists so that a suite can assert every kind is covered by a fixture: an enum with
     /// associated values cannot be `CaseIterable`, and a list of kinds written out by hand is the
-    /// thing that goes stale when an eleventh failure lands.
+    /// thing that goes stale when the next failure lands. Counting them here would go stale the
+    /// same way, so it says *next* rather than a number.
     public enum Kind: String, CaseIterable, Sendable {
         /// See ``SeedValidationFailure/undecodable(_:)``.
         case undecodable
@@ -72,6 +81,8 @@ extension SeedValidationFailure {
         case duplicateID
         /// See ``SeedValidationFailure/blankName(_:)``.
         case blankName
+        /// See ``SeedValidationFailure/blankFormerName(exercise:key:)``.
+        case blankFormerName
         /// See ``SeedValidationFailure/danglingParent(exercise:parent:)``.
         case danglingParent
         /// See ``SeedValidationFailure/parentCycle(_:)``.
@@ -92,6 +103,7 @@ extension SeedValidationFailure {
         case .tooFewExercises: .tooFewExercises
         case .duplicateID: .duplicateID
         case .blankName: .blankName
+        case .blankFormerName: .blankFormerName
         case .danglingParent: .danglingParent
         case .parentCycle: .parentCycle
         case .unknownVocabulary: .unknownVocabulary
@@ -120,6 +132,8 @@ extension SeedValidationFailure: CustomStringConvertible {
             "\(id) is used by more than one exercise"
         case .blankName(let id):
             "\(id) has a blank name"
+        case .blankFormerName(let exercise, let key):
+            "\(exercise) lists a blank former name in '\(key)'; remove the entry"
         case .danglingParent(let exercise, let parent):
             "\(exercise) names parent \(parent), which the payload does not contain"
         case .parentCycle(let cycle):

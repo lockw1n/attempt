@@ -216,6 +216,33 @@ struct FormerNameTests {
         #expect(await counter.saves == writes)
     }
 
+    @Test("A rename of the very row the correction targets survives revision 4")
+    func aRenameOnTheCorrectedRowSurvives() async throws {
+        // `DOD-18.5`'s second half, on the row that can discriminate. The test above renames Back
+        // Squat, whose revision-4 entry lists no former name at all — so it is kept by an empty
+        // list, which is what every kept column did before former names existed, and that assertion
+        // reads the same before and after this rule. Measured: a rule that ignored the match and
+        // overwrote every entry carrying a list left it green.
+        //
+        // This is the one row revision 4 aims a correction at, so nothing but the match keeps it.
+        let lifters = "Задня дельта, мій варіант"
+        let revisions = try CatalogueRevisions()
+        let floor = BundledCatalogue.minimumExercises
+        let counter = CountingExerciseRepository(wrapping: InMemoryRepositoryStack().exercises)
+        let subject = Subject(over: counter)
+        try await subject.importing(revisions.three, minimum: floor)
+        let seeded = try #require(try await subject.stored(revisions.rearDeltFlyID))
+        try await subject.exercises.save(seeded.edited(ukrainianName: lifters))
+        let writes = await counter.saves
+
+        let correction = try await subject.importing(revisions.four, minimum: floor)
+
+        let row = try #require(try await subject.stored(revisions.rearDeltFlyID))
+        #expect(row.ukrainianName == lifters)
+        #expect(correction.writeCount == 0)
+        #expect(await counter.saves == writes)
+    }
+
     @Test("A restored backup carrying the retired name is corrected by the next import")
     func aRestoredNameIsCorrected() async throws {
         // `T-1.69`: the restore runs ahead of an import, so the rows an import meets are not only
