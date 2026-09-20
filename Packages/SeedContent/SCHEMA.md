@@ -38,6 +38,7 @@ check in `TR-0.5.3`.
 {
   "id": "11111111-1111-4111-8111-111111111111",
   "name": "Front Squat",
+  "ukrainianName": "Фронтальні присідання",
   "movement": "squat",
   "parentExerciseID": "22222222-2222-4222-8222-222222222222",
   "equipment": "barbell",
@@ -50,7 +51,10 @@ check in `TR-0.5.3`.
 | Key | Type | Required | |
 |---|---|---|---|
 | `id` | UUID string | yes | **Permanent.** It lands in users' logged history, so regenerating one orphans every set logged against it. |
-| `name` | string | yes | Non-blank. Renaming a built-in exercise later does not break history (`FR-1.1.4`). |
+| `name` | string | yes | Non-blank. A lifter may rename a built-in exercise (`FR-1.1.4`), and a later revision **never overwrites a stored name** — correcting one is done through `formerNames` below and no other way. |
+| `ukrainianName` | string | no | The displayed name in Ukrainian (`FR-1.14.2`). Non-blank when present; absent is a name the app shows in English. The shipped catalogue translates every entry and a test holds it to that, but a fetched payload need not. Name the movement and the implement, **never the muscle** (`OUT-18.1`). |
+| `formerNames` | array of strings | no | Names this entry used to ship under (`FR-18.2.1`). On import a stored name is replaced by `name` only where it still **equals** one of these, trimmed, matching case and diacritics exactly — so a lifter's own rename survives and a correction still reaches phones that already seeded the old one. Each must be non-blank, and none may be any entry's current `name`: the match is on the string alone, so a name that moved between entries would retitle the wrong row. |
+| `formerUkrainianNames` | array of strings | no | The same, for `ukrainianName`. The two lists are per-language and never cross. |
 | `movement` | string | yes | A `Movement` raw value. |
 | `parentExerciseID` | UUID string | no | The entry this one varies (`FR-1.1.7`). Absent for a root exercise; must name an entry in the same document; the parent chains may not close on themselves. |
 | `equipment` | string | yes | An `Equipment` raw value. |
