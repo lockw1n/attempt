@@ -64,11 +64,15 @@ struct DayExerciseRow: View {
 
     /// Whether this row actually keeps the circle's width.
     ///
-    /// **The alignment is worth 60 points until it is not.** At an accessibility size a scheme is
-    /// wider than the column whatever is done, so it wraps — and a wrapped scheme has no single
-    /// right edge to line up with the row above it. The 60 points buy nothing there and cost a
-    /// line break, so the row spends them on the numbers instead. At every other size the column
-    /// is what `FR-18.3.1` asks for.
+    /// **The alignment is worth 60 points until it is not, and this is a departure from
+    /// `FR-18.3.1` rather than a reading of it.** At an accessibility size every scheme already
+    /// wraps, and taking a further 60 points off a 320 pt width leaves a circle-less row 152 pt —
+    /// **narrower than the word `Planned`**, which then breaks as *Planne/d*, with `Dumbbell Fly`
+    /// under it as *Dumb/bell/Fly*. That is the same failure ``PlanSchemeShape/choose(width:scheme:spacing:)``
+    /// was written to measure its way out of, arriving by the other door. So the rows keep their
+    /// own edges at those sizes and the requirement's *one edge down the screen* holds at every
+    /// other. **Measured, not argued** — the alternative was rendered; `T-18.07`'s task file has
+    /// the figures and the one fixture that can see them.
     private var keepsCircleWidth: Bool {
         reservesCircle && !dynamicTypeSize.isAccessibilitySize
     }
@@ -124,27 +128,31 @@ struct DayExerciseRow: View {
             .font(Typography.caption.font)
             .foregroundStyle(ColorToken.textSecondary)
         case .logged where row.wasAsPlanned:
-            schemeRow(row.performed) { done(Text(LoggingStrings.dayRowAsPlanned)) }
+            PlanSchemeRows {
+                done(Text(LoggingStrings.dayRowAsPlanned))
+                PlanSchemeLines(schemes: schemes(row.performed))
+            }
+            recordMark
+        case .logged where row.plan.isEmpty:
+            PlanSchemeRows {
+                done(Text(LoggingStrings.dayRowDid))
+                PlanSchemeLines(schemes: schemes(row.performed))
+            }
             recordMark
         case .logged:
-            if !row.plan.isEmpty {
-                schemeRow(row.plan) { planned(Text(LoggingStrings.dayRowPlanned)) }
+            // Both pairs in ONE table, which is `FR-18.3.2`'s "the same alignment": the shape is
+            // read across the widest of them, so an open-load plan (`12 × 3`) logged with a real
+            // load (`24 kg × 12 × 3`) cannot put *Planned* beside its numbers and *Did* above its
+            // own. The two are written out rather than built from a conditional, because a
+            // `ViewBuilder` branch inside a `Layout` is a pair the layout has to trust.
+            PlanSchemeRows {
+                planned(Text(LoggingStrings.dayRowPlanned))
+                PlanSchemeLines(schemes: schemes(row.plan))
+                done(Text(LoggingStrings.dayRowDid))
+                PlanSchemeLines(schemes: schemes(row.performed))
             }
-            schemeRow(row.performed) { done(Text(LoggingStrings.dayRowDid)) }
             recordMark
         }
-    }
-
-    /// One labelled line of the answer — the word on the leading edge, the groups on the trailing.
-    ///
-    /// - Parameters:
-    ///   - targets: The groups that line draws.
-    ///   - label: What names them.
-    /// - Returns: The line.
-    private func schemeRow<Label: View>(
-        _ targets: [WeekPlanTarget], @ViewBuilder label: () -> Label
-    ) -> some View {
-        PlanSchemeRow(schemes: schemes(targets), label: label)
     }
 
     /// The groups of one side of the answer, one rendered line each.

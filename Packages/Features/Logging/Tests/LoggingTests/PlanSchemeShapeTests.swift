@@ -62,6 +62,23 @@ struct PlanSchemeShapeTests {
                 == .sideBySide(label: 0, scheme: 120))
     }
 
+    /// `FR-18.3.2`: the widest line decides for the whole row, so *Planned* and *Did* cannot take
+    /// different shapes when one of them renders narrow and the other does not.
+    @Test func theWidestLineDecidesForTheWholeRow() {
+        // `12 × 3` beside `24 kg × 12 × 3` — an open-load plan (`FR-15.2.2`) logged with a load.
+        #expect(PlanSchemeShape.choose(width: 300, schemes: [50, 200], spacing: gap) == .stacked)
+        #expect(
+            PlanSchemeShape.choose(width: 300, schemes: [50, 100], spacing: gap)
+                == .sideBySide(label: 192, scheme: 100))
+    }
+
+    /// A row with no lines at all is the empty column rather than a stacked one.
+    @Test func aRowWithNoLinesIsAnEmptyColumn() {
+        #expect(
+            PlanSchemeShape.choose(width: 300, schemes: [], spacing: gap)
+                == .sideBySide(label: 292, scheme: 0))
+    }
+
     /// A width narrower than the gap itself leaves the label nothing rather than a negative
     /// proposal, which SwiftUI treats as unspecified and would draw at full width.
     @Test func aWidthNarrowerThanTheGapLeavesNothingRatherThanLessThanNothing() {

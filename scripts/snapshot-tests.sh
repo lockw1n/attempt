@@ -81,7 +81,7 @@ cd "$(dirname "$0")/.."
 #                     tests could have vanished unnoticed. Set to its own count now, as every other
 #                     suite is — "above the 19" was a margin that only ever grew.
 #   ExerciseLibrary: 44 tests, all of them reference-backed, no probes -> 44, its own count.
-#   Logging:         96 tests, 91 reference-backed, a width probe and four layout budgets
+#   Logging:         97 tests, 92 reference-backed, a width probe and four layout budgets
 #                                                                    -> 96, its own count.
 #   History:         28 tests, 27 reference-backed, one layout budget -> 28, above the 27.
 #   Dashboard:       21 tests, all of them reference-backed, no probes -> 21, its own count.
@@ -107,7 +107,7 @@ cd "$(dirname "$0")/.."
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|37"
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|44"
-    "Packages/Features/Logging|Logging|LoggingSnapshotTests|96"
+    "Packages/Features/Logging|Logging|LoggingSnapshotTests|97"
     "Packages/Features/History|History|HistorySnapshotTests|28"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|21"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|49"

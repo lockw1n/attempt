@@ -166,6 +166,19 @@
             }
         }
 
+        /// `FR-18.3.2`'s "the same alignment", on the row that can break it: an open-load plan
+        /// (`FR-15.2.2`, `12 × 3`) answered with a real load (`24 kg × 12 × 3`).
+        ///
+        /// **The two lines render to very different widths**, so a shape chosen per line would
+        /// put *Planned* beside its numbers and *Did* above its own — which is what this pictures
+        /// not happening. No other `Day-*` fixture can: every one of them has a plan and a
+        /// performance of the same rendered width.
+        @Test func dayAnsweredWidthsDiffer() throws {
+            try assertSnapshots(named: "Day-answered-widths") {
+                fixedEnvironment { DayFixtures.section([DayFixtures.openLoadLogged]) }
+            }
+        }
+
         /// The same pair of facts on the week's card (`FR-18.3.3`, `Q-18.2` at (a)): the name left
         /// and wrapping, the scheme right, falling to the day row's shape at accessibility sizes.
         @Test func weekLongNameTwoGroups() throws {
@@ -375,6 +388,15 @@
         /// `FR-1.2.2`'s added row: no plan at all.
         static var added: DayRow {
             row("Face Pull", plan: [])
+        }
+
+        /// `FR-15.2.2`'s open load, answered — the row whose two lines render to different widths.
+        static var openLoadLogged: DayRow {
+            row(
+                "Ab Wheel",
+                plan: [target(nil, reps: 12, sets: 3)],
+                performed: [target(24_000, reps: 12, sets: 3)],
+                answer: .logged)
         }
 
         /// The longest name the catalogue holds (`T-18.05`'s revision 4), which is what `NFR-18.2`
