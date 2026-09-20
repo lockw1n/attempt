@@ -321,6 +321,13 @@
 "logging.day.change-date.action" = "Змінити дату";
 "logging.day.change-date.done" = "Готово";
 
+/* FR-18.4.5 — повернення дня до запланованого. */
+"logging.day.reset.action" = "Скинути день";
+"logging.day.reset.confirm.title" = "Скинути цей день?";
+"logging.day.reset.confirm.message" = "План залишиться. Ваші відповіді за цей день буде вилучено.";
+"logging.day.reset.confirm.action" = "Скинути день";
+"logging.day.reset.confirm.cancel" = "Залишити відповіді";
+
 /* The button that names the exit (FR-18.4.1). It writes nothing. */
 "logging.day.done.action" = "Готово";
 "logging.day.add-exercise.action" = "Додати вправу";

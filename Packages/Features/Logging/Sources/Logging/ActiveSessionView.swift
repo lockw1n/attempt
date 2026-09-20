@@ -212,12 +212,12 @@ public struct ActiveSessionView: View {
             // longer fit the medium one.
             .presentationDetents([.medium, .large])
         }
-        // `FR-17.9.7`'s menu, shared with a day's checklist — see `sessionOverflow`. Trailing and
-        // no Done, where a day is the other way round: this one ends at Finish below (`OUT-18.6`).
+        // `FR-17.9.7`'s menu. Trailing, and no Done: this one ends at Finish below (`OUT-18.6`).
         .sessionOverflow(
-            date: store.session?.date,
+            contents: Self.menuContents(date: store.session?.date),
             side: .trailing,
             changeDate: { day in Task { await store.changeDate(to: day) } },
+            skipRemaining: nil,
             discard: { isConfirmingDiscard = true }
         )
         .confirmationDialog(

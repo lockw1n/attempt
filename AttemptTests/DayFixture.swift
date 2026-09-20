@@ -25,7 +25,7 @@ struct DayFixture {
     static let circle = "Log as planned"
 
     /// What the overflow menu reads — `logging.day.menu.action` in `en`. Named for the menu
-    /// rather than for either item in it (`G-4.2`), which is why it is not "Discard".
+    /// rather than for any item in it (`G-4.2`), which is why it is not "Reset day".
     static let menu = "Day options"
 
     /// The week the run is open on.

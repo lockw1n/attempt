@@ -11,8 +11,8 @@ import SwiftUI
 ///
 /// **The session is implicit and there is no Start.** A lifter opens the day, taps a circle per
 /// exercise, and the workout is written underneath them (`FR-17.9.5`); the last answer ends it
-/// (`FR-17.9.8`). Backdating and discarding are in an overflow menu rather than on the screen,
-/// because neither is what anyone came here to do.
+/// (`FR-17.9.8`). Backdating, skipping the rest and resetting the day are in an overflow menu
+/// rather than on the screen, because none of them is what anyone came here to do.
 ///
 /// **Addressed by the stamp rather than by a session id**, which is the route's own argument: a day
 /// nothing has been logged into has no session, so a session id could not name it.
@@ -114,10 +114,11 @@ public struct DayView: View {
         }
         // Leading, beside Back (`FR-18.4.2`): the trailing corner is Done's now.
         .sessionOverflow(
-            date: day.date,
+            contents: Self.menuContents(date: day.date, progress: day.progress),
             side: .leading,
             changeDate: { chosen in Task { await day.changeDate(to: chosen) } },
-            discard: { isConfirmingDiscard = true }
+            skipRemaining: { isConfirmingSkipRemaining = true },
+            discard: { isConfirmingReset = true }
         )
         .sessionDone(label: LoggingStrings.dayDoneAction)
         .confirmationDialog(
@@ -150,23 +151,43 @@ public struct DayView: View {
                 Text(LoggingStrings.dayRemainingConfirmCancel)
             }
         }
+        // `FR-18.4.5`: the same write the free workout's **Discard** makes, and a different
+        // promise about it — here the plan is on the week and survives.
         .confirmationDialog(
-            Text(LoggingStrings.sessionDiscardConfirmTitle),
-            isPresented: $isConfirmingDiscard,
+            Text(LoggingStrings.dayResetConfirmTitle),
+            isPresented: $isConfirmingReset,
             titleVisibility: .visible
         ) {
             Button(role: .destructive) {
                 Task { await day.discard() }
             } label: {
-                Text(LoggingStrings.sessionDiscardConfirmAction)
+                Text(LoggingStrings.dayResetConfirmAction)
             }
             Button(role: .cancel) {
             } label: {
-                Text(LoggingStrings.sessionDiscardConfirmCancel)
+                Text(LoggingStrings.dayResetConfirmCancel)
             }
         } message: {
-            Text(LoggingStrings.sessionDiscardConfirmMessage)
+            Text(LoggingStrings.dayResetConfirmMessage)
         }
+    }
+
+    /// What this screen's `⋯` holds (`FR-17.9.7`, `FR-18.4.4`, `FR-18.4.5`).
+    ///
+    /// **A function rather than three arguments written inline**, because what a `View`'s body
+    /// passes a modifier is readable by nothing — see `sessionOverflow` for the measurements. This
+    /// is where *the planned day offers* **Reset day** lives, and it is the only place the claim
+    /// is made.
+    ///
+    /// - Parameters:
+    ///   - date: The day's training date, or `nil` before it has a workout.
+    ///   - progress: How far through the day the lifter is.
+    /// - Returns: The commands, in order.
+    static func menuContents(date: Date?, progress: DayProgress) -> SessionMenuContents {
+        SessionMenuContents(
+            date: date,
+            offersSkipRemaining: progress.offersWholeDayCommands,
+            destructive: .resetDay)
     }
 
     /// Which set editor is open, or `nil`.
@@ -175,16 +196,17 @@ public struct DayView: View {
     /// Whether **Log remaining as planned** is asking (`FR-17.9.9`).
     @State private var isConfirmingLogRemaining = false
 
-    /// Whether **Skip remaining** is asking.
+    /// Whether **Skip remaining** is asking. Raised from the menu now, not from the foot
+    /// (`FR-18.4.4`).
     @State private var isConfirmingSkipRemaining = false
 
-    /// Whether **Discard** is asking (`FR-1.2.12`).
-    @State private var isConfirmingDiscard = false
+    /// Whether **Reset day** is asking (`FR-18.4.5`, `FR-1.2.12`).
+    @State private var isConfirmingReset = false
 
     /// Which of the exercise's two names reads, and which locale the editor's numbers are in.
     @Environment(\.locale) private var locale
 
-    /// How many rows the two whole-day commands would act on.
+    /// How many rows the whole-day commands would act on — the foot's and the menu's alike.
     private var unansweredCount: Int { day.progress.total - day.progress.answered }
 
     /// The day's name where its routine has one, and its position where it has not.
@@ -236,7 +258,7 @@ public struct DayView: View {
         }
     }
 
-    /// The rows, the picker and the two whole-day commands.
+    /// The rows, the picker and the whole-day command.
     @ViewBuilder private var checklist: some View {
         DayChecklistSection(
             rows: day.rows,
@@ -252,9 +274,7 @@ public struct DayView: View {
             addExercise
         }
         if day.progress.offersWholeDayCommands {
-            DayFootCommands(
-                logRemaining: { isConfirmingLogRemaining = true },
-                skipRemaining: { isConfirmingSkipRemaining = true })
+            DayFootCommands(logRemaining: { isConfirmingLogRemaining = true })
         }
         if !day.unanswerable.isEmpty {
             // A result, not an error: the command did what it could and is saying what it could
@@ -384,36 +404,28 @@ struct DayChecklistSection: View {
     }
 }
 
-/// The two commands that answer for everything that is left (`FR-17.9.9`).
+/// The command that answers for everything that is left exactly as planned (`FR-17.9.9`).
 ///
-/// **At the foot, under `+ Add exercise`, and both secondary.** They are the exception rather than
-/// the way a day is normally answered — the circle is — and a filled pair here would be two primary
-/// actions on a screen whose accent belongs to the work.
+/// **One command, since `FR-18.4.4`.** **Skip remaining** stood directly under it in the same
+/// secondary text style, and the author skipped a whole day through its confirmation (`F-09`): the
+/// command that answers *against* the plan was one slip from the one that answers *with* it. It is
+/// in the day's overflow menu now, behind the `⋯` and among commands that are not the way a day is
+/// normally answered.
+///
+/// **At the foot, under `+ Add exercise`, and secondary.** It is the exception rather than the way
+/// a day is normally answered — the circle is — and a fill here would be a second primary action on
+/// a screen whose accent belongs to the work.
 struct DayFootCommands: View {
     /// Logs everything that is left exactly as planned.
     let logRemaining: () -> Void
 
-    /// Records that the lifter is not doing the rest.
-    let skipRemaining: () -> Void
-
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm.points) {
-            Button(action: logRemaining) {
-                Text(LoggingStrings.dayLogRemainingAction)
-            }
-            .buttonStyle(.plain)
-            .font(Typography.actionLabel.font)
-            .foregroundStyle(ColorToken.textSecondary)
-            .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points, alignment: .leading)
-
-            Button(action: skipRemaining) {
-                Text(LoggingStrings.daySkipRemainingAction)
-            }
-            .buttonStyle(.plain)
-            .font(Typography.actionLabel.font)
-            .foregroundStyle(ColorToken.textSecondary)
-            .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points, alignment: .leading)
+        Button(action: logRemaining) {
+            Text(LoggingStrings.dayLogRemainingAction)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .buttonStyle(.plain)
+        .font(Typography.actionLabel.font)
+        .foregroundStyle(ColorToken.textSecondary)
+        .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points, alignment: .leading)
     }
 }

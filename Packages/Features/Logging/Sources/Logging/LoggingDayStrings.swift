@@ -96,7 +96,7 @@ extension LoggingStrings {
 
     // MARK: - The overflow menu (FR-17.9.7)
 
-    /// The menu itself, named for the menu rather than for either item in it (`G-4.2`).
+    /// The menu itself, named for the menu rather than for any item in it (`G-4.2`).
     static let dayMenuAction = resource("logging.day.menu.action")
 
     /// `FR-1.2.1`'s backdating, from the menu.
@@ -104,6 +104,28 @@ extension LoggingStrings {
 
     /// Closing the date sheet.
     static let dayChangeDateDone = resource("logging.day.change-date.done")
+
+    // MARK: - Taking the day back (FR-18.4.5)
+
+    /// The menu's destructive command on a **planned** day.
+    ///
+    /// **Not *Discard***, which is what it read until `F-11`: the write soft-deletes the day's
+    /// session and the plan lives on the week, so what the lifter gets back is the day as
+    /// *upcoming* — and nobody looking for that would guess at a word that promises a loss. The
+    /// free workout, where the word is true, keeps it (``sessionDiscardAction``, `OUT-18.6`).
+    static let dayResetAction = resource("logging.day.reset.action")
+
+    /// The confirmation's question.
+    static let dayResetConfirmTitle = resource("logging.day.reset.confirm.title")
+
+    /// What resetting costs and what it does not, said before it is done.
+    static let dayResetConfirmMessage = resource("logging.day.reset.confirm.message")
+
+    /// Going ahead with it.
+    static let dayResetConfirmAction = resource("logging.day.reset.confirm.action")
+
+    /// The way out, spelled out rather than a bare *Cancel* — ``dayRemainingConfirmCancel``'s rule.
+    static let dayResetConfirmCancel = resource("logging.day.reset.confirm.cancel")
 
     // MARK: - Leaving the day (FR-18.4.1)
 
@@ -144,6 +166,11 @@ extension LoggingStrings {
             dayMenuAction,
             dayChangeDateAction,
             dayChangeDateDone,
+            dayResetAction,
+            dayResetConfirmTitle,
+            dayResetConfirmMessage,
+            dayResetConfirmAction,
+            dayResetConfirmCancel,
             dayDoneAction,
             dayAddExerciseAction,
             dayNoRowsHeadline,

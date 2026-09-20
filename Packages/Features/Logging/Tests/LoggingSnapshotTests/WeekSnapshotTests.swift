@@ -140,13 +140,15 @@
             }
         }
 
-        /// `FR-17.9.9`'s two whole-day commands, drawn under the rows they would answer for.
+        /// `FR-17.9.9`'s whole-day command, drawn under the rows it would answer for — and, since
+        /// `FR-18.4.4`, the only one there: **Skip remaining** is in the day's `⋯`, which no
+        /// content snapshot pictures.
         @Test func dayFootCommands() throws {
             try assertSnapshots(named: "Day-foot-commands") {
                 fixedEnvironment {
                     VStack(alignment: .leading, spacing: Spacing.lg.points) {
                         DayFixtures.section(DayFixtures.notStarted)
-                        DayFootCommands(logRemaining: {}, skipRemaining: {})
+                        DayFootCommands(logRemaining: {})
                     }
                 }
             }

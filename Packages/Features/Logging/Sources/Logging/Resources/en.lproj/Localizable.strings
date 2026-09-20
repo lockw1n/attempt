@@ -507,6 +507,14 @@
 "logging.day.change-date.action" = "Change date";
 "logging.day.change-date.done" = "Done";
 
+/* FR-18.4.5's way back to an upcoming day. The write is the free workout's Discard; the word is
+   not, because here the plan survives it. */
+"logging.day.reset.action" = "Reset day";
+"logging.day.reset.confirm.title" = "Reset this day?";
+"logging.day.reset.confirm.message" = "The plan stays. Your answers for this day are removed.";
+"logging.day.reset.confirm.action" = "Reset day";
+"logging.day.reset.confirm.cancel" = "Keep my answers";
+
 /* The button that names the exit (FR-18.4.1). It writes nothing. */
 "logging.day.done.action" = "Done";
 "logging.day.add-exercise.action" = "Add exercise";

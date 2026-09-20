@@ -8,6 +8,21 @@ import SwiftUI
 /// SwiftLint's file ceiling: the screen grows as the workout gains content, and these grow as
 /// leaving one gains conditions.
 extension ActiveSessionView {
+    /// What this screen's `⋯` holds (`FR-17.9.7`, `OUT-18.6`).
+    ///
+    /// **Discard, and never Reset day or Skip remaining.** The free workout is the only record of
+    /// itself, so the word that promises a loss is the true one here; and there is no plan to skip
+    /// the rest of. Written as a function on ``DayView/menuContents(date:progress:)``' reason —
+    /// what a body passes a modifier is readable by nothing, so the two hosts' disagreement has to
+    /// be stated where a test can read it.
+    ///
+    /// - Parameter date: The workout's training date, or `nil` where there is no workout.
+    /// - Returns: The commands, in order.
+    static func menuContents(date: Date?) -> SessionMenuContents {
+        SessionMenuContents(
+            date: date, offersSkipRemaining: false, destructive: .discardWorkout)
+    }
+
     /// Finishes the workout and leaves the screen, unless the write failed.
     ///
     /// The screen stays open on a failure, with the workout still on it: nothing was stored, so the

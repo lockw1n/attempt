@@ -107,17 +107,41 @@ struct LoggingStringsTests {
     }
 
     /// `FR-17.9.7`'s overflow menu, on both of its hosts. A menu is not snapshottable — T-16.04's
-    /// finding on dialogs applies — so its two items and its own name are asserted here.
-    @Test("The overflow menu carries both items, and is named for neither")
-    func theOverflowMenuCarriesBothItems() {
+    /// finding on dialogs applies — so its items and its own name are asserted here.
+    @Test("The overflow menu carries its items, and is named for none of them")
+    func theOverflowMenuCarriesItsItems() {
         #expect(String(localized: LoggingStrings.dayChangeDateAction) == "Change date")
+        #expect(String(localized: LoggingStrings.daySkipRemainingAction) == "Skip remaining")
+        #expect(String(localized: LoggingStrings.dayResetAction) == "Reset day")
         #expect(String(localized: LoggingStrings.sessionDiscardAction) == "Discard workout")
-        // Named for the menu rather than for either item in it (`G-4.2`, `NFR-1.10`): a button
+        // Named for the menu rather than for any item in it (`G-4.2`, `NFR-1.10`): a button
         // announcing itself as **Discard** would be lying about the half that changes a date.
         let menu = String(localized: LoggingStrings.dayMenuAction)
         #expect(menu == "Day options")
         #expect(menu != String(localized: LoggingStrings.dayChangeDateAction))
+        #expect(menu != String(localized: LoggingStrings.dayResetAction))
         #expect(menu != String(localized: LoggingStrings.sessionDiscardAction))
+    }
+
+    /// `FR-18.4.5`: the day's way back names what survives it, and the confirmation says both
+    /// halves — *the plan stays*, *the answers go*.
+    ///
+    /// **The message rather than only the title**, because the title alone is the word the tester
+    /// could not find a meaning for (`F-11`); what makes **Reset day** safe to tap is the sentence
+    /// under it.
+    @Test("Reset day promises the plan back and says the answers go")
+    func resetSaysWhatSurvivesIt() {
+        #expect(String(localized: LoggingStrings.dayResetConfirmTitle) == "Reset this day?")
+        #expect(
+            String(localized: LoggingStrings.dayResetConfirmMessage)
+                == "The plan stays. Your answers for this day are removed.")
+        #expect(String(localized: LoggingStrings.dayResetConfirmAction) == "Reset day")
+        // Naming what it keeps rather than saying "cancel", on the discard dialog's rule.
+        #expect(String(localized: LoggingStrings.dayResetConfirmCancel) == "Keep my answers")
+        // And it is not the free workout's copy, which promises the workout itself is gone.
+        #expect(
+            String(localized: LoggingStrings.dayResetConfirmMessage)
+                != String(localized: LoggingStrings.sessionDiscardConfirmMessage))
     }
 
     /// `FR-17.9.6`: a skip is an outcome, and it is not the word a done row uses.
