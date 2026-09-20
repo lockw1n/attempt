@@ -105,6 +105,11 @@ extension LoggingStrings {
     /// Closing the date sheet.
     static let dayChangeDateDone = resource("logging.day.change-date.done")
 
+    // MARK: - Leaving the day (FR-18.4.1)
+
+    /// The button that names the exit. It writes nothing — see ``SessionExit``.
+    static let dayDoneAction = resource("logging.day.done.action")
+
     // MARK: - The rest of the screen
 
     /// Adding an exercise the plan did not name (`FR-1.2.2`).
@@ -139,6 +144,7 @@ extension LoggingStrings {
             dayMenuAction,
             dayChangeDateAction,
             dayChangeDateDone,
+            dayDoneAction,
             dayAddExerciseAction,
             dayNoRowsHeadline,
             dayNoRowsMessage,

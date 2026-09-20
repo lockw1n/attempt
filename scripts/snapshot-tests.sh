@@ -82,7 +82,10 @@ cd "$(dirname "$0")/.."
 #                     suite is — "above the 19" was a margin that only ever grew.
 #   ExerciseLibrary: 44 tests, all of them reference-backed, no probes -> 44, its own count.
 #   Logging:         97 tests, 92 reference-backed, a width probe and four layout budgets
-#                                                                    -> 96, its own count.
+#                                                                    -> 97, its own count.
+#                     T-18.07 moved `SUITES` and left this tail at 96, because its review commit
+#                     had no reason to re-read a comment block its implementation commit wrote.
+#                     Both halves are one edit; a second commit on one task is where they part.
 #   History:         28 tests, 27 reference-backed, one layout budget -> 28, above the 27.
 #   Dashboard:       21 tests, all of them reference-backed, no probes -> 21, its own count.
 #   Settings:        49 tests, all of them reference-backed, no probes -> 49, its own count.

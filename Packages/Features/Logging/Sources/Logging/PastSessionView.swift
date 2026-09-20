@@ -132,6 +132,9 @@ public struct PastSessionView: View {
         }
         .background(ColorToken.background)
         .navigationTitle(title)
+        // `Q-18.3` at (a): on both drawings, because the lifter does not know which one they are
+        // in and a toolbar that changed with the session's provenance would be a thing to explain.
+        .sessionDone(label: LoggingStrings.pastSessionDoneAction)
         // On every appearance, not once: this screen is returned to from the exercise detail
         // T-1.36 will link to, and the unit is changed in another tab.
         .task {

@@ -212,11 +212,11 @@ public struct ActiveSessionView: View {
             // longer fit the medium one.
             .presentationDetents([.medium, .large])
         }
-        // `FR-17.9.7`'s menu, shared with a day's checklist: the training day this workout
-        // belongs to lost its only control when `FR-17.8.7` took the date picker off Train's root,
-        // and Discard came here with it.
+        // `FR-17.9.7`'s menu, shared with a day's checklist — see `sessionOverflow`. Trailing and
+        // no Done, where a day is the other way round: this one ends at Finish below (`OUT-18.6`).
         .sessionOverflow(
             date: store.session?.date,
+            side: .trailing,
             changeDate: { day in Task { await store.changeDate(to: day) } },
             discard: { isConfirmingDiscard = true }
         )

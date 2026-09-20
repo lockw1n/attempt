@@ -241,6 +241,9 @@
 "logging.past-session.empty.message" = "Це тренування розпочали, але не додали до нього жодної вправи.";
 "logging.past-session.write-error.message" = "Не вдалося зберегти цю зміну. Нічого не втрачено — спробуйте ще раз.";
 
+/* The button that names the exit (FR-18.4.3). It writes nothing. */
+"logging.past-session.done.action" = "Готово";
+
 /* FR-15.3 — план проти факту, у тренуванні, що триває */
 "logging.session.exercise.marked-done" = "Позначено виконаним";
 "logging.session.exercise.skipped" = "Пропущено";
@@ -317,6 +320,9 @@
 "logging.day.menu.action" = "Дії з днем";
 "logging.day.change-date.action" = "Змінити дату";
 "logging.day.change-date.done" = "Готово";
+
+/* The button that names the exit (FR-18.4.1). It writes nothing. */
+"logging.day.done.action" = "Готово";
 "logging.day.add-exercise.action" = "Додати вправу";
 "logging.day.no-rows.headline" = "У цьому дні ще нічого немає";
 "logging.day.no-rows.message" = "Додайте вправу, щоб почати записувати.";

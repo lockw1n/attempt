@@ -112,11 +112,14 @@ public struct DayView: View {
             // never open at.
             .presentationDetents([.large])
         }
+        // Leading, beside Back (`FR-18.4.2`): the trailing corner is Done's now.
         .sessionOverflow(
             date: day.date,
+            side: .leading,
             changeDate: { chosen in Task { await day.changeDate(to: chosen) } },
             discard: { isConfirmingDiscard = true }
         )
+        .sessionDone(label: LoggingStrings.dayDoneAction)
         .confirmationDialog(
             Text(LoggingStrings.dayLogRemainingConfirmTitle(count: unansweredCount)),
             isPresented: $isConfirmingLogRemaining,

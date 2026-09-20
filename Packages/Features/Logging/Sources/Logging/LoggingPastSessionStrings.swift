@@ -37,12 +37,15 @@ extension LoggingStrings {
     /// What a failed correction says. The rows are unchanged, so the retry is the same edit again.
     static let pastSessionWriteErrorMessage = resource("logging.past-session.write-error.message")
 
+    /// The button that names the exit (`FR-18.4.3`). It writes nothing — see ``SessionExit``.
+    static let pastSessionDoneAction = resource("logging.past-session.done.action")
+
     /// This file's strings, for ``LoggingStrings/all``.
     static var allPastSessionStrings: [LocalizedStringResource] {
         [
             pastSessionTitle, pastSessionErrorHeadline, pastSessionErrorMessage,
             pastSessionMissingHeadline, pastSessionMissingMessage, pastSessionEmptyHeadline,
-            pastSessionEmptyMessage, pastSessionWriteErrorMessage,
+            pastSessionEmptyMessage, pastSessionWriteErrorMessage, pastSessionDoneAction,
         ]
     }
 }

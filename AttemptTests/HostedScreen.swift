@@ -167,6 +167,25 @@ final class HostedScreen {
         return element.accessibilityActivate() ? .activated : .refused
     }
 
+    /// Every element labelled `label` that answers to activation.
+    ///
+    /// **Separate from ``activate(label:)`` because a side is not an action.** `FR-18.4.2` is a
+    /// claim about where a toolbar item is drawn, and the only thing here that knows is the
+    /// element's own frame.
+    ///
+    /// **All of them rather than the first**, because a label is not an identifier: a screen may
+    /// carry two controls that say the same thing about different subjects — a day's `⋯` in the
+    /// toolbar and a row's `⋯` beside the row both read *Day options* — and a caller asking where
+    /// one of them is drawn has to say which.
+    ///
+    /// - Parameter label: The elements' accessibility label.
+    /// - Returns: Them, in the order the tree yields them.
+    func elements(labelled label: String) -> [NSObject] {
+        accessibilityElements().filter {
+            $0.accessibilityLabel == label && $0.accessibilityTraits.contains(.button)
+        }
+    }
+
     /// Walks one node of the accessibility tree.
     ///
     /// **`accessibilityElements` wins over `subviews` where a view publishes both**, which is what

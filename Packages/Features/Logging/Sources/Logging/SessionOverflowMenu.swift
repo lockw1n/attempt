@@ -71,23 +71,33 @@ extension View {
     ///   - date: The workout's training day, or `nil` where there is no workout — which is also
     ///     what hides the menu. A day nobody has logged into has no date to change and nothing to
     ///     discard, and a menu offering both would create the workout from the toolbar.
+    ///   - side: Which corner the `⋯` sits in. **Required, with no default** (`T-16.17`), because
+    ///     the two hosts now disagree: a planned day's menu moved leading to leave the trailing
+    ///     corner to Done (`FR-18.4.2`), and the free workout keeps its toolbar exactly
+    ///     (`OUT-18.6`). A default here would move one of them silently.
     ///   - changeDate: Moves the workout to another training day.
     ///   - discard: Asks whether to throw it away. The confirmation is the host's, `FR-1.2.12`
     ///     wanting one and a store being unable to ask.
     /// - Returns: The screen, with both.
     func sessionOverflow(
         date: Date?,
+        side: SessionToolbarSide,
         changeDate: @escaping (Date) -> Void,
         discard: @escaping () -> Void
     ) -> some View {
-        modifier(SessionOverflowModifier(date: date, changeDate: changeDate, discard: discard))
+        modifier(
+            SessionOverflowModifier(
+                date: date, side: side, changeDate: changeDate, discard: discard))
     }
 }
 
-/// See `sessionOverflow(date:changeDate:discard:)`.
+/// See `sessionOverflow(date:side:changeDate:discard:)`.
 struct SessionOverflowModifier: ViewModifier {
     /// The workout's training day, or `nil` where there is no workout.
     let date: Date?
+
+    /// Which corner the `⋯` sits in.
+    let side: SessionToolbarSide
 
     /// Moves the workout to another training day.
     let changeDate: (Date) -> Void
@@ -105,7 +115,7 @@ struct SessionOverflowModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItem(placement: side.placement) {
                     if let date {
                         SessionOverflowMenu(
                             changeDate: {

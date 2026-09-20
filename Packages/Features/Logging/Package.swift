@@ -58,7 +58,9 @@ let package = Package(
         ),
         .testTarget(
             name: "LoggingTests",
-            dependencies: ["Logging", "RepositoryFakes"],
+            // `AppNavigation` explicitly, not as a transitive import: `SessionExit` is what
+            // **Done** does (`FR-18.4.1`), and its whole subject is a `NavigationState`.
+            dependencies: ["Logging", "RepositoryFakes", "AppNavigation"],
             swiftSettings: settings
         ),
         // TR-1.12's references for this module's screens. A separate target from the one above for
