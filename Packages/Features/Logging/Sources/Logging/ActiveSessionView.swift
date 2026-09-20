@@ -217,7 +217,7 @@ public struct ActiveSessionView: View {
             contents: Self.menuContents(date: store.session?.date),
             side: .trailing,
             changeDate: { day in Task { await store.changeDate(to: day) } },
-            skipRemaining: nil,
+            skipRemaining: Self.skipRemainingIsNotOffered,
             discard: { isConfirmingDiscard = true }
         )
         .confirmationDialog(

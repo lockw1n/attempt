@@ -291,10 +291,10 @@ enum WeekPlanTargets {
 
     /// The same groups as a **list**, one entry each (`FR-18.3.1`).
     ///
-    /// **What a plan row draws, and ``rendered(_:unit:precision:locale:)`` is now the joined form
-    /// of it.** A row draws one line per group, so the separator above belongs to the places that
-    /// still need a sentence — the Log sheet's prefill and its comparison — rather than to the
-    /// screens.
+    /// **What a plan row draws, and the array-taking `rendered(_:unit:precision:locale:)` above is
+    /// the joined form of it.** A row draws one line per group, so the separator above belongs to
+    /// the places that still need a sentence — the Log sheet's prefill and its comparison —
+    /// rather than to the screens.
     ///
     /// - Parameters:
     ///   - targets: The groups, in order.

@@ -183,9 +183,12 @@ extension View {
     ///     corner to Done (`FR-18.4.2`), and the free workout keeps its toolbar exactly
     ///     (`OUT-18.6`). A default here would move one of them silently.
     ///   - changeDate: Moves the workout to another training day.
-    ///   - skipRemaining: Answers the rest of the day Skipped (`FR-18.4.4`), or `nil` on a host
-    ///     whose menu never holds that command. **Whether it is drawn is `contents`' answer**;
-    ///     this is only what the drawn one calls.
+    ///   - skipRemaining: Answers the rest of the day Skipped (`FR-18.4.4`). **Required, with no
+    ///     default and not optional**, on `side:`'s rule one line up: an optional handler beside a
+    ///     `contents` that decides whether the item is drawn is the same fact in two places, and
+    ///     the way they disagree is a menu row that does nothing when it is pressed. A host whose
+    ///     menu never holds the command says so in its `contents` and passes a handler that says
+    ///     so too — see ``ActiveSessionView/skipRemainingIsNotOffered()``.
     ///   - discard: Asks whether to take the workout back. The confirmation is the host's,
     ///     `FR-1.2.12` wanting one and a store being unable to ask.
     /// - Returns: The screen, with the menu and the sheet.
@@ -193,7 +196,7 @@ extension View {
         contents: SessionMenuContents,
         side: SessionToolbarSide,
         changeDate: @escaping (Date) -> Void,
-        skipRemaining: (() -> Void)?,
+        skipRemaining: @escaping () -> Void,
         discard: @escaping () -> Void
     ) -> some View {
         modifier(
@@ -217,8 +220,9 @@ struct SessionOverflowModifier: ViewModifier {
     /// Moves the workout to another training day.
     let changeDate: (Date) -> Void
 
-    /// Answers the rest of the day Skipped, or `nil` where that command is never drawn.
-    let skipRemaining: (() -> Void)?
+    /// Answers the rest of the day Skipped. Required even where the item is never drawn — see
+    /// `sessionOverflow(contents:side:changeDate:skipRemaining:discard:)`.
+    let skipRemaining: () -> Void
 
     /// Asks whether to take it back.
     let discard: () -> Void
@@ -242,7 +246,7 @@ struct SessionOverflowModifier: ViewModifier {
                                 chosenDate = date
                                 isChangingDate = true
                             },
-                            skipRemaining: { skipRemaining?() },
+                            skipRemaining: skipRemaining,
                             discard: discard)
                     }
                 }

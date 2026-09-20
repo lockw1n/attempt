@@ -23,6 +23,19 @@ extension ActiveSessionView {
             date: date, offersSkipRemaining: false, destructive: .discardWorkout)
     }
 
+    /// What **Skip remaining** would do on this screen, which is nothing (`OUT-18.6`).
+    ///
+    /// **A handler that says so, rather than the `nil` the modifier used to take.** An optional
+    /// handler beside a ``SessionMenuContents`` that decides whether the item is drawn is one fact
+    /// in two places, and the way the two disagree is a menu row that does nothing when it is
+    /// pressed — silent, and invisible to every test that reads the contents. The item is never
+    /// drawn here, ``menuContents(date:)`` saying so and
+    /// `SessionMenuContentsTests.theFreeWorkoutAsksForDiscard` holding it, so reaching this is a
+    /// wiring fault rather than a state.
+    static func skipRemainingIsNotOffered() {
+        assertionFailure("the free workout's menu never offers Skip remaining (`OUT-18.6`)")
+    }
+
     /// Finishes the workout and leaves the screen, unless the write failed.
     ///
     /// The screen stays open on a failure, with the workout still on it: nothing was stored, so the
