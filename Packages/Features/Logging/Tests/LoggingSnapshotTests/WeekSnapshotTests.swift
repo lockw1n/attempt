@@ -152,6 +152,28 @@
             }
         }
 
+        /// `FR-18.3.1`, `FR-18.3.2` and `NFR-18.2`, on the row that is hardest for all three: the
+        /// longest name the catalogue holds over a plan that names two groups.
+        ///
+        /// **Two rows, because the scheme column has two jobs.** The first is unanswered, which is
+        /// the column on its own; the second deviated, which is the column twice under two labels.
+        /// The `accessibility3` pair is where `NFR-18.2` is proved — 320 pt, narrower than any
+        /// device that runs iOS 26 — and the default pair is where a truncation invisible there
+        /// would be (`T-1.91`).
+        @Test func dayLongNameTwoGroups() throws {
+            try assertSnapshots(named: "Day-long-name") {
+                fixedEnvironment { DayFixtures.section(DayFixtures.longNameTwoGroups) }
+            }
+        }
+
+        /// The same pair of facts on the week's card (`FR-18.3.3`, `Q-18.2` at (a)): the name left
+        /// and wrapping, the scheme right, falling to the day row's shape at accessibility sizes.
+        @Test func weekLongNameTwoGroups() throws {
+            try assertSnapshots(named: "Week-long-name") {
+                fixedEnvironment { WeekFixtures.section(days: WeekFixtures.longNames) }
+            }
+        }
+
         @Test func theFirstDayIsInsideTheFirstScreen() throws {
             // DOD-17.12, asserted on the rendering's own height rather than by eye: on a six-day
             // week half done, the first card a lifter can act on has to have its HEADER inside the
@@ -208,6 +230,21 @@
             }
         }
 
+        /// `Q-18.2`'s card: one line whose name is the longest the catalogue holds and whose plan
+        /// names two groups, and one ordinary line under it so the numbers have a column to form.
+        static var longNames: [WeekDayCard] {
+            [
+                WeekDayCard(
+                    dayIndex: 0,
+                    name: "Chest day",
+                    plan: [
+                        line(DayFixtures.longName, targets: DayFixtures.twoGroups),
+                        line("Dumbbell Fly", grams: 12_000),
+                    ],
+                    progress: .notStarted)
+            ]
+        }
+
         /// A day drawn to its header and its command, with no plan under them — the height the
         /// budget above is measured to.
         ///
@@ -250,6 +287,21 @@
         ///   - grams: Its prescribed load, or `nil` for `FR-15.2.2`'s blank target.
         /// - Returns: The line.
         static func line(_ name: String, grams: Int?) -> WeekPlanLine {
+            line(
+                name,
+                targets: [
+                    WeekPlanTarget(
+                        id: UUID(), weight: grams.map { Weight(grams: $0) }, reps: 5, sets: 5)
+                ])
+        }
+
+        /// The same line over a plan that names more than one group (`FR-15.2.1`).
+        ///
+        /// - Parameters:
+        ///   - name: The lift.
+        ///   - targets: What it prescribes, in order.
+        /// - Returns: The line.
+        static func line(_ name: String, targets: [WeekPlanTarget]) -> WeekPlanLine {
             WeekPlanLine(
                 id: UUID(),
                 exercise: Exercise(
@@ -268,13 +320,7 @@
                     isCustom: false,
                     isArchived: false,
                     notes: ""),
-                targets: [
-                    WeekPlanTarget(
-                        id: UUID(),
-                        weight: grams.map { Weight(grams: $0) },
-                        reps: 5,
-                        sets: 5)
-                ])
+                targets: targets)
         }
     }
 
@@ -329,6 +375,35 @@
         /// `FR-1.2.2`'s added row: no plan at all.
         static var added: DayRow {
             row("Face Pull", plan: [])
+        }
+
+        /// The longest name the catalogue holds (`T-18.05`'s revision 4), which is what `NFR-18.2`
+        /// is measured against.
+        ///
+        /// **In the fixture's English slot rather than its Ukrainian one**, because these
+        /// references render `en_US_POSIX` — what is being pictured is a width, and the width is
+        /// the string's.
+        static let longName = "Жим у важільному тренажері на похилій лаві"
+
+        /// `FR-15.2.1`'s two groups, which no Phase 1.7 fixture had.
+        static var twoGroups: [WeekPlanTarget] {
+            [target(110_000, reps: 4, sets: 4), target(100_000, reps: 8, sets: 2)]
+        }
+
+        /// The longest name over a two-group plan, unanswered and answered (`FR-18.3.1`,
+        /// `FR-18.3.2`).
+        ///
+        /// **The second row deviated rather than as planned**, so the reference carries the case
+        /// that draws the column twice: two labels, four numbers, and one edge they all line up on.
+        static var longNameTwoGroups: [DayRow] {
+            [
+                row(longName, plan: twoGroups),
+                row(
+                    "Dumbbell Fly",
+                    plan: [target(12_000, reps: 12, sets: 3), target(14_000, reps: 10, sets: 3)],
+                    performed: [target(12_000, reps: 12, sets: 3), target(14_000, reps: 8, sets: 3)],
+                    answer: .logged),
+            ]
         }
 
         /// The day's rows, as the screen draws them.

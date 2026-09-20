@@ -468,7 +468,6 @@
 "logging.week.day.continue" = "Continue";
 "logging.week.day.progress %lld %lld" = "%1$lld of %2$lld done";
 "logging.week.day.done %@" = "Done · %@";
-"logging.week.plan.line %@ %@" = "%1$@ · %2$@";
 "logging.week.plan.target %@ %lld %lld" = "%1$@ × %2$lld × %3$lld";
 "logging.week.plan.target-open %lld %lld" = "%1$lld × %2$lld";
 "logging.week.plan.target.separator" = ", ";
@@ -488,9 +487,9 @@
 
 /* FR-17.9's day checklist (T-17.11). */
 "logging.day.row.skipped" = "Skipped";
-"logging.day.row.as-planned %@" = "%@ · as planned";
-"logging.day.row.planned %@" = "Planned %@";
-"logging.day.row.did %@" = "Did %@";
+"logging.day.row.as-planned" = "As planned";
+"logging.day.row.planned" = "Planned";
+"logging.day.row.did" = "Did";
 "logging.day.circle.action" = "Log as planned";
 "logging.day.log.action" = "Log";
 "logging.day.skip.action" = "Skip this exercise";

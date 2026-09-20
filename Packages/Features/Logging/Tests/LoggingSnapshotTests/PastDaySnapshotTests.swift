@@ -44,6 +44,16 @@
             }
         }
 
+        @Test func pastDayLongName() throws {
+            // `FR-18.3.4`, and the one thing the Train tab's own `Day-long-name` cannot picture:
+            // the circle is absent here, so the row's text column is WIDER than it is there. The
+            // scheme is the column that must not truncate at either width (`NFR-18.2`), and a
+            // reference taken only on the narrower one would be evidence about the narrower one.
+            try assertSnapshots(named: "Past-day-long-name") {
+                fixedEnvironment { PastFixtures.day(DayFixtures.longNameTwoGroups) }
+            }
+        }
+
         @Test func pastDayAdherence() throws {
             // `FR-17.7.3` and `FR-17.7.6`: the day's program position and its adherence, on the
             // line under the title where the active session draws the same two facts. The date is

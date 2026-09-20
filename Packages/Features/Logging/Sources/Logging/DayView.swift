@@ -368,9 +368,16 @@ struct DayChecklistSection: View {
                     // argument, and an absent one here has to stay absent there.
                     answer: answer.map { command in { command(row.id) } },
                     log: { log(row.id) },
-                    skip: skip.map { command in { command(row.id) } })
+                    skip: skip.map { command in { command(row.id) } },
+                    reservesCircle: reservesCircle)
             }
         }
+    }
+
+    /// Whether any row here carries `FR-17.9.2`'s circle, and therefore whether the ones that do
+    /// not keep its width — see ``DayExerciseRow/reservesCircle``.
+    private var reservesCircle: Bool {
+        answer != nil && rows.contains { $0.hasCircle }
     }
 }
 

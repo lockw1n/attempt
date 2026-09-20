@@ -21,29 +21,18 @@ extension LoggingStrings {
     /// What a row the lifter decided against says (`FR-17.9.6`).
     static let dayRowSkipped = resource("logging.day.row.skipped")
 
-    /// A row logged exactly as the plan prescribed it — one line rather than two.
+    /// What names a row logged exactly as the plan prescribed it — one line rather than two.
     ///
-    /// - Parameter performed: What was done, rendered.
-    /// - Returns: The line.
-    static func dayRowAsPlanned(performed: String) -> LocalizedStringResource {
-        resource("logging.day.row.as-planned \(performed)")
-    }
+    /// **A label rather than a format string** (`FR-18.3.2`). It read *%@ · as planned* while the
+    /// numbers were inside the sentence; they are a column of their own now
+    /// (``PlanSchemeRow``), so what is left is the word.
+    static let dayRowAsPlanned = resource("logging.day.row.as-planned")
 
-    /// The first of the two lines a row that deviated from the plan draws.
-    ///
-    /// - Parameter plan: What was prescribed, rendered.
-    /// - Returns: The line.
-    static func dayRowPlanned(plan: String) -> LocalizedStringResource {
-        resource("logging.day.row.planned \(plan)")
-    }
+    /// What names the first of the two lines a row that deviated from the plan draws.
+    static let dayRowPlanned = resource("logging.day.row.planned")
 
-    /// The second of them.
-    ///
-    /// - Parameter performed: What was done, rendered.
-    /// - Returns: The line.
-    static func dayRowDid(performed: String) -> LocalizedStringResource {
-        resource("logging.day.row.did \(performed)")
-    }
+    /// What names the second of them.
+    static let dayRowDid = resource("logging.day.row.did")
 
     // MARK: - The row's own commands (FR-17.9.2, FR-17.9.6)
 
@@ -132,9 +121,9 @@ extension LoggingStrings {
         [
             dayProgress(done: 2, of: 4),
             dayRowSkipped,
-            dayRowAsPlanned(performed: "100 kg × 5 × 5"),
-            dayRowPlanned(plan: "100 kg × 5 × 5"),
-            dayRowDid(performed: "100 kg × 5 × 4"),
+            dayRowAsPlanned,
+            dayRowPlanned,
+            dayRowDid,
             dayCircleAction,
             dayLogAction,
             daySkipAction,

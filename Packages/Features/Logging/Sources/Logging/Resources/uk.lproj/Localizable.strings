@@ -282,7 +282,6 @@
 "logging.week.day.continue" = "Продовжити";
 "logging.week.day.progress %lld %lld" = "%1$lld з %2$lld виконано";
 "logging.week.day.done %@" = "Виконано · %@";
-"logging.week.plan.line %@ %@" = "%1$@ · %2$@";
 "logging.week.plan.target %@ %lld %lld" = "%1$@ × %2$lld × %3$lld";
 "logging.week.plan.target-open %lld %lld" = "%1$lld × %2$lld";
 "logging.week.plan.target.separator" = ", ";
@@ -302,9 +301,9 @@
 
 /* FR-17.9's day checklist (T-17.11). */
 "logging.day.row.skipped" = "Пропущено";
-"logging.day.row.as-planned %@" = "%@ · як заплановано";
-"logging.day.row.planned %@" = "План: %@";
-"logging.day.row.did %@" = "Виконано: %@";
+"logging.day.row.as-planned" = "Як заплановано";
+"logging.day.row.planned" = "План";
+"logging.day.row.did" = "Виконано";
 "logging.day.circle.action" = "Записати як заплановано";
 "logging.day.log.action" = "Записати";
 "logging.day.skip.action" = "Пропустити цю вправу";
