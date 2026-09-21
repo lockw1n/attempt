@@ -1,0 +1,176 @@
+import DesignSystem
+import DesignTokens
+import Localization
+import PowerliftingCore
+import SwiftUI
+
+/// Everything `FR-17.1.6` says opens above the fold: the heading, **Weight** and **Reps**.
+///
+/// **Its own type because that requirement is a measurement rather than a picture**, and the
+/// measurement has to be taken over the thing the sheet draws rather than over a stack rebuilt in a
+/// test (T-16.17). It holds exactly what the requirement names and nothing else — so the assertion
+/// in `LogSheetSnapshotTests` is the requirement rather than a proxy for it, and a field added here
+/// later has to be argued against the budget rather than silently pushing Reps under the commands.
+///
+/// **Sets and the plate row are deliberately outside it.** Measured at the default type size: the
+/// heading, Weight, its plate row, Reps and Sets came to 447 pt, which with the pinned commands is
+/// 648.5 pt — inside the 667 pt of the smallest device the app supports only by the width of the
+/// status bar, and over it the moment anything wraps. `FR-17.1.6` asks for Weight and Reps, and the
+/// two rows that scroll are the two it does not name.
+struct SetEditorHead: View {
+    /// What the user has entered so far.
+    @Binding var draft: SetDraft
+
+    /// Which form is drawn.
+    let mode: SetEditorMode
+
+    /// The gym `FR-1.4.1`'s loading is worked out on.
+    let equipment: PlateCalculatorStore
+
+    /// Whether the load's field holds the keyboard (`FR-18.6.1`).
+    ///
+    /// **Taken on appearance, so the sheet opens on the number the lifter came to change.** The
+    /// flow that reaches this form has already named the exercise — the tester's complaint was that
+    /// the load then cost a tap of its own before a digit could be typed.
+    @FocusState private var isEnteringWeight: Bool
+
+    /// What is selected in the load's field.
+    ///
+    /// **Its own state because the whole value is selected on open, and only on open.** The field
+    /// arrives prefilled from the plan (`FR-17.1.1`), so a caret parked at one end turns the first
+    /// digit typed into `575` rather than `5` — worse than no focus at all. Tapping back into the
+    /// field later is not an open, and iOS's own caret placement stands.
+    @State private var weightSelection: TextSelection?
+
+    /// Whether the load has already been offered to the lifter whole.
+    ///
+    /// **What separates the open from every later tap**, which the focus state cannot do on its
+    /// own: a field regains focus whenever it is tapped, and re-selecting the whole load there
+    /// would take the caret away from someone who had aimed it at a digit.
+    @State private var hasSelectedOnOpen = false
+
+    /// The heading, the question where there is one, and the fields that decide what is written.
+    ///
+    /// **One head, so the load focused here is the only one there is.** A sheet drawing a section
+    /// per planned group (`FR-18.6.2`) has to say which section opens focused; nothing here does.
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.lg.points) {
+            heading
+            weightField
+            // A free workout keeps today's order — the plate row directly under the load it
+            // describes (`OUT-17.8`). A checklist row moves it below, into the scrolling fields.
+            if !mode.isRow {
+                SetEditorPlateRow(draft: $draft, equipment: equipment)
+            }
+            repsField
+            if mode.offersSetCount { setsField }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // Read here rather than in the row below it, so one read answers a weight the user steps
+        // through with the ± pair — and so the row does not re-read every time the field empties.
+        .task { await equipment.load() }
+        .onAppear { isEnteringWeight = true }
+        .onChange(of: isEnteringWeight) { selectTheLoadOnce() }
+    }
+
+    /// `FR-18.6.1`: the load, once it holds the keyboard, offers what it already says as a whole.
+    ///
+    /// **Written after the focus arrives rather than beside it, and that is measured.** Set in the
+    /// same `onAppear` that takes the focus, the selection is discarded — the field places its own
+    /// caret as it becomes first responder, and what it places it over is the end of the value. So
+    /// the order is focus, then selection, and this is what the focus arriving calls.
+    ///
+    /// Both rules it applies are ``SetEditorFocus``'; what is here is the assignment.
+    private func selectTheLoadOnce() {
+        guard SetEditorFocus.isOpening(isFocused: isEnteringWeight, hasOpened: hasSelectedOnOpen)
+        else {
+            return
+        }
+        hasSelectedOnOpen = true
+        weightSelection = SetEditorFocus.selectionOnOpen(of: draft.weightText)
+    }
+
+    /// One word, and on a checklist row the question the sheet is asking (`FR-17.1.6`).
+    private var heading: some View {
+        VStack(alignment: .leading, spacing: Spacing.xxs.points) {
+            Text(mode.heading)
+                .font(Typography.sectionHeading.font)
+                .foregroundStyle(ColorToken.textPrimary)
+            if mode.isRow {
+                Text(LoggingStrings.setEditorQuestion)
+                    .font(Typography.caption.font)
+                    .foregroundStyle(ColorToken.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The load, its unit, and the ± pair that steps it by `G-3.3`'s display increment.
+    private var weightField: some View {
+        FieldRow(label: Text(LoggingStrings.setWeightLabel), hint: nil) {
+            HStack(spacing: Spacing.sm.points) {
+                SetEditorControls.stepButton(
+                    symbolName: "minus", label: LoggingStrings.setWeightDecrease
+                ) {
+                    draft = draft.adjustingWeight(by: -1)
+                }
+                SetEditorControls.numberField(
+                    text: $draft.weightText,
+                    selection: $weightSelection,
+                    label: LoggingStrings.setWeightLabel
+                )
+                .focused($isEnteringWeight)
+                Text(LoggingStrings.setUnitSymbol(for: draft.unit))
+                    .font(Typography.numericValue.font)
+                    .foregroundStyle(ColorToken.textSecondary)
+                SetEditorControls.stepButton(
+                    symbolName: "plus", label: LoggingStrings.setWeightIncrease
+                ) {
+                    draft = draft.adjustingWeight(by: 1)
+                }
+            }
+        }
+    }
+
+    /// The repetitions, and the ± pair that steps them one at a time.
+    private var repsField: some View {
+        FieldRow(label: Text(LoggingStrings.setRepsLabel), hint: nil) {
+            HStack(spacing: Spacing.sm.points) {
+                SetEditorControls.stepButton(
+                    symbolName: "minus", label: LoggingStrings.setRepsDecrease
+                ) {
+                    draft = draft.adjustingReps(by: -1)
+                }
+                SetEditorControls.numberField(
+                    text: $draft.repsText, label: LoggingStrings.setRepsLabel)
+                SetEditorControls.stepButton(
+                    symbolName: "plus", label: LoggingStrings.setRepsIncrease
+                ) {
+                    draft = draft.adjustingReps(by: 1)
+                }
+            }
+        }
+    }
+
+    /// How many sets of it (`FR-17.1.1`), floored at one by its ± pair.
+    private var setsField: some View {
+        FieldRow(label: Text(LoggingStrings.setSetsLabel), hint: nil) {
+            HStack(spacing: Spacing.sm.points) {
+                SetEditorControls.stepButton(
+                    symbolName: "minus", label: LoggingStrings.setSetsDecrease
+                ) {
+                    draft = draft.adjustingSets(by: -1)
+                }
+                SetEditorControls.numberField(
+                    text: $draft.setsText, label: LoggingStrings.setSetsLabel)
+                SetEditorControls.stepButton(
+                    symbolName: "plus", label: LoggingStrings.setSetsIncrease
+                ) {
+                    draft = draft.adjustingSets(by: 1)
+                }
+            }
+        }
+    }
+}

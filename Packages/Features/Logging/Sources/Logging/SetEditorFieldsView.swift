@@ -170,129 +170,6 @@ struct SetEditorFields: View {
     }
 }
 
-/// Everything `FR-17.1.6` says opens above the fold: the heading, **Weight** and **Reps**.
-///
-/// **Its own type because that requirement is a measurement rather than a picture**, and the
-/// measurement has to be taken over the thing the sheet draws rather than over a stack rebuilt in a
-/// test (T-16.17). It holds exactly what the requirement names and nothing else — so the assertion
-/// in `LogSheetSnapshotTests` is the requirement rather than a proxy for it, and a field added here
-/// later has to be argued against the budget rather than silently pushing Reps under the commands.
-///
-/// **Sets and the plate row are deliberately outside it.** Measured at the default type size: the
-/// heading, Weight, its plate row, Reps and Sets came to 447 pt, which with the pinned commands is
-/// 648.5 pt — inside the 667 pt of the smallest device the app supports only by the width of the
-/// status bar, and over it the moment anything wraps. `FR-17.1.6` asks for Weight and Reps, and the
-/// two rows that scroll are the two it does not name.
-struct SetEditorHead: View {
-    /// What the user has entered so far.
-    @Binding var draft: SetDraft
-
-    /// Which form is drawn.
-    let mode: SetEditorMode
-
-    /// The gym `FR-1.4.1`'s loading is worked out on.
-    let equipment: PlateCalculatorStore
-
-    /// The heading, the question where there is one, and the fields that decide what is written.
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.lg.points) {
-            heading
-            weightField
-            // A free workout keeps today's order — the plate row directly under the load it
-            // describes (`OUT-17.8`). A checklist row moves it below, into the scrolling fields.
-            if !mode.isRow {
-                SetEditorPlateRow(draft: $draft, equipment: equipment)
-            }
-            repsField
-            if mode.offersSetCount { setsField }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        // Read here rather than in the row below it, so one read answers a weight the user steps
-        // through with the ± pair — and so the row does not re-read every time the field empties.
-        .task { await equipment.load() }
-    }
-
-    /// One word, and on a checklist row the question the sheet is asking (`FR-17.1.6`).
-    private var heading: some View {
-        VStack(alignment: .leading, spacing: Spacing.xxs.points) {
-            Text(mode.heading)
-                .font(Typography.sectionHeading.font)
-                .foregroundStyle(ColorToken.textPrimary)
-            if mode.isRow {
-                Text(LoggingStrings.setEditorQuestion)
-                    .font(Typography.caption.font)
-                    .foregroundStyle(ColorToken.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-    }
-
-    /// The load, its unit, and the ± pair that steps it by `G-3.3`'s display increment.
-    private var weightField: some View {
-        FieldRow(label: Text(LoggingStrings.setWeightLabel), hint: nil) {
-            HStack(spacing: Spacing.sm.points) {
-                SetEditorControls.stepButton(
-                    symbolName: "minus", label: LoggingStrings.setWeightDecrease
-                ) {
-                    draft = draft.adjustingWeight(by: -1)
-                }
-                SetEditorControls.numberField(
-                    text: $draft.weightText, label: LoggingStrings.setWeightLabel)
-                Text(LoggingStrings.setUnitSymbol(for: draft.unit))
-                    .font(Typography.numericValue.font)
-                    .foregroundStyle(ColorToken.textSecondary)
-                SetEditorControls.stepButton(
-                    symbolName: "plus", label: LoggingStrings.setWeightIncrease
-                ) {
-                    draft = draft.adjustingWeight(by: 1)
-                }
-            }
-        }
-    }
-
-    /// The repetitions, and the ± pair that steps them one at a time.
-    private var repsField: some View {
-        FieldRow(label: Text(LoggingStrings.setRepsLabel), hint: nil) {
-            HStack(spacing: Spacing.sm.points) {
-                SetEditorControls.stepButton(
-                    symbolName: "minus", label: LoggingStrings.setRepsDecrease
-                ) {
-                    draft = draft.adjustingReps(by: -1)
-                }
-                SetEditorControls.numberField(
-                    text: $draft.repsText, label: LoggingStrings.setRepsLabel)
-                SetEditorControls.stepButton(
-                    symbolName: "plus", label: LoggingStrings.setRepsIncrease
-                ) {
-                    draft = draft.adjustingReps(by: 1)
-                }
-            }
-        }
-    }
-
-    /// How many sets of it (`FR-17.1.1`), floored at one by its ± pair.
-    private var setsField: some View {
-        FieldRow(label: Text(LoggingStrings.setSetsLabel), hint: nil) {
-            HStack(spacing: Spacing.sm.points) {
-                SetEditorControls.stepButton(
-                    symbolName: "minus", label: LoggingStrings.setSetsDecrease
-                ) {
-                    draft = draft.adjustingSets(by: -1)
-                }
-                SetEditorControls.numberField(
-                    text: $draft.setsText, label: LoggingStrings.setSetsLabel)
-                SetEditorControls.stepButton(
-                    symbolName: "plus", label: LoggingStrings.setSetsIncrease
-                ) {
-                    draft = draft.adjustingSets(by: 1)
-                }
-            }
-        }
-    }
-}
-
 /// `FR-1.4.1`'s per-side loading for the weight the form holds, and the way into the whole answer.
 ///
 /// **Drawn only once that load parses** — a row over a blank field would be a control that starts
@@ -354,12 +231,23 @@ struct SetEditorPlateRow: View {
 enum SetEditorControls {
     /// One numeric field, at the logging touch target rather than the standard one (`G-4.3`).
     ///
+    /// **The selection binding is here rather than on a second field type** (`FR-18.6.1`): only the
+    /// load is opened with its contents selected, and a numeric field declared twice is a second
+    /// place `decimalKeyboard()` and the logging touch target can drift apart — which is the reason
+    /// this enum exists at all. A caller with no selection of its own passes none, and the field
+    /// then manages its own, exactly as the initializer without one does.
+    ///
     /// - Parameters:
     ///   - text: What it edits.
+    ///   - selection: Where the caret or the selected range sits. Omitted, the field decides.
     ///   - label: What it is called, drawn as the placeholder and announced.
     /// - Returns: The field.
-    static func numberField(text: Binding<String>, label: LocalizedStringResource) -> some View {
-        TextField(text: text) { Text(label) }
+    static func numberField(
+        text: Binding<String>,
+        selection: Binding<TextSelection?> = .constant(nil),
+        label: LocalizedStringResource
+    ) -> some View {
+        TextField(text: text, selection: selection) { Text(label) }
             .textFieldStyle(.plain)
             .font(Typography.numericValue.font)
             .foregroundStyle(ColorToken.textPrimary)
