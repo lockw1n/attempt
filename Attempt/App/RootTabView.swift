@@ -328,8 +328,15 @@ struct RootTabView: View {
     /// `ProgramDay` it is over and this sets the day and makes the push, the same join as
     /// ``routineExercisePickerRoot`` at the other end of the same wire. **It carries no route
     /// payload**: `RoutinesRoute.editWeek` holds nothing for the reason its own doc gives, and
-    /// which day is unfolded is a fact about the app rather than a parameter of a push — a
-    /// restored stack opens the editor with every day folded, as a fresh push from Train does.
+    /// which day is unfolded is a fact about the app rather than a parameter of a push.
+    ///
+    /// **So this writes a fact that outlives the push, and nothing clears it.** `openDayID` is set
+    /// here, by the editor's own disclosure headers and by a day being added; it is cleared only
+    /// when the day it names is removed. A later push from Train therefore opens at whatever was
+    /// last unfolded — this day, or the one the lifter left open — rather than fully folded. That
+    /// is the state the editor was already in before this wire existed, which is why no case here
+    /// resets it. Only a fresh process starts at `nil`, so a **restored** stack opens the editor
+    /// with every day folded.
     ///
     /// - Parameters:
     ///   - runID: The program run the route carried.

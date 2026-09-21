@@ -66,10 +66,15 @@ struct DayFixture {
 
     /// The day as `RootTabView` builds it.
     ///
-    /// **Edit plan is recorded rather than performed**: the real one sets the week editor's open
-    /// day and pushes `Route.routines(.editWeek)` (`FR-18.7.2`), and neither a push nor another
-    /// tab's store is a thing a hosted screen can be asked about. What is asserted here is the
-    /// half a host can see — whether the `⋯` is drawn at all.
+    /// **Edit plan does nothing here, and a recorder would be worse than nothing** (`FR-18.7.2`).
+    /// The real one sets the week editor's open day and pushes `Route.routines(.editWeek)`, and a
+    /// hosted screen can be asked about neither. Session 1 gave this fixture a box for the days the
+    /// closure was handed; review removed it, because **nothing here can make the closure run** —
+    /// the command is on the toolbar's `⋯`, which on iOS 26.5 holds one `UIDeferredMenuElement`
+    /// until it is opened, declines `accessibilityActivate()` and publishes an open menu's commands
+    /// into another window. A capture that can never be filled reads as coverage from the outside.
+    /// Which day is handed over is held by review and by `T-18.14`'s run on the simulator; what a
+    /// host can see is whether the `⋯` is drawn at all, which is `DayMenuTests`.
     ///
     /// - Returns: The screen.
     func dayView() -> some View {
@@ -83,23 +88,7 @@ struct DayFixture {
             programs: repositories.programs,
             routines: repositories.routines,
             exercises: repositories.exercises,
-            editPlan: { planEdits.append($0) })
-    }
-
-    /// The days **Edit plan** was asked for, in the order it was asked.
-    let planEdits = DayFixture.PlanEdits()
-
-    /// A box the screen's `editPlan` closure writes into — a `struct`'s `let` cannot be appended
-    /// to, and what a test wants is what the closure was handed.
-    @MainActor
-    final class PlanEdits {
-        /// The `ProgramDay` identities handed over, in order.
-        private(set) var days: [UUID] = []
-
-        /// Records one.
-        ///
-        /// - Parameter day: The `ProgramDay` the screen named.
-        func append(_ day: UUID) { days.append(day) }
+            editPlan: { _ in })
     }
 
     /// A past session as `RootTabView` builds it.
