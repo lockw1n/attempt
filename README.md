@@ -62,8 +62,8 @@ Packages/
 │   ├── Logging/             The Train tab — this week, a day, the active session and
 │   │                        everything logged into it
 │   ├── History/             Past training: sessions by month or by week, calendar, search
-│   ├── Dashboard/           e1RM tiles, the recent-PR feed, the week summary, the last-workout
-│   │                        card, and the first-launch state
+│   ├── Dashboard/           e1RM tiles, the recent-PR feed, the week summary, and the
+│   │                        first-launch state
 │   ├── Settings/            Preferences, data portability, sync, the bodyweight log
 │   └── Routines/            Editing the current week — its days in order, each day's exercises
 │                            and each exercise's target groups — on one screen
