@@ -31,7 +31,7 @@ struct FailingExerciseRepository: ExerciseRepository {
     func saveTrainingMax(_ entry: TrainingMaxEntry) async throws { throw failure }
 }
 
-/// Sessions that refuse every read, for `FR-1.9.2`'s error state.
+/// Sessions that refuse every read, for `FR-1.9.5`'s error state.
 struct FailingWorkoutRepository: WorkoutRepository {
     /// What every call throws.
     private let failure = RepositoryError.recordNotFound(id: UUID())

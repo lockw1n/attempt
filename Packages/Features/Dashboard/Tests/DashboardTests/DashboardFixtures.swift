@@ -85,7 +85,8 @@ struct DashboardFixture {
     ///   - entered: When the row was written, if that is not the training day (`FR-1.2.1`
     ///     backdates). Defaults to the training day, which is what a session logged the day it
     ///     happened looks like.
-    ///   - isFinished: Whether it has an end — what `FR-1.9.2` reads to choose resume or repeat.
+    ///   - isFinished: Whether it has an end. `FR-1.9.5`'s week counts a workout still open, so
+    ///     the unfinished case is a population the week has to be asked about.
     ///   - exercises: The exercises trained, in order, each with its sets.
     /// - Returns: The session's id.
     @discardableResult

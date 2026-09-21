@@ -10,12 +10,15 @@
 
     @testable import Dashboard
 
-    // TR-1.12 for FR-1.9.1, FR-1.9.2 and FR-1.9.4, on `RecentRecordsSnapshotTests`' terms: the
+    // TR-1.12 for FR-1.9.1, FR-1.9.5, FR-1.13.2 and FR-16.5.3 — what this suite still pictures,
+    // FR-1.9.2's card having gone with T-18.17 — on `RecentRecordsSnapshotTests`' terms: the
     // pieces are rendered rather than the screen, because the screen is three `.task`s over four
     // repositories and a reference through one is a reference over three spinners.
     //
     // THE REFERENCES PIN THEIR LOCALE AND THEIR TIME ZONE, for that file's reason — every tile
-    // renders a load and the card renders a day.
+    // renders a load, and `Dashboard-tile-picker` formats a date under a name (**Last trained**).
+    // That picker is what the time zone is pinned for now that the card is gone; `Dashboard-tiles`
+    // carries both pins beside it and needs the locale.
     //
     // WHAT IS NOT PICTURED is the `NavigationStack` the picker link needs to be a control, and the
     // shell the primary action reads its `NavigationState` from. Both are UIKit-backed or

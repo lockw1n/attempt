@@ -120,9 +120,10 @@ final class TiledExerciseSelectionState {
     /// runs whatever the first answered — a configured dashboard still wants its **Trained**
     /// section — but only once per visit; see ``trainedDates()``.
     ///
-    /// **A fresh read retires ``writeFailure``**, on `TrainingHomeView`'s rule: a failed
-    /// toggle is reported beside the rows it did not change, and those rows are exactly what this
-    /// replaces.
+    /// **A fresh read retires ``writeFailure``, and this is where that rule lives** — both
+    /// `RecentRecordsExercisesState/load()` and `RecentRecordsSettingsState/load()` cite it here. A
+    /// failed toggle is reported beside the rows it did not change, and those rows are exactly what
+    /// this replaces.
     func load() async {
         writeFailure = nil
         do {

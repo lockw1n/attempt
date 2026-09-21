@@ -64,9 +64,6 @@ public struct DashboardView: View {
     /// The catalogue: what the tiles are named after, and what the picker chooses among.
     private let catalogue: any ExerciseRepository
 
-    /// The sessions, for `FR-1.9.5`'s week.
-    private let workouts: any WorkoutRepository
-
     /// The settings row: the tile selection (`FR-1.9.1`) and the display unit (`G-3.1`).
     private let settings: any SettingsRepository
 
@@ -91,7 +88,8 @@ public struct DashboardView: View {
     /// - Parameters:
     ///   - records: The app's one recompute actor.
     ///   - catalogue: The exercises.
-    ///   - workouts: The sessions and what is under them.
+    ///   - workouts: The sessions `FR-1.9.5`'s week is read from. Held by ``WeekSummaryState``
+    ///     rather than by this view, which reads nothing of them itself.
     ///   - settings: The settings row.
     ///   - trainingMaxes: Where `FR-15.1.8`'s training max under each tile is stored.
     public init(
@@ -103,7 +101,6 @@ public struct DashboardView: View {
     ) {
         self.records = records
         self.catalogue = catalogue
-        self.workouts = workouts
         self.settings = settings
         self.trainingMaxes = trainingMaxes
         _week = State(initialValue: WeekSummaryState(workouts: workouts))
