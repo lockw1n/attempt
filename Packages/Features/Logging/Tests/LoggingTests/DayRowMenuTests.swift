@@ -61,12 +61,16 @@ struct DayRowMenuTests {
 
     @Test("A row holding logged sets asks first, and names how many")
     func aLoggedRowAsks() throws {
-        let row = Self.row(answer: .logged, performed: [Self.run(sets: 3), Self.run(sets: 3)])
+        // Eight, over a *Did* line that reads six: two warmups went in with the work, a reset
+        // removes them too, and the question names what the command does rather than what the row
+        // draws.
+        let row = Self.row(
+            answer: .logged, performed: [Self.run(sets: 3), Self.run(sets: 3)], loggedSetCount: 8)
 
         let question = try #require(DayView.resetConfirmation(for: row))
 
         #expect(question.rowID == row.id)
-        #expect(question.setCount == 6)
+        #expect(question.setCount == 8)
     }
 
     @Test("A skipped row resets without asking")
@@ -77,14 +81,32 @@ struct DayRowMenuTests {
         #expect(DayView.resetConfirmation(for: Self.row(answer: .skipped, performed: [])) == nil)
     }
 
+    @Test("A row that reads skipped over completed warmups still asks")
+    func aSkippedRowHoldingWarmupsAsks() throws {
+        // Warmups are not the work, so the row derives as skipped — and they are still completed
+        // sets a reset soft-deletes, which is what `FR-18.5.2` owes a question for.
+        let row = Self.row(answer: .skipped, performed: [], loggedSetCount: 2)
+
+        #expect(try #require(DayView.resetConfirmation(for: row)).setCount == 2)
+    }
+
     /// One row, with only what these claims read.
     ///
     /// - Parameters:
     ///   - answer: What has been said about it.
     ///   - performed: The runs behind it.
+    ///   - loggedSetCount: How many completed sets stand behind it, warmups included.
     /// - Returns: The row.
-    private static func row(answer: DayRowAnswer, performed: [WeekPlanTarget]) -> DayRow {
-        DayRow(id: UUID(), exercise: nil, plan: [], performed: performed, answer: answer)
+    private static func row(
+        answer: DayRowAnswer, performed: [WeekPlanTarget], loggedSetCount: Int = 0
+    ) -> DayRow {
+        DayRow(
+            id: UUID(),
+            exercise: nil,
+            plan: [],
+            performed: performed,
+            answer: answer,
+            loggedSetCount: loggedSetCount)
     }
 
     /// One run of `sets` sets at the fixture load.

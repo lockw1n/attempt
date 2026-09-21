@@ -181,6 +181,62 @@ struct DayResetTests {
         #expect(live.allSatisfy { !$0.isCompleted })
     }
 
+    @Test("The question counts every set the reset removes, warmups in and pending sets out")
+    func theCountIsWhatTheResetRemoves() async throws {
+        // `FR-18.5.2`: the *Did* line leaves warmups out and the reset does not, so a count read
+        // off the line would ask about three sets and remove five.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
+        let day = fixture.dayStore(dayIndex: 0)
+        await day.load()
+        await day.answerAsPlanned(rowID: try #require(day.rows.first).id)
+        let entryID = try await fixture.firstEntryID(day: 0)
+        try await fixture.writePendingSet(entryID: entryID, order: 9)
+        let pending = try #require(
+            try await fixture.stack.workouts.sets(forEntryID: entryID, includingDeleted: false)
+                .first { !$0.isCompleted })
+        // Two warmups against one pending set, so a count that took the pending set in and left
+        // the warmups out would read four rather than agree by accident.
+        try await fixture.stack.workouts.save(Self.completedWarmup(from: pending, order: 10))
+        try await fixture.stack.workouts.save(Self.completedWarmup(from: pending, order: 11))
+        await day.load()
+
+        let asked = try #require(day.rows.first).loggedSetCount
+        #expect(asked == 5)
+
+        await day.reset(rowID: entryID)
+
+        let all = try await fixture.stack.workouts.sets(forEntryID: entryID, includingDeleted: true)
+        #expect(all.count { $0.deletedAt != nil } == asked)
+        #expect(try #require(day.rows.first).loggedSetCount == 0)
+    }
+
+    /// A completed warmup on the same entry as `set`.
+    ///
+    /// - Parameters:
+    ///   - set: Any set of the entry, for its columns.
+    ///   - order: Where the warmup sits.
+    /// - Returns: The record to save.
+    private static func completedWarmup(from set: SetEntry, order: Int) -> SetEntry {
+        SetEntry(
+            id: UUID(),
+            createdAt: set.createdAt,
+            updatedAt: set.updatedAt,
+            deletedAt: nil,
+            entryID: set.entryID,
+            order: order,
+            weight: Weight(grams: 40_000),
+            reps: 5,
+            rpe: nil,
+            rir: nil,
+            isWarmup: true,
+            isCompleted: true,
+            targetWeight: nil,
+            targetReps: nil,
+            modifiers: [],
+            notes: "",
+            completedAt: set.createdAt)
+    }
+
     @Test("A day nobody has logged into has no answer to take back and writes nothing")
     func resetOnAnUnstartedDayWritesNothing() async throws {
         let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)

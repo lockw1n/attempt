@@ -170,16 +170,19 @@ public struct DayView: View {
         } message: {
             Text(LoggingStrings.dayResetConfirmMessage)
         }
-        // `FR-18.5.2`: asked only where the row holds work, and it names how much. A skipped row
-        // has none, so ``resetConfirmation(for:)`` sends it straight through.
+        // `FR-18.5.2`: asked only where the row holds completed sets, and it names how many. A
+        // bare skip holds none, so ``resetConfirmation(for:)`` sends it straight through.
         .confirmationDialog(
-            Text(LoggingStrings.dayRowResetConfirmTitle(count: resetting?.setCount ?? 0)),
+            Text(LoggingStrings.dayRowResetConfirmTitle(count: askedSetCount)),
             isPresented: isConfirmingRowReset,
-            titleVisibility: .visible
-        ) {
+            titleVisibility: .visible,
+            presenting: resetting
+        ) { target in
+            // The target is handed in rather than read back off the state: the binding is cleared
+            // on the way out, and an action that read `resetting` would depend on which of the two
+            // SwiftUI does first.
             Button(role: .destructive) {
-                guard let rowID = resetting?.rowID else { return }
-                Task { await day.reset(rowID: rowID) }
+                Task { await day.reset(rowID: target.rowID) }
             } label: {
                 Text(LoggingStrings.dayRowResetConfirmAction)
             }
@@ -238,6 +241,10 @@ public struct DayView: View {
     /// Which row's **Reset to unanswered** is asking, and how many sets it would remove
     /// (`FR-18.5.1`, `FR-18.5.2`), or `nil`.
     @State private var resetting: DayRowResetTarget?
+
+    /// The count the last question named. Whole sets. Kept apart from ``resetting``, which is `nil`
+    /// again while the dialog animates out — the title would re-read as *Remove 0 logged sets?*.
+    @State private var askedSetCount = 0
 
     /// That, as the dialog's own presentation. Dismissing it is the question going away rather than
     /// an answer, so nothing is written.
@@ -360,11 +367,6 @@ public struct DayView: View {
             .joined(separator: String(localized: LoggingStrings.dayUnanswerableSeparator))
     }
 
-    /// Opens the Log sheet over one row (`FR-17.9.3`).
-    ///
-    /// A row the day no longer holds opens nothing: it went away underneath the checklist, which is
-    /// every command here's rule.
-    ///
     /// Takes a row's answer back, asking first where there is work to remove (`FR-18.5.1`).
     ///
     /// A row the day no longer holds resets nothing, on ``open(_:)``'s rule below.
@@ -376,9 +378,15 @@ public struct DayView: View {
             Task { await day.reset(rowID: rowID) }
             return
         }
+        askedSetCount = target.setCount
         resetting = target
     }
 
+    /// Opens the Log sheet over one row (`FR-17.9.3`).
+    ///
+    /// A row the day no longer holds opens nothing: it went away underneath the checklist, which is
+    /// every command here's rule.
+    ///
     /// - Parameter rowID: The row.
     private func open(_ rowID: UUID) {
         guard let row = day.editorRow(forRow: rowID) else { return }

@@ -84,6 +84,15 @@ public struct DayRow: Identifiable, Equatable, Sendable {
     /// row of five sets holding the 1RM through the 5RM carries one badge, not five.
     public let records: [SchemeMark]
 
+    /// How many sets a reset of this row would remove (`FR-18.5.2`). Whole sets, never negative.
+    ///
+    /// **Every completed set, warmups included, and no pending one** — exactly the rows
+    /// ``ActiveSessionStore/resetExercise(inEntryID:)`` soft-deletes, so the question names what
+    /// the command does. It is deliberately *not* the *Did* line's count: that line leaves warmups
+    /// out and a reset does not, and a row whose only completed sets are warmups reads as skipped
+    /// while still holding work the lifter is owed a question about.
+    public let loggedSetCount: Int
+
     /// Builds the row.
     ///
     /// - Parameters:
@@ -94,6 +103,7 @@ public struct DayRow: Identifiable, Equatable, Sendable {
     ///   - answer: What has been said about it.
     ///   - notes: The distinct notes on its working sets.
     ///   - records: The cells its work stands at.
+    ///   - loggedSetCount: How many completed sets stand behind it, warmups included.
     public init(
         id: UUID,
         exercise: Exercise?,
@@ -101,7 +111,8 @@ public struct DayRow: Identifiable, Equatable, Sendable {
         performed: [WeekPlanTarget] = [],
         answer: DayRowAnswer = .unanswered,
         notes: [String] = [],
-        records: [SchemeMark] = []
+        records: [SchemeMark] = [],
+        loggedSetCount: Int = 0
     ) {
         self.id = id
         self.exercise = exercise
@@ -110,21 +121,11 @@ public struct DayRow: Identifiable, Equatable, Sendable {
         self.answer = answer
         self.notes = notes
         self.records = records
+        self.loggedSetCount = loggedSetCount
     }
 
     /// Whether the row carries `FR-17.9.2`'s circle — see ``DayRowCircle``.
     public var hasCircle: Bool { DayRowCircle.isOffered(answer: answer, plan: plan) }
-
-    /// How many working sets this row's answer stands on (`FR-18.5.2`).
-    ///
-    /// **What a reset would remove, as the lifter can see it.** The confirmation names this number,
-    /// and a row that reads zero is one whose answer was a skip — which is why that one resets
-    /// without asking.
-    ///
-    /// **Counted off ``performed``, which is the *Did* line's own runs**, so the question and the
-    /// picture cannot disagree: warmups are not the work anywhere in this app (``DayPerformance``),
-    /// and a count that included them would offer to remove six sets from a row displaying four.
-    public var loggedSetCount: Int { performed.reduce(0) { $0 + $1.sets } }
 
     /// Whether what was logged is exactly what was planned (`FR-17.9.3`).
     ///
@@ -180,7 +181,8 @@ extension DayRow {
             notes: DayPerformance.notes(of: exercise.sets),
             // The runs' own identifiers, which are their first sets' — the identifier the cache
             // names a run by.
-            records: performed.flatMap { marks.marks(forSetID: $0.id) })
+            records: performed.flatMap { marks.marks(forSetID: $0.id) },
+            loggedSetCount: exercise.sets.count(where: \.isCompleted))
     }
 }
 

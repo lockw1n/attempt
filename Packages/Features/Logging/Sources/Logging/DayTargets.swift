@@ -8,15 +8,15 @@ import RepositoryInterface
 /// Which row's answer is being taken back, and what the question names (`FR-18.5.1`,
 /// `FR-18.5.2`).
 ///
-/// **The count is carried rather than looked up when the dialog draws.** A `confirmationDialog`
-/// renders its title from the state as it was when the question was raised, and a reset that landed
-/// underneath it would otherwise have the question re-read as *Remove 0 logged sets?* on its way
-/// out.
+/// **The count is carried rather than looked up when the dialog draws**, so a re-read landing
+/// underneath an open question cannot change what it asks. The screen keeps the last count asked
+/// beside this (``DayView``'s `askedSetCount`), because the target is `nil` again while the dialog
+/// animates out and the title is still on screen then.
 struct DayRowResetTarget: Identifiable, Equatable {
     /// The row.
     let rowID: UUID
 
-    /// How many working sets it would remove — see ``DayRow/loggedSetCount``.
+    /// How many sets it would remove. Whole sets, at least 1 — see ``DayRow/loggedSetCount``.
     let setCount: Int
 
     /// The row's identity is the question's.
