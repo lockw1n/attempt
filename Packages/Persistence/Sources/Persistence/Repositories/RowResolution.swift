@@ -82,8 +82,15 @@ private func loses<T: StoredEntity>(_ left: T, _ right: T) -> Bool {
 /// `updatedAt` (`G-2.4`), so the row just deleted *is* the winner, and hiding the winner hides the
 /// record.
 ///
-/// **Linear in the rows already fetched** — one dictionary, one pass, no second fetch. A group of
-/// one, which is every row of a store nothing has duplicated, is carried through untouched.
+/// **Linear in the rows fetched** — one dictionary, one pass, no second fetch. A group of one,
+/// which is every row of a store nothing has duplicated, is carried through untouched.
+///
+/// **The fetch behind it is wider than it was, and that is what resolve-then-filter costs.** A
+/// resolved read asks the store for the soft-deleted rows too and drops them here, where a
+/// live-only read let the store drop them before they were ever materialised. Deletion is soft
+/// (`G-1.3`) and nothing reclaims rows on a lifter's device, so that population only grows. No
+/// requirement asks for a figure at the size this app is used at; the trade is written down so the
+/// next reader weighs it rather than rediscovers it.
 private func oneRowPerID<T: StoredEntity>(_ rows: [T], includingDeleted: Bool) -> [T] {
     var winner: [UUID: Int] = [:]
     var picked: [T] = []
@@ -162,8 +169,18 @@ extension ModelContext {
     ///
     /// **A list keyed on a join column needs this as much as a whole table does.** The entries of a
     /// session, the sets of an exercise, a routine's target groups — each is a set of *different*
-    /// ids, any one of which may have been duplicated, so the rule applies per id there exactly as
-    /// it does to a read of everything.
+    /// ids, any one of which may have been duplicated, so the rule applies per id there too.
+    ///
+    /// **`predicate` narrows the match set before the rule runs, and `deletedAt` is the only
+    /// column exempt.** The deleted flag is held back until the winner is known because it is
+    /// applied here, in Swift; every other column a caller filters on is applied by the store, so
+    /// a pair whose halves *disagree* about that column is resolved among the halves that matched
+    /// and a loser can stand in for a winner the predicate excluded. ``SwiftDataProgramRepository``
+    /// has the reachable instance: twins where the winner carries `endedAt` and the stale twin does
+    /// not make `currentRun()` answer with the ended run. **This is not decided here and is not
+    /// fixed here** — closing it means fetching by `id` and re-applying `predicate` to the winner,
+    /// which needs a fifth per-type predicate on ``StoredEntity``, since building one in this
+    /// generic context is the `-O` crash that protocol's own comment measures.
     func resolvedRows<T: StoredEntity>(
         _ type: T.Type,
         matching predicate: Predicate<T>,

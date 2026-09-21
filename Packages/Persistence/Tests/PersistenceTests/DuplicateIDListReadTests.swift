@@ -17,21 +17,10 @@ import Testing
 //
 // Each expectation is anchored to the winner **by a value**, never to `count == 1` alone: a read
 // that kept the loser and dropped the winner satisfies the count and is exactly the defect.
-
-/// A row carrying `record`, stamped `updatedAt` — one half of a duplicate pair.
-///
-/// Built through `init(record:)` so the pair differs in the column the test reads back and in
-/// nothing else, whatever the table.
-private func twin<T: RecordMappable>(
-    _ record: T.Record, as type: T.Type, updatedAt: Date
-) -> T {
-    let row = T(record: record)
-    row.updatedAt = updatedAt
-    return row
-}
-
-private let older = Date(timeIntervalSince1970: 1_600_000_000)
-private let newer = Date(timeIntervalSince1970: 1_600_003_600)
+//
+// **One read per repository is what this file holds, and `DuplicateIDCallSiteTests` says why that
+// is not the whole claim** — the other fourteen call sites the rule reached have their own tests
+// there.
 
 @Suite("A list read returns one row per id")
 struct DuplicateIDListReadTests {
@@ -40,8 +29,8 @@ struct DuplicateIDListReadTests {
         let harness = try RepositoryHarness()
         let id = UUID()
         try harness.seed([
-            twin(exerciseRecord(id: id, name: "older"), as: ExerciseEntity.self, updatedAt: older),
-            twin(exerciseRecord(id: id, name: "newer"), as: ExerciseEntity.self, updatedAt: newer),
+            twin(exerciseRecord(id: id, name: "older"), as: ExerciseEntity.self, updatedAt: twinOlder),
+            twin(exerciseRecord(id: id, name: "newer"), as: ExerciseEntity.self, updatedAt: twinNewer),
         ])
 
         #expect(
@@ -57,11 +46,11 @@ struct DuplicateIDListReadTests {
             twin(
                 profileRecord(id: id, name: "older"),
                 as: EquipmentProfileEntity.self,
-                updatedAt: older),
+                updatedAt: twinOlder),
             twin(
                 profileRecord(id: id, name: "newer"),
                 as: EquipmentProfileEntity.self,
-                updatedAt: newer),
+                updatedAt: twinNewer),
         ])
 
         #expect(
@@ -77,11 +66,11 @@ struct DuplicateIDListReadTests {
             twin(
                 bodyweightRecord(id: id, grams: 80_000),
                 as: BodyweightEntryEntity.self,
-                updatedAt: older),
+                updatedAt: twinOlder),
             twin(
                 bodyweightRecord(id: id, grams: 81_000),
                 as: BodyweightEntryEntity.self,
-                updatedAt: newer),
+                updatedAt: twinNewer),
         ])
 
         let read = try await harness.stack.bodyweight.entries(
@@ -94,8 +83,8 @@ struct DuplicateIDListReadTests {
         let harness = try RepositoryHarness()
         let id = UUID()
         try harness.seed([
-            twin(routineRecord(id: id, name: "older"), as: RoutineEntity.self, updatedAt: older),
-            twin(routineRecord(id: id, name: "newer"), as: RoutineEntity.self, updatedAt: newer),
+            twin(routineRecord(id: id, name: "older"), as: RoutineEntity.self, updatedAt: twinOlder),
+            twin(routineRecord(id: id, name: "newer"), as: RoutineEntity.self, updatedAt: twinNewer),
         ])
 
         #expect(
@@ -108,8 +97,8 @@ struct DuplicateIDListReadTests {
         let harness = try RepositoryHarness()
         let id = UUID()
         try harness.seed([
-            twin(programRecord(id: id, name: "older"), as: ProgramEntity.self, updatedAt: older),
-            twin(programRecord(id: id, name: "newer"), as: ProgramEntity.self, updatedAt: newer),
+            twin(programRecord(id: id, name: "older"), as: ProgramEntity.self, updatedAt: twinOlder),
+            twin(programRecord(id: id, name: "newer"), as: ProgramEntity.self, updatedAt: twinNewer),
         ])
 
         #expect(
@@ -125,11 +114,11 @@ struct DuplicateIDListReadTests {
             twin(
                 sessionRecord(id: id, notes: "older"),
                 as: WorkoutSessionEntity.self,
-                updatedAt: older),
+                updatedAt: twinOlder),
             twin(
                 sessionRecord(id: id, notes: "newer"),
                 as: WorkoutSessionEntity.self,
-                updatedAt: newer),
+                updatedAt: twinNewer),
         ])
 
         let read = try await harness.stack.workouts.sessions(
@@ -149,11 +138,11 @@ struct DuplicateIDListReadTests {
             twin(
                 entryRecord(id: id, sessionID: session, exerciseID: exercise, order: 0),
                 as: ExerciseEntryEntity.self,
-                updatedAt: older),
+                updatedAt: twinOlder),
             twin(
                 entryRecord(id: id, sessionID: session, exerciseID: exercise, order: 3),
                 as: ExerciseEntryEntity.self,
-                updatedAt: newer),
+                updatedAt: twinNewer),
         ])
 
         let read = try await harness.stack.workouts.entries(
@@ -170,11 +159,11 @@ struct DuplicateIDListReadTests {
             twin(
                 setRecord(id: id, entryID: entry, grams: 100_000),
                 as: SetEntryEntity.self,
-                updatedAt: older),
+                updatedAt: twinOlder),
             twin(
                 setRecord(id: id, entryID: entry, grams: 102_500),
                 as: SetEntryEntity.self,
-                updatedAt: newer),
+                updatedAt: twinNewer),
         ])
 
         let read = try await harness.stack.workouts.sets(forEntryID: entry, includingDeleted: false)
@@ -189,14 +178,14 @@ struct DuplicateIDListReadTests {
         try harness.seed([
             twin(
                 trainingMaxHistoryRecord(
-                    id: id, exerciseID: exercise, effectiveFrom: older, grams: 180_000),
+                    id: id, exerciseID: exercise, effectiveFrom: twinOlder, grams: 180_000),
                 as: TrainingMaxHistoryEntity.self,
-                updatedAt: older),
+                updatedAt: twinOlder),
             twin(
                 trainingMaxHistoryRecord(
-                    id: id, exerciseID: exercise, effectiveFrom: older, grams: 185_000),
+                    id: id, exerciseID: exercise, effectiveFrom: twinOlder, grams: 185_000),
                 as: TrainingMaxHistoryEntity.self,
-                updatedAt: newer),
+                updatedAt: twinNewer),
         ])
 
         let read = try await harness.stack.trainingMaxes.history(
@@ -213,8 +202,8 @@ struct DuplicateIDListReadTests {
         let exercise = UUID()
         let id = UUID()
         try harness.seed([
-            cachedRecord(id: id, exerciseID: exercise, grams: 140_000, updatedAt: older),
-            cachedRecord(id: id, exerciseID: exercise, grams: 145_000, updatedAt: newer),
+            cachedRecord(id: id, exerciseID: exercise, grams: 140_000, updatedAt: twinOlder),
+            cachedRecord(id: id, exerciseID: exercise, grams: 145_000, updatedAt: twinNewer),
         ])
 
         let all = try await harness.stack.personalRecords.personalRecords(includingDeleted: false)
@@ -225,10 +214,11 @@ struct DuplicateIDListReadTests {
     }
 
     // The settings row is the one table with no resolved list read, and that is not an oversight:
-    // both of its reads hand every row to a write — `settings()` resolves among them itself and
-    // `write(_:refusingAForeignIdentity:)` updates all of them. Two installs bootstrap two settings
-    // rows with **different** ids, which rule 2 already decides; a duplicated settings *id* is
-    // written by both reads exactly as a duplicated anything else is.
+    // neither of its two reads is a list read. `settings()` fetches every row, resolves among them
+    // itself and returns one; `write(_:refusingAForeignIdentity:)` fetches every row and updates
+    // all of them. Two installs bootstrap two settings rows with **different** ids, which rule 2
+    // already decides; a duplicated settings *id* is resolved by the first and written by the
+    // second exactly as a duplicated anything else is.
 }
 
 @Suite("Resolve first, then hide what was deleted")
@@ -241,10 +231,10 @@ struct DuplicateIDSoftDeleteTests {
         let harness = try RepositoryHarness()
         let id = UUID()
         let loser = twin(
-            exerciseRecord(id: id, name: "older"), as: ExerciseEntity.self, updatedAt: older)
+            exerciseRecord(id: id, name: "older"), as: ExerciseEntity.self, updatedAt: twinOlder)
         let winner = twin(
-            exerciseRecord(id: id, name: "newer"), as: ExerciseEntity.self, updatedAt: newer)
-        winner.markDeleted(at: newer)
+            exerciseRecord(id: id, name: "newer"), as: ExerciseEntity.self, updatedAt: twinNewer)
+        winner.markDeleted(at: twinNewer)
         try harness.seed([loser, winner])
 
         let exercises = harness.stack.exercises
@@ -267,11 +257,11 @@ struct DuplicateIDSoftDeleteTests {
             twin(
                 bodyweightRecord(id: id, grams: 81_000),
                 as: BodyweightEntryEntity.self,
-                updatedAt: older),
+                updatedAt: twinOlder),
             twin(
                 bodyweightRecord(id: id, grams: 81_000),
                 as: BodyweightEntryEntity.self,
-                updatedAt: newer),
+                updatedAt: twinNewer),
         ])
 
         try await harness.stack.bodyweight.deleteEntry(id: id)
@@ -291,8 +281,8 @@ struct DuplicateIDSoftDeleteTests {
         let harness = try RepositoryHarness()
         let id = UUID()
         try harness.seed([
-            twin(exerciseRecord(id: id, name: "older"), as: ExerciseEntity.self, updatedAt: older),
-            twin(exerciseRecord(id: id, name: "newer"), as: ExerciseEntity.self, updatedAt: newer),
+            twin(exerciseRecord(id: id, name: "older"), as: ExerciseEntity.self, updatedAt: twinOlder),
+            twin(exerciseRecord(id: id, name: "newer"), as: ExerciseEntity.self, updatedAt: twinNewer),
         ])
 
         try await harness.stack.exercises.save(exerciseRecord(id: id, name: "edited"))
@@ -310,30 +300,35 @@ struct DuplicateIDSoftDeleteTests {
 
 @Suite("Two seeded twins answer the same way every time")
 struct DuplicateIDStabilityTests {
-    // The benign form of the residual `RowResolution`'s header names: one id, one `updatedAt` and
-    // equal contents, which is what two installs seeding the same catalogue produce. The order is
-    // total over what it compares and says nothing beyond that — so what is pinned here is that the
-    // answer does not *move*. `fetchLimit = 1` over a tie answered this 13/7 across runs; nothing
-    // may bring that back by another door.
+    // The residual `RowResolution`'s header names: one id, one `updatedAt`, no column left to
+    // separate the pair. The order is total over what it compares and says nothing beyond that —
+    // so what is pinned here is that the answer does not *move*. `fetchLimit = 1` over a tie
+    // answered this 13/7 across runs; nothing may bring that back by another door.
+    //
+    // **THE TWINS DISAGREE ABOUT THE NAME, AND THEY HAVE TO.** Two installs seeding one catalogue
+    // produce twins with *equal* contents, which is the benign form — and a fixture in that shape
+    // cannot witness this claim at all: with both rows reading "Back Squat" no observation
+    // distinguishes them, so the test collapses to `count == 1`, the one thing the header of this
+    // file says never to anchor on alone. Measured: randomising the tie-break inside `oneRowPerID`
+    // left the equal-contents version green. Naming the rows costs nothing, because the assertion
+    // below still does not say *which* of the two is legal — only that twenty reads agree.
     @Test("Twenty reads of a tied pair give one row, and the same one")
     func aTiedPairIsStable() async throws {
         let harness = try RepositoryHarness()
         let id = UUID()
         try harness.seed([
-            twin(
-                exerciseRecord(id: id, name: "Back Squat"),
-                as: ExerciseEntity.self,
-                updatedAt: newer),
-            twin(
-                exerciseRecord(id: id, name: "Back Squat"),
-                as: ExerciseEntity.self,
-                updatedAt: newer),
+            twin(exerciseRecord(id: id, name: "left"), as: ExerciseEntity.self, updatedAt: twinNewer),
+            twin(exerciseRecord(id: id, name: "right"), as: ExerciseEntity.self, updatedAt: twinNewer),
         ])
 
+        var answers: Set<String> = []
         for _ in 0..<20 {
             let read = try await harness.stack.exercises.exercises(includingDeleted: false)
-            #expect(read.map(\.name) == ["Back Squat"])
+            #expect(read.count == 1)
+            answers.formUnion(read.map(\.name))
         }
+        #expect(answers.count == 1)
+        #expect(answers.isSubset(of: ["left", "right"]))
     }
 }
 
@@ -349,9 +344,9 @@ struct DuplicateIDPurgeTests {
         let cutoff = Date(timeIntervalSince1970: 1_500_000)
         let id = UUID()
         let loser = twin(
-            exerciseRecord(id: id, name: "older"), as: ExerciseEntity.self, updatedAt: older)
+            exerciseRecord(id: id, name: "older"), as: ExerciseEntity.self, updatedAt: twinOlder)
         let winner = twin(
-            exerciseRecord(id: id, name: "newer"), as: ExerciseEntity.self, updatedAt: newer)
+            exerciseRecord(id: id, name: "newer"), as: ExerciseEntity.self, updatedAt: twinNewer)
         loser.markDeleted(at: longAgo)
         winner.markDeleted(at: longAgo)
         try harness.seed([loser, winner])
@@ -393,25 +388,4 @@ struct DoublySeededCatalogueTests {
         #expect(listed.count == 132)
         #expect(Set(listed.map(\.id)).count == 132)
     }
-}
-
-/// One cached record row, built through the entity because the cache is written by a
-/// reconciliation rather than from a record.
-private func cachedRecord(
-    id: UUID, exerciseID: UUID, grams: Int, updatedAt: Date
-) -> PersonalRecordCacheEntity {
-    let row = PersonalRecordCacheEntity(
-        exerciseID: exerciseID,
-        repCount: 5,
-        setCount: 1,
-        weightGrams: grams,
-        sourceSetID: UUID(),
-        achievedAt: older,
-        previousWeightGrams: nil,
-        computationVersion: 1,
-        createdAt: older,
-        updatedAt: updatedAt
-    )
-    row.id = id
-    return row
 }
