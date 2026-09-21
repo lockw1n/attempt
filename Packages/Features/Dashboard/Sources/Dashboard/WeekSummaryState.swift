@@ -10,8 +10,8 @@ struct WeekSummary: Sendable, Equatable {
     /// **A session with nothing performed in it is not a workout here.** The population is
     /// ``DerivedValues/Tonnage/counts(_:)``, the same one the volume beside it is summed over, so a
     /// session opened and abandoned does not raise the count while contributing nothing to the load.
-    /// A workout still in progress *does* count, on `LastWorkoutState`'s rule: it is training that
-    /// happened this week whether or not it has been closed.
+    /// A workout still in progress *does* count: it is training that happened this week whether or
+    /// not it has been closed.
     let workoutCount: Int
 
     /// The load moved, over the sets ``DerivedValues/Tonnage`` can weigh.
@@ -36,7 +36,8 @@ final class WeekSummaryState {
     /// Whether any session has ever been logged — `FR-1.13.2`'s whole question.
     ///
     /// **Sessions, not working sets.** A lifter who opened a workout and logged nothing is not on
-    /// first launch: they have been to Train, and the last-workout card has something to offer them.
+    /// first launch: they have been to Train, and the guided state has nothing left to guide them
+    /// towards.
     private(set) var hasEverTrained = false
 
     /// Whether the first read has answered.

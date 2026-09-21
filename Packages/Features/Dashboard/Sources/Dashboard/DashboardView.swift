@@ -9,8 +9,8 @@ import SwiftUI
 ///
 /// **Two cases, because the third and fourth resolve into one of them.** A read still in flight and
 /// a read that failed both draw the sections: each section carries its own loading and error state
-/// out of T-1.09's five, so a screen-level spinner would be a fifth on top of four that already
-/// exist, and a screen-level failure would suppress four self-reading sections on the strength of
+/// out of T-1.09's five, so a screen-level spinner would be a fourth on top of three that already
+/// exist, and a screen-level failure would suppress three self-reading sections on the strength of
 /// one read that says nothing about whether they can draw. `FR-1.13.2` is a claim about an install
 /// with no history, and only a read that answered can make it.
 ///
@@ -21,7 +21,7 @@ import SwiftUI
 /// remove it by holding *every* launch behind the slowest read on the screen, which is the trade
 /// this refuses.
 enum DashboardScreenState: Equatable {
-    /// Nothing has ever been logged. One guided state instead of five apologies.
+    /// Nothing has ever been logged. One guided state instead of three apologies.
     case firstLaunch
 
     /// There is history. Each section reports itself.
@@ -38,17 +38,18 @@ enum DashboardScreenState: Equatable {
     }
 }
 
-/// Home's root: either `FR-1.13.2`'s first launch or `FR-1.9`'s four sections.
+/// Home's root: either `FR-1.13.2`'s first launch or `FR-1.9`'s three sections.
 ///
-/// **Home offers no training action** (`D-17.11`, which withdrew `FR-1.9.4`). Training is the Train
-/// tab's, and a filled command here was a second door onto a tab the tab bar already reaches — so
-/// the sections shape is four readings and spends no accent at all (`FR-16.6.4`), the way
-/// `routines.routineList` does. `FR-1.9.2`'s card keeps its **Resume**, which is a push onto a
-/// workout already open rather than an offer to start one, and it is secondary. The one accent this
-/// screen can still spend is ``FirstLaunchReading``'s, on the shape that holds nothing else.
+/// **Nothing on Home starts, resumes or repeats a workout** (`FR-18.9.1`). `D-17.11` withdrew the
+/// filled *Start workout* because it was a second door onto a tab the tab bar already reaches, and
+/// `FR-1.9.2`'s last-workout card — the **Resume** beside it, and the **Repeat** that started a free
+/// workout outside the run, the week and the day — is withdrawn with it. So the sections shape is
+/// three readings and spends no accent at all (`FR-16.6.4`), the way `routines.routineList` does.
+/// The one accent this screen can still spend is ``FirstLaunchReading``'s, on the shape that holds
+/// nothing else. An open workout is reached from Train, which reads **Continue**.
 ///
 /// **On first launch the sections are replaced rather than joined.** Every one of them draws its own
-/// state, and on an install with nothing in it that is five separate apologies pointing at the same
+/// state, and on an install with nothing in it that is three separate apologies pointing at the same
 /// single action — the mix `FR-1.13.3` rules out applied to a whole screen at once. What replaces
 /// them carries the action itself, which is what `FR-1.13.2` asks for and `EmptyStateView`'s own
 /// contract makes mandatory here.
@@ -63,7 +64,7 @@ public struct DashboardView: View {
     /// The catalogue: what the tiles are named after, and what the picker chooses among.
     private let catalogue: any ExerciseRepository
 
-    /// The sessions, for `FR-1.9.2`'s card.
+    /// The sessions, for `FR-1.9.5`'s week.
     private let workouts: any WorkoutRepository
 
     /// The settings row: the tile selection (`FR-1.9.1`) and the display unit (`G-3.1`).
@@ -71,9 +72,6 @@ public struct DashboardView: View {
 
     /// Where `FR-15.1.8`'s training max under each tile comes from.
     private let trainingMaxes: any TrainingMaxRepository
-
-    /// Starts a workout holding a past one's exercises. See ``LastWorkoutSection``.
-    private let repeatSession: @MainActor (UUID) async -> Bool
 
     /// `FR-1.9.5`'s week, and the read that decides whether this is a first launch at all.
     ///
@@ -96,26 +94,22 @@ public struct DashboardView: View {
     ///   - workouts: The sessions and what is under them.
     ///   - settings: The settings row.
     ///   - trainingMaxes: Where `FR-15.1.8`'s training max under each tile is stored.
-    ///   - repeatSession: Starts a fresh workout holding a past one's exercises, reporting whether
-    ///     one is now in progress.
     public init(
         records: PersonalRecordRecomputer,
         catalogue: any ExerciseRepository,
         workouts: any WorkoutRepository,
         settings: any SettingsRepository,
-        trainingMaxes: any TrainingMaxRepository,
-        repeatSession: @escaping @MainActor (UUID) async -> Bool
+        trainingMaxes: any TrainingMaxRepository
     ) {
         self.records = records
         self.catalogue = catalogue
         self.workouts = workouts
         self.settings = settings
         self.trainingMaxes = trainingMaxes
-        self.repeatSession = repeatSession
         _week = State(initialValue: WeekSummaryState(workouts: workouts))
     }
 
-    /// Either the guided first launch or the four sections.
+    /// Either the guided first launch or the three sections.
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl.points) {
@@ -133,14 +127,12 @@ public struct DashboardView: View {
         .task { await week.load() }
     }
 
-    /// `FR-1.9`'s four sections.
+    /// `FR-1.9`'s three sections.
     ///
     /// **The week before the records.** `FR-1.9.5`'s two numbers are about the days the reader is
     /// in the middle of, where `FR-1.9.3`'s feed and `FR-1.9.1`'s tiles both reach back months —
     /// the nearer the fact, the higher it sits.
     @ViewBuilder private var sections: some View {
-        LastWorkoutSection(
-            workouts: workouts, catalogue: catalogue, repeatSession: repeatSession)
         WeekSummarySection(state: week, settings: settings)
         RecentRecordsSection(records: records, catalogue: catalogue, settings: settings)
         EstimatedMaxTilesSection(

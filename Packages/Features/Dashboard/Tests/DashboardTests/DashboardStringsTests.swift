@@ -121,6 +121,36 @@ struct DashboardStringsTests {
         }
     }
 
+    /// `FR-1.9.2` is `WITHDRAWN` and its ten keys go with it (`FR-18.9.1`, T-18.17).
+    ///
+    /// **A withdrawal's witness is a test, not the grep that found the keys**, on
+    /// ``theGuidedActionPlansTheWeek()``'s argument one requirement over: `DashboardStrings.all`
+    /// says only what the code still *names*, so a key left in either catalogue with no accessor is
+    /// invisible to it and to `check-translations.sh` both — that script compares the two catalogues
+    /// to each other, and a leftover present in both is complete and wrong. The **values** are
+    /// checked as well as the keys because a re-added card would be free to invent a new key for the
+    /// same four words.
+    @Test("Nothing on Home starts, resumes or repeats a workout, in either catalogue")
+    func theLastWorkoutCardIsGone() throws {
+        for localization in ["en", "uk"] {
+            let url = try #require(
+                Bundle.module.url(
+                    forResource: "Localizable",
+                    withExtension: "strings",
+                    subdirectory: nil,
+                    localization: localization
+                ))
+            let catalogue = try #require(NSDictionary(contentsOf: url) as? [String: String])
+            let leftovers = catalogue.keys.filter { $0.hasPrefix("dashboard.last-workout.") }
+            #expect(leftovers.isEmpty, "\(localization) kept \(leftovers.sorted())")
+            for words in ["Last workout", "Resume workout", "Repeat these exercises"] {
+                #expect(
+                    !catalogue.values.contains(words),
+                    "\(localization) still reads \(words)")
+            }
+        }
+    }
+
     /// The two forms are one label at two shapes, and each has to keep every number it was
     /// given — a translation that dropped one would read as the wrong record.
     @Test("A single set and a run read as different labels")

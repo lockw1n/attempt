@@ -15,16 +15,6 @@
 
 "dashboard.plan-week.action" = "Запланувати тиждень";
 
-"dashboard.last-workout.title" = "Останнє тренування";
-"dashboard.last-workout.none.headline" = "Тренувань ще немає";
-"dashboard.last-workout.none.message" = "Почніть тренування — і воно з’явиться тут, готове до повтору.";
-"dashboard.last-workout.error" = "Не вдалося прочитати ваші тренування.";
-"dashboard.last-workout.in-progress" = "Триває";
-"dashboard.last-workout.sets %lld" = "Робочих підходів: %lld";
-"dashboard.last-workout.resume" = "Продовжити тренування";
-"dashboard.last-workout.repeat" = "Повторити ці вправи";
-"dashboard.last-workout.repeat-error" = "Не вдалося почати нове тренування.";
-
 "dashboard.tiles.title" = "Орієнтовний 1ПМ";
 "dashboard.tiles.error" = "Не вдалося прочитати ваші орієнтовні максимуми.";
 "dashboard.tiles.none.headline" = "На головному екрані немає вправ";
@@ -97,8 +87,6 @@
 "dashboard.recent-records.baselines.label" = "Показувати перші рекорди";
 "dashboard.recent-records.baselines.detail" = "Коли ви виконуєте схему вперше, вона встановлює рекорд, який немає з чим порівняти. Вимкнено за замовчуванням, щоб нова допоміжна вправа не заповнювала стрічку.";
 "dashboard.tiles.training-max %@" = "Тренувальний максимум %@";
-
-"dashboard.last-workout.planned" = "Заплановано";
 
 "dashboard.exercise-picker.search.prompt" = "Пошук вправ";
 "dashboard.exercise-picker.section.trained" = "Тренували";

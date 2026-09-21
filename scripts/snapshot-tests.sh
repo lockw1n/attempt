@@ -96,7 +96,10 @@ cd "$(dirname "$0")/.."
 #                     budget after setting the number: `git grep -c '@Test'` is the count, and it
 #                     has to be re-run when the last test lands rather than when the first does.
 #   History:         28 tests, 27 reference-backed, one layout budget -> 28, above the 27.
-#   Dashboard:       21 tests, all of them reference-backed, no probes -> 21, its own count.
+#   Dashboard:       18 tests, all of them reference-backed, no probes -> 18, its own count.
+#                     T-18.17 took it 21 -> 18 and the references 84 -> 72: FR-1.9.2's
+#                     last-workout card was withdrawn whole (FR-18.9.1), so a floor moves DOWN
+#                     on a removal exactly as it moves up on an addition, and both halves move.
 #   Settings:        49 tests, all of them reference-backed, no probes -> 49, its own count.
 #                     T-1.91's review added four: the landing's two link states, and the restore's
 #                     other two refusal reasons. Neither gap was visible from here — parity and the
@@ -121,7 +124,7 @@ SUITES=(
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|44"
     "Packages/Features/Logging|Logging|LoggingSnapshotTests|105"
     "Packages/Features/History|History|HistorySnapshotTests|28"
-    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|21"
+    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|18"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|49"
     "Packages/Features/Routines|Routines|RoutinesSnapshotTests|4"
 )

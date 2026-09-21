@@ -234,54 +234,6 @@ enum DashboardStrings {
     /// The sessions could not be read.
     static let weekError = resource("dashboard.week.error")
 
-    /// `FR-1.9.2`'s heading.
-    static let lastWorkoutTitle = resource("dashboard.last-workout.title")
-
-    /// Nothing has ever been logged.
-    static let lastWorkoutNone = resource("dashboard.last-workout.none.headline")
-
-    /// What to do about it — the action itself is the button above this card.
-    static let lastWorkoutNoneMessage = resource("dashboard.last-workout.none.message")
-
-    /// The sessions could not be read.
-    static let lastWorkoutError = resource("dashboard.last-workout.error")
-
-    /// The workout on the card has not been finished.
-    static let lastWorkoutInProgress = resource("dashboard.last-workout.in-progress")
-
-    /// `FR-1.9.2`'s resume, for a workout still open.
-    static let lastWorkoutResume = resource("dashboard.last-workout.resume")
-
-    /// `FR-1.9.2`'s repeat: a fresh workout holding the same exercises and no sets.
-    static let lastWorkoutRepeat = resource("dashboard.last-workout.repeat")
-
-    /// The repeat could not be started. Nothing was written.
-    static let lastWorkoutRepeatError = resource("dashboard.last-workout.repeat-error")
-
-    /// What an open workout says where a finished one shows its set count (`FR-16.4.3`).
-    ///
-    /// **A workout dated ahead of today is planned, not in progress.** Nothing has been logged
-    /// against it and nothing is being logged now, and a card claiming otherwise would report work
-    /// that has not happened.
-    ///
-    /// - Parameter lifecycle: Which kind of open the workout is. A finished one shows numbers, so
-    ///   it falls back to the in-progress word this card never draws for it.
-    /// - Returns: The word.
-    static func lastWorkoutState(_ lifecycle: SessionLifecycle) -> LocalizedStringResource {
-        lifecycle == .planned ? lastWorkoutPlanned : lastWorkoutInProgress
-    }
-
-    /// A workout whose training day has not arrived (`FR-16.4.3`).
-    static let lastWorkoutPlanned = resource("dashboard.last-workout.planned")
-
-    /// How much work a finished session holds.
-    ///
-    /// - Parameter count: The working sets — completed, and not warmups (`G-1.8`).
-    /// - Returns: The line.
-    static func lastWorkoutSets(_ count: Int) -> LocalizedStringResource {
-        resource("dashboard.last-workout.sets \(count)")
-    }
-
     /// The exercise pickers' search field prompt (`FR-16.5.3`).
     ///
     /// One string for both pickers, because both search the same catalogue — a second copy would be
@@ -342,10 +294,7 @@ enum DashboardStrings {
             recentRecordsSchemesEmpty,
             recentRecordsBaselinesTitle, recentRecordsBaselinesLabel,
             recentRecordsBaselinesDetail,
-            planWeek, lastWorkoutTitle, lastWorkoutNone, lastWorkoutNoneMessage,
-            lastWorkoutError, lastWorkoutInProgress, lastWorkoutResume, lastWorkoutRepeat,
-            lastWorkoutRepeatError, lastWorkoutSets(4), lastWorkoutPlanned,
-            firstLaunchHeadline, firstLaunchMessage,
+            planWeek, firstLaunchHeadline, firstLaunchMessage,
             weekTitle, weekWorkouts, weekVolume, weekNone, weekUnweighed, weekError,
             tilesTitle, tilesError, tilesNoneChosen, tilesNoneChosenMessage,
             tileTrainingMax("180 kg"),

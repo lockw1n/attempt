@@ -38,25 +38,6 @@
    name for it. FR-1.9.4's "Start workout" was withdrawn by D-17.11. */
 "dashboard.plan-week.action" = "Plan your week";
 
-/* FR-1.9.2's card: the workout in progress, or the most recent finished one. */
-"dashboard.last-workout.title" = "Last workout";
-"dashboard.last-workout.none.headline" = "No workouts yet";
-"dashboard.last-workout.none.message" = "Start one and it appears here, ready to repeat.";
-"dashboard.last-workout.error" = "Your workouts could not be read.";
-/* Said in place of a set count: a running total presented as a finished one invites the wrong
-   reading. */
-"dashboard.last-workout.in-progress" = "In progress";
-/* Working sets — completed and not warmups (G-1.8). A label with the count after it rather than a
-   counted noun phrase, on the recent-PR labels' rule: it reads correctly at every count, so no
-   plural rule file is needed for a string nothing else needs one for. */
-"dashboard.last-workout.sets %lld" = "Working sets: %lld";
-"dashboard.last-workout.resume" = "Resume workout";
-/* FR-1.9.2's repeat. Phase 1 has no prescription layer (OUT-1.1), so it copies the exercise list and
-   nothing else — the label says "exercises" rather than "workout" so the empty sets are not a
-   surprise. */
-"dashboard.last-workout.repeat" = "Repeat these exercises";
-"dashboard.last-workout.repeat-error" = "A new workout could not be started.";
-
 /* FR-1.9.1's tiles. */
 "dashboard.tiles.title" = "Estimated 1RM";
 "dashboard.tiles.error" = "Your estimated maxes could not be read.";
@@ -169,10 +150,6 @@
 "dashboard.recent-records.baselines.label" = "Show first-time records";
 "dashboard.recent-records.baselines.detail" = "The first time you perform a scheme it sets a record with nothing to compare against. Off by default, so a new accessory lift does not fill the feed.";
 "dashboard.tiles.training-max %@" = "Training max %@";
-
-/* FR-16.4.3. A workout dated ahead of today: nothing has been logged against it and nothing is
-   being logged now, so neither "In progress" nor a set count of zero is true of it. */
-"dashboard.last-workout.planned" = "Planned";
 
 /* FR-16.5.3: the two exercise pickers — the dashboard's tiled lifts and the recent-PR feed's chosen
    scope — are one list, so their copy is one set of keys. "Exercise picker" is not a screen name:

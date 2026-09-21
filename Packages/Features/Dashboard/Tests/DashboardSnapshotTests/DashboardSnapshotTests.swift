@@ -21,6 +21,14 @@
     // shell the primary action reads its `NavigationState` from. Both are UIKit-backed or
     // environment-fed; where they lead is the state tests' and the simulator run's.
 
+    // THREE REFERENCES WERE DELETED HERE AND ARE NOT COMING BACK, so do not re-record them when a
+    // future task finds the suite short of a state. `Dashboard-last-workout`,
+    // `-last-workout-open` and `-last-workout-none` pictured `FR-1.9.2`'s card — a date, a set
+    // count, the exercise names and its **Resume**/**Repeat** — which T-18.17 removed whole
+    // (`FR-18.9.1`): nothing on Home starts, resumes or repeats a workout, and `FR-1.9.2` is
+    // WITHDRAWN. The states they held are not drawn anywhere now; the "nothing has ever been
+    // logged" reading that remains on this screen is `Dashboard-first-launch`.
+
     @MainActor
     @Suite("Dashboard snapshots")
     struct DashboardSnapshotTests {
@@ -80,48 +88,6 @@
         @Test func tilesUnreadable() throws {
             try assertSnapshots(named: "Dashboard-tiles-error") {
                 EstimatedMaxTilesReading(state: .failed, unit: .kilograms, retry: {})
-            }
-        }
-
-        @Test func lastWorkoutFinished() throws {
-            try assertSnapshots(named: "Dashboard-last-workout") {
-                LastWorkoutReading(
-                    state: .finished(DashboardFixtures.finished),
-                    hasFailedRepeat: false,
-                    retry: {},
-                    resume: {},
-                    repeatWorkout: { _ in }
-                )
-                .environment(\.locale, DashboardFixtures.locale)
-                .environment(\.timeZone, .gmt)
-            }
-        }
-
-        @Test func lastWorkoutInProgress() throws {
-            // The other of FR-1.9.2's two actions, and the line that replaces the set count: a
-            // running total presented as a finished one is the reading this avoids.
-            try assertSnapshots(named: "Dashboard-last-workout-open") {
-                LastWorkoutReading(
-                    state: .inProgress(DashboardFixtures.open),
-                    hasFailedRepeat: true,
-                    retry: {},
-                    resume: {},
-                    repeatWorkout: { _ in }
-                )
-                .environment(\.locale, DashboardFixtures.locale)
-                .environment(\.timeZone, .gmt)
-            }
-        }
-
-        @Test func nothingLogged() throws {
-            try assertSnapshots(named: "Dashboard-last-workout-none") {
-                LastWorkoutReading(
-                    state: .nothingLogged,
-                    hasFailedRepeat: false,
-                    retry: {},
-                    resume: {},
-                    repeatWorkout: { _ in }
-                )
             }
         }
 
@@ -245,22 +211,6 @@
 
         /// A week's load: 12,400 kg, enough digits that a grouping separator shows.
         static let volume = Weight(grams: 12_400_000)
-
-        /// A finished workout, with what `FR-1.9.2` says about it.
-        static let finished = LastWorkoutSummary(
-            sessionID: id(6),
-            date: day.addingTimeInterval(-2 * 86_400),
-            isInProgress: false,
-            exerciseNames: ["Back Squat", "Bench Press", "Barbell Row"],
-            workingSetCount: 11)
-
-        /// The same workout, still open.
-        static let open = LastWorkoutSummary(
-            sessionID: id(7),
-            date: day,
-            isInProgress: true,
-            exerciseNames: ["Back Squat", "Bench Press"],
-            workingSetCount: 4)
 
         /// The section with nothing to estimate from: three lifts, the last of them carrying the
         /// training max a coach handed over before any of it was trained (`FR-15.1.8`).
