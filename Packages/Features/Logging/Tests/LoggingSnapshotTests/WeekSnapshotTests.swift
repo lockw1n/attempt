@@ -168,6 +168,21 @@
             }
         }
 
+        /// `DOD-18.15`: an answered row that departed from its plan, drawn as a hierarchy —
+        /// the name semibold, the planned numbers secondary, the did numbers primary
+        /// (`FR-18.3.6`, `FR-18.3.7`) — with **a badge under each group that set a record**
+        /// (`FR-18.3.8`).
+        ///
+        /// **The whole of what `F-21` and `F-22` asked for is in this one pair of pictures**, and
+        /// both halves are invisible in every other `Day-*` reference: the others answer one group,
+        /// where there is no second badge to drop and no *Planned* line to read the *Did* line
+        /// against.
+        @Test func dayTwoGroupRecords() throws {
+            try assertSnapshots(named: "Day-two-group-records") {
+                fixedEnvironment { DayFixtures.section([DayFixtures.twoGroupRecords]) }
+            }
+        }
+
         /// `FR-18.3.2`'s "the same alignment", on the row that can break it: an open-load plan
         /// (`FR-15.2.2`, `12 × 3`) answered with a real load (`24 kg × 12 × 3`).
         ///
@@ -336,140 +351,6 @@
                     isArchived: false,
                     notes: ""),
                 targets: targets)
-        }
-    }
-
-    /// The days these references render (`FR-17.9`).
-    ///
-    /// EVERY ROW'S TRAILING MENU DRAWS AS A PLACEHOLDER, on this package's standing `ImageRenderer`
-    /// note: a `Menu` is UIKit-backed. The **frame is honoured** — 44 × 60 pt, which is what these
-    /// references measure the row's height against — so only the glyph is substituted, and the
-    /// circle beside it renders for real. Read the yellow block as *a control of that size is here*,
-    /// not as a defect, and do not replace it with an `Image` to make the picture prettier: a
-    /// fixture that is not the screen is evidence about the fixture (T-16.17).
-    enum DayFixtures {
-        /// Two rows nobody has answered, both with a load and therefore both with a circle.
-        static var notStarted: [DayRow] {
-            [
-                row("Back Squat", plan: planned(140_000)),
-                row("Romanian Deadlift", plan: planned(100_000)),
-            ]
-        }
-
-        /// The one-line answer.
-        static var asPlanned: DayRow {
-            row("Back Squat", plan: planned(140_000), performed: planned(140_000), answer: .logged)
-        }
-
-        /// The two-line answer — one set short, at a lighter load, and a record all the same.
-        ///
-        /// **The badge is pictured here rather than on the as-planned row**, so one reference shows
-        /// the mark and the other shows the line without it: a set below the plan can still be the
-        /// heaviest ever done at that scheme, which is the case worth a picture (`FR-1.6.3`).
-        static var deviated: DayRow {
-            row(
-                "Bench Press",
-                plan: planned(100_000),
-                performed: [target(95_000, reps: 5, sets: 4)],
-                answer: .logged,
-                records: [
-                    SchemeMark(scheme: RecordScheme(reps: 5, sets: 4), isFirstPerformance: false)
-                ])
-        }
-
-        /// `FR-17.9.6`'s skip.
-        static var skipped: DayRow {
-            row("Barbell Row", plan: planned(80_000), answer: .skipped)
-        }
-
-        /// `FR-15.2.2`'s blank target.
-        static var openLoad: DayRow {
-            row("Ab Wheel", plan: [target(nil, reps: 12, sets: 3)])
-        }
-
-        /// `FR-1.2.2`'s added row: no plan at all.
-        static var added: DayRow {
-            row("Face Pull", plan: [])
-        }
-
-        /// `FR-15.2.2`'s open load, answered — the row whose two lines render to different widths.
-        static var openLoadLogged: DayRow {
-            row(
-                "Ab Wheel",
-                plan: [target(nil, reps: 12, sets: 3)],
-                performed: [target(24_000, reps: 12, sets: 3)],
-                answer: .logged)
-        }
-
-        /// The longest name the catalogue holds (`T-18.05`'s revision 4), which is what `NFR-18.2`
-        /// is measured against.
-        ///
-        /// **In the fixture's English slot rather than its Ukrainian one**, because these
-        /// references render `en_US_POSIX` — what is being pictured is a width, and the width is
-        /// the string's.
-        static let longName = "Жим у важільному тренажері на похилій лаві"
-
-        /// `FR-15.2.1`'s two groups, which no Phase 1.7 fixture had.
-        static var twoGroups: [WeekPlanTarget] {
-            [target(110_000, reps: 4, sets: 4), target(100_000, reps: 8, sets: 2)]
-        }
-
-        /// The longest name over a two-group plan, unanswered and answered (`FR-18.3.1`,
-        /// `FR-18.3.2`).
-        ///
-        /// **The second row deviated rather than as planned**, so the reference carries the case
-        /// that draws the column twice: two labels, four numbers, and one edge they all line up on.
-        static var longNameTwoGroups: [DayRow] {
-            [
-                row(longName, plan: twoGroups),
-                row(
-                    "Dumbbell Fly",
-                    plan: [target(12_000, reps: 12, sets: 3), target(14_000, reps: 10, sets: 3)],
-                    performed: [target(12_000, reps: 12, sets: 3), target(14_000, reps: 8, sets: 3)],
-                    answer: .logged),
-            ]
-        }
-
-        /// The day's rows, as the screen draws them.
-        ///
-        /// - Parameter rows: The rows.
-        /// - Returns: The section.
-        static func section(_ rows: [DayRow]) -> some View {
-            DayChecklistSection(
-                rows: rows,
-                progress: DayProgress(rows),
-                unit: .kilograms,
-                answer: { _ in },
-                log: { _ in },
-                skip: { _ in })
-        }
-
-        /// One row, over the week fixture's own catalogue row so the two files name one lift once.
-        private static func row(
-            _ name: String,
-            plan: [WeekPlanTarget],
-            performed: [WeekPlanTarget] = [],
-            answer: DayRowAnswer = .unanswered,
-            records: [SchemeMark] = []
-        ) -> DayRow {
-            DayRow(
-                id: UUID(),
-                exercise: WeekFixtures.line(name, grams: nil).exercise,
-                plan: plan,
-                performed: performed,
-                answer: answer,
-                records: records)
-        }
-
-        /// The fixture's standard prescription: five sets of five.
-        private static func planned(_ grams: Int) -> [WeekPlanTarget] {
-            [target(grams, reps: 5, sets: 5)]
-        }
-
-        /// One target group.
-        private static func target(_ grams: Int?, reps: Int, sets: Int) -> WeekPlanTarget {
-            WeekPlanTarget(
-                id: UUID(), weight: grams.map { Weight(grams: $0) }, reps: reps, sets: sets)
         }
     }
 

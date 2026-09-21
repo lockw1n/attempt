@@ -414,7 +414,10 @@ struct DayCommandTests {
         // publishes rather than what the tap returned — and the assertion has to wait for it or it
         // is asserting on whichever continuation ran first.
         await day.store.settleRecordRefresh()
-        #expect(!(try #require(day.rows.first).records.isEmpty))
+        // On the BADGES rather than on `records`, which since `FR-18.3.8` is a list per run: a row
+        // that performed one run and holds no mark is `[[]]`, which is not empty and would satisfy
+        // the weaker assertion this replaced.
+        #expect((try #require(day.rows.first).recordBadges.contains { $0 != nil }))
     }
 
     @Test("A skipped row carries no record, having done no work")
@@ -426,7 +429,7 @@ struct DayCommandTests {
         await day.skipRemaining()
 
         await day.store.settleRecordRefresh()
-        #expect(try #require(day.rows.first).records.isEmpty)
+        #expect(try #require(day.rows.first).recordBadges.allSatisfy { $0 == nil })
     }
 }
 

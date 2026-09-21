@@ -1,12 +1,48 @@
 import DesignTokens
 import SwiftUI
 
+/// How prominent one set of scheme lines is (`FR-18.3.6`).
+///
+/// **Three cases where the colour table has two**, and that is deliberate: ``plan`` and ``done``
+/// both resolve to the primary colour today, and they are different decisions about different
+/// lines. A row that answered "which of these two is secondary?" with a `Bool` would be a screen
+/// asserting that the unanswered plan and the performed numbers are the same fact.
+///
+/// **Colour only, never size or weight.** Every scheme line in the app is
+/// ``DesignTokens/Typography/schemeValue`` whatever its emphasis (`FR-18.3.2`: *Planned* and *Did*
+/// "take the same size and alignment"), so a weight here would be a second answer to `FR-18.3.7`.
+enum PlanSchemeEmphasis: Equatable, Sendable {
+    /// What is prescribed and not yet answered — an unanswered row, and the week's card. Primary:
+    /// there the plan is still the fact being read at the rack (`D-18.5`).
+    case plan
+
+    /// An answered row's *Planned* half, which is now the thing the *Did* half is read against.
+    /// Secondary (`FR-18.3.6`).
+    case reference
+
+    /// What was actually lifted. Primary.
+    case done
+
+    /// The colour the lines take.
+    var color: ColorToken {
+        switch self {
+        case .plan, .done: .textPrimary
+        case .reference: .textSecondary
+        }
+    }
+}
+
 /// The planned or performed scheme, one line per group (`FR-18.3.1`).
 ///
 /// **The one place the scheme's style lives.** Three screens draw it — the day's checklist, the
 /// week's card and the past day that shares the first's row — and `F-07` was that it was the least
-/// prominent text on the row it is the point of. Body size, the primary colour and monospaced
-/// digits, so the numbers read at the rack and form a column down the screen.
+/// prominent text on the row it is the point of. Body size, monospaced digits and the colour its
+/// ``emphasis`` names, so the numbers read at the rack and form a column down the screen.
+///
+/// **The regular weight, against the name's semibold** (`FR-18.3.7`). `F-21` was the other side of
+/// `F-07`: answering it with ``DesignTokens/Typography/numericValue`` put the numbers at the same
+/// weight as ``DesignTokens/Typography/actionLabel`` beside them, and an answered row came out five
+/// lines at one brightness with nothing to lead the eye.
 ///
 /// **It takes rendered strings rather than targets**, which is what keeps it a style and not a
 /// second renderer: ``WeekPlanTargets`` is where a group becomes `110 kg × 4 × 4`, and a component
@@ -21,16 +57,40 @@ struct PlanSchemeLines: View {
     /// named no load (`FR-15.2.2`). Empty draws nothing, which is `FR-1.2.2`'s added row.
     let schemes: [String]
 
+    /// How prominent they are. **Required, with no default** (`T-16.17`): a default here is a
+    /// decision about which half of a row is being read, taken by the component that cannot see it.
+    let emphasis: PlanSchemeEmphasis
+
+    /// The record each line's group set, `nil` where it set none — `FR-18.3.8`'s one badge per
+    /// group. Shorter than ``schemes`` is a line with no badge; longer is ignored.
+    ///
+    /// **Defaulted where ``emphasis`` is not, and the two are not the same kind of parameter.** An
+    /// emphasis is a decision every caller has to take; a badge is a fact about work that was
+    /// *performed*, and three of this type's four call sites draw a plan, which by construction has
+    /// none. `[]` is not a quieter answer there — it is the only one.
+    var badges: [RecordBadge?] = []
+
     var body: some View {
         VStack(alignment: .trailing, spacing: Spacing.xxs.points) {
             // By position rather than by value: two identical groups are two lines, and a plan is
             // free to prescribe the same scheme twice.
-            ForEach(Array(schemes.enumerated()), id: \.offset) { _, scheme in
-                Text(verbatim: scheme)
-                    .font(Typography.numericValue.font)
-                    .foregroundStyle(ColorToken.textPrimary)
-                    .multilineTextAlignment(.trailing)
-                    .fixedSize(horizontal: false, vertical: true)
+            ForEach(Array(schemes.enumerated()), id: \.offset) { index, scheme in
+                // The badge UNDER its own line rather than beside it (`FR-18.3.8`, "with its own
+                // *Did* line"). Beside would keep the badge out of the vertical run of numerals,
+                // and would also put it inside the column `PlanSchemeShape.choose` measures — a
+                // capsule is wider than the gap the shape has to spare, so every row holding a
+                // record would fall to the stacked shape. Under, the column's width is
+                // `max(scheme, badge)` and the shape barely moves.
+                VStack(alignment: .trailing, spacing: Spacing.xxs.points) {
+                    Text(verbatim: scheme)
+                        .font(Typography.schemeValue.font)
+                        .foregroundStyle(emphasis.color)
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if index < badges.count, let badge = badges[index] {
+                        RecordBadgeView(badge: badge)
+                    }
+                }
             }
         }
     }
@@ -249,6 +309,9 @@ struct PlanSchemeRow<Label: View>: View {
     /// The groups, rendered — see ``PlanSchemeLines/schemes``.
     let schemes: [String]
 
+    /// How prominent they are — see ``PlanSchemeLines/emphasis``. Required for the same reason.
+    let emphasis: PlanSchemeEmphasis
+
     /// What names them: a lift on the week's card, *Planned* or *Did* on a day's answered row.
     let label: Label
 
@@ -256,16 +319,18 @@ struct PlanSchemeRow<Label: View>: View {
     ///
     /// - Parameters:
     ///   - schemes: The groups, rendered.
+    ///   - emphasis: How prominent they are.
     ///   - label: What names them.
-    init(schemes: [String], @ViewBuilder label: () -> Label) {
+    init(schemes: [String], emphasis: PlanSchemeEmphasis, @ViewBuilder label: () -> Label) {
         self.schemes = schemes
+        self.emphasis = emphasis
         self.label = label()
     }
 
     var body: some View {
         PlanSchemeRows {
             label
-            PlanSchemeLines(schemes: schemes)
+            PlanSchemeLines(schemes: schemes, emphasis: emphasis)
         }
     }
 }

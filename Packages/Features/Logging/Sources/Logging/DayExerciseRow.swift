@@ -129,11 +129,23 @@ struct DayExerciseRow: View {
     /// shares, so a screenful of rows reads down one edge, which is the whole of `FR-18.3.1`. The
     /// word and its glyph stay on the leading edge, where `G-4.5` needs them: the state is never
     /// tint alone. *As planned* is still **one** row rather than a *Planned*/*Did* pair.
+    ///
+    /// **Which halves an answered row draws is ``DayRowScheme/sections(for:)``'s answer, not this
+    /// body's** — and so is each half's emphasis, which is what `FR-18.3.6` is. The three logged
+    /// cases were written out here as three branches; they are one `ForEach` over a value a test
+    /// can call, because `T-18.14` measured that a body's argument list is readable by nothing and
+    /// "the *planned* lines are the secondary ones" is exactly an argument. **This narrows a
+    /// decision recorded on ``PlanSchemeLayout``** — *a `ViewBuilder` branch inside a `Layout` is a
+    /// pair the layout has to trust* — and the narrowing is that a `ForEach` is not a branch: it
+    /// emits two subviews per section unconditionally, where the `if` that rule was written about
+    /// could emit one.
     @ViewBuilder private var lines: some View {
         switch row.answer {
         case .unanswered:
-            PlanSchemeLines(schemes: schemes(row.plan))
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            PlanSchemeLines(
+                schemes: schemes(row.plan), emphasis: DayRowScheme.unansweredEmphasis
+            )
+            .frame(maxWidth: .infinity, alignment: .trailing)
         case .skipped:
             Label {
                 Text(LoggingStrings.dayRowSkipped)
@@ -142,31 +154,20 @@ struct DayExerciseRow: View {
             }
             .font(Typography.caption.font)
             .foregroundStyle(ColorToken.textSecondary)
-        case .logged where row.wasAsPlanned:
-            PlanSchemeRows {
-                done(Text(LoggingStrings.dayRowAsPlanned))
-                PlanSchemeLines(schemes: schemes(row.performed))
-            }
-            recordMark
-        case .logged where row.plan.isEmpty:
-            PlanSchemeRows {
-                done(Text(LoggingStrings.dayRowDid))
-                PlanSchemeLines(schemes: schemes(row.performed))
-            }
-            recordMark
         case .logged:
-            // Both pairs in ONE table, which is `FR-18.3.2`'s "the same alignment": the shape is
+            // Every section in ONE table, which is `FR-18.3.2`'s "the same alignment": the shape is
             // read across the widest of them, so an open-load plan (`12 × 3`) logged with a real
             // load (`24 kg × 12 × 3`) cannot put *Planned* beside its numbers and *Did* above its
-            // own. The two are written out rather than built from a conditional, because a
-            // `ViewBuilder` branch inside a `Layout` is a pair the layout has to trust.
+            // own.
             PlanSchemeRows {
-                planned(Text(LoggingStrings.dayRowPlanned))
-                PlanSchemeLines(schemes: schemes(row.plan))
-                done(Text(LoggingStrings.dayRowDid))
-                PlanSchemeLines(schemes: schemes(row.performed))
+                ForEach(DayRowScheme.sections(for: row)) { section in
+                    label(section.role)
+                    PlanSchemeLines(
+                        schemes: schemes(section.targets),
+                        emphasis: section.emphasis,
+                        badges: section.badges)
+                }
             }
-            recordMark
         }
     }
 
@@ -177,18 +178,6 @@ struct DayExerciseRow: View {
     private func schemes(_ targets: [WeekPlanTarget]) -> [String] {
         WeekPlanTargets.lines(
             targets, unit: unit, precision: displayPrecision, locale: locale)
-    }
-
-    /// `FR-1.6.3`'s badge, where this row's work holds a record.
-    ///
-    /// **On the *Did* line's own row and nowhere else**, which is T-16.13's rule applied to a
-    /// checklist: a per-set annotation owes three answers — the collapsed line, the member row, and
-    /// which stays silent — and a `DayExerciseRow` has no member rows, so this is the only place it
-    /// can be drawn and the question does not arise twice.
-    @ViewBuilder private var recordMark: some View {
-        if let badge = RecordBadge(marks: row.records) {
-            RecordBadgeView(badge: badge)
-        }
     }
 
     /// `FR-17.7.4`'s per-set notes, under the *Did* line.
@@ -205,39 +194,38 @@ struct DayExerciseRow: View {
         }
     }
 
-    /// A secondary line.
+    /// What names one of an answered row's halves.
     ///
-    /// **At the scheme's size rather than the caption's** (`FR-18.3.2`): *Planned* names the column
+    /// **Both the words and the treatment come from the role**, so nothing in the body above can
+    /// hand *Planned*'s words `Did`'s green — which, like the emphasis beside it, is a swap no test
+    /// could see (`T-18.14`).
+    ///
+    /// **At the scheme's size rather than the caption's** (`FR-18.3.2`): the word names the column
     /// beside it, and a label two steps smaller than what it names is the hierarchy `F-07` was
-    /// about. The colour still separates the two — the prescription is secondary, what was done is
-    /// not.
+    /// about.
     ///
-    /// - Parameter text: What it says.
-    /// - Returns: The line.
-    private func planned(_ text: Text) -> some View {
-        text
-            .font(Typography.body.font)
-            .foregroundStyle(ColorToken.textSecondary)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
-    /// A label that carries the answer.
+    /// **The answer is never tint alone** (`G-4.5`): the glyph and the words carry it, and
+    /// `G-7.3`'s green is added to them. The green stops at the label — the numbers beside it are
+    /// the row's primary fact and take the primary colour (`FR-18.3.6`).
     ///
-    /// **Never by tint alone** (`G-4.5`): the glyph and the words carry it, and `G-7.3`'s green is
-    /// added to them. The green stops at the label — the numbers beside it are the row's primary
-    /// fact and take the primary colour (`FR-18.3.1`).
-    ///
-    /// - Parameter text: What it says.
+    /// - Parameter role: Which half it names.
     /// - Returns: The label.
-    private func done(_ text: Text) -> some View {
-        Label {
-            text
-        } icon: {
-            Image(systemName: "checkmark.circle.fill")
+    @ViewBuilder private func label(_ role: DayRowSchemeSection.Role) -> some View {
+        if role.carriesAnswer {
+            Label {
+                Text(role.label)
+            } icon: {
+                Image(systemName: "checkmark.circle.fill")
+            }
+            .font(Typography.body.font)
+            .foregroundStyle(ColorToken.positive)
+            .fixedSize(horizontal: false, vertical: true)
+        } else {
+            Text(role.label)
+                .font(Typography.body.font)
+                .foregroundStyle(ColorToken.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .font(Typography.body.font)
-        .foregroundStyle(ColorToken.positive)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// The circle, where the row has one, and the menu that every row has.

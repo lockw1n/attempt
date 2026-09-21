@@ -250,7 +250,10 @@ struct PlanLineRow: View {
     @Environment(\.displayPrecision) private var displayPrecision
 
     var body: some View {
-        PlanSchemeRow(schemes: plan) {
+        // `FR-18.3.6`: the card draws a plan nobody has answered yet, which is the state that
+        // stays primary — the same answer `DayExerciseRow` gives its unanswered row, from the same
+        // place, so the two screens cannot drift apart on it.
+        PlanSchemeRow(schemes: plan, emphasis: DayRowScheme.unansweredEmphasis) {
             Text(verbatim: line.exercise?.displayName(for: locale) ?? "")
                 .font(Typography.body.font)
                 .foregroundStyle(ColorToken.textPrimary)

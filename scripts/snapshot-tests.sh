@@ -81,8 +81,11 @@ cd "$(dirname "$0")/.."
 #                     tests could have vanished unnoticed. Set to its own count now, as every other
 #                     suite is — "above the 19" was a margin that only ever grew.
 #   ExerciseLibrary: 44 tests, all of them reference-backed, no probes -> 44, its own count.
-#   Logging:         104 tests, 97 reference-backed, a width probe and six layout budgets
-#                                                                    -> 104, its own count.
+#   Logging:         105 tests, 98 reference-backed, a width probe and six layout budgets
+#                                                                    -> 105, its own count.
+#                     T-18.22 added `Day-two-group-records`, which is `DOD-18.15`: the one
+#                     reference in this suite whose row performs TWO runs, and therefore the only
+#                     one that can see a badge rule written per exercise rather than per group.
 #                     T-18.07 moved `SUITES` and left this tail at 96, because its review commit
 #                     had no reason to re-read a comment block its implementation commit wrote.
 #                     Both halves are one edit; a second commit on one task is where they part.
@@ -116,7 +119,7 @@ cd "$(dirname "$0")/.."
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|37"
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|44"
-    "Packages/Features/Logging|Logging|LoggingSnapshotTests|104"
+    "Packages/Features/Logging|Logging|LoggingSnapshotTests|105"
     "Packages/Features/History|History|HistorySnapshotTests|28"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|21"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|49"
