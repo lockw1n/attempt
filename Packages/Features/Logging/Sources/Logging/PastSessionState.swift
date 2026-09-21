@@ -263,13 +263,13 @@ final class PastSessionState {
     /// - Parameters:
     ///   - rowID: The row being answered — an entry, on this screen.
     ///   - group: What the sheet collected.
-    func log(rowID: UUID, group: ResolvedSetGroup) async {
+    func log(rowID: UUID, rows: [SetEntryValues]) async {
         guard let entry = exercises.first(where: { $0.id == rowID })?.entry else { return }
         await write {
             // Awaited, unlike the workout in progress: this screen is off `NFR-1.2`'s budget, and
             // waiting is what keeps its badge inside the interaction that moved it.
             let changed = try await SetGroupRewrite(repository: workouts)
-                .rewrite(inEntryID: entry.id, to: group.rows)
+                .rewrite(inEntryID: entry.id, to: rows)
             if changed { await records.setDidChange(inEntryID: entry.id) }
             if !entry.isMarkedDone { try await workouts.save(entry.markedDone) }
             return true

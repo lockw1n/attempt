@@ -316,11 +316,10 @@ struct ProgramNextWeekTests {
         await day.answerAsPlanned(rowID: rows[0])
         await day.log(
             rowID: rows[1],
-            group: {
+            rows: {
                 let values = SetEntryValues(
                     weight: Weight(grams: 30_000), reps: 8, rpe: nil, isWarmup: false)
-                return ResolvedSetGroup(
-                    values: values, sets: 3, rows: Array(repeating: values, count: 3))
+                return Array(repeating: values, count: 3)
             }())
         await day.skip(rowID: rows[2])
         let before = try await fixture.currentRoutineIDs()

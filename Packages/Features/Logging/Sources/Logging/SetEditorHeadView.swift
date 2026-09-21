@@ -27,6 +27,20 @@ struct SetEditorHead: View {
     /// The gym `FR-1.4.1`'s loading is worked out on.
     let equipment: PlateCalculatorStore
 
+    /// The group this section names, or `nil` on a sheet that draws one (`FR-18.6.2`).
+    ///
+    /// Drawn above Weight and marked as a heading, so VoiceOver reads which group it is before the
+    /// three fields it governs.
+    var sectionTitle: LocalizedStringResource?
+
+    /// Whether this is the section the sheet leads with.
+    ///
+    /// **It decides two things and they belong together**: the sheet's own heading is drawn above
+    /// this section and no other, and this is the Weight that takes the keyboard when the sheet
+    /// opens (`FR-18.6.1`). A second section that ran either would move the heading into the
+    /// middle of the form or take the keyboard off the first.
+    var isFirstSection = true
+
     /// Whether the load's field holds the keyboard (`FR-18.6.1`).
     ///
     /// **Taken on appearance, so the sheet opens on the number the lifter came to change.** The
@@ -67,7 +81,8 @@ struct SetEditorHead: View {
     /// per planned group (`FR-18.6.2`) has to say which section opens focused; nothing here does.
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.lg.points) {
-            heading
+            if isFirstSection { heading }
+            if let sectionTitle { sectionHeading(sectionTitle) }
             weightField
             // A free workout keeps today's order — the plate row directly under the load it
             // describes (`OUT-17.8`). A checklist row moves it below, into the scrolling fields.
@@ -80,9 +95,9 @@ struct SetEditorHead: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         // Read here rather than in the row below it, so one read answers a weight the user steps
         // through with the ± pair — and so the row does not re-read every time the field empties.
-        .task { await equipment.load() }
-        .onAppear { isEnteringWeight = true }
-        .onChange(of: isEnteringWeight) { applyTheFocusChange() }
+        .task { if isFirstSection { await equipment.load() } }
+        .onAppear { if isFirstSection { isEnteringWeight = true } }
+        .onChange(of: isEnteringWeight) { if isFirstSection { applyTheFocusChange() } }
     }
 
     /// `FR-18.6.1`: the load, once it holds the keyboard, offers what it already says as a whole.
@@ -122,6 +137,18 @@ struct SetEditorHead: View {
     }
 
     /// One word, and on a checklist row the question the sheet is asking (`FR-17.1.6`).
+    /// The group's name, above its fields (`FR-18.6.2`).
+    ///
+    /// - Parameter title: Which group this section is.
+    /// - Returns: The heading.
+    private func sectionHeading(_ title: LocalizedStringResource) -> some View {
+        Text(title)
+            .font(Typography.actionLabel.font)
+            .foregroundStyle(ColorToken.textPrimary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+    }
+
     private var heading: some View {
         VStack(alignment: .leading, spacing: Spacing.xxs.points) {
             Text(mode.heading)

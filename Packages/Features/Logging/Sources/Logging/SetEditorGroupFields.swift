@@ -101,6 +101,10 @@ enum PlannedActual {
         precision: DisplayPrecision?,
         locale: Locale
     ) -> String? {
+        // `FR-18.6.5`, and in words rather than as `× 0` (`G-4.5`): a section at zero is a group
+        // the lifter did not do, and a rendered group of no sets reads as a number they entered.
+        // Unreachable on a one-section sheet — see ``SetDraft/minimumSets``.
+        if draft.sets == 0 { return String(localized: LoggingStrings.setGroupNotDone) }
         guard let group = draft.resolvedGroup else { return nil }
         let performed = WeekPlanTarget(
             id: UUID(), weight: group.values.weight, reps: group.values.reps, sets: group.sets)

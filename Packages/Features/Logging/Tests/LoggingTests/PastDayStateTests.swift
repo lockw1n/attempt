@@ -222,7 +222,7 @@ struct PastDayEditTests {
         await past.state.load()
         let rowID = past.state.dayRows[0].id
 
-        await past.state.log(rowID: rowID, group: .of(grams: 30_000, reps: 8, sets: 3))
+        await past.state.log(rowID: rowID, rows: .of(grams: 30_000, reps: 8, sets: 3))
 
         // Three rows, rewritten in place — not six.
         let stored = try await past.storedSets(at: 0).filter { $0.deletedAt == nil }
@@ -242,7 +242,7 @@ struct PastDayEditTests {
         await past.state.load()
 
         await past.state.log(
-            rowID: past.state.dayRows[0].id, group: .of(grams: 100_000, reps: 5, sets: 2))
+            rowID: past.state.dayRows[0].id, rows: .of(grams: 100_000, reps: 5, sets: 2))
 
         #expect(past.state.exercises[0].sets.count == 2)
         #expect(past.state.dayRows[0].performed.map(\.sets) == [2])
@@ -257,7 +257,7 @@ struct PastDayEditTests {
         #expect(past.state.dayRows[0].answer == .unanswered)
 
         await past.state.log(
-            rowID: past.state.dayRows[0].id, group: .of(grams: 100_000, reps: 5, sets: 3))
+            rowID: past.state.dayRows[0].id, rows: .of(grams: 100_000, reps: 5, sets: 3))
 
         #expect(past.state.dayRows[0].answer == .logged)
         let entry = try #require(await past.storedEntry(at: 0))
@@ -272,7 +272,7 @@ struct PastDayEditTests {
         try await past.logSet(at: 0, order: 0)
         await past.state.load()
 
-        await past.state.log(rowID: UUID(), group: .of(grams: 30_000, reps: 8, sets: 3))
+        await past.state.log(rowID: UUID(), rows: .of(grams: 30_000, reps: 8, sets: 3))
 
         #expect(past.state.exercises[0].sets.count == 1)
         #expect(past.state.exercises[0].sets[0].weight == Weight(grams: 100_000))
@@ -290,7 +290,7 @@ struct PastDayEditTests {
         await state.load()
         await double.refuseWrites()
 
-        await state.log(rowID: state.dayRows[0].id, group: .of(grams: 30_000, reps: 8, sets: 1))
+        await state.log(rowID: state.dayRows[0].id, rows: .of(grams: 30_000, reps: 8, sets: 1))
 
         #expect(state.writeFailure != nil)
         #expect(state.exercises[0].sets[0].weight == Weight(grams: 100_000))
@@ -308,7 +308,7 @@ struct PastDayEditTests {
 
         // The same row corrected down: SetGroupRewrite announces, so the cache no longer claims a
         // 100 kg record for an exercise whose only set is now 60 kg.
-        await past.state.log(rowID: past.state.dayRows[0].id, group: .of(grams: 60_000, reps: 5, sets: 1))
+        await past.state.log(rowID: past.state.dayRows[0].id, rows: .of(grams: 60_000, reps: 5, sets: 1))
         await past.state.load()
 
         let after = try #require(past.state.exercises[0].sets.first)
@@ -327,7 +327,7 @@ struct PastDayEditTests {
         let before = try #require(await past.storedEntry(at: 0)).updatedAt
 
         await past.state.log(
-            rowID: past.state.dayRows[0].id, group: .of(grams: 60_000, reps: 5, sets: 1))
+            rowID: past.state.dayRows[0].id, rows: .of(grams: 60_000, reps: 5, sets: 1))
 
         // The sets moved, so the write happened; the entry did not, because it was already done.
         // `updatedAt` is `G-2.4`'s conflict key, and a mark rewritten to the value it holds would
@@ -350,7 +350,7 @@ struct PastDayEditTests {
         #expect(past.state.adherence == nil)
 
         await past.state.log(
-            rowID: past.state.dayRows[1].id, group: .of(grams: 100_000, reps: 5, sets: 1))
+            rowID: past.state.dayRows[1].id, rows: .of(grams: 100_000, reps: 5, sets: 1))
 
         // FR-17.9.8 is the day's rule wherever the answer comes from — and until it is written,
         // FR-17.7.3 withholds the adherence this screen exists to draw.
@@ -367,7 +367,7 @@ struct PastDayEditTests {
         await past.state.load()
 
         await past.state.log(
-            rowID: past.state.dayRows[0].id, group: .of(grams: 60_000, reps: 5, sets: 1))
+            rowID: past.state.dayRows[0].id, rows: .of(grams: 60_000, reps: 5, sets: 1))
 
         #expect(past.state.dayRows[1].answer == .unanswered)
         #expect(past.state.session?.endedAt == nil)
@@ -391,7 +391,7 @@ struct PastDayEditTests {
         #expect(row.logged.count == 4)
 
         await past.state.log(
-            rowID: past.state.dayRows[0].id, group: .of(grams: 60_000, reps: 5, sets: 2))
+            rowID: past.state.dayRows[0].id, rows: .of(grams: 60_000, reps: 5, sets: 2))
 
         // Two rows, mapped position by position onto the first two stored — which are the warmups,
         // now demoted to work. Nothing here is a defect of this screen: it is the rewrite's own
@@ -417,18 +417,18 @@ struct PastDayEditTests {
     }
 }
 
-extension ResolvedSetGroup {
-    /// A group of `sets` identical rows, which is what the Log sheet resolves to.
+extension [SetEntryValues] {
+    /// A group of `sets` identical rows, which is what one of the Log sheet's sections resolves
+    /// to (`FR-18.6.3`).
     ///
     /// - Parameters:
     ///   - grams: The load.
     ///   - reps: The repetitions.
     ///   - sets: How many.
-    /// - Returns: The group.
-    static func of(grams: Int, reps: Int, sets: Int) -> ResolvedSetGroup {
+    /// - Returns: The rows.
+    static func of(grams: Int, reps: Int, sets: Int) -> [SetEntryValues] {
         let values = SetEntryValues(
             weight: Weight(grams: grams), reps: reps, rpe: nil, isWarmup: false, notes: "")
-        return ResolvedSetGroup(
-            values: values, sets: sets, rows: Array(repeating: values, count: sets))
+        return Array(repeating: values, count: sets)
     }
 }

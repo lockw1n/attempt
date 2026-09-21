@@ -17,6 +17,18 @@ struct SetEditorCommands: View {
     /// keystroke (`FR-17.1.6`) — see ``SetEditorSheet``.
     let showsRefusal: Bool
 
+    /// Whether the confirming command can be taken (`Q-18.7`, `FR-18.6.4`).
+    ///
+    /// **Disabled rather than refusing, and that is the difference from ``showsRefusal``.** A
+    /// draft that does not resolve is a mistake the lifter can fix in the field they are in, so
+    /// the command takes the tap and says what is wrong. Every section at zero sets is not a
+    /// mistake: it is an answer, and the answer it is has its own button one line below — saving
+    /// it would write a done entry holding no completed set, which is what **Skipped** is
+    /// (`FR-17.9.6`).
+    ///
+    /// Always `true` on a sheet with one section, whose set count cannot reach zero.
+    var canSave = true
+
     /// Which form is drawn — what decides the confirming command's words, whether the skip is
     /// offered and whether the deletion is.
     let mode: SetEditorMode
@@ -50,12 +62,14 @@ struct SetEditorCommands: View {
                 if showsRefusal {
                     FieldRefusal(message: Text(LoggingStrings.setInvalidMessage))
                 }
+                if !canSave { skipHint }
                 Button(action: log) {
                     Text(mode.confirmLabel)
                 }
                 // A sheet is its own surface, so the filled accent here is not competing with a
                 // screen's (T-16.17).
                 .buttonStyle(.primaryAction(.fill))
+                .disabled(!canSave)
 
                 if let skip {
                     Button(action: skip) {
@@ -109,6 +123,21 @@ struct SetEditorCommands: View {
     ///
     /// **A glyph as well as the colour** (`G-4.5`): destructive must not be carried by the tint
     /// alone.
+    /// The line that points at the command this state's answer actually belongs to (`Q-18.7`).
+    ///
+    /// **Not a ``FieldRefusal``**, which is the negative colour and a warning glyph: nothing is
+    /// wrong here. It reads as guidance because it is, and it names the button directly beneath
+    /// it rather than describing it.
+    private var skipHint: some View {
+        Text(LoggingStrings.setEveryGroupEmptyHint)
+            .font(Typography.caption.font)
+            .foregroundStyle(ColorToken.textSecondary)
+            // Wraps rather than truncates, for `FieldRefusal`'s reason: inside a pinned footer a
+            // `Text` is given the height it asks for only if it says so.
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private var deleteCommand: some View {
         Button {
             isConfirmingDelete = true

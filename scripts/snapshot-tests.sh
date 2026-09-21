@@ -81,11 +81,17 @@ cd "$(dirname "$0")/.."
 #                     tests could have vanished unnoticed. Set to its own count now, as every other
 #                     suite is — "above the 19" was a margin that only ever grew.
 #   ExerciseLibrary: 44 tests, all of them reference-backed, no probes -> 44, its own count.
-#   Logging:         97 tests, 92 reference-backed, a width probe and four layout budgets
-#                                                                    -> 97, its own count.
+#   Logging:         104 tests, 97 reference-backed, a width probe and six layout budgets
+#                                                                    -> 104, its own count.
 #                     T-18.07 moved `SUITES` and left this tail at 96, because its review commit
 #                     had no reason to re-read a comment block its implementation commit wrote.
 #                     Both halves are one edit; a second commit on one task is where they part.
+#                     T-18.12 added five section references and two layout budgets, which measure
+#                     the head and the pinned commands at BOTH type sizes — what stops a claim
+#                     asserted through a snapshot being silently a claim about `.default` alone.
+#                     It also drifted this row by one within its own session, by adding the second
+#                     budget after setting the number: `git grep -c '@Test'` is the count, and it
+#                     has to be re-run when the last test lands rather than when the first does.
 #   History:         28 tests, 27 reference-backed, one layout budget -> 28, above the 27.
 #   Dashboard:       21 tests, all of them reference-backed, no probes -> 21, its own count.
 #   Settings:        49 tests, all of them reference-backed, no probes -> 49, its own count.
@@ -110,7 +116,7 @@ cd "$(dirname "$0")/.."
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|37"
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|44"
-    "Packages/Features/Logging|Logging|LoggingSnapshotTests|97"
+    "Packages/Features/Logging|Logging|LoggingSnapshotTests|104"
     "Packages/Features/History|History|HistorySnapshotTests|28"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|21"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|49"

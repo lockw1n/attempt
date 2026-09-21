@@ -278,6 +278,11 @@ public final class DayStore {
     /// **Save marks the row done**, which is `FR-17.9.3`'s reading of a checklist: a day is a list
     /// of answers, and logging a set against an exercise is answering for it.
     ///
+    /// **Every section's sets arrive as one list and are written as one chained command**
+    /// (`FR-18.6.3`, `NFR-18.3`). A plan naming several groups is answered in one visit, and a
+    /// section the lifter zeroed contributes nothing rather than a gap — see
+    /// ``SetEditorSections/rows``.
+    ///
     /// **A row already answered is rewritten rather than appended to** (`FR-17.7.5`). Reopening the
     /// sheet over an answer is the *only* way to change one — the circle is inert by then — so a
     /// save that appended would double the work every time a lifter corrected a rep count.
@@ -287,17 +292,18 @@ public final class DayStore {
     ///
     /// - Parameters:
     ///   - rowID: The row being logged against.
-    ///   - group: What the sheet collected — the form's answer and the rows it writes.
-    func log(rowID: UUID, group: ResolvedSetGroup) async {
-        await PerformanceSignpost.answer.measure { await performLog(rowID: rowID, group: group) }
+    ///   - rows: Every set the sheet collected, across every section, in the order they are stored
+    ///     in (`FR-18.6.3`).
+    func log(rowID: UUID, rows: [SetEntryValues]) async {
+        await PerformanceSignpost.answer.measure { await performLog(rowID: rowID, rows: rows) }
     }
 
     /// ``log(rowID:group:)``'s body, split out only so the interval above can bracket it.
     ///
     /// - Parameters:
     ///   - rowID: The row being logged against.
-    ///   - group: What the sheet collected — the form's answer and the rows it writes.
-    private func performLog(rowID: UUID, group: ResolvedSetGroup) async {
+    ///   - rows: Every set the sheet collected, across every section.
+    private func performLog(rowID: UUID, rows: [SetEntryValues]) async {
         unanswerable = []
         guard await startIfNeeded(), let entryID = entryID(forRow: rowID) else { return }
         // Asked about the *entry*, never about `rowID`. A day with no session draws the routine's
@@ -306,9 +312,9 @@ public final class DayStore {
         // lookup by it finds nothing on the commonest save there is. ``entryID(forRow:)`` is the
         // translation, and after ``startIfNeeded()`` its answer is always an identity `rows` has.
         if isAnswered(rowID: entryID) {
-            await store.rewriteGroup(inEntryID: entryID, rows: group.rows)
+            await store.rewriteGroup(inEntryID: entryID, rows: rows)
         } else {
-            await store.logGroup(inEntryID: entryID, rows: group.rows)
+            await store.logGroup(inEntryID: entryID, rows: rows)
         }
         await finishIfComplete()
         await reload()

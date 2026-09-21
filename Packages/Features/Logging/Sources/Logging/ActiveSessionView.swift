@@ -203,7 +203,7 @@ public struct ActiveSessionView: View {
                 unit: store.displayUnit,
                 vocabulary: vocabulary,
                 equipment: equipment,
-                log: { write($0, target) },
+                log: { write($0.single, target) },
                 cancel: { editing = nil },
                 delete: { delete(target) }
             )

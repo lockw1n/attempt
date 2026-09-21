@@ -72,25 +72,33 @@ struct ResolvedSetGroup: Equatable, Sendable {
 
 extension SetDraft {
     /// How many sets the form asks for, or `nil` where the field does not hold a count of at least
-    /// one.
+    /// ``minimumSets``.
     ///
-    /// **Zero is refused rather than floored here.** ``adjustingSets(by:)`` floors the ± pair, but
-    /// a lifter who typed `0` has said something the sheet cannot write — a group of no sets is the
-    /// row left unanswered, and **Skip this exercise** is how that is said.
+    /// **Zero is refused rather than floored here, on a form whose floor is one.**
+    /// ``adjustingSets(by:)`` floors the ± pair, but a lifter who typed `0` there has said
+    /// something the sheet cannot write — a group of no sets is the row left unanswered, and
+    /// **Skip this exercise** is how that is said.
+    ///
+    /// **In a sheet with several sections the floor is zero and `0` is an answer**
+    /// (`FR-18.6.4`): that group was not done, and nothing is written for it. What every section
+    /// at zero does is ``SetEditorSections/writesNothing``'s.
     var sets: Int? {
-        guard let count = LocalizedNumberField.count(setsText, locale: locale), count >= 1 else {
+        guard let count = LocalizedNumberField.count(setsText, locale: locale),
+            count >= minimumSets
+        else {
             return nil
         }
         return count
     }
 
-    /// This draft with its set count moved by `steps`, floored at one. See ``adjustingWeight(by:)``.
+    /// This draft with its set count moved by `steps`, floored at ``minimumSets``. See
+    /// ``adjustingWeight(by:)``.
     ///
     /// - Parameter steps: How many sets to move — negative is down.
     /// - Returns: The adjusted draft.
     func adjustingSets(by steps: Int) -> SetDraft {
         var adjusted = self
-        let moved = max(1, (sets ?? 1) + steps)
+        let moved = max(minimumSets, (sets ?? minimumSets) + steps)
         adjusted.setsText = LocalizedNumberField.render(Double(moved), locale: locale)
         adjusted.details = Self.details(of: adjusted, count: adjusted.details.isEmpty ? 0 : moved)
         return adjusted

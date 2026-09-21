@@ -93,6 +93,16 @@ struct SetDraft: Equatable, Sendable {
     /// sets differ. See ``SetDetailDraft``.
     var details: [SetDetailDraft] = []
 
+    /// The smallest set count this form accepts (`FR-18.6.4`).
+    ///
+    /// **Zero only in a sheet with more than one section**, where a group that was not done writes
+    /// nothing and says so. Everywhere else it is one, which is what stops a lone form saving an
+    /// answer holding no set — a done entry with nothing completed behind it is a *skip*
+    /// (`FR-17.9.6`), and it is reached through a different command for a reason.
+    ///
+    /// Set by ``SetEditorSections`` as it builds the sections, never by a field.
+    var minimumSets: Int = 1
+
     /// The scale RPE is entered on. Outside it, the field is a typo rather than a rating.
     static let rpeRange: ClosedRange<Double> = 1...10
 

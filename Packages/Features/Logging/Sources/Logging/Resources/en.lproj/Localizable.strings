@@ -537,6 +537,9 @@
 "logging.session.set.actual.label" = "Actual";
 "logging.session.set.details.label" = "Per-set details";
 "logging.session.set.save-done.action" = "Save as done";
+"logging.session.set.group.heading %lld" = "Group %lld";
+"logging.session.set.group.not-done" = "Not done";
+"logging.session.set.group.every-empty.hint" = "Every group is at 0 sets. Use Skip this exercise below to record that you did not do it.";
 
 /* FR-17.9.4's difference, called out beside what was actually done. The separator is a string
    rather than a comma: not every language joins clauses with one (G-3.4). */

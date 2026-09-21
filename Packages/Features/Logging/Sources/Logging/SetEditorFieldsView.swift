@@ -4,7 +4,12 @@ import Localization
 import PowerliftingCore
 import SwiftUI
 
-/// The Log sheet's fields (`FR-17.1.1`, `FR-17.9.4`, `FR-1.2.3`, `FR-1.2.4`, `FR-1.2.8`).
+/// A free workout's set form (`FR-1.2.3`, `FR-1.2.4`, `FR-1.2.8`, `OUT-17.8`).
+///
+/// **A checklist row's form is ``SetEditorRowFields``, which was this type's other branch.** That
+/// one draws a section per planned group (`FR-18.6.2`); this one collects one set and grows no
+/// sections (`OUT-18.9`). Split rather than widened, which is what makes `OUT-18.6`'s "the free
+/// workout is untouched" a property of the type rather than a claim about a diff.
 ///
 /// **A type of its own so a reference can be taken of it**, which is `TR-1.12` rather than
 /// decomposition for its own sake: `ImageRenderer` lays a `ScrollView`'s content out and draws none
@@ -37,26 +42,12 @@ struct SetEditorFields: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.lg.points) {
             SetEditorHead(draft: $draft, mode: mode, equipment: equipment)
-            switch mode {
-            case .row(let row):
-                // Below Reps rather than under the load it describes, and that is `FR-17.1.6`
-                // deciding it — see ``SetEditorPlateRow``.
-                SetEditorPlateRow(draft: $draft, equipment: equipment)
-                PlannedActualPair(plan: row.plan, draft: draft)
-                SetDetailsFold(draft: $draft, vocabulary: vocabulary)
-            case .set:
-                warmupField
-                rpeField
-                modifiersField
-                notesField
-            }
+            warmupField
+            rpeField
+            modifiersField
+            notesField
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        // The fold holds one entry per set, prefilled from the form — so a form whose reps or set
-        // count move leaves entries the lifter changed and the sheet would ignore. Both are no-ops
-        // while the fold is closed, which is what keeps this off every keystroke on a free workout.
-        .onChange(of: draft.repsText) { draft = draft.resettingDetails() }
-        .onChange(of: draft.setsText) { draft = draft.resettingDetails() }
         .sheet(isPresented: $isPicking) {
             SetModifierPicker(
                 applied: $draft.modifiers,

@@ -348,6 +348,9 @@
 "logging.session.set.actual.label" = "Фактично";
 "logging.session.set.details.label" = "Деталі кожного підходу";
 "logging.session.set.save-done.action" = "Зберегти як виконане";
+"logging.session.set.group.heading %lld" = "Група %lld";
+"logging.session.set.group.not-done" = "Не виконано";
+"logging.session.set.group.every-empty.hint" = "У кожній групі 0 підходів. Скористайтеся кнопкою «Пропустити цю вправу» нижче, щоб записати, що ви її не робили.";
 
 /* FR-17.9.4 — відхилення поруч із фактично виконаним. */
 "logging.session.set.deviation.line %@ %@" = "%1$@ · %2$@";

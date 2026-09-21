@@ -84,18 +84,18 @@ public struct DayView: View {
         }
         .sheet(item: $editing) { target in
             SetEditorSheet(
-                draft: ActiveSessionView.draft(
-                    for: target.editorTarget, unit: store.displayUnit, locale: locale),
+                sections: SetEditorSections(
+                    answering: target.row, unit: store.displayUnit, locale: locale),
                 mode: .row(target.row),
                 prescribed: target.prescribed,
                 unit: store.displayUnit,
                 vocabulary: vocabulary,
                 equipment: equipment,
-                log: { draft in
-                    guard let group = draft.resolvedGroup else { return }
+                log: { sections in
+                    let rows = sections.rows
                     let rowID = target.rowID
                     editing = nil
-                    Task { await day.log(rowID: rowID, group: group) }
+                    Task { await day.log(rowID: rowID, rows: rows) }
                 },
                 cancel: { editing = nil },
                 skip: {

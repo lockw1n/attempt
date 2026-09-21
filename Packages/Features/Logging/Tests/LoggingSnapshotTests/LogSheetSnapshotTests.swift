@@ -58,6 +58,75 @@
             }
         }
 
+        // MARK: - The sections (FR-18.6.2, FR-18.6.4, FR-18.6.6)
+
+        @Test func aPlanOfTwoGroupsOpensOnTwoSections() throws {
+            // `F-10`, and the whole of what the task is for: the circle wrote both groups and the
+            // sheet wrote one. What a picture settles here is that the second section is a form
+            // rather than a line — three fields of its own, its own plan target, its own fold —
+            // and that each section says which group it is.
+            try assertSnapshots(named: "Log-sheet-two-sections") {
+                fixedEnvironment {
+                    LogSheetFixtures.sheet(
+                        over: LogSheetFixtures.twoSections, plan: LogSheetFixtures.twoGroupPlan)
+                }
+            }
+        }
+
+        @Test func aDeviationInTheSecondGroupReopens() throws {
+            // `FR-17.7.5` over `FR-18.6.2`: the row is answered, the second group was done one rep
+            // short, and reopening prefills **both** sections from what is stored. Before this
+            // task the same row reopened as one form reading `57.5 × 10 × 5`, which is neither
+            // group.
+            try assertSnapshots(named: "Log-sheet-two-sections-answered") {
+                fixedEnvironment {
+                    LogSheetFixtures.sheet(
+                        over: LogSheetFixtures.twoSectionsAnswered,
+                        plan: LogSheetFixtures.twoGroupPlan)
+                }
+            }
+        }
+
+        @Test func aSectionAtZeroSaysSoInWords() throws {
+            // `FR-18.6.4` and `FR-18.6.5` in one picture: the back-offs were not done, the count
+            // reads 0, and the Actual line says **Not done** rather than rendering `× 0` — which
+            // is `G-4.5`, a number nobody entered being indistinguishable from one they did.
+            try assertSnapshots(named: "Log-sheet-section-not-done") {
+                fixedEnvironment {
+                    LogSheetFixtures.sheet(
+                        over: LogSheetFixtures.secondSectionNotDone,
+                        plan: LogSheetFixtures.twoGroupPlan)
+                }
+            }
+        }
+
+        @Test func everySectionAtZeroDisablesSave() throws {
+            // `Q-18.7`'s answer, which is a *disabled* command and a line naming the one below it.
+            // The claim a picture carries that no test does is that the two read as different
+            // things: the refusal is negative and this is guidance.
+            try assertSnapshots(named: "Log-sheet-every-section-empty") {
+                fixedEnvironment {
+                    LogSheetFixtures.sheet(
+                        over: LogSheetFixtures.everySectionEmpty,
+                        plan: LogSheetFixtures.twoGroupPlan)
+                }
+            }
+        }
+
+        @Test func theSecondSectionHasAFoldOfItsOwn() throws {
+            // `FR-18.6.6`. The fold is opened on the **second** section deliberately: it holds
+            // that group's rows and no other's, which is the half a one-section sheet could not
+            // have had at all — and it keeps the render inside the height a reference can hold,
+            // where two open folds at `accessibility3` would not.
+            try assertSnapshots(named: "Log-sheet-second-fold") {
+                fixedEnvironment {
+                    LogSheetFixtures.sheet(
+                        over: LogSheetFixtures.secondSectionFoldOpen,
+                        plan: LogSheetFixtures.twoGroupPlan)
+                }
+            }
+        }
+
         // MARK: - FR-17.1.6's opening height, as a number
 
         @Test func weightAndRepsOpenAboveTheCommands() throws {
@@ -101,6 +170,70 @@
             #expect(points < budget)
         }
 
+        @Test func aSecondSectionDoesNotMoveWeightOrReps() throws {
+            // `FR-18.6.2` against `FR-17.1.6`, and the claim is about what the budget is measured
+            // over rather than about the sheet's total height. Sections below the first **scroll**
+            // — only the first section's head and the pinned commands are above the fold — so the
+            // opening height of a two-section sheet is the opening height of a one-section sheet,
+            // and a regression that hoisted a section heading or a second form into the head would
+            // show here as a number that moved.
+            //
+            // MEASURED AT BOTH SIZES, AND THE ASSERTION SAYS WHICH. `FR-17.1.6` holds at the
+            // default size only — re-run at `accessibility3` the head and commands come to more
+            // than a `.large` sheet gets, which was true before the sections and before the focus
+            // (`T-18.11`, `requirements.md` v1.15). What this test can hold at that size is the
+            // *comparison*: whatever the figure is, two sections do not make it worse.
+            for typeSize in [SnapshotTypeSize.default, .accessibility3] {
+                let one = try Self.headHeight(LogSheetFixtures.unanswered, at: typeSize)
+                let two = try Self.headHeight(LogSheetFixtures.twoSections, at: typeSize)
+                print("FR-18.6.2 head at \(typeSize): one section \(one) pt, two \(two) pt")
+                #expect(one == two)
+            }
+        }
+
+        @Test func theDisabledStateIsTheOnlyThingThatGrowsTheCommands() throws {
+            // The other half of the budget, and the one this task could actually have spent. The
+            // head is fixed (above), so what is left is the **pinned** region: `Q-18.7`'s line
+            // appears there, and a footer that grows takes the growth out of the scroll view
+            // rather than out of the sheet. Measured at both sizes, and the state it appears in is
+            // the one where nothing is going to be written — so a lifter who is logging anything
+            // at all never sees it.
+            for typeSize in [SnapshotTypeSize.default, .accessibility3] {
+                let saving = try Self.height(LogSheetFixtures.commands(canSave: true), at: typeSize)
+                let refusing = try Self.height(
+                    LogSheetFixtures.commands(canSave: false), at: typeSize)
+                print(
+                    "FR-18.6.3 commands at \(typeSize): \(saving) pt, disabled \(refusing) pt")
+                // Nothing this task added is drawn while the sheet can be saved.
+                #expect(saving == 201.5 || typeSize == .accessibility3)
+                #expect(refusing > saving)
+            }
+        }
+
+        /// The height of the region `FR-17.1.6`'s budget is measured over, at one type size.
+        ///
+        /// - Parameters:
+        ///   - sections: What the sheet holds.
+        ///   - typeSize: The size the claim is made at — see the caller's note.
+        /// - Returns: The height in points, the harness's own padding subtracted.
+        static func headHeight(
+            _ sections: SetEditorSections, at typeSize: SnapshotTypeSize
+        ) throws -> Double {
+            try height(LogSheetFixtures.head(over: sections), at: typeSize)
+        }
+
+        /// One region's rendered height, the harness's own padding subtracted.
+        ///
+        /// - Parameters:
+        ///   - region: What to measure.
+        ///   - typeSize: The size the claim is made at.
+        /// - Returns: The height in points.
+        static func height(_ region: some View, at typeSize: SnapshotTypeSize) throws -> Double {
+            let rendered = try Snapshot.render(
+                fixedEnvironment { region }, appearance: .light, typeSize: typeSize)
+            return Double(rendered.height) / Snapshot.scale - 2 * Spacing.lg.points
+        }
+
         // MARK: - Fixtures
 
         /// The Log sheet's regions, in the order and with the paddings the sheet gives them.
@@ -128,23 +261,19 @@
             ]
 
             /// **Log** on a row nobody has answered — prefilled from the plan.
-            static var unanswered: SetDraft {
-                SetDraft(
-                    answering: SetEditorRow(plan: plan), unit: .kilograms, locale: Self.numberLocale)
-            }
+            static var unanswered: SetEditorSections { sections(plan: plan) }
 
             /// The same form with the reps brought down to eight — DOD-17.7's answer.
-            static var deviating: SetDraft {
-                var draft = unanswered
-                draft.repsText = "8"
-                return draft
+            static var deviating: SetEditorSections {
+                edited(unanswered, at: 0) { $0.repsText = "8" }
             }
 
             /// The fold open over three sets.
-            static var perSet: SetDraft {
-                var draft = deviating.openingDetails()
-                draft.details[2].repsText = "6"
-                return draft
+            static var perSet: SetEditorSections {
+                edited(deviating, at: 0) {
+                    $0 = $0.openingDetails()
+                    $0.details[2].repsText = "6"
+                }
             }
 
             /// The sheet reopened over a row already answered — two sets of eight at 32.5 kg
@@ -156,39 +285,135 @@
             /// half `perSet` cannot — the form prefilled from **what is stored** rather than from
             /// the plan, with the fold *closed* because the stored sets agree with each other, and
             /// a deviation on all three dimensions at once.
-            static var answered: SetDraft {
-                SetDraft(
+            static var answered: SetEditorSections { sections(plan: plan, logged: logged) }
+
+            /// Two stored sets that agree with each other, at a load the plan did not name.
+            static let logged: [SetEntry] = run(grams: 32_500, reps: [8, 8], from: 10)
+
+            // MARK: - FR-18.6's sections
+
+            /// A plan naming two groups — a top set and back-offs, the shape `F-10` was reported
+            /// over.
+            ///
+            /// **The two lines differ in rendered width rather than only in their numbers.** A
+            /// fixture whose groups render the same length can picture every *state* a section
+            /// has and still not picture a row changing shape under one, which is what `T-18.07`
+            /// found about the plan scheme's own layout.
+            static let twoGroupPlan: [WeekPlanTarget] = [
+                WeekPlanTarget(id: identifier(1), weight: Weight(grams: 57_500), reps: 10, sets: 3),
+                WeekPlanTarget(id: identifier(2), weight: Weight(grams: 100_000), reps: 8, sets: 2),
+            ]
+
+            /// `FR-18.6.2`'s own state: two planned groups, nothing logged against either.
+            static var twoSections: SetEditorSections { sections(plan: twoGroupPlan) }
+
+            /// A two-group row already answered with the **second** group one rep short — the
+            /// state `F-10` made unreachable, and `DOD-18.3`'s rewrite.
+            static var twoSectionsAnswered: SetEditorSections {
+                sections(plan: twoGroupPlan, logged: twoGroupsLogged)
+            }
+
+            /// `FR-18.6.4`: the back-offs were not done, so that section is at zero and its pair
+            /// says so in words rather than as `× 0`.
+            static var secondSectionNotDone: SetEditorSections {
+                edited(twoSections, at: 1) { $0.setsText = "0" }
+            }
+
+            /// `FR-18.6.6`, over the **second** section — the fold a one-section sheet could never
+            /// have shown, holding that group's rows and no other's.
+            static var secondSectionFoldOpen: SetEditorSections {
+                edited(twoSections, at: 1) {
+                    $0 = $0.openingDetails()
+                    $0.details[1].repsText = "6"
+                }
+            }
+
+            /// Every section at zero — the one state **Save as done** is disabled in (`Q-18.7`).
+            static var everySectionEmpty: SetEditorSections {
+                edited(secondSectionNotDone, at: 0) { $0.setsText = "0" }
+            }
+
+            /// Two logged runs — `57.5 × 10 × 3`, then `100 × 7 × 2` against a target of eight.
+            static var twoGroupsLogged: [SetEntry] {
+                run(grams: 57_500, reps: [10, 10, 10], from: 20)
+                    + run(grams: 100_000, reps: [7, 7], from: 30)
+            }
+
+            /// What the sheet opens holding over a row.
+            ///
+            /// - Parameters:
+            ///   - plan: What the routine prescribed.
+            ///   - logged: What is already stored against it.
+            /// - Returns: One section per group.
+            static func sections(
+                plan: [WeekPlanTarget], logged: [SetEntry] = []
+            ) -> SetEditorSections {
+                SetEditorSections(
                     answering: SetEditorRow(plan: plan, logged: logged),
                     unit: .kilograms,
                     locale: Self.numberLocale)
             }
 
-            /// Two stored sets that agree with each other, at a load the plan did not name.
-            static let logged: [SetEntry] = [8, 8].enumerated().map { index, reps in
-                SetEntry(
-                    id: identifier(10 + index),
-                    createdAt: .distantPast,
-                    updatedAt: .distantPast,
-                    deletedAt: nil,
-                    entryID: identifier(3),
-                    order: index,
-                    weight: Weight(grams: 32_500),
-                    reps: reps,
-                    rpe: nil,
-                    rir: nil,
-                    isWarmup: false,
-                    isCompleted: true,
-                    targetWeight: nil,
-                    targetReps: nil,
-                    modifiers: [],
-                    notes: "",
-                    completedAt: .distantPast)
+            /// One section's draft, changed.
+            ///
+            /// - Parameters:
+            ///   - sections: What the sheet held.
+            ///   - index: Which section moves.
+            ///   - change: What the lifter did to it.
+            /// - Returns: The sheet, with that one section changed.
+            static func edited(
+                _ sections: SetEditorSections, at index: Int, _ change: (inout SetDraft) -> Void
+            ) -> SetEditorSections {
+                var edited = sections
+                var draft = edited.sections[index].draft
+                change(&draft)
+                edited.replace(draft, at: index)
+                return edited
             }
 
+            /// A run of completed sets at one load.
+            ///
+            /// - Parameters:
+            ///   - grams: The load.
+            ///   - reps: One count per set.
+            ///   - seed: Where the stable identifiers and the stored order start.
+            /// - Returns: The sets, in order.
+            static func run(grams: Int, reps: [Int], from seed: Int) -> [SetEntry] {
+                reps.enumerated().map { offset, count in
+                    SetEntry(
+                        id: identifier(seed + offset),
+                        createdAt: .distantPast,
+                        updatedAt: .distantPast,
+                        deletedAt: nil,
+                        entryID: identifier(3),
+                        order: seed + offset,
+                        weight: Weight(grams: grams),
+                        reps: count,
+                        rpe: nil,
+                        rir: nil,
+                        isWarmup: false,
+                        isCompleted: true,
+                        targetWeight: nil,
+                        targetReps: nil,
+                        modifiers: [],
+                        notes: "",
+                        completedAt: .distantPast)
+                }
+            }
+
+            // MARK: - The views
+
             /// The pinned commands, in the mode a checklist row draws them.
-            static var commands: some View {
+            static var commands: some View { commands(canSave: true) }
+
+            /// The pinned commands, with the confirming one in the state the sections put it in.
+            ///
+            /// - Parameter canSave: Whether anything would be written (`Q-18.7`).
+            /// - Returns: The commands.
+            static func commands(canSave: Bool) -> some View {
                 SetEditorCommands(
                     showsRefusal: false,
+                    canSave: canSave,
                     mode: .row(SetEditorRow(plan: plan)),
                     log: {},
                     cancel: {},
@@ -198,11 +423,12 @@
 
             /// The three fields `FR-17.1.6`'s budget is measured over.
             ///
-            /// - Parameter draft: What the form holds.
+            /// - Parameter sections: What the form holds — the first section's fields are the ones
+            ///   measured (`FR-18.6.1`).
             /// - Returns: The head.
-            static func head(over draft: SetDraft) -> some View {
+            static func head(over sections: SetEditorSections) -> some View {
                 SetEditorHead(
-                    draft: .constant(draft),
+                    draft: .constant(sections.single),
                     mode: .row(SetEditorRow(plan: plan)),
                     equipment: Fixtures.equipment
                 )
@@ -211,18 +437,26 @@
 
             /// The whole sheet, composed.
             ///
-            /// - Parameter draft: What the form holds.
+            /// **``SetEditorRowFields`` rather than its parts**, which is `T-17.01`'s rule: a
+            /// fixture that assembles a screen's components can picture one the screen omits, and
+            /// every gate in this repository was clean when four of these references did.
+            ///
+            /// - Parameters:
+            ///   - sections: What the form holds.
+            ///   - plan: The row's plan, which is what decides how many sections there are.
             /// - Returns: The sheet, laid out for a reference.
-            static func sheet(over draft: SetDraft) -> some View {
+            static func sheet(
+                over sections: SetEditorSections, plan: [WeekPlanTarget] = plan
+            ) -> some View {
                 VStack(spacing: Spacing.sm.points) {
-                    SetEditorFields(
-                        draft: .constant(draft),
+                    SetEditorRowFields(
+                        sections: .constant(sections),
                         mode: .row(SetEditorRow(plan: plan)),
                         vocabulary: Fixtures.vocabulary,
                         equipment: Fixtures.equipment
                     )
                     .padding(Spacing.lg.points)
-                    commands
+                    commands(canSave: !sections.writesNothing)
                 }
             }
 

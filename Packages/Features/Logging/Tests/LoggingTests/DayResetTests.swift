@@ -83,7 +83,7 @@ struct DayResetTests {
             weight: Weight(grams: 95_000), reps: 4, rpe: nil, isWarmup: false)
         await day.log(
             rowID: try #require(day.rows.first).id,
-            group: ResolvedSetGroup(values: values, sets: 3, rows: Array(repeating: values, count: 3)))
+            rows: Array(repeating: values, count: 3))
         let entryID = try await fixture.firstEntryID(day: 0)
         try #require(day.rows.first?.answer == .logged)
         try #require(day.rows.first?.wasAsPlanned == false)
@@ -149,7 +149,7 @@ struct DayResetTests {
         let rowID = try #require(day.rows.last).id
         let values = SetEntryValues(
             weight: Weight(grams: 20_000), reps: 12, rpe: nil, isWarmup: false)
-        await day.log(rowID: rowID, group: ResolvedSetGroup(values: values, sets: 1, rows: [values]))
+        await day.log(rowID: rowID, rows: [values])
         try #require(day.rows.last?.answer == .logged)
 
         await day.reset(rowID: rowID)

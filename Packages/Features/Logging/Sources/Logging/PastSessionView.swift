@@ -154,7 +154,7 @@ public struct PastSessionView: View {
                 unit: state.displayUnit,
                 vocabulary: vocabulary,
                 equipment: equipment,
-                log: { write($0, target) },
+                log: { write($0.single, target) },
                 cancel: { editing = nil },
                 delete: { delete(target) }
             )
@@ -162,18 +162,18 @@ public struct PastSessionView: View {
         }
         .sheet(item: $logging) { target in
             SetEditorSheet(
-                draft: ActiveSessionView.draft(
-                    for: target.editorTarget, unit: state.displayUnit, locale: locale),
+                sections: SetEditorSections(
+                    answering: target.row, unit: state.displayUnit, locale: locale),
                 mode: .row(target.row),
                 prescribed: target.prescribed,
                 unit: state.displayUnit,
                 vocabulary: vocabulary,
                 equipment: equipment,
-                log: { draft in
-                    guard let group = draft.resolvedGroup else { return }
+                log: { sections in
+                    let rows = sections.rows
                     let rowID = target.rowID
                     logging = nil
-                    Task { await state.log(rowID: rowID, group: group) }
+                    Task { await state.log(rowID: rowID, rows: rows) }
                 },
                 cancel: { logging = nil }
                 // No **Skip this exercise**: skipping is how a day is answered while it is being

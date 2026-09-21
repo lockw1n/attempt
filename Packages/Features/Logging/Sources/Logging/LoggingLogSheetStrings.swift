@@ -31,6 +31,23 @@ extension LoggingStrings {
     /// What the sheet's primary command reads — it answers the row *and* marks it done.
     static let setSaveDoneAction = resource("logging.session.set.save-done.action")
 
+    // MARK: - The sections (FR-18.6.2, FR-18.6.4)
+
+    /// What names a group on a sheet that draws more than one (`FR-18.6.2`).
+    ///
+    /// - Parameter number: Its position in the plan, counting from one.
+    /// - Returns: The heading.
+    static func setGroupHeading(_ number: Int) -> LocalizedStringResource {
+        resource("logging.session.set.group.heading \(number)")
+    }
+
+    /// What a section at zero sets says where the group it was done against is rendered
+    /// (`FR-18.6.5`, `G-4.5`) — in words, never as `× 0`.
+    static let setGroupNotDone = resource("logging.session.set.group.not-done")
+
+    /// The line under the sections when every one of them is at zero (`Q-18.7`).
+    static let setEveryGroupEmptyHint = resource("logging.session.set.group.every-empty.hint")
+
     // MARK: - The deviation sentence (FR-17.9.4)
 
     /// The actual group with what it did against the plan appended.
@@ -88,6 +105,10 @@ extension LoggingStrings {
             setActualLabel,
             setDetailsLabel,
             setSaveDoneAction,
+            setGroupHeading(1),
+            setGroupHeading(2),
+            setGroupNotDone,
+            setEveryGroupEmptyHint,
             setDeviationLine(performed: "30 kg × 8 × 3", deviation: "−2 reps"),
             setDeviationWeight("+2.5 kg"),
             setDeviationReps(sign: "−", count: 2),

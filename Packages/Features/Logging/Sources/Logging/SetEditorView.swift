@@ -45,8 +45,9 @@ enum SetEditorWrite: Equatable {
 ///
 /// Taking a draft and closures rather than the store, so the form is picturable without one.
 struct SetEditorSheet: View {
-    /// What the user has entered so far.
-    @State private var draft: SetDraft
+    /// What the user has entered so far — one section over a free workout's set, one per planned
+    /// group over a checklist row (`FR-18.6.2`).
+    @State private var draft: SetEditorSections
 
     /// Whether the confirming command has been tapped over a draft that does not resolve.
     ///
@@ -72,8 +73,9 @@ struct SetEditorSheet: View {
     /// The gym `FR-1.4.1`'s loading is worked out on, handed down to the row that shows it.
     let equipment: PlateCalculatorStore
 
-    /// Logs the group, or saves the edit. The caller is what knows which row or set it is.
-    let log: (SetDraft) -> Void
+    /// Logs every section's group, or saves the edit. The caller is what knows which row or set
+    /// it is, and over a row it writes ``SetEditorSections/rows`` as one command (`FR-18.6.3`).
+    let log: (SetEditorSections) -> Void
 
     /// Leaves without writing anything.
     let cancel: () -> Void
@@ -105,12 +107,50 @@ struct SetEditorSheet: View {
         unit: MassUnit,
         vocabulary: SetModifierVocabulary,
         equipment: PlateCalculatorStore,
-        log: @escaping (SetDraft) -> Void,
+        log: @escaping (SetEditorSections) -> Void,
         cancel: @escaping () -> Void,
         skip: (() -> Void)? = nil,
         delete: @escaping () -> Void = {}
     ) {
-        _draft = State(initialValue: draft)
+        self.init(
+            sections: SetEditorSections(single: draft),
+            mode: mode,
+            prescribed: prescribed,
+            unit: unit,
+            vocabulary: vocabulary,
+            equipment: equipment,
+            log: log,
+            cancel: cancel,
+            skip: skip,
+            delete: delete)
+    }
+
+    /// Builds the form over a sheet's sections (`FR-18.6.2`).
+    ///
+    /// - Parameters:
+    ///   - sections: One per planned group, prefilled.
+    ///   - mode: Which form is drawn (`FR-17.1.1`).
+    ///   - prescribed: What a routine planned for it, where one did (`FR-15.3.1`).
+    ///   - unit: The unit that prescription is shown in.
+    ///   - vocabulary: The modifier terms on offer (`FR-1.2.8`).
+    ///   - equipment: The gym `FR-1.4.1`'s loading is worked out on.
+    ///   - log: Logs every section's group, or saves the edit.
+    ///   - cancel: Closes the form.
+    ///   - skip: Records that the exercise is not being done today. Row mode only.
+    ///   - delete: Deletes the set being edited. Ignored while one is being added.
+    init(
+        sections: SetEditorSections,
+        mode: SetEditorMode = .set(isEditing: false),
+        prescribed: PlannedTargetGroup? = nil,
+        unit: MassUnit,
+        vocabulary: SetModifierVocabulary,
+        equipment: PlateCalculatorStore,
+        log: @escaping (SetEditorSections) -> Void,
+        cancel: @escaping () -> Void,
+        skip: (() -> Void)? = nil,
+        delete: @escaping () -> Void = {}
+    ) {
+        _draft = State(initialValue: sections)
         self.mode = mode
         self.prescribed = prescribed
         self.unit = unit
@@ -133,16 +173,12 @@ struct SetEditorSheet: View {
         VStack(spacing: Spacing.sm.points) {
             plannedTarget
             ScrollView {
-                SetEditorFields(
-                    draft: $draft,
-                    mode: mode,
-                    vocabulary: vocabulary,
-                    equipment: equipment
-                )
-                .padding(Spacing.lg.points)
+                fields
+                    .padding(Spacing.lg.points)
             }
             SetEditorCommands(
                 showsRefusal: hasSubmitted && !draft.isLoggable,
+                canSave: !draft.writesNothing,
                 mode: mode,
                 log: submit,
                 cancel: cancel,
@@ -166,6 +202,24 @@ struct SetEditorSheet: View {
     /// every snapshot pass, so a field added to ``SetEditorHead`` has to be argued against this
     /// rather than silently pushing Reps under the commands.
     static let smallestScreen = 667.0
+
+    /// The sections a checklist row draws, or a free workout's one form.
+    ///
+    /// **Two types rather than one with a branch in it**, which is what keeps `OUT-18.6`'s
+    /// promise structural: see ``SetEditorFields``.
+    @ViewBuilder private var fields: some View {
+        if mode.isRow {
+            SetEditorRowFields(
+                sections: $draft, mode: mode, vocabulary: vocabulary, equipment: equipment)
+        } else {
+            SetEditorFields(
+                draft: Binding(
+                    get: { draft.single }, set: { draft.replace($0, at: 0) }),
+                mode: mode,
+                vocabulary: vocabulary,
+                equipment: equipment)
+        }
+    }
 
     /// `FR-17.1.6`'s validation: the refusal appears at the first save over a draft that does not
     /// resolve, and the command refuses rather than being disabled.

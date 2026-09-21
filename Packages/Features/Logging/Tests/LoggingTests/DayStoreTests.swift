@@ -281,14 +281,10 @@ struct DayStoreTests {
 
         await day.log(
             rowID: rowID,
-            group: ResolvedSetGroup(
-                values: SetEntryValues(
-                    weight: Weight(grams: 60_000), reps: 12, rpe: nil, isWarmup: false),
-                sets: 1,
-                rows: [
-                    SetEntryValues(
-                        weight: Weight(grams: 60_000), reps: 12, rpe: nil, isWarmup: false)
-                ]))
+            rows: [
+                SetEntryValues(
+                    weight: Weight(grams: 60_000), reps: 12, rpe: nil, isWarmup: false)
+            ])
 
         let row = try #require(day.rows.first)
         #expect(row.answer == .logged)
@@ -310,7 +306,7 @@ struct DayStoreTests {
         await day.load()
         let rowID = try #require(day.rows.first).id
 
-        await day.log(rowID: rowID, group: Self.group(reps: 4, sets: 3))
+        await day.log(rowID: rowID, rows: Self.group(reps: 4, sets: 3))
 
         let entryID = try await fixture.firstEntryID(day: 0)
         let before = try await fixture.stack.workouts.plannedTargets(
@@ -325,7 +321,7 @@ struct DayStoreTests {
         #expect(!logged.wasAsPlanned)
 
         // Reopened over the answer, which is the only way to change one (`FR-17.7.5`).
-        await day.log(rowID: rowID, group: Self.group(reps: 5, sets: 2))
+        await day.log(rowID: rowID, rows: Self.group(reps: 5, sets: 2))
 
         let rewritten = try #require(day.rows.first)
         #expect(rewritten.performed.map(\.sets) == [2])
@@ -341,11 +337,10 @@ struct DayStoreTests {
     ///   - reps: What each set recorded.
     ///   - sets: How many.
     /// - Returns: The group.
-    private static func group(reps: Int, sets: Int) -> ResolvedSetGroup {
+    private static func group(reps: Int, sets: Int) -> [SetEntryValues] {
         let values = SetEntryValues(
             weight: Weight(grams: 100_000), reps: reps, rpe: nil, isWarmup: false)
-        return ResolvedSetGroup(
-            values: values, sets: sets, rows: Array(repeating: values, count: sets))
+        return Array(repeating: values, count: sets)
     }
 
     @Test("The editor opens seeded from the routine on a day nothing has been logged into")
