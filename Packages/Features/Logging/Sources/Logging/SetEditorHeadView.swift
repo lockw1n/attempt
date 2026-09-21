@@ -32,6 +32,14 @@ struct SetEditorHead: View {
     /// **Taken on appearance, so the sheet opens on the number the lifter came to change.** The
     /// flow that reaches this form has already named the exercise — the tester's complaint was that
     /// the load then cost a tap of its own before a digit could be typed.
+    ///
+    /// **The heading loses the first announcement to this, and that is accepted rather than
+    /// unnoticed.** Taking focus moves the accessibility cursor to Weight, and the sheet carries no
+    /// navigation title, so the heading below is the only name it has. Moving the cursor back is a
+    /// mechanism nothing in this project can measure — VoiceOver does not enable from a `simctl`
+    /// preference write and the simulator's own inspector answers *not available* — and an
+    /// accessibility mechanism inferred rather than measured is worse than a stated refusal.
+    /// `FR-18.6.1` asks for the focus; `G-4.1`'s announcement wants a device with VoiceOver on.
     @FocusState private var isEnteringWeight: Bool
 
     /// What is selected in the load's field.
@@ -40,6 +48,10 @@ struct SetEditorHead: View {
     /// arrives prefilled from the plan (`FR-17.1.1`), so a caret parked at one end turns the first
     /// digit typed into `575` rather than `5` — worse than no focus at all. Tapping back into the
     /// field later is not an open, and iOS's own caret placement stands.
+    ///
+    /// **It is held only while the field holds the keyboard, and that is load-bearing rather than
+    /// tidy.** The value here is a pair of indices into whatever the field said when they were
+    /// taken; both the blur and the ± pair can leave them naming a string that no longer exists.
     @State private var weightSelection: TextSelection?
 
     /// Whether the load has already been offered to the lifter whole.
@@ -70,7 +82,7 @@ struct SetEditorHead: View {
         // through with the ± pair — and so the row does not re-read every time the field empties.
         .task { await equipment.load() }
         .onAppear { isEnteringWeight = true }
-        .onChange(of: isEnteringWeight) { selectTheLoadOnce() }
+        .onChange(of: isEnteringWeight) { applyTheFocusChange() }
     }
 
     /// `FR-18.6.1`: the load, once it holds the keyboard, offers what it already says as a whole.
@@ -81,13 +93,32 @@ struct SetEditorHead: View {
     /// the order is focus, then selection, and this is what the focus arriving calls.
     ///
     /// Both rules it applies are ``SetEditorFocus``'; what is here is the assignment.
-    private func selectTheLoadOnce() {
-        guard SetEditorFocus.isOpening(isFocused: isEnteringWeight, hasOpened: hasSelectedOnOpen)
-        else {
-            return
+    private func applyTheFocusChange() {
+        let change = SetEditorFocus.onFocusChange(
+            isFocused: isEnteringWeight, hasOpened: hasSelectedOnOpen)
+        switch change {
+        case .selectAll:
+            hasSelectedOnOpen = true
+            weightSelection = SetEditorFocus.selectionOnOpen(of: draft.weightText)
+        case .clear:
+            weightSelection = nil
+        case .leave:
+            break
         }
-        hasSelectedOnOpen = true
-        weightSelection = SetEditorFocus.selectionOnOpen(of: draft.weightText)
+    }
+
+    /// Steps the load by `G-3.3`'s display increment, letting go of anything selected in it first.
+    ///
+    /// **The stepped value is a freshly rendered string, and a range into the old one names
+    /// nothing** — `102,5` stepped down is `100`, three characters under a range that named five.
+    /// The keyboard does not move when the ± pair is tapped, so no focus change clears it; this is
+    /// the one other place the load's text is replaced wholesale, and the plate calculator is not a
+    /// third because it reads the load rather than writing it.
+    ///
+    /// - Parameter steps: How many increments to move — negative is down.
+    private func stepWeight(by steps: Int) {
+        weightSelection = nil
+        draft = draft.adjustingWeight(by: steps)
     }
 
     /// One word, and on a checklist row the question the sheet is asking (`FR-17.1.6`).
@@ -114,7 +145,7 @@ struct SetEditorHead: View {
                 SetEditorControls.stepButton(
                     symbolName: "minus", label: LoggingStrings.setWeightDecrease
                 ) {
-                    draft = draft.adjustingWeight(by: -1)
+                    stepWeight(by: -1)
                 }
                 SetEditorControls.numberField(
                     text: $draft.weightText,
@@ -128,7 +159,7 @@ struct SetEditorHead: View {
                 SetEditorControls.stepButton(
                     symbolName: "plus", label: LoggingStrings.setWeightIncrease
                 ) {
-                    draft = draft.adjustingWeight(by: 1)
+                    stepWeight(by: 1)
                 }
             }
         }

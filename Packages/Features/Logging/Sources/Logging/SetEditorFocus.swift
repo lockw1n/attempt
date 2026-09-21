@@ -9,18 +9,38 @@ import SwiftUI
 /// the assignment. The simulator is still the instrument for *whether focus takes*; this is the
 /// instrument for *what it does when it does*.
 enum SetEditorFocus {
-    /// Whether the load's field taking the keyboard is the sheet opening rather than a later tap.
+    /// What becomes of the load's selection when the keyboard moves.
+    ///
+    /// **Three answers rather than two, because letting go is not the same as selecting nothing.**
+    /// A field handed no selection places its own caret; a field handed `nil` where the lifter had
+    /// just aimed one loses that aim. So the rule has to be able to say *leave it alone*.
+    enum SelectionChange: Equatable {
+        /// Offer the whole of what the field says — the sheet has just opened over it.
+        case selectAll
+        /// Let go of what is held: the indices it names are about to stop meaning anything.
+        case clear
+        /// Leave the caret where the field put it.
+        case leave
+    }
+
+    /// What the load's selection becomes as the keyboard arrives at the field or leaves it.
     ///
     /// **A field regains focus every time it is tapped, and only the first of those is an open.**
     /// Selecting the whole load on each one would take the caret away from a lifter who had aimed
     /// it between two digits, which is the correction the field exists for.
     ///
+    /// **Losing the keyboard clears rather than leaves, and that is what makes the sentence above
+    /// true rather than hopeful.** A range held across a blur is a range the next tap could see
+    /// re-applied over the caret it had just placed — and a selection is a pair of indices into the
+    /// value that was there when it was taken, which nothing guarantees is still the value.
+    ///
     /// - Parameters:
     ///   - isFocused: Whether the field holds the keyboard now.
     ///   - hasOpened: Whether it has held it once already.
-    /// - Returns: Whether this is the open.
-    static func isOpening(isFocused: Bool, hasOpened: Bool) -> Bool {
-        isFocused && !hasOpened
+    /// - Returns: What to do with the selection.
+    static func onFocusChange(isFocused: Bool, hasOpened: Bool) -> SelectionChange {
+        guard isFocused else { return .clear }
+        return hasOpened ? .leave : .selectAll
     }
 
     /// What the load's field has selected when the sheet opens over it.

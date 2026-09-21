@@ -14,18 +14,18 @@ import Testing
 struct SetEditorFocusTests {
     @Test("The first time the load takes the keyboard is the sheet opening")
     func openingIsTheFirstFocus() {
-        #expect(SetEditorFocus.isOpening(isFocused: true, hasOpened: false))
+        #expect(SetEditorFocus.onFocusChange(isFocused: true, hasOpened: false) == .selectAll)
     }
 
-    @Test("Tapping back into the load later is not an open")
-    func aLaterTapIsNotAnOpen() {
-        #expect(SetEditorFocus.isOpening(isFocused: true, hasOpened: true) == false)
+    @Test("Tapping back into the load later leaves the caret where the tap put it")
+    func aLaterTapLeavesTheCaretAlone() {
+        #expect(SetEditorFocus.onFocusChange(isFocused: true, hasOpened: true) == .leave)
     }
 
-    @Test("Losing the keyboard is not an open, whether or not the sheet has opened")
-    func losingFocusIsNotAnOpen() {
-        #expect(SetEditorFocus.isOpening(isFocused: false, hasOpened: false) == false)
-        #expect(SetEditorFocus.isOpening(isFocused: false, hasOpened: true) == false)
+    @Test("Losing the keyboard lets the selection go, whether or not the sheet has opened")
+    func losingFocusClearsTheSelection() {
+        #expect(SetEditorFocus.onFocusChange(isFocused: false, hasOpened: true) == .clear)
+        #expect(SetEditorFocus.onFocusChange(isFocused: false, hasOpened: false) == .clear)
     }
 
     @Test("A prefilled load opens with the whole of it selected")
@@ -36,6 +36,11 @@ struct SetEditorFocusTests {
         #expect(selection.isInsertion == false)
     }
 
+    /// **Not `G-3.4` coverage, and it should not be counted as any.**
+    /// ``SetEditorFocus/selectionOnOpen(of:)`` never looks inside the value, so this is the same
+    /// rule over a longer string — what it holds is that the separator is *not* special, which is
+    /// the thing a later change selecting only the integer part would break. Parsing a comma is
+    /// `LocalizedNumberField`'s, and is tested there.
     @Test("A load written with the locale's own decimal comma is selected whole too")
     func aDecimalLoadIsSelectedWhole() throws {
         let text = "102,5"
