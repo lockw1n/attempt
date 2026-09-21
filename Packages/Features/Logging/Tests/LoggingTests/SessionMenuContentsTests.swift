@@ -121,6 +121,8 @@ struct SessionMenuContentsTests {
         #expect(String(localized: SessionDestructiveCommand.resetDay.label) == "Reset day")
         #expect(
             String(localized: SessionDestructiveCommand.discardWorkout.label) == "Discard workout")
+        #expect(
+            String(localized: SessionDestructiveCommand.deleteWorkout.label) == "Delete workout")
     }
 
     // MARK: - What each host asks for
@@ -219,6 +221,47 @@ struct SessionMenuContentsTests {
         #expect(
             ActiveSessionView.menuContents(date: .now).items
                 == [.changeDate, .destructive(.discardWorkout)])
+    }
+
+    /// `FR-18.7.3`: History's own host, and it is the first one whose menu is the same in both of
+    /// its drawings — a past planned day and a past free workout get the same two commands,
+    /// because the lifter does not know which they are looking at (`Q-18.3` at (a)).
+    @Test("The past session asks for Change date and Delete workout, and nothing else")
+    func thePastSessionAsksForDeleteWorkout() {
+        #expect(
+            PastSessionView.menuContents(date: .now).items
+                == [.changeDate, .destructive(.deleteWorkout)])
+        #expect(!PastSessionView.menuContents(date: .now).items.contains(.skipRemaining))
+        #expect(!PastSessionView.menuContents(date: .now).items.contains(.editPlan))
+    }
+
+    /// The state every read of this screen passes through: loading, missing, failed. The route
+    /// carries a session id, so a date before there is a session would be a date on a row nothing
+    /// named — and an empty list is what stops the `⋯` being drawn at all.
+    @Test("A past session that has not resolved draws no menu")
+    func aPastSessionWithNoRecordDrawsNothing() {
+        #expect(PastSessionView.menuContents(date: nil).items.isEmpty)
+    }
+
+    /// `FR-18.7.5`'s last clause, and the one a swap of the three hosts' `destructive:` arguments
+    /// would break silently: a past planned day is **Delete workout**, never **Reset day**. A week
+    /// already over has no *upcoming* to return the plan to.
+    @Test("The three hosts ask for three different destructive commands")
+    func theThreeHostsDisagree() {
+        let day = DayView.menuContents(
+            date: .now,
+            startsWhenDated: true,
+            offersPlanEditing: true,
+            progress: DayProgress([])
+        ).items
+        let free = ActiveSessionView.menuContents(date: .now).items
+        let past = PastSessionView.menuContents(date: .now).items
+
+        #expect(past.contains(.destructive(.deleteWorkout)))
+        #expect(!past.contains(.destructive(.resetDay)))
+        #expect(!past.contains(.destructive(.discardWorkout)))
+        #expect(!day.contains(.destructive(.deleteWorkout)))
+        #expect(!free.contains(.destructive(.deleteWorkout)))
     }
 
     /// A day's row in one state, for the counts ``DayProgress`` takes off them.

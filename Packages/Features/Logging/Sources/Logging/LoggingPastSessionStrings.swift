@@ -40,12 +40,52 @@ extension LoggingStrings {
     /// The button that names the exit (`FR-18.4.3`). It writes nothing — see ``SessionExit``.
     static let pastSessionDoneAction = resource("logging.past-session.done.action")
 
+    // MARK: - The past session's own menu (FR-18.7.3, FR-18.7.5)
+
+    /// The menu's destructive command on a session that is over.
+    ///
+    /// **Neither *Reset day* nor *Discard* — a third word for a third place** (`FR-18.7.5`). A week
+    /// already over has no *upcoming* for a planned day to return to, so the word that is true of
+    /// both drawings is the one that names what goes: the workout.
+    static let pastSessionDeleteAction = resource("logging.past-session.delete.action")
+
+    /// The confirmation's question, naming the day it is about (`FR-18.7.5`).
+    ///
+    /// **The day arrives already rendered**, on ``sessionTitleDay(_:)``'s rule: the style is
+    /// `AppFormat.date`, bound to the view's locale, and a date formatted here would be the one
+    /// date in this module not going through it.
+    ///
+    /// - Parameter day: The session's training day, already rendered.
+    /// - Returns: The question.
+    static func pastSessionDeleteConfirmTitle(day: String) -> LocalizedStringResource {
+        resource("logging.past-session.delete.confirm.title \(day)")
+    }
+
+    /// What goes with it, and that nothing brings it back (`OUT-18.12`).
+    ///
+    /// - Parameter count: How many logged sets the session holds — warm-ups included, on
+    ///   ``dayRowResetConfirmTitle(count:)``'s rule.
+    /// - Returns: The message.
+    static func pastSessionDeleteConfirmMessage(count: Int) -> LocalizedStringResource {
+        resource("logging.past-session.delete.confirm.message \(count)")
+    }
+
+    /// Going ahead with it.
+    static let pastSessionDeleteConfirmAction = resource("logging.past-session.delete.confirm.action")
+
+    /// Backing out, spelled out rather than a bare *Cancel* — ``dayRemainingConfirmCancel``'s rule,
+    /// and on iOS 26 a confirmation rendered as a popover drops an unspelled one outright.
+    static let pastSessionDeleteConfirmCancel = resource("logging.past-session.delete.confirm.cancel")
+
     /// This file's strings, for ``LoggingStrings/all``.
     static var allPastSessionStrings: [LocalizedStringResource] {
         [
             pastSessionTitle, pastSessionErrorHeadline, pastSessionErrorMessage,
             pastSessionMissingHeadline, pastSessionMissingMessage, pastSessionEmptyHeadline,
             pastSessionEmptyMessage, pastSessionWriteErrorMessage, pastSessionDoneAction,
+            pastSessionDeleteAction, pastSessionDeleteConfirmTitle(day: "18 September 2026"),
+            pastSessionDeleteConfirmMessage(count: 6), pastSessionDeleteConfirmAction,
+            pastSessionDeleteConfirmCancel,
         ]
     }
 }

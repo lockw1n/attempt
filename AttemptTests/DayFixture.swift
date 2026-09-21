@@ -179,6 +179,35 @@ struct DayFixture {
         return sessionID
     }
 
+    /// The same workout, stamped as one day of one week of the run (`FR-16.8.3`) — `FR-17.7.6`'s
+    /// other drawing.
+    ///
+    /// **Built on the free workout rather than beside it**, so the two differ by the stamp and by
+    /// nothing else: a second fixture would be a second set of entries and sets, and a claim that
+    /// held on one drawing and not the other would then have two candidate causes.
+    ///
+    /// - Returns: The session's identifier.
+    func writeAFinishedPlannedDay() async throws -> UUID {
+        let sessionID = try await writeAFinishedFreeWorkout()
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        try await repositories.workouts.save(
+            WorkoutSession(
+                id: sessionID,
+                createdAt: now,
+                updatedAt: now,
+                deletedAt: nil,
+                date: now,
+                startedAt: now,
+                endedAt: now,
+                notes: "",
+                bodyweight: nil,
+                programRunID: runID,
+                scheduledWorkoutID: nil,
+                weekNumber: Self.week,
+                dayIndex: 0))
+        return sessionID
+    }
+
     /// The catalogue row the day prescribes.
     private let exerciseID = UUID()
 

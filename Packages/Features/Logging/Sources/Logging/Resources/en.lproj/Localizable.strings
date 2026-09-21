@@ -420,6 +420,12 @@
 /* The button that names the exit (FR-18.4.3). It writes nothing. */
 "logging.past-session.done.action" = "Done";
 
+/* FR-18.7.3, FR-18.7.5 — the past session's own menu */
+"logging.past-session.delete.action" = "Delete workout";
+"logging.past-session.delete.confirm.title %@" = "Delete the workout on %@?";
+"logging.past-session.delete.confirm.action" = "Delete workout";
+"logging.past-session.delete.confirm.cancel" = "Keep this workout";
+
 /* FR-15.3 — planned vs actual, on the workout in progress */
 "logging.session.exercise.marked-done" = "Marked done";
 "logging.session.exercise.skipped" = "Skipped";

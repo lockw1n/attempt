@@ -212,6 +212,24 @@
 	</dict>
 	<!-- FR-18.5.2: asked only where the row holds work, and it names how much, because there is
 	     no undo of the reset. -->
+	<key>logging.past-session.delete.confirm.message %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@sets@ go with it. This cannot be undone.</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>No logged sets</string>
+			<key>one</key>
+			<string>%lld logged set</string>
+			<key>other</key>
+			<string>%lld logged sets</string>
+		</dict>
+	</dict>
 	<key>logging.day.row.reset.confirm.title %lld</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

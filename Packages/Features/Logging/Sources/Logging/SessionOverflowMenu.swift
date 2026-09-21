@@ -19,11 +19,20 @@ enum SessionDestructiveCommand: Hashable, Sendable {
     /// A free workout: the workout itself goes (`FR-1.2.12`, `OUT-18.6`).
     case discardWorkout
 
+    /// A session that is over, reached from History: the workout itself goes, and there is nothing
+    /// to come back to (`FR-18.7.5`).
+    ///
+    /// **It is this on a past *planned* day as well, never ``resetDay``.** A day of a week already
+    /// over has no *upcoming* for the plan to be returned to, so the promise that word makes on the
+    /// checklist is one this screen cannot keep.
+    case deleteWorkout
+
     /// What the menu item reads.
     var label: LocalizedStringResource {
         switch self {
         case .resetDay: LoggingStrings.dayResetAction
         case .discardWorkout: LoggingStrings.sessionDiscardAction
+        case .deleteWorkout: LoggingStrings.pastSessionDeleteAction
         }
     }
 }
@@ -124,7 +133,7 @@ struct SessionMenuContents: Equatable, Sendable {
 /// made `skipRemaining:` required rather than optional: every handler here is paired with a rule
 /// in ``SessionMenuContents`` about whether its item is drawn at all, and the two halves belong
 /// where they can be read together. A host whose menu never holds a command still answers for it —
-/// see ``ActiveSessionView/skipRemainingIsNotOffered()``.
+/// see ``SessionMenuCommands/notOffered(_:on:)``.
 ///
 /// **Change date is not here.** Its item does not run a handler; it opens the sheet the modifier
 /// owns, seeded from ``SessionMenuContents/date``, and what the host supplies is what to do with
@@ -141,6 +150,27 @@ struct SessionMenuCommands {
     /// Asks whether to take the workout back (`FR-1.2.12`). The confirmation is the host's,
     /// `FR-1.2.12` wanting one and a store being unable to ask.
     let discard: () -> Void
+
+    /// A handler for a command this host's ``SessionMenuContents`` never draws.
+    ///
+    /// **A handler that says so, rather than the `nil` the modifier used to take.** An optional
+    /// handler beside a ``SessionMenuContents`` that decides whether its item is drawn is one fact
+    /// in two places, and the way the two disagree is a menu row that does nothing when it is
+    /// pressed — silent, and invisible to every test that reads the contents. So reaching one of
+    /// these is a wiring fault rather than a state the app is ever in.
+    ///
+    /// **One factory rather than a pair of named methods per host**, now that there are three
+    /// hosts (`FR-18.7.3`): what each of them *does* here is the same assertion, and the only
+    /// thing that differs is which command and which screen — which is what the diagnostic
+    /// carries. Six near-identical methods would have been one fact written six times.
+    ///
+    /// - Parameters:
+    ///   - command: The item, as the menu would read it.
+    ///   - host: The screen that never draws it.
+    /// - Returns: The handler.
+    static func notOffered(_ command: String, on host: String) -> () -> Void {
+        { assertionFailure("\(host)'s menu never offers \(command)") }
+    }
 }
 
 /// The things that are true of a workout rather than of a set — its training day, taking the rest

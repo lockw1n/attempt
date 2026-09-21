@@ -244,6 +244,12 @@
 /* The button that names the exit (FR-18.4.3). It writes nothing. */
 "logging.past-session.done.action" = "Готово";
 
+/* FR-18.7.3, FR-18.7.5 — власне меню минулого тренування */
+"logging.past-session.delete.action" = "Видалити тренування";
+"logging.past-session.delete.confirm.title %@" = "Видалити тренування за %@?";
+"logging.past-session.delete.confirm.action" = "Видалити тренування";
+"logging.past-session.delete.confirm.cancel" = "Залишити тренування";
+
 /* FR-15.3 — план проти факту, у тренуванні, що триває */
 "logging.session.exercise.marked-done" = "Позначено виконаним";
 "logging.session.exercise.skipped" = "Пропущено";

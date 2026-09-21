@@ -325,6 +325,72 @@ final class PastSessionState {
             logged: exercise.sets)
     }
 
+    /// How many sets this session holds, warm-ups included (`FR-18.7.5`).
+    ///
+    /// **Every set, not the working ones**, on ``DayView/resetConfirmation(for:)``'s rule: the
+    /// question this feeds is about how much work goes, and a ramp the lifter typed in is work they
+    /// would have to type in again. The read is `includingDeleted: false` throughout
+    /// (``readExercises(on:)``), so a set already taken back is not counted twice.
+    var loggedSetCount: Int {
+        exercises.reduce(0) { $0 + $1.sets.count }
+    }
+
+    /// Moves this session to another training day (`FR-18.7.4`, `FR-1.2.1`).
+    ///
+    /// **The same rebuild the store's own command makes** — ``ActiveSessionStore/dated(_:to:)`` —
+    /// and it is written straight through the repository rather than through that store. This
+    /// screen holds no ``ActiveSessionStore``: the one in the app is *re-pointed* by whichever
+    /// screen located a session (``SessionLocator``), so issuing a past session's write through it
+    /// would move whatever the Train tab is pointed at instead.
+    ///
+    /// **The records are told** (`G-1.4`, `FR-1.6.4`): a record's date is its session's, so a
+    /// workout moved to another day moves every record its sets hold. Nothing else about them
+    /// changes, and the cache carries the date.
+    ///
+    /// The whole screen is re-read afterwards, which is what moves the title — the date *is* the
+    /// title here.
+    ///
+    /// - Parameter day: The training day, normalised to its start by the rebuild.
+    func changeDate(to day: Date) async {
+        guard let current = session else { return }
+        do {
+            try await workouts.save(ActiveSessionStore.dated(current, to: day))
+        } catch {
+            writeFailure = String(describing: error)
+            return
+        }
+        await records.sessionDidChange(id: sessionID)
+        await load()
+    }
+
+    /// Soft-deletes this session (`FR-18.7.5`, `FR-1.2.12`, `G-1.3`).
+    ///
+    /// **``ActiveSessionStore/discard()``'s write, made from here** and for ``changeDate(to:)``'s
+    /// reason. The repository stamps `deletedAt` and cascades to the entries and sets underneath;
+    /// nothing leaves the store until an explicit purge runs, and a row held twice is swept whole
+    /// (`FR-18.8.2`).
+    ///
+    /// **The cascade is why this announces** (`FR-1.6.4`): every set the workout logged stops
+    /// standing at once without a single set column being written, so none of ``LoggedSetWriter``'s
+    /// hooks fires and a record the deleted work set held would outlive its own source set.
+    ///
+    /// **Nothing is re-read on success**, unlike every other write here: the screen is about to
+    /// close (`FR-18.7.5`), and a re-read would put ``Phase/missing`` on screen on the way out.
+    ///
+    /// - Returns: Whether it was deleted, so the screen knows whether to close. A refusal leaves
+    ///   every row where it was and reports through ``writeFailure``, which is ``write(_:)``'s own
+    ///   split.
+    func delete() async -> Bool {
+        do {
+            try await workouts.deleteSession(id: sessionID)
+        } catch {
+            writeFailure = String(describing: error)
+            return false
+        }
+        await records.sessionDidChange(id: sessionID)
+        return true
+    }
+
     /// Stores the session's note (`FR-1.2.9`, `NFR-1.8`).
     ///
     /// **The session record is re-read on success and only on success**, which is what puts the

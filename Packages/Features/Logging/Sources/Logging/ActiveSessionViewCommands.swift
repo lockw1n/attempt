@@ -40,33 +40,9 @@ extension ActiveSessionView {
     /// are where a menu row that does nothing comes from.
     var menuCommands: SessionMenuCommands {
         SessionMenuCommands(
-            editPlan: Self.planEditingIsNotOffered,
-            skipRemaining: Self.skipRemainingIsNotOffered,
+            editPlan: SessionMenuCommands.notOffered("Edit plan", on: "the free workout"),
+            skipRemaining: SessionMenuCommands.notOffered("Skip remaining", on: "the free workout"),
             discard: { isConfirmingDiscard = true })
-    }
-
-    /// What **Skip remaining** would do on this screen, which is nothing (`OUT-18.6`).
-    ///
-    /// **A handler that says so, rather than the `nil` the modifier used to take.** An optional
-    /// handler beside a ``SessionMenuContents`` that decides whether the item is drawn is one fact
-    /// in two places, and the way the two disagree is a menu row that does nothing when it is
-    /// pressed — silent, and invisible to every test that reads the contents. The item is never
-    /// drawn here, ``menuContents(date:)`` saying so and
-    /// `SessionMenuContentsTests.theFreeWorkoutAsksForDiscard` holding it, so reaching this is a
-    /// wiring fault rather than a state.
-    static func skipRemainingIsNotOffered() {
-        assertionFailure("the free workout's menu never offers Skip remaining (`OUT-18.6`)")
-    }
-
-    /// What **Edit plan** would do on this screen, which is nothing (`OUT-18.6`, `FR-18.7.2`).
-    ///
-    /// ``skipRemainingIsNotOffered()``'s rule, and its argument whole: the item is never drawn
-    /// here — ``menuContents(date:)`` says so and
-    /// `SessionMenuContentsTests.theFreeWorkoutAsksForDiscard` holds it — so a handler that does
-    /// something would be a second answer to a question already answered, and one that did nothing
-    /// silently would hide a wiring fault.
-    static func planEditingIsNotOffered() {
-        assertionFailure("the free workout's menu never offers Edit plan (`OUT-18.6`)")
     }
 
     /// Finishes the workout and leaves the screen, unless the write failed.

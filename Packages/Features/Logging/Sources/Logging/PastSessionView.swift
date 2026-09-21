@@ -1,3 +1,4 @@
+import AppNavigation
 import DerivedValues
 import DesignSystem
 import DesignTokens
@@ -33,7 +34,11 @@ import SwiftUI
 /// every set on it can be rewritten draws a line `FR-1.2.9` does not. It is folded at the foot now
 /// (`FR-17.7.1`), where the active session's is.
 public struct PastSessionView: View {
-    @State private var state: PastSessionState
+    /// The screen's own data and the reads and writes behind it.
+    ///
+    /// **Internal rather than private**, on ``ActiveSessionView/isConfirmingDiscard``'s rule: the
+    /// menu's commands live in a file of their own and this is what they act on.
+    @State var state: PastSessionState
 
     /// The modifier terms the set editor offers (`FR-1.2.8`).
     ///
@@ -83,8 +88,24 @@ public struct PastSessionView: View {
     /// reopened tomorrow starts folded like one opened for the first time.
     @State private var areNotesExpanded = false
 
+    /// Whether **Delete workout** is asking (`FR-18.7.5`).
+    ///
+    /// Internal, with ``askedDelete``, for ``state``'s reason.
+    @State var isConfirmingDelete = false
+
+    /// What that question last named. Kept apart from ``isConfirmingDelete`` because the dialog is
+    /// still on screen while it animates out — see ``PastSessionDeleteQuestion``.
+    @State var askedDelete = PastSessionDeleteQuestion.unasked
+
     /// Which locale the day and the numbers are rendered for, and the editor parses in (`G-3.4`).
     @Environment(\.locale) private var locale
+
+    /// The shell's position, which is what a delete pops — see ``SessionExit``. Internal, for
+    /// ``state``'s reason.
+    @Environment(NavigationState.self) var navigation: NavigationState?
+
+    /// The way out where there is no shell — a preview or a hosted fixture.
+    @Environment(\.dismiss) var dismiss
 
     /// Builds the screen over the session the route named and the repositories its state reads.
     ///
@@ -135,6 +156,34 @@ public struct PastSessionView: View {
         // `Q-18.3` at (a): on both drawings, because the lifter does not know which one they are
         // in and a toolbar that changed with the session's provenance would be a thing to explain.
         .sessionDone(label: LoggingStrings.pastSessionDoneAction)
+        // Leading, beside Back (`FR-18.7.3`) — where the day's is (`FR-18.4.2`), and Done keeps
+        // the trailing corner. Both drawings, for the toolbar's own reason above.
+        .sessionOverflow(
+            contents: Self.menuContents(date: state.session?.date),
+            side: .leading,
+            changeDate: { chosen in Task { await state.changeDate(to: chosen) } },
+            commands: menuCommands
+        )
+        // `FR-18.7.5`: it names the day and how much work goes, and says that nothing brings it
+        // back (`OUT-18.12`). Both readings come off ``askedDelete`` rather than off the session,
+        // which is `nil` again the moment the write lands and the screen starts to leave.
+        .confirmationDialog(
+            Text(LoggingStrings.pastSessionDeleteConfirmTitle(day: askedDeleteDay)),
+            isPresented: $isConfirmingDelete,
+            titleVisibility: .visible
+        ) {
+            Button(role: .destructive) {
+                Task { await deleteWorkout() }
+            } label: {
+                Text(LoggingStrings.pastSessionDeleteConfirmAction)
+            }
+            Button(role: .cancel) {
+            } label: {
+                Text(LoggingStrings.pastSessionDeleteConfirmCancel)
+            }
+        } message: {
+            Text(LoggingStrings.pastSessionDeleteConfirmMessage(count: askedDelete.setCount))
+        }
         // On every appearance, not once: this screen is returned to from the exercise detail
         // T-1.36 will link to, and the unit is changed in another tab.
         .task {
@@ -320,6 +369,14 @@ public struct PastSessionView: View {
     private var title: Text {
         guard let session = state.session else { return Text(LoggingStrings.pastSessionTitle) }
         return Text(session.date, format: AppFormat.date(locale: locale))
+    }
+
+    /// The day the delete question is about, rendered.
+    ///
+    /// **The same style the title uses**, so the question names the session by the words the screen
+    /// is titled with rather than by a second rendering of one date.
+    private var askedDeleteDay: String {
+        askedDelete.day.formatted(AppFormat.date(locale: locale))
     }
 
     /// Opens the Log sheet over one of a past day's rows (`FR-17.7.5`).
