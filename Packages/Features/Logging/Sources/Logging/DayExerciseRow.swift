@@ -136,9 +136,9 @@ struct DayExerciseRow: View {
     /// can call, because `T-18.14` measured that a body's argument list is readable by nothing and
     /// "the *planned* lines are the secondary ones" is exactly an argument. **This narrows a
     /// decision recorded on ``PlanSchemeLayout``** — *a `ViewBuilder` branch inside a `Layout` is a
-    /// pair the layout has to trust* — and the narrowing is that a `ForEach` is not a branch: it
-    /// emits two subviews per section unconditionally, where the `if` that rule was written about
-    /// could emit one.
+    /// pair the layout has to trust* — and the narrowing is stated there, on the layout, as a count
+    /// rather than as a construct: what this `ForEach` and ``label(_:)``'s `if`/`else` both honour
+    /// is **two subviews per section**, which an `if` with no `else` would not.
     @ViewBuilder private var lines: some View {
         switch row.answer {
         case .unanswered:

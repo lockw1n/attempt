@@ -66,21 +66,29 @@ struct PlanSchemeLines: View {
     ///
     /// **Defaulted where ``emphasis`` is not, and the two are not the same kind of parameter.** An
     /// emphasis is a decision every caller has to take; a badge is a fact about work that was
-    /// *performed*, and three of this type's four call sites draw a plan, which by construction has
+    /// *performed*, and two of this type's three call sites draw a plan, which by construction has
     /// none. `[]` is not a quieter answer there — it is the only one.
     var badges: [RecordBadge?] = []
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: Spacing.xxs.points) {
+        // One group is parted from the next by MORE than a line is parted from its own badge, which
+        // is the whole of how `FR-18.3.8`'s "with its own *Did* line" is drawn: with both gaps
+        // equal, a badge between two lines belongs to neither by position, and the only thing
+        // saying which is the scheme its own words name. A single-group row has no gap here and is
+        // unmoved.
+        VStack(alignment: .trailing, spacing: Spacing.xs.points) {
             // By position rather than by value: two identical groups are two lines, and a plan is
             // free to prescribe the same scheme twice.
             ForEach(Array(schemes.enumerated()), id: \.offset) { index, scheme in
-                // The badge UNDER its own line rather than beside it (`FR-18.3.8`, "with its own
-                // *Did* line"). Beside would keep the badge out of the vertical run of numerals,
-                // and would also put it inside the column `PlanSchemeShape.choose` measures — a
-                // capsule is wider than the gap the shape has to spare, so every row holding a
-                // record would fall to the stacked shape. Under, the column's width is
-                // `max(scheme, badge)` and the shape barely moves.
+                // The badge UNDER its own line rather than beside it (`FR-18.3.8`). Beside would
+                // take the badge out of the vertical run of numerals, and it would ADD the
+                // capsule's width to the column `PlanSchemeShape.choose` measures — a capsule is
+                // wider than the gap that rule has to spare, so every row holding a record would
+                // fall to the stacked shape. Under, that same measurement is `max(scheme, badge)`
+                // rather than a sum, so the shape barely moves. **Not that a badge cannot move it
+                // at all**: the layout measures this whole stack, badge included, so a narrow
+                // scheme (`12 × 3`, `FR-15.2.2`'s open load) under a wider capsule widens the
+                // column it is measured in.
                 VStack(alignment: .trailing, spacing: Spacing.xxs.points) {
                     Text(verbatim: scheme)
                         .font(Typography.schemeValue.font)
@@ -161,6 +169,14 @@ nonisolated enum PlanSchemeShape: Equatable {
 /// shape read across every pair — which is why both pairs of an answered row belong to *one* of
 /// these rather than to a stack of two. A trailing odd subview is laid out by nobody rather than
 /// paired with the wrong thing; the contract is held by ``PlanSchemeRows``' callers.
+///
+/// **The contract is a COUNT, not a construct: each labelled half owes exactly two subviews.** The
+/// pairing is a stride by two, so anything that emits one subview where two were expected silently
+/// re-pairs every half after it — the label of one half beside the numbers of the next. A
+/// `ViewBuilder` `if` with no `else` is the way to write that; a `ForEach` and an `if`/`else` are
+/// not, both emitting their subviews unconditionally, which is what lets ``DayExerciseRow`` build
+/// its halves from a value. Nothing in the type system holds this: a helper inside the content
+/// closure that can draw nothing breaks the table, and only a picture would show it.
 struct PlanSchemeLayout: Layout {
     /// What separates a label from the column beside it.
     let columnSpacing: CGFloat

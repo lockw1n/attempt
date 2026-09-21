@@ -51,6 +51,25 @@ struct DayRowSchemeTests {
         #expect(sections.first?.targets == row.performed)
     }
 
+    @Test("A row done as planned still carries the record it set — its one half is not a bare one")
+    func theAsPlannedHalfKeepsItsBadges() throws {
+        // Review's surviving probe (`T-18.22`): giving this section `badges: []` left all 698
+        // package tests green, because the emphasis tests never read them and no `Day-as-planned`
+        // fixture holds a mark. The row it loses is the ordinary one — a day done exactly as
+        // prescribed, where every scheme is a first performance (`FR-18.3.8`).
+        let row = DayRow(
+            id: UUID(),
+            exercise: nil,
+            plan: [Self.target(100_000, reps: 5, sets: 5)],
+            performed: [Self.target(100_000, reps: 5, sets: 5)],
+            answer: .logged,
+            records: [[Self.mark(reps: 5, sets: 5)]])
+        let sections = DayRowScheme.sections(for: row)
+
+        try #require(sections.map(\.role) == [.asPlanned])
+        #expect(sections.first?.badges.map { $0?.scheme } == [RecordScheme(reps: 5, sets: 5)])
+    }
+
     @Test("A row the lifter added has no plan to be read against, so its one half is Did")
     func addedRowIsDidAlone() {
         let sections = DayRowScheme.sections(for: Self.addedAndLogged)
