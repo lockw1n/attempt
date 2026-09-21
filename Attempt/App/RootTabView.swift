@@ -322,6 +322,15 @@ struct RootTabView: View {
 
     /// One day of the current week (`TR-17.6`), or the reason it cannot be shown.
     ///
+    /// **Edit plan is composed here and nowhere else** (`FR-18.7.2`). Which day the week's editor
+    /// unfolds is that editor's own app-lifetime state (``Routines/WeekEditorState/openDayID``) and
+    /// `TR-1.3` forbids `Logging` from importing `Routines` to set it — so the day hands back the
+    /// `ProgramDay` it is over and this sets the day and makes the push, the same join as
+    /// ``routineExercisePickerRoot`` at the other end of the same wire. **It carries no route
+    /// payload**: `RoutinesRoute.editWeek` holds nothing for the reason its own doc gives, and
+    /// which day is unfolded is a fact about the app rather than a parameter of a push — a
+    /// restored stack opens the editor with every day folded, as a fresh push from Train does.
+    ///
     /// - Parameters:
     ///   - runID: The program run the route carried.
     ///   - week: The week number it carried.
@@ -339,7 +348,11 @@ struct RootTabView: View {
                 equipment: stores.equipment,
                 programs: repositories.programs,
                 routines: repositories.routines,
-                exercises: repositories.exercises)
+                exercises: repositories.exercises,
+                editPlan: { programDayID in
+                    stores.weekEditor.openDayID = programDayID
+                    navigation.navigate(to: .routines(.editWeek))
+                })
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

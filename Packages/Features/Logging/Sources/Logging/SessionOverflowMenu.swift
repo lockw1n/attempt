@@ -33,6 +33,9 @@ enum SessionMenuItem: Hashable, Sendable {
     /// `FR-1.2.1`'s backdating.
     case changeDate
 
+    /// `FR-18.7.2`'s **Edit plan**, on the day no workout has been written for yet.
+    case editPlan
+
     /// `FR-18.4.4`'s **Skip remaining**, on the day that has rows left to answer.
     case skipRemaining
 
@@ -52,9 +55,11 @@ enum SessionMenuItem: Hashable, Sendable {
 struct SessionMenuContents: Equatable, Sendable {
     /// The workout's training day, or `nil` where there is no workout.
     ///
-    /// **Carried here rather than passed beside this**, because it is what decides two of the
-    /// three items *and* what seeds the date picker — two readings of one fact, which had drifted
-    /// apart as two arguments.
+    /// **Carried here rather than passed beside this**, because it is what decides three of the
+    /// five items *and* what seeds the date picker — two readings of one fact, which had drifted
+    /// apart as two arguments. Where it is `nil` and the picker is offered anyway
+    /// (`startsWhenDated`), the sheet opens on today: the day has not happened yet, so there is no
+    /// other date to open on.
     let date: Date?
 
     /// The commands, in order. Empty where the menu itself is not drawn.
@@ -62,31 +67,80 @@ struct SessionMenuContents: Equatable, Sendable {
 
     /// Works out which commands apply.
     ///
-    /// **Two different gates, and they are not the same fact.** **Change date** and the destructive
-    /// command both act on a workout, so a day nobody has logged into offers neither — a menu that
-    /// did would create the workout from the toolbar. **Skip remaining** answers rows rather than a
-    /// workout, and on a day never started it *is* the first answer
-    /// (``DayStore/skipRemaining()``), so it is offered there and the menu is drawn for it alone.
-    /// That is what keeps `FR-18.4.4` a move off the foot rather than a state quietly dropped: the
-    /// retiring foot was drawn on an unstarted day.
+    /// **Four gates, and no two of them are the same fact.** The destructive command acts on a
+    /// workout, so a day nobody has logged into offers none. **Skip remaining** answers rows rather
+    /// than a workout, and on a day never started it *is* the first answer
+    /// (``DayStore/skipRemaining()``), so it is offered there too. That is what keeps `FR-18.4.4` a
+    /// move off the foot rather than a state quietly dropped: the retiring foot was drawn on an
+    /// unstarted day.
+    ///
+    /// **Change date used to be the destructive command's twin and is not one any more**
+    /// (`FR-18.7.1`, `F-13`). A host that acquires its workout *by being dated* offers it with no
+    /// workout held — the chosen day is what the session is created on, one write, never a create
+    /// and a restamp. A host that does not stays as it was: dating a free workout that does not
+    /// exist would conjure one out of a toolbar.
+    ///
+    /// **Edit plan is the one command that goes away once there is a workout** (`FR-18.7.2`,
+    /// `Q-18.9` at (a)), and the rule is here rather than on a host so that it holds for every one
+    /// of them: a started day keeps the targets it started with (`FR-17.10.5`), so an edit made
+    /// then would change nothing on the screen the lifter came back to. With `startsWhenDated`
+    /// that means **Change date** hides **Edit plan**, which is `Q-18.9`'s stated interaction and
+    /// is what ``SessionDestructiveCommand/resetDay`` is the way back from.
     ///
     /// - Parameters:
     ///   - date: The workout's training day, or `nil` where there is no workout.
+    ///   - startsWhenDated: Whether dating this screen *creates* its workout (`FR-18.7.1`), which
+    ///     is what lets **Change date** be offered before there is one. The planned day answers
+    ///     whether it has a routine to copy — ``DayStore/hasPlan`` — because a date it could not
+    ///     act on is a menu item that does nothing.
+    ///   - offersPlanEditing: Whether a week holds this day, so **Edit plan** has something to
+    ///     open at (`FR-18.7.2`). **A separate fact from `startsWhenDated`**, not a second reading
+    ///     of it: a day whose routine has been archived (`FR-15.2.5`) is still in the week and is
+    ///     exactly the day a lifter needs the plan editor for, while nothing can be started on it.
     ///   - offersSkipRemaining: Whether a row is still unanswered. Always `false` on a host that
     ///     has no such command at all, which is the free workout (`OUT-18.6`).
     ///   - destructive: Which way back this host offers.
     init(
         date: Date?,
+        startsWhenDated: Bool,
+        offersPlanEditing: Bool,
         offersSkipRemaining: Bool,
         destructive: SessionDestructiveCommand
     ) {
         self.date = date
         var items: [SessionMenuItem] = []
-        if date != nil { items.append(.changeDate) }
+        if date != nil || startsWhenDated { items.append(.changeDate) }
+        if date == nil, offersPlanEditing { items.append(.editPlan) }
         if offersSkipRemaining { items.append(.skipRemaining) }
         if date != nil { items.append(.destructive(destructive)) }
         self.items = items
     }
+}
+
+/// What a host's overflow menu *does*, as one value beside the ``SessionMenuContents`` that says
+/// what it holds.
+///
+/// **One value rather than four closures on the modifier**, and the reason is the same one that
+/// made `skipRemaining:` required rather than optional: every handler here is paired with a rule
+/// in ``SessionMenuContents`` about whether its item is drawn at all, and the two halves belong
+/// where they can be read together. A host whose menu never holds a command still answers for it —
+/// see ``ActiveSessionView/skipRemainingIsNotOffered()``.
+///
+/// **Change date is not here.** Its item does not run a handler; it opens the sheet the modifier
+/// owns, seeded from ``SessionMenuContents/date``, and what the host supplies is what to do with
+/// the day that comes back.
+struct SessionMenuCommands {
+    /// Opens the week's plan at this day (`FR-18.7.2`). It leaves the screen, so there is nothing
+    /// to confirm.
+    let editPlan: () -> Void
+
+    /// Asks whether to answer the rest of the day Skipped (`FR-18.4.4`). The confirmation is the
+    /// host's, as the destructive one's is.
+    let skipRemaining: () -> Void
+
+    /// Asks whether to take the workout back (`FR-1.2.12`). The confirmation is the host's,
+    /// `FR-1.2.12` wanting one and a store being unable to ask.
+    let discard: () -> Void
 }
 
 /// The things that are true of a workout rather than of a set — its training day, taking the rest
@@ -105,15 +159,11 @@ struct SessionOverflowMenu: View {
     /// Which commands are drawn, in order.
     let contents: SessionMenuContents
 
-    /// Opens the date sheet (`FR-1.2.1`).
+    /// Opens the date sheet (`FR-1.2.1`), on the day the host seeded.
     let changeDate: () -> Void
 
-    /// Asks whether to answer the rest of the day Skipped (`FR-18.4.4`). The confirmation is the
-    /// host's, as the destructive one's is.
-    let skipRemaining: () -> Void
-
-    /// Asks whether to take the workout back (`FR-1.2.12`). The confirmation is the host's.
-    let discard: () -> Void
+    /// What each of the others does.
+    let commands: SessionMenuCommands
 
     var body: some View {
         Menu {
@@ -121,12 +171,14 @@ struct SessionOverflowMenu: View {
                 switch item {
                 case .changeDate:
                     Button(action: changeDate) { Text(LoggingStrings.dayChangeDateAction) }
+                case .editPlan:
+                    Button(action: commands.editPlan) { Text(LoggingStrings.dayEditPlanAction) }
                 case .skipRemaining:
-                    Button(action: skipRemaining) {
+                    Button(action: commands.skipRemaining) {
                         Text(LoggingStrings.daySkipRemainingAction)
                     }
                 case .destructive(let command):
-                    Button(role: .destructive, action: discard) { Text(command.label) }
+                    Button(role: .destructive, action: commands.discard) { Text(command.label) }
                 }
             }
         } label: {
@@ -172,7 +224,7 @@ extension View {
     ///
     /// - Parameters:
     ///   - contents: Which commands the menu holds, and whether it is drawn at all. **Worked out
-    ///     by the host, in a function a test can call** — ``DayView/menuContents(date:progress:)``
+    ///     by the host, in a function a test can call** — ``DayView/menuContents(date:startsWhenDated:offersPlanEditing:progress:)``
     ///     and ``ActiveSessionView/menuContents(date:)`` — because nothing here can read a menu
     ///     back. Measured on iOS 26.5: a toolbar's `UIMenu` holds one `UIDeferredMenuElement`
     ///     until the menu has been opened, its button declines `accessibilityActivate()`, and a
@@ -182,34 +234,26 @@ extension View {
     ///     the two hosts now disagree: a planned day's menu moved leading to leave the trailing
     ///     corner to Done (`FR-18.4.2`), and the free workout keeps its toolbar exactly
     ///     (`OUT-18.6`). A default here would move one of them silently.
-    ///   - changeDate: Moves the workout to another training day.
-    ///   - skipRemaining: Answers the rest of the day Skipped (`FR-18.4.4`). **Required, with no
-    ///     default and not optional**, on `side:`'s rule one line up: an optional handler beside a
-    ///     `contents` that decides whether the item is drawn is the same fact in two places, and
-    ///     the way they disagree is a menu row that does nothing when it is pressed. A host whose
-    ///     menu never holds the command says so in its `contents` and passes a handler that says
-    ///     so too — see ``ActiveSessionView/skipRemainingIsNotOffered()``.
-    ///   - discard: Asks whether to take the workout back. The confirmation is the host's,
-    ///     `FR-1.2.12` wanting one and a store being unable to ask.
+    ///   - changeDate: Moves the workout to another training day — or, where the host said
+    ///     `startsWhenDated`, creates it on that day (`FR-18.7.1`).
+    ///   - commands: What the menu's other items do. **One value, and every handler in it is
+    ///     required with no default and not optional** — an optional handler beside a `contents`
+    ///     that decides whether the item is drawn is the same fact in two places, and the way they
+    ///     disagree is a menu row that does nothing when it is pressed. See ``SessionMenuCommands``.
     /// - Returns: The screen, with the menu and the sheet.
     func sessionOverflow(
         contents: SessionMenuContents,
         side: SessionToolbarSide,
         changeDate: @escaping (Date) -> Void,
-        skipRemaining: @escaping () -> Void,
-        discard: @escaping () -> Void
+        commands: SessionMenuCommands
     ) -> some View {
         modifier(
             SessionOverflowModifier(
-                contents: contents,
-                side: side,
-                changeDate: changeDate,
-                skipRemaining: skipRemaining,
-                discard: discard))
+                contents: contents, side: side, changeDate: changeDate, commands: commands))
     }
 }
 
-/// See `sessionOverflow(contents:side:changeDate:skipRemaining:discard:)`.
+/// See `sessionOverflow(contents:side:changeDate:commands:)`.
 struct SessionOverflowModifier: ViewModifier {
     /// Which commands the menu holds, and the day its picker opens on.
     let contents: SessionMenuContents
@@ -217,15 +261,11 @@ struct SessionOverflowModifier: ViewModifier {
     /// Which corner the `⋯` sits in.
     let side: SessionToolbarSide
 
-    /// Moves the workout to another training day.
+    /// Moves the workout to another training day, or creates it on one.
     let changeDate: (Date) -> Void
 
-    /// Answers the rest of the day Skipped. Required even where the item is never drawn — see
-    /// `sessionOverflow(contents:side:changeDate:skipRemaining:discard:)`.
-    let skipRemaining: () -> Void
-
-    /// Asks whether to take it back.
-    let discard: () -> Void
+    /// What the menu's other items do.
+    let commands: SessionMenuCommands
 
     /// Whether the date sheet is open.
     @State private var isChangingDate = false
@@ -242,12 +282,14 @@ struct SessionOverflowModifier: ViewModifier {
                         SessionOverflowMenu(
                             contents: contents,
                             changeDate: {
-                                guard let date = contents.date else { return }
-                                chosenDate = date
+                                // Today where there is no workout yet (`FR-18.7.1`): the sheet is
+                                // offered exactly when the chosen day is what the session will be
+                                // created on, and an unstarted day has no date of its own to open
+                                // on.
+                                chosenDate = contents.date ?? .now
                                 isChangingDate = true
                             },
-                            skipRemaining: skipRemaining,
-                            discard: discard)
+                            commands: commands)
                     }
                 }
             }

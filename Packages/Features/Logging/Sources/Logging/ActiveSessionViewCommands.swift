@@ -10,17 +10,39 @@ import SwiftUI
 extension ActiveSessionView {
     /// What this screen's `⋯` holds (`FR-17.9.7`, `OUT-18.6`).
     ///
-    /// **Discard, and never Reset day or Skip remaining.** The free workout is the only record of
-    /// itself, so the word that promises a loss is the true one here; and there is no plan to skip
-    /// the rest of. Written as a function on ``DayView/menuContents(date:progress:)``' reason —
-    /// what a body passes a modifier is readable by nothing, so the two hosts' disagreement has to
-    /// be stated where a test can read it.
+    /// **Discard, and never Reset day, Skip remaining or Edit plan.** The free workout is the only
+    /// record of itself, so the word that promises a loss is the true one here; there is no plan
+    /// to skip the rest of, and none to edit (`OUT-18.6`). Written as a function on
+    /// ``DayView/menuContents(date:startsWhenDated:offersPlanEditing:progress:)``' reason — what a
+    /// body passes a modifier is readable by nothing, so the two hosts' disagreement has to be
+    /// stated where a test can read it.
+    ///
+    /// **It is not dated into existence either** (`startsWhenDated: false`, `FR-18.7.1`): a
+    /// planned day dated from its menu acquires the workout the plan describes, and a free workout
+    /// has no plan — a date here would conjure a workout out of a toolbar, which is the thing
+    /// `FR-17.9.5` exists to prevent.
     ///
     /// - Parameter date: The workout's training date, or `nil` where there is no workout.
     /// - Returns: The commands, in order.
     static func menuContents(date: Date?) -> SessionMenuContents {
         SessionMenuContents(
-            date: date, offersSkipRemaining: false, destructive: .discardWorkout)
+            date: date,
+            startsWhenDated: false,
+            offersPlanEditing: false,
+            offersSkipRemaining: false,
+            destructive: .discardWorkout)
+    }
+
+    /// What this screen's menu items do, beside ``menuContents(date:)`` which says which are drawn.
+    ///
+    /// **Here rather than inline in the body**, on ``menuContents(date:)``'s own reason: the two
+    /// are one answer — a handler and the rule about whether its item exists — and read apart they
+    /// are where a menu row that does nothing comes from.
+    var menuCommands: SessionMenuCommands {
+        SessionMenuCommands(
+            editPlan: Self.planEditingIsNotOffered,
+            skipRemaining: Self.skipRemainingIsNotOffered,
+            discard: { isConfirmingDiscard = true })
     }
 
     /// What **Skip remaining** would do on this screen, which is nothing (`OUT-18.6`).
@@ -34,6 +56,17 @@ extension ActiveSessionView {
     /// wiring fault rather than a state.
     static func skipRemainingIsNotOffered() {
         assertionFailure("the free workout's menu never offers Skip remaining (`OUT-18.6`)")
+    }
+
+    /// What **Edit plan** would do on this screen, which is nothing (`OUT-18.6`, `FR-18.7.2`).
+    ///
+    /// ``skipRemainingIsNotOffered()``'s rule, and its argument whole: the item is never drawn
+    /// here — ``menuContents(date:)`` says so and
+    /// `SessionMenuContentsTests.theFreeWorkoutAsksForDiscard` holds it — so a handler that does
+    /// something would be a second answer to a question already answered, and one that did nothing
+    /// silently would hide a wiring fault.
+    static func planEditingIsNotOffered() {
+        assertionFailure("the free workout's menu never offers Edit plan (`OUT-18.6`)")
     }
 
     /// Finishes the workout and leaves the screen, unless the write failed.

@@ -51,8 +51,9 @@ public struct ActiveSessionView: View {
     /// Whether `FR-1.2.12`'s confirmation is on screen.
     ///
     /// The screen's and not the store's: a dialogue the user has open is not a fact about the
-    /// workout, and it must not survive the screen being left.
-    @State private var isConfirmingDiscard = false
+    /// workout, and it must not survive the screen being left. Internal rather than file-scoped —
+    /// the menu handler that raises it is in `ActiveSessionViewCommands.swift`.
+    @State var isConfirmingDiscard = false
 
     /// Whether `FR-16.4.4`'s question is open — the workout holds sets nobody attempted, and Finish
     /// has been tapped.
@@ -217,8 +218,7 @@ public struct ActiveSessionView: View {
             contents: Self.menuContents(date: store.session?.date),
             side: .trailing,
             changeDate: { day in Task { await store.changeDate(to: day) } },
-            skipRemaining: Self.skipRemainingIsNotOffered,
-            discard: { isConfirmingDiscard = true }
+            commands: menuCommands
         )
         .confirmationDialog(
             Text(LoggingStrings.sessionDiscardConfirmTitle),

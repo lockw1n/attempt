@@ -128,6 +128,13 @@ extension LoggingStrings {
     /// Closing the date sheet.
     static let dayChangeDateDone = resource("logging.day.change-date.done")
 
+    /// The way from a day to what the day contains (`FR-18.7.2`).
+    ///
+    /// **The *plan*, not the *week***, although it opens the week's editor: the lifter is standing
+    /// on one day and asking what is prescribed for it, and a word naming the screen it lands on
+    /// would be the app explaining its own structure (`F-13`).
+    static let dayEditPlanAction = resource("logging.day.edit-plan.action")
+
     // MARK: - Taking the day back (FR-18.4.5)
 
     /// The menu's destructive command on a **planned** day.
@@ -193,6 +200,7 @@ extension LoggingStrings {
             dayMenuAction,
             dayChangeDateAction,
             dayChangeDateDone,
+            dayEditPlanAction,
             dayResetAction,
             dayResetConfirmTitle,
             dayResetConfirmMessage,

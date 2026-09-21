@@ -17,26 +17,73 @@ import Testing
 /// host asks for, which is here.
 @Suite("A workout's overflow menu")
 struct SessionMenuContentsTests {
-    @Test("A day nobody has logged into offers Skip remaining and nothing that needs a workout")
-    func anUnstartedDayOffersSkipRemainingAlone() {
+    /// `FR-18.7.1` and `FR-18.7.2`, which is what `F-13` asked for: the day before its first
+    /// answer is the one a lifter backdating last Thursday is looking at, and it carried one
+    /// command.
+    @Test("A day nobody has logged into offers Change date, Edit plan and Skip remaining")
+    func anUnstartedDayOffersTheThreeThatNeedNoWorkout() {
         let contents = SessionMenuContents(
-            date: nil, offersSkipRemaining: true, destructive: .resetDay)
+            date: nil,
+            startsWhenDated: true,
+            offersPlanEditing: true,
+            offersSkipRemaining: true,
+            destructive: .resetDay)
 
-        #expect(contents.items == [.skipRemaining])
+        #expect(contents.items == [.changeDate, .editPlan, .skipRemaining])
+    }
+
+    /// The empty day — a week's day whose routine prescribes nothing. There is nothing to answer
+    /// and nothing to take back, and the two commands that need neither are still there.
+    @Test("A day with no workout and no rows still offers Change date and Edit plan")
+    func anEmptyUnstartedDayKeepsTheTwoThatNeedNoRows() {
+        let contents = SessionMenuContents(
+            date: nil,
+            startsWhenDated: true,
+            offersPlanEditing: true,
+            offersSkipRemaining: false,
+            destructive: .resetDay)
+
+        #expect(contents.items == [.changeDate, .editPlan])
+    }
+
+    /// `FR-15.2.5`: a day whose routine has been archived is still a day of the week. Nothing can
+    /// be started on it — ``DayStore/startIfNeeded(on:)`` has no routine to copy — so **Change
+    /// date** would be an item that writes nothing, while **Edit plan** is exactly what the lifter
+    /// needs. The two are separate parameters for this state and no other.
+    @Test("A day in the week whose routine has gone offers Edit plan and not Change date")
+    func anArchivedRoutineDayOffersThePlanAndNotTheDate() {
+        let contents = SessionMenuContents(
+            date: nil,
+            startsWhenDated: false,
+            offersPlanEditing: true,
+            offersSkipRemaining: false,
+            destructive: .resetDay)
+
+        #expect(contents.items == [.editPlan])
     }
 
     @Test("A day with rows left offers all three, destructive last")
     func aPartAnsweredDayOffersAllThree() {
         let contents = SessionMenuContents(
-            date: .now, offersSkipRemaining: true, destructive: .resetDay)
+            date: .now,
+            startsWhenDated: true,
+            offersPlanEditing: true,
+            offersSkipRemaining: true,
+            destructive: .resetDay)
 
+        // **Edit plan** is gone, `Q-18.9` at (a): the day keeps the targets it started with
+        // (`FR-17.10.5`), so an edit made now would change nothing on the screen behind the menu.
         #expect(contents.items == [.changeDate, .skipRemaining, .destructive(.resetDay)])
     }
 
     @Test("A day with nothing left to answer has no Skip remaining")
     func aFinishedDayDropsSkipRemaining() {
         let contents = SessionMenuContents(
-            date: .now, offersSkipRemaining: false, destructive: .resetDay)
+            date: .now,
+            startsWhenDated: true,
+            offersPlanEditing: true,
+            offersSkipRemaining: false,
+            destructive: .resetDay)
 
         #expect(contents.items == [.changeDate, .destructive(.resetDay)])
     }
@@ -44,15 +91,25 @@ struct SessionMenuContentsTests {
     @Test("A free workout offers Change date and its own destructive command")
     func aFreeWorkoutKeepsDiscard() {
         let contents = SessionMenuContents(
-            date: .now, offersSkipRemaining: false, destructive: .discardWorkout)
+            date: .now,
+            startsWhenDated: false,
+            offersPlanEditing: false,
+            offersSkipRemaining: false,
+            destructive: .discardWorkout)
 
         #expect(contents.items == [.changeDate, .destructive(.discardWorkout)])
     }
 
-    @Test("A screen with no workout and nothing left to answer draws no menu at all")
+    /// The free workout that has not been started, and the day whose stamp resolves to nothing.
+    /// Neither can be dated into existence (`FR-18.7.1`) and neither has a plan to edit.
+    @Test("A screen with no workout, no plan and nothing left to answer draws no menu at all")
     func anEmptyMenuIsNotDrawn() {
         let contents = SessionMenuContents(
-            date: nil, offersSkipRemaining: false, destructive: .discardWorkout)
+            date: nil,
+            startsWhenDated: false,
+            offersPlanEditing: false,
+            offersSkipRemaining: false,
+            destructive: .discardWorkout)
 
         #expect(contents.items.isEmpty)
     }
@@ -79,16 +136,79 @@ struct SessionMenuContentsTests {
         let answered = DayProgress([Self.row(.skipped), Self.row(.logged)])
 
         #expect(
-            DayView.menuContents(date: nil, progress: unanswered).items == [.skipRemaining])
+            DayView.menuContents(
+                date: nil,
+                startsWhenDated: true,
+                offersPlanEditing: true,
+                progress: unanswered
+            ).items == [.changeDate, .editPlan, .skipRemaining])
         #expect(
-            DayView.menuContents(date: .now, progress: unanswered).items
-                == [.changeDate, .skipRemaining, .destructive(.resetDay)])
+            DayView.menuContents(
+                date: nil,
+                startsWhenDated: true,
+                offersPlanEditing: true,
+                progress: DayProgress([])
+            ).items == [.changeDate, .editPlan])
         #expect(
-            DayView.menuContents(date: .now, progress: answered).items
-                == [.changeDate, .destructive(.resetDay)])
+            DayView.menuContents(
+                date: .now,
+                startsWhenDated: true,
+                offersPlanEditing: true,
+                progress: unanswered
+            ).items == [.changeDate, .skipRemaining, .destructive(.resetDay)])
         #expect(
-            DayView.menuContents(date: .now, progress: DayProgress([])).items
-                == [.changeDate, .destructive(.resetDay)])
+            DayView.menuContents(
+                date: .now,
+                startsWhenDated: true,
+                offersPlanEditing: true,
+                progress: answered
+            ).items == [.changeDate, .destructive(.resetDay)])
+        #expect(
+            DayView.menuContents(
+                date: .now,
+                startsWhenDated: true,
+                offersPlanEditing: true,
+                progress: DayProgress([])
+            ).items == [.changeDate, .destructive(.resetDay)])
+    }
+
+    /// `FR-18.7.2` and `OUT-18.6` together: **Edit plan** never survives the day acquiring a
+    /// workout, whichever way it acquired one — and a swap of the two new host answers would pass
+    /// every assertion above that reads only the day.
+    @Test("Edit plan is offered on no host once a workout exists, and on the free workout never")
+    func editPlanIsTheOneCommandThatRetires() {
+        let unanswered = DayProgress([Self.row(.unanswered)])
+
+        #expect(
+            DayView.menuContents(
+                date: nil,
+                startsWhenDated: true,
+                offersPlanEditing: true,
+                progress: unanswered
+            ).items.contains(.editPlan))
+        #expect(
+            !DayView.menuContents(
+                date: .now,
+                startsWhenDated: true,
+                offersPlanEditing: true,
+                progress: unanswered
+            ).items.contains(.editPlan))
+        #expect(!ActiveSessionView.menuContents(date: nil).items.contains(.editPlan))
+        #expect(!ActiveSessionView.menuContents(date: .now).items.contains(.editPlan))
+    }
+
+    /// `FR-18.7.1`: the free workout is the host that is *not* dated into existence. Its menu is
+    /// empty before there is a workout, where the day's is not.
+    @Test("Only the planned day offers Change date before there is a workout")
+    func onlyTheDayIsDatedIntoExistence() {
+        #expect(
+            DayView.menuContents(
+                date: nil,
+                startsWhenDated: true,
+                offersPlanEditing: true,
+                progress: DayProgress([])
+            ).items.contains(.changeDate))
+        #expect(!ActiveSessionView.menuContents(date: nil).items.contains(.changeDate))
     }
 
     /// `OUT-18.6`: the free workout keeps the word it had, and gains nothing about a plan it does
@@ -113,7 +233,12 @@ struct SessionMenuContentsTests {
     /// assertion above that reads only one of them.
     @Test("The two hosts do not offer the same destructive command")
     func theHostsDisagree() {
-        let day = DayView.menuContents(date: .now, progress: DayProgress([])).items
+        let day = DayView.menuContents(
+            date: .now,
+            startsWhenDated: true,
+            offersPlanEditing: true,
+            progress: DayProgress([])
+        ).items
         let free = ActiveSessionView.menuContents(date: .now).items
 
         #expect(day.contains(.destructive(.resetDay)))

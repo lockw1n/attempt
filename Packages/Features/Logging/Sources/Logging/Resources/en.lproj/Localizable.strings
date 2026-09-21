@@ -513,6 +513,10 @@
 "logging.day.change-date.action" = "Change date";
 "logging.day.change-date.done" = "Done";
 
+/* FR-18.7.2: the way from a day to what the day contains. The plan, not the week — the lifter
+   is standing on one day and asking what is prescribed for it. */
+"logging.day.edit-plan.action" = "Edit plan";
+
 /* FR-18.4.5's way back to an upcoming day. The write is the free workout's Discard; the word is
    not, because here the plan survives it. */
 "logging.day.reset.action" = "Reset day";

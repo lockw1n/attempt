@@ -81,6 +81,27 @@ public final class DayStore {
     /// hidden by having no workout to act on, which is the same fact said where it is used.
     public var isStarted: Bool { store.session != nil }
 
+    /// Whether a routine stands behind this day, and therefore whether anything can be started on
+    /// it (`FR-18.7.1`).
+    ///
+    /// **What it gates is a menu item, and the reason is that the command would otherwise do
+    /// nothing.** ``startIfNeeded(on:)`` refuses where there is no routine to copy — a run that has
+    /// moved on, a week that has turned, a routine archived (`FR-15.2.5`) — so **Change date**
+    /// offered there is an item that closes its own sheet and writes nothing.
+    ///
+    /// **Not the same question as ``weekDayID``**, one line down: a day whose routine is archived
+    /// is still in the week, so its plan can be edited and nothing can be logged against it.
+    public var hasPlan: Bool { routineID != nil }
+
+    /// The ``RepositoryInterface/ProgramDay`` this screen is over, or `nil` where the run has moved
+    /// on, the week has turned or the day is no longer in the program.
+    ///
+    /// **What Edit week is opened *at*** (`FR-18.7.2`). Which day the week's editor unfolds is
+    /// app-lifetime state there (`Routines.WeekEditorState.openDayID`) rather than anything this
+    /// module can reach (`TR-1.3`), so what this exposes is the identity and the app target is the
+    /// join — the same shape as the exercise chooser two screens over.
+    public private(set) var weekDayID: UUID?
+
     /// The last write against the day that failed, as the error's description, or `nil`.
     ///
     /// A **diagnostic**, not copy (`G-3.4`). Read off the store, which is where the writes happen.
@@ -108,7 +129,11 @@ public final class DayStore {
     private let plans: WeekPlanReader
 
     /// The plan as read, kept so a slot can be mapped onto the entry the copy wrote for it.
-    private var planLines: [WeekPlanLine] = []
+    ///
+    /// Internal rather than file-scoped because the reads the Log sheet opens over live in
+    /// `DayPlanReads.swift`, which `private` would put out of reach — `ActiveSessionView`'s rule
+    /// for the same split. Nothing outside `Logging` can see it.
+    var planLines: [WeekPlanLine] = []
 
     /// The routine this day names, or `nil` where the run, the day or the routine has gone.
     private var routineID: UUID?
@@ -320,84 +345,31 @@ public final class DayStore {
         await reload()
     }
 
-    /// What the Log sheet opens over `rowID` (`FR-17.9.4`, `FR-17.7.5`).
+    /// Moves the day's session to another training day, creating it where there is none
+    /// (`FR-1.2.1`, `FR-17.9.7`, `FR-18.7.1`).
     ///
-    /// **The plan and what is stored** — the two things the sheet needs and the one place they are
-    /// read together. Composed here rather than on the screen for ``seed(forRow:)``'s reason: the
-    /// mapping from a row to its entry is this store's.
+    /// **It writes on a day nothing has been answered on, and that is the change `F-13` asked
+    /// for** (`Q-18.8` at (a)). The guard here used to be `store.session != nil`, so the command
+    /// did nothing on the day a lifter backdating last Thursday is actually looking at — and
+    /// `DayView` hid it rather than draw a dead item. It is still not a Start: nothing is asked and
+    /// nothing is begun, a date is recorded on the only row that can carry one.
     ///
-    /// Whether the row is answered is *not* carried: that decides the write rather than the form,
-    /// and it is read at the moment of writing — see ``isAnswered(rowID:)``.
+    /// **Created *on* the chosen day rather than created and then moved.** ``startIfNeeded(on:)``
+    /// takes the date, so the branch that has no session is one write — a create followed by a
+    /// ``ActiveSessionStore/changeDate(to:)`` would restamp `updatedAt`, `G-2.4`'s conflict key,
+    /// for a date the row never actually held.
     ///
-    /// - Parameter rowID: The row.
-    /// - Returns: The row, or `nil` where the day has none by that identity.
-    func editorRow(forRow rowID: UUID) -> SetEditorRow? {
-        guard let row = rows.first(where: { $0.id == rowID }) else { return nil }
-        return SetEditorRow(
-            plan: row.plan,
-            logged: store.exercises.first { $0.id == rowID }?.sets ?? [])
-    }
-
-    /// Whether the row has already been answered — what decides between a write and a rewrite.
-    ///
-    /// **A row the day does not hold is *not* answered**, and the default matters: written as a
-    /// comparison against the optional, a missing row reads as answered and the save becomes a
-    /// rewrite of a group nobody has logged. Appending is the safe answer to "I cannot tell" —
-    /// it is what an unanswered row does, and it is the only one of the two that cannot
-    /// soft-delete a set the lifter has.
-    ///
-    /// **It answers about whatever identity ``rows`` is currently keyed by**, which is the routine's
-    /// slots before the day has a session and the entries after — so a caller holding a row id from
-    /// before ``startIfNeeded()`` has to translate it through ``entryID(forRow:)`` first. Internal
-    /// rather than private so both halves of that can be asserted.
-    ///
-    /// - Parameter rowID: The row.
-    /// - Returns: Whether it carries an answer.
-    func isAnswered(rowID: UUID) -> Bool {
-        guard let row = rows.first(where: { $0.id == rowID }) else { return false }
-        return row.answer != .unanswered
-    }
-
-    /// What the editor opens filled in with for `rowID` (`FR-15.2.3`), or `nil` where nothing was
-    /// planned for it.
-    ///
-    /// **The session's own plan once there is one, the routine's before that.** They are the same
-    /// numbers on a day nobody has logged into; once sets exist, only the first knows which planned
-    /// group the next set falls in.
-    ///
-    /// - Parameter rowID: The row.
-    /// - Returns: The seed, or `nil`.
-    public func seed(forRow rowID: UUID) -> PlannedSetSeed? {
-        if let exercise = store.exercises.first(where: { $0.id == rowID }) {
-            return exercise.plannedSeed
-        }
-        guard let target = planLines.first(where: { $0.id == rowID })?.targets.first else {
-            return nil
-        }
-        return PlannedSetSeed(weight: target.weight, reps: target.reps)
-    }
-
-    /// What the routine prescribed for the next set of `rowID`, drawn above the editor's fields
-    /// (`FR-15.3.1`), or `nil`.
-    ///
-    /// Only where the session exists: the line reports a *group*, and a day not yet started has
-    /// none of its own to report.
-    ///
-    /// - Parameter rowID: The row.
-    /// - Returns: The group, or `nil`.
-    public func prescribed(forRow rowID: UUID) -> PlannedTargetGroup? {
-        store.exercises.first { $0.id == rowID }?.nextPlannedGroup
-    }
-
-    /// Moves the day's session to another training day (`FR-1.2.1`, `FR-17.9.7`).
-    ///
-    /// Nothing is written before there is a session: a day nobody has logged into has no date to
-    /// change, and inventing one would create the workout from the menu.
+    /// **A day with no routine to copy writes nothing**, which is ``startIfNeeded(on:)``'s own
+    /// answer rather than a guard here: that is the state ``hasPlan`` keeps the command out of the
+    /// menu for, and this is what makes the two agree if it ever does not.
     ///
     /// - Parameter day: The training day.
     public func changeDate(to day: Date) async {
-        guard store.session != nil else { return }
-        await store.changeDate(to: day)
+        if store.session == nil {
+            guard await startIfNeeded(on: day) else { return }
+        } else {
+            await store.changeDate(to: day)
+        }
         await reload()
     }
 
@@ -420,10 +392,24 @@ public final class DayStore {
     /// - Returns: Whether a session is now held.
     @discardableResult
     public func startIfNeeded() async -> Bool {
+        await startIfNeeded(on: .now)
+    }
+
+    /// ``startIfNeeded()``, on a training day that is not today (`FR-18.7.1`).
+    ///
+    /// **An overload rather than a defaulted parameter**, so that the date is never chosen by
+    /// omission: every answer on this screen is given today and says so by calling the other one,
+    /// and the one command that dates a workout it is creating says *that* by calling this one.
+    ///
+    /// - Parameter day: The training day the workout is created on. Normalised to its start by
+    ///   ``ActiveSessionStore/start(on:)``.
+    /// - Returns: Whether a session is now held.
+    @discardableResult
+    func startIfNeeded(on day: Date) async -> Bool {
         if store.session != nil { return true }
         guard let routineID else { return false }
         await store.start(
-            on: .now,
+            on: day,
             fromRoutineID: routineID,
             in: routines,
             stampedWith: ProgramSessionStamp(runID: runID, weekNumber: week, dayIndex: dayIndex))
@@ -474,12 +460,16 @@ public final class DayStore {
         name = ""
         planLines = []
         routineID = nil
+        weekDayID = nil
         guard let run = try await programs.currentRun(), run.id == runID, run.weekNumber == week
         else {
             return
         }
         let days = try await programs.days(forProgramID: run.programID, includingDeleted: false)
         guard let day = days.first(where: { $0.order == dayIndex }) else { return }
+        // Before the routine, deliberately: a day whose routine has been archived is still a day
+        // of the week, and the plan editor is where a lifter repoints it (`FR-18.7.2`).
+        weekDayID = day.id
         guard let routine = try await routines.routine(id: day.routineID, includingDeleted: false)
         else {
             return

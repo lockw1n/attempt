@@ -227,19 +227,6 @@ struct DayCommandTests {
         #expect(after.updatedAt == before.updatedAt)
     }
 
-    @Test("Change date does nothing on a day that has not been started")
-    func changingTheDateOfAnUnstartedDayWritesNothing() async throws {
-        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
-        let day = fixture.dayStore(dayIndex: 0)
-        await day.load()
-
-        await day.changeDate(to: weekFixtureDay)
-
-        let sessions = try await fixture.stack.workouts.sessions(
-            forProgramRunID: fixture.runID, week: WeekFixture.week, includingDeleted: false)
-        #expect(sessions.isEmpty)
-    }
-
     @Test("Discard soft-deletes the day's workout and puts the day back to unstarted")
     func discardRemovesTheWorkout() async throws {
         let fixture = try await WeekFixture(days: 1, exercisesPerDay: 2)

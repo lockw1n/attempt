@@ -66,6 +66,11 @@ struct DayFixture {
 
     /// The day as `RootTabView` builds it.
     ///
+    /// **Edit plan is recorded rather than performed**: the real one sets the week editor's open
+    /// day and pushes `Route.routines(.editWeek)` (`FR-18.7.2`), and neither a push nor another
+    /// tab's store is a thing a hosted screen can be asked about. What is asserted here is the
+    /// half a host can see — whether the `⋯` is drawn at all.
+    ///
     /// - Returns: The screen.
     func dayView() -> some View {
         DayView(
@@ -77,7 +82,24 @@ struct DayFixture {
             equipment: stores.equipment,
             programs: repositories.programs,
             routines: repositories.routines,
-            exercises: repositories.exercises)
+            exercises: repositories.exercises,
+            editPlan: { planEdits.append($0) })
+    }
+
+    /// The days **Edit plan** was asked for, in the order it was asked.
+    let planEdits = DayFixture.PlanEdits()
+
+    /// A box the screen's `editPlan` closure writes into — a `struct`'s `let` cannot be appended
+    /// to, and what a test wants is what the closure was handed.
+    @MainActor
+    final class PlanEdits {
+        /// The `ProgramDay` identities handed over, in order.
+        private(set) var days: [UUID] = []
+
+        /// Records one.
+        ///
+        /// - Parameter day: The `ProgramDay` the screen named.
+        func append(_ day: UUID) { days.append(day) }
     }
 
     /// A past session as `RootTabView` builds it.

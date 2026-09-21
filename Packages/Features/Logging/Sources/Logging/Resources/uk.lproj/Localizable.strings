@@ -326,6 +326,9 @@
 "logging.day.change-date.action" = "Змінити дату";
 "logging.day.change-date.done" = "Готово";
 
+/* FR-18.7.2 — шлях від дня до того, що в ньому заплановано. */
+"logging.day.edit-plan.action" = "Редагувати план";
+
 /* FR-18.4.5 — повернення дня до запланованого. */
 "logging.day.reset.action" = "Скинути день";
 "logging.day.reset.confirm.title" = "Скинути цей день?";
