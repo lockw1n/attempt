@@ -27,7 +27,7 @@ struct DayRowResetTarget: Identifiable, Equatable {
 ///
 /// **The row rather than the entry**, because the sheet can be opened on a day that has no session
 /// yet: the first answer creates it, and the row is what survives that (see
-/// ``DayStore/log(rowID:group:)``).
+/// ``DayStore/log(rowID:rows:)``).
 struct DayLogTarget: Identifiable, Equatable {
     /// The row.
     let rowID: UUID

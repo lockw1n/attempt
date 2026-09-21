@@ -148,8 +148,8 @@ struct SetEditorSections: Equatable, Sendable {
 
     /// The logged sets partitioned into the groups the sheet draws a section for.
     ///
-    /// `T-16.01`'s derivation over the working sets — ``SetGrouping`` at
-    /// ``SetGrouping/Grain/loadAndReps`` — with the warm-ups placed back where they were logged,
+    /// `T-16.01`'s derivation over the working sets — ``DerivedValues/SetGrouping`` at
+    /// ``DerivedValues/SetGrouping/Grain/loadAndReps`` — with the warm-ups placed back where they were logged,
     /// which is a placement rather than a second grouping. The result is a *contiguous* partition
     /// of `logged` in its own order: see the type's note for why that is load-bearing.
     ///
