@@ -25,6 +25,23 @@
 # Setting (1) here rather than documenting it is the difference between a named step and something
 # every task re-discovers, which is the whole of what this task chose.
 #
+#   3. There is ONE `UIWindowScene`, and every hosted test makes its own window key on it
+#      (HostedScreen). Xcode runs SUITES in parallel, and `.serialized` — which every hosted suite
+#      in this bundle carries, each citing the shared scene — orders a suite's own tests and
+#      nothing between suites. So a second suite's `makeKeyAndVisible()` lands in the middle of the
+#      first suite's assertion and it reads the wrong window's tree: a toolbar that is drawn reads
+#      as absent, which is precondition (1)'s symptom arriving for a different reason. Measured
+#      2026-09-21, after CI failed `DayMenuTests.anUnansweredDayDrawsTheBarMenu` and
+#      `PastSessionMenuTests.aPastFreeWorkoutCarriesTheMenu` — one test from each of two
+#      interleaved suites — on a commit whose whole bundle passed here twice: the run's own log
+#      showed eight suites interleaved test by test. `-parallel-testing-enabled NO` is what stops
+#      it; with it, every suite opens and closes before the next one starts.
+#
+# THAT FLAG COSTS NOTHING HERE AND IS NOT A WORKAROUND. The parallelism it turns off is across
+# simulator CLONES, and booting them is most of this gate's wall clock: 28 tests in 10 suites run
+# serially in 11.6 s against a clone-per-suite run that took CI 227 s. A bundle whose every suite
+# declares itself serialized was never going to use it.
+#
 # A GATE WITH A KNOWN BLIND SPOT IS BETTER THAN ONE THAT REPORTS SOMETHING DIFFERENT EACH RUN, and
 # this one has a known blind spot, in check-doc-links.sh's own words: activation reads the
 # accessibility tree, so a control that publishes no accessibility element is not in the tree and is
@@ -91,6 +108,7 @@ print(matches[0]['id'].strip())
         -project "$PROJECT" \
         -scheme "$SCHEME" \
         -destination "platform=iOS,id=$DEVICE_UDID" \
+        -parallel-testing-enabled NO \
         -only-testing:"$ONLY"
     exit 0
 fi
@@ -115,4 +133,5 @@ xcodebuild test \
     -project "$PROJECT" \
     -scheme "$SCHEME" \
     -destination "platform=iOS Simulator,id=$UDID" \
+    -parallel-testing-enabled NO \
     -only-testing:"$ONLY"
