@@ -304,9 +304,18 @@ ATTEMPT_REAL_BACKUP=/path/to/backup.json swift test --package-path Packages/Feat
 **The app target has its own bundle too.** `AttemptTests` is an XCTest bundle *hosted*
 by `Attempt`, which is what makes `AppDependencies` and a real `UIWindowScene`
 reachable — a package suite has no host application, so it can neither run the launch
-sequence nor build a UIView hierarchy. Two things live there and nothing else should:
-the launch sequence over a real store, and the class of defect a snapshot reference
-cannot see (a modifier attached to the screen rather than to one of its parts).
+sequence nor build a UIView hierarchy. Three things live there and nothing else should:
+the launch sequence over a real store; the class of defect a snapshot reference cannot
+see (a modifier attached to the screen rather than to one of its parts); and what only a
+**hosted accessibility tree** answers — whether a control is drawn at all, and where it
+sits relative to the chrome a real navigation stack supplies. The third needs the host
+because a screen pushed onto a stack has a back button and a screen at a stack's root
+does not.
+
+A hosted tree answers *whether the control exists*, never *what a menu contains*: a
+menu's items are unreadable from a test on iOS 26 (see `SessionMenuContents` and
+`DayRowMenuContents`), so which commands a surface offers belongs in its package's own
+suite, over a value, and only the control's presence belongs here.
 
 **`RootTabView` itself is not buildable there.** It needs `AppNavigation`, which this
 target does not link, and linking it is an Xcode project change. So a decision written
