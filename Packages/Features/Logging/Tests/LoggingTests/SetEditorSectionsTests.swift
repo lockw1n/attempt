@@ -164,6 +164,21 @@ struct SetEditorSectionsTests {
         #expect(rows.suffix(2).allSatisfy { $0.weight == Weight(grams: 100_000) && $0.reps == 8 })
     }
 
+    @Test("A logged group the plan does not name is written back, never dropped")
+    func anUnplannedSectionStillWrites() {
+        // The rewrite is positional, so a section left out of `rows` is a group **Save as done**
+        // deletes. `onePlannedTwoLogged` says the sheet draws that section; this says Save keeps
+        // it — and without this, `rows` restricted to the planned sections passes the suite.
+        let sections = Self.sections(
+            plan: [Self.target(grams: 57_500, reps: 10, sets: 3)], logged: Self.twoGroupsLogged)
+
+        let rows = sections.rows
+
+        #expect(rows.count == 5)
+        #expect(rows.prefix(3).allSatisfy { $0.weight == Weight(grams: 57_500) && $0.reps == 10 })
+        #expect(rows.suffix(2).allSatisfy { $0.weight == Weight(grams: 100_000) && $0.reps == 7 })
+    }
+
     @Test("A section at zero sets writes nothing, and the rest still write")
     func aZeroSectionWritesNothing() {
         let sections = Self.zeroing(1, in: Self.sections(plan: Self.twoGroupPlan))

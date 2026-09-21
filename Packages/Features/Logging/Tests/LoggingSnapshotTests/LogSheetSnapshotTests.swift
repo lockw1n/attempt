@@ -170,42 +170,58 @@
             #expect(points < budget)
         }
 
-        @Test func aSecondSectionDoesNotMoveWeightOrReps() throws {
-            // `FR-18.6.2` against `FR-17.1.6`, and the claim is about what the budget is measured
-            // over rather than about the sheet's total height. Sections below the first **scroll**
-            // — only the first section's head and the pinned commands are above the fold — so the
-            // opening height of a two-section sheet is the opening height of a one-section sheet,
-            // and a regression that hoisted a section heading or a second form into the head would
-            // show here as a number that moved.
+        @Test func aSecondSectionCostsOneHeadingAndStaysInsideTheBudget() throws {
+            // `FR-18.6.2` against `FR-17.1.6`: the claim is about what the budget is measured over,
+            // not the sheet's total height. Sections below the first scroll, so all a second
+            // section costs the opening height is the *Group 1* heading it gives the first — and
+            // this measures that the cost is that and nothing more.
             //
-            // MEASURED AT BOTH SIZES, AND THE ASSERTION SAYS WHICH. `FR-17.1.6` holds at the
-            // default size only — re-run at `accessibility3` the head and commands come to more
-            // than a `.large` sheet gets, which was true before the sections and before the focus
-            // (`T-18.11`, `requirements.md` v1.15). What this test can hold at that size is the
-            // *comparison*: whatever the figure is, two sections do not make it worse.
+            // THIS ASSERTED `one == two` UNTIL REVIEW, and held because `head(over:)` passed no
+            // `sectionTitle` — both arms drew a head with no heading, over a view the sheet does
+            // not draw. Measured properly: 352.5 → 389.0 pt at `.default`, 476.0 → 540.0 at
+            // `accessibility3`.
+            //
+            // MEASURED AT BOTH SIZES, AND THE ASSERTION SAYS WHICH. `FR-17.1.6` is claimed at the
+            // default size only — at `accessibility3` head plus commands already came to more than
+            // a `.large` sheet gets before the sections and before the focus (`T-18.11`,
+            // `requirements.md` v1.15). So the budget is asserted where the requirement is claimed,
+            // and what is asserted at the larger size is what this task is answerable for: one
+            // heading, not a second form.
             for typeSize in [SnapshotTypeSize.default, .accessibility3] {
                 let one = try Self.headHeight(LogSheetFixtures.unanswered, at: typeSize)
                 let two = try Self.headHeight(LogSheetFixtures.twoSections, at: typeSize)
-                print("FR-18.6.2 head at \(typeSize): one section \(one) pt, two \(two) pt")
-                #expect(one == two)
+                let commands = try Self.height(
+                    LogSheetFixtures.commands(canSave: true), at: typeSize)
+                print(
+                    "FR-18.6.2 head at \(typeSize): one section \(one) pt, two \(two) pt, "
+                        + "commands \(commands) pt")
+                // The heading is drawn and it is not free — an equality here is the defect above.
+                #expect(two > one)
+                // And it is one heading's worth: a second form hoisted into the head would double
+                // the three fields, which is far more than the heading plus its own spacing.
+                #expect(two - one < one / 2)
+                if typeSize == .default {
+                    #expect(two + commands < SetEditorSheet.smallestScreen - 20.0)
+                }
             }
         }
 
         @Test func theDisabledStateIsTheOnlyThingThatGrowsTheCommands() throws {
-            // The other half of the budget, and the one this task could actually have spent. The
-            // head is fixed (above), so what is left is the **pinned** region: `Q-18.7`'s line
-            // appears there, and a footer that grows takes the growth out of the scroll view
-            // rather than out of the sheet. Measured at both sizes, and the state it appears in is
-            // the one where nothing is going to be written — so a lifter who is logging anything
-            // at all never sees it.
+            // The other half of the budget: the **pinned** region, where `Q-18.7`'s line appears.
+            // A footer that grows takes the growth out of the scroll view rather than out of the
+            // sheet, and the state it appears in is the one where nothing is going to be written
+            // — so a lifter logging anything at all never sees it.
             for typeSize in [SnapshotTypeSize.default, .accessibility3] {
                 let saving = try Self.height(LogSheetFixtures.commands(canSave: true), at: typeSize)
                 let refusing = try Self.height(
                     LogSheetFixtures.commands(canSave: false), at: typeSize)
                 print(
                     "FR-18.6.3 commands at \(typeSize): \(saving) pt, disabled \(refusing) pt")
-                // Nothing this task added is drawn while the sheet can be saved.
-                #expect(saving == 201.5 || typeSize == .accessibility3)
+                // Nothing this task added is drawn while the sheet can be saved, so the saveable
+                // figure is the one `FR-17.1.6`'s budget was struck against — pinned at both
+                // sizes rather than at one, because a `||` on the size is an assertion that stops
+                // asserting on its second pass.
+                #expect(saving == (typeSize == .default ? 201.5 : 353.0))
                 #expect(refusing > saving)
             }
         }
@@ -423,14 +439,22 @@
 
             /// The three fields `FR-17.1.6`'s budget is measured over.
             ///
+            /// **`sectionTitle` is passed rather than left to default.** It and `isFirstSection`
+            /// default to the one-section values, so a fixture naming neither draws a head with no
+            /// group heading however many sections it was handed — which is how this one's first
+            /// version made a two-section head measure the same as a one-section head, and the
+            /// test over it an equality that could not fail (`T-18.08`, `T-17.01` inverted).
+            ///
             /// - Parameter sections: What the form holds — the first section's fields are the ones
-            ///   measured (`FR-18.6.1`).
+            ///   measured (`FR-18.6.1`), with the heading that section actually draws.
             /// - Returns: The head.
             static func head(over sections: SetEditorSections) -> some View {
                 SetEditorHead(
                     draft: .constant(sections.single),
                     mode: .row(SetEditorRow(plan: plan)),
-                    equipment: Fixtures.equipment
+                    equipment: Fixtures.equipment,
+                    sectionTitle: sections.title(at: 0),
+                    isFirstSection: true
                 )
                 .padding(Spacing.lg.points)
             }

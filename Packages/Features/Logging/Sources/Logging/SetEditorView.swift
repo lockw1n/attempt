@@ -47,7 +47,7 @@ enum SetEditorWrite: Equatable {
 struct SetEditorSheet: View {
     /// What the user has entered so far — one section over a free workout's set, one per planned
     /// group over a checklist row (`FR-18.6.2`).
-    @State private var draft: SetEditorSections
+    @State private var sections: SetEditorSections
 
     /// Whether the confirming command has been tapped over a draft that does not resolve.
     ///
@@ -150,7 +150,7 @@ struct SetEditorSheet: View {
         skip: (() -> Void)? = nil,
         delete: @escaping () -> Void = {}
     ) {
-        _draft = State(initialValue: sections)
+        _sections = State(initialValue: sections)
         self.mode = mode
         self.prescribed = prescribed
         self.unit = unit
@@ -177,8 +177,8 @@ struct SetEditorSheet: View {
                     .padding(Spacing.lg.points)
             }
             SetEditorCommands(
-                showsRefusal: hasSubmitted && !draft.isLoggable,
-                canSave: !draft.writesNothing,
+                showsRefusal: hasSubmitted && !sections.isLoggable,
+                canSave: !sections.writesNothing,
                 mode: mode,
                 log: submit,
                 cancel: cancel,
@@ -210,11 +210,11 @@ struct SetEditorSheet: View {
     @ViewBuilder private var fields: some View {
         if mode.isRow {
             SetEditorRowFields(
-                sections: $draft, mode: mode, vocabulary: vocabulary, equipment: equipment)
+                sections: $sections, mode: mode, vocabulary: vocabulary, equipment: equipment)
         } else {
             SetEditorFields(
                 draft: Binding(
-                    get: { draft.single }, set: { draft.replace($0, at: 0) }),
+                    get: { sections.single }, set: { sections.replace($0, at: 0) }),
                 mode: mode,
                 vocabulary: vocabulary,
                 equipment: equipment)
@@ -225,8 +225,8 @@ struct SetEditorSheet: View {
     /// resolve, and the command refuses rather than being disabled.
     private func submit() {
         hasSubmitted = true
-        guard draft.isLoggable else { return }
-        log(draft)
+        guard sections.isLoggable else { return }
+        log(sections)
     }
 
     /// `FR-15.3.1`'s target, where a routine planned this set — the free workout's reference line.

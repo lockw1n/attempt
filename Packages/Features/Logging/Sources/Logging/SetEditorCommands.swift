@@ -111,18 +111,6 @@ struct SetEditorCommands: View {
         }
     }
 
-    /// `FR-1.2.7`'s deletion, last and behind a confirmation.
-    ///
-    /// **Last, with the way out between it and the confirming command.** The two commands a thumb
-    /// reaches for are one destructive tap apart otherwise, and this is a sheet operated one-handed
-    /// mid-workout — `NFR-1.4` puts every control in that thumb's reach, which cuts both ways.
-    ///
-    /// **Confirmed, though no requirement asks.** The deletion is soft (`G-1.3`) and nothing in
-    /// Phase 1 can undo one: the row survives in the store and no screen will ever show it again.
-    /// A mis-tap would silently cost a logged set, which is the direction `G-1.6` cares about.
-    ///
-    /// **A glyph as well as the colour** (`G-4.5`): destructive must not be carried by the tint
-    /// alone.
     /// The line that points at the command this state's answer actually belongs to (`Q-18.7`).
     ///
     /// **Not a ``FieldRefusal``**, which is the negative colour and a warning glyph: nothing is
@@ -138,6 +126,18 @@ struct SetEditorCommands: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// `FR-1.2.7`'s deletion, last and behind a confirmation.
+    ///
+    /// **Last, with the way out between it and the confirming command.** The two commands a thumb
+    /// reaches for are one destructive tap apart otherwise, and this is a sheet operated one-handed
+    /// mid-workout — `NFR-1.4` puts every control in that thumb's reach, which cuts both ways.
+    ///
+    /// **Confirmed, though no requirement asks.** The deletion is soft (`G-1.3`) and nothing in
+    /// Phase 1 can undo one: the row survives in the store and no screen will ever show it again.
+    /// A mis-tap would silently cost a logged set, which is the direction `G-1.6` cares about.
+    ///
+    /// **A glyph as well as the colour** (`G-4.5`): destructive must not be carried by the tint
+    /// alone.
     private var deleteCommand: some View {
         Button {
             isConfirmingDelete = true

@@ -262,7 +262,8 @@ final class PastSessionState {
     ///
     /// - Parameters:
     ///   - rowID: The row being answered — an entry, on this screen.
-    ///   - group: What the sheet collected.
+    ///   - rows: Every set the sheet collected, across every section, in the order they are stored
+    ///     in (`FR-18.6.3`).
     func log(rowID: UUID, rows: [SetEntryValues]) async {
         guard let entry = exercises.first(where: { $0.id == rowID })?.entry else { return }
         await write {

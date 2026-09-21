@@ -164,6 +164,72 @@ struct MultiGroupSaveTests {
         #expect(row.loggedSetCount == 6)
     }
 
+    @Test("More logged groups than the plan names: Save writes them all back, none dropped")
+    func anUnplannedGroupSurvivesTheSave() async throws {
+        // The rewrite is positional (``SetGroupRewrite``: `stored.dropFirst(rows.count)` is
+        // deleted), so a group left out of `rows` is one **Save as done** removes. A row can hold
+        // more groups than the plan names — one rewritten before this task existed, or an imported
+        // session (`FR-16.4`) — and reopening it must not cost the lifter the unplanned group.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
+        try await fixture.setTarget(day: 0, slot: 0, grams: 57_000, reps: 10, sets: 3)
+        let day = fixture.dayStore(dayIndex: 0)
+        await day.load()
+        let rowID = try #require(day.rows.first).id
+        // Answered with two groups against a plan naming one.
+        await day.log(
+            rowID: rowID,
+            rows: .of(grams: 57_000, reps: 10, sets: 3) + .of(grams: 64_000, reps: 7, sets: 3))
+        let entryID = try await fixture.firstEntryID(day: 0)
+        try #require(day.rows.first?.performed.count == 2)
+
+        // Reopened: one planned section, one the plan does not name, and Save writes both.
+        let reopened = SetEditorSections(
+            answering: try #require(day.editorRow(forRow: entryID)),
+            unit: .kilograms,
+            locale: Self.locale)
+        #expect(reopened.sections.count == 2)
+        #expect(reopened.sections[1].plan.isEmpty)
+        #expect(reopened.rows.count == 6)
+
+        await day.log(rowID: entryID, rows: reopened.rows)
+
+        let row = try #require(day.rows.first)
+        #expect(row.performed.map { $0.weight?.grams } == [57_000, 64_000])
+        #expect(row.loggedSetCount == 6)
+    }
+
+    @Test("Zeroing a section on an answered row removes that group's sets rather than leaving them")
+    func zeroingASectionOnARewriteRemovesItsSets() async throws {
+        // `aZeroSectionWritesNoRow` covers the append; this is the rewrite, where three rows
+        // against six stored is a deletion rather than a gap.
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
+        try await Self.planned(fixture)
+        let day = fixture.dayStore(dayIndex: 0)
+        await day.load()
+        let rowID = try #require(day.rows.first).id
+        await day.log(
+            rowID: rowID, rows: Self.answer(try #require(day.editorRow(forRow: rowID))).rows)
+        let entryID = try await fixture.firstEntryID(day: 0)
+        try #require(day.rows.first?.loggedSetCount == 6)
+
+        var reopened = SetEditorSections(
+            answering: try #require(day.editorRow(forRow: entryID)),
+            unit: .kilograms,
+            locale: Self.locale)
+        var second = reopened.sections[1].draft
+        second.setsText = "0"
+        reopened.replace(second, at: 1)
+        #expect(reopened.rows.count == 3)
+
+        await day.log(rowID: entryID, rows: reopened.rows)
+
+        let row = try #require(day.rows.first)
+        #expect(row.performed.count == 1)
+        #expect(row.performed[0].weight == Weight(grams: 57_000))
+        #expect(row.loggedSetCount == 3)
+        #expect(row.answer == .logged)
+    }
+
     @Test("A section at zero sets writes nothing, and the row reads one group")
     func aZeroSectionWritesNoRow() async throws {
         let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)

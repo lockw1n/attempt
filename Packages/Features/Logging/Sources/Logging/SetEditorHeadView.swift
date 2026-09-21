@@ -35,10 +35,19 @@ struct SetEditorHead: View {
 
     /// Whether this is the section the sheet leads with.
     ///
-    /// **It decides two things and they belong together**: the sheet's own heading is drawn above
-    /// this section and no other, and this is the Weight that takes the keyboard when the sheet
-    /// opens (`FR-18.6.1`). A second section that ran either would move the heading into the
-    /// middle of the form or take the keyboard off the first.
+    /// **It decides three things and they belong together**: the sheet's own heading is drawn
+    /// above this section and no other, this is the Weight that takes the keyboard when the sheet
+    /// opens (`FR-18.6.1`), and this is the section that reads the gym. A second section that ran
+    /// the first would move the heading into the middle of the form; one that ran the second would
+    /// take the keyboard off the first; one that ran the third would re-read the same plates once
+    /// per planned group.
+    ///
+    /// **It decides nothing about the selection, and that is the half worth stating.** Every
+    /// section's load is prefilled and every section's load can be tapped into, so
+    /// ``SetEditorFocus``' three answers — select the whole of it the first time, leave the caret
+    /// alone afterwards, let go of the range at every blur — are the same rules here as there.
+    /// Gating them on this flag would leave sections after the first holding a range the field
+    /// wrote back, across a blur, into a value nothing pins.
     var isFirstSection = true
 
     /// Whether the load's field holds the keyboard (`FR-18.6.1`).
@@ -77,8 +86,8 @@ struct SetEditorHead: View {
 
     /// The heading, the question where there is one, and the fields that decide what is written.
     ///
-    /// **One head, so the load focused here is the only one there is.** A sheet drawing a section
-    /// per planned group (`FR-18.6.2`) has to say which section opens focused; nothing here does.
+    /// **One head per section, and ``isFirstSection`` is what says which of them opens focused**
+    /// (`FR-18.6.2`, `FR-18.6.1`). Everything else here is the section's own.
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.lg.points) {
             if isFirstSection { heading }
@@ -97,7 +106,9 @@ struct SetEditorHead: View {
         // through with the ± pair — and so the row does not re-read every time the field empties.
         .task { if isFirstSection { await equipment.load() } }
         .onAppear { if isFirstSection { isEnteringWeight = true } }
-        .onChange(of: isEnteringWeight) { if isFirstSection { applyTheFocusChange() } }
+        // Not gated on `isFirstSection`: only the *opening* focus is the first section's, and the
+        // selection rule is every section's — see that property.
+        .onChange(of: isEnteringWeight) { applyTheFocusChange() }
     }
 
     /// `FR-18.6.1`: the load, once it holds the keyboard, offers what it already says as a whole.
@@ -136,7 +147,6 @@ struct SetEditorHead: View {
         draft = draft.adjustingWeight(by: steps)
     }
 
-    /// One word, and on a checklist row the question the sheet is asking (`FR-17.1.6`).
     /// The group's name, above its fields (`FR-18.6.2`).
     ///
     /// - Parameter title: Which group this section is.
@@ -149,6 +159,7 @@ struct SetEditorHead: View {
             .accessibilityAddTraits(.isHeader)
     }
 
+    /// One word, and on a checklist row the question the sheet is asking (`FR-17.1.6`).
     private var heading: some View {
         VStack(alignment: .leading, spacing: Spacing.xxs.points) {
             Text(mode.heading)

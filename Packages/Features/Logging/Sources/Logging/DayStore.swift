@@ -298,7 +298,7 @@ public final class DayStore {
         await PerformanceSignpost.answer.measure { await performLog(rowID: rowID, rows: rows) }
     }
 
-    /// ``log(rowID:group:)``'s body, split out only so the interval above can bracket it.
+    /// ``log(rowID:rows:)``'s body, split out only so the interval above can bracket it.
     ///
     /// - Parameters:
     ///   - rowID: The row being logged against.
