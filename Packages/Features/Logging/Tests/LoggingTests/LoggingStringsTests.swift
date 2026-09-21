@@ -106,6 +106,56 @@ struct LoggingStringsTests {
         #expect(String(localized: LoggingStrings.dayRemainingConfirmCancel) == "Keep going")
     }
 
+    /// `FR-18.7.5`'s question, at every count a session can hold — on
+    /// ``theWholeDayCommandsAskByName()``'s rule, and for a sharper reason than either of the two
+    /// above: this one's verb agrees with its own count, so the variant has to carry the whole
+    /// sentence. A format that left the verb outside it reads *1 logged set go with it* at one and
+    /// passes every other test in this file, `everyKeyResolves` included — that one renders a
+    /// single count and asks only that something came back.
+    ///
+    /// **Zero is reachable**: a workout with no sets in it is deletable, which is
+    /// `PastSessionCorrectionTests.anEmptySessionStillAsks`.
+    @Test("The delete question agrees with its count, at none, one and many")
+    func theDeleteQuestionAgreesWithItsCount() {
+        #expect(
+            String(localized: LoggingStrings.pastSessionDeleteConfirmMessage(count: 0))
+                == "No logged sets go with it. This cannot be undone.")
+        #expect(
+            String(localized: LoggingStrings.pastSessionDeleteConfirmMessage(count: 1))
+                == "1 logged set goes with it. This cannot be undone.")
+        #expect(
+            String(localized: LoggingStrings.pastSessionDeleteConfirmMessage(count: 27))
+                == "27 logged sets go with it. This cannot be undone.")
+    }
+
+    /// The same claim on the Ukrainian half, which is **this file's one exception** to the split
+    /// its head describes: `everyKeyResolves` and `check-translations.sh` can see that a key has
+    /// copy behind it, and neither can see that the copy is a sentence. The zero form needs a
+    /// negation the other four do not (*не буде вилучено жодного*), so it is the form a shared
+    /// sentence opening silently breaks — which is what it did.
+    @Test("The Ukrainian delete question is a sentence at zero as well")
+    func theUkrainianDeleteQuestionReadsAtZero() {
+        #expect(
+            ukrainian(LoggingStrings.pastSessionDeleteConfirmMessage(count: 0))
+                == "Разом із ним не буде вилучено жодного підходу. Цю дію не можна скасувати.")
+        #expect(
+            ukrainian(LoggingStrings.pastSessionDeleteConfirmMessage(count: 1))
+                == "Разом із ним буде вилучено 1 записаний підхід. Цю дію не можна скасувати.")
+        #expect(
+            ukrainian(LoggingStrings.pastSessionDeleteConfirmMessage(count: 27))
+                == "Разом із ним буде вилучено 27 записаних підходів. Цю дію не можна скасувати.")
+    }
+
+    /// One resource rendered against the other catalogue.
+    ///
+    /// - Parameter resource: The string.
+    /// - Returns: What a Ukrainian device reads.
+    private func ukrainian(_ resource: LocalizedStringResource) -> String {
+        var localized = resource
+        localized.locale = Locale(identifier: "uk")
+        return String(localized: localized)
+    }
+
     /// `FR-17.9.7`'s overflow menu, on both of its hosts. A menu is not snapshottable — T-16.04's
     /// finding on dialogs applies — so its items and its own name are asserted here.
     @Test("The overflow menu carries its items, and is named for none of them")

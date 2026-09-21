@@ -347,14 +347,24 @@ final class PastSessionState {
     /// workout moved to another day moves every record its sets hold. Nothing else about them
     /// changes, and the cache carries the date.
     ///
+    /// **The day it already holds is not written** (`G-2.4`), which is the ordinary way out of this
+    /// sheet: the picker opens seeded on the session's own day, so **Done** with nothing moved is
+    /// one tap. `save(_:)` assigns every column whatever it held, so the row lands in the store's
+    /// changed set and `updatedAt` — the conflict key — is restamped for a date nobody changed,
+    /// which is a no-op local write outranking a real remote edit.
+    /// ``ActiveSessionStore/update(_:)`` refuses the same write for the same reason, and the other
+    /// two hosts get it from there; this screen holds no store to refuse it.
+    ///
     /// The whole screen is re-read afterwards, which is what moves the title — the date *is* the
     /// title here.
     ///
     /// - Parameter day: The training day, normalised to its start by the rebuild.
     func changeDate(to day: Date) async {
         guard let current = session else { return }
+        let moved = ActiveSessionStore.dated(current, to: day)
+        guard moved != current else { return }
         do {
-            try await workouts.save(ActiveSessionStore.dated(current, to: day))
+            try await workouts.save(moved)
         } catch {
             writeFailure = String(describing: error)
             return

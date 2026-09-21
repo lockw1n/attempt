@@ -229,10 +229,13 @@ struct SessionMenuContentsTests {
     @Test("The past session asks for Change date and Delete workout, and nothing else")
     func thePastSessionAsksForDeleteWorkout() {
         #expect(
-            PastSessionView.menuContents(date: .now).items
+            PastSessionView.menuContents(date: .now, hasEnded: true).items
                 == [.changeDate, .destructive(.deleteWorkout)])
-        #expect(!PastSessionView.menuContents(date: .now).items.contains(.skipRemaining))
-        #expect(!PastSessionView.menuContents(date: .now).items.contains(.editPlan))
+        #expect(
+            !PastSessionView.menuContents(date: .now, hasEnded: true).items
+                .contains(.skipRemaining))
+        #expect(
+            !PastSessionView.menuContents(date: .now, hasEnded: true).items.contains(.editPlan))
     }
 
     /// The state every read of this screen passes through: loading, missing, failed. The route
@@ -240,7 +243,22 @@ struct SessionMenuContentsTests {
     /// named — and an empty list is what stops the `⋯` being drawn at all.
     @Test("A past session that has not resolved draws no menu")
     func aPastSessionWithNoRecordDrawsNothing() {
-        #expect(PastSessionView.menuContents(date: nil).items.isEmpty)
+        #expect(PastSessionView.menuContents(date: nil, hasEnded: false).items.isEmpty)
+    }
+
+    /// `FR-18.7.5` is about **a past session**, and this screen is reachable for one that is not:
+    /// History lists open workouts (`FR-16.4.3`) and every row it draws links here, including the
+    /// workout being logged today — the one ``ActiveSessionStore`` is holding and, for a free
+    /// workout, *keeps* without reading again. Correcting it from here would leave that store
+    /// publishing rows this screen had soft-deleted.
+    ///
+    /// **Both gates asserted apart**, because a menu that went away for the wrong reason is a
+    /// menu that comes back for the wrong reason: the second line is the date gate on its own.
+    @Test("A workout that has not ended draws no menu, though History lists it")
+    func anOpenWorkoutDrawsNoMenu() {
+        #expect(PastSessionView.menuContents(date: .now, hasEnded: false).items.isEmpty)
+        #expect(PastSessionView.menuContents(date: nil, hasEnded: true).items.isEmpty)
+        #expect(!PastSessionView.menuContents(date: .now, hasEnded: true).items.isEmpty)
     }
 
     /// `FR-18.7.5`'s last clause, and the one a swap of the three hosts' `destructive:` arguments
@@ -255,7 +273,7 @@ struct SessionMenuContentsTests {
             progress: DayProgress([])
         ).items
         let free = ActiveSessionView.menuContents(date: .now).items
-        let past = PastSessionView.menuContents(date: .now).items
+        let past = PastSessionView.menuContents(date: .now, hasEnded: true).items
 
         #expect(past.contains(.destructive(.deleteWorkout)))
         #expect(!past.contains(.destructive(.resetDay)))

@@ -159,7 +159,8 @@ public struct PastSessionView: View {
         // Leading, beside Back (`FR-18.7.3`) — where the day's is (`FR-18.4.2`), and Done keeps
         // the trailing corner. Both drawings, for the toolbar's own reason above.
         .sessionOverflow(
-            contents: Self.menuContents(date: state.session?.date),
+            contents: Self.menuContents(
+                date: state.session?.date, hasEnded: state.session?.isFinished == true),
             side: .leading,
             changeDate: { chosen in Task { await state.changeDate(to: chosen) } },
             commands: menuCommands

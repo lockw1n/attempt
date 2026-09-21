@@ -169,7 +169,11 @@ struct PastSessionCorrectionTests {
 
     @Test("Change date moves the session and keeps every other column, the stamp included")
     func changeDateKeepsTheProgramStamp() async throws {
-        let past = try await PastSession.logged(names: ["Back Squat"], notes: "felt good", stamped: true)
+        let past = try await PastSession.logged(
+            names: ["Back Squat"],
+            notes: "felt good",
+            stamped: true,
+            bodyweight: Weight(grams: 82_500))
         await past.state.load()
         let before = try #require(past.state.session)
         let moved = PastSession.stamp - 3 * 86_400
@@ -186,8 +190,44 @@ struct PastSessionCorrectionTests {
         #expect(stored.notes == "felt good")
         #expect(stored.startedAt == before.startedAt)
         #expect(stored.endedAt == before.endedAt)
+        // The column the enumeration above was missing, and the only one of the three it was.
+        // **Carried by the fixture rather than left at its default**: nothing in the shipping app
+        // writes a session's bodyweight yet, so the `nil` every other fixture here holds would
+        // have agreed with a rebuild that dropped it (measured — the drop survived the whole
+        // package). `createdAt` and `deletedAt` are the other two, and they are deliberately not
+        // asserted: `save(_:)` is an upsert that does not assign either on an existing row —
+        // `WorkoutSessionEntity.update(from:)` names neither, and the in-memory store keeps
+        // `existing?.createdAt` — so a rebuild cannot drop them and a test pinning them here is
+        // one that cannot fail.
+        #expect(stored.bodyweight == Weight(grams: 82_500))
         // The screen re-reads, which is what moves the title — the date *is* the title here.
         #expect(past.state.session?.date == stored.date)
+    }
+
+    /// `G-2.4`, and the ordinary way out of this sheet: it opens seeded on the session's own day,
+    /// so **Done** with nothing moved is one tap. The write it would make assigns every column
+    /// whatever it held, which restamps `updatedAt` — so a lifter who opened the picker and
+    /// changed their mind would outrank a real edit made on another device.
+    ///
+    /// **The move has to happen first**, because the fixture's session is dated at an instant
+    /// rather than at a start of day: a re-date to its own `date` would normalise it and *be* a
+    /// change. What the second call is handed is what the screen holds after the first.
+    @Test("A re-date to the day the session already holds writes nothing — G-2.4")
+    func changeDateToTheDayItHoldsWritesNothing() async throws {
+        let past = try await PastSession.logged(names: ["Back Squat"])
+        let counter = WorkoutWriteCounter(wrapping: past.repositories.workouts)
+        let state = PastSession.state(
+            sessionID: past.sessionID, over: past.repositories, workouts: counter)
+        await state.load()
+        await state.changeDate(to: PastSession.stamp)
+        let afterTheMove = await counter.sessionSaves
+        let held = try #require(state.session).date
+
+        await state.changeDate(to: held)
+
+        #expect(afterTheMove == 1)
+        #expect(await counter.sessionSaves == afterTheMove)
+        #expect(state.session?.date == held)
     }
 
     @Test("Change date is one write, not a save and a restamp")

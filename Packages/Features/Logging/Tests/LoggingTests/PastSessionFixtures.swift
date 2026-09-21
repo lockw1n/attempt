@@ -29,17 +29,27 @@ struct PastSession {
     ///   - stamped: Whether it was a day of a program — what `FR-17.7.6` chooses the shape on.
     ///   - isFinished: Whether it has ended (`FR-17.9.8`). A day still being answered is on the
     ///     history list too, and `FR-17.7.3` reports no adherence for one.
+    ///   - bodyweight: What the lifter weighed, or `nil`. **Offered because a column left at its
+    ///     default cannot witness a rebuild dropping it** — nothing in the shipping app writes
+    ///     this one yet, so `nil` is what every other fixture here holds and a test asserting it
+    ///     survived a write would agree whatever the write did.
     /// - Returns: The fixture.
     static func logged(
         names: [String] = ["Back Squat", "Bench Press", "Deadlift"],
         notes: String = "",
         stamped: Bool = false,
-        isFinished: Bool = true
+        isFinished: Bool = true,
+        bodyweight: Weight? = nil
     ) async throws -> PastSession {
         let repositories = InMemoryRepositoryStack()
         let sessionID = UUID()
         try await repositories.workouts.save(
-            session(id: sessionID, notes: notes, stamped: stamped, isFinished: isFinished))
+            session(
+                id: sessionID,
+                notes: notes,
+                stamped: stamped,
+                isFinished: isFinished,
+                bodyweight: bodyweight))
         var exercises: [Exercise] = []
         var entries: [ExerciseEntry] = []
         for (order, name) in names.enumerated() {
@@ -100,9 +110,14 @@ struct PastSession {
     ///   - notes: Its note.
     ///   - stamped: Whether it carries `FR-16.8.3`'s program position.
     ///   - isFinished: Whether it has ended.
+    ///   - bodyweight: What the lifter weighed — see ``logged(names:notes:stamped:isFinished:bodyweight:)``.
     /// - Returns: The record.
     static func session(
-        id: UUID, notes: String, stamped: Bool = false, isFinished: Bool = true
+        id: UUID,
+        notes: String,
+        stamped: Bool = false,
+        isFinished: Bool = true,
+        bodyweight: Weight? = nil
     ) -> WorkoutSession {
         WorkoutSession(
             id: id,
@@ -113,7 +128,7 @@ struct PastSession {
             startedAt: stamp,
             endedAt: isFinished ? stamp.addingTimeInterval(3600) : nil,
             notes: notes,
-            bodyweight: nil,
+            bodyweight: bodyweight,
             programRunID: stamped ? UUID() : nil,
             scheduledWorkoutID: nil,
             weekNumber: stamped ? 2 : nil,

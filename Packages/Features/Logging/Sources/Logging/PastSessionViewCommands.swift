@@ -39,24 +39,39 @@ extension PastSessionView {
     /// would be a date on a row the route could not have named. Where the session has not been read
     /// yet, or resolved to nothing, the menu is empty and the modifier draws no `⋯` at all.
     ///
+    /// **And nothing at all on a workout that has not ended** (`FR-18.7.5`: *a past session*).
+    /// History lists open workouts too — `FR-16.4.3` gives them a state and `FR-16.4.4` a way out —
+    /// and every row it lists links here, so this screen is reachable for the workout the Train tab
+    /// is holding right now. ``ActiveSessionStore/resume()`` *keeps* a held free workout and reads
+    /// nothing, so a delete made from here would leave that store publishing a session whose rows
+    /// are soft-deleted, and the next set would be logged into them. A re-date has the mirror
+    /// shape: the store's copy keeps the old day, and the next write rebuilt from it puts that day
+    /// back. Nothing is lost by waiting — `FR-16.4.4`'s **Finish** is on the row for exactly the
+    /// workout left open, and the menu is here the moment it has been used.
+    ///
     /// **One answer for both drawings** (`Q-18.3` at (a)): a past planned day and a past free
     /// workout get the same two commands, because the lifter does not know which shape they are
     /// looking at and a toolbar that changed with the session's provenance would be a thing to
     /// explain. It is why the destructive command is ``SessionDestructiveCommand/deleteWorkout``
     /// on both rather than ``SessionDestructiveCommand/resetDay`` on one of them.
     ///
-    /// - Parameter date: The session's training day, or `nil` in every state that holds no session.
+    /// - Parameters:
+    ///   - date: The session's training day, or `nil` in every state that holds no session.
+    ///   - hasEnded: Whether the workout is over (`WorkoutSession/isFinished`). **A separate fact
+    ///     from there being a date**, and the population that separates them is the workout open
+    ///     today: it has a training day, it is on History's list, and it is the one another screen
+    ///     may be holding — see above.
     /// - Returns: The commands, in order.
-    static func menuContents(date: Date?) -> SessionMenuContents {
+    static func menuContents(date: Date?, hasEnded: Bool) -> SessionMenuContents {
         SessionMenuContents(
-            date: date,
+            date: hasEnded ? date : nil,
             startsWhenDated: false,
             offersPlanEditing: false,
             offersSkipRemaining: false,
             destructive: .deleteWorkout)
     }
 
-    /// What those items do, beside ``menuContents(date:)`` which says which are drawn.
+    /// What those items do, beside ``menuContents(date:hasEnded:)`` which says which are drawn.
     ///
     /// **The question is raised here and the write is made in the dialog's own action**, which is
     /// `FR-1.2.12`'s shape on all three hosts: a store cannot ask, so the screen does.
