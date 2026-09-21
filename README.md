@@ -397,7 +397,9 @@ snapshot the content view rather than the scroller.
 
 Each suite also has a **minimum test count** in `scripts/snapshot-tests.sh`, so a suite that
 silently stops running is a failure rather than a green zero. Adding a snapshot test means raising
-that number in the same commit; `git grep -c '@Test' -- <suite>` is what to set it from.
+that number in the same commit; `git grep -c '@Test' -- <suite>` is what to set it from, run when
+the **last** test of the change lands. The count appears twice — in `SUITES` and in the derivation
+in the comment block above it — and both are set to the same number.
 
 The references are committed beside each suite's tests — for example
 `Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__` and
