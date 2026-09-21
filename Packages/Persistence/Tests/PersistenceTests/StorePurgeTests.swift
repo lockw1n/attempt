@@ -189,7 +189,7 @@ struct StorePurgeTests {
 
         #expect(report.removed == 1)
         #expect(report.retained == 0)
-        let left = try harness.store().rows(BodyweightEntryEntity.self, includingDeleted: true)
+        let left = try harness.store().allRows(BodyweightEntryEntity.self, includingDeleted: true)
         #expect(Set(left.map(\.weightGrams)) == [81_000, 82_000])
     }
 
@@ -254,7 +254,7 @@ struct StorePurgeTests {
 
         _ = try await harness.stack.purge(.deleted(onOrBefore: cutoff))
 
-        let left = try harness.store().rows(BodyweightEntryEntity.self, includingDeleted: true)
+        let left = try harness.store().allRows(BodyweightEntryEntity.self, includingDeleted: true)
         #expect(left.count == 1)
         #expect(left.first?.updatedAt == stamped)
     }
@@ -342,7 +342,7 @@ private func count<T: StoredEntity>(
     _ type: T.Type,
     in harness: RepositoryHarness
 ) throws -> Int {
-    try harness.store().rows(type, includingDeleted: true).count
+    try harness.store().allRows(type, includingDeleted: true).count
 }
 
 /// Exactly one row per entity in ``SchemaV1/models``, all of them live.

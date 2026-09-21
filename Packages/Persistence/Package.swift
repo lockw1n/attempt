@@ -31,6 +31,13 @@ let package = Package(
     dependencies: [
         .package(path: "../PowerliftingCore"),
         .package(path: "../RepositoryInterface"),
+        // TEST-ONLY, AND IT IS THE ONE STATE THE LIBRARY CANNOT BUILD ITSELF. `DOD-18.10` asks what
+        // a store holding the *real* catalogue twice under one set of ids lists, and the catalogue
+        // is 132 authored rows with variations hanging off parents — a hand-built stand-in would be
+        // answering a different question. `SeedImport` writes through `any ExerciseRepository` and
+        // does not depend on `Persistence`, so the edge is one-way and test-target-only: the
+        // library's own dependencies are unchanged.
+        .package(path: "../SeedImport"),
     ],
     targets: [
         .target(
@@ -41,7 +48,7 @@ let package = Package(
         // G-6.3. No coverage threshold applies here — G-6.1 names PowerliftingCore only.
         .testTarget(
             name: "PersistenceTests",
-            dependencies: ["Persistence"],
+            dependencies: ["Persistence", "SeedImport"],
             swiftSettings: strictSettings
         ),
     ]

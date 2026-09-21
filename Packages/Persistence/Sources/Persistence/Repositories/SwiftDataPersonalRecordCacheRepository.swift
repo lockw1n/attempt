@@ -12,7 +12,7 @@ actor SwiftDataPersonalRecordCacheRepository: PersonalRecordCacheRepository {
     func personalRecords(
         forExerciseID exerciseID: UUID, includingDeleted: Bool
     ) throws -> [PersonalRecordCache] {
-        try modelContext.rows(
+        try modelContext.resolvedRows(
             PersonalRecordCacheEntity.self,
             matching: #Predicate { $0.exerciseID == exerciseID },
             includingDeleted: includingDeleted
@@ -28,7 +28,7 @@ actor SwiftDataPersonalRecordCacheRepository: PersonalRecordCacheRepository {
     /// nothing else — and the ties are the common case, since every record a session set carries that
     /// session's date.
     func personalRecords(includingDeleted: Bool) throws -> [PersonalRecordCache] {
-        try modelContext.rows(PersonalRecordCacheEntity.self, includingDeleted: includingDeleted)
+        try modelContext.resolvedRows(PersonalRecordCacheEntity.self, includingDeleted: includingDeleted)
             .map(\.record)
             .sortedDeterministically(
                 by: { ($0.achievedAt, $0.id.uuidString) }, descending: true)
@@ -46,7 +46,7 @@ actor SwiftDataPersonalRecordCacheRepository: PersonalRecordCacheRepository {
     func replacePersonalRecords(
         forExerciseID exerciseID: UUID, with values: [PersonalRecordCacheValues]
     ) throws {
-        let stored = try modelContext.rows(
+        let stored = try modelContext.allRows(
             PersonalRecordCacheEntity.self,
             matching: #Predicate { $0.exerciseID == exerciseID },
             includingDeleted: false

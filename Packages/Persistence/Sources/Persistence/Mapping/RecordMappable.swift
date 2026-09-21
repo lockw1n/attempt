@@ -51,7 +51,7 @@ extension ModelContext {
         as type: T.Type,
         onInsert: (T) -> Void = { _ in }
     ) throws {
-        let existing = try rows(type, id: record.id, includingDeleted: true)
+        let existing = try allRows(type, id: record.id, includingDeleted: true)
         guard !existing.isEmpty else {
             let entity = T(record: record)
             onInsert(entity)

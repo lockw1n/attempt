@@ -18,7 +18,7 @@ actor SwiftDataTrainingMaxRepository: TrainingMaxRepository {
     /// leans on a unique constraint: `FR-1.5.1.4` keeps every change, and `G-2.5` forbids the
     /// constraint that would make one of them impossible.
     func configuration(forExerciseID exerciseID: UUID, on date: Date) throws -> TrainingMaxEntry? {
-        let inForce = try modelContext.rows(
+        let inForce = try modelContext.resolvedRows(
             TrainingMaxConfigEntity.self,
             matching: #Predicate { $0.exerciseID == exerciseID && $0.effectiveFrom <= date },
             includingDeleted: false
@@ -33,7 +33,7 @@ actor SwiftDataTrainingMaxRepository: TrainingMaxRepository {
         forExerciseID exerciseID: UUID,
         includingDeleted: Bool
     ) throws -> [TrainingMaxEntry] {
-        try modelContext.rows(
+        try modelContext.resolvedRows(
             TrainingMaxConfigEntity.self,
             matching: #Predicate { $0.exerciseID == exerciseID },
             includingDeleted: includingDeleted
@@ -55,7 +55,7 @@ actor SwiftDataTrainingMaxRepository: TrainingMaxRepository {
         forExerciseID exerciseID: UUID,
         on date: Date
     ) throws -> TrainingMaxHistoryEntry? {
-        let inForce = try modelContext.rows(
+        let inForce = try modelContext.resolvedRows(
             TrainingMaxHistoryEntity.self,
             matching: #Predicate { $0.exerciseID == exerciseID && $0.effectiveFrom <= date },
             includingDeleted: false
@@ -70,7 +70,7 @@ actor SwiftDataTrainingMaxRepository: TrainingMaxRepository {
         forExerciseID exerciseID: UUID,
         includingDeleted: Bool
     ) throws -> [TrainingMaxHistoryEntry] {
-        try modelContext.rows(
+        try modelContext.resolvedRows(
             TrainingMaxHistoryEntity.self,
             matching: #Predicate { $0.exerciseID == exerciseID },
             includingDeleted: includingDeleted
@@ -95,7 +95,7 @@ actor SwiftDataTrainingMaxRepository: TrainingMaxRepository {
     }
 
     func deleteEntry(id: UUID) throws {
-        let entries = try modelContext.rows(
+        let entries = try modelContext.allRows(
             TrainingMaxHistoryEntity.self, id: id, includingDeleted: false)
         guard !entries.isEmpty else { throw RepositoryError.recordNotFound(id: id) }
 

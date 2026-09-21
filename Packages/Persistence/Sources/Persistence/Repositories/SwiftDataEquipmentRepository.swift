@@ -6,7 +6,7 @@ import SwiftData
 @ModelActor
 actor SwiftDataEquipmentRepository: EquipmentRepository {
     func profiles(includingDeleted: Bool) throws -> [EquipmentProfile] {
-        try modelContext.rows(EquipmentProfileEntity.self, includingDeleted: includingDeleted)
+        try modelContext.resolvedRows(EquipmentProfileEntity.self, includingDeleted: includingDeleted)
             .sortedDeterministically { ($0.name, $0.id.uuidString) }
             .map(\.record)
     }
@@ -21,7 +21,7 @@ actor SwiftDataEquipmentRepository: EquipmentRepository {
     /// The read does not repair the store — clearing the loser here would make a display call a
     /// write, and `makeDefault(profileID:)` is the only writer of that column.
     func defaultProfile() throws -> EquipmentProfile? {
-        let marked = try modelContext.rows(
+        let marked = try modelContext.resolvedRows(
             EquipmentProfileEntity.self,
             matching: #Predicate { $0.isDefault },
             includingDeleted: false
@@ -70,7 +70,7 @@ actor SwiftDataEquipmentRepository: EquipmentRepository {
     /// `G-2.4`'s conflict key, so a no-op local write would outrank a real edit made on another
     /// device and silently revert it. Same reason the cascade skips rows it would not change.
     func makeDefault(profileID: UUID) throws {
-        let profiles = try modelContext.rows(EquipmentProfileEntity.self, includingDeleted: false)
+        let profiles = try modelContext.allRows(EquipmentProfileEntity.self, includingDeleted: false)
         guard profiles.contains(where: { $0.id == profileID }) else {
             throw RepositoryError.recordNotFound(id: profileID)
         }
@@ -82,7 +82,7 @@ actor SwiftDataEquipmentRepository: EquipmentRepository {
     }
 
     func deleteProfile(id: UUID) throws {
-        let profiles = try modelContext.rows(
+        let profiles = try modelContext.allRows(
             EquipmentProfileEntity.self, id: id, includingDeleted: false)
         guard !profiles.isEmpty else { throw RepositoryError.recordNotFound(id: id) }
 

@@ -10,7 +10,7 @@ import SwiftData
 @ModelActor
 actor SwiftDataRoutineRepository: RoutineRepository {
     func routines(includingDeleted: Bool) throws -> [Routine] {
-        try modelContext.rows(RoutineEntity.self, includingDeleted: includingDeleted)
+        try modelContext.resolvedRows(RoutineEntity.self, includingDeleted: includingDeleted)
             .sortedDeterministically { ($0.name, $0.id.uuidString) }
             .map(\.record)
     }
@@ -29,7 +29,7 @@ actor SwiftDataRoutineRepository: RoutineRepository {
     /// **Every row carrying `id` is swept, not just the one a read would return** — see
     /// ``SwiftDataWorkoutRepository/deleteSession(id:)`` for why.
     func deleteRoutine(id: UUID) throws {
-        let routines = try modelContext.rows(RoutineEntity.self, id: id, includingDeleted: false)
+        let routines = try modelContext.allRows(RoutineEntity.self, id: id, includingDeleted: false)
         guard !routines.isEmpty else { throw RepositoryError.recordNotFound(id: id) }
 
         let now = Date.now
@@ -38,7 +38,7 @@ actor SwiftDataRoutineRepository: RoutineRepository {
         // Deleted slots are swept in too — for their *groups*, not for themselves. A foreign row
         // can arrive with a slot already gone and a live group under it, and this promise is that a
         // deleted routine leaves no live group anywhere under it.
-        let exercises = try modelContext.rows(
+        let exercises = try modelContext.allRows(
             RoutineExerciseEntity.self,
             matching: #Predicate { $0.routineID == id },
             includingDeleted: true
@@ -48,7 +48,7 @@ actor SwiftDataRoutineRepository: RoutineRepository {
     }
 
     func exercises(forRoutineID routineID: UUID, includingDeleted: Bool) throws -> [RoutineExercise] {
-        try modelContext.rows(
+        try modelContext.resolvedRows(
             RoutineExerciseEntity.self,
             matching: #Predicate { $0.routineID == routineID },
             includingDeleted: includingDeleted
@@ -70,7 +70,7 @@ actor SwiftDataRoutineRepository: RoutineRepository {
     }
 
     func deleteRoutineExercise(id: UUID) throws {
-        let exercises = try modelContext.rows(
+        let exercises = try modelContext.allRows(
             RoutineExerciseEntity.self, id: id, includingDeleted: false)
         guard !exercises.isEmpty else { throw RepositoryError.recordNotFound(id: id) }
 
@@ -82,7 +82,7 @@ actor SwiftDataRoutineRepository: RoutineRepository {
     func targetGroups(
         forRoutineExerciseID routineExerciseID: UUID, includingDeleted: Bool
     ) throws -> [RoutineTargetGroup] {
-        try modelContext.rows(
+        try modelContext.resolvedRows(
             RoutineTargetGroupEntity.self,
             matching: #Predicate { $0.routineExerciseID == routineExerciseID },
             includingDeleted: includingDeleted
@@ -99,7 +99,7 @@ actor SwiftDataRoutineRepository: RoutineRepository {
     }
 
     func deleteTargetGroup(id: UUID) throws {
-        let groups = try modelContext.rows(RoutineTargetGroupEntity.self, id: id, includingDeleted: false)
+        let groups = try modelContext.allRows(RoutineTargetGroupEntity.self, id: id, includingDeleted: false)
         guard !groups.isEmpty else { throw RepositoryError.recordNotFound(id: id) }
 
         let now = Date.now
@@ -119,7 +119,7 @@ actor SwiftDataRoutineRepository: RoutineRepository {
 
         let exerciseIDs = exercises.map(\.id)
         guard !exerciseIDs.isEmpty else { return }
-        let groups = try modelContext.rows(
+        let groups = try modelContext.allRows(
             RoutineTargetGroupEntity.self,
             matching: #Predicate { exerciseIDs.contains($0.routineExerciseID) },
             includingDeleted: false

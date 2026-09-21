@@ -43,7 +43,7 @@ actor SwiftDataSettingsRepository: SettingsRepository {
         settingsBootstrapLock.lock()
         defer { settingsBootstrapLock.unlock() }
 
-        let existing = try modelContext.rows(UserSettingsEntity.self, includingDeleted: true)
+        let existing = try modelContext.allRows(UserSettingsEntity.self, includingDeleted: true)
         if let settings = resolved(existing) { return settings.record }
 
         let created = UserSettingsEntity(
@@ -108,7 +108,7 @@ actor SwiftDataSettingsRepository: SettingsRepository {
         settingsBootstrapLock.lock()
         defer { settingsBootstrapLock.unlock() }
 
-        let existing = try modelContext.rows(UserSettingsEntity.self, includingDeleted: true)
+        let existing = try modelContext.allRows(UserSettingsEntity.self, includingDeleted: true)
         guard let inForce = resolved(existing) else {
             modelContext.insert(UserSettingsEntity(record: settings))
             try modelContext.saveStamped()

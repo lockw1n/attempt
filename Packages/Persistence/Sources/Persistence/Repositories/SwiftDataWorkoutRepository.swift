@@ -107,7 +107,7 @@ struct SessionOrder: Comparable {
 actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     func sessions(in range: ClosedRange<Date>, includingDeleted: Bool) throws -> [WorkoutSession] {
         let (start, end) = (range.lowerBound, range.upperBound)
-        return try modelContext.rows(
+        return try modelContext.resolvedRows(
             WorkoutSessionEntity.self,
             matching: #Predicate { $0.date >= start && $0.date <= end },
             includingDeleted: includingDeleted
@@ -129,7 +129,7 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     func sessions(
         forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
     ) throws -> [WorkoutSession] {
-        try modelContext.rows(
+        try modelContext.resolvedRows(
             WorkoutSessionEntity.self,
             matching: WorkoutSessionEntity.inProgramRun(runID, week: week),
             includingDeleted: includingDeleted
@@ -150,7 +150,7 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     /// tiebreak winner would leave a duplicate live and readable, so the delete would appear to do
     /// nothing the next time the loser won.
     func deleteSession(id: UUID) throws {
-        let sessions = try modelContext.rows(
+        let sessions = try modelContext.allRows(
             WorkoutSessionEntity.self, id: id, includingDeleted: false)
         guard !sessions.isEmpty else { throw RepositoryError.recordNotFound(id: id) }
 
@@ -160,7 +160,7 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
         // Deleted entries are swept in too — for their *sets*, not for themselves. An entry deleted
         // on its own leaves no live set behind, but a foreign row can arrive in that state, and
         // rule 3's promise is that a deleted session leaves no live set anywhere under it.
-        let entries = try modelContext.rows(
+        let entries = try modelContext.allRows(
             ExerciseEntryEntity.self,
             matching: #Predicate { $0.sessionID == id },
             includingDeleted: true
@@ -170,7 +170,7 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     }
 
     func entries(forSessionID sessionID: UUID, includingDeleted: Bool) throws -> [ExerciseEntry] {
-        try modelContext.rows(
+        try modelContext.resolvedRows(
             ExerciseEntryEntity.self,
             matching: #Predicate { $0.sessionID == sessionID },
             includingDeleted: includingDeleted
@@ -194,7 +194,7 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     }
 
     func deleteExerciseEntry(id: UUID) throws {
-        let entries = try modelContext.rows(
+        let entries = try modelContext.allRows(
             ExerciseEntryEntity.self, id: id, includingDeleted: false)
         guard !entries.isEmpty else { throw RepositoryError.recordNotFound(id: id) }
 
@@ -204,7 +204,7 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     }
 
     func sets(forEntryID entryID: UUID, includingDeleted: Bool) throws -> [SetEntry] {
-        try modelContext.rows(
+        try modelContext.resolvedRows(
             SetEntryEntity.self,
             matching: #Predicate { $0.entryID == entryID },
             includingDeleted: includingDeleted
@@ -221,7 +221,7 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     }
 
     func deleteSet(id: UUID) throws {
-        let sets = try modelContext.rows(SetEntryEntity.self, id: id, includingDeleted: false)
+        let sets = try modelContext.allRows(SetEntryEntity.self, id: id, includingDeleted: false)
         guard !sets.isEmpty else { throw RepositoryError.recordNotFound(id: id) }
 
         let now = Date.now
@@ -256,37 +256,38 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     /// not dropped as a pending set is: absent is not open, and a foreign row is history whose day
     /// is unknown rather than work that has not happened.
     func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) throws -> [SetEntry] {
-        let entries = try modelContext.rows(
+        let entries = try modelContext.resolvedRows(
             ExerciseEntryEntity.self,
             matching: #Predicate { $0.exerciseID == exerciseID },
             includingDeleted: includingDeleted
         )
         guard !entries.isEmpty else { return [] }
 
+        // Both fetches are resolved reads, so an id names one row here and the grouping this
+        // method used to do per table is the read's own (`FR-18.8.1`).
         let sessionIDs = entries.map(\.sessionID)
-        let sessions = Dictionary(
-            grouping: try modelContext.rows(
-                WorkoutSessionEntity.self,
-                matching: #Predicate { sessionIDs.contains($0.id) },
-                includingDeleted: true
-            ),
-            by: \.id
-        ).compactMapValues { resolved($0)?.record }
+        var sessions: [UUID: WorkoutSession] = [:]
+        for row in try modelContext.resolvedRows(
+            WorkoutSessionEntity.self,
+            matching: #Predicate { sessionIDs.contains($0.id) },
+            includingDeleted: true
+        ) {
+            sessions[row.id] = row.record
+        }
 
         var orderingKey: [UUID: FeedPosition] = [:]
         var openSessions: [UUID: WorkoutSession] = [:]
-        for (id, duplicates) in Dictionary(grouping: entries, by: \.id) {
-            guard let entry = resolved(duplicates) else { continue }
+        for entry in entries {
             guard let session = sessions[entry.sessionID] else {
-                orderingKey[id] = .unplaced(entryOrder: entry.order)
+                orderingKey[entry.id] = .unplaced(entryOrder: entry.order)
                 continue
             }
-            if !session.isFinished { openSessions[id] = session }
-            orderingKey[id] = FeedPosition(session: session, entryOrder: entry.order)
+            if !session.isFinished { openSessions[entry.id] = session }
+            orderingKey[entry.id] = FeedPosition(session: session, entryOrder: entry.order)
         }
 
         let entryIDs = entries.map(\.id)
-        return try modelContext.rows(
+        return try modelContext.resolvedRows(
             SetEntryEntity.self,
             matching: #Predicate { entryIDs.contains($0.entryID) },
             includingDeleted: includingDeleted
@@ -311,7 +312,7 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
     func plannedTargets(
         forEntryID entryID: UUID, includingDeleted: Bool
     ) throws -> [PlannedTargetGroup] {
-        try modelContext.rows(
+        try modelContext.resolvedRows(
             PlannedTargetGroupEntity.self,
             matching: #Predicate { $0.exerciseEntryID == entryID },
             includingDeleted: includingDeleted
@@ -339,7 +340,7 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
 
         let entryIDs = entries.map(\.id)
         guard !entryIDs.isEmpty else { return }
-        let sets = try modelContext.rows(
+        let sets = try modelContext.allRows(
             SetEntryEntity.self,
             matching: #Predicate { entryIDs.contains($0.entryID) },
             includingDeleted: false
@@ -348,7 +349,7 @@ actor SwiftDataWorkoutRepository: WorkoutRepository, PlannedTargetRepository {
 
         // The plan goes with the exercise it was planned for (`TR-15.3`): a target left live under
         // a deleted entry is a prescription for work nothing can be logged against.
-        let planned = try modelContext.rows(
+        let planned = try modelContext.allRows(
             PlannedTargetGroupEntity.self,
             matching: #Predicate { entryIDs.contains($0.exerciseEntryID) },
             includingDeleted: false
