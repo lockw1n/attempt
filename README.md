@@ -340,7 +340,9 @@ Always through the script, never a bare `xcodebuild test`: a hosted view answers
 `accessibilityElements` with an **empty array** unless the destination has an
 accessibility client, so a screen with every control intact reads exactly like one
 whose controls were deleted. The script sets `ApplicationAccessibilityEnabled` on
-every run. It reads the accessibility tree, so it proves a screen's parts are still
+every run, and runs the suites **serially** — the bundle's hosted tests share one
+`UIWindowScene`, and `.serialized` orders a suite's own tests but nothing between
+suites. It reads the accessibility tree, so it proves a screen's parts are still
 wired to the screen and never that they can be touched — a control that publishes
 no accessibility element, or one that is covered, mis-sized or behind a gesture that
 wins, is invisible to it.
