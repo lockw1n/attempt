@@ -101,7 +101,12 @@ backup reader and writer and the real store in one test, and `Persistence` may
 not depend on a feature. It is also why the record pipeline's real-store
 measurement lives there: `DerivedValues` declares no `Persistence` dependency, so
 `Settings`' test target is the only existing place that can reach both. The `Settings` library is unaffected; `import
-Persistence` from a source file there still does not resolve.
+Persistence` from a source file there still does not resolve. A second test-only
+edge runs the other way, and it is the same shape: `Persistence`' *test* target
+depends on `SeedImport`, so a test can put the real bundled catalogue into a real
+store. `SeedImport` writes through `any ExerciseRepository` and never names
+`Persistence`, so the edge stays one-way; the `Persistence` library's own
+dependencies are unchanged.
 Two constraints are load-bearing rather than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
