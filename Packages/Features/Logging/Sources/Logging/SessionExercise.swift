@@ -253,8 +253,8 @@ extension ExerciseEntry {
     /// This entry with the check-off taken back (`FR-18.5.1`).
     ///
     /// **The inverse of ``markedDone``, and the whole of what a reset writes on the entry.** What is
-    /// *unanswered* is derived from this mark and the sets behind it (``DayRowAnswer``), so there is
-    /// no second column to clear — see `TR-18.2`.
+    /// *unanswered* is derived from this mark and the sets behind it
+    /// (``Logging/DayRowAnswer``), so there is no second column to clear — see `TR-18.2`.
     ///
     /// The no-op guard is the caller's here too, for the reason one line up.
     var notMarkedDone: ExerciseEntry { marked(done: false) }

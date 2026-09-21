@@ -36,7 +36,9 @@ struct DayRowMenuHostTests {
         let app = try await DayFixture()
         let screen = HostedScreen(NavigationStack { app.dayView() })
         defer { screen.dismantle() }
-        await screen.settle()
+        // The rows arrive behind the day's own load, and how long that takes is the machine's: a
+        // fixed settle was enough here and not on CI's runner.
+        _ = await screen.settle { screen.activatableLabels().contains(DayFixture.circle) }
 
         try #require(
             !screen.accessibilityElements().isEmpty,
@@ -49,20 +51,25 @@ struct DayRowMenuHostTests {
             the day drew no circle, so it was never in the unanswered state this starts from. What \
             it offers: \(screen.activatableLabels())
             """)
-        // The answer is written behind the tap (`NFR-1.2`), so the state this is about arrives a
-        // turn or several later — under a whole-bundle run rather than a single test, several. A
-        // bounded wait rather than more fixed turns: four was enough alone and was not enough
-        // beside twenty-four other hosted tests.
-        for _ in 0..<12 where screen.activatableLabels().contains(DayFixture.circle) {
-            await screen.settle()
-        }
+        // The answer is written behind the tap (`NFR-1.2`), so the state this is about arrives
+        // later by an amount that is the machine's — see ``HostedScreen/settle(upTo:until:)``.
         try #require(
-            !screen.activatableLabels().contains(DayFixture.circle),
+            await screen.settle { !screen.activatableLabels().contains(DayFixture.circle) },
             "the row never became answered, so this would assert about the wrong state")
-
+        // Done is drawn by the same re-read that takes the circle away, and a turn after it.
+        _ = await screen.settle { !screen.elements(labelled: Self.done).isEmpty }
         let bar = try #require(
             screen.elements(labelled: Self.done).first,
             "the day drew no Done, so there is no toolbar line to look along")
+        // **And the row's own menu a turn after that**: the answered row is rebuilt, and for a turn
+        // the tree holds the toolbar's menu alone — measured, `Menus at: [(20, 66, 36, 36)]` beside
+        // a Done at the same 66. So the wait is for the claim itself, and a row that really has no
+        // menu spends the whole bound and fails below with what the tree did hold.
+        let offTheBar = {
+            screen.elements(labelled: DayFixture.menu)
+                .contains { $0.accessibilityFrame.midY != bar.accessibilityFrame.midY }
+        }
+        _ = await screen.settle(until: offTheBar)
         let menus = screen.elements(labelled: DayFixture.menu)
         #expect(
             menus.contains { $0.accessibilityFrame.midY != bar.accessibilityFrame.midY },
