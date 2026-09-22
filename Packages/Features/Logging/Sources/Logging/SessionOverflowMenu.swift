@@ -176,11 +176,12 @@ struct SessionMenuCommands {
 /// The things that are true of a workout rather than of a set — its training day, taking the rest
 /// of a day back, and taking the workout back (`FR-17.9.7`, `FR-1.2.1`, `FR-18.4.4`, `FR-18.4.5`).
 ///
-/// **One menu on two screens.** A day's checklist and the free workout are two hosts for the same
-/// set: `FR-17.8.7` took the date picker off Train's root, so the free workout lost the only place
-/// it could be backdated from, and a Discard button standing alone on the session screen was the
-/// only destructive control in the app not behind a menu. What the two hosts no longer share is
-/// the wording of the last item and whether the middle one is there at all — see
+/// **One menu on three screens.** A day's checklist and the free workout were the first two hosts
+/// for the same set: `FR-17.8.7` took the date picker off Train's root, so the free workout lost
+/// the only place it could be backdated from, and a Discard button standing alone on the session
+/// screen was the only destructive control in the app not behind a menu. The past session is the
+/// third (`FR-18.7.3`), and draws it only once the workout has ended. What the hosts no longer
+/// share is the wording of the last item and whether the middle one is there at all — see
 /// ``SessionMenuContents``.
 ///
 /// **Named for the menu rather than for any item in it** (`G-4.2`, `NFR-1.10`): a button announcing
@@ -254,9 +255,10 @@ extension View {
     ///
     /// - Parameters:
     ///   - contents: Which commands the menu holds, and whether it is drawn at all. **Worked out
-    ///     by the host, in a function a test can call** — ``DayView/menuContents(date:startsWhenDated:offersPlanEditing:progress:)``
-    ///     and ``ActiveSessionView/menuContents(date:)`` — because nothing here can read a menu
-    ///     back. Measured on iOS 26.5: a toolbar's `UIMenu` holds one `UIDeferredMenuElement`
+    ///     by the host, in a function a test can call** — ``DayView/menuContents(date:startsWhenDated:offersPlanEditing:progress:)``,
+    ///     ``ActiveSessionView/menuContents(date:)`` and ``PastSessionView/menuContents(date:hasEnded:)``
+    ///     — because nothing here can read a menu back. Measured on iOS 26.5: a toolbar's `UIMenu`
+    ///     holds one `UIDeferredMenuElement`
     ///     until the menu has been opened, its button declines `accessibilityActivate()`, and a
     ///     presented menu's commands belong to another window. So which host offers which command
     ///     is a claim that has to be made somewhere assertable, and this is the seam.

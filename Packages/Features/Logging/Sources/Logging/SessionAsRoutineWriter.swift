@@ -4,10 +4,11 @@ import RepositoryInterface
 /// Writes a ``SessionAsRoutine`` into the library as a routine, its slots and their targets
 /// (`FR-15.2.6`, `FR-16.8.4`).
 ///
-/// **One path, because there are two callers.** `FR-15.2.6`'s **Save as routine** and
-/// `FR-16.8.4`'s **Start next week** both turn a finished workout into a plan, and a second copy of
-/// the routine → slot → group walk is a second place for the rollback, the renumbering and
-/// `FR-15.2.2`'s never-blank rule to disagree.
+/// **One path, and one caller left.** Written for two — **Save as routine** and `FR-16.8.4`'s
+/// **Start next week** both turned a finished workout into a plan — and the first has since gone
+/// with the past day's rebuild, so `FR-15.2.6` now names the second and `ProgramNextWeek` is the
+/// only caller. The walk keeps its own type rather than folding into that caller, so the
+/// rollback, the renumbering and `FR-15.2.2`'s never-blank rule stay in one place a test can reach.
 ///
 /// **Written routine → slot → group**, the order the repository imposes rather than a preference:
 /// `save(_:)` refuses a dangling reference per key.

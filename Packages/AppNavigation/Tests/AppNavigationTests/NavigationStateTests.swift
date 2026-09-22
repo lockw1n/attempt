@@ -47,8 +47,9 @@ struct NavigationStateTests {
     /// `D-8`: every offer to go training lands on Train's root — not on whatever Train was left
     /// showing, and not on a logging surface presented from the tab that offered it.
     ///
-    /// The callers are `FR-1.13.2`'s **Plan your week** on Home and History's two empty states;
-    /// `FR-1.9.4`'s Start workout was the fourth until `D-17.11` withdrew it.
+    /// The callers are `FR-1.13.2`'s **Plan your week** on Home and History's three empty states
+    /// (the session list's, the calendar's and the week view's); `FR-1.9.4`'s Start workout was
+    /// one more until `D-17.11` withdrew it.
     @Test("showing Train switches to it and lands on its root")
     func showTrainNavigates() {
         let state = NavigationState()

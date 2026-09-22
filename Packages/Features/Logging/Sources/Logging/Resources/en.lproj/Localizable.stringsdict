@@ -231,8 +231,9 @@
 			<string>%lld logged sets go with it.</string>
 		</dict>
 	</dict>
-	<!-- FR-18.5.2: asked only where the row holds work, and it names how much, because there is
-	     no undo of the reset. -->
+	<!-- FR-18.5.2: asked only where the row holds a completed set, and it names every completed
+	     set the reset removes — warm-ups counted, pending sets not — because there is no undo of
+	     the reset. -->
 	<key>logging.day.row.reset.confirm.title %lld</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
