@@ -72,6 +72,20 @@ struct SessionDoneModifier: ViewModifier {
     /// The way out where there is no shell — a preview or a hosted fixture.
     @Environment(\.dismiss) private var dismiss
 
+    /// `G-4.3`'s 44 pt floor, imposed on the glyph's **width** because the glyph does not reach
+    /// it on its own.
+    ///
+    /// Measured on iOS 26.5, pushed: the bare checkmark laid the item out **28 pt** wide, where
+    /// the word it replaced was 64 — the narrower label is what spent it. With this the item is
+    /// 48 pt, the capsule's own padding carrying it past the floor.
+    ///
+    /// **The height is the bar's and this does not reach it.** Every SwiftUI item on this bar
+    /// lays out 36 pt tall — the `⋯` beside it as well, since before the exit was a glyph — and
+    /// a `minHeight` here is silently ignored, so there is no `minHeight` here to read as
+    /// working. Only Back, which is UIKit's, is 44 × 44. `G-4.3`'s square is therefore not
+    /// reachable from a toolbar item, and what is held below is the width alone.
+    private static let touchTarget: CGFloat = 44
+
     func body(content: Content) -> some View {
         content
             .toolbar {
@@ -97,6 +111,7 @@ struct SessionDoneModifier: ViewModifier {
                         // `AccessibilityNode` that answers. Either way the name is the word
                         // (`FR-18.4.7`, `G-4.2`); only one of them can be pressed without sight.
                         Image(systemName: "checkmark")
+                            .frame(minWidth: Self.touchTarget)
                             .accessibilityLabel(Text(label))
                     }
                 }

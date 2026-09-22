@@ -51,7 +51,7 @@ struct DoneButtonTests {
     /// **A fraction of the hosted width rather than a point count**, because the claim is about a
     /// side and the bar's width is the device's. Half is the honest reading of *trailing*, and it
     /// is what separates the two arrangements: measured on iOS 26.5, leading the `⋯` starts at
-    /// 76 pt of 402 and trailing it starts at 290.
+    /// 76 pt of 402 and trailing it starts at 278.
     static let trailingHalf = 0.5
 
     /// The least distance, in points, between the `⋯` and the exit that still reads as two
@@ -67,6 +67,19 @@ struct DoneButtonTests {
     /// holds the *arrangement* — two controls with air between them — and the spacer that
     /// declares the intent is held by review alone.
     static let separation = 8.0
+
+    /// `G-4.3`'s 44 pt floor, held on the exit's **width** and on nothing else here.
+    ///
+    /// **Not the square.** Measured on iOS 26.5: every SwiftUI item on this bar lays out 36 pt
+    /// tall — the exit and the `⋯` alike — and only Back, which is UIKit's, is 44 × 44. The
+    /// height is the bar's and no host can raise it, so a test that asked for the square would
+    /// be asking for something no code here can give.
+    ///
+    /// **And the exit alone.** The `⋯` is 36 pt wide and has been since `T-18.08` put it on the
+    /// bar; moving it is not this task's, and asserting it here would fail on code nobody is
+    /// changing. The exit is: it went from the 64 pt word to a 28 pt checkmark, and what carries
+    /// it back over the line is the minimum `sessionDone(label:)` imposes.
+    static let touchTarget = 44.0
 
     /// The three controls a workout screen's bar carries, and the width they sit across.
     ///
@@ -154,6 +167,13 @@ struct DoneButtonTests {
         #expect(
             bar.back.maxX <= bar.menu.minX,
             "Back is not leading of the menu (\(requirement)). Back \(bar.back), menu \(bar.menu).")
+        #expect(
+            bar.exit.width >= touchTarget,
+            """
+            the exit is under G-4.3's 44 pt floor (\(requirement)): \(bar.exit.width) pt wide. \
+            A glyph is narrower than the word it replaced — 28 pt against 64 — and the only \
+            thing over the line is the minimum sessionDone(label:) imposes. Exit at \(bar.exit).
+            """)
     }
 
     /// The day as it is actually reached — pushed onto a stack rather than hosted as its root.
@@ -263,10 +283,10 @@ struct DoneButtonTests {
     /// tells the two apart is where the menu sits across the bar's width.
     ///
     /// **And a gap, because `FR-18.4.8` asks for two controls rather than one group.** Measured
-    /// on iOS 26.5, pushed and answered, on a 402 pt bar: Back at x 16–60, the `⋯` at 290–326,
-    /// the exit at 346–382 — 20 pt between the two, and the exit 36 pt wide because it is a glyph
-    /// now rather than a word (it was 64 pt while the word was drawn). See ``separation`` for
-    /// what that expectation does and does not hold.
+    /// on iOS 26.5, pushed and answered, on a 402 pt bar: Back at x 16–60, the `⋯` at 278–314,
+    /// the exit at 334–382 — 20 pt between the two. See ``separation`` for what that expectation
+    /// does and does not hold, and ``touchTarget`` for why the exit is 48 pt wide rather than the
+    /// 28 the bare glyph laid out at.
     ///
     /// **The day is answered first**, because the menu is drawn only once there is a workout to
     /// change the date of or discard — an unanswered day has neither (see `sessionOverflow`).

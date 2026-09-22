@@ -91,22 +91,26 @@ struct PastSessionMenuTests {
             """)
     }
 
-    /// `FR-18.7.3` names a **side**, and the only witness is where each control is drawn — not the
-    /// order the tree publishes them in, which ``DoneButtonTests/theMenuIsLeadingOfDone()`` measured
-    /// and found to say only which modifier was applied first.
-    ///
-    /// **Hosted pushed rather than at a root**, for that test's reason: a root has no back button,
-    /// so a leading item that had swallowed one would leave every assertion green.
     /// `FR-18.7.3` as annotated: the `⋯` moved **trailing**, left of the exit and separate from
     /// it — where the day's now is (`FR-18.4.8`) — and Back has the leading corner to itself.
     ///
-    /// **The same three claims as ``DoneButtonTests/theMenuIsTrailingOfTheExit``, on the host
-    /// that reaches them differently**: this screen's menu is drawn from the first moment (there
-    /// is a finished workout to change the date of), so nothing is answered first, and its
-    /// modifier order was the *reverse* of the day's while the menu was leading — `sessionDone`
-    /// came first. That order is what the separation assertion here is really about: the spacer
-    /// belongs to the exit's modifier and only lands between the two when the menu's is applied
-    /// ahead of it.
+    /// **The same five claims as ``DoneButtonTests/theMenuIsTrailingOfTheExit``, on the host that
+    /// reaches them differently**: this screen's menu is drawn from the first moment, because
+    /// there is a finished workout to change the date of, so nothing is answered first. What the
+    /// claims are and what each does and does not witness is written once, over there and on
+    /// ``DoneButtonTests/expectTrailingArrangement(_:requirement:)``'s constants.
+    ///
+    /// **Hosted pushed rather than at a root**, for that test's reason: a root has no back button
+    /// either way, so a screen that had lost Back along with the leading item it used to sit
+    /// beside would leave every assertion at a root green.
+    ///
+    /// **The frames are the witness, and the publication order is no longer a second one — it is
+    /// a different claim.** Measured 2026-09-22 on iOS 26.5, on both hosts: the tree publishes
+    /// Back, then the `⋯`, then the exit, which is the bar's own left-to-right order and so is
+    /// what VoiceOver sweeps. That was not true of the arrangement this replaced, where the order
+    /// tracked which modifier had been applied first and said nothing about the bar (`T-18.08`,
+    /// and the leading-menu test this one replaced). It is a fact about the reading order rather
+    /// than about the side, and nothing here asserts it.
     @Test("The past session's menu is drawn trailing, left of the exit and separate from it")
     func theMenuIsTrailingOfTheExit() async throws {
         let app = try await DayFixture()

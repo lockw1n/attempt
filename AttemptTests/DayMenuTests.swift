@@ -55,7 +55,7 @@ struct DayMenuTests {
             "the day drew no Done, so there is no toolbar line to look along")
 
         // Both the bar's `⋯` and a row's read *Day options*; the one under test is the one on
-        // Done's line, which is what `DoneButtonTests.theMenuIsLeadingOfDone` disambiguates by too.
+        // Done's line, which is what `DoneButtonTests.bar(of:requirement:)` disambiguates by too.
         let menus = screen.elements(labelled: DayFixture.menu)
         #expect(
             menus.contains { $0.accessibilityFrame.midY == bar.accessibilityFrame.midY },
