@@ -241,6 +241,16 @@ public struct DayView: View {
     /// reading of the same emptiness — and this is only ever asked where the day has a workout, the
     /// menu's destructive item being drawn on a date alone (``SessionMenuContents``).
     ///
+    /// **That third clause is a proxy, and it over-asks.** A planned exercise whose only target
+    /// group was never filled in is stored with no groups at all — the slot is written when the
+    /// exercise is picked and its blank group is in no table until it resolves — so on the day it
+    /// is indistinguishable from a row the lifter added, and such a day asks although it holds
+    /// nothing but its date. Nothing on the entry records which of the two it was, and the fact
+    /// that would part them is a stored one (`TR-18.5`). Left as it is on purpose: of the two ways
+    /// to be wrong here, asking once too often is the one that costs no work. The same emptiness is
+    /// safe in ``DayRowCircle`` for a reason that does not carry here — a row with no target has
+    /// nothing "as planned" could mean whoever added it.
+    ///
     /// - Parameters:
     ///   - rows: The day's rows.
     ///   - note: The workout's session note — ``DayStore/note``.

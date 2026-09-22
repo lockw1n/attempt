@@ -68,7 +68,24 @@ struct DayResetQuestionTests {
         // row's clause does not fire on every day of the week.
         let day = try await Self.datedDay()
 
+        // Counted before the decision is asked, because an empty list satisfies every clause: this
+        // test passes over a store that returned no rows at all, and then proves nothing about the
+        // plan behind them. The fixture builds two.
+        #expect(day.rows.count == 2)
         #expect(!DayView.dayResetAsks(rows: day.rows, note: day.note))
+    }
+
+    @Test("A note typed into the workout reaches the decision, over the store's own reading")
+    func theDatedDayAsksOnceANoteIsTyped() async throws {
+        // The note clause's test above hands the decision a literal, so this is the half it cannot
+        // prove: that what the screen passes as `note:` is this workout's note and not some other
+        // string. ``DayStore/note`` forced to `""` fails nothing else in this suite.
+        let day = try await Self.datedDay()
+
+        await day.store.saveNote("left shoulder felt off")
+
+        #expect(day.note == "left shoulder felt off")
+        #expect(DayView.dayResetAsks(rows: day.rows, note: day.note))
     }
 
     @Test("The same day, one row answered, asks")
