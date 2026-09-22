@@ -48,14 +48,14 @@ struct SetEditorSection: Equatable, Sendable {
 /// after the first warm-up. The second section's fold therefore offers no warm-up of its own
 /// unless one was logged inside that group.
 ///
-/// **A section takes its load from its *first* stored set, so a group led by a warm-up at a
-/// lighter load rewrites its working sets to that load.** ``SetDraft/init(answering:unit:locale:)``
-/// reads `logged.first`, the fold cannot express a per-set load at all (a different load is a
-/// different group), and this sheet can only ever have written one load per group — so the state
-/// is reachable from an import (`FR-16.4`) or a free workout's own form rather than from here.
-/// It is older than the sections and they neither widen nor fix it: what they change is that the
-/// flattening is now confined to the one group the warm-up sits in. Filed rather than carried,
-/// because the fix is a per-set load and that is a form this phase does not have (`OUT-18.9`).
+/// **A section's load is its *working* sets'** (`FR-18.6.8`). ``loggedGroups(_:)`` partitions the
+/// working sets at ``DerivedValues/SetGrouping/Grain/loadAndReps``, so every working set of one
+/// section already shares a load; a warm-up is placed by position and can therefore sit inside a
+/// section at a lighter one. The form reads the first working set — a group of warm-ups alone falls
+/// back to its first set — and a warm-up stored at a load the form does not say **keeps it** through
+/// the rewrite instead of being flattened to the form's. No per-set load field is added for that
+/// (`OUT-18.16`): the load is carried, and the only sets that can carry one are warm-ups, because a
+/// working set at another load is another section. See ``SetDraft/init(answering:unit:locale:)``.
 struct SetEditorSections: Equatable, Sendable {
     /// The sections, in the order they are drawn.
     private(set) var sections: [SetEditorSection]

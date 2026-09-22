@@ -5,11 +5,12 @@ import RepositoryInterface
 
 /// What one set of a group carries when it differs from the form above it (`FR-17.9.4`).
 ///
-/// **The four optional fields plus the reps, and deliberately not the load.** A different load is a
-/// different group — the Log sheet answers *what did you do* for one prescription, and a lifter who
-/// dropped the weight for the last two sets logs that as a second answer rather than as a column
-/// here. Reps are the one required field that varies inside a run the lifter still thinks of as one
-/// exercise: `80 × 8, 8, 6`.
+/// **The four optional fields plus the reps, and no load the lifter can type.** A different load is
+/// a different group — the Log sheet answers *what did you do* for one prescription, and a lifter
+/// who dropped the weight for the last two sets logs that as a second answer rather than as a
+/// column here. Reps are the one required field that varies inside a run the lifter still thinks of
+/// as one exercise: `80 × 8, 8, 6`. ``storedWeight`` is the exception that proves the rule: a load
+/// carried across a rewrite, never a field.
 ///
 /// **It carries its own locale**, like ``SetDraft``, because it holds text rather than numbers and
 /// the crossing back is `LocalizedNumberField`'s.
@@ -31,6 +32,20 @@ struct SetDetailDraft: Equatable, Sendable {
 
     /// The modifiers this set was performed under (`FR-1.2.8`).
     var modifiers: [SetModifier] = []
+
+    /// The load this set is stored at, where that is not the load the form above the fold says
+    /// (`FR-18.6.8`).
+    ///
+    /// **Carried, never edited.** There is no per-set load field and this phase is not adding one
+    /// (`OUT-18.16`): a *working* set at another load is another group, and the sections give it a
+    /// form of its own. What is left is the warm-up, which is placed by position rather than by
+    /// load and can therefore sit inside a group at a lighter one — an imported session
+    /// (`FR-16.4`) or a free workout logs every set on its own form. Filled in only by
+    /// ``SetDraft/details(of:at:locale:)``, so a set added in the sheet carries none.
+    ///
+    /// **`nil` means "the group's load", not "no load"** — and it is what a warm-up stored *at*
+    /// the group's load holds, so that one still follows an edit of the load field (`Q-18.11`).
+    var storedWeight: Weight?
 
     /// The repetitions, or `nil` where the field does not hold a count.
     var reps: Int? { LocalizedNumberField.count(repsText, locale: locale) }
@@ -109,6 +124,11 @@ extension SetDraft {
     /// **Prefilled rather than blank**, which is what makes the fold an *override*: a lifter who
     /// opens it to change the last set's reps must not have to retype the first two.
     ///
+    /// **An entry built here carries no ``SetDetailDraft/storedWeight``**, so every row it writes
+    /// takes the group's load. That is the rule for a set *added* in the sheet, and it is also what
+    /// ``resettingDetails()`` costs a stored warm-up: once the form's reps or set count have moved,
+    /// the entries no longer stand one to one over the stored sets they were filled from.
+    ///
     /// - Parameters:
     ///   - draft: The form to read.
     ///   - count: How many entries to build. Zero returns none, which is the closed fold.
@@ -162,7 +182,8 @@ extension SetDraft {
     ///
     /// **The rows are the fold's when it is open and N copies of the form's when it is not**, and
     /// the two must agree on everything the fold did not touch: a row built from an entry takes the
-    /// group's load, because a different load is a different group.
+    /// group's load unless that entry was filled in from a set stored at another one
+    /// (`FR-18.6.8`).
     ///
     /// `nil` where the draft does not resolve, on ``resolved``'s rule — and that single guard is
     /// also what makes ``ResolvedSetGroup/rows`` exactly ``ResolvedSetGroup/sets`` long: ``resolved``
@@ -178,6 +199,10 @@ extension SetDraft {
 
     /// One row, the group's load with one set's own answers over it.
     ///
+    /// **The load is the group's unless the entry carries one** (`FR-18.6.8`, `Q-18.11`). A warm-up
+    /// stored at its own load keeps it; a warm-up stored at the group's load, which is every one
+    /// this sheet has ever written, carries none and so follows an edit of the load field.
+    ///
     /// - Parameters:
     ///   - values: What the form says.
     ///   - detail: What this set says instead.
@@ -185,7 +210,7 @@ extension SetDraft {
     static func row(_ values: SetEntryValues, applying detail: SetDetailDraft) -> SetEntryValues? {
         guard let reps = detail.reps, detail.rpe != .invalid else { return nil }
         return SetEntryValues(
-            weight: values.weight,
+            weight: detail.storedWeight ?? values.weight,
             reps: reps,
             rpe: detail.storedRPE,
             isWarmup: detail.isWarmup,
@@ -209,24 +234,30 @@ extension SetDraft {
     /// identical sets is said by the form above the fold; one logged `8, 8, 6` cannot be, and
     /// opening it prefilled is the only way that answer survives a reopen.
     ///
+    /// **The form is filled in from the first *working* set, not the first set** (`FR-18.6.8`).
+    /// Warm-ups are placed by position rather than by load, so a group can be led by one at a
+    /// lighter load — and the load, reps, rating and kind above the fold describe the work. A group
+    /// of warm-ups alone falls back to its first set, which is the only set it has to describe. The
+    /// count is still every set of the group, warm-ups included: the rewrite is positional.
+    ///
     /// - Parameters:
     ///   - row: The checklist row.
     ///   - unit: The unit to render the load in.
     ///   - locale: The locale to render the numbers in.
     init(answering row: SetEditorRow, unit: MassUnit, locale: Locale) {
         self.init(unit: unit, locale: locale)
-        if let first = row.logged.first {
-            weightText = LocalizedNumberField.render(first.weight, in: unit, locale: locale)
-            repsText = LocalizedNumberField.render(Double(first.reps), locale: locale)
+        if let form = Self.formSet(of: row.logged) {
+            weightText = LocalizedNumberField.render(form.weight, in: unit, locale: locale)
+            repsText = LocalizedNumberField.render(Double(form.reps), locale: locale)
             setsText = LocalizedNumberField.render(Double(row.logged.count), locale: locale)
-            if let rpe = first.rpe {
+            if let rpe = form.rpe {
                 rpeText = LocalizedNumberField.render(rpe, locale: locale)
             }
-            isWarmup = first.isWarmup
-            modifiers = first.modifiers
-            notes = first.notes
+            isWarmup = form.isWarmup
+            modifiers = form.modifiers
+            notes = form.notes
             if !Self.isUniform(row.logged) {
-                details = Self.details(of: row.logged, locale: locale)
+                details = Self.details(of: row.logged, at: form.weight, locale: locale)
             }
             return
         }
@@ -238,28 +269,53 @@ extension SetDraft {
         setsText = LocalizedNumberField.render(Double(group.sets), locale: locale)
     }
 
-    /// Whether every stored set says the same thing about everything except its load.
+    /// The stored set the form above the fold is filled in from (`FR-18.6.8`).
     ///
-    /// **The load is deliberately not compared.** It is the group's, and a set at a different load
-    /// is a different group — the fold cannot express one, so opening it would not help.
+    /// **The first working set, and the first set only where the group has no working one.** Which
+    /// sets can be in one group at all is ``SetEditorSections/loggedGroups(_:)``'s: its working
+    /// sets share a load, so any of them would answer the same, and a warm-up would answer with a
+    /// load the group did not work at.
+    ///
+    /// - Parameter logged: The stored sets, in order.
+    /// - Returns: The set, or `nil` where nothing is logged.
+    static func formSet(of logged: [SetEntry]) -> SetEntry? {
+        logged.first { !$0.isWarmup } ?? logged.first
+    }
+
+    /// Whether the form above the fold can say every stored set.
+    ///
+    /// **The load is compared** (`FR-18.6.8`): a set stored at a load the form does not say keeps
+    /// that load through the rewrite, ``details(of:at:locale:)`` is the only thing that carries it,
+    /// and so the fold has to be open for that set to exist at all. Within a section only a warm-up
+    /// can hold such a load — a working set at another one is another section — and a warm-up
+    /// beside working sets already disagrees on `isWarmup`; what the load adds is the group of
+    /// **warm-ups alone**, a ramp at three loads and one rep count, which no other field here tells
+    /// apart.
     ///
     /// - Parameter logged: The stored sets, in order.
     /// - Returns: Whether the form above the fold can say all of them.
     static func isUniform(_ logged: [SetEntry]) -> Bool {
-        guard let first = logged.first else { return true }
+        guard let form = formSet(of: logged) else { return true }
         return logged.allSatisfy {
-            $0.reps == first.reps && $0.rpe == first.rpe && $0.isWarmup == first.isWarmup
-                && $0.notes == first.notes && $0.modifiers == first.modifiers
+            $0.weight == form.weight && $0.reps == form.reps && $0.rpe == form.rpe
+                && $0.isWarmup == form.isWarmup && $0.notes == form.notes
+                && $0.modifiers == form.modifiers
         }
     }
 
-    /// One entry per stored set, filled in from it (`FR-17.7.5`).
+    /// One entry per stored set, filled in from it (`FR-17.7.5`, `FR-18.6.8`).
+    ///
+    /// **A set stored at `load` carries no ``SetDetailDraft/storedWeight``, and one stored at any
+    /// other load carries its own.** The first is what makes an edit of the load field reach every
+    /// set the sheet itself wrote (`Q-18.11`); the second is what stops a save the lifter did not
+    /// mean to make rewriting a warm-up's load to the group's.
     ///
     /// - Parameters:
     ///   - logged: The stored sets, in order.
+    ///   - load: What the form above the fold says — ``formSet(of:)``'s set's.
     ///   - locale: The locale the numbers are rendered in.
     /// - Returns: The entries.
-    static func details(of logged: [SetEntry], locale: Locale) -> [SetDetailDraft] {
+    static func details(of logged: [SetEntry], at load: Weight, locale: Locale) -> [SetDetailDraft] {
         logged.map { set in
             SetDetailDraft(
                 locale: locale,
@@ -267,7 +323,8 @@ extension SetDraft {
                 rpeText: set.rpe.map { LocalizedNumberField.render($0, locale: locale) } ?? "",
                 isWarmup: set.isWarmup,
                 notes: set.notes,
-                modifiers: set.modifiers)
+                modifiers: set.modifiers,
+                storedWeight: set.weight == load ? nil : set.weight)
         }
     }
 }
