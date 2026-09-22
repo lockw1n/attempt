@@ -98,3 +98,110 @@ struct ReadOnlySettingsRepository: SettingsRepository {
         throw RepositoryError.recordNotFound(id: backup.id)
     }
 }
+
+/// Sessions that answer until told to stop, counting what was asked — for the stale-weeks case and
+/// the one-pass claim.
+///
+/// An actor wrapping the fakes rather than a fake with a flag, on `SwitchableCache`'s rule: the
+/// fakes in `RepositoryFakes` are the *contract*, and a switch that made one fail would make every
+/// test that shares them able to.
+actor SwitchableWorkouts: WorkoutRepository {
+    /// Where a read that is not refusing is answered from.
+    private let wrapped: any WorkoutRepository
+
+    /// Whether every later call throws.
+    private var isRefusing = false
+
+    /// How many times the sessions were listed.
+    private(set) var sessionReads = 0
+
+    /// How many sessions had their entries read.
+    private(set) var entryReads = 0
+
+    /// What a refusal throws. The case does not matter — the state under test reports *that* a read
+    /// failed, never which error it was.
+    private var failure: RepositoryError { .recordNotFound(id: UUID()) }
+
+    init(wrapping wrapped: any WorkoutRepository) {
+        self.wrapped = wrapped
+    }
+
+    /// Makes every later call throw.
+    func refuse() {
+        isRefusing = true
+    }
+
+    func sessions(
+        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        guard !isRefusing else { throw failure }
+        return try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
+    }
+    func sessions(
+        in range: ClosedRange<Date>, includingDeleted: Bool
+    ) async throws -> [WorkoutSession] {
+        guard !isRefusing else { throw failure }
+        sessionReads += 1
+        return try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
+    }
+
+    func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
+        guard !isRefusing else { throw failure }
+        return try await wrapped.session(id: id, includingDeleted: includingDeleted)
+    }
+
+    func save(_ session: WorkoutSession) async throws {
+        guard !isRefusing else { throw failure }
+        try await wrapped.save(session)
+    }
+
+    func deleteSession(id: UUID) async throws {
+        guard !isRefusing else { throw failure }
+        try await wrapped.deleteSession(id: id)
+    }
+
+    func entries(
+        forSessionID sessionID: UUID, includingDeleted: Bool
+    ) async throws -> [ExerciseEntry] {
+        guard !isRefusing else { throw failure }
+        entryReads += 1
+        return try await wrapped.entries(
+            forSessionID: sessionID, includingDeleted: includingDeleted)
+    }
+
+    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
+        guard !isRefusing else { throw failure }
+        return try await wrapped.entry(id: id, includingDeleted: includingDeleted)
+    }
+
+    func save(_ entry: ExerciseEntry) async throws {
+        guard !isRefusing else { throw failure }
+        try await wrapped.save(entry)
+    }
+
+    func deleteExerciseEntry(id: UUID) async throws {
+        guard !isRefusing else { throw failure }
+        try await wrapped.deleteExerciseEntry(id: id)
+    }
+
+    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        guard !isRefusing else { throw failure }
+        return try await wrapped.sets(forEntryID: entryID, includingDeleted: includingDeleted)
+    }
+
+    func save(_ set: SetEntry) async throws {
+        guard !isRefusing else { throw failure }
+        try await wrapped.save(set)
+    }
+
+    func deleteSet(id: UUID) async throws {
+        guard !isRefusing else { throw failure }
+        try await wrapped.deleteSet(id: id)
+    }
+
+    func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
+        guard !isRefusing else { throw failure }
+        return try await wrapped.sets(
+            forExerciseID: exerciseID, includingDeleted: includingDeleted)
+    }
+}

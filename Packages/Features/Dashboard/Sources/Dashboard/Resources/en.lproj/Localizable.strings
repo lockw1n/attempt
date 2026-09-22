@@ -85,21 +85,41 @@
    rather than a promise. */
 "dashboard.first-launch.message" = "Log your first workout and this screen fills in: what you last trained, your week's volume, your personal records and your estimated maxes.";
 
-/* FR-1.9.5's this-week summary. "This week" is the user's own week — Calendar.current decides which
-   day it starts on, so a locale beginning on Monday gets one. */
-"dashboard.week.title" = "This week";
-/* MetricTile labels: what each numeral is. Nouns rather than counted phrases, so neither needs a
-   plural rule — the number sits above the label, not inside it. */
-"dashboard.week.workouts" = "Workouts";
-"dashboard.week.volume" = "Volume";
-/* FR-1.13.3 rather than a pair of zeros: a quiet week has nothing to report, and "0 kg" invites the
-   reading that the training was worthless rather than absent. */
-"dashboard.week.none" = "No working sets logged this week yet.";
+/* FR-1.9.5's week card, which since FR-18.9.2 keeps two weeks: the one in progress and the last
+   completed one. Each is the user's own calendar week — Calendar.current decides which day it starts
+   on — and the same week History's Weeks read (FR-17.11.3), not a program's. */
+"dashboard.week.title" = "This week and last";
+/* The two lines' names, over their figures. */
+"dashboard.week.this-week" = "This week";
+"dashboard.week.last-week" = "Last week";
+/* A line's figures: the workout count (a plural, in the .stringsdict) and the volume, both already
+   rendered by the caller. What this string owns is the separator between them. */
+"dashboard.week.line %@ %@" = "%1$@ · %2$@";
+/* A line with nothing in it, in words rather than as "0 workouts · 0 kg" (FR-1.13.3). This week's
+   says "yet", because the week is still open; last week's cannot. */
+"dashboard.week.this-week.none" = "No working sets yet";
+"dashboard.week.last-week.none" = "No working sets";
+/* FR-1.13.3's empty state, kept for one case only since FR-18.9.2: no working set in this week, last
+   week or the week before. A quiet week on its own is a line above, not this. */
+"dashboard.week.none" = "No working sets logged this week, last week or the week before.";
 /* Tonnage's third clause, said out loud on the one screen that can. The week has real workouts and a
    volume that cannot be computed — every set in it was bodyweight or assisted, and an assisted set's
-   load is negative, so summing it would make the total fall as more work was done. */
-"dashboard.week.unweighed" = "Nothing this week carries a load to weigh — bodyweight and assisted sets add no volume.";
-"dashboard.week.error" = "This week's training could not be read.";
+   load is negative, so summing it would make the total fall as more work was done. Names no week,
+   because it stands on either line. */
+"dashboard.week.unweighed" = "No load to weigh — bodyweight and assisted sets add no volume.";
+"dashboard.week.error" = "These weeks' training could not be read.";
+/* What VoiceOver reads for one line: a sentence, the week's name first (G-4.2). Three shapes — a
+   quiet line, a line with figures, and last week with its change — each taking pieces the caller has
+   already rendered. The change clause is one of the three below, so that a translation can put the
+   direction where its grammar wants it. */
+"dashboard.week.spoken %@ %@" = "%1$@: %2$@.";
+"dashboard.week.spoken.figures %@ %@ %@" = "%1$@: %2$@, %3$@.";
+"dashboard.week.spoken.compared %@ %@ %@ %@" = "%1$@: %2$@, %3$@, %4$@.";
+/* FR-18.9.3's change, spoken. On screen the indicator carries the direction in an arrow and a sign;
+   here it is a word, so a reader hears it rather than a tint (G-4.5). */
+"dashboard.week.change.up %@" = "up %@ on the week before";
+"dashboard.week.change.down %@" = "down %@ on the week before";
+"dashboard.week.change.same" = "the same as the week before";
 
 /* FR-16.3.4's empty feed under a narrowed configuration. It is not "no records yet": the records
    exist and the settings are what hide them, so the sentence names the settings rather than one of

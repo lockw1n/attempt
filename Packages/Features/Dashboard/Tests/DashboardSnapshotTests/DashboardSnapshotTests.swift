@@ -95,12 +95,48 @@
         }
 
         @Test func weekSummary() throws {
-            // FR-1.9.5's two numbers side by side. At accessibility3 they stack — the reference
-            // pair is what proves the switch, since a formatted tonnage beside a count is what
-            // wraps first.
+            // FR-18.9.2's two lines mid-week: this week so far, and last week with FR-18.9.3's
+            // change against the week before it — +100 kg, on last week's line and on no other.
+            // At accessibility3 the figures wrap at their separator and the change drops beneath
+            // them; the reference pair is what proves neither collides with the other.
             try assertSnapshots(named: "Dashboard-week") {
                 WeekSummaryReading(
-                    state: .ready(WeekSummary(workoutCount: 4, tonnage: DashboardFixtures.volume)),
+                    state: .ready(DashboardFixtures.weeks),
+                    unit: .kilograms,
+                    retry: {}
+                )
+                .environment(\.locale, DashboardFixtures.locale)
+            }
+        }
+
+        @Test func weekSummaryMonday() throws {
+            // F-17's Monday, which used to be an empty state: nothing this week, in words on one
+            // line, and last week drawn whole beneath it with its change. DOD-18.11's picture.
+            try assertSnapshots(named: "Dashboard-week-monday") {
+                WeekSummaryReading(
+                    state: .ready(
+                        WeekSummaries(
+                            thisWeek: .empty,
+                            lastWeek: DashboardFixtures.weeks.lastWeek,
+                            weekBefore: DashboardFixtures.weeks.weekBefore)),
+                    unit: .kilograms,
+                    retry: {}
+                )
+                .environment(\.locale, DashboardFixtures.locale)
+            }
+        }
+
+        @Test func weekSummaryFalling() throws {
+            // A week that fell: the one direction the tiles cannot picture (their delta is strictly
+            // positive) and this card can. The arrow and the minus are the cues that survive a
+            // monochrome rendering (G-4.5), which is what the reference holds.
+            try assertSnapshots(named: "Dashboard-week-falling") {
+                WeekSummaryReading(
+                    state: .ready(
+                        WeekSummaries(
+                            thisWeek: WeekSummary(workoutCount: 2, tonnage: Weight(grams: 8_240_000)),
+                            lastWeek: DashboardFixtures.weeks.lastWeek,
+                            weekBefore: WeekSummary(workoutCount: 4, tonnage: Weight(grams: 15_000_000)))),
                     unit: .kilograms,
                     retry: {}
                 )
@@ -110,7 +146,7 @@
 
         @Test func weekSummaryQuiet() throws {
             // FR-1.13.3's whole point, pictured: this is what the card draws INSTEAD OF "0
-            // workouts, 0 kg".
+            // workouts, 0 kg" — and since FR-18.9.2 only when all three weeks are empty.
             try assertSnapshots(named: "Dashboard-week-quiet") {
                 WeekSummaryReading(state: .quiet, unit: .kilograms, retry: {})
             }
@@ -118,15 +154,21 @@
 
         @Test func weekSummaryUnweighed() throws {
             // A real workout count above a volume that cannot be computed — Tonnage's third clause
-            // drawn as the two different things it is, rather than as one zero.
+            // drawn as the two different things it is, rather than as one zero — on last week's
+            // line, where its change is ABSENT rather than 0 although the week before has volume.
             try assertSnapshots(named: "Dashboard-week-unweighed") {
                 WeekSummaryReading(
-                    state: .unweighed(workouts: 3), unit: .kilograms, retry: {}
+                    state: .ready(
+                        WeekSummaries(
+                            thisWeek: DashboardFixtures.weeks.thisWeek,
+                            lastWeek: WeekSummary(workoutCount: 3, tonnage: .zero),
+                            weekBefore: DashboardFixtures.weeks.weekBefore)),
+                    unit: .kilograms,
+                    retry: {}
                 )
                 .environment(\.locale, DashboardFixtures.locale)
             }
         }
-
         @Test func weekSummaryUnreadable() throws {
             try assertSnapshots(named: "Dashboard-week-error") {
                 WeekSummaryReading(state: .failed, unit: .kilograms, retry: {})
@@ -214,6 +256,14 @@
 
         /// A week's load: 12,400 kg, enough digits that a grouping separator shows.
         static let volume = Weight(grams: 12_400_000)
+
+        /// Three weeks mid-week: one workout so far, last week's three at ``volume``, and a week
+        /// before 100 kg lighter — so the change is the smallest figure on the card, beside the
+        /// largest.
+        static let weeks = WeekSummaries(
+            thisWeek: WeekSummary(workoutCount: 1, tonnage: Weight(grams: 4_200_000)),
+            lastWeek: WeekSummary(workoutCount: 3, tonnage: volume),
+            weekBefore: WeekSummary(workoutCount: 3, tonnage: Weight(grams: 12_300_000)))
 
         /// The section with nothing to estimate from: three lifts, the last of them carrying the
         /// training max a coach handed over before any of it was trained (`FR-15.1.8`).

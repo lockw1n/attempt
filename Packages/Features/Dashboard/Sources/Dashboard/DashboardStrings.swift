@@ -1,3 +1,4 @@
+import DesignSystem
 import Foundation
 import RepositoryInterface
 
@@ -216,23 +217,129 @@ enum DashboardStrings {
     /// What logging one workout turns this screen into.
     static let firstLaunchMessage = resource("dashboard.first-launch.message")
 
-    /// `FR-1.9.5`'s heading.
+    /// `FR-1.9.5`'s heading, over both weeks (`FR-18.9.2`).
     static let weekTitle = resource("dashboard.week.title")
 
-    /// What the first of `FR-1.9.5`'s two numbers counts.
-    static let weekWorkouts = resource("dashboard.week.workouts")
+    /// One line's name — which of the two weeks it is.
+    ///
+    /// **A function over the two lines rather than two constants**, on
+    /// ``recentRecordsScopeName(for:)``' rule: a line added without a name is a compile error
+    /// rather than a blank row.
+    ///
+    /// - Parameter line: Which week.
+    /// - Returns: Its name.
+    static func weekLineName(for line: WeekLineName) -> LocalizedStringResource {
+        switch line {
+        case .thisWeek: resource("dashboard.week.this-week")
+        case .lastWeek: resource("dashboard.week.last-week")
+        }
+    }
 
-    /// What the second of them weighs.
-    static let weekVolume = resource("dashboard.week.volume")
+    /// One line's workout count with its noun — `3 workouts`, `1 workout` (`FR-18.9.2`).
+    ///
+    /// **A plural, in the `.stringsdict`.** One workout in a week is the ordinary shape of a light
+    /// week, not an edge case, and Ukrainian's count noun has three forms the `.strings` file cannot
+    /// choose between.
+    ///
+    /// - Parameter count: How many workouts.
+    /// - Returns: The count, with its noun.
+    static func weekWorkouts(_ count: Int) -> LocalizedStringResource {
+        resource("dashboard.week.workouts \(count)")
+    }
 
-    /// Nothing this week counts as training done (`FR-1.13.3`).
+    /// One line's figures — the workout count beside the volume (`FR-18.9.2`).
+    ///
+    /// **Both arrive already rendered**, on ``recentRecordsSet(_:_:)``' rule: the count is a plural
+    /// resolved by ``weekWorkouts(_:)`` and the volume is the caller's own formatter's (`G-3.4`),
+    /// and what this string owns is the separator between them.
+    ///
+    /// - Parameters:
+    ///   - workouts: The count, rendered.
+    ///   - volume: The volume, rendered.
+    /// - Returns: The line.
+    static func weekLine(_ workouts: String, _ volume: String) -> LocalizedStringResource {
+        resource("dashboard.week.line \(workouts) \(volume)")
+    }
+
+    /// A line with nothing in it, in words (`FR-1.13.3`, `FR-18.9.2`).
+    ///
+    /// Two sentences rather than one, because this week's is still open — it says *yet* — and last
+    /// week's is not.
+    ///
+    /// - Parameter line: Which week.
+    /// - Returns: Its quiet reading.
+    static func weekLineQuiet(for line: WeekLineName) -> LocalizedStringResource {
+        switch line {
+        case .thisWeek: resource("dashboard.week.this-week.none")
+        case .lastWeek: resource("dashboard.week.last-week.none")
+        }
+    }
+
+    /// Nothing in any of the three weeks counts as training done (`FR-1.13.3`, `FR-18.9.2`).
     static let weekNone = resource("dashboard.week.none")
 
     /// Training happened and none of it can be weighed — `Tonnage`'s third clause, said out loud.
+    /// Names no week, so it stands on either line.
     static let weekUnweighed = resource("dashboard.week.unweighed")
 
     /// The sessions could not be read.
     static let weekError = resource("dashboard.week.error")
+
+    /// What VoiceOver reads for a quiet line: the week's name, then its words (`G-4.2`).
+    ///
+    /// - Parameters:
+    ///   - name: The week's name, rendered.
+    ///   - words: Its quiet reading, rendered.
+    /// - Returns: The sentence.
+    static func weekSpoken(_ name: String, _ words: String) -> LocalizedStringResource {
+        resource("dashboard.week.spoken \(name) \(words)")
+    }
+
+    /// What VoiceOver reads for a line with figures and no change (`G-4.2`).
+    ///
+    /// - Parameters:
+    ///   - name: The week's name, rendered.
+    ///   - workouts: The count, rendered.
+    ///   - volume: The volume, rendered — or the unweighed sentence where there is none.
+    /// - Returns: The sentence.
+    static func weekSpokenFigures(
+        _ name: String, _ workouts: String, _ volume: String
+    ) -> LocalizedStringResource {
+        resource("dashboard.week.spoken.figures \(name) \(workouts) \(volume)")
+    }
+
+    /// What VoiceOver reads for last week with its change (`G-4.2`, `FR-18.9.3`).
+    ///
+    /// - Parameters:
+    ///   - name: The week's name, rendered.
+    ///   - workouts: The count, rendered.
+    ///   - volume: The volume, rendered.
+    ///   - change: The change clause, rendered by ``weekChangeSpoken(_:_:)``.
+    /// - Returns: The sentence.
+    static func weekSpokenCompared(
+        _ name: String, _ workouts: String, _ volume: String, _ change: String
+    ) -> LocalizedStringResource {
+        resource("dashboard.week.spoken.compared \(name) \(workouts) \(volume) \(change)")
+    }
+
+    /// `FR-18.9.3`'s change, in words — *up 100 kg on the week before*.
+    ///
+    /// **The direction is a word here because on screen it is not.** `DeltaIndicator` carries it in
+    /// an arrow and a sign; a spoken sentence needs it said (`G-4.5`).
+    ///
+    /// - Parameters:
+    ///   - direction: Which way the volume moved.
+    ///   - magnitude: By how much, rendered and unsigned.
+    /// - Returns: The clause.
+    static func weekChangeSpoken(
+        _ direction: DeltaDirection, _ magnitude: String
+    ) -> LocalizedStringResource {
+        switch direction {
+        case .increase: resource("dashboard.week.change.up \(magnitude)")
+        case .decrease: resource("dashboard.week.change.down \(magnitude)")
+        case .unchanged: resource("dashboard.week.change.same")
+        }
+    }
 
     /// The exercise pickers' search field prompt (`FR-16.5.3`).
     ///
@@ -295,7 +402,11 @@ enum DashboardStrings {
             recentRecordsBaselinesTitle, recentRecordsBaselinesLabel,
             recentRecordsBaselinesDetail,
             planWeek, firstLaunchHeadline, firstLaunchMessage,
-            weekTitle, weekWorkouts, weekVolume, weekNone, weekUnweighed, weekError,
+            weekTitle, weekWorkouts(3), weekLine("3 workouts", "12 300 kg"), weekNone,
+            weekUnweighed, weekError,
+            weekSpoken("This week", "No working sets yet"),
+            weekSpokenFigures("This week", "3 workouts", "12 300 kg"),
+            weekSpokenCompared("Last week", "3 workouts", "12 300 kg", "up 100 kg on the week before"),
             tilesTitle, tilesError, tilesNoneChosen, tilesNoneChosenMessage,
             tileTrainingMax("180 kg"),
             tileNoPrevious, tilesChooseAction, tilesChooseTitle, tilesChooseEmpty,
@@ -308,6 +419,9 @@ enum DashboardStrings {
             + absences.map { tileAbsenceShort($0, days: 90) }
             + RecentRecordsScope.allCases.map { recentRecordsScopeName(for: $0) }
             + RecentRecordsScope.allCases.map { recentRecordsScopeDetail(for: $0) }
+            + WeekLineName.allCases.map { weekLineName(for: $0) }
+            + WeekLineName.allCases.map { weekLineQuiet(for: $0) }
+            + DeltaDirection.allCases.map { weekChangeSpoken($0, "100 kg") }
     }
 
     /// Binds a key to this module's catalogue.

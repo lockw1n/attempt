@@ -221,6 +221,70 @@ struct DashboardStringsTests {
                     .sourceReading(load: "100 kg", reps: "5", sets: "5")) == "100 kg × 5 × 5")
     }
 
+    @Test("A week line's workout count pluralises, in both catalogues")
+    func theWeekLinePluralises() {
+        // FR-18.9.2's count noun, rendered at every category rather than at one: English has two,
+        // Ukrainian four, and a category left out of the `.stringsdict` falls back to `other` in
+        // silence — 5 would read «тренування» and nothing would say so.
+        #expect(String(localized: DashboardStrings.weekWorkouts(1)) == "1 workout")
+        #expect(String(localized: DashboardStrings.weekWorkouts(2)) == "2 workouts")
+        #expect(String(localized: DashboardStrings.weekWorkouts(5)) == "5 workouts")
+        #expect(ukrainian(DashboardStrings.weekWorkouts(1)) == "1 тренування")
+        #expect(ukrainian(DashboardStrings.weekWorkouts(3)) == "3 тренування")
+        #expect(ukrainian(DashboardStrings.weekWorkouts(5)) == "5 тренувань")
+        #expect(ukrainian(DashboardStrings.weekWorkouts(11)) == "11 тренувань")
+        #expect(ukrainian(DashboardStrings.weekWorkouts(21)) == "21 тренування")
+    }
+
+    @Test("The spoken change carries its direction as a word, in both catalogues")
+    func theSpokenChangeSaysItsDirection() {
+        // G-4.5 for the ear: the indicator's arrow and sign are what the eye gets, and the sentence
+        // VoiceOver reads has to say up or down itself. Three directions, three different clauses,
+        // none of which is the bare magnitude.
+        let up = String(localized: DashboardStrings.weekChangeSpoken(.increase, "100 kg"))
+        let down = String(localized: DashboardStrings.weekChangeSpoken(.decrease, "100 kg"))
+        let same = String(localized: DashboardStrings.weekChangeSpoken(.unchanged, "100 kg"))
+        #expect(up == "up 100 kg on the week before")
+        #expect(down == "down 100 kg on the week before")
+        #expect(same == "the same as the week before")
+        #expect(Set([up, down, same]).count == 3)
+        #expect(
+            ukrainian(DashboardStrings.weekChangeSpoken(.increase, "100 кг"))
+                == "на 100 кг більше, ніж тижнем раніше")
+        #expect(
+            ukrainian(DashboardStrings.weekChangeSpoken(.decrease, "100 кг"))
+                == "на 100 кг менше, ніж тижнем раніше")
+        #expect(
+            ukrainian(DashboardStrings.weekChangeSpoken(.unchanged, "100 кг"))
+                == "стільки ж, як тижнем раніше")
+    }
+
+    @Test("The card's copy names no single week where it stands for two")
+    func theWeekCopyNamesNoSingleWeek() {
+        // FR-18.9.2: the unweighed sentence stands on either line, and the empty state stands for
+        // three weeks, so neither may say "this week" as if it were the only one. The line names
+        // are where "this week" and "last week" live.
+        #expect(
+            !String(localized: DashboardStrings.weekUnweighed)
+                .localizedCaseInsensitiveContains("this week"))
+        #expect(!ukrainian(DashboardStrings.weekUnweighed).contains("цього тижня"))
+        #expect(String(localized: DashboardStrings.weekLineName(for: .thisWeek)) == "This week")
+        #expect(String(localized: DashboardStrings.weekLineName(for: .lastWeek)) == "Last week")
+        #expect(
+            String(localized: DashboardStrings.weekLineQuiet(for: .thisWeek))
+                != String(localized: DashboardStrings.weekLineQuiet(for: .lastWeek)))
+    }
+
+    /// One resource rendered against the other catalogue.
+    ///
+    /// - Parameter resource: The string.
+    /// - Returns: What a Ukrainian device reads.
+    private func ukrainian(_ resource: LocalizedStringResource) -> String {
+        var localized = resource
+        localized.locale = Locale(identifier: "uk")
+        return String(localized: localized)
+    }
+
     /// One feed row's record, stating only what the labels read.
     private func record(reps: Int, sets: Int) -> RecentRecord {
         RecentRecord(
