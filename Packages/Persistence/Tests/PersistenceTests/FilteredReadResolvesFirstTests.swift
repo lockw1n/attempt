@@ -54,10 +54,14 @@ struct FilteredReadResolvesFirstTests {
         let program = UUID()
         let id = UUID()
         let open = UUID()
+        // The stale twin starts *after* the open run, so if it were answered it would outrank the
+        // open run on `currentRun()`'s key rather than tie with it and fall to the uuid.
+        let staleStart = fixtureCreatedAt - 86_400
         try harness.seed([
             twin(programRecord(id: program), as: ProgramEntity.self, updatedAt: twinOlder),
             twin(
-                programRunRecord(id: id, programID: program, endedAt: nil, weekNumber: 3),
+                programRunRecord(
+                    id: id, programID: program, startedAt: staleStart, endedAt: nil, weekNumber: 3),
                 as: ProgramRunEntity.self,
                 updatedAt: twinOlder),
             twin(
@@ -176,7 +180,7 @@ struct FilteredReadResolvesFirstTests {
         deleted.deletedAt = twinNewer
         try harness.seed([
             twin(
-                sessionRecord(id: id, date: date - 10 * 86_400, notes: "live loser"),
+                sessionRecord(id: id, date: date - 3_600, notes: "live loser"),
                 as: WorkoutSessionEntity.self,
                 updatedAt: twinOlder),
             deleted,
