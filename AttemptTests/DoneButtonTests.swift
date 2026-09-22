@@ -15,6 +15,11 @@ import UIKit
 /// never attached, or attached to a subview instead of the screen, would move no reference and
 /// break no package test. Only a hosted view has a navigation bar to publish it from.
 ///
+/// **The exit is a checkmark and is still found by the word** (`FR-18.4.7`): the platform's
+/// confirm role draws the glyph and keeps the button's name, so every assertion below reads
+/// ``done`` exactly as it did while the word was on screen. A glyph that had taken the label with
+/// it would fail here rather than in a picture, which is the point of leaving these unchanged.
+///
 /// **What these tests cannot say is where Done goes**, and that is deliberate rather than missing:
 /// `AttemptTests` does not link `AppNavigation` (`T-1.96`), so no fixture here can put a real shell
 /// above the screen. Hosted bare, Done takes ``Logging``'s fallback and dismisses. The pop itself
@@ -41,11 +46,122 @@ struct DoneButtonTests {
     /// all is.
     static let backLabels: Set<String> = [rootTitle, "Back"]
 
+    /// How far across the bar a control has to start before it is on the trailing side.
+    ///
+    /// **A fraction of the hosted width rather than a point count**, because the claim is about a
+    /// side and the bar's width is the device's. Half is the honest reading of *trailing*, and it
+    /// is what separates the two arrangements: measured on iOS 26.5, leading the `⋯` starts at
+    /// 76 pt of 402 and trailing it starts at 290.
+    static let trailingHalf = 0.5
+
+    /// The least distance, in points, between the `⋯` and the exit that still reads as two
+    /// controls rather than one glass group (`FR-18.4.8`).
+    ///
+    /// **Measured, and set below the measurement rather than at it**: 20 pt on iOS 26.5, on both
+    /// hosts. A threshold at the measured figure would fail on the first bar that spaces its
+    /// items differently.
+    ///
+    /// **What this does not witness is the `ToolbarSpacer`.** Probed: removing it left both
+    /// frames and the gap unchanged, because the two items reach the bar from two different
+    /// `.toolbar` modifiers and iOS 26 fuses only what one toolbar builder contributes. So this
+    /// holds the *arrangement* — two controls with air between them — and the spacer that
+    /// declares the intent is held by review alone.
+    static let separation = 8.0
+
+    /// The three controls a workout screen's bar carries, and the width they sit across.
+    ///
+    /// **One arrangement on two screens** (`FR-18.4.8`, `FR-18.7.3`), so finding the controls and
+    /// asking where they are is written once here and reached twice. What each host does *not*
+    /// share is how it gets to the state: the day has to be answered before its `⋯` is drawn at
+    /// all, and the past session does not.
+    struct Bar {
+        /// The back button, under whichever of its two labels arrived.
+        let back: CGRect
+
+        /// The bar's `⋯` — the one on the exit's line, a row's menu reading the same word.
+        let menu: CGRect
+
+        /// The exit, found by its **name** and not by its glyph (`FR-18.4.7`).
+        let exit: CGRect
+
+        /// What the screen laid out at, which is what *trailing* is a fraction of.
+        let width: CGFloat
+    }
+
+    /// Reads the three off a settled screen.
+    ///
+    /// - Parameters:
+    ///   - screen: The host, settled, and on the day already answered.
+    ///   - requirement: The ID the diagnostics cite; the two hosts carry different ones.
+    /// - Returns: The three frames, and the width they are across.
+    static func bar(of screen: HostedScreen, requirement: String) throws -> Bar {
+        let exit = try #require(
+            screen.elements(labelled: done).first,
+            """
+            no exit named \(done) (\(requirement)), so there is nothing to place the menu \
+            against — and a checkmark that lost its name is what FR-18.4.7 forbids. The screen \
+            offers: \(screen.activatableLabels())
+            """)
+        let menus = screen.elements(labelled: DayFixture.menu)
+        let menu = try #require(
+            menus.first(where: { $0.accessibilityFrame.midY == exit.accessibilityFrame.midY }),
+            """
+            no overflow menu on the bar (\(requirement)), so there is no side for it to be on. \
+            Menus at: \(menus.map(\.accessibilityFrame)), exit at \(exit.accessibilityFrame).
+            """)
+        let back = try #require(
+            screen.accessibilityElements().first(where: {
+                backLabels.contains($0.accessibilityLabel ?? "")
+                    && $0.accessibilityTraits.contains(.button)
+            }),
+            """
+            no back button (\(requirement)): the leading corner is its alone now, and a bar \
+            without it is a screen with no swipe back. What it offers: \
+            \(screen.activatableLabels())
+            """)
+        let width = screen.controller.view.bounds.width
+        try #require(width > 0, "the screen laid out at no width, so no side means anything")
+        return Bar(
+            back: back.accessibilityFrame,
+            menu: menu.accessibilityFrame,
+            exit: exit.accessibilityFrame,
+            width: width)
+    }
+
+    /// `FR-18.4.8`'s arrangement, over what ``bar(of:requirement:)`` read.
+    ///
+    /// - Parameters:
+    ///   - bar: The three frames.
+    ///   - requirement: The ID the diagnostics cite.
+    static func expectTrailingArrangement(_ bar: Bar, requirement: String) {
+        #expect(
+            bar.menu.minX >= bar.width * trailingHalf,
+            """
+            the menu is not on the trailing side (\(requirement)) — it starts at \(bar.menu.minX) \
+            of \(bar.width). Menu at \(bar.menu), exit at \(bar.exit), Back at \(bar.back).
+            """)
+        #expect(
+            bar.menu.maxX <= bar.exit.minX,
+            "the menu is not left of the exit (\(requirement)). Menu \(bar.menu), exit \(bar.exit).")
+        #expect(
+            bar.exit.minX - bar.menu.maxX >= separation,
+            """
+            the menu and the exit are one control rather than two (\(requirement)): \
+            \(bar.exit.minX - bar.menu.maxX) pt between them. Probed: the gap survives the \
+            ToolbarSpacer being removed and dies when the two modifiers are swapped, so what this \
+            holds is the arrangement.
+            """)
+        #expect(
+            bar.back.maxX <= bar.menu.minX,
+            "Back is not leading of the menu (\(requirement)). Back \(bar.back), menu \(bar.menu).")
+    }
+
     /// The day as it is actually reached — pushed onto a stack rather than hosted as its root.
     ///
-    /// **A root has no back button**, and `FR-18.4.2` places the `⋯` *beside* one. Every other
-    /// test here hosts its screen at a root, which is enough for "is this control on the screen"
-    /// and is not enough for "what is it next to".
+    /// **A root has no back button**, and the leading corner is Back's alone now (`FR-18.4.8`).
+    /// Every other test here hosts its screen at a root, which is enough for "is this control on
+    /// the screen" and is not enough for "what is it next to" — nor for whether Back is still
+    /// there at all once a leading item has been taken away.
     struct PushedDay<Day: View>: View {
         /// The screen under test.
         let day: Day
@@ -135,31 +251,32 @@ struct DoneButtonTests {
             """)
     }
 
-    /// `FR-18.4.2`: the `⋯` moved leading, **beside Back**, and the only witness is where each
-    /// is drawn.
+    /// `FR-18.4.8`: the `⋯` moved **trailing**, left of the exit and a control of its own, and
+    /// the leading corner is Back's alone again.
     ///
-    /// **Not the order the tree publishes them in, which is measured and is not a side.** The
-    /// first version of this test asserted that the menu is read before Done, on the reasoning
-    /// that VoiceOver sweeps from the leading edge; it passed unchanged with the menu put back
-    /// trailing. SwiftUI publishes toolbar items in the order their modifiers were applied, and
-    /// `.sessionOverflow` is applied above `.sessionDone` on both hosts — so the order says which
-    /// modifier came first and nothing at all about the bar. The frame is what knows.
+    /// **"Left of the exit" is not a witness of a side, and was not one before either.** It was
+    /// true while the menu was leading — everything on a bar is left of its trailing corner — so
+    /// an assertion built only from it passes in both arrangements, which is the same shape
+    /// `T-18.08` found when it first asserted the *publication order* and put the menu back
+    /// trailing with nothing failing. Probed here the same way: with the menu forced back to
+    /// `.topBarLeading` this expectation still passes and ``trailingHalf`` is what fails. What
+    /// tells the two apart is where the menu sits across the bar's width.
+    ///
+    /// **And a gap, because `FR-18.4.8` asks for two controls rather than one group.** Measured
+    /// on iOS 26.5, pushed and answered, on a 402 pt bar: Back at x 16–60, the `⋯` at 290–326,
+    /// the exit at 346–382 — 20 pt between the two, and the exit 36 pt wide because it is a glyph
+    /// now rather than a word (it was 64 pt while the word was drawn). See ``separation`` for
+    /// what that expectation does and does not hold.
     ///
     /// **The day is answered first**, because the menu is drawn only once there is a workout to
     /// change the date of or discard — an unanswered day has neither (see `sessionOverflow`).
-    /// Measured: with the day unanswered the only element labelled *Day options* is the **row's**
-    /// menu, on the row's own line, and the bar carries Back and Done alone.
     ///
     /// **And the day is hosted pushed rather than as a stack's root**, which is the only
-    /// arrangement that has a back button in it to be beside. The scope question this task carried
-    /// was whether a `.topBarLeading` item *supplements* the back button on iOS 26 or *replaces*
-    /// it; a screen hosted at a root answers neither, because there is no back button in its tree
-    /// either way, so a leading item that had swallowed one would leave every assertion here
-    /// green. Measured on iOS 26.5, pushed and answered: Back at x 16–60, the `⋯` at 76–112, Done
-    /// at 317–382. That is what the `back` requirement below holds; the ordering expectations are
-    /// the smaller half.
-    @Test("The day's menu is drawn leading, beside Back, and Done trailing")
-    func theMenuIsLeadingOfDone() async throws {
+    /// arrangement that has a back button in it at all. Nothing is placed leading any more, so
+    /// what that arrangement now holds is the other half of the same claim: Back survived the
+    /// removal, and the swipe it belongs to has something to pop.
+    @Test("The day's menu is drawn trailing, left of the exit and separate from it")
+    func theMenuIsTrailingOfTheExit() async throws {
         let app = try await DayFixture()
         let screen = HostedScreen(PushedDay(day: app.dayView()))
         defer { screen.dismantle() }
@@ -176,46 +293,8 @@ struct DoneButtonTests {
             """)
         await screen.settle()
 
-        let done = try #require(
-            screen.elements(labelled: Self.done).first,
-            """
-            the day drew no Done, so there is nothing to place the menu against. The screen \
-            offers: \(screen.activatableLabels())
-            """)
-        let bar = done.accessibilityFrame
-        // The bar's `⋯`, not the row's: both read *Day options*, and the one being placed is the
-        // one drawn on the same line as Done.
-        let menu = try #require(
-            screen.elements(labelled: DayFixture.menu).first(where: {
-                $0.accessibilityFrame.midY == bar.midY
-            }),
-            """
-            the day drew no overflow menu on the bar, so there is no side for it to be on. Menus \
-            at: \(screen.elements(labelled: DayFixture.menu).map(\.accessibilityFrame))
-            """)
-        let back = try #require(
-            screen.accessibilityElements().first(where: {
-                Self.backLabels.contains($0.accessibilityLabel ?? "")
-                    && $0.accessibilityTraits.contains(.button)
-            }),
-            """
-            the pushed day published no back button, so the leading `⋯` replaced it rather than \
-            joining it (FR-18.4.2) — and Back is no longer a way out of the day. What the screen \
-            offers: \(screen.activatableLabels())
-            """)
-
-        #expect(
-            menu.accessibilityFrame.maxX <= bar.minX,
-            """
-            the menu is not leading of Done (FR-18.4.2). Menu at \(menu.accessibilityFrame), \
-            Done at \(bar).
-            """)
-        #expect(
-            back.accessibilityFrame.maxX <= menu.accessibilityFrame.minX,
-            """
-            the menu is not beside Back but in front of it (FR-18.4.2). Back at \
-            \(back.accessibilityFrame), menu at \(menu.accessibilityFrame).
-            """)
+        Self.expectTrailingArrangement(
+            try Self.bar(of: screen, requirement: "FR-18.4.8"), requirement: "FR-18.4.8")
     }
 
     /// `FR-18.4.1`: Done writes nothing, with every row unanswered.

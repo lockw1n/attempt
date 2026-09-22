@@ -156,12 +156,15 @@ public struct PastSessionView: View {
         // `Q-18.3` at (a): on both drawings, because the lifter does not know which one they are
         // in and a toolbar that changed with the session's provenance would be a thing to explain.
         .sessionDone(label: LoggingStrings.pastSessionDoneAction)
-        // Leading, beside Back (`FR-18.7.3`) — where the day's is (`FR-18.4.2`), and Done keeps
-        // the trailing corner. Both drawings, for the toolbar's own reason above.
+        // Trailing, left of the exit (`FR-18.7.3` as annotated) — where the day's is
+        // (`FR-18.4.8`). Both drawings, for the toolbar's own reason above.
+        //
+        // **After `sessionDone`, which is what puts it before the exit on the bar**: the outer
+        // modifier's toolbar content is drawn first (measured on iOS 26.5). See
+        // `sessionDone(label:)`, and `PastSessionMenuTests.theMenuIsTrailingOfTheExit`.
         .sessionOverflow(
             contents: Self.menuContents(
                 date: state.session?.date, hasEnded: state.session?.isFinished == true),
-            side: .leading,
             changeDate: { chosen in Task { await state.changeDate(to: chosen) } },
             commands: menuCommands
         )

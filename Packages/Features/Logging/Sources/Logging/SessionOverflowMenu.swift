@@ -260,10 +260,6 @@ extension View {
     ///     until the menu has been opened, its button declines `accessibilityActivate()`, and a
     ///     presented menu's commands belong to another window. So which host offers which command
     ///     is a claim that has to be made somewhere assertable, and this is the seam.
-    ///   - side: Which corner the `⋯` sits in. **Required, with no default** (`T-16.17`), because
-    ///     the two hosts now disagree: a planned day's menu moved leading to leave the trailing
-    ///     corner to Done (`FR-18.4.2`), and the free workout keeps its toolbar exactly
-    ///     (`OUT-18.6`). A default here would move one of them silently.
     ///   - changeDate: Moves the workout to another training day — or, where the host said
     ///     `startsWhenDated`, creates it on that day (`FR-18.7.1`).
     ///   - commands: What the menu's other items do. **One value, and every handler in it is
@@ -273,23 +269,19 @@ extension View {
     /// - Returns: The screen, with the menu and the sheet.
     func sessionOverflow(
         contents: SessionMenuContents,
-        side: SessionToolbarSide,
         changeDate: @escaping (Date) -> Void,
         commands: SessionMenuCommands
     ) -> some View {
         modifier(
             SessionOverflowModifier(
-                contents: contents, side: side, changeDate: changeDate, commands: commands))
+                contents: contents, changeDate: changeDate, commands: commands))
     }
 }
 
-/// See `sessionOverflow(contents:side:changeDate:commands:)`.
+/// See `sessionOverflow(contents:changeDate:commands:)`.
 struct SessionOverflowModifier: ViewModifier {
     /// Which commands the menu holds, and the day its picker opens on.
     let contents: SessionMenuContents
-
-    /// Which corner the `⋯` sits in.
-    let side: SessionToolbarSide
 
     /// Moves the workout to another training day, or creates it on one.
     let changeDate: (Date) -> Void
@@ -307,7 +299,11 @@ struct SessionOverflowModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .toolbar {
-                ToolbarItem(placement: side.placement) {
+                // `.primaryAction` rather than `.topBarTrailing`, and it is the spelling that
+                // matters rather than the corner: the two agree on iOS, this is the one the free
+                // workout's `⋯` already had, and `OUT-18.6` keeps that toolbar exactly. All three
+                // hosts share it since `FR-18.4.8`, which is why there is no `side` to pass.
+                ToolbarItem(placement: .primaryAction) {
                     if !contents.items.isEmpty {
                         SessionOverflowMenu(
                             contents: contents,

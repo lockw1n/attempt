@@ -97,8 +97,18 @@ struct PastSessionMenuTests {
     ///
     /// **Hosted pushed rather than at a root**, for that test's reason: a root has no back button,
     /// so a leading item that had swallowed one would leave every assertion green.
-    @Test("The past session's menu is drawn leading, beside Back, and Done trailing")
-    func theMenuIsLeadingOfDone() async throws {
+    /// `FR-18.7.3` as annotated: the `⋯` moved **trailing**, left of the exit and separate from
+    /// it — where the day's now is (`FR-18.4.8`) — and Back has the leading corner to itself.
+    ///
+    /// **The same three claims as ``DoneButtonTests/theMenuIsTrailingOfTheExit``, on the host
+    /// that reaches them differently**: this screen's menu is drawn from the first moment (there
+    /// is a finished workout to change the date of), so nothing is answered first, and its
+    /// modifier order was the *reverse* of the day's while the menu was leading — `sessionDone`
+    /// came first. That order is what the separation assertion here is really about: the spacer
+    /// belongs to the exit's modifier and only lands between the two when the menu's is applied
+    /// ahead of it.
+    @Test("The past session's menu is drawn trailing, left of the exit and separate from it")
+    func theMenuIsTrailingOfTheExit() async throws {
         let app = try await DayFixture()
         let sessionID = try await app.writeAFinishedPlannedDay()
         let screen = HostedScreen(
@@ -110,45 +120,8 @@ struct PastSessionMenuTests {
             !screen.accessibilityElements().isEmpty,
             Comment(rawValue: HostedScreen.accessibilityRemedy))
 
-        let done = try #require(
-            screen.elements(labelled: DoneButtonTests.done).first,
-            """
-            the past session drew no Done, so there is nothing to place the menu against. The \
-            screen offers: \(screen.activatableLabels())
-            """)
-        let bar = done.accessibilityFrame
-        // The bar's `⋯` and not a row's: this screen has one of those too (`T-18.10`, **Log**
-        // alone), and both read the same label. The one being placed is on Done's line.
-        let menu = try #require(
-            screen.elements(labelled: DayFixture.menu).first(where: {
-                $0.accessibilityFrame.midY == bar.midY
-            }),
-            """
-            the past session drew no overflow menu on the bar, so there is no side for it to be \
-            on. Menus at: \(screen.elements(labelled: DayFixture.menu).map(\.accessibilityFrame))
-            """)
-        let back = try #require(
-            screen.accessibilityElements().first(where: {
-                DoneButtonTests.backLabels.contains($0.accessibilityLabel ?? "")
-                    && $0.accessibilityTraits.contains(.button)
-            }),
-            """
-            the pushed past session published no back button, so the leading `⋯` replaced it \
-            rather than joining it (FR-18.7.3) — and Back is no longer a way out. What the screen \
-            offers: \(screen.activatableLabels())
-            """)
-
-        #expect(
-            menu.accessibilityFrame.maxX <= bar.minX,
-            """
-            the menu is not leading of Done (FR-18.7.3). Menu at \(menu.accessibilityFrame), \
-            Done at \(bar).
-            """)
-        #expect(
-            back.accessibilityFrame.maxX <= menu.accessibilityFrame.minX,
-            """
-            the menu is not beside Back but in front of it (FR-18.7.3). Back at \
-            \(back.accessibilityFrame), menu at \(menu.accessibilityFrame).
-            """)
+        DoneButtonTests.expectTrailingArrangement(
+            try DoneButtonTests.bar(of: screen, requirement: "FR-18.7.3"),
+            requirement: "FR-18.7.3")
     }
 }

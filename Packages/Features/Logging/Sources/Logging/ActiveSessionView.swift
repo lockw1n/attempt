@@ -213,10 +213,10 @@ public struct ActiveSessionView: View {
             // longer fit the medium one.
             .presentationDetents([.medium, .large])
         }
-        // `FR-17.9.7`'s menu. Trailing, and no Done: this one ends at Finish below (`OUT-18.6`).
+        // `FR-17.9.7`'s menu. Trailing, and no exit: this one ends at Finish below (`OUT-18.6`).
+        // The placement stopped being an argument when the other two joined it here (`FR-18.4.8`).
         .sessionOverflow(
             contents: Self.menuContents(date: store.session?.date),
-            side: .trailing,
             changeDate: { day in Task { await store.changeDate(to: day) } },
             commands: menuCommands
         )

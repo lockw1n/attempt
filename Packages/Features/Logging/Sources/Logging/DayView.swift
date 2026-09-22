@@ -128,21 +128,23 @@ public struct DayView: View {
             // never open at.
             .presentationDetents([.large])
         }
-        // Leading, beside Back (`FR-18.4.2`): the trailing corner is Done's now.
+        .sessionDone(label: LoggingStrings.dayDoneAction)
+        // Trailing, left of the exit and a control of its own (`FR-18.4.8`). Applied *after*
+        // `sessionDone` on purpose, which is what puts it *before* the exit on the bar — measured
+        // on iOS 26.5: the outer modifier's toolbar content is drawn first. See
+        // `sessionDone(label:)`, and `DoneButtonTests.theMenuIsTrailingOfTheExit` for the gate.
         .sessionOverflow(
             contents: Self.menuContents(
                 date: day.date,
                 startsWhenDated: day.hasPlan,
                 offersPlanEditing: day.weekDayID != nil,
                 progress: day.progress),
-            side: .leading,
             changeDate: { chosen in Task { await day.changeDate(to: chosen) } },
             commands: SessionMenuCommands(
                 editPlan: openThePlan,
                 skipRemaining: { isConfirmingSkipRemaining = true },
                 discard: { requestDayReset() })
         )
-        .sessionDone(label: LoggingStrings.dayDoneAction)
         .confirmationDialog(
             Text(LoggingStrings.dayLogRemainingConfirmTitle(count: unansweredCount)),
             isPresented: $isConfirmingLogRemaining,
