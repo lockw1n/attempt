@@ -550,6 +550,11 @@
 "logging.session.set.group.heading %lld" = "Group %lld";
 "logging.session.set.group.not-done" = "Not done";
 "logging.session.set.group.every-empty.hint" = "Every group is at 0 sets. Use Skip this exercise below to record that you did not do it.";
+/* The same line at an accessibility type size, where FR-18.6.9 has moved the command it names out
+   of this footer and into the scrolling form: "below" would then point past the bottom of the
+   sheet. Two keys rather than one neutral wording, so the default size keeps the direction it can
+   actually be given — and so no default-size reference moves for this. */
+"logging.session.set.group.every-empty.hint.in-form" = "Every group is at 0 sets. Use Skip this exercise, at the end of the form, to record that you did not do it.";
 
 /* FR-17.9.4's difference, called out beside what was actually done. The separator is a string
    rather than a comma: not every language joins clauses with one (G-3.4). */

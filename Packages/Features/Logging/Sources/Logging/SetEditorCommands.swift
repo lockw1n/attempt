@@ -126,14 +126,24 @@ struct SetEditorCommands: View {
     /// **Not a ``FieldRefusal``**, which is the negative colour and a warning glyph: nothing is
     /// wrong here. It reads as guidance because it is, and it names the button directly beneath
     /// it rather than describing it.
+    ///
+    /// **So it has to be told where that button is** (`FR-18.6.9`). At an accessibility size
+    /// ``SetEditorRoom`` has put the skip at the foot of the scrolling form, above this footer and
+    /// possibly scrolled off it, and a line reading *below* would then point past the bottom of the
+    /// sheet — in the one state it is drawn in, which is the one where nothing can be saved and the
+    /// lifter is looking for exactly that command.
     private var skipHint: some View {
-        Text(LoggingStrings.setEveryGroupEmptyHint)
-            .font(Typography.caption.font)
-            .foregroundStyle(ColorToken.textSecondary)
-            // Wraps rather than truncates, for `FieldRefusal`'s reason: inside a pinned footer a
-            // `Text` is given the height it asks for only if it says so.
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        Text(
+            room.pinsTheSkip
+                ? LoggingStrings.setEveryGroupEmptyHint
+                : LoggingStrings.setEveryGroupEmptyHintInForm
+        )
+        .font(Typography.caption.font)
+        .foregroundStyle(ColorToken.textSecondary)
+        // Wraps rather than truncates, for `FieldRefusal`'s reason: inside a pinned footer a
+        // `Text` is given the height it asks for only if it says so.
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// `FR-1.2.7`'s deletion, last and behind a confirmation.

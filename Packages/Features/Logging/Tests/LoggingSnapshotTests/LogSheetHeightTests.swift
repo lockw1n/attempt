@@ -73,12 +73,12 @@
             // not draw. Measured properly: 352.5 → 389.0 pt at `.default`, 476.0 → 540.0 at
             // `accessibility3`.
             //
-            // MEASURED AT BOTH SIZES, AND THE ASSERTION SAYS WHICH. `FR-17.1.6` is claimed at the
-            // default size only — at `accessibility3` head plus commands already came to more than
-            // a `.large` sheet gets before the sections and before the focus (`T-18.11`,
-            // `requirements.md` v1.15). So the budget is asserted where the requirement is claimed,
-            // and what is asserted at the larger size is what this task is answerable for: one
-            // heading, not a second form.
+            // MEASURED AT BOTH SIZES, AND SO IS THE BUDGET — each against its own device's
+            // constant. This read `if typeSize == .default` while `FR-17.1.6` was claimed at the
+            // default size only; `FR-18.6.9` claims it at `accessibility3` too, so the guard was
+            // an arm that had stopped asserting on its second pass. The constants differ because
+            // the devices do (see ``SetEditorSheet/smallestModernSheet``), which is the whole of
+            // why this is a `?:` over two literals rather than one budget read twice.
             for typeSize in [SnapshotTypeSize.default, .accessibility3] {
                 let one = try Self.headHeight(LogSheetFixtures.unanswered, at: typeSize)
                 let two = try Self.headHeight(LogSheetFixtures.twoSections, at: typeSize)
@@ -92,9 +92,10 @@
                 // And it is one heading's worth: a second form hoisted into the head would double
                 // the three fields, which is far more than the heading plus its own spacing.
                 #expect(two - one < one / 2)
-                if typeSize == .default {
-                    #expect(two + commands < SetEditorSheet.smallestScreen - 20.0)
-                }
+                let budget =
+                    typeSize == .default
+                    ? SetEditorSheet.smallestScreen - 20.0 : SetEditorSheet.smallestModernSheet
+                #expect(two + commands < budget)
             }
         }
 
@@ -175,7 +176,29 @@
                     LogSheetFixtures.form(over: LogSheetFixtures.twoSections, skip: nil),
                     at: typeSize)
                 print("FR-18.6.9 form at \(typeSize): with skip \(offering) pt, without \(without)")
-                // At the default size the skip is pinned, so this region does not know it exists.
+                if typeSize == .default {
+                    // The skip is pinned, so this region does not know it exists: a `skip` handed
+                    // to it changes nothing it draws. Asserted rather than assumed, because it is
+                    // the half that says the move is a MOVE — a form drawing the command at every
+                    // size would leave it in both places and pass the accessibility arm below.
+                    #expect(offering == without)
+                } else {
+                    // And at an accessibility size the region grows by the command arriving in it.
+                    //
+                    // 136.0 AND NOT THE FOOTER'S 132.0, WHICH IS THE INTERESTING PART. The button
+                    // itself is 120 pt at this size; what it costs is that plus the gap of the
+                    // stack it joins, and the two stacks do not agree — this form is
+                    // `Spacing.lg` (16) and the footer is `Spacing.md` (12). So the move hands the
+                    // pinned region back 132 and spends 136, 4 pt more than it saved. That is
+                    // free: those 4 pt are inside the scroll view, and `FR-18.6.9`'s budget is
+                    // over what the sheet OPENS with — head plus what is pinned, 761 against 788,
+                    // which `weightAndRepsOpenAtAccessibilitySizes` asserts unchanged.
+                    //
+                    // Pinned as a literal rather than as `> 0`, because a difference of any size
+                    // would also be satisfied by the command landing here in a smaller emphasis,
+                    // or twice, or in a stack it was never meant to join.
+                    #expect(offering - without == 136.0)
+                }
             }
         }
 

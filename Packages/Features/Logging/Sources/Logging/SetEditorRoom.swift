@@ -24,10 +24,14 @@ enum SetEditorRoom: Equatable {
     /// **`isAccessibilitySize` rather than a literal size**, because `accessibility1`–`5` all take
     /// this layout; the figures behind it were struck at `accessibility3`.
     ///
-    /// **A checklist row's sheet only** (`OUT-18.6`). A free workout's form has one section and
-    /// draws no skip: 476 pt of head against a row's 540, and 221 pt of pinned commands against
-    /// 353 — 697 pt in all, inside the budget already. It is not short of the room this trades
-    /// away, so it pays nothing for it.
+    /// **A checklist row's sheet only, because that is the sheet the claim is made about**
+    /// (`OUT-18.6`). `FR-18.6.9` is `FR-17.1.6`'s, and `FR-17.1.6` is the Log sheet a checklist row
+    /// opens; a free workout's form has one section, draws no skip, and has never been measured at
+    /// an accessibility size with the pad up. It is **not** asserted to fit there — it keeps the
+    /// focus, so it opens with the ≈306 pt pad, and 306 against what a `.large` sheet gets leaves
+    /// less than the head alone needs, exactly as it does for a row. What it does not have is a
+    /// skip to move, so the trade this makes is not available to it either: the layout is withheld
+    /// because it would buy nothing, not because the sheet is comfortable.
     ///
     /// - Parameters:
     ///   - isRow: Whether this is a checklist row's sheet.

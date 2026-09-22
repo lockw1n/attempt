@@ -46,7 +46,22 @@ extension LoggingStrings {
     static let setGroupNotDone = resource("logging.session.set.group.not-done")
 
     /// The line under the sections when every one of them is at zero (`Q-18.7`).
+    ///
+    /// **Says *below* because the command it names is pinned directly beneath it** — which is true
+    /// at every size ``SetEditorRoom`` leaves the skip in the footer, and at no other. See
+    /// ``setEveryGroupEmptyHintInForm``.
     static let setEveryGroupEmptyHint = resource("logging.session.set.group.every-empty.hint")
+
+    /// The same line where ``SetEditorRoom`` has moved **Skip this exercise** into the scrolling
+    /// form (`FR-18.6.9`).
+    ///
+    /// **A second key rather than one direction-free wording**, so that the sizes where the
+    /// command *is* directly beneath the line keep being told so — and so that nothing drawn at the
+    /// default type size moves for this, which is `T-18.21`'s own constraint. This is also the one
+    /// state the hint exists for: it is drawn only while nothing can be saved, which is exactly
+    /// when the lifter is looking for the command it names.
+    static let setEveryGroupEmptyHintInForm = resource(
+        "logging.session.set.group.every-empty.hint.in-form")
 
     // MARK: - The deviation sentence (FR-17.9.4)
 
@@ -109,6 +124,7 @@ extension LoggingStrings {
             setGroupHeading(2),
             setGroupNotDone,
             setEveryGroupEmptyHint,
+            setEveryGroupEmptyHintInForm,
             setDeviationLine(performed: "30 kg × 8 × 3", deviation: "−2 reps"),
             setDeviationWeight("+2.5 kg"),
             setDeviationReps(sign: "−", count: 2),
