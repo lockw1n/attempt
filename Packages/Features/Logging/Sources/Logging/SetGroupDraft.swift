@@ -68,19 +68,31 @@ struct SetDetailDraft: Equatable, Sendable {
 /// will actually be written (`FR-17.1.1`, `NFR-17.3`).
 ///
 /// **Three fields rather than just the rows, and each has a caller.** ``values`` is what the form
-/// says and is what the Planned / Actual pair is measured from; ``sets`` is the count that pair
-/// reports; ``rows`` is what the store writes, which differs from N copies of ``values`` exactly
-/// when the per-set fold was used.
+/// says and is what the Planned / Actual pair is measured from; ``sets`` is every set of the
+/// group, which is what the form's own count field holds; ``rows`` is what the store writes, which
+/// differs from N copies of ``values`` exactly when the per-set fold was used.
 struct ResolvedSetGroup: Equatable, Sendable {
     /// What the form itself says — the load, the reps, and the optional fields as typed above the
     /// fold.
     let values: SetEntryValues
 
-    /// How many sets of it. At least one.
+    /// How many sets of it, warm-ups included. At least one.
     let sets: Int
 
     /// The rows to write, in order — ``sets`` of them.
     let rows: [SetEntryValues]
+
+    /// How many of ``rows`` are work, or ``sets`` where none of them are (`FR-18.6.5`).
+    ///
+    /// **What the Planned / Actual pair counts, because a plan prescribes work.** ``sets`` has to
+    /// be every set — the rewrite is positional — so a group of `1 warm-up + 3 working` reads four
+    /// there, and a line saying `100 kg × 5 × 4` against a plan of `× 3` calls out a deviation the
+    /// lifter did not make. A group of warm-ups alone falls back to ``sets``: `× 0` reads as a
+    /// number they entered (`G-4.5`).
+    var workingSets: Int {
+        let working = rows.filter { !$0.isWarmup }.count
+        return working == 0 ? sets : working
+    }
 }
 
 // MARK: - The group the draft resolves to
@@ -126,8 +138,10 @@ extension SetDraft {
     ///
     /// **An entry built here carries no ``SetDetailDraft/storedWeight``**, so every row it writes
     /// takes the group's load. That is the rule for a set *added* in the sheet, and it is also what
-    /// ``resettingDetails()`` costs a stored warm-up: once the form's reps or set count have moved,
-    /// the entries no longer stand one to one over the stored sets they were filled from.
+    /// ``resettingDetails()`` costs a stored one: once the form's reps or set count have moved, the
+    /// entries no longer stand one to one over the sets they were filled from, so a stored warm-up
+    /// loses its carried load **and its warm-up mark** — and the switch above the fold says
+    /// *working* already, so it does not move to report either.
     ///
     /// - Parameters:
     ///   - draft: The form to read.
@@ -197,7 +211,7 @@ extension SetDraft {
             values: values, sets: sets, rows: entries.compactMap { Self.row(values, applying: $0) })
     }
 
-    /// One row, the group's load with one set's own answers over it.
+    /// One row — one set's own answers over the group's load, or over the load it carries.
     ///
     /// **The load is the group's unless the entry carries one** (`FR-18.6.8`, `Q-18.11`). A warm-up
     /// stored at its own load keeps it; a warm-up stored at the group's load, which is every one

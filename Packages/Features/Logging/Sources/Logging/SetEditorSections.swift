@@ -48,14 +48,13 @@ struct SetEditorSection: Equatable, Sendable {
 /// after the first warm-up. The second section's fold therefore offers no warm-up of its own
 /// unless one was logged inside that group.
 ///
-/// **A section's load is its *working* sets'** (`FR-18.6.8`). ``loggedGroups(_:)`` partitions the
-/// working sets at ``DerivedValues/SetGrouping/Grain/loadAndReps``, so every working set of one
-/// section already shares a load; a warm-up is placed by position and can therefore sit inside a
-/// section at a lighter one. The form reads the first working set — a group of warm-ups alone falls
-/// back to its first set — and a warm-up stored at a load the form does not say **keeps it** through
-/// the rewrite instead of being flattened to the form's. No per-set load field is added for that
-/// (`OUT-18.16`): the load is carried, and the only sets that can carry one are warm-ups, because a
-/// working set at another load is another section. See ``SetDraft/init(answering:unit:locale:)``.
+/// **A warm-up is the only set that can disagree with its section's load** (`FR-18.6.8`), and that
+/// is this partition's doing: ``loggedGroups(_:)`` groups the *working* sets at
+/// ``DerivedValues/SetGrouping/Grain/loadAndReps``, so the working sets of one section share a
+/// load, while a warm-up is placed by position and can sit inside a section at a lighter one. It is
+/// why no per-set load field is needed (`OUT-18.16`) — a working set at another load is another
+/// section, which has a form of its own. What the section's form then reads, and what a disagreeing
+/// warm-up keeps through the rewrite, is ``SetDraft/init(answering:unit:locale:)``'s.
 struct SetEditorSections: Equatable, Sendable {
     /// The sections, in the order they are drawn.
     private(set) var sections: [SetEditorSection]

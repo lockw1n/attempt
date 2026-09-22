@@ -132,6 +132,45 @@ struct WarmupLoadTests {
         #expect(sections.rows.allSatisfy { $0.isWarmup })
     }
 
+    // MARK: - What the Planned / Actual pair counts (FR-18.6.5)
+
+    @Test("The Actual line counts the working sets, not the warm-up sitting with them")
+    func theActualLineCountsWorkOnly() throws {
+        // The Sets field above the fold is every set of the group, because the rewrite is
+        // positional — but the plan prescribes work, so a line reading `× 4` here calls out a set
+        // the lifter never added. Before `FR-18.6.8` the same line read the warm-up's own load and
+        // was obvious nonsense; reading the working load made it plausible, which is what makes
+        // the count worth fixing.
+        let plan = [WeekPlanTarget(id: UUID(), weight: Weight(grams: 100_000), reps: 5, sets: 3)]
+        let sections = SetEditorSections(
+            answering: SetEditorRow(plan: plan, logged: Self.warmupThenWork),
+            unit: .kilograms,
+            locale: Self.locale)
+        let group = try #require(sections.single.resolvedGroup)
+
+        #expect(group.sets == 4)
+        #expect(group.workingSets == 3)
+        #expect(
+            PlannedActual.actual(
+                of: sections.single, against: plan, precision: nil, locale: Self.locale)
+                == "100 kg \u{00D7} 5 \u{00D7} 3 \u{00B7} as planned")
+    }
+
+    @Test("A group of warm-ups alone counts all of them rather than reading as zero sets")
+    func theActualLineFallsBackForWarmupsAlone() throws {
+        // `G-4.5`: a rendered group of no sets reads as a number the lifter entered.
+        let sections = Self.sections(
+            Self.oneSet(grams: 20_000, reps: 5, order: 0, isWarmup: true)
+                + Self.oneSet(grams: 40_000, reps: 5, order: 1, isWarmup: true))
+        let group = try #require(sections.single.resolvedGroup)
+
+        #expect(group.workingSets == 2)
+        #expect(
+            PlannedActual.actual(
+                of: sections.single, against: [], precision: nil, locale: Self.locale)
+                == "20 kg \u{00D7} 5 \u{00D7} 2")
+    }
+
     // MARK: - DOD-18.13, from History (FR-17.7.5, FR-16.4)
 
     @Test("A past session's warm-up survives a reopen and an untouched save")
