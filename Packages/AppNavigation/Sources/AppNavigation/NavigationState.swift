@@ -92,8 +92,8 @@ public final class NavigationState {
     /// left.
     ///
     /// **Named for where it goes, not for what the caller offers**, since `FR-1.9.4`'s withdrawal
-    /// left it with none that names a workout: Home's first launch (`FR-1.13.2`) and History's
-    /// three empty states — the session list's, the calendar's and the week view's
+    /// left it with four callers, none naming a workout: Home's first launch (`FR-1.13.2`) and
+    /// History's three empty states — the session list's, the calendar's and the week view's
     /// (`FR-17.11.1`). All four offer **Plan your week**, which is what this arrives at
     /// (`FR-17.8.5`) — a caller that named a workout would name something the destination does
     /// not do.

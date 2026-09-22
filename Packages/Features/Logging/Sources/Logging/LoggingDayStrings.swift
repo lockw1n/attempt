@@ -56,7 +56,8 @@ extension LoggingStrings {
     ///
     /// Only a row that holds completed sets asks — see ``DayView/resetConfirmation(for:)``.
     ///
-    /// - Parameter count: How many working sets would be removed.
+    /// - Parameter count: How many completed sets would be removed — warm-ups counted, pending
+    ///   sets not; ``DayRow/loggedSetCount``'s rule.
     /// - Returns: The question.
     static func dayRowResetConfirmTitle(count: Int) -> LocalizedStringResource {
         resource("logging.day.row.reset.confirm.title \(count)")
