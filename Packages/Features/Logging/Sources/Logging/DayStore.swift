@@ -54,6 +54,14 @@ public final class DayStore {
     /// Read through the store for ``rows``'s reason.
     public var date: Date? { store.session?.date }
 
+    /// The workout's session note (`FR-1.2.9`), or empty where there is no workout.
+    ///
+    /// Read through the store for ``rows``'s reason. **Nothing on this screen writes one** — a day
+    /// is a checklist and the note field belongs to the workout screens — so what this exists for
+    /// is `FR-18.4.6`: a note is the one thing on a day that a reset takes away and no tap can put
+    /// back, so whether there is one decides whether the reset asks.
+    var note: String { store.session?.notes ?? "" }
+
     /// The rows the last whole-day command could not answer because their plan named no load
     /// (`FR-15.2.2`, `FR-17.9.9`).
     ///

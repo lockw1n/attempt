@@ -140,7 +140,7 @@ public struct DayView: View {
             commands: SessionMenuCommands(
                 editPlan: openThePlan,
                 skipRemaining: { isConfirmingSkipRemaining = true },
-                discard: { isConfirmingReset = true })
+                discard: { requestDayReset() })
         )
         .sessionDone(label: LoggingStrings.dayDoneAction)
         .confirmationDialog(
@@ -227,6 +227,31 @@ public struct DayView: View {
     static func resetConfirmation(for row: DayRow) -> DayRowResetTarget? {
         guard row.loggedSetCount > 0 else { return nil }
         return DayRowResetTarget(rowID: row.id, setCount: row.loggedSetCount)
+    }
+
+    /// Whether **Reset day** has to ask first (`FR-18.4.6`, `Q-18.14` at (b)).
+    ///
+    /// **Four clauses, and the day holds nothing but its date only when all four are quiet.** The
+    /// row's rule one function up can be narrow because a row's reset removes that row's sets; this
+    /// one removes the whole workout — every mark, every added row and the note — so it asks over
+    /// anything the lifter would have to put back by hand. The note is the sharpest of the four: it
+    /// is the only thing on a day that no tap can redo.
+    ///
+    /// **A row with no plan is a row the lifter added** (`FR-1.2.2`), which is ``DayRowCircle``'s
+    /// reading of the same emptiness — and this is only ever asked where the day has a workout, the
+    /// menu's destructive item being drawn on a date alone (``SessionMenuContents``).
+    ///
+    /// - Parameters:
+    ///   - rows: The day's rows.
+    ///   - note: The workout's session note — ``DayStore/note``.
+    /// - Returns: Whether the confirmation is owed.
+    static func dayResetAsks(rows: [DayRow], note: String) -> Bool {
+        if rows.contains(where: { $0.loggedSetCount > 0 }) { return true }
+        if rows.contains(where: { $0.answer != .unanswered }) { return true }
+        if rows.contains(where: { $0.plan.isEmpty }) { return true }
+        // Trimmed, on ``SessionNoteDraft/firstLine``'s reading of what a note is: a field holding a
+        // space is not prose the lifter would miss.
+        return !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     /// What this screen's `⋯` holds (`FR-17.9.7`, `FR-18.4.4`, `FR-18.4.5`).
@@ -413,6 +438,19 @@ public struct DayView: View {
         }
         askedSetCount = target.setCount
         resetting = target
+    }
+
+    /// Throws the day's answers away, asking first where there are any (`FR-18.4.5`, `FR-18.4.6`).
+    ///
+    /// ``requestReset(_:)``'s shape one function up: the question is owed or the command goes
+    /// straight through, and the decision is the plain function rather than a condition written
+    /// here.
+    private func requestDayReset() {
+        guard Self.dayResetAsks(rows: day.rows, note: day.note) else {
+            Task { await day.discard() }
+            return
+        }
+        isConfirmingReset = true
     }
 
     /// Opens the week's plan at this day (`FR-18.7.2`).
