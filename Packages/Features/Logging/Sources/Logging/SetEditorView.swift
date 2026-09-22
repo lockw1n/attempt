@@ -198,10 +198,25 @@ struct SetEditorSheet: View {
     /// them, and neither does any fraction worth offering: the nearest one that does is 0.84,
     /// which is `.large` wearing a number.
     ///
-    /// `LogSheetSnapshotTests.weightAndRepsOpenAboveTheCommands` is that measurement, re-run on
+    /// `LogSheetHeightTests.weightAndRepsOpenAboveTheCommands` is that measurement, re-run on
     /// every snapshot pass, so a field added to ``SetEditorHead`` has to be argued against this
     /// rather than silently pushing Reps under the commands.
     static let smallestScreen = 667.0
+
+    /// What a checklist row's sheet gets at an accessibility type size, in points (`FR-18.6.9`).
+    ///
+    /// **A second constant rather than ``smallestScreen`` less a bigger number, because the two are
+    /// struck against different devices.** 667 pt is the smallest screen this app supports at all;
+    /// no iOS 26 device is that small, and the accessibility claim is made on the smallest that
+    /// runs it — the iPhone 17e's 390 × 844. The sheet opens `.large`, whose top edge sits ≈56 pt
+    /// down the screen, measured on the device rather than derived (`T-18.11`).
+    ///
+    /// **And it is the budget with the keyboard *down*, which is the state this sheet now opens
+    /// in at that size** (`Q-18.12`). The decimal pad costs a further ≈306 pt; nothing is expected
+    /// to fit beside it, and `FR-18.6.1`'s focus is what was given up so that nothing has to.
+    ///
+    /// `LogSheetHeightTests.weightAndRepsOpenAtAccessibilitySizes` is that measurement.
+    static let smallestModernSheet = 788.0
 
     /// The sections a checklist row draws, or a free workout's one form.
     ///
@@ -210,7 +225,14 @@ struct SetEditorSheet: View {
     @ViewBuilder private var fields: some View {
         if mode.isRow {
             SetEditorRowFields(
-                sections: $sections, mode: mode, vocabulary: vocabulary, equipment: equipment)
+                sections: $sections,
+                mode: mode,
+                vocabulary: vocabulary,
+                equipment: equipment,
+                // The same closure the pinned commands are handed: each end asks
+                // ``SetEditorRoom`` which of them draws it, so it is never in both and never in
+                // neither.
+                skip: skip)
         } else {
             SetEditorFields(
                 draft: Binding(

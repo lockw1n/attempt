@@ -81,8 +81,16 @@ cd "$(dirname "$0")/.."
 #                     tests could have vanished unnoticed. Set to its own count now, as every other
 #                     suite is — "above the 19" was a margin that only ever grew.
 #   ExerciseLibrary: 44 tests, all of them reference-backed, no probes -> 44, its own count.
-#   Logging:         105 tests, 98 reference-backed, a width probe and six layout budgets
-#                                                                    -> 105, its own count.
+#   Logging:         107 tests, 98 reference-backed, a width probe and eight layout budgets
+#                                                                    -> 107, its own count.
+#                     T-18.21 added the two that carry FR-18.6.9: the opening height at
+#                     `accessibility3` against a DIFFERENT device's budget (788 pt, not 667 —
+#                     no iOS 26 device is 667 pt tall), and the one that reads the skip arriving
+#                     at the foot of the form. The second exists because the first cannot see it:
+#                     the pinned region getting 132 pt shorter is not the command appearing
+#                     anywhere, and a change that simply dropped it would pass every budget here.
+#                     It added no reference — the count stayed 392 and 18 of them re-recorded,
+#                     every one a `Log-sheet-*` at `accessibility3`.
 #                     T-18.22 added `Day-two-group-records`, which is `DOD-18.15`: the one
 #                     reference in this suite whose row performs TWO runs, and therefore the only
 #                     one that can see a badge rule written per exercise rather than per group.
@@ -124,7 +132,7 @@ cd "$(dirname "$0")/.."
 SUITES=(
     "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|37"
     "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|44"
-    "Packages/Features/Logging|Logging|LoggingSnapshotTests|105"
+    "Packages/Features/Logging|Logging|LoggingSnapshotTests|107"
     "Packages/Features/History|History|HistorySnapshotTests|28"
     "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|20"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|49"

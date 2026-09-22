@@ -9,7 +9,7 @@ import SwiftUI
 /// **Its own type because that requirement is a measurement rather than a picture**, and the
 /// measurement has to be taken over the thing the sheet draws rather than over a stack rebuilt in a
 /// test (T-16.17). It holds exactly what the requirement names and nothing else — so the assertion
-/// in `LogSheetSnapshotTests` is the requirement rather than a proxy for it, and a field added here
+/// in `LogSheetHeightTests` is the requirement rather than a proxy for it, and a field added here
 /// later has to be argued against the budget rather than silently pushing Reps under the commands.
 ///
 /// **Sets and the plate row are deliberately outside it.** Measured at the default type size: the
@@ -37,7 +37,8 @@ struct SetEditorHead: View {
     ///
     /// **It decides three things and they belong together**: the sheet's own heading is drawn
     /// above this section and no other, this is the Weight that takes the keyboard when the sheet
-    /// opens (`FR-18.6.1`), and this is the section that reads the gym. A second section that ran
+    /// opens at all (`FR-18.6.1`, and ``SetEditorRoom`` decides whether it does), and this is the
+    /// section that reads the gym. A second section that ran
     /// the first would move the heading into the middle of the form; one that ran the second would
     /// take the keyboard off the first; one that ran the third would re-read the same plates once
     /// per planned group.
@@ -55,6 +56,12 @@ struct SetEditorHead: View {
     /// **Taken on appearance, so the sheet opens on the number the lifter came to change.** The
     /// flow that reaches this form has already named the exercise — the tester's complaint was that
     /// the load then cost a tap of its own before a digit could be typed.
+    ///
+    /// **Except at an accessibility size on a checklist row's sheet, where it waits for that tap**
+    /// (`FR-18.6.9`, `Q-18.12`). The pad costs ≈306 pt and the two-section head 540: raised at open
+    /// there is no room left for Reps, so the requirement this was written for loses to the one it
+    /// was measured against. See ``SetEditorRoom``. The tap still gets the whole value offered —
+    /// ``hasSelectedOnOpen`` is false until the first focus, whenever that arrives.
     ///
     /// **The heading loses the first announcement to this, and that is accepted rather than
     /// unnoticed.** Taking focus moves the accessibility cursor to Weight, and the sheet carries no
@@ -84,6 +91,15 @@ struct SetEditorHead: View {
     /// would take the caret away from someone who had aimed it at a digit.
     @State private var hasSelectedOnOpen = false
 
+    /// The reader's chosen type size — what decides whether the keyboard rises at open
+    /// (`FR-18.6.9`).
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// What the sheet has room for at the reader's type size — see ``SetEditorRoom``.
+    private var room: SetEditorRoom {
+        .at(isRow: mode.isRow, isAccessibilitySize: dynamicTypeSize.isAccessibilitySize)
+    }
+
     /// The heading, the question where there is one, and the fields that decide what is written.
     ///
     /// **One head per section, and ``isFirstSection`` is what says which of them opens focused**
@@ -105,7 +121,11 @@ struct SetEditorHead: View {
         // Read here rather than in the row below it, so one read answers a weight the user steps
         // through with the ± pair — and so the row does not re-read every time the field empties.
         .task { if isFirstSection { await equipment.load() } }
-        .onAppear { if isFirstSection { isEnteringWeight = true } }
+        // Two conditions, and the second is `FR-18.6.1` narrowed to the sizes it can be kept at
+        // (`Q-18.12`). The pad costs ≈306 pt: at an accessibility size a sheet that raised it at
+        // open would have less room left than this head alone needs, so the keyboard waits for the
+        // first tap and Weight and Reps are both on screen instead (`FR-17.1.6`, `FR-18.6.9`).
+        .onAppear { if isFirstSection && room.takesTheKeyboardOnOpen { isEnteringWeight = true } }
         // Not gated on `isFirstSection`: only the *opening* focus is the first section's, and the
         // selection rule is every section's — see that property.
         .onChange(of: isEnteringWeight) { applyTheFocusChange() }

@@ -127,129 +127,6 @@
             }
         }
 
-        // MARK: - FR-17.1.6's opening height, as a number
-
-        @Test func weightAndRepsOpenAboveTheCommands() throws {
-            // FR-17.1.6 asserted on the rendering's own height rather than by eye, on
-            // `theFirstSetRowIsInsideTheFirstScreen`'s pattern.
-            //
-            // THE BUDGET. The smallest device this app supports is 375 × 667 pt and this sheet
-            // opens `.large`, so it gets the screen less the status bar. Nothing is subtracted for
-            // a navigation bar or a tab bar: a sheet covers both.
-            //
-            // WHAT IS MEASURED, AND WHY IT IS EXACTLY THE REQUIREMENT. The two regions the sheet
-            // stacks in this mode, each rendered as the sheet draws it: `SetEditorHead` — which
-            // holds the heading, Weight and Reps and nothing else — and the pinned commands. Sets
-            // and the plate row scroll and are not counted, which is `FR-17.1.6`'s own wording: it
-            // names Weight and Reps. The pinned plan line is not counted because a checklist row
-            // does not draw one — its reference is `PlannedActualPair`, inside the scroll view.
-            //
-            // THIS IS WHAT PUT THE SHEET AT `.large`. Measured with the plate row still between
-            // Weight and Reps the head was 447 pt and the total 648.5 — inside 667 only by the
-            // status bar, and over it the moment a label wrapped. Moving that row below the fold
-            // brings the head to 352.5 and the total to 554.
-            //
-            // WHAT IS SUBTRACTED. `Snapshot.render` pads every subject by `Spacing.lg` on all four
-            // sides and the sheet does not, so the vertical 32 pt per region is the harness's. The
-            // horizontal padding is left where it is, which keeps this conservative: the content is
-            // rendered 32 pt narrower than the device would, so more labels wrap here than there.
-            let budget = SetEditorSheet.smallestScreen - 20.0
-            let regions: [(String, AnyView)] = [
-                ("head", AnyView(LogSheetFixtures.head(over: LogSheetFixtures.unanswered))),
-                ("commands", AnyView(LogSheetFixtures.commands)),
-            ]
-            var points = 0.0
-            for (name, region) in regions {
-                let rendered = try Snapshot.render(
-                    fixedEnvironment { region }, appearance: .light, typeSize: .default)
-                let height = Double(rendered.height) / Snapshot.scale - 2 * Spacing.lg.points
-                print("FR-17.1.6 region \(name): \(height) pt")
-                points += height
-            }
-            print("FR-17.1.6 Log sheet opening height: \(points) pt against a \(budget) pt budget")
-            #expect(points < budget)
-        }
-
-        @Test func aSecondSectionCostsOneHeadingAndStaysInsideTheBudget() throws {
-            // `FR-18.6.2` against `FR-17.1.6`: the claim is about what the budget is measured over,
-            // not the sheet's total height. Sections below the first scroll, so all a second
-            // section costs the opening height is the *Group 1* heading it gives the first — and
-            // this measures that the cost is that and nothing more.
-            //
-            // THIS ASSERTED `one == two` UNTIL REVIEW, and held because `head(over:)` passed no
-            // `sectionTitle` — both arms drew a head with no heading, over a view the sheet does
-            // not draw. Measured properly: 352.5 → 389.0 pt at `.default`, 476.0 → 540.0 at
-            // `accessibility3`.
-            //
-            // MEASURED AT BOTH SIZES, AND THE ASSERTION SAYS WHICH. `FR-17.1.6` is claimed at the
-            // default size only — at `accessibility3` head plus commands already came to more than
-            // a `.large` sheet gets before the sections and before the focus (`T-18.11`,
-            // `requirements.md` v1.15). So the budget is asserted where the requirement is claimed,
-            // and what is asserted at the larger size is what this task is answerable for: one
-            // heading, not a second form.
-            for typeSize in [SnapshotTypeSize.default, .accessibility3] {
-                let one = try Self.headHeight(LogSheetFixtures.unanswered, at: typeSize)
-                let two = try Self.headHeight(LogSheetFixtures.twoSections, at: typeSize)
-                let commands = try Self.height(
-                    LogSheetFixtures.commands(canSave: true), at: typeSize)
-                print(
-                    "FR-18.6.2 head at \(typeSize): one section \(one) pt, two \(two) pt, "
-                        + "commands \(commands) pt")
-                // The heading is drawn and it is not free — an equality here is the defect above.
-                #expect(two > one)
-                // And it is one heading's worth: a second form hoisted into the head would double
-                // the three fields, which is far more than the heading plus its own spacing.
-                #expect(two - one < one / 2)
-                if typeSize == .default {
-                    #expect(two + commands < SetEditorSheet.smallestScreen - 20.0)
-                }
-            }
-        }
-
-        @Test func theDisabledStateIsTheOnlyThingThatGrowsTheCommands() throws {
-            // The other half of the budget: the **pinned** region, where `Q-18.7`'s line appears.
-            // A footer that grows takes the growth out of the scroll view rather than out of the
-            // sheet, and the state it appears in is the one where nothing is going to be written
-            // — so a lifter logging anything at all never sees it.
-            for typeSize in [SnapshotTypeSize.default, .accessibility3] {
-                let saving = try Self.height(LogSheetFixtures.commands(canSave: true), at: typeSize)
-                let refusing = try Self.height(
-                    LogSheetFixtures.commands(canSave: false), at: typeSize)
-                print(
-                    "FR-18.6.3 commands at \(typeSize): \(saving) pt, disabled \(refusing) pt")
-                // Nothing this task added is drawn while the sheet can be saved, so the saveable
-                // figure is the one `FR-17.1.6`'s budget was struck against — pinned at both
-                // sizes rather than at one, because a `||` on the size is an assertion that stops
-                // asserting on its second pass.
-                #expect(saving == (typeSize == .default ? 201.5 : 353.0))
-                #expect(refusing > saving)
-            }
-        }
-
-        /// The height of the region `FR-17.1.6`'s budget is measured over, at one type size.
-        ///
-        /// - Parameters:
-        ///   - sections: What the sheet holds.
-        ///   - typeSize: The size the claim is made at — see the caller's note.
-        /// - Returns: The height in points, the harness's own padding subtracted.
-        static func headHeight(
-            _ sections: SetEditorSections, at typeSize: SnapshotTypeSize
-        ) throws -> Double {
-            try height(LogSheetFixtures.head(over: sections), at: typeSize)
-        }
-
-        /// One region's rendered height, the harness's own padding subtracted.
-        ///
-        /// - Parameters:
-        ///   - region: What to measure.
-        ///   - typeSize: The size the claim is made at.
-        /// - Returns: The height in points.
-        static func height(_ region: some View, at typeSize: SnapshotTypeSize) throws -> Double {
-            let rendered = try Snapshot.render(
-                fixedEnvironment { region }, appearance: .light, typeSize: typeSize)
-            return Double(rendered.height) / Snapshot.scale - 2 * Spacing.lg.points
-        }
-
         // MARK: - Fixtures
 
         /// The Log sheet's regions, in the order and with the paddings the sheet gives them.
@@ -473,15 +350,36 @@
                 over sections: SetEditorSections, plan: [WeekPlanTarget] = plan
             ) -> some View {
                 VStack(spacing: Spacing.sm.points) {
-                    SetEditorRowFields(
-                        sections: .constant(sections),
-                        mode: .row(SetEditorRow(plan: plan)),
-                        vocabulary: Fixtures.vocabulary,
-                        equipment: Fixtures.equipment
-                    )
-                    .padding(Spacing.lg.points)
+                    form(over: sections, plan: plan, skip: {})
+                        .padding(Spacing.lg.points)
                     commands(canSave: !sections.writesNothing)
                 }
+            }
+
+            /// The sheet's scrolling half — every section, and the skip where the sheet's room has
+            /// put it there (`FR-18.6.9`).
+            ///
+            /// **`skip:` is passed at every call rather than defaulted, and the view has no default
+            /// either.** At an accessibility size this is a whole command that moved into this
+            /// region; a fixture that could leave it out would picture the sheet with **Skip this
+            /// exercise** nowhere at all, which is the shape a re-record exists to catch.
+            ///
+            /// - Parameters:
+            ///   - sections: What the form holds.
+            ///   - plan: The row's plan, which decides how many sections there are.
+            ///   - skip: The command, or `nil` for a sheet that offers none.
+            /// - Returns: The scrolling form.
+            static func form(
+                over sections: SetEditorSections,
+                plan: [WeekPlanTarget] = plan,
+                skip: (() -> Void)?
+            ) -> some View {
+                SetEditorRowFields(
+                    sections: .constant(sections),
+                    mode: .row(SetEditorRow(plan: plan)),
+                    vocabulary: Fixtures.vocabulary,
+                    equipment: Fixtures.equipment,
+                    skip: skip)
             }
 
             /// A stable identifier, so a reference does not move because a UUID did.

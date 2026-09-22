@@ -52,6 +52,15 @@ struct SetEditorCommands: View {
     /// belongs to a control in this footer and must not outlive the sheet it was raised from.
     @State private var isConfirmingDelete = false
 
+    /// The reader's chosen type size — what decides whether the skip is pinned here or scrolls
+    /// with the form (`FR-18.6.9`).
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// What this footer holds at the reader's type size — see ``SetEditorRoom``.
+    private var room: SetEditorRoom {
+        .at(isRow: mode.isRow, isAccessibilitySize: dynamicTypeSize.isAccessibilitySize)
+    }
+
     /// The rule, the refusal where there is one, then the commands.
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md.points) {
@@ -71,11 +80,12 @@ struct SetEditorCommands: View {
                 .buttonStyle(.primaryAction(.fill))
                 .disabled(!canSave)
 
-                if let skip {
-                    Button(action: skip) {
-                        Text(LoggingStrings.daySkipAction)
-                    }
-                    .buttonStyle(.secondaryAction(.fill))
+                // Pinned at every size but an accessibility one, where the 132 pt it costs here is
+                // what puts Reps below the fold — see ``SetEditorRoom``. There it is drawn at the
+                // foot of the scrolling form instead, by ``SetEditorRowFields``, and never in
+                // neither place: one `skip` reaches both, and each asks the same rule.
+                if room.pinsTheSkip, let skip {
+                    SetEditorSkipCommand(skip: skip)
                 }
 
                 Button(action: cancel) {
@@ -154,6 +164,25 @@ struct SetEditorCommands: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// **Skip this exercise** (`FR-17.9.6`), wherever ``SetEditorRoom`` has put it.
+///
+/// **A view of its own because the command has two homes and one appearance** — pinned beside the
+/// confirming command, or at the foot of the scrolling form at an accessibility size. Written out
+/// at both call sites the two would drift, and the size at which they differ is the one nobody
+/// looks at.
+struct SetEditorSkipCommand: View {
+    /// Records that the lifter is not doing this exercise today.
+    let skip: () -> Void
+
+    /// The command, full width, in the secondary emphasis a row's answer takes.
+    var body: some View {
+        Button(action: skip) {
+            Text(LoggingStrings.daySkipAction)
+        }
+        .buttonStyle(.secondaryAction(.fill))
     }
 }
 

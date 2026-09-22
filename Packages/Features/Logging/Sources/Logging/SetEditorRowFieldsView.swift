@@ -32,7 +32,25 @@ struct SetEditorRowFields: View {
     /// The gym `FR-1.4.1`'s loading is worked out on.
     let equipment: PlateCalculatorStore
 
-    /// The sections, stacked.
+    /// Records that the lifter is not doing this exercise today (`FR-17.9.6`), or `nil` where the
+    /// sheet offers no skip at all — a past day's correction does not (`PastSessionView`).
+    ///
+    /// **No default, and that is what a fixture is stopped by.** These references are composed
+    /// rather than rendered as the sheet, so a parameter this form could be built without is a
+    /// parameter a reference can silently omit — and at an accessibility size this one is a whole
+    /// command. A caller has to say which sheet it is building.
+    let skip: (() -> Void)?
+
+    /// The reader's chosen type size — what decides whether the skip belongs here or stays pinned
+    /// (`FR-18.6.9`).
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// What the sheet has room for at the reader's type size — see ``SetEditorRoom``.
+    private var room: SetEditorRoom {
+        .at(isRow: mode.isRow, isAccessibilitySize: dynamicTypeSize.isAccessibilitySize)
+    }
+
+    /// The sections, stacked, with the skip beneath them where it has been moved here.
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.lg.points) {
             ForEach(sections.sections.indices, id: \.self) { index in
@@ -50,6 +68,12 @@ struct SetEditorRowFields: View {
                 SetDetailsFold(draft: binding(at: index), vocabulary: vocabulary)
                     .onChange(of: sections.sections[index].draft.repsText) { reset(index) }
                     .onChange(of: sections.sections[index].draft.setsText) { reset(index) }
+            }
+            // Last, and after every section rather than after the first: it answers the whole
+            // exercise, which is what the sections together are. Reached by VoiceOver between the
+            // final fold and the pinned **Save as done**.
+            if !room.pinsTheSkip, let skip {
+                SetEditorSkipCommand(skip: skip)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
