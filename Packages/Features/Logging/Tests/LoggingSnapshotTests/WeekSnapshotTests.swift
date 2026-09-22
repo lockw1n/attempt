@@ -140,15 +140,67 @@
             }
         }
 
-        /// `FR-17.9.9`'s two whole-day commands, drawn under the rows they would answer for.
+        /// `FR-17.9.9`'s whole-day command, drawn under the rows it would answer for — and, since
+        /// `FR-18.4.4`, the only one there: **Skip remaining** is in the day's `⋯`, which no
+        /// content snapshot pictures.
         @Test func dayFootCommands() throws {
             try assertSnapshots(named: "Day-foot-commands") {
                 fixedEnvironment {
                     VStack(alignment: .leading, spacing: Spacing.lg.points) {
                         DayFixtures.section(DayFixtures.notStarted)
-                        DayFootCommands(logRemaining: {}, skipRemaining: {})
+                        DayFootCommands(logRemaining: {})
                     }
                 }
+            }
+        }
+
+        /// `FR-18.3.1`, `FR-18.3.2` and `NFR-18.2`, on the row that is hardest for all three: the
+        /// longest name the catalogue holds over a plan that names two groups.
+        ///
+        /// **Two rows, because the scheme column has two jobs.** The first is unanswered, which is
+        /// the column on its own; the second deviated, which is the column twice under two labels.
+        /// The `accessibility3` pair is where `NFR-18.2` is proved — 320 pt, narrower than any
+        /// device that runs iOS 26 — and the default pair is where a truncation invisible there
+        /// would be (`T-1.91`).
+        @Test func dayLongNameTwoGroups() throws {
+            try assertSnapshots(named: "Day-long-name") {
+                fixedEnvironment { DayFixtures.section(DayFixtures.longNameTwoGroups) }
+            }
+        }
+
+        /// `DOD-18.15`: an answered row that departed from its plan, drawn as a hierarchy —
+        /// the name semibold, the planned numbers secondary, the did numbers primary
+        /// (`FR-18.3.6`, `FR-18.3.7`) — with **a badge under each group that set a record**
+        /// (`FR-18.3.8`).
+        ///
+        /// **The whole of what `F-21` and `F-22` asked for is in this one pair of pictures**, and
+        /// both halves are invisible in every other `Day-*` reference: the others answer one group,
+        /// where there is no second badge to drop and no *Planned* line to read the *Did* line
+        /// against.
+        @Test func dayTwoGroupRecords() throws {
+            try assertSnapshots(named: "Day-two-group-records") {
+                fixedEnvironment { DayFixtures.section([DayFixtures.twoGroupRecords]) }
+            }
+        }
+
+        /// `FR-18.3.2`'s "the same alignment", on the row that can break it: an open-load plan
+        /// (`FR-15.2.2`, `12 × 3`) answered with a real load (`24 kg × 12 × 3`).
+        ///
+        /// **The two lines render to very different widths**, so a shape chosen per line would
+        /// put *Planned* beside its numbers and *Did* above its own — which is what this pictures
+        /// not happening. No other `Day-*` fixture can: every one of them has a plan and a
+        /// performance of the same rendered width.
+        @Test func dayAnsweredWidthsDiffer() throws {
+            try assertSnapshots(named: "Day-answered-widths") {
+                fixedEnvironment { DayFixtures.section([DayFixtures.openLoadLogged]) }
+            }
+        }
+
+        /// The same pair of facts on the week's card (`FR-18.3.3`, `Q-18.2` at (a)): the name left
+        /// and wrapping, the scheme right, falling to the day row's shape at accessibility sizes.
+        @Test func weekLongNameTwoGroups() throws {
+            try assertSnapshots(named: "Week-long-name") {
+                fixedEnvironment { WeekFixtures.section(days: WeekFixtures.longNames) }
             }
         }
 
@@ -208,6 +260,21 @@
             }
         }
 
+        /// `Q-18.2`'s card: one line whose name is the longest the catalogue holds and whose plan
+        /// names two groups, and one ordinary line under it so the numbers have a column to form.
+        static var longNames: [WeekDayCard] {
+            [
+                WeekDayCard(
+                    dayIndex: 0,
+                    name: "Chest day",
+                    plan: [
+                        line(DayFixtures.longName, targets: DayFixtures.twoGroups),
+                        line("Dumbbell Fly", grams: 12_000),
+                    ],
+                    progress: .notStarted)
+            ]
+        }
+
         /// A day drawn to its header and its command, with no plan under them — the height the
         /// budget above is measured to.
         ///
@@ -250,6 +317,21 @@
         ///   - grams: Its prescribed load, or `nil` for `FR-15.2.2`'s blank target.
         /// - Returns: The line.
         static func line(_ name: String, grams: Int?) -> WeekPlanLine {
+            line(
+                name,
+                targets: [
+                    WeekPlanTarget(
+                        id: UUID(), weight: grams.map { Weight(grams: $0) }, reps: 5, sets: 5)
+                ])
+        }
+
+        /// The same line over a plan that names more than one group (`FR-15.2.1`).
+        ///
+        /// - Parameters:
+        ///   - name: The lift.
+        ///   - targets: What it prescribes, in order.
+        /// - Returns: The line.
+        static func line(_ name: String, targets: [WeekPlanTarget]) -> WeekPlanLine {
             WeekPlanLine(
                 id: UUID(),
                 exercise: Exercise(
@@ -268,109 +350,7 @@
                     isCustom: false,
                     isArchived: false,
                     notes: ""),
-                targets: [
-                    WeekPlanTarget(
-                        id: UUID(),
-                        weight: grams.map { Weight(grams: $0) },
-                        reps: 5,
-                        sets: 5)
-                ])
-        }
-    }
-
-    /// The days these references render (`FR-17.9`).
-    ///
-    /// EVERY ROW'S TRAILING MENU DRAWS AS A PLACEHOLDER, on this package's standing `ImageRenderer`
-    /// note: a `Menu` is UIKit-backed. The **frame is honoured** — 44 × 60 pt, which is what these
-    /// references measure the row's height against — so only the glyph is substituted, and the
-    /// circle beside it renders for real. Read the yellow block as *a control of that size is here*,
-    /// not as a defect, and do not replace it with an `Image` to make the picture prettier: a
-    /// fixture that is not the screen is evidence about the fixture (T-16.17).
-    enum DayFixtures {
-        /// Two rows nobody has answered, both with a load and therefore both with a circle.
-        static var notStarted: [DayRow] {
-            [
-                row("Back Squat", plan: planned(140_000)),
-                row("Romanian Deadlift", plan: planned(100_000)),
-            ]
-        }
-
-        /// The one-line answer.
-        static var asPlanned: DayRow {
-            row("Back Squat", plan: planned(140_000), performed: planned(140_000), answer: .logged)
-        }
-
-        /// The two-line answer — one set short, at a lighter load, and a record all the same.
-        ///
-        /// **The badge is pictured here rather than on the as-planned row**, so one reference shows
-        /// the mark and the other shows the line without it: a set below the plan can still be the
-        /// heaviest ever done at that scheme, which is the case worth a picture (`FR-1.6.3`).
-        static var deviated: DayRow {
-            row(
-                "Bench Press",
-                plan: planned(100_000),
-                performed: [target(95_000, reps: 5, sets: 4)],
-                answer: .logged,
-                records: [
-                    SchemeMark(scheme: RecordScheme(reps: 5, sets: 4), isFirstPerformance: false)
-                ])
-        }
-
-        /// `FR-17.9.6`'s skip.
-        static var skipped: DayRow {
-            row("Barbell Row", plan: planned(80_000), answer: .skipped)
-        }
-
-        /// `FR-15.2.2`'s blank target.
-        static var openLoad: DayRow {
-            row("Ab Wheel", plan: [target(nil, reps: 12, sets: 3)])
-        }
-
-        /// `FR-1.2.2`'s added row: no plan at all.
-        static var added: DayRow {
-            row("Face Pull", plan: [])
-        }
-
-        /// The day's rows, as the screen draws them.
-        ///
-        /// - Parameter rows: The rows.
-        /// - Returns: The section.
-        static func section(_ rows: [DayRow]) -> some View {
-            DayChecklistSection(
-                rows: rows,
-                progress: DayProgress(rows),
-                unit: .kilograms,
-                answer: { _ in },
-                log: { _ in },
-                skip: { _ in })
-        }
-
-        /// One row, over the week fixture's own catalogue row so the two files name one lift once.
-        private static func row(
-            _ name: String,
-            plan: [WeekPlanTarget],
-            performed: [WeekPlanTarget] = [],
-            answer: DayRowAnswer = .unanswered,
-            records: [SchemeMark] = []
-        ) -> DayRow {
-            DayRow(
-                id: UUID(),
-                exercise: WeekFixtures.line(name, grams: nil).exercise,
-                plan: plan,
-                performed: performed,
-                answer: answer,
-                records: records)
-        }
-
-        /// The fixture's standard prescription: five sets of five.
-        private static func planned(_ grams: Int) -> [WeekPlanTarget] {
-            [target(grams, reps: 5, sets: 5)]
-        }
-
-        /// One target group.
-        private static func target(_ grams: Int?, reps: Int, sets: Int) -> WeekPlanTarget {
-            WeekPlanTarget(
-                id: UUID(), weight: grams.map { Weight(grams: $0) }, reps: reps, sets: sets)
+                targets: targets)
         }
     }
 

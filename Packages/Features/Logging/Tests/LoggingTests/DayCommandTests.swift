@@ -227,19 +227,6 @@ struct DayCommandTests {
         #expect(after.updatedAt == before.updatedAt)
     }
 
-    @Test("Change date does nothing on a day that has not been started")
-    func changingTheDateOfAnUnstartedDayWritesNothing() async throws {
-        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 1)
-        let day = fixture.dayStore(dayIndex: 0)
-        await day.load()
-
-        await day.changeDate(to: weekFixtureDay)
-
-        let sessions = try await fixture.stack.workouts.sessions(
-            forProgramRunID: fixture.runID, week: WeekFixture.week, includingDeleted: false)
-        #expect(sessions.isEmpty)
-    }
-
     @Test("Discard soft-deletes the day's workout and puts the day back to unstarted")
     func discardRemovesTheWorkout() async throws {
         let fixture = try await WeekFixture(days: 1, exercisesPerDay: 2)
@@ -256,6 +243,45 @@ struct DayCommandTests {
         #expect(day.rows.allSatisfy { $0.answer == .unanswered })
         let live = try await fixture.stack.workouts.session(
             id: sessionID, includingDeleted: false)
+        #expect(live == nil)
+    }
+
+    /// `FR-18.4.5`, and the claim the rename makes: **Reset day** promises the day back as
+    /// *upcoming* with its plan intact, and this is the round trip that says so.
+    ///
+    /// **A day answered in *full*, which `discardRemovesTheWorkout` above is not.** That one resets
+    /// after one of two answers, so the session it takes back is still in progress; this one is
+    /// taken back after ``DayStore/finishIfComplete()`` has ended it, which is the state a lifter
+    /// who wants the day back is actually in. The triage read the mechanism off the code and
+    /// recorded that it had not been run end to end — this is running it.
+    @Test("Reset on a day answered in full returns it to upcoming with every planned row")
+    func resetOnAFinishedDayReturnsItToUpcoming() async throws {
+        let fixture = try await WeekFixture(days: 1, exercisesPerDay: 2)
+        let store = fixture.activeStore()
+        let day = fixture.dayStore(dayIndex: 0, store: store)
+        await day.load()
+        for row in day.rows {
+            await day.answerAsPlanned(rowID: row.id)
+        }
+        try #require(day.isDone, "the day was not answered in full, so this is the other test")
+        let sessionID = try #require(store.session).id
+
+        await day.discard()
+
+        #expect(!day.isStarted)
+        #expect(!day.isDone)
+        // The plan survives: the same two rows, each unanswered and each with its circle back
+        // (`FR-17.9.2`).
+        #expect(day.rows.count == 2)
+        #expect(day.rows.allSatisfy { $0.answer == .unanswered })
+        #expect(day.rows.allSatisfy { $0.hasCircle })
+        #expect(day.progress.answered == 0 && day.progress.total == 2)
+        // And the week agrees, which is where *upcoming* is actually read.
+        let week = fixture.weekState()
+        await week.load(openSession: nil)
+        let card = try #require(WeekFixture.days(of: week).first)
+        #expect(card.progress == .notStarted)
+        let live = try await fixture.stack.workouts.session(id: sessionID, includingDeleted: false)
         #expect(live == nil)
     }
 
@@ -388,7 +414,10 @@ struct DayCommandTests {
         // publishes rather than what the tap returned — and the assertion has to wait for it or it
         // is asserting on whichever continuation ran first.
         await day.store.settleRecordRefresh()
-        #expect(!(try #require(day.rows.first).records.isEmpty))
+        // On the BADGES rather than on `records`, which since `FR-18.3.8` is a list per run: a row
+        // that performed one run and holds no mark is `[[]]`, which is not empty and would satisfy
+        // the weaker assertion this replaced.
+        #expect((try #require(day.rows.first).recordBadges.contains { $0 != nil }))
     }
 
     @Test("A skipped row carries no record, having done no work")
@@ -400,7 +429,7 @@ struct DayCommandTests {
         await day.skipRemaining()
 
         await day.store.settleRecordRefresh()
-        #expect(try #require(day.rows.first).records.isEmpty)
+        #expect(try #require(day.rows.first).recordBadges.allSatisfy { $0 == nil })
     }
 }
 

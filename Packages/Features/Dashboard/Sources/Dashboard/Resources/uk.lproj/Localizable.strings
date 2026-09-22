@@ -15,16 +15,6 @@
 
 "dashboard.plan-week.action" = "Запланувати тиждень";
 
-"dashboard.last-workout.title" = "Останнє тренування";
-"dashboard.last-workout.none.headline" = "Тренувань ще немає";
-"dashboard.last-workout.none.message" = "Почніть тренування — і воно з’явиться тут, готове до повтору.";
-"dashboard.last-workout.error" = "Не вдалося прочитати ваші тренування.";
-"dashboard.last-workout.in-progress" = "Триває";
-"dashboard.last-workout.sets %lld" = "Робочих підходів: %lld";
-"dashboard.last-workout.resume" = "Продовжити тренування";
-"dashboard.last-workout.repeat" = "Повторити ці вправи";
-"dashboard.last-workout.repeat-error" = "Не вдалося почати нове тренування.";
-
 "dashboard.tiles.title" = "Орієнтовний 1ПМ";
 "dashboard.tiles.error" = "Не вдалося прочитати ваші орієнтовні максимуми.";
 "dashboard.tiles.none.headline" = "На головному екрані немає вправ";
@@ -58,12 +48,21 @@
 "dashboard.first-launch.headline" = "Ваш щоденник тренувань починається тут";
 "dashboard.first-launch.message" = "Запишіть перше тренування — і цей екран заповниться: що ви тренували востаннє, обсяг за тиждень, ваші особисті рекорди й орієнтовні максимуми.";
 
-"dashboard.week.title" = "Цей тиждень";
-"dashboard.week.workouts" = "Тренування";
-"dashboard.week.volume" = "Обсяг";
-"dashboard.week.none" = "Цього тижня ще не записано жодного робочого підходу.";
-"dashboard.week.unweighed" = "Ніщо цього тижня не несе ваги, яку можна зважити, — підходи з власною вагою та з допомогою не додають обсягу.";
-"dashboard.week.error" = "Не вдалося прочитати тренування цього тижня.";
+"dashboard.week.title" = "Цей тиждень і минулий";
+"dashboard.week.this-week" = "Цей тиждень";
+"dashboard.week.last-week" = "Минулий тиждень";
+"dashboard.week.line %@ %@" = "%1$@ · %2$@";
+"dashboard.week.this-week.none" = "Робочих підходів ще немає";
+"dashboard.week.last-week.none" = "Робочих підходів не було";
+"dashboard.week.none" = "Ні цього тижня, ні минулого, ні позаминулого не записано жодного робочого підходу.";
+"dashboard.week.unweighed" = "Немає ваги, яку можна зважити, — підходи з власною вагою та з допомогою не додають обсягу";
+"dashboard.week.error" = "Не вдалося прочитати тренування за ці тижні.";
+"dashboard.week.spoken %@ %@" = "%1$@: %2$@.";
+"dashboard.week.spoken.figures %@ %@ %@" = "%1$@: %2$@, %3$@.";
+"dashboard.week.spoken.compared %@ %@ %@ %@" = "%1$@: %2$@, %3$@, %4$@.";
+"dashboard.week.change.up %@" = "на %@ більше, ніж тижнем раніше";
+"dashboard.week.change.down %@" = "на %@ менше, ніж тижнем раніше";
+"dashboard.week.change.same" = "стільки ж, як тижнем раніше";
 
 "dashboard.recent-records.none-in-scope" = "Жоден свіжий особистий рекорд не відповідає вашим налаштуванням свіжих рекордів.";
 "dashboard.recent-records.show-every" = "Показати все";
@@ -97,8 +96,6 @@
 "dashboard.recent-records.baselines.label" = "Показувати перші рекорди";
 "dashboard.recent-records.baselines.detail" = "Коли ви виконуєте схему вперше, вона встановлює рекорд, який немає з чим порівняти. Вимкнено за замовчуванням, щоб нова допоміжна вправа не заповнювала стрічку.";
 "dashboard.tiles.training-max %@" = "Тренувальний максимум %@";
-
-"dashboard.last-workout.planned" = "Заплановано";
 
 "dashboard.exercise-picker.search.prompt" = "Пошук вправ";
 "dashboard.exercise-picker.section.trained" = "Тренували";

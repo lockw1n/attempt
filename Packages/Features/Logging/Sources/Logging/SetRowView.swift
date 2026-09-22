@@ -145,6 +145,19 @@ struct SetRow: View {
             : AnyLayout(HStackLayout(spacing: Spacing.sm.points))
     }
 
+    /// The load beside its rating while both fit, and above it from `.xxxLarge` up.
+    ///
+    /// **One size earlier than ``layout``, and measured.** At `.xxxLarge` — the last size the row is
+    /// a line — the badge and the outcome control leave too little width for load, reps and rating
+    /// together, and `102.5 kg` broke as `102.5` / `kg`. Every load wider than `60 kg` did; the only
+    /// test that looked compared it against a control that broke the same way. Moving the rating
+    /// under the load gives the load the rating's width, and the row keeps its line.
+    private var valuesLayout: AnyLayout {
+        dynamicTypeSize >= .xxxLarge
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Spacing.xs.points))
+            : AnyLayout(HStackLayout(spacing: Spacing.sm.points))
+    }
+
     /// The load, the repetitions and the rating — one VoiceOver element, because they are one set,
     /// and `FR-1.2.7`'s way into the editor.
     ///
@@ -152,9 +165,10 @@ struct SetRow: View {
     /// Control and announces no hint; a button is reachable by every input (`G-4.2`), which is the
     /// same argument that made the exercise reorder a pair of buttons rather than a drag.
     ///
-    /// **The same layout switch as the row itself**, and for the same measured reason: at
-    /// `accessibility3` a rating pushed to the trailing edge takes the width `102.5 kg` needs, and
-    /// the load breaks mid-number. Stacked, the rating goes underneath and the load stays one word.
+    /// **The same kind of layout switch as the row itself, one size sooner** (``valuesLayout``), and
+    /// for the same kind of measured reason: from `.xxxLarge` a rating beside the load takes the
+    /// width `102.5 kg` needs, and the load breaks mid-number. Stacked, the rating goes underneath
+    /// and the load stays one word.
     /// Combining is applied over the whole subtree, so the announcement is unchanged either way.
     ///
     /// **The width is claimed with a `frame` rather than a `Spacer`**, which is what lets one
@@ -165,7 +179,7 @@ struct SetRow: View {
             edit(numbered.record)
         } label: {
             VStack(alignment: .leading, spacing: Spacing.xs.points) {
-                layout {
+                valuesLayout {
                     HStack(spacing: Spacing.sm.points) {
                         Text(
                             numbered.record.weight,

@@ -248,6 +248,7 @@
 
         /// The negative control for ``widestLoad`` — the same row with a load too short to wrap, so
         /// a matching height means the subject did not wrap either.
+        /// **It must fit**: drawn as `60.0 kg` it broke as the subject did, and the two matched.
         static let narrowestLoad: [SetEntry] = [
             loggedSet(index: 11, weight: Weight(grams: 60_000), reps: 5, rpe: 10)
         ]

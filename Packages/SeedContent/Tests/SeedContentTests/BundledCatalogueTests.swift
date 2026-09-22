@@ -197,13 +197,40 @@ struct BundledCatalogueTests {
         #expect(suspect.map(\.name) == [])
     }
 
+    // The English half of the same claim, written out because *unique by authoring* was the only
+    // thing holding it: `entry(named:)` below fails a duplicate as a lookup, which catches one only
+    // where a test happens to name that row. A catalogue edit is exactly when a duplicate arrives,
+    // so `FR-18.2.3`'s revision is the right place to stop relying on that.
+    //
+    // Compared trimmed, here and in `translationsAreDistinct` below, because the claim is about
+    // what a lifter reads in a picker: two names differing only by a trailing space are one name to
+    // them, and nothing refuses a padded one — `SeedCatalogueValidator` reads blankness and not
+    // padding, and the importer stores what the payload says.
+    @Test("No two entries share an English name")
+    func namesAreDistinct() throws {
+        let catalogue = try decoded()
+        let names = catalogue.exercises.map {
+            $0.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        var seen: Set<String> = []
+        let repeated = names.filter { !seen.insert($0).inserted }
+
+        #expect(repeated == [])
+        // Not vacuous. `translationsAreDistinct` guards the same way by comparing its `compactMap`
+        // against the entry count, which cannot be borrowed here: `name` is not optional, so the
+        // mapped count always agrees and the only empty case left is a payload that did not load.
+        #expect(names.isEmpty == false)
+    }
+
     // English names are unique by authoring, and the Ukrainian column has to stay so for the same
     // reason: two rows reading alike in a picker are two rows the lifter cannot choose between, and
     // the likeliest way to get there is a copy-paste while translating a family of variations.
     @Test("No two entries share a Ukrainian name")
     func translationsAreDistinct() throws {
         let catalogue = try decoded()
-        let translations = catalogue.exercises.compactMap(\.ukrainianName)
+        let translations = catalogue.exercises.compactMap {
+            $0.ukrainianName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
         var seen: Set<String> = []
         let repeated = translations.filter { !seen.insert($0).inserted }
 

@@ -50,10 +50,7 @@ enum PlateLoadingSummary {
     ///
     /// **The coarsest step that leaves the number alone is what is used**, which is also what makes
     /// a plate list read like one: `25 kg × 4, 20 kg × 1, 1.25 kg × 1`, each denomination at its own
-    /// width. Elsewhere the app renders a *logged* load at one fixed step, `100.0 kg` included,
-    /// because a column of numbers is scanned and a ragged fraction width is what makes it hard to;
-    /// here the numbers are a list of distinct objects rather than a column, and a trailing zero on
-    /// a plate is a decimal the plate does not have.
+    /// width.
     ///
     /// A denomination finer than a quarter of the display unit — a 100 g micro-plate — is drawn at
     /// the coarsest finer step that shows it at all, which is the one case where the rule inverts;
@@ -74,11 +71,9 @@ enum PlateLoadingSummary {
     /// (`G-3.1`, `G-3.3`).
     ///
     /// **Not ``render(_:in:locale:)``, and the split is the whole argument for that method read the
-    /// other way.** The coarse step is right for a denomination because a plate list is a row of
-    /// distinct objects; a load is the number every other surface in the app draws, and here two of
-    /// them sit one under the other as `FR-1.4.4`'s pair. That is exactly the column the fixed
-    /// fraction width exists for — at the coarse step the same pair comes out as `100 kg` over
-    /// `102.5 kg`.
+    /// other way.** The finest step that shows a denomination exactly is right for a plate, which
+    /// the gym stocks at that weight; a load is the number every other surface in the app draws,
+    /// rounded to the lifter's own step.
     ///
     /// **It takes the whole pairing rather than a unit**, which is what keeps "every other surface"
     /// true: a lifter who configured whole-kilogram readings sees `103 kg` on their set rows, and a

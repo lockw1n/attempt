@@ -21,29 +21,18 @@ extension LoggingStrings {
     /// What a row the lifter decided against says (`FR-17.9.6`).
     static let dayRowSkipped = resource("logging.day.row.skipped")
 
-    /// A row logged exactly as the plan prescribed it — one line rather than two.
+    /// What names a row logged exactly as the plan prescribed it — one line rather than two.
     ///
-    /// - Parameter performed: What was done, rendered.
-    /// - Returns: The line.
-    static func dayRowAsPlanned(performed: String) -> LocalizedStringResource {
-        resource("logging.day.row.as-planned \(performed)")
-    }
+    /// **A label rather than a format string** (`FR-18.3.2`). It read *%@ · as planned* while the
+    /// numbers were inside the sentence; they are a column of their own now
+    /// (``PlanSchemeRow``), so what is left is the word.
+    static let dayRowAsPlanned = resource("logging.day.row.as-planned")
 
-    /// The first of the two lines a row that deviated from the plan draws.
-    ///
-    /// - Parameter plan: What was prescribed, rendered.
-    /// - Returns: The line.
-    static func dayRowPlanned(plan: String) -> LocalizedStringResource {
-        resource("logging.day.row.planned \(plan)")
-    }
+    /// What names the first of the two lines a row that deviated from the plan draws.
+    static let dayRowPlanned = resource("logging.day.row.planned")
 
-    /// The second of them.
-    ///
-    /// - Parameter performed: What was done, rendered.
-    /// - Returns: The line.
-    static func dayRowDid(performed: String) -> LocalizedStringResource {
-        resource("logging.day.row.did \(performed)")
-    }
+    /// What names the second of them.
+    static let dayRowDid = resource("logging.day.row.did")
 
     // MARK: - The row's own commands (FR-17.9.2, FR-17.9.6)
 
@@ -55,6 +44,30 @@ extension LoggingStrings {
 
     /// Recording that the lifter is not doing this exercise today (`FR-17.9.6`).
     static let daySkipAction = resource("logging.day.skip.action")
+
+    /// Taking a row's answer back (`FR-18.5.1`).
+    ///
+    /// **It names the state it returns the row to rather than the answer it removes**, because one
+    /// word has to be true of both: a skipped row and a logged row are reset by the same command,
+    /// and *Undo skip* would read as a lie on the second.
+    static let dayRowResetAction = resource("logging.day.row.reset.action")
+
+    /// The confirmation it asks for, naming how much work would go (`FR-18.5.2`).
+    ///
+    /// Only a row that holds completed sets asks — see ``DayView/resetConfirmation(for:)``.
+    ///
+    /// - Parameter count: How many completed sets would be removed — warm-ups counted, pending
+    ///   sets not; ``DayRow/loggedSetCount``'s rule.
+    /// - Returns: The question.
+    static func dayRowResetConfirmTitle(count: Int) -> LocalizedStringResource {
+        resource("logging.day.row.reset.confirm.title \(count)")
+    }
+
+    /// Going ahead with it.
+    static let dayRowResetConfirmAction = resource("logging.day.row.reset.confirm.action")
+
+    /// Backing out, spelled out rather than a bare *Cancel* — ``dayRemainingConfirmCancel``'s rule.
+    static let dayRowResetConfirmCancel = resource("logging.day.row.reset.confirm.cancel")
 
     // MARK: - The whole-day commands (FR-17.9.9, FR-17.8.8)
 
@@ -107,7 +120,7 @@ extension LoggingStrings {
 
     // MARK: - The overflow menu (FR-17.9.7)
 
-    /// The menu itself, named for the menu rather than for either item in it (`G-4.2`).
+    /// The menu itself, named for the menu rather than for any item in it (`G-4.2`).
     static let dayMenuAction = resource("logging.day.menu.action")
 
     /// `FR-1.2.1`'s backdating, from the menu.
@@ -115,6 +128,40 @@ extension LoggingStrings {
 
     /// Closing the date sheet.
     static let dayChangeDateDone = resource("logging.day.change-date.done")
+
+    /// The way from a day to what the day contains (`FR-18.7.2`).
+    ///
+    /// **The *plan*, not the *week***, although it opens the week's editor: the lifter is standing
+    /// on one day and asking what is prescribed for it, and a word naming the screen it lands on
+    /// would be the app explaining its own structure (`F-13`).
+    static let dayEditPlanAction = resource("logging.day.edit-plan.action")
+
+    // MARK: - Taking the day back (FR-18.4.5)
+
+    /// The menu's destructive command on a **planned** day.
+    ///
+    /// **Not *Discard***, which is what it read until `F-11`: the write soft-deletes the day's
+    /// session and the plan lives on the week, so what the lifter gets back is the day as
+    /// *upcoming* — and nobody looking for that would guess at a word that promises a loss. The
+    /// free workout, where the word is true, keeps it (``sessionDiscardAction``, `OUT-18.6`).
+    static let dayResetAction = resource("logging.day.reset.action")
+
+    /// The confirmation's question.
+    static let dayResetConfirmTitle = resource("logging.day.reset.confirm.title")
+
+    /// What resetting costs and what it does not, said before it is done.
+    static let dayResetConfirmMessage = resource("logging.day.reset.confirm.message")
+
+    /// Going ahead with it.
+    static let dayResetConfirmAction = resource("logging.day.reset.confirm.action")
+
+    /// The way out, spelled out rather than a bare *Cancel* — ``dayRemainingConfirmCancel``'s rule.
+    static let dayResetConfirmCancel = resource("logging.day.reset.confirm.cancel")
+
+    // MARK: - Leaving the day (FR-18.4.1)
+
+    /// The button that names the exit. It writes nothing — see ``SessionExit``.
+    static let dayDoneAction = resource("logging.day.done.action")
 
     // MARK: - The rest of the screen
 
@@ -132,12 +179,16 @@ extension LoggingStrings {
         [
             dayProgress(done: 2, of: 4),
             dayRowSkipped,
-            dayRowAsPlanned(performed: "100 kg × 5 × 5"),
-            dayRowPlanned(plan: "100 kg × 5 × 5"),
-            dayRowDid(performed: "100 kg × 5 × 4"),
+            dayRowAsPlanned,
+            dayRowPlanned,
+            dayRowDid,
             dayCircleAction,
             dayLogAction,
             daySkipAction,
+            dayRowResetAction,
+            dayRowResetConfirmTitle(count: 6),
+            dayRowResetConfirmAction,
+            dayRowResetConfirmCancel,
             dayLogRemainingAction,
             daySkipRemainingAction,
             dayLogRemainingConfirmTitle(count: 3),
@@ -150,6 +201,13 @@ extension LoggingStrings {
             dayMenuAction,
             dayChangeDateAction,
             dayChangeDateDone,
+            dayEditPlanAction,
+            dayResetAction,
+            dayResetConfirmTitle,
+            dayResetConfirmMessage,
+            dayResetConfirmAction,
+            dayResetConfirmCancel,
+            dayDoneAction,
             dayAddExerciseAction,
             dayNoRowsHeadline,
             dayNoRowsMessage,

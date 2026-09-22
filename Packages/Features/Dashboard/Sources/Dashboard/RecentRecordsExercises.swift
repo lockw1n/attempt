@@ -83,6 +83,7 @@ final class RecentRecordsExercisesState {
                 TiledExerciseChoice(
                     exerciseID: $0.id,
                     name: $0.displayName(in: nameLanguage),
+                    parentExerciseID: $0.parentExerciseID,
                     isTiled: chosen.contains($0.id),
                     lastTrained: trained[$0.id])
             }

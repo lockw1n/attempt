@@ -10,16 +10,27 @@
 
     @testable import Dashboard
 
-    // TR-1.12 for FR-1.9.1, FR-1.9.2 and FR-1.9.4, on `RecentRecordsSnapshotTests`' terms: the
+    // TR-1.12 for FR-1.9.1, FR-1.9.5, FR-1.13.2 and FR-16.5.3 — what this suite still pictures,
+    // FR-1.9.2's card having gone with T-18.17 — on `RecentRecordsSnapshotTests`' terms: the
     // pieces are rendered rather than the screen, because the screen is three `.task`s over four
     // repositories and a reference through one is a reference over three spinners.
     //
     // THE REFERENCES PIN THEIR LOCALE AND THEIR TIME ZONE, for that file's reason — every tile
-    // renders a load and the card renders a day.
+    // renders a load, and `Dashboard-tile-picker` formats a date under a name (**Last trained**).
+    // That picker is what the time zone is pinned for now that the card is gone; `Dashboard-tiles`
+    // carries both pins beside it and needs the locale.
     //
     // WHAT IS NOT PICTURED is the `NavigationStack` the picker link needs to be a control, and the
     // shell the primary action reads its `NavigationState` from. Both are UIKit-backed or
     // environment-fed; where they lead is the state tests' and the simulator run's.
+
+    // THREE REFERENCES WERE DELETED HERE AND ARE NOT COMING BACK, so do not re-record them when a
+    // future task finds the suite short of a state. `Dashboard-last-workout`,
+    // `-last-workout-open` and `-last-workout-none` pictured `FR-1.9.2`'s card — a date, a set
+    // count, the exercise names and its **Resume**/**Repeat** — which T-18.17 removed whole
+    // (`FR-18.9.1`): nothing on Home starts, resumes or repeats a workout, and `FR-1.9.2` is
+    // WITHDRAWN. The states they held are not drawn anywhere now; the "nothing has ever been
+    // logged" reading that remains on this screen is `Dashboard-first-launch`.
 
     @MainActor
     @Suite("Dashboard snapshots")
@@ -83,55 +94,49 @@
             }
         }
 
-        @Test func lastWorkoutFinished() throws {
-            try assertSnapshots(named: "Dashboard-last-workout") {
-                LastWorkoutReading(
-                    state: .finished(DashboardFixtures.finished),
-                    hasFailedRepeat: false,
-                    retry: {},
-                    resume: {},
-                    repeatWorkout: { _ in }
-                )
-                .environment(\.locale, DashboardFixtures.locale)
-                .environment(\.timeZone, .gmt)
-            }
-        }
-
-        @Test func lastWorkoutInProgress() throws {
-            // The other of FR-1.9.2's two actions, and the line that replaces the set count: a
-            // running total presented as a finished one is the reading this avoids.
-            try assertSnapshots(named: "Dashboard-last-workout-open") {
-                LastWorkoutReading(
-                    state: .inProgress(DashboardFixtures.open),
-                    hasFailedRepeat: true,
-                    retry: {},
-                    resume: {},
-                    repeatWorkout: { _ in }
-                )
-                .environment(\.locale, DashboardFixtures.locale)
-                .environment(\.timeZone, .gmt)
-            }
-        }
-
-        @Test func nothingLogged() throws {
-            try assertSnapshots(named: "Dashboard-last-workout-none") {
-                LastWorkoutReading(
-                    state: .nothingLogged,
-                    hasFailedRepeat: false,
-                    retry: {},
-                    resume: {},
-                    repeatWorkout: { _ in }
-                )
-            }
-        }
-
         @Test func weekSummary() throws {
-            // FR-1.9.5's two numbers side by side. At accessibility3 they stack — the reference
-            // pair is what proves the switch, since a formatted tonnage beside a count is what
-            // wraps first.
+            // FR-18.9.2's two lines mid-week: this week so far, and last week with FR-18.9.3's
+            // change against the week before it — +100 kg, on last week's line and on no other.
+            // At accessibility3 the figures wrap at their separator and the change drops beneath
+            // them; the reference pair is what proves neither collides with the other.
             try assertSnapshots(named: "Dashboard-week") {
                 WeekSummaryReading(
-                    state: .ready(WeekSummary(workoutCount: 4, tonnage: DashboardFixtures.volume)),
+                    state: .ready(DashboardFixtures.weeks),
+                    unit: .kilograms,
+                    retry: {}
+                )
+                .environment(\.locale, DashboardFixtures.locale)
+            }
+        }
+
+        @Test func weekSummaryMonday() throws {
+            // F-17's Monday, which used to be an empty state: nothing this week, in words on one
+            // line, and last week drawn whole beneath it with its change. DOD-18.11's picture.
+            try assertSnapshots(named: "Dashboard-week-monday") {
+                WeekSummaryReading(
+                    state: .ready(
+                        WeekSummaries(
+                            thisWeek: .empty,
+                            lastWeek: DashboardFixtures.weeks.lastWeek,
+                            weekBefore: DashboardFixtures.weeks.weekBefore)),
+                    unit: .kilograms,
+                    retry: {}
+                )
+                .environment(\.locale, DashboardFixtures.locale)
+            }
+        }
+
+        @Test func weekSummaryFalling() throws {
+            // A week that fell: the one direction the tiles cannot picture (their delta is strictly
+            // positive) and this card can. The arrow and the minus are the cues that survive a
+            // monochrome rendering (G-4.5), which is what the reference holds.
+            try assertSnapshots(named: "Dashboard-week-falling") {
+                WeekSummaryReading(
+                    state: .ready(
+                        WeekSummaries(
+                            thisWeek: WeekSummary(workoutCount: 2, tonnage: Weight(grams: 8_240_000)),
+                            lastWeek: DashboardFixtures.weeks.lastWeek,
+                            weekBefore: WeekSummary(workoutCount: 4, tonnage: Weight(grams: 15_000_000)))),
                     unit: .kilograms,
                     retry: {}
                 )
@@ -141,7 +146,7 @@
 
         @Test func weekSummaryQuiet() throws {
             // FR-1.13.3's whole point, pictured: this is what the card draws INSTEAD OF "0
-            // workouts, 0 kg".
+            // workouts, 0 kg" — and since FR-18.9.2 only when all three weeks are empty.
             try assertSnapshots(named: "Dashboard-week-quiet") {
                 WeekSummaryReading(state: .quiet, unit: .kilograms, retry: {})
             }
@@ -149,15 +154,21 @@
 
         @Test func weekSummaryUnweighed() throws {
             // A real workout count above a volume that cannot be computed — Tonnage's third clause
-            // drawn as the two different things it is, rather than as one zero.
+            // drawn as the two different things it is, rather than as one zero — on last week's
+            // line, where its change is ABSENT rather than 0 although the week before has volume.
             try assertSnapshots(named: "Dashboard-week-unweighed") {
                 WeekSummaryReading(
-                    state: .unweighed(workouts: 3), unit: .kilograms, retry: {}
+                    state: .ready(
+                        WeekSummaries(
+                            thisWeek: DashboardFixtures.weeks.thisWeek,
+                            lastWeek: WeekSummary(workoutCount: 3, tonnage: .zero),
+                            weekBefore: DashboardFixtures.weeks.weekBefore)),
+                    unit: .kilograms,
+                    retry: {}
                 )
                 .environment(\.locale, DashboardFixtures.locale)
             }
         }
-
         @Test func weekSummaryUnreadable() throws {
             try assertSnapshots(named: "Dashboard-week-error") {
                 WeekSummaryReading(state: .failed, unit: .kilograms, retry: {})
@@ -246,21 +257,13 @@
         /// A week's load: 12,400 kg, enough digits that a grouping separator shows.
         static let volume = Weight(grams: 12_400_000)
 
-        /// A finished workout, with what `FR-1.9.2` says about it.
-        static let finished = LastWorkoutSummary(
-            sessionID: id(6),
-            date: day.addingTimeInterval(-2 * 86_400),
-            isInProgress: false,
-            exerciseNames: ["Back Squat", "Bench Press", "Barbell Row"],
-            workingSetCount: 11)
-
-        /// The same workout, still open.
-        static let open = LastWorkoutSummary(
-            sessionID: id(7),
-            date: day,
-            isInProgress: true,
-            exerciseNames: ["Back Squat", "Bench Press"],
-            workingSetCount: 4)
+        /// Three weeks mid-week: one workout so far, last week's three at ``volume``, and a week
+        /// before 100 kg lighter — so the change is the smallest figure on the card, beside the
+        /// largest.
+        static let weeks = WeekSummaries(
+            thisWeek: WeekSummary(workoutCount: 1, tonnage: Weight(grams: 4_200_000)),
+            lastWeek: WeekSummary(workoutCount: 3, tonnage: volume),
+            weekBefore: WeekSummary(workoutCount: 3, tonnage: Weight(grams: 12_300_000)))
 
         /// The section with nothing to estimate from: three lifts, the last of them carrying the
         /// training max a coach handed over before any of it was trained (`FR-15.1.8`).
@@ -275,15 +278,17 @@
             TiledExerciseChoice(
                 exerciseID: id(1),
                 name: "Back Squat",
+                parentExerciseID: nil,
                 isTiled: true,
                 lastTrained: day.addingTimeInterval(-2 * 86_400)),
             TiledExerciseChoice(
                 exerciseID: id(2),
                 name: "Bench Press",
+                parentExerciseID: nil,
                 isTiled: true,
                 lastTrained: day.addingTimeInterval(-9 * 86_400)),
             TiledExerciseChoice(
-                exerciseID: id(3), name: "Deadlift", isTiled: false, lastTrained: nil),
+                exerciseID: id(3), name: "Deadlift", parentExerciseID: nil, isTiled: false, lastTrained: nil),
         ]
 
         /// Those rows split as `FR-16.5.3` draws them: two trained, one not.

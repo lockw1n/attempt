@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": 3,
+  "revision": 4,
   "exercises": [
     {"id": "61b1f9fd-7f08-4ca8-961b-533acd8d764d", "name": "Back Squat", "ukrainianName": "Присідання зі штангою", "movement": "squat", "equipment": "barbell", "laterality": "bilateral", "barType": "standard"},
     {"id": "9fbbc409-cfd9-4267-b02d-7d7fd0713c05", "name": "High-Bar Back Squat", "ukrainianName": "Присідання з високим положенням грифа", "movement": "squat", "parentExerciseID": "61b1f9fd-7f08-4ca8-961b-533acd8d764d", "equipment": "barbell", "laterality": "bilateral", "barType": "standard"},
@@ -111,7 +111,7 @@
     {"id": "766c90ac-1256-4505-863e-14c4c9d88393", "name": "Cable Lateral Raise", "ukrainianName": "Махи на блоці в сторону", "movement": "other", "equipment": "cable", "laterality": "unilateral", "barType": "noBar"},
     {"id": "75368112-9fdf-44c4-ae6c-033a49f21851", "name": "Machine Lateral Raise", "ukrainianName": "Махи в тренажері в сторони", "movement": "other", "parentExerciseID": "bf32da3e-fdf7-4975-9c40-2001597ead92", "equipment": "machine", "laterality": "bilateral", "barType": "noBar"},
     {"id": "9c36b585-d4d5-4cce-b144-41a64f93d26d", "name": "Rear Delt Fly", "ukrainianName": "Махи гантелями в нахилі", "movement": "other", "equipment": "dumbbell", "laterality": "bilateral", "barType": "noBar", "implementCount": 2},
-    {"id": "48fb24a6-abd3-472d-87ca-d054c1c1f982", "name": "Machine Rear Delt Fly", "ukrainianName": "Махи в тренажері в нахилі", "movement": "other", "parentExerciseID": "9c36b585-d4d5-4cce-b144-41a64f93d26d", "equipment": "machine", "laterality": "bilateral", "barType": "noBar"},
+    {"id": "48fb24a6-abd3-472d-87ca-d054c1c1f982", "name": "Machine Rear Delt Fly", "ukrainianName": "Розведення рук у тренажері", "formerUkrainianNames": ["Махи в тренажері в нахилі"], "movement": "other", "parentExerciseID": "9c36b585-d4d5-4cce-b144-41a64f93d26d", "equipment": "machine", "laterality": "bilateral", "barType": "noBar"},
     {"id": "0ce270cb-9c1a-4725-b7f0-f1286f8775a7", "name": "Face Pull", "ukrainianName": "Тяга до обличчя", "movement": "other", "equipment": "cable", "laterality": "bilateral", "barType": "noBar"},
     {"id": "78521211-6ade-4f1c-9c4a-dd6c22a952e0", "name": "Wide-Grip Cable Upright Row", "ukrainianName": "Тяга блока до підборіддя широким хватом", "movement": "other", "equipment": "cable", "laterality": "bilateral", "barType": "noBar"},
     {"id": "def05f56-dbe0-4ac1-ad57-57b13caa3afa", "name": "Cable Chest Fly", "ukrainianName": "Зведення рук на блоках", "movement": "other", "equipment": "cable", "laterality": "bilateral", "barType": "noBar"},

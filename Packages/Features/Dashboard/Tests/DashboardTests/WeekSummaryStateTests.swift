@@ -5,29 +5,46 @@ import Testing
 
 @testable import Dashboard
 
-/// `FR-1.9.5`'s week and `FR-1.13.2`'s first launch — the one read that answers both.
+/// `FR-1.9.5`'s weeks and `FR-1.13.2`'s first launch — the one read that answers both — and
+/// `FR-18.9.3`'s change, which is measured between the last two completed weeks and never against
+/// the one in progress.
 ///
 /// **Every total here is worked out by hand and written as a literal**, rather than compared against
-/// a second computation: a test asserting `state.summary?.tonnage == Tonnage.of(sets)` passes for
-/// any arithmetic both sides share, including none.
+/// a second computation: a test asserting `state.weeks?.thisWeek.tonnage == Tonnage.of(sets)` passes
+/// for any arithmetic both sides share, including none.
+///
+/// **The weeks are Monday-first unless a test says otherwise**, because `firstWeekday` is the one
+/// thing a locale can change about a calendar week, and a test pinned to the machine's would move
+/// with it. ``fixtureNow`` is Tuesday 14 November 2023, 22:13 UTC: Monday-first, this week is
+/// 13–19 November, last week 6–12, the week before 30 October–5 November.
 @MainActor
 @Suite("Week summary")
 struct WeekSummaryStateTests {
-    /// A calendar pinned to GMT, so a week's boundaries do not move with the machine running this.
-    ///
-    /// `fixtureNow` is a Tuesday; this calendar's week runs from the Sunday two days before it to
-    /// the Sunday five days after.
-    static var calendar: Calendar {
+    /// A calendar pinned to GMT and to Monday, so a week's boundaries do not move with the machine
+    /// running this.
+    static func calendar(firstWeekday: Int = 2) -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = .gmt
+        calendar.firstWeekday = firstWeekday
         return calendar
     }
 
-    /// A state over `fixture`, told that "now" is ``fixtureNow``.
-    static func state(_ fixture: DashboardFixture) -> WeekSummaryState {
+    /// A state over `fixture`, told that "now" is `now` and the week starts on `firstWeekday`.
+    static func state(
+        _ fixture: DashboardFixture, now: Date = fixtureNow, firstWeekday: Int = 2
+    ) -> WeekSummaryState {
         WeekSummaryState(
-            workouts: fixture.repositories.workouts, calendar: calendar, now: { fixtureNow })
+            workouts: fixture.repositories.workouts,
+            calendar: calendar(firstWeekday: firstWeekday),
+            now: { now })
     }
+
+    /// Monday 13 November 2023, 08:53 UTC — the first day of ``fixtureNow``'s Monday-first week,
+    /// with nothing trained in it yet.
+    static let monday = Date(timeIntervalSince1970: 1_699_866_000)
+
+    /// Three weeks with nothing in them.
+    static let nothing = WeekSummaries(thisWeek: .empty, lastWeek: .empty, weekBefore: .empty)
 
     @Test("An install with nothing in it is FR-1.13.2's first launch")
     func firstLaunch() async throws {
@@ -41,7 +58,7 @@ struct WeekSummaryStateTests {
         #expect(state.hasEverTrained == false)
         #expect(state.hasLoaded)
         #expect(state.failure == nil)
-        #expect(state.summary == WeekSummary(workoutCount: 0, tonnage: .zero))
+        #expect(state.weeks == Self.nothing)
         #expect(DashboardScreenState.current(state) == .firstLaunch)
         #expect(WeekSummaryScreenState.current(state) == .quiet)
     }
@@ -61,16 +78,18 @@ struct WeekSummaryStateTests {
 
         await state.load()
 
-        #expect(state.summary == WeekSummary(workoutCount: 1, tonnage: Weight(grams: 860_000)))
+        let expected = WeekSummaries(
+            thisWeek: WeekSummary(workoutCount: 1, tonnage: Weight(grams: 860_000)),
+            lastWeek: .empty,
+            weekBefore: .empty)
+        #expect(state.weeks == expected)
         #expect(state.hasEverTrained)
         #expect(DashboardScreenState.current(state) == .sections)
-        #expect(
-            WeekSummaryScreenState.current(state)
-                == .ready(WeekSummary(workoutCount: 1, tonnage: Weight(grams: 860_000))))
+        #expect(WeekSummaryScreenState.current(state) == .ready(expected))
     }
 
-    @Test("Last week's training is history but not this week's volume")
-    func lastWeekIsExcluded() async throws {
+    @Test("Last week's training is its own line, not this week's volume")
+    func lastWeekIsItsOwnLine() async throws {
         let fixture = DashboardFixture()
         let squat = try await fixture.exercise(named: "Back Squat")
         try await fixture.session(
@@ -80,11 +99,13 @@ struct WeekSummaryStateTests {
         await state.load()
 
         // The two halves of the one read disagreeing is the whole point of folding them together:
-        // there IS history, and this week holds none of it.
+        // there IS history, and this week holds none of it. Since FR-18.9.2 that history is drawn,
+        // so the card is not quiet.
         #expect(state.hasEverTrained)
-        #expect(state.summary == WeekSummary(workoutCount: 0, tonnage: .zero))
+        #expect(state.weeks?.thisWeek == .empty)
+        #expect(state.weeks?.lastWeek == WeekSummary(workoutCount: 1, tonnage: Weight(grams: 500_000)))
         #expect(DashboardScreenState.current(state) == .sections)
-        #expect(WeekSummaryScreenState.current(state) == .quiet)
+        #expect(WeekSummaryScreenState.current(state) != .quiet)
     }
 
     @Test("A backdated session is weighed into the week it was trained, not the week it was entered")
@@ -98,16 +119,17 @@ struct WeekSummaryStateTests {
             on: weeksAgo(1),
             enteredOn: fixtureNow,
             exercises: [(squat, [LoggedSet(grams: 100_000, reps: 5)])])
-        // Trained this week, and the only thing that may be counted. Present so the assertion is a
-        // real total rather than a zero every broken reading also produces.
+        // Trained this week, and the only thing that may be counted here. Present so the assertion
+        // is a real total rather than a zero every broken reading also produces.
         try await fixture.session(
             on: fixtureNow, exercises: [(squat, [LoggedSet(grams: 120_000, reps: 3)])])
         let state = Self.state(fixture)
 
         await state.load()
 
-        // 360, not 860: reading `createdAt` would pull last week's 500 into this week's volume.
-        #expect(state.summary == WeekSummary(workoutCount: 1, tonnage: Weight(grams: 360_000)))
+        // 360 this week, not 860: reading `createdAt` would pull last week's 500 into it.
+        #expect(state.weeks?.thisWeek == WeekSummary(workoutCount: 1, tonnage: Weight(grams: 360_000)))
+        #expect(state.weeks?.lastWeek == WeekSummary(workoutCount: 1, tonnage: Weight(grams: 500_000)))
     }
 
     @Test("Two sessions this week are two workouts, summed")
@@ -117,14 +139,14 @@ struct WeekSummaryStateTests {
         try await fixture.session(
             on: fixtureNow, exercises: [(squat, [LoggedSet(grams: 100_000, reps: 5)])])
         try await fixture.session(
-            on: fixtureNow.addingTimeInterval(-2 * 86_400),
+            on: fixtureNow.addingTimeInterval(-86_400),
             exercises: [(squat, [LoggedSet(grams: 80_000, reps: 5)])])
         let state = Self.state(fixture)
 
         await state.load()
 
         // 500 + 400.
-        #expect(state.summary == WeekSummary(workoutCount: 2, tonnage: Weight(grams: 900_000)))
+        #expect(state.weeks?.thisWeek == WeekSummary(workoutCount: 2, tonnage: Weight(grams: 900_000)))
     }
 
     @Test("A workout still in progress counts as this week's")
@@ -139,7 +161,7 @@ struct WeekSummaryStateTests {
 
         await state.load()
 
-        #expect(state.summary == WeekSummary(workoutCount: 1, tonnage: Weight(grams: 500_000)))
+        #expect(state.weeks?.thisWeek == WeekSummary(workoutCount: 1, tonnage: Weight(grams: 500_000)))
     }
 
     @Test("A session with only warmups and failures is not a workout")
@@ -163,7 +185,7 @@ struct WeekSummaryStateTests {
 
         // A session opened and not trained in raises neither number — the count is drawn from the
         // same population as the volume.
-        #expect(state.summary == WeekSummary(workoutCount: 0, tonnage: .zero))
+        #expect(state.weeks == Self.nothing)
         #expect(state.hasEverTrained)
         #expect(WeekSummaryScreenState.current(state) == .quiet)
     }
@@ -185,23 +207,27 @@ struct WeekSummaryStateTests {
         await state.load()
 
         // FR-1.13.3: the workout happened and its volume is not zero, it is unweighable. The two
-        // read differently and the screen says so.
-        #expect(state.summary == WeekSummary(workoutCount: 1, tonnage: .zero))
-        #expect(WeekSummaryScreenState.current(state) == .unweighed(workouts: 1))
+        // read differently and the line says so.
+        let weeks = try #require(state.weeks)
+        #expect(weeks.thisWeek == WeekSummary(workoutCount: 1, tonnage: .zero))
+        #expect(WeekSummaryScreenState.current(state) == .ready(weeks))
+        #expect(WeekLines(weeks).thisWeek.reading == .unweighed(workouts: 1))
     }
+
+    // MARK: - Loading and failure
 
     @Test("A read that fails says so, and is not read as a first launch")
     func failedRead() async {
         let state = WeekSummaryState(
-            workouts: FailingWorkoutRepository(), calendar: Self.calendar, now: { fixtureNow })
+            workouts: FailingWorkoutRepository(), calendar: Self.calendar(), now: { fixtureNow })
 
         await state.load()
 
         #expect(state.failure != nil)
         #expect(state.hasLoaded)
-        #expect(state.summary == nil)
+        #expect(state.weeks == nil)
         // The failure says nothing about whether anything was ever logged, so the sections draw and
-        // each reports its own — a screen that read this as an empty install would replace four
+        // each reports its own — a screen that read this as an empty install would replace three
         // readable cards with a welcome message.
         #expect(DashboardScreenState.current(state) == .sections)
         #expect(WeekSummaryScreenState.current(state) == .failed)
@@ -218,120 +244,22 @@ struct WeekSummaryStateTests {
         #expect(DashboardScreenState.current(state) == .sections)
     }
 
-    @Test("A failure outranks the week already on screen")
-    func failureOutranksStaleSummary() async throws {
+    @Test("A failure outranks the weeks already on screen")
+    func failureOutranksStaleWeeks() async throws {
         let fixture = DashboardFixture()
         let squat = try await fixture.exercise(named: "Back Squat")
         try await fixture.session(
             on: fixtureNow, exercises: [(squat, [LoggedSet(grams: 100_000, reps: 5)])])
         let switchable = SwitchableWorkouts(wrapping: fixture.repositories.workouts)
         let state = WeekSummaryState(
-            workouts: switchable, calendar: Self.calendar, now: { fixtureNow })
+            workouts: switchable, calendar: Self.calendar(), now: { fixtureNow })
         await state.load()
-        #expect(state.summary == WeekSummary(workoutCount: 1, tonnage: Weight(grams: 500_000)))
+        #expect(state.weeks?.thisWeek == WeekSummary(workoutCount: 1, tonnage: Weight(grams: 500_000)))
 
         await switchable.refuse()
         await state.load()
 
-        #expect(state.summary != nil, "the previous answer is still held")
+        #expect(state.weeks != nil, "the previous answer is still held")
         #expect(WeekSummaryScreenState.current(state) == .failed)
-    }
-}
-
-/// Sessions that answer until told to stop, for the stale-summary case.
-///
-/// An actor wrapping the fakes rather than a fake with a flag, on `SwitchableCache`'s rule: the
-/// fakes in `RepositoryFakes` are the *contract*, and a switch that made one fail would make every
-/// test that shares them able to.
-private actor SwitchableWorkouts: WorkoutRepository {
-    /// Where a read that is not refusing is answered from.
-    private let wrapped: any WorkoutRepository
-
-    /// Whether every later call throws.
-    private var isRefusing = false
-
-    /// What a refusal throws. The case does not matter — the state under test reports *that* a read
-    /// failed, never which error it was.
-    private var failure: RepositoryError { .recordNotFound(id: UUID()) }
-
-    init(wrapping wrapped: any WorkoutRepository) {
-        self.wrapped = wrapped
-    }
-
-    /// Makes every later call throw.
-    func refuse() {
-        isRefusing = true
-    }
-
-    func sessions(
-        forProgramRunID runID: UUID, week: Int, includingDeleted: Bool
-    ) async throws -> [WorkoutSession] {
-        guard !isRefusing else { throw failure }
-        return try await wrapped.sessions(forProgramRunID: runID, week: week, includingDeleted: includingDeleted)
-    }
-    func sessions(
-        in range: ClosedRange<Date>, includingDeleted: Bool
-    ) async throws -> [WorkoutSession] {
-        guard !isRefusing else { throw failure }
-        return try await wrapped.sessions(in: range, includingDeleted: includingDeleted)
-    }
-
-    func session(id: UUID, includingDeleted: Bool) async throws -> WorkoutSession? {
-        guard !isRefusing else { throw failure }
-        return try await wrapped.session(id: id, includingDeleted: includingDeleted)
-    }
-
-    func save(_ session: WorkoutSession) async throws {
-        guard !isRefusing else { throw failure }
-        try await wrapped.save(session)
-    }
-
-    func deleteSession(id: UUID) async throws {
-        guard !isRefusing else { throw failure }
-        try await wrapped.deleteSession(id: id)
-    }
-
-    func entries(
-        forSessionID sessionID: UUID, includingDeleted: Bool
-    ) async throws -> [ExerciseEntry] {
-        guard !isRefusing else { throw failure }
-        return try await wrapped.entries(
-            forSessionID: sessionID, includingDeleted: includingDeleted)
-    }
-
-    func entry(id: UUID, includingDeleted: Bool) async throws -> ExerciseEntry? {
-        guard !isRefusing else { throw failure }
-        return try await wrapped.entry(id: id, includingDeleted: includingDeleted)
-    }
-
-    func save(_ entry: ExerciseEntry) async throws {
-        guard !isRefusing else { throw failure }
-        try await wrapped.save(entry)
-    }
-
-    func deleteExerciseEntry(id: UUID) async throws {
-        guard !isRefusing else { throw failure }
-        try await wrapped.deleteExerciseEntry(id: id)
-    }
-
-    func sets(forEntryID entryID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
-        guard !isRefusing else { throw failure }
-        return try await wrapped.sets(forEntryID: entryID, includingDeleted: includingDeleted)
-    }
-
-    func save(_ set: SetEntry) async throws {
-        guard !isRefusing else { throw failure }
-        try await wrapped.save(set)
-    }
-
-    func deleteSet(id: UUID) async throws {
-        guard !isRefusing else { throw failure }
-        try await wrapped.deleteSet(id: id)
-    }
-
-    func sets(forExerciseID exerciseID: UUID, includingDeleted: Bool) async throws -> [SetEntry] {
-        guard !isRefusing else { throw failure }
-        return try await wrapped.sets(
-            forExerciseID: exerciseID, includingDeleted: includingDeleted)
     }
 }

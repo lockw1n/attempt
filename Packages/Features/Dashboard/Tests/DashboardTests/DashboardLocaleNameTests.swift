@@ -5,9 +5,9 @@ import Testing
 
 @testable import Dashboard
 
-/// `FR-1.14.2` on the Dashboard tab. Each of these three states bakes an exercise's name into a
-/// value a row draws — a tile's headline, a picker's label, the card's list — so none of them can be
-/// resolved by the view, and each has to be told which name it is building.
+/// `FR-1.14.2` on the Dashboard tab. Each of these states bakes an exercise's name into a value a
+/// row draws — a tile's headline, a picker's label — so neither can be resolved by the view, and
+/// each has to be told which name it is building.
 ///
 /// **The picker's Ukrainian names sort against their English ones**, for the reason
 /// `ExerciseLocaleDisplayTests` gives: an order is the assertion a wrong name column actually fails.
@@ -51,27 +51,6 @@ struct DashboardLocaleNameTests {
 
         #expect(
             state.choices.map(\.name) == ["Barbell Row", "Глибокі присідання", "Присідання зі штангою"])
-    }
-
-    @Test("The last-workout card lists the resolved names")
-    func thecardListsTheResolvedNames() async throws {
-        let fixture = DashboardFixture()
-        let squat = try await fixture.exercise(
-            named: "Back Squat", ukrainian: "Присідання зі штангою", movement: .squat)
-        let row = try await fixture.exercise(named: "Barbell Row", movement: .row)
-        try await fixture.session(
-            on: weeksAgo(1),
-            exercises: [
-                (squat, [LoggedSet(grams: 100_000, reps: 5)]),
-                (row, [LoggedSet(grams: 60_000, reps: 8)]),
-            ])
-
-        let state = LastWorkoutState(
-            workouts: fixture.repositories.workouts, catalogue: fixture.repositories.exercises)
-        state.nameLanguage = .ukrainian
-        await state.load()
-
-        #expect(state.summary?.exerciseNames == ["Присідання зі штангою", "Barbell Row"])
     }
 
     /// The one place on this tab that reads the English column on purpose: which exercise gets a

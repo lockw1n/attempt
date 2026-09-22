@@ -8,7 +8,7 @@ struct TypographyTests {
     @Test("every role maps to a distinct entry, so no role is a duplicate wearing a second name")
     func rolesAreDistinct() {
         let styles = Typography.allCases.map(\.style)
-        #expect(styles.count == 10)
+        #expect(styles.count == 11)
         #expect(Set(styles).count == styles.count)
     }
 
@@ -27,7 +27,7 @@ struct TypographyTests {
     @Test("monospaced digits are on the numeric roles and nowhere else")
     func monospacedDigitRoles() {
         let monospaced = Set(Typography.allCases.filter { $0.style.usesMonospacedDigits })
-        #expect(monospaced == [.metricNumeral, .numericValue])
+        #expect(monospaced == [.metricNumeral, .numericValue, .schemeValue])
     }
 
     /// The scale is Dynamic Type-aware by construction (`G-7.6`, `G-4.1`) — a `TypeStyle` holds a
@@ -45,9 +45,20 @@ struct TypographyTests {
         )
     }
 
+    /// `FR-18.3.7`: a checklist row parts its name from its numbers by weight alone, so the two
+    /// roles it draws have to differ by exactly that. Asserted on the entries rather than on the
+    /// fonts, because ``rolesAreDistinct`` would pass for two roles differing in any way at all.
+    @Test("the scheme role is the numeric one at the regular weight, and the name's is semibold")
+    func schemeValueIsTheRegularNumericRole() {
+        #expect(Typography.schemeValue.style.textStyle == Typography.numericValue.style.textStyle)
+        #expect(Typography.schemeValue.style.usesMonospacedDigits)
+        #expect(Typography.schemeValue.style.weight == .regular)
+        #expect(Typography.actionLabel.style.weight == .semibold)
+    }
+
     @Test("no role is silently missing from the scale")
     func scaleIsComplete() {
-        #expect(Typography.allCases.count == 10)
+        #expect(Typography.allCases.count == 11)
         #expect(Typography.allCases.contains(.screenTitle))
     }
 }

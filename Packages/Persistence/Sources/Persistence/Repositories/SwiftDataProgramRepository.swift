@@ -10,7 +10,7 @@ import SwiftData
 @ModelActor
 actor SwiftDataProgramRepository: ProgramRepository {
     func programs(includingDeleted: Bool) throws -> [Program] {
-        try modelContext.rows(ProgramEntity.self, includingDeleted: includingDeleted)
+        try modelContext.resolvedRows(ProgramEntity.self, includingDeleted: includingDeleted)
             .sortedDeterministically { ($0.name, $0.id.uuidString) }
             .map(\.record)
     }
@@ -30,20 +30,20 @@ actor SwiftDataProgramRepository: ProgramRepository {
     /// ``SwiftDataWorkoutRepository/deleteSession(id:)`` for why. The runs go with the days because
     /// a run through a deleted program is one ``currentRun()`` would still hand back.
     func deleteProgram(id: UUID) throws {
-        let programs = try modelContext.rows(ProgramEntity.self, id: id, includingDeleted: false)
+        let programs = try modelContext.allRows(ProgramEntity.self, id: id, includingDeleted: false)
         guard !programs.isEmpty else { throw RepositoryError.recordNotFound(id: id) }
 
         let now = Date.now
         for program in programs { program.markDeleted(at: now) }
 
-        let days = try modelContext.rows(
+        let days = try modelContext.allRows(
             ProgramDayEntity.self,
             matching: #Predicate { $0.programID == id },
             includingDeleted: false
         )
         for day in days { day.markDeleted(at: now) }
 
-        let runs = try modelContext.rows(
+        let runs = try modelContext.allRows(
             ProgramRunEntity.self,
             matching: #Predicate { $0.programID == id },
             includingDeleted: false
@@ -55,7 +55,7 @@ actor SwiftDataProgramRepository: ProgramRepository {
     /// The program's days in ``ProgramDay/order``, whatever their routines have become — see the
     /// protocol for why an archived routine is not this read's refusal to make.
     func days(forProgramID programID: UUID, includingDeleted: Bool) throws -> [ProgramDay] {
-        try modelContext.rows(
+        try modelContext.resolvedRows(
             ProgramDayEntity.self,
             matching: #Predicate { $0.programID == programID },
             includingDeleted: includingDeleted
@@ -77,7 +77,7 @@ actor SwiftDataProgramRepository: ProgramRepository {
     }
 
     func deleteDay(id: UUID) throws {
-        let days = try modelContext.rows(ProgramDayEntity.self, id: id, includingDeleted: false)
+        let days = try modelContext.allRows(ProgramDayEntity.self, id: id, includingDeleted: false)
         guard !days.isEmpty else { throw RepositoryError.recordNotFound(id: id) }
 
         let now = Date.now
@@ -90,7 +90,7 @@ actor SwiftDataProgramRepository: ProgramRepository {
     /// The pick is a tie-break rather than a policy — ``startRun(_:)`` is what keeps the match set
     /// down to one — so it answers a merged or restored store rather than a normal one.
     func currentRun() throws -> ProgramRun? {
-        let open = try modelContext.rows(
+        let open = try modelContext.resolvedRows(
             ProgramRunEntity.self,
             matching: #Predicate { $0.endedAt == nil },
             includingDeleted: false
@@ -102,7 +102,7 @@ actor SwiftDataProgramRepository: ProgramRepository {
     }
 
     func runs(forProgramID programID: UUID, includingDeleted: Bool) throws -> [ProgramRun] {
-        try modelContext.rows(
+        try modelContext.resolvedRows(
             ProgramRunEntity.self,
             matching: #Predicate { $0.programID == programID },
             includingDeleted: includingDeleted
@@ -133,7 +133,7 @@ actor SwiftDataProgramRepository: ProgramRepository {
         try modelContext.requireReferenced(ProgramEntity.self, id: run.programID, from: run.id)
 
         let identifier = run.id
-        let open = try modelContext.rows(
+        let open = try modelContext.allRows(
             ProgramRunEntity.self,
             matching: #Predicate { $0.endedAt == nil && $0.id != identifier },
             includingDeleted: false
@@ -151,7 +151,7 @@ actor SwiftDataProgramRepository: ProgramRepository {
     }
 
     func deleteRun(id: UUID) throws {
-        let runs = try modelContext.rows(ProgramRunEntity.self, id: id, includingDeleted: false)
+        let runs = try modelContext.allRows(ProgramRunEntity.self, id: id, includingDeleted: false)
         guard !runs.isEmpty else { throw RepositoryError.recordNotFound(id: id) }
 
         let now = Date.now

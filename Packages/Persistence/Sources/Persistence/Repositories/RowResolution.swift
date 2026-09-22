@@ -26,6 +26,13 @@
 //     the last word; leaving it half-sorted in the descriptor would only hide where the answer is
 //     actually decided.
 //
+// A LIST READ RESOLVES TOO, PER ID (FR-18.8.1). Rule 2 was implemented for the single-row read and
+// left every list read returning both halves of a duplicate pair — which is how the author's phone
+// came to list every built-in exercise twice, two synced installs having each seeded under the same
+// permanent ids. The rule is the same rule; what a list needs is it applied per `id` rather than
+// once. `resolvedRows` is that read and `allRows` is what a write and a purge keep, and the
+// extension below says why neither may be the other's default.
+//
 // WHAT RULE 2 DOES NOT DECIDE, AND IT IS THE CASE IT WAS WRITTEN FOR. Two rows sharing an `id` also
 // share an `id.uuidString`, so the second clause is empty exactly when the first one ties — and
 // "two devices writing in the same second" is how the header motivates that clause. The residual is
@@ -37,6 +44,13 @@
 import Foundation
 import RepositoryInterface
 import SwiftData
+
+/// How many ids a resolved filtered read looks up per fetch.
+///
+/// ``StoredEntity/matchingIDs(_:)`` becomes an `IN` clause with one bound variable per id, and
+/// SQLite caps those per statement — 999 on old builds, 32,766 on current ones. Under both, with
+/// room, so the ceiling is never met whatever size a lifter's history reaches.
+let idFetchGroup = 900
 
 /// The row rule 2 picks out of a match set that may hold more than one.
 ///
@@ -53,17 +67,63 @@ import SwiftData
 ///
 /// - Returns: The winning row, or `nil` when `rows` is empty.
 func resolved<T: StoredEntity>(_ rows: [T]) -> T? {
-    rows.max { left, right in
-        (left.updatedAt, left.id.uuidString) < (right.updatedAt, right.id.uuidString)
+    rows.max(by: loses)
+}
+
+/// Whether `left` loses to `right` under rule 2 — the one comparison, in one place.
+///
+/// `max(by:)` keeps the first of two rows this calls equal, which is what makes a fully tied pair
+/// answer the same way here and in ``oneRowPerID(_:includingDeleted:)``.
+private func loses<T: StoredEntity>(_ left: T, _ right: T) -> Bool {
+    (left.updatedAt, left.id.uuidString) < (right.updatedAt, right.id.uuidString)
+}
+
+/// `rows` reduced to ``resolved(_:)``'s winner per `id`, in the order the store answered, with the
+/// soft-delete filter applied to the winners.
+///
+/// **Resolve first and filter second; the order is the whole rule.** Filtering the match set before
+/// resolving lets a live loser stand in for a deleted winner — and that is not a freak state, it is
+/// what a mirrored delete looks like: the twins are separate CloudKit records, so a delete made on
+/// another device lands on one of them. Filter-then-resolve would hide nothing there and the row
+/// the lifter deleted would come back wearing its twin's contents. A soft delete restamps
+/// `updatedAt` (`G-2.4`), so the row just deleted *is* the winner, and hiding the winner hides the
+/// record.
+///
+/// **Linear in the rows fetched** — one dictionary, one pass, no second fetch. A group of one,
+/// which is every row of a store nothing has duplicated, is carried through untouched.
+///
+/// **The fetch behind it is wider than it was, and that is what resolve-then-filter costs.** A
+/// resolved read asks the store for the soft-deleted rows too and drops them here, where a
+/// live-only read let the store drop them before they were ever materialised. Deletion is soft
+/// (`G-1.3`) and nothing reclaims rows on a lifter's device, so that population only grows. No
+/// requirement asks for a figure at the size this app is used at; the trade is written down so the
+/// next reader weighs it rather than rediscovers it.
+private func oneRowPerID<T: StoredEntity>(_ rows: [T], includingDeleted: Bool) -> [T] {
+    var winner: [UUID: Int] = [:]
+    var picked: [T] = []
+    picked.reserveCapacity(rows.count)
+    for row in rows {
+        guard let index = winner[row.id] else {
+            winner[row.id] = picked.count
+            picked.append(row)
+            continue
+        }
+        if loses(picked[index], row) { picked[index] = row }
     }
+    return includingDeleted ? picked : picked.filter { !$0.isSoftDeleted }
 }
 
 extension ModelContext {
+    // TWO NAMES AND NO DEFAULT, BECAUSE A READ AND A WRITE WANT OPPOSITE ANSWERS TO ONE QUESTION.
+    // `resolvedRows` is what a caller is handed: one row per id. `allRows` is what a write needs —
+    // a save writes every duplicate and a delete sweeps every duplicate, so neither leaves a twin
+    // holding what the caller thought they had replaced — and what `PurgePlan` needs, where an id
+    // is freed only when *every* row carrying it is eligible: a purge that resolved first would
+    // hard-delete the winner and leave its twin behind. A single function with a flag would make
+    // the wrong answer the quiet one at sixty-odd call sites, so there is no flag and no default.
+
     /// Every row of `type` carrying `id` — all of them, because two rows may.
-    ///
-    /// The plural is the point. A save writes each of them and a delete sweeps each of them, so
-    /// neither leaves a duplicate holding the value the caller thought they had replaced.
-    func rows<T: StoredEntity>(
+    func allRows<T: StoredEntity>(
         _ type: T.Type,
         id: UUID,
         includingDeleted: Bool
@@ -77,19 +137,25 @@ extension ModelContext {
     }
 
     /// The one row of `type` carrying `id`, by ``resolved(_:)``, or `nil` if none does.
+    ///
+    /// **The match set is always the whole one**, soft-deleted rows included, and the flag is
+    /// applied to the winner — ``oneRowPerID(_:includingDeleted:)``'s rule, for the same reason.
     func row<T: StoredEntity>(
         _ type: T.Type,
         id: UUID,
         includingDeleted: Bool
     ) throws -> T? {
-        resolved(try rows(type, id: id, includingDeleted: includingDeleted))
+        guard let winner = resolved(try allRows(type, id: id, includingDeleted: true)) else {
+            return nil
+        }
+        return includingDeleted || !winner.isSoftDeleted ? winner : nil
     }
 
-    /// Every row of `type` matching `predicate`, soft-deleted ones included only if asked.
+    /// Every row of `type` matching `predicate`, duplicates and all.
     ///
     /// The one place the `includingDeleted:` flag every protocol carries becomes a choice of
     /// descriptor, so no repository method writes that branch itself.
-    func rows<T: StoredEntity>(
+    func allRows<T: StoredEntity>(
         _ type: T.Type,
         matching predicate: Predicate<T>,
         includingDeleted: Bool
@@ -101,9 +167,66 @@ extension ModelContext {
         )
     }
 
-    /// Every row of `type`, soft-deleted ones included only if asked.
-    func rows<T: StoredEntity>(_ type: T.Type, includingDeleted: Bool) throws -> [T] {
+    /// Every row of `type`, duplicates and all.
+    func allRows<T: StoredEntity>(_ type: T.Type, includingDeleted: Bool) throws -> [T] {
         try fetch(includingDeleted ? .includingDeleted() : .notDeleted())
+    }
+
+    /// The rows of `type` matching `predicate`, one per `id` (`FR-18.8.1`).
+    ///
+    /// **A list keyed on a join column needs this as much as a whole table does.** The entries of a
+    /// session, the sets of an exercise, a routine's target groups — each is a set of *different*
+    /// ids, any one of which may have been duplicated, so the rule applies per id there too.
+    ///
+    /// **The winner is picked among every row of an id, not among the rows that matched, and it
+    /// is answered only if it matches itself** (`FR-18.8.3`). `predicate` is applied by the store
+    /// to each row on its own, so a pair whose halves *disagree* about a filtered column has one
+    /// half in the match set and one outside it — and resolving among the matched half alone lets
+    /// a stale loser stand in for a winner the predicate excluded: the ended run answered as the
+    /// run in force, the re-dated session still drawn under its old date. So the read is two
+    /// fetches: what matched, and then every row carrying a matched id through
+    /// ``StoredEntity/matchingIDs(_:)``. Rule 2 runs over the second, `predicate` is re-applied to
+    /// each winner in memory, and the deleted flag last. A row the predicate never matched cannot
+    /// win a place through this — its id is only looked up because a matching twin put it there,
+    /// and it is answered only if it passes the same predicate.
+    ///
+    /// **What it costs: a second fetch whose match set is the first's plus its twins,** sent in
+    /// groups of ``idFetchGroup`` ids so the `IN` clause behind `matchingIDs` never meets SQLite's
+    /// bound-variable ceiling. For `sets(forExerciseID:)`, the largest list read there is, that is
+    /// every set of the exercise fetched twice. No requirement asks for a figure at the size this
+    /// app is used at (`DOD-1.2`), and a read whose first fetch is empty makes no second one.
+    ///
+    /// **The order is the first fetch's** — the order the store answered the predicate in, one
+    /// entry per id at the position its first row held — so a caller sees what it saw before.
+    func resolvedRows<T: StoredEntity>(
+        _ type: T.Type,
+        matching predicate: Predicate<T>,
+        includingDeleted: Bool
+    ) throws -> [T] {
+        let matched = try fetch(FetchDescriptor<T>.includingDeleted(matching: predicate))
+        guard !matched.isEmpty else { return [] }
+
+        var ids: [UUID] = []
+        var seen: Set<UUID> = []
+        for row in matched where seen.insert(row.id).inserted { ids.append(row.id) }
+
+        var winners: [UUID: T] = [:]
+        winners.reserveCapacity(ids.count)
+        for start in stride(from: 0, to: ids.count, by: idFetchGroup) {
+            let group = Set(ids[start..<min(start + idFetchGroup, ids.count)])
+            let rows = try fetch(FetchDescriptor<T>.includingDeleted(matching: T.matchingIDs(group)))
+            for row in oneRowPerID(rows, includingDeleted: true) { winners[row.id] = row }
+        }
+
+        return try ids.compactMap { id -> T? in
+            guard let winner = winners[id], try predicate.evaluate(winner) else { return nil }
+            return includingDeleted || !winner.isSoftDeleted ? winner : nil
+        }
+    }
+
+    /// Every row of `type`, one per `id` (`FR-18.8.1`).
+    func resolvedRows<T: StoredEntity>(_ type: T.Type, includingDeleted: Bool) throws -> [T] {
+        oneRowPerID(try fetch(.includingDeleted()), includingDeleted: includingDeleted)
     }
 
     /// Refuses a write whose join key names no row at all.

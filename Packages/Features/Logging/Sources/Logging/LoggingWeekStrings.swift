@@ -74,19 +74,6 @@ extension LoggingStrings {
 
     // MARK: - The plan on a card (FR-17.8.1)
 
-    /// One exercise and what the routine prescribes for it — `Squat · 140 kg × 5 × 5`.
-    ///
-    /// **A format string rather than two labels**, `G-3.4`: the separator is punctuation this
-    /// catalogue owns, and a translation is free to reorder the halves.
-    ///
-    /// - Parameters:
-    ///   - exercise: The lift's name, as the lifter's locale spells it.
-    ///   - plan: Its targets, already joined.
-    /// - Returns: The line.
-    static func weekPlanLine(exercise: String, plan: String) -> LocalizedStringResource {
-        resource("logging.week.plan.line \(exercise) \(plan)")
-    }
-
     /// One target group — load, reps, sets.
     ///
     /// - Parameters:
@@ -164,7 +151,6 @@ extension LoggingStrings {
             weekDayContinueAction,
             weekDayProgress(done: 2, of: 4),
             weekDayDone(on: "Mon 7 Sep"),
-            weekPlanLine(exercise: "Squat", plan: "140 kg × 5 × 5"),
             weekPlanTarget(weight: "140 kg", reps: 5, sets: 5),
             weekPlanTargetOpenLoad(reps: 5, sets: 5),
             weekPlanTargetSeparator,

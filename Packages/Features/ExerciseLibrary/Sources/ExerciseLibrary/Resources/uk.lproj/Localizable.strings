@@ -33,6 +33,7 @@
 "exerciselibrary.list.no-matches.headline" = "Збігів немає";
 "exerciselibrary.list.no-matches.message" = "Жодна вправа не відповідає цьому пошуку та цим фільтрам.";
 "exerciselibrary.list.no-matches.action" = "Очистити пошук і фільтри";
+"exerciselibrary.list.no-matches.create %@" = "Створити «%@»";
 
 "exerciselibrary.list.error.headline" = "Вправи недоступні";
 "exerciselibrary.list.error.message" = "Не вдалося прочитати каталог вправ.";

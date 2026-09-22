@@ -74,17 +74,42 @@ cd "$(dirname "$0")/.."
 # notice nothing the parity check does not. Set it above that count where such tests exist, and at
 # the suite's own count where they do not — the latter is a floor that adds nothing, which is the
 # honest setting rather than a number chosen to look like the former.
-#   DesignSystem:    36 tests, 22 reference-backed, 14 harness probes  -> 36, its own count.
+#   DesignSystem:    37 tests, 23 reference-backed, 14 harness probes  -> 37, its own count.
 #                     T-1.92 added four probes for TR-1.12's blank guard and found BOTH halves of
 #                     this row stale while paying them: the floor read 24 against 31 tests, and the
 #                     derivation read 19 reference-backed against 84 references, which is 21. Seven
 #                     tests could have vanished unnoticed. Set to its own count now, as every other
 #                     suite is — "above the 19" was a margin that only ever grew.
-#   ExerciseLibrary: 42 tests, all of them reference-backed, no probes -> 42, its own count.
-#   Logging:         93 tests, 88 reference-backed, a width probe and four layout budgets
-#                                                                    -> 93, its own count.
+#   ExerciseLibrary: 44 tests, all of them reference-backed, no probes -> 44, its own count.
+#   Logging:         107 tests, 98 reference-backed, a width probe and eight layout budgets
+#                                                                    -> 107, its own count.
+#                     T-18.21 added the two that carry FR-18.6.9: the opening height at
+#                     `accessibility3` against a DIFFERENT device's budget (788 pt, not 667 —
+#                     no iOS 26 device is 667 pt tall), and the one that reads the skip arriving
+#                     at the foot of the form. The second exists because the first cannot see it:
+#                     the pinned region getting 132 pt shorter is not the command appearing
+#                     anywhere, and a change that simply dropped it would pass every budget here.
+#                     It added no reference — the count stayed 392 and 18 of them re-recorded,
+#                     every one a `Log-sheet-*` at `accessibility3`.
+#                     T-18.22 added `Day-two-group-records`, which is `DOD-18.15`: the one
+#                     reference in this suite whose row performs TWO runs, and therefore the only
+#                     one that can see a badge rule written per exercise rather than per group.
+#                     T-18.07 moved `SUITES` and left this tail at 96, because its review commit
+#                     had no reason to re-read a comment block its implementation commit wrote.
+#                     Both halves are one edit; a second commit on one task is where they part.
+#                     T-18.12 added five section references and two layout budgets, which measure
+#                     the head and the pinned commands at BOTH type sizes — what stops a claim
+#                     asserted through a snapshot being silently a claim about `.default` alone.
+#                     It also drifted this row by one within its own session, by adding the second
+#                     budget after setting the number: `git grep -c '@Test'` is the count, and it
+#                     has to be re-run when the last test lands rather than when the first does.
 #   History:         28 tests, 27 reference-backed, one layout budget -> 28, above the 27.
-#   Dashboard:       21 tests, all of them reference-backed, no probes -> 21, its own count.
+#   Dashboard:       20 tests, all of them reference-backed, no probes -> 20, its own count.
+#                     T-18.17 took it 21 -> 18 and the references 84 -> 72: FR-1.9.2's
+#                     last-workout card was withdrawn whole (FR-18.9.1), so a floor moves DOWN
+#                     on a removal exactly as it moves up on an addition, and both halves move.
+#                     T-18.18 took it 18 -> 20 and the references 72 -> 80: the week card's
+#                     Monday and falling-week states (FR-18.9.2, FR-18.9.3).
 #   Settings:        49 tests, all of them reference-backed, no probes -> 49, its own count.
 #                     T-1.91's review added four: the landing's two link states, and the restore's
 #                     other two refusal reasons. Neither gap was visible from here — parity and the
@@ -105,11 +130,11 @@ cd "$(dirname "$0")/.."
 # 15), each drifting one task at a time. `git grep -c '@Test' -- <suite>` is the count to set it
 # from, and a task that adds a snapshot test owes this list the same edit it owes __Snapshots__.
 SUITES=(
-    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|36"
-    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|42"
-    "Packages/Features/Logging|Logging|LoggingSnapshotTests|93"
+    "Packages/DesignSystem|DesignSystem-Package|DesignSystemSnapshotTests|37"
+    "Packages/Features/ExerciseLibrary|ExerciseLibrary|ExerciseLibrarySnapshotTests|44"
+    "Packages/Features/Logging|Logging|LoggingSnapshotTests|107"
     "Packages/Features/History|History|HistorySnapshotTests|28"
-    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|21"
+    "Packages/Features/Dashboard|Dashboard|DashboardSnapshotTests|20"
     "Packages/Features/Settings|Settings|SettingsSnapshotTests|49"
     "Packages/Features/Routines|Routines|RoutinesSnapshotTests|4"
 )
@@ -192,9 +217,14 @@ references_dir() { echo "$1/Tests/$2/__Snapshots__"; }
 
 run_suite() {
     local package="$1" scheme="$2" target="$3"
+    # TEST_RUNNER_TZ reaches the test process as TZ, so every reference renders in UTC — the runner's
+    # own zone — wherever the suite runs. A fixture's `\.timeZone` environment reaches
+    # `Text(_:format:)` but never a date a view formats into a String itself, and the fixtures' epoch
+    # is 22:13 UTC: a Mac east of Greenwich recorded the next day, and CI failed on the reference.
+    # Measured: `NSTimeZone.default` set inside the process does not reach `Date.FormatStyle`.
     (
         cd "$package"
-        xcodebuild test \
+        TEST_RUNNER_TZ=UTC xcodebuild test \
             -scheme "$scheme" \
             -destination "$DESTINATION" \
             -only-testing:"$target"

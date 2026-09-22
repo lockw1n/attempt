@@ -101,9 +101,19 @@ enum PlannedActual {
         precision: DisplayPrecision?,
         locale: Locale
     ) -> String? {
+        // `FR-18.6.5`, and in words rather than as `× 0` (`G-4.5`): a section at zero is a group
+        // the lifter did not do, and a rendered group of no sets reads as a number they entered.
+        // Unreachable on a one-section sheet — see ``SetDraft/minimumSets``.
+        if draft.sets == 0 { return String(localized: LoggingStrings.setGroupNotDone) }
         guard let group = draft.resolvedGroup else { return nil }
+        // `FR-18.6.8`: the count is the group's **working** sets, not its rows. A warm-up stored
+        // inside the group is carried through the save but was never prescribed, and counting it
+        // here reports a set the lifter did not add — see ``ResolvedSetGroup/workingSets``.
         let performed = WeekPlanTarget(
-            id: UUID(), weight: group.values.weight, reps: group.values.reps, sets: group.sets)
+            id: UUID(),
+            weight: group.values.weight,
+            reps: group.values.reps,
+            sets: group.workingSets)
         let rendered = WeekPlanTargets.rendered(
             [performed], unit: draft.unit, precision: precision, locale: locale)
         guard let comparison = PlannedGroupComparison(planned: plan, performed: performed) else {

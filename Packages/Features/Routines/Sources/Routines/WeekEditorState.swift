@@ -89,6 +89,12 @@ public final class WeekEditorState {
     /// no reference can even be recorded of (`TR-1.12`'s height limit).
     ///
     /// It is also which day the exercise chooser adds to — see ``addExercise(id:)``.
+    ///
+    /// **And what **Edit plan** on a day sets before pushing this screen** (`FR-18.7.2`): a
+    /// `RoutinesRoute` carries nothing, because which day is unfolded is a fact about the app
+    /// rather than a parameter of a push, so the app target writes it here and makes the push. It
+    /// survives a read — ``load()`` does not touch it — and a day it names that the week no longer
+    /// holds simply unfolds nothing.
     public var openDayID: UUID?
 
     /// Whether the last write changed nothing because the store refused.

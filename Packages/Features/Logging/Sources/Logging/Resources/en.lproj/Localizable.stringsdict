@@ -210,6 +210,46 @@
 			<string>%lld exercises</string>
 		</dict>
 	</dict>
+	<!-- FR-18.7.5: what goes with the workout, and that nothing brings it back. The whole sentence
+	     is inside the variant, verb included: a form that left "go with it" outside it reads "1
+	     logged set go with it" at one, which is the count this dialog is most often asked about. -->
+	<key>logging.past-session.delete.confirm.message %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@sets@ This cannot be undone.</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>No logged sets go with it.</string>
+			<key>one</key>
+			<string>%lld logged set goes with it.</string>
+			<key>other</key>
+			<string>%lld logged sets go with it.</string>
+		</dict>
+	</dict>
+	<!-- FR-18.5.2: asked only where the row holds a completed set, and it names every completed
+	     set the reset removes — warm-ups counted, pending sets not — because there is no undo of
+	     the reset. -->
+	<key>logging.day.row.reset.confirm.title %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Remove %#@sets@?</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld logged set</string>
+			<key>other</key>
+			<string>%lld logged sets</string>
+		</dict>
+	</dict>
 	<key>logging.day.skip-remaining.confirm.title %lld</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

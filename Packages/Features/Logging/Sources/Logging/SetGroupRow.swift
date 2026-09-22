@@ -5,7 +5,7 @@ import PowerliftingCore
 import RepositoryInterface
 import SwiftUI
 
-/// A run of identical sets on one line — `100,0 kg × 6 × 4` (`FR-16.1.1`, `FR-16.1.3`).
+/// A run of identical sets on one line — `100 kg × 6 × 4` (`FR-16.1.1`, `FR-16.1.3`).
 ///
 /// **A group of one is a row, not a group of one.** A single set is drawn by ``SetRow`` exactly as
 /// it always was: it has nothing to collapse, and a disclosure control over one set would be a tap
@@ -363,7 +363,7 @@ struct SetGroupRow: View {
     /// The rating, where the group carries one.
     ///
     /// **Below the values rather than beside them, at every size** — unlike ``SetRow/rating``, which
-    /// keeps the line until `NFR-1.10`'s ceiling. Measured: this line carries one numeral pair more
+    /// keeps the line below `.xxxLarge`. Measured: this line carries one numeral pair more
     /// than that one does, and with the rating beside it `100.0 kg` broke across two lines at the
     /// **default** type size, which is T-1.23's finding reached one field earlier.
     @ViewBuilder private var rating: some View {

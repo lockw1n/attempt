@@ -73,8 +73,19 @@ public enum SeedCatalogueValidator {
     ) -> [SeedValidationFailure] {
         var failures: [SeedValidationFailure] = []
 
-        if exercise.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if isBlank(exercise.name) {
             failures.append(.blankName(exercise.id))
+        }
+        // Paired with the key the author has to go and fix, and walked for the reason the
+        // vocabulary loop below is: a rule written out for one of the two lists passes while the
+        // other goes unchecked. One failure per list however many blanks it holds — the author's
+        // next move is the same either way.
+        let formerNameLists = [
+            ("formerNames", exercise.formerNames),
+            ("formerUkrainianNames", exercise.formerUkrainianNames),
+        ]
+        for (key, names) in formerNameLists where names.contains(where: isBlank) {
+            failures.append(.blankFormerName(exercise: exercise.id, key: key))
         }
         // Walked rather than named: `laterality` is the only one of the four whose own `Decodable`
         // throws, so a rule written out per field passes while three of them go unchecked.
@@ -93,6 +104,12 @@ public enum SeedCatalogueValidator {
             failures.append(.danglingParent(exercise: exercise.id, parent: parent))
         }
         return failures
+    }
+
+    /// Whether `value` is empty or only whitespace — this file's one reading of *blank*, shared by
+    /// the name rule and the former-name rule so the two cannot drift apart.
+    private static func isBlank(_ value: String) -> Bool {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     /// Every parent chain that closes on itself, each reported once.

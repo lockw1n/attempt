@@ -4,6 +4,10 @@ import PowerliftingCore
 /// Renders a ``PowerliftingCore/Weight`` in a display unit, for one locale — `"102.5 kg"`,
 /// `"102,5 kg"`, `"225 lb"`.
 ///
+/// **A fraction that is all zeros is not drawn** (`FR-18.3.5`, `G-3.3`): `130 kg`, never
+/// `130,0 kg`, at every step — and a fraction that is not is drawn in full, so `42.50` at a 0.25 kg
+/// step reads `42,5 kg`. The step bounds the width; the value decides it.
+///
 /// **The number is the domain's and the glyphs are ICU's**, and the split is deliberate. `Weight`
 /// `.formatted(in:precision:)` decides the value and how wide it is — `G-3.3`'s step, applied in
 /// exact integer arithmetic, with the pound double-rounding it documents — and this style renders
@@ -49,7 +53,7 @@ public struct WeightStyle: FormatStyle {
                     width: .abbreviated,
                     usage: .asProvided,
                     numberFormatStyle: .number.precision(
-                        .fractionLength(Self.fractionDigits(of: digits)))
+                        .fractionLength(0...Self.fractionDigits(of: digits)))
                 )
                 .locale(locale))
     }
@@ -62,7 +66,7 @@ public struct WeightStyle: FormatStyle {
         WeightStyle(unit: unit, precision: precision, locale: locale)
     }
 
-    /// How wide the fraction is, read off the domain's own output rather than re-derived from the
+    /// How wide the fraction may be, read off the domain's own output rather than re-derived from the
     /// step — the two cannot then disagree, and the derivation has one home.
     private static func fractionDigits(of digits: String) -> Int {
         guard let separator = digits.firstIndex(of: ".") else { return 0 }

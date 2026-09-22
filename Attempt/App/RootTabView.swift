@@ -189,12 +189,11 @@ struct RootTabView: View {
 
     /// Home's root — the dashboard (`FR-1.9`) — or the reason it cannot be shown.
     ///
-    /// **The fourth of this file's cross-module joins, and the only one that hands over a command
-    /// rather than a screen.** `FR-1.9.2`'s repeat starts a workout, which is `Logging`'s to write
-    /// and `TR-1.3` keeps `Dashboard` from importing; so the dashboard takes a closure and this
-    /// target — which owns both — supplies the store's own method. ``ActiveSessionStore/resume()``
-    /// runs first because the store may never have looked: repeating without it would start a second
-    /// workout on top of one already open.
+    /// **Repositories only: this join hands over no command.** It used to, and that is the whole of
+    /// what `FR-18.9.1` removed — `FR-1.9.2`'s repeat wrote a workout, which is `Logging`'s and
+    /// `TR-1.3` keeps `Dashboard` from importing, so the dashboard took a closure and this target
+    /// supplied the store's method. Nothing on Home starts, resumes or repeats a workout now, so
+    /// `Dashboard` needs nothing of `Logging`'s at all.
     @ViewBuilder
     private var dashboardRoot: some View {
         switch dependencies.state {
@@ -204,11 +203,7 @@ struct RootTabView: View {
                 catalogue: repositories.exercises,
                 workouts: repositories.workouts,
                 settings: repositories.settings,
-                trainingMaxes: repositories.trainingMaxes,
-                repeatSession: { sessionID in
-                    await stores.activeSession.resume()
-                    return await stores.activeSession.start(on: .now, repeating: sessionID)
-                }
+                trainingMaxes: repositories.trainingMaxes
             )
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
@@ -322,6 +317,22 @@ struct RootTabView: View {
 
     /// One day of the current week (`TR-17.6`), or the reason it cannot be shown.
     ///
+    /// **Edit plan is composed here and nowhere else** (`FR-18.7.2`). Which day the week's editor
+    /// unfolds is that editor's own app-lifetime state (``Routines/WeekEditorState/openDayID``) and
+    /// `TR-1.3` forbids `Logging` from importing `Routines` to set it — so the day hands back the
+    /// `ProgramDay` it is over and this sets the day and makes the push, the same join as
+    /// ``routineExercisePickerRoot`` at the other end of the same wire. **It carries no route
+    /// payload**: `RoutinesRoute.editWeek` holds nothing for the reason its own doc gives, and
+    /// which day is unfolded is a fact about the app rather than a parameter of a push.
+    ///
+    /// **So this writes a fact that outlives the push, and nothing clears it.** `openDayID` is set
+    /// here, by the editor's own disclosure headers and by a day being added; it is cleared only
+    /// when the day it names is removed. A later push from Train therefore opens at whatever was
+    /// last unfolded — this day, or the one the lifter left open — rather than fully folded. That
+    /// is the state the editor was already in before this wire existed, which is why no case here
+    /// resets it. Only a fresh process starts at `nil`, so a **restored** stack opens the editor
+    /// with every day folded.
+    ///
     /// - Parameters:
     ///   - runID: The program run the route carried.
     ///   - week: The week number it carried.
@@ -339,7 +350,11 @@ struct RootTabView: View {
                 equipment: stores.equipment,
                 programs: repositories.programs,
                 routines: repositories.routines,
-                exercises: repositories.exercises)
+                exercises: repositories.exercises,
+                editPlan: { programDayID in
+                    stores.weekEditor.openDayID = programDayID
+                    navigation.navigate(to: .routines(.editWeek))
+                })
         case .failed(let diagnostic):
             StoreUnavailableScreen(diagnostic: diagnostic)
         }

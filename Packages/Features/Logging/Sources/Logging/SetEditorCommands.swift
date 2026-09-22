@@ -17,6 +17,18 @@ struct SetEditorCommands: View {
     /// keystroke (`FR-17.1.6`) — see ``SetEditorSheet``.
     let showsRefusal: Bool
 
+    /// Whether the confirming command can be taken (`Q-18.7`, `FR-18.6.4`).
+    ///
+    /// **Disabled rather than refusing, and that is the difference from ``showsRefusal``.** A
+    /// draft that does not resolve is a mistake the lifter can fix in the field they are in, so
+    /// the command takes the tap and says what is wrong. Every section at zero sets is not a
+    /// mistake: it is an answer, and the answer it is has its own button one line below — saving
+    /// it would write a done entry holding no completed set, which is what **Skipped** is
+    /// (`FR-17.9.6`).
+    ///
+    /// Always `true` on a sheet with one section, whose set count cannot reach zero.
+    var canSave = true
+
     /// Which form is drawn — what decides the confirming command's words, whether the skip is
     /// offered and whether the deletion is.
     let mode: SetEditorMode
@@ -40,6 +52,15 @@ struct SetEditorCommands: View {
     /// belongs to a control in this footer and must not outlive the sheet it was raised from.
     @State private var isConfirmingDelete = false
 
+    /// The reader's chosen type size — what decides whether the skip is pinned here or scrolls
+    /// with the form (`FR-18.6.9`).
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// What this footer holds at the reader's type size — see ``SetEditorRoom``.
+    private var room: SetEditorRoom {
+        .at(isRow: mode.isRow, isAccessibilitySize: dynamicTypeSize.isAccessibilitySize)
+    }
+
     /// The rule, the refusal where there is one, then the commands.
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md.points) {
@@ -50,18 +71,21 @@ struct SetEditorCommands: View {
                 if showsRefusal {
                     FieldRefusal(message: Text(LoggingStrings.setInvalidMessage))
                 }
+                if !canSave { skipHint }
                 Button(action: log) {
                     Text(mode.confirmLabel)
                 }
                 // A sheet is its own surface, so the filled accent here is not competing with a
                 // screen's (T-16.17).
                 .buttonStyle(.primaryAction(.fill))
+                .disabled(!canSave)
 
-                if let skip {
-                    Button(action: skip) {
-                        Text(LoggingStrings.daySkipAction)
-                    }
-                    .buttonStyle(.secondaryAction(.fill))
+                // Pinned at every size but an accessibility one, where the 132 pt it costs here is
+                // what puts Reps below the fold — see ``SetEditorRoom``. There it is drawn at the
+                // foot of the scrolling form instead, by ``SetEditorRowFields``, and never in
+                // neither place: one `skip` reaches both, and each asks the same rule.
+                if room.pinsTheSkip, let skip {
+                    SetEditorSkipCommand(skip: skip)
                 }
 
                 Button(action: cancel) {
@@ -97,6 +121,31 @@ struct SetEditorCommands: View {
         }
     }
 
+    /// The line that points at the command this state's answer actually belongs to (`Q-18.7`).
+    ///
+    /// **Not a ``FieldRefusal``**, which is the negative colour and a warning glyph: nothing is
+    /// wrong here. It reads as guidance because it is, and it names the button directly beneath
+    /// it rather than describing it.
+    ///
+    /// **So it has to be told where that button is** (`FR-18.6.9`). At an accessibility size
+    /// ``SetEditorRoom`` has put the skip at the foot of the scrolling form, above this footer and
+    /// possibly scrolled off it, and a line reading *below* would then point past the bottom of the
+    /// sheet — in the one state it is drawn in, which is the one where nothing can be saved and the
+    /// lifter is looking for exactly that command.
+    private var skipHint: some View {
+        Text(
+            room.pinsTheSkip
+                ? LoggingStrings.setEveryGroupEmptyHint
+                : LoggingStrings.setEveryGroupEmptyHintInForm
+        )
+        .font(Typography.caption.font)
+        .foregroundStyle(ColorToken.textSecondary)
+        // Wraps rather than truncates, for `FieldRefusal`'s reason: inside a pinned footer a
+        // `Text` is given the height it asks for only if it says so.
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     /// `FR-1.2.7`'s deletion, last and behind a confirmation.
     ///
     /// **Last, with the way out between it and the confirming command.** The two commands a thumb
@@ -125,6 +174,25 @@ struct SetEditorCommands: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// **Skip this exercise** (`FR-17.9.6`), wherever ``SetEditorRoom`` has put it.
+///
+/// **A view of its own because the command has two homes and one appearance** — pinned beside the
+/// confirming command, or at the foot of the scrolling form at an accessibility size. Written out
+/// at both call sites the two would drift, and the size at which they differ is the one nobody
+/// looks at.
+struct SetEditorSkipCommand: View {
+    /// Records that the lifter is not doing this exercise today.
+    let skip: () -> Void
+
+    /// The command, full width, in the secondary emphasis a row's answer takes.
+    var body: some View {
+        Button(action: skip) {
+            Text(LoggingStrings.daySkipAction)
+        }
+        .buttonStyle(.secondaryAction(.fill))
     }
 }
 

@@ -47,8 +47,9 @@ struct NavigationStateTests {
     /// `D-8`: every offer to go training lands on Train's root — not on whatever Train was left
     /// showing, and not on a logging surface presented from the tab that offered it.
     ///
-    /// The callers are `FR-1.13.2`'s **Plan your week** on Home and History's two empty states;
-    /// `FR-1.9.4`'s Start workout was the fourth until `D-17.11` withdrew it.
+    /// The callers are `FR-1.13.2`'s **Plan your week** on Home and History's three empty states
+    /// (the session list's, the calendar's and the week view's); `FR-1.9.4`'s Start workout was
+    /// one more until `D-17.11` withdrew it.
     @Test("showing Train switches to it and lands on its root")
     func showTrainNavigates() {
         let state = NavigationState()
@@ -104,5 +105,36 @@ struct NavigationStateTests {
 
         #expect(state.path(for: .train).isEmpty)
         #expect(state.path(for: .settings).count == 1)
+    }
+
+    /// ``NavigationState/pop(_:)`` is the decrement ``NavigationState/popToRoot(_:)`` is not: one
+    /// screen, and the tab it was asked about (`FR-18.1.4`).
+    @Test("popping takes the topmost route off that tab alone")
+    func popsOneScreen() {
+        let state = NavigationState()
+        state.navigate(to: .training(.activeSession))
+        state.navigate(to: .exerciseLibrary(.exercisePicker))
+        state.navigate(to: .settings(.about))
+
+        #expect(state.pop(.train))
+
+        #expect(state.path(for: .train) == [.training(.activeSession)])
+        #expect(state.path(for: .settings).count == 1)
+    }
+
+    /// The answer a caller with another way out needs: nothing was popped, so take it.
+    ///
+    /// **A tab at its root and a tab never pushed on are the same answer**, and both are reachable
+    /// — a screen hosted with no shell at all asks this of a state that has never been navigated.
+    @Test("popping a stack already at its root pops nothing and says so")
+    func popsNothingAtTheRoot() {
+        let state = NavigationState()
+        state.navigate(to: .training(.activeSession))
+
+        #expect(state.pop(.train))
+
+        #expect(state.pop(.train) == false)
+        #expect(state.pop(.history) == false)
+        #expect(state.path(for: .train).isEmpty)
     }
 }

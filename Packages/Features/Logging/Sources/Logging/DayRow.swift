@@ -74,15 +74,31 @@ public struct DayRow: Identifiable, Equatable, Sendable {
     /// numerals — see ``DayExerciseRow/setNotes``, which is the only place a day's row can draw one.
     public let notes: [String]
 
-    /// Every scheme this row's work holds a personal record at (`FR-1.6.3`, `FR-16.2.4`).
+    /// Every scheme this row's work holds a personal record at, **one entry per performed run** and
+    /// in ``performed``'s order (`FR-1.6.3`, `FR-16.2.4`, `FR-18.3.8`).
     ///
     /// **On the row rather than looked up by the view**, on `SessionExerciseCardView`'s rule for
     /// the same badge: the cache read is the store's, and a row is what a reference renders.
     ///
-    /// **Gathered over the row's runs, and the badge names the maximal one.** The cache names a run
-    /// by its first set, which is the identifier ``DayPerformance/runs(of:)`` gives each run — so a
-    /// row of five sets holding the 1RM through the 5RM carries one badge, not five.
-    public let records: [SchemeMark]
+    /// **Per run rather than flattened, which is `F-22`.** The cache names a run by its first set,
+    /// which is the identifier ``DayPerformance/runs(of:)`` gives each run, so a run of five sets
+    /// holding the 1RM through the 5RM contributes one badge and not five — but a *row* of two runs
+    /// contributes two, and a single list of marks could only ever produce one badge for the whole
+    /// exercise. The nesting is what carries "which group" as far as the view; see ``recordBadges``.
+    ///
+    /// **Shorter than ``performed`` is runs with no badge, and longer is ignored** — the two are
+    /// built together in ``performed(_:marks:)`` and a fixture that lists fewer is naming the first
+    /// few runs.
+    public let records: [[SchemeMark]]
+
+    /// How many sets a reset of this row would remove (`FR-18.5.2`). Whole sets, never negative.
+    ///
+    /// **Every completed set, warmups included, and no pending one** — exactly the rows
+    /// ``ActiveSessionStore/resetExercise(inEntryID:)`` soft-deletes, so the question names what
+    /// the command does. It is deliberately *not* the *Did* line's count: that line leaves warmups
+    /// out and a reset does not, and a row whose only completed sets are warmups reads as skipped
+    /// while still holding work the lifter is owed a question about.
+    public let loggedSetCount: Int
 
     /// Builds the row.
     ///
@@ -93,7 +109,8 @@ public struct DayRow: Identifiable, Equatable, Sendable {
     ///   - performed: What was logged, encoded.
     ///   - answer: What has been said about it.
     ///   - notes: The distinct notes on its working sets.
-    ///   - records: The cells its work stands at.
+    ///   - records: The cells each of its runs stands at, in ``performed``'s order.
+    ///   - loggedSetCount: How many completed sets stand behind it, warmups included.
     public init(
         id: UUID,
         exercise: Exercise?,
@@ -101,7 +118,8 @@ public struct DayRow: Identifiable, Equatable, Sendable {
         performed: [WeekPlanTarget] = [],
         answer: DayRowAnswer = .unanswered,
         notes: [String] = [],
-        records: [SchemeMark] = []
+        records: [[SchemeMark]] = [],
+        loggedSetCount: Int = 0
     ) {
         self.id = id
         self.exercise = exercise
@@ -110,6 +128,7 @@ public struct DayRow: Identifiable, Equatable, Sendable {
         self.answer = answer
         self.notes = notes
         self.records = records
+        self.loggedSetCount = loggedSetCount
     }
 
     /// Whether the row carries `FR-17.9.2`'s circle — see ``DayRowCircle``.
@@ -130,6 +149,22 @@ public struct DayRow: Identifiable, Equatable, Sendable {
         guard !plan.isEmpty, !performed.isEmpty else { return false }
         return DayPerformance.collapsed(plan).map(Self.shape)
             == DayPerformance.collapsed(performed).map(Self.shape)
+    }
+
+    /// The badge each performed run carries, in ``performed``'s order — `nil` where its group set
+    /// no record (`FR-18.3.8`).
+    ///
+    /// **Exactly as long as ``performed``, whatever ``records`` holds.** The two lists are the
+    /// row's own invariant and nothing in the type system holds them together, so this is where a
+    /// fixture that named fewer runs than it performed stops being a crash.
+    ///
+    /// **The data was never wrong and only the row under-reported it** (`F-22`): the record cache
+    /// is keyed per scheme, so the feed (`FR-16.3.4`) and the records table (`FR-17.2.2`) have
+    /// shown every group's record all along.
+    var recordBadges: [RecordBadge?] {
+        performed.indices.map { index in
+            index < records.count ? RecordBadge(marks: records[index]) : nil
+        }
     }
 
     /// What one group prescribes or records, without its identity.
@@ -168,8 +203,11 @@ extension DayRow {
                 marked: exercise.entry.isMarkedDone, performedSomething: !performed.isEmpty),
             notes: DayPerformance.notes(of: exercise.sets),
             // The runs' own identifiers, which are their first sets' — the identifier the cache
-            // names a run by.
-            records: performed.flatMap { marks.marks(forSetID: $0.id) })
+            // names a run by. `map` rather than `flatMap` (`F-22`): the grouping is the one
+            // `DayPerformance.runs(of:)` already made, and flattening it here was what dropped a
+            // second group's record on the way to the badge.
+            records: performed.map { marks.marks(forSetID: $0.id) },
+            loggedSetCount: exercise.sets.count(where: \.isCompleted))
     }
 }
 
@@ -197,6 +235,53 @@ enum DayRowCircle {
     /// - Returns: Whether the circle is offered.
     static func isOffered(answer: DayRowAnswer, plan: [WeekPlanTarget]) -> Bool {
         answer == .unanswered && !plan.isEmpty && plan.allSatisfy { $0.weight != nil }
+    }
+}
+
+/// One command in a day row's menu, in the order it reads them (`FR-17.9.3`, `FR-17.9.6`,
+/// `FR-18.5.1`).
+enum DayRowMenuItem: Hashable, Sendable {
+    /// `FR-17.9.3`'s set editor, which every row offers on every surface.
+    case log
+
+    /// `FR-17.9.6`'s per-row skip, while the row is unanswered.
+    case skip
+
+    /// `FR-18.5.1`'s undo of either answer, once there is one. Always last, being the destructive
+    /// one.
+    case reset
+}
+
+/// What a day row's overflow menu holds, given what the row has been answered with and what the
+/// surface takes (`FR-18.5.1`).
+///
+/// **A value rather than a chain of `if`s inside the `Menu`**, on ``SessionMenuContents``' rule and
+/// for the reason that type measured on iOS 26.5: a menu is readable from nothing — its commands
+/// are not in a content snapshot, and a hosted walk reaches them only by presenting a popover into
+/// a window the host does not own. So *which item is there in which state* is asserted here.
+///
+/// **Skip and Reset are the two halves of one question and never both offered.** A row is answered
+/// or it is not: offering both would put the command that gives an answer beside the one that takes
+/// it away, which is `F-09`'s slip in miniature.
+struct DayRowMenuContents: Equatable, Sendable {
+    /// The commands, in order.
+    let items: [DayRowMenuItem]
+
+    /// Works out which commands apply.
+    ///
+    /// **The surface decides whether the write is offered at all and the answer decides which**
+    /// (`FR-17.7.6`): a past day passes neither handler, so its rows offer **Log** alone — which is
+    /// `OUT-18.10`'s "not from History" said where the row is built rather than as a second flag.
+    ///
+    /// - Parameters:
+    ///   - answer: What has been said about the row.
+    ///   - offersSkip: Whether the surface takes `FR-17.9.6`'s write.
+    ///   - offersReset: Whether it takes `FR-18.5.1`'s.
+    init(answer: DayRowAnswer, offersSkip: Bool, offersReset: Bool) {
+        var items: [DayRowMenuItem] = [.log]
+        if answer == .unanswered, offersSkip { items.append(.skip) }
+        if answer != .unanswered, offersReset { items.append(.reset) }
+        self.items = items
     }
 }
 

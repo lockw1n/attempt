@@ -62,8 +62,8 @@ Packages/
 │   ├── Logging/             The Train tab — this week, a day, the active session and
 │   │                        everything logged into it
 │   ├── History/             Past training: sessions by month or by week, calendar, search
-│   ├── Dashboard/           e1RM tiles, the recent-PR feed, the week summary, the last-workout
-│   │                        card, and the first-launch state
+│   ├── Dashboard/           e1RM tiles, the recent-PR feed, the week summary, and the
+│   │                        first-launch state
 │   ├── Settings/            Preferences, data portability, sync, the bodyweight log
 │   └── Routines/            Editing the current week — its days in order, each day's exercises
 │                            and each exercise's target groups — on one screen
@@ -101,7 +101,12 @@ backup reader and writer and the real store in one test, and `Persistence` may
 not depend on a feature. It is also why the record pipeline's real-store
 measurement lives there: `DerivedValues` declares no `Persistence` dependency, so
 `Settings`' test target is the only existing place that can reach both. The `Settings` library is unaffected; `import
-Persistence` from a source file there still does not resolve.
+Persistence` from a source file there still does not resolve. A second test-only
+edge runs the other way, and it is the same shape: `Persistence`' *test* target
+depends on `SeedImport`, so a test can put the real bundled catalogue into a real
+store. `SeedImport` writes through `any ExerciseRepository` and never names
+`Persistence`, so the edge stays one-way; the `Persistence` library's own
+dependencies are unchanged.
 Two constraints are load-bearing rather than stylistic:
 
 - **`PowerliftingCore` imports nothing at all** — not `Foundation`, not `SwiftUI`,
@@ -304,9 +309,18 @@ ATTEMPT_REAL_BACKUP=/path/to/backup.json swift test --package-path Packages/Feat
 **The app target has its own bundle too.** `AttemptTests` is an XCTest bundle *hosted*
 by `Attempt`, which is what makes `AppDependencies` and a real `UIWindowScene`
 reachable — a package suite has no host application, so it can neither run the launch
-sequence nor build a UIView hierarchy. Two things live there and nothing else should:
-the launch sequence over a real store, and the class of defect a snapshot reference
-cannot see (a modifier attached to the screen rather than to one of its parts).
+sequence nor build a UIView hierarchy. Three things live there and nothing else should:
+the launch sequence over a real store; the class of defect a snapshot reference cannot
+see (a modifier attached to the screen rather than to one of its parts); and what only a
+**hosted accessibility tree** answers — whether a control is drawn at all, and where it
+sits relative to the chrome a real navigation stack supplies. The third needs the host
+because a screen pushed onto a stack has a back button and a screen at a stack's root
+does not.
+
+A hosted tree answers *whether the control exists*, never *what a menu contains*: a
+menu's items are unreadable from a test on iOS 26 (see `SessionMenuContents` and
+`DayRowMenuContents`), so which commands a surface offers belongs in its package's own
+suite, over a value, and only the control's presence belongs here.
 
 **`RootTabView` itself is not buildable there.** It needs `AppNavigation`, which this
 target does not link, and linking it is an Xcode project change. So a decision written
@@ -326,7 +340,9 @@ Always through the script, never a bare `xcodebuild test`: a hosted view answers
 `accessibilityElements` with an **empty array** unless the destination has an
 accessibility client, so a screen with every control intact reads exactly like one
 whose controls were deleted. The script sets `ApplicationAccessibilityEnabled` on
-every run. It reads the accessibility tree, so it proves a screen's parts are still
+every run, and runs the suites **serially** — the bundle's hosted tests share one
+`UIWindowScene`, and `.serialized` orders a suite's own tests but nothing between
+suites. It reads the accessibility tree, so it proves a screen's parts are still
 wired to the screen and never that they can be touched — a control that publishes
 no accessibility element, or one that is covered, mis-sized or behind a gesture that
 wins, is invisible to it.
@@ -371,6 +387,9 @@ Either form takes one suite, named by its package directory or target, when a ch
 module — `./scripts/snapshot-tests.sh --record Settings`. A narrowed run proves nothing about the
 suites it skipped, so the bare command is the one that backs a claim.
 
+The script runs every suite in UTC, the CI runner's zone, so references recorded on any machine
+match CI. A bare `xcodebuild test` runs in the machine's own zone and can draw a date a day off.
+
 A rendering whose pixels are all one colour is **never recorded**, and a committed reference that
 is all one colour is **rejected before the comparison** — `ImageRenderer` returns a blank past
 roughly 7,000 pixels of height, and a `ScrollView` rasterises its placeholder at any size, so
@@ -380,7 +399,9 @@ snapshot the content view rather than the scroller.
 
 Each suite also has a **minimum test count** in `scripts/snapshot-tests.sh`, so a suite that
 silently stops running is a failure rather than a green zero. Adding a snapshot test means raising
-that number in the same commit; `git grep -c '@Test' -- <suite>` is what to set it from.
+that number in the same commit; `git grep -c '@Test' -- <suite>` is what to set it from, run when
+the **last** test of the change lands. The count appears twice — in `SUITES` and in the derivation
+in the comment block above it — and both are set to the same number.
 
 The references are committed beside each suite's tests — for example
 `Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__` and

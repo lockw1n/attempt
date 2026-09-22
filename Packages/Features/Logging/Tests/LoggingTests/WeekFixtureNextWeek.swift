@@ -44,6 +44,39 @@ extension WeekFixture {
                 targetSets: sets))
     }
 
+    /// Appends a target group to one slot, so a day can prescribe a top set and back-offs
+    /// (`FR-15.2.1`).
+    ///
+    /// **What `F-10` needed and no Phase 1.7 fixture had.** Every fixture in this suite used a
+    /// one-group plan, which is why a sheet that could write only the first group passed every
+    /// test written over it.
+    ///
+    /// - Parameters:
+    ///   - day: The `ProgramDay.order` whose routine holds the slot.
+    ///   - slot: The slot's position in that routine.
+    ///   - grams: The group's load, or `nil` for `FR-15.2.2`'s blank target.
+    ///   - reps: Reps per set.
+    ///   - sets: Sets prescribed.
+    /// - Throws: Whatever the repository throws, or a failure where the routine has no such slot.
+    func addTarget(day: Int, slot: Int, grams: Int?, reps: Int, sets: Int) async throws {
+        let slots = try await stack.routines.exercises(
+            forRoutineID: routineIDs[day], includingDeleted: false)
+        guard slots.indices.contains(slot) else { throw WeekFixtureFailure.noEntries }
+        let groups = try await stack.routines.targetGroups(
+            forRoutineExerciseID: slots[slot].id, includingDeleted: false)
+        try await stack.routines.save(
+            RoutineTargetGroup(
+                id: UUID(),
+                createdAt: weekFixtureDay,
+                updatedAt: weekFixtureDay,
+                deletedAt: nil,
+                routineExerciseID: slots[slot].id,
+                order: (groups.map(\.order).max() ?? -1) + 1,
+                targetWeight: grams.map { Weight(grams: $0) },
+                targetReps: reps,
+                targetSets: sets))
+    }
+
     /// The targets one routine prescribes, flattened for comparison — load in grams, reps, sets.
     ///
     /// - Parameter routineID: The routine to read.

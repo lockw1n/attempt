@@ -228,7 +228,14 @@ struct WeekDayCardView: View {
     }
 }
 
-/// One exercise of a day's plan — `Squat · 140 kg × 5 × 5` (`FR-17.8.1`).
+/// One exercise of a day's plan — the lift on the left, its scheme on the right (`FR-17.8.1`,
+/// `FR-18.3.3`).
+///
+/// **A table rather than a sentence** (`Q-18.2` at (a)). It was one localized format string with
+/// the lift's name in it, on `G-3.4`'s argument that a translation may reorder the halves; the two
+/// halves are now two columns, and a column's position is the layout's question rather than the
+/// catalogue's — which is also what lets the numbers line up down the card. The separator
+/// punctuation went with the sentence.
 struct PlanLineRow: View {
     /// The slot this row draws.
     let line: WeekPlanLine
@@ -243,23 +250,22 @@ struct PlanLineRow: View {
     @Environment(\.displayPrecision) private var displayPrecision
 
     var body: some View {
-        Text(
-            LoggingStrings.weekPlanLine(
-                exercise: line.exercise?.displayName(for: locale) ?? "", plan: plan)
-        )
-        .font(Typography.caption.font)
-        .foregroundStyle(ColorToken.textSecondary)
-        .fixedSize(horizontal: false, vertical: true)
+        // `FR-18.3.6`: the card draws a plan nobody has answered yet, which is the state that
+        // stays primary — the same answer `DayExerciseRow` gives its unanswered row, from the same
+        // place, so the two screens cannot drift apart on it.
+        PlanSchemeRow(schemes: plan, emphasis: DayRowScheme.unansweredEmphasis) {
+            Text(verbatim: line.exercise?.displayName(for: locale) ?? "")
+                .font(Typography.body.font)
+                .foregroundStyle(ColorToken.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
-    /// Every target group the slot carries, joined.
-    ///
-    /// **Resolved to a `String` here rather than composed of `Text`s**, because the whole line is
-    /// one localized format string with the lift's name in it (`G-3.4`) — a translation is free to
-    /// put the plan first, which a stack of views could not honour.
-    private var plan: String {
-        WeekPlanTargets.rendered(
+    /// Every target group the slot carries, one per line.
+    private var plan: [String] {
+        WeekPlanTargets.lines(
             line.targets, unit: unit, precision: displayPrecision, locale: locale)
     }
 }
@@ -282,9 +288,27 @@ enum WeekPlanTargets {
     static func rendered(
         _ targets: [WeekPlanTarget], unit: MassUnit, precision: DisplayPrecision?, locale: Locale
     ) -> String {
-        targets
-            .map { rendered($0, unit: unit, precision: precision, locale: locale) }
+        lines(targets, unit: unit, precision: precision, locale: locale)
             .joined(separator: String(localized: LoggingStrings.weekPlanTargetSeparator))
+    }
+
+    /// The same groups as a **list**, one entry each (`FR-18.3.1`).
+    ///
+    /// **What a plan row draws, and the array-taking `rendered(_:unit:precision:locale:)` above is
+    /// the joined form of it.** A row draws one line per group, so the separator above belongs to
+    /// the places that still need a sentence — the Log sheet's prefill and its comparison —
+    /// rather than to the screens.
+    ///
+    /// - Parameters:
+    ///   - targets: The groups, in order.
+    ///   - unit: The unit their loads read in (`G-3.1`).
+    ///   - precision: `G-3.3`'s step, or `nil` for the unit's own.
+    ///   - locale: Which locale the numbers read in (`G-3.4`).
+    /// - Returns: One rendered group per line, in order.
+    static func lines(
+        _ targets: [WeekPlanTarget], unit: MassUnit, precision: DisplayPrecision?, locale: Locale
+    ) -> [String] {
+        targets.map { rendered($0, unit: unit, precision: precision, locale: locale) }
     }
 
     /// One target group, in the lifter's unit.

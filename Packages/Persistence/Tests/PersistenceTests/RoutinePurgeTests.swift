@@ -22,7 +22,7 @@ struct RoutinePurgeTests {
         _ type: T.Type,
         in harness: RepositoryHarness
     ) throws -> Int {
-        try harness.store().rows(type, includingDeleted: true).count
+        try harness.store().allRows(type, includingDeleted: true).count
     }
 
     // The routine chain's own retention, which is transitive over two hops: a live target group

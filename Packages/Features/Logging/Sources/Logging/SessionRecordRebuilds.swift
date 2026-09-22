@@ -37,4 +37,37 @@ extension ActiveSessionStore {
             dayIndex: session.dayIndex
         )
     }
+
+    /// `session` on another training day, and every other field untouched.
+    ///
+    /// Every column is named, on ``DerivedValues/SessionFinish/ended(_:at:)``'s rule: `save(_:)` is
+    /// an upsert over a value whose initialiser defaults the program stamp to `nil`, so a rebuild
+    /// that omitted it would erase which day of which week this workout is.
+    ///
+    /// **Here rather than beside ``changeDate(to:)``, and internal rather than private**, on
+    /// ``noted(_:as:)``'s rule and for its reason: `FR-18.7.4` re-dates a session from History,
+    /// where there is no store holding it (``PastSessionState``), and a second rebuild written
+    /// there would be a second place for the program stamp to be dropped.
+    ///
+    /// - Parameters:
+    ///   - session: The workout.
+    ///   - day: The training day it moves to.
+    /// - Returns: The record to store.
+    static func dated(_ session: WorkoutSession, to day: Date) -> WorkoutSession {
+        WorkoutSession(
+            id: session.id,
+            createdAt: session.createdAt,
+            updatedAt: session.updatedAt,
+            deletedAt: session.deletedAt,
+            date: Calendar.current.startOfDay(for: day),
+            startedAt: session.startedAt,
+            endedAt: session.endedAt,
+            notes: session.notes,
+            bodyweight: session.bodyweight,
+            programRunID: session.programRunID,
+            scheduledWorkoutID: session.scheduledWorkoutID,
+            weekNumber: session.weekNumber,
+            dayIndex: session.dayIndex
+        )
+    }
 }

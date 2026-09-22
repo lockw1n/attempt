@@ -11,8 +11,8 @@ import SwiftUI
 ///
 /// **The session is implicit and there is no Start.** A lifter opens the day, taps a circle per
 /// exercise, and the workout is written underneath them (`FR-17.9.5`); the last answer ends it
-/// (`FR-17.9.8`). Backdating and discarding are in an overflow menu rather than on the screen,
-/// because neither is what anyone came here to do.
+/// (`FR-17.9.8`). Backdating, skipping the rest and resetting the day are in an overflow menu
+/// rather than on the screen, because none of them is what anyone came here to do.
 ///
 /// **Addressed by the stamp rather than by a session id**, which is the route's own argument: a day
 /// nothing has been logged into has no session, so a session id could not name it.
@@ -30,6 +30,18 @@ public struct DayView: View {
     /// The gym `FR-1.4.1`'s loading is worked out on, for the same sheet.
     private let equipment: PlateCalculatorStore
 
+    /// Opens Edit week at the `ProgramDay` handed over (`FR-18.7.2`).
+    ///
+    /// **Supplied by the app target rather than done here**, and it is the only command on this
+    /// screen that is: which day the week's editor unfolds is that editor's own app-lifetime state,
+    /// and `TR-1.3` forbids this module from importing `Routines` to set it. So the app target —
+    /// which already composes both — sets the day and makes the push, exactly as it does for the
+    /// exercise chooser at the other end of the same wire.
+    ///
+    /// **Required, with no default** (`T-16.17`): a screen that silently did nothing here would be
+    /// a menu item that does nothing, which is the whole of what `F-13` reported.
+    private let editPlan: (UUID) -> Void
+
     /// Builds the screen over the stamp the route carried.
     ///
     /// - Parameters:
@@ -42,6 +54,8 @@ public struct DayView: View {
     ///   - programs: The programs, their days and the run in force.
     ///   - routines: The routine the day names.
     ///   - exercises: The catalogue the plan's slots name.
+    ///   - editPlan: Opens Edit week at the `ProgramDay` handed over (`FR-18.7.2`). See
+    ///     ``editPlan`` for why it is the app target's.
     public init(
         runID: UUID,
         week: Int,
@@ -51,11 +65,13 @@ public struct DayView: View {
         equipment: PlateCalculatorStore,
         programs: any ProgramRepository,
         routines: any RoutineRepository,
-        exercises: any ExerciseRepository
+        exercises: any ExerciseRepository,
+        editPlan: @escaping (UUID) -> Void
     ) {
         self.store = store
         self.vocabulary = vocabulary
         self.equipment = equipment
+        self.editPlan = editPlan
         _day = State(
             initialValue: DayStore(
                 runID: runID,
@@ -84,18 +100,18 @@ public struct DayView: View {
         }
         .sheet(item: $editing) { target in
             SetEditorSheet(
-                draft: ActiveSessionView.draft(
-                    for: target.editorTarget, unit: store.displayUnit, locale: locale),
+                sections: SetEditorSections(
+                    answering: target.row, unit: store.displayUnit, locale: locale),
                 mode: .row(target.row),
                 prescribed: target.prescribed,
                 unit: store.displayUnit,
                 vocabulary: vocabulary,
                 equipment: equipment,
-                log: { draft in
-                    guard let group = draft.resolvedGroup else { return }
+                log: { sections in
+                    let rows = sections.rows
                     let rowID = target.rowID
                     editing = nil
-                    Task { await day.log(rowID: rowID, group: group) }
+                    Task { await day.log(rowID: rowID, rows: rows) }
                 },
                 cancel: { editing = nil },
                 skip: {
@@ -112,10 +128,22 @@ public struct DayView: View {
             // never open at.
             .presentationDetents([.large])
         }
+        .sessionDone(label: LoggingStrings.dayDoneAction)
+        // Trailing, left of the exit and a control of its own (`FR-18.4.8`). Applied *after*
+        // `sessionDone` on purpose, which is what puts it *before* the exit on the bar — measured
+        // on iOS 26.5: the outer modifier's toolbar content is drawn first. See
+        // `sessionDone(label:)`, and `DoneButtonTests.theMenuIsTrailingOfTheExit` for the gate.
         .sessionOverflow(
-            date: day.date,
+            contents: Self.menuContents(
+                date: day.date,
+                startsWhenDated: day.hasPlan,
+                offersPlanEditing: day.weekDayID != nil,
+                progress: day.progress),
             changeDate: { chosen in Task { await day.changeDate(to: chosen) } },
-            discard: { isConfirmingDiscard = true }
+            commands: SessionMenuCommands(
+                editPlan: openThePlan,
+                skipRemaining: { isConfirmingSkipRemaining = true },
+                discard: { requestDayReset() })
         )
         .confirmationDialog(
             Text(LoggingStrings.dayLogRemainingConfirmTitle(count: unansweredCount)),
@@ -147,23 +175,124 @@ public struct DayView: View {
                 Text(LoggingStrings.dayRemainingConfirmCancel)
             }
         }
+        // `FR-18.4.5`: the same write the free workout's **Discard** makes, and a different
+        // promise about it — here the plan is on the week and survives.
         .confirmationDialog(
-            Text(LoggingStrings.sessionDiscardConfirmTitle),
-            isPresented: $isConfirmingDiscard,
+            Text(LoggingStrings.dayResetConfirmTitle),
+            isPresented: $isConfirmingReset,
             titleVisibility: .visible
         ) {
             Button(role: .destructive) {
                 Task { await day.discard() }
             } label: {
-                Text(LoggingStrings.sessionDiscardConfirmAction)
+                Text(LoggingStrings.dayResetConfirmAction)
             }
             Button(role: .cancel) {
             } label: {
-                Text(LoggingStrings.sessionDiscardConfirmCancel)
+                Text(LoggingStrings.dayResetConfirmCancel)
             }
         } message: {
-            Text(LoggingStrings.sessionDiscardConfirmMessage)
+            Text(LoggingStrings.dayResetConfirmMessage)
         }
+        // `FR-18.5.2`: asked only where the row holds completed sets, and it names how many. A
+        // bare skip holds none, so ``resetConfirmation(for:)`` sends it straight through.
+        .confirmationDialog(
+            Text(LoggingStrings.dayRowResetConfirmTitle(count: askedSetCount)),
+            isPresented: isConfirmingRowReset,
+            titleVisibility: .visible,
+            presenting: resetting
+        ) { target in
+            // The target is handed in rather than read back off the state: the binding is cleared
+            // on the way out, and an action that read `resetting` would depend on which of the two
+            // SwiftUI does first.
+            Button(role: .destructive) {
+                Task { await day.reset(rowID: target.rowID) }
+            } label: {
+                Text(LoggingStrings.dayRowResetConfirmAction)
+            }
+            Button(role: .cancel) {
+            } label: {
+                Text(LoggingStrings.dayRowResetConfirmCancel)
+            }
+        }
+    }
+
+    /// Whether a row's reset has to ask first, and what it would say (`FR-18.5.2`).
+    ///
+    /// **A function rather than a condition inside the command**, on ``menuContents(date:startsWhenDated:offersPlanEditing:progress:)``'s
+    /// rule: *which rows ask* is the requirement, and written inline it would be a claim no test can
+    /// call. There is no undo of the reset — the sets are soft-deleted and nothing in the app brings
+    /// one back — which is why a row carrying work asks at all, and why one carrying none does not.
+    ///
+    /// - Parameter row: The row whose answer is being taken back.
+    /// - Returns: What the question would name, or `nil` where none is owed.
+    static func resetConfirmation(for row: DayRow) -> DayRowResetTarget? {
+        guard row.loggedSetCount > 0 else { return nil }
+        return DayRowResetTarget(rowID: row.id, setCount: row.loggedSetCount)
+    }
+
+    /// Whether **Reset day** has to ask first (`FR-18.4.6`, `Q-18.14` at (b)).
+    ///
+    /// **Four clauses, and the day holds nothing but its date only when all four are quiet.** The
+    /// row's rule one function up can be narrow because a row's reset removes that row's sets; this
+    /// one removes the whole workout — every mark, every added row and the note — so it asks over
+    /// anything the lifter would have to put back by hand. The note is the sharpest of the four: it
+    /// is the only thing on a day that no tap can redo.
+    ///
+    /// **A row with no plan is a row the lifter added** (`FR-1.2.2`), which is ``DayRowCircle``'s
+    /// reading of the same emptiness — and this is only ever asked where the day has a workout, the
+    /// menu's destructive item being drawn on a date alone (``SessionMenuContents``).
+    ///
+    /// **That third clause is a proxy, and it over-asks.** A planned exercise whose only target
+    /// group was never filled in is stored with no groups at all — the slot is written when the
+    /// exercise is picked and its blank group is in no table until it resolves — so on the day it
+    /// is indistinguishable from a row the lifter added, and such a day asks although it holds
+    /// nothing but its date. Nothing on the entry records which of the two it was, and the fact
+    /// that would part them is a stored one (`TR-18.5`). Left as it is on purpose: of the two ways
+    /// to be wrong here, asking once too often is the one that costs no work. The same emptiness is
+    /// safe in ``DayRowCircle`` for a reason that does not carry here — a row with no target has
+    /// nothing "as planned" could mean whoever added it.
+    ///
+    /// - Parameters:
+    ///   - rows: The day's rows.
+    ///   - note: The workout's session note — ``DayStore/note``.
+    /// - Returns: Whether the confirmation is owed.
+    static func dayResetAsks(rows: [DayRow], note: String) -> Bool {
+        if rows.contains(where: { $0.loggedSetCount > 0 }) { return true }
+        if rows.contains(where: { $0.answer != .unanswered }) { return true }
+        if rows.contains(where: { $0.plan.isEmpty }) { return true }
+        // Trimmed, on ``SessionNoteDraft/firstLine``'s reading of what a note is: a field holding a
+        // space is not prose the lifter would miss.
+        return !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// What this screen's `⋯` holds (`FR-17.9.7`, `FR-18.4.4`, `FR-18.4.5`).
+    ///
+    /// **A function rather than three arguments written inline**, because what a `View`'s body
+    /// passes a modifier is readable by nothing — see `sessionOverflow` for the measurements. This
+    /// is where *the planned day offers* **Reset day** lives, and it is the only place the claim
+    /// is made.
+    ///
+    /// - Parameters:
+    ///   - date: The day's training date, or `nil` before it has a workout.
+    ///   - startsWhenDated: Whether a routine stands behind the day, so that dating it creates the
+    ///     workout (`FR-18.7.1`) — ``DayStore/hasPlan``.
+    ///   - offersPlanEditing: Whether the week still holds this day, so **Edit plan** has somewhere
+    ///     to open at (`FR-18.7.2`) — ``DayStore/weekDayID``.
+    ///   - progress: How far through the day the lifter is.
+    /// - Returns: The commands, in order.
+    static func menuContents(
+        date: Date?,
+        startsWhenDated: Bool,
+        offersPlanEditing: Bool,
+        progress: DayProgress
+    ) -> SessionMenuContents {
+        SessionMenuContents(
+            date: date,
+            startsWhenDated: startsWhenDated,
+            offersPlanEditing: offersPlanEditing,
+            offersSkipRemaining: progress.offersWholeDayCommands,
+            destructive: .resetDay)
     }
 
     /// Which set editor is open, or `nil`.
@@ -172,16 +301,31 @@ public struct DayView: View {
     /// Whether **Log remaining as planned** is asking (`FR-17.9.9`).
     @State private var isConfirmingLogRemaining = false
 
-    /// Whether **Skip remaining** is asking.
+    /// Whether **Skip remaining** is asking. Raised from the menu now, not from the foot
+    /// (`FR-18.4.4`).
     @State private var isConfirmingSkipRemaining = false
 
-    /// Whether **Discard** is asking (`FR-1.2.12`).
-    @State private var isConfirmingDiscard = false
+    /// Whether **Reset day** is asking (`FR-18.4.5`, `FR-1.2.12`).
+    @State private var isConfirmingReset = false
+
+    /// Which row's **Reset to unanswered** is asking, and how many sets it would remove
+    /// (`FR-18.5.1`, `FR-18.5.2`), or `nil`.
+    @State private var resetting: DayRowResetTarget?
+
+    /// The count the last question named. Whole sets. Kept apart from ``resetting``, which is `nil`
+    /// again while the dialog animates out — the title would re-read as *Remove 0 logged sets?*.
+    @State private var askedSetCount = 0
+
+    /// That, as the dialog's own presentation. Dismissing it is the question going away rather than
+    /// an answer, so nothing is written.
+    private var isConfirmingRowReset: Binding<Bool> {
+        Binding(get: { resetting != nil }, set: { if !$0 { resetting = nil } })
+    }
 
     /// Which of the exercise's two names reads, and which locale the editor's numbers are in.
     @Environment(\.locale) private var locale
 
-    /// How many rows the two whole-day commands would act on.
+    /// How many rows the whole-day commands would act on — the foot's and the menu's alike.
     private var unansweredCount: Int { day.progress.total - day.progress.answered }
 
     /// The day's name where its routine has one, and its position where it has not.
@@ -233,7 +377,7 @@ public struct DayView: View {
         }
     }
 
-    /// The rows, the picker and the two whole-day commands.
+    /// The rows, the picker and the whole-day command.
     @ViewBuilder private var checklist: some View {
         DayChecklistSection(
             rows: day.rows,
@@ -241,7 +385,8 @@ public struct DayView: View {
             unit: store.displayUnit,
             answer: { rowID in Task { await day.answerAsPlanned(rowID: rowID) } },
             log: { rowID in open(rowID) },
-            skip: { rowID in Task { await day.skip(rowID: rowID) } })
+            skip: { rowID in Task { await day.skip(rowID: rowID) } },
+            reset: { rowID in requestReset(rowID) })
         // Not on a day that has ended: a finished day is read-only except through **Log**
         // (`FR-17.7.5`), and a row added to it would arrive unanswered under a heading that had
         // already counted every row — `n of m` disagreeing with the **Done** its card reads.
@@ -249,9 +394,7 @@ public struct DayView: View {
             addExercise
         }
         if day.progress.offersWholeDayCommands {
-            DayFootCommands(
-                logRemaining: { isConfirmingLogRemaining = true },
-                skipRemaining: { isConfirmingSkipRemaining = true })
+            DayFootCommands(logRemaining: { isConfirmingLogRemaining = true })
         }
         if !day.unanswerable.isEmpty {
             // A result, not an error: the command did what it could and is saying what it could
@@ -294,6 +437,45 @@ public struct DayView: View {
             .joined(separator: String(localized: LoggingStrings.dayUnanswerableSeparator))
     }
 
+    /// Takes a row's answer back, asking first where there is work to remove (`FR-18.5.1`).
+    ///
+    /// A row the day no longer holds resets nothing, on ``open(_:)``'s rule below.
+    ///
+    /// - Parameter rowID: The row.
+    private func requestReset(_ rowID: UUID) {
+        guard let row = day.rows.first(where: { $0.id == rowID }) else { return }
+        guard let target = Self.resetConfirmation(for: row) else {
+            Task { await day.reset(rowID: rowID) }
+            return
+        }
+        askedSetCount = target.setCount
+        resetting = target
+    }
+
+    /// Throws the day's answers away, asking first where there are any (`FR-18.4.5`, `FR-18.4.6`).
+    ///
+    /// ``requestReset(_:)``'s shape one function up: the question is owed or the command goes
+    /// straight through, and the decision is the plain function rather than a condition written
+    /// here.
+    private func requestDayReset() {
+        guard Self.dayResetAsks(rows: day.rows, note: day.note) else {
+            Task { await day.discard() }
+            return
+        }
+        isConfirmingReset = true
+    }
+
+    /// Opens the week's plan at this day (`FR-18.7.2`).
+    ///
+    /// **Nothing happens where the week no longer holds the day**, which is the same guard every
+    /// command on this screen carries: the menu item is not drawn then
+    /// (``menuContents(date:startsWhenDated:offersPlanEditing:progress:)`` reads the same
+    /// property), so reaching this with no identity is a wiring fault rather than a state.
+    private func openThePlan() {
+        guard let weekDayID = day.weekDayID else { return }
+        editPlan(weekDayID)
+    }
+
     /// Opens the Log sheet over one row (`FR-17.9.3`).
     ///
     /// A row the day no longer holds opens nothing: it went away underneath the checklist, which is
@@ -304,106 +486,5 @@ public struct DayView: View {
         guard let row = day.editorRow(forRow: rowID) else { return }
         editing = DayLogTarget(
             rowID: rowID, row: row, prescribed: day.prescribed(forRow: rowID))
-    }
-}
-
-/// Which row the Log sheet is open over (`FR-17.9.3`, `FR-17.9.4`).
-///
-/// **The row rather than the entry**, because the sheet can be opened on a day that has no session
-/// yet: the first answer creates it, and the row is what survives that (see
-/// ``DayStore/log(rowID:group:)``).
-struct DayLogTarget: Identifiable, Equatable {
-    /// The row.
-    let rowID: UUID
-
-    /// The plan, what is already logged, and whether the row is answered — what the sheet's row
-    /// mode is drawn from.
-    let row: SetEditorRow
-
-    /// What the routine prescribed for the next set, drawn above the fields (`FR-15.3.1`).
-    let prescribed: PlannedTargetGroup?
-
-    /// The row's identity is the sheet's.
-    var id: UUID { rowID }
-
-    /// The same thing in the shape the shared editor takes.
-    var editorTarget: SetEditorTarget {
-        SetEditorTarget(entryID: rowID, prescribed: prescribed, row: row)
-    }
-}
-
-/// The day's rows, under the count of how many are answered (`FR-17.9.1`).
-///
-/// A view rather than a `GroupedSection` built inside the screen, which is `T-16.17`'s finding: the
-/// heading, the grouping and what each row offers are the screen's decisions, and a fixture that
-/// restates them pictures itself.
-struct DayChecklistSection: View {
-    /// The day's exercises, in order.
-    let rows: [DayRow]
-
-    /// How far through them the lifter is.
-    let progress: DayProgress
-
-    /// The unit their loads read in (`G-3.1`).
-    let unit: MassUnit
-
-    /// Logs one row exactly as planned (`FR-17.9.2`), or `nil` on a past day (`FR-17.7.6`).
-    var answer: ((UUID) -> Void)?
-
-    /// Opens the editor over one row (`FR-17.9.3`). Never absent — see ``DayExerciseRow/log``.
-    let log: (UUID) -> Void
-
-    /// Records that the lifter is not doing one row today (`FR-17.9.6`), or `nil` — see ``answer``.
-    var skip: ((UUID) -> Void)?
-
-    var body: some View {
-        GroupedSection(
-            Text(LoggingStrings.dayProgress(done: progress.answered, of: progress.total))
-        ) {
-            ForEach(rows) { row in
-                DayExerciseRow(
-                    row: row,
-                    unit: unit,
-                    // Rebound per row rather than passed through: the row's own commands take no
-                    // argument, and an absent one here has to stay absent there.
-                    answer: answer.map { command in { command(row.id) } },
-                    log: { log(row.id) },
-                    skip: skip.map { command in { command(row.id) } })
-            }
-        }
-    }
-}
-
-/// The two commands that answer for everything that is left (`FR-17.9.9`).
-///
-/// **At the foot, under `+ Add exercise`, and both secondary.** They are the exception rather than
-/// the way a day is normally answered — the circle is — and a filled pair here would be two primary
-/// actions on a screen whose accent belongs to the work.
-struct DayFootCommands: View {
-    /// Logs everything that is left exactly as planned.
-    let logRemaining: () -> Void
-
-    /// Records that the lifter is not doing the rest.
-    let skipRemaining: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm.points) {
-            Button(action: logRemaining) {
-                Text(LoggingStrings.dayLogRemainingAction)
-            }
-            .buttonStyle(.plain)
-            .font(Typography.actionLabel.font)
-            .foregroundStyle(ColorToken.textSecondary)
-            .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points, alignment: .leading)
-
-            Button(action: skipRemaining) {
-                Text(LoggingStrings.daySkipRemainingAction)
-            }
-            .buttonStyle(.plain)
-            .font(Typography.actionLabel.font)
-            .foregroundStyle(ColorToken.textSecondary)
-            .frame(maxWidth: .infinity, minHeight: TouchTarget.standard.points, alignment: .leading)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

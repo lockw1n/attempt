@@ -143,15 +143,47 @@ public final class ExerciseFormState {
 
     private let repository: any ExerciseRepository
 
+    /// The name the form opens on, applied by ``load()`` once the language is known. Empty unless
+    /// the form was opened from a search that matched nothing (`FR-18.1.3`).
+    private let initialName: String
+
+    /// What a successful save hands the row to, or `nil` where a save is only a save.
+    ///
+    /// **Supplied by the screen that opened the form, not by the route**, which is what keeps the
+    /// module boundary (`TR-1.3`): the picker holds the closure that writes an exercise into the
+    /// day, and the form hands it the row it just stored (`FR-18.1.4`). It is `async` for
+    /// ``ExerciseListView``'s reason — the write has to land before the screens pop, or the surface
+    /// underneath would re-read without it.
+    private let onSave: ((Exercise) async -> Void)?
+
     /// Builds the form over what it is editing and the repository it reads and writes through.
     ///
     /// - Parameters:
     ///   - mode: Whether this authors a new exercise or edits an existing one.
     ///   - repository: Where the catalogue and the edited record come from.
-    public init(mode: ExerciseFormMode, repository: any ExerciseRepository) {
+    ///   - initialName: What to open the name fields on, for a form reached from a search that
+    ///     matched nothing. Applied in ``ExerciseFormMode/create`` only: an edit has a record, and a
+    ///     prefill there would overwrite it.
+    ///   - onSave: What to do with the stored row besides storing it — the picker's selection. The
+    ///     browsing screen passes nothing.
+    public init(
+        mode: ExerciseFormMode,
+        repository: any ExerciseRepository,
+        initialName: String = "",
+        onSave: ((Exercise) async -> Void)? = nil
+    ) {
         self.mode = mode
         self.repository = repository
+        self.initialName = initialName
+        self.onSave = onSave
     }
+
+    /// Whether the screen leaves on its own once a save lands.
+    ///
+    /// **`false` once a caller took ``onSave``**, because that caller's own exit is what runs next
+    /// and there is only one way out to take: the picker pops itself and the form standing on it,
+    /// and a second dismissal from here would be the form popping a screen it no longer stands on.
+    public var dismissesItselfOnSave: Bool { onSave == nil }
 
     // MARK: - Reading
 
@@ -174,6 +206,7 @@ public final class ExerciseFormState {
             switch mode {
             case .create:
                 catalogue = try await repository.exercises(includingDeleted: false)
+                prefillName()
                 phase = .ready
             case .edit(let exerciseID):
                 guard
@@ -190,6 +223,22 @@ public final class ExerciseFormState {
         } catch {
             phase = .failed(String(describing: error))
         }
+    }
+
+    /// Opens the name fields on what was typed into the search that found nothing (`FR-18.1.3`).
+    ///
+    /// **The active language's field, and ``name`` whatever the language is** (`FR-1.14.2`): the
+    /// English name is the one required field, so a Ukrainian prefill that filled only
+    /// ``ukrainianName`` would open a form whose Save is refused — three taps that cannot be taken.
+    /// Filling both is also what display already resolves to, since a row with no Ukrainian name
+    /// falls back to the English one.
+    ///
+    /// Called from ``load()``, not from the initialiser, because which field is the active
+    /// language's is not known until the view has handed over ``nameLanguage``.
+    private func prefillName() {
+        guard !initialName.isEmpty else { return }
+        name = initialName
+        if nameLanguage == .ukrainian { ukrainianName = initialName }
     }
 
     // MARK: - The parent picker (FR-1.1.7)
@@ -328,6 +377,11 @@ public final class ExerciseFormState {
         }
         writeFailure = nil
         editedRecord = record
+        // Before the flag, because `didSave` is this form's record that the save is *finished* and
+        // the selection is part of what it owes (`FR-18.1.4`). Set first, it would be observably
+        // true while the exercise had not reached the day yet, and every reader of it — the view's
+        // dismissal, a test — would be reading a save that is still running.
+        await onSave?(record)
         didSave = true
     }
 

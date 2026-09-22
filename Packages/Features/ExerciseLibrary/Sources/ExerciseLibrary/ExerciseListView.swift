@@ -27,6 +27,18 @@ public struct ExerciseListView: View {
     /// reappears.
     private let select: ((Exercise) async -> Void)?
 
+    /// Where the catalogue comes from, kept because this screen now builds a second one over it.
+    ///
+    /// The create form opened from the no-match state is presented **here** rather than pushed as a
+    /// route (`FR-18.1.3`): it carries the typed name, a `Route` case's associated values are the
+    /// persisted format, and a stored stack holding the lifter's own text is a restored screen
+    /// quoting something they typed weeks ago. ``nameBeingCreated`` lives for this screen's lifetime
+    /// instead, and a restored stack comes back at the list.
+    private let repository: any ExerciseRepository
+
+    /// The name the create form is open on, or `nil` while it is not.
+    @State private var nameBeingCreated: String?
+
     /// The shell's navigation position, for the one command here that is not a `NavigationLink`.
     ///
     /// **Optional, and read rather than required**: a `StateAction` is a closure, so the empty
@@ -59,6 +71,7 @@ public struct ExerciseListView: View {
         select: ((Exercise) async -> Void)? = nil
     ) {
         _state = State(initialValue: ExerciseListState(repository: repository, workouts: workouts))
+        self.repository = repository
         self.select = select
     }
 
@@ -107,13 +120,31 @@ public struct ExerciseListView: View {
             }
         }
         // `refresh()`, not `load()`: an exercise created or edited above this screen has to be here
-        // on the way back down (`FR-1.1.3`, `FR-1.1.4`). See the method's own note.
+        // on the way back down (`FR-1.1.3`, `FR-1.1.4`), and this runs again to put it there — a
+        // push takes the screen off the display, so appearing again is what re-reads. See the
+        // method's own note, and `theListShowsWhatItJustCreated` for the claim under test.
         //
         // The language is handed over before the read rather than watched for changes: iOS restarts
         // the app when its language changes, so there is no running screen to update.
         .task {
             state.nameLanguage = ExerciseNameLanguage(locale)
             await state.refresh()
+        }
+        // Not `.navigationDestination(for:)`: the form is reached from this screen with a payload
+        // this screen holds, and the stack's own vocabulary is the persisted one. See
+        // ``nameBeingCreated``.
+        //
+        // No re-read is wired to this form popping, and that is measured: `.task` above runs again
+        // on the way back down, so the exercise just created is in the list that asked for it.
+        // `AttemptTests`' `theListShowsWhatItJustCreated` is the measurement — it passes with an
+        // explicit re-read here and without one, which is why there is not one.
+        .navigationDestination(item: $nameBeingCreated) { name in
+            ExerciseFormView(
+                mode: .create,
+                repository: repository,
+                initialName: name,
+                onSave: selectSaved
+            )
         }
     }
 
@@ -182,19 +213,49 @@ public struct ExerciseListView: View {
                     }
             )
         } else if groups.isEmpty {
-            EmptyStateView(
-                symbolName: "magnifyingglass",
-                headline: Text(ExerciseLibraryStrings.noMatchesHeadline),
-                message: Text(ExerciseLibraryStrings.noMatchesMessage),
-                action: StateAction(
-                    Text(ExerciseLibraryStrings.noMatchesAction), emphasis: .primary
-                ) {
-                    state.clearFilters()
-                }
+            ExerciseNoMatchState(
+                nameToCreate: state.nameToCreate,
+                create: { nameBeingCreated = $0 },
+                clearFilters: { state.clearFilters() }
             )
         } else {
             ExerciseGroupList(groups: groups, select: rowAction)
         }
+    }
+
+    /// What a save in the create form above this screen does, or `nil` where it does nothing but
+    /// pop (`FR-18.1.4`).
+    ///
+    /// **The chooser's own ``select``, run on a row that did not exist when the picker opened** —
+    /// which is the whole of what "saving selects it" means: the same write as tapping a row, so the
+    /// two doors out of this screen cannot write different things. The *exit* is the one place they
+    /// differ, and ``popPastTheForm()`` is why.
+    ///
+    /// Browsing, there is nothing to select: the form pops itself and this list re-reads, exactly as
+    /// it does after the toolbar's Create.
+    private var selectSaved: ((Exercise) async -> Void)? {
+        guard let select else { return nil }
+        return { exercise in
+            await select(exercise)
+            popPastTheForm()
+        }
+    }
+
+    /// Leaves both screens at once: the form that was just saved and the picker under it.
+    ///
+    /// **Not ``dismiss``, and that is measured rather than argued** (`FR-18.1.4`): from a form
+    /// standing on this screen, `dismiss()` pops the form and leaves the picker up, and calling it
+    /// again after that pops nothing — the lifter is left on the catalogue they are finished with.
+    /// Removing the picker's own route takes the stack back to the day in one move, form included,
+    /// because the form is presented *by* this screen and goes down with it.
+    ///
+    /// The removal itself is ``AppNavigation/NavigationState/pop(_:)``'s, where it can be tested;
+    /// what is decided here is only which exit to take. Falls back to ``dismiss`` where there is no
+    /// shell to pop — a preview or a snapshot, which has nothing above it either.
+    private func popPastTheForm() {
+        nameBeingCreated = nil
+        let popped = navigation.map { $0.pop($0.selectedTab) } ?? false
+        if !popped { dismiss() }
     }
 
     /// What one row does when tapped, or `nil` where the row is a push.

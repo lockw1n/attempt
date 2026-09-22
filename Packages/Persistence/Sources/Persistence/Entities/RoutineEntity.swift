@@ -25,13 +25,17 @@ final class RoutineEntity: StoredEntity {
     }
 }
 
-// `StoredEntity` requires these four per concrete type and supplies no default. The reason is on
+// `StoredEntity` requires these five per concrete type and supplies no default. The reason is on
 // the protocol's own requirements, and it is not a style preference: a `#Predicate` written in a
 // generic context captures a key path the optimizer may re-instantiate, which fetches correctly
 // unoptimized and traps under `-O`.
 extension RoutineEntity {
     static func matchingID(_ id: UUID) -> Predicate<RoutineEntity> {
         #Predicate<RoutineEntity> { $0.id == id }
+    }
+
+    static func matchingIDs(_ ids: Set<UUID>) -> Predicate<RoutineEntity> {
+        #Predicate<RoutineEntity> { ids.contains($0.id) }
     }
 
     static var notDeleted: Predicate<RoutineEntity> {

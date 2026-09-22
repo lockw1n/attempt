@@ -74,6 +74,10 @@ extension SharedIDEntity {
         #Predicate<SharedIDEntity> { $0.id == id }
     }
 
+    static func matchingIDs(_ ids: Set<UUID>) -> Predicate<SharedIDEntity> {
+        #Predicate<SharedIDEntity> { ids.contains($0.id) }
+    }
+
     static var notDeleted: Predicate<SharedIDEntity> {
         #Predicate<SharedIDEntity> { $0.deletedAt == nil }
     }
@@ -104,6 +108,10 @@ extension SharedIDEntity {
 extension BornDeletedEntity {
     static func matchingID(_ id: UUID) -> Predicate<BornDeletedEntity> {
         #Predicate<BornDeletedEntity> { $0.id == id }
+    }
+
+    static func matchingIDs(_ ids: Set<UUID>) -> Predicate<BornDeletedEntity> {
+        #Predicate<BornDeletedEntity> { ids.contains($0.id) }
     }
 
     static var notDeleted: Predicate<BornDeletedEntity> {

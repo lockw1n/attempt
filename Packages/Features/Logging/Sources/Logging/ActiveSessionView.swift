@@ -51,8 +51,9 @@ public struct ActiveSessionView: View {
     /// Whether `FR-1.2.12`'s confirmation is on screen.
     ///
     /// The screen's and not the store's: a dialogue the user has open is not a fact about the
-    /// workout, and it must not survive the screen being left.
-    @State private var isConfirmingDiscard = false
+    /// workout, and it must not survive the screen being left. Internal rather than file-scoped —
+    /// the menu handler that raises it is in `ActiveSessionViewCommands.swift`.
+    @State var isConfirmingDiscard = false
 
     /// Whether `FR-16.4.4`'s question is open — the workout holds sets nobody attempted, and Finish
     /// has been tapped.
@@ -203,7 +204,7 @@ public struct ActiveSessionView: View {
                 unit: store.displayUnit,
                 vocabulary: vocabulary,
                 equipment: equipment,
-                log: { write($0, target) },
+                log: { write($0.single, target) },
                 cancel: { editing = nil },
                 delete: { delete(target) }
             )
@@ -212,13 +213,12 @@ public struct ActiveSessionView: View {
             // longer fit the medium one.
             .presentationDetents([.medium, .large])
         }
-        // `FR-17.9.7`'s menu, shared with a day's checklist: the training day this workout
-        // belongs to lost its only control when `FR-17.8.7` took the date picker off Train's root,
-        // and Discard came here with it.
+        // `FR-17.9.7`'s menu. Trailing, and no exit: this one ends at Finish below (`OUT-18.6`).
+        // The placement stopped being an argument when the other two joined it here (`FR-18.4.8`).
         .sessionOverflow(
-            date: store.session?.date,
+            contents: Self.menuContents(date: store.session?.date),
             changeDate: { day in Task { await store.changeDate(to: day) } },
-            discard: { isConfirmingDiscard = true }
+            commands: menuCommands
         )
         .confirmationDialog(
             Text(LoggingStrings.sessionDiscardConfirmTitle),

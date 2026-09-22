@@ -106,18 +106,92 @@ struct LoggingStringsTests {
         #expect(String(localized: LoggingStrings.dayRemainingConfirmCancel) == "Keep going")
     }
 
+    /// `FR-18.7.5`'s question, at every count a session can hold — on
+    /// ``theWholeDayCommandsAskByName()``'s rule, and for a sharper reason than either of the two
+    /// above: this one's verb agrees with its own count, so the variant has to carry the whole
+    /// sentence. A format that left the verb outside it reads *1 logged set go with it* at one and
+    /// passes every other test in this file, `everyKeyResolves` included — that one renders a
+    /// single count and asks only that something came back.
+    ///
+    /// **Zero is reachable**: a workout with no sets in it is deletable, which is
+    /// `PastSessionCorrectionTests.anEmptySessionStillAsks`.
+    @Test("The delete question agrees with its count, at none, one and many")
+    func theDeleteQuestionAgreesWithItsCount() {
+        #expect(
+            String(localized: LoggingStrings.pastSessionDeleteConfirmMessage(count: 0))
+                == "No logged sets go with it. This cannot be undone.")
+        #expect(
+            String(localized: LoggingStrings.pastSessionDeleteConfirmMessage(count: 1))
+                == "1 logged set goes with it. This cannot be undone.")
+        #expect(
+            String(localized: LoggingStrings.pastSessionDeleteConfirmMessage(count: 27))
+                == "27 logged sets go with it. This cannot be undone.")
+    }
+
+    /// The same claim on the Ukrainian half, which is **this file's one exception** to the split
+    /// its head describes: `everyKeyResolves` and `check-translations.sh` can see that a key has
+    /// copy behind it, and neither can see that the copy is a sentence. The zero form needs a
+    /// negation the other four do not (*не буде вилучено жодного*), so it is the form a shared
+    /// sentence opening silently breaks — which is what it did.
+    @Test("The Ukrainian delete question is a sentence at zero as well")
+    func theUkrainianDeleteQuestionReadsAtZero() {
+        #expect(
+            ukrainian(LoggingStrings.pastSessionDeleteConfirmMessage(count: 0))
+                == "Разом із ним не буде вилучено жодного підходу. Цю дію не можна скасувати.")
+        #expect(
+            ukrainian(LoggingStrings.pastSessionDeleteConfirmMessage(count: 1))
+                == "Разом із ним буде вилучено 1 записаний підхід. Цю дію не можна скасувати.")
+        #expect(
+            ukrainian(LoggingStrings.pastSessionDeleteConfirmMessage(count: 27))
+                == "Разом із ним буде вилучено 27 записаних підходів. Цю дію не можна скасувати.")
+    }
+
+    /// One resource rendered against the other catalogue.
+    ///
+    /// - Parameter resource: The string.
+    /// - Returns: What a Ukrainian device reads.
+    private func ukrainian(_ resource: LocalizedStringResource) -> String {
+        var localized = resource
+        localized.locale = Locale(identifier: "uk")
+        return String(localized: localized)
+    }
+
     /// `FR-17.9.7`'s overflow menu, on both of its hosts. A menu is not snapshottable — T-16.04's
-    /// finding on dialogs applies — so its two items and its own name are asserted here.
-    @Test("The overflow menu carries both items, and is named for neither")
-    func theOverflowMenuCarriesBothItems() {
+    /// finding on dialogs applies — so its items and its own name are asserted here.
+    @Test("The overflow menu carries its items, and is named for none of them")
+    func theOverflowMenuCarriesItsItems() {
         #expect(String(localized: LoggingStrings.dayChangeDateAction) == "Change date")
+        #expect(String(localized: LoggingStrings.daySkipRemainingAction) == "Skip remaining")
+        #expect(String(localized: LoggingStrings.dayResetAction) == "Reset day")
         #expect(String(localized: LoggingStrings.sessionDiscardAction) == "Discard workout")
-        // Named for the menu rather than for either item in it (`G-4.2`, `NFR-1.10`): a button
+        // Named for the menu rather than for any item in it (`G-4.2`, `NFR-1.10`): a button
         // announcing itself as **Discard** would be lying about the half that changes a date.
         let menu = String(localized: LoggingStrings.dayMenuAction)
         #expect(menu == "Day options")
         #expect(menu != String(localized: LoggingStrings.dayChangeDateAction))
+        #expect(menu != String(localized: LoggingStrings.dayResetAction))
         #expect(menu != String(localized: LoggingStrings.sessionDiscardAction))
+    }
+
+    /// `FR-18.4.5`: the day's way back names what survives it, and the confirmation says both
+    /// halves — *the plan stays*, *the answers go*.
+    ///
+    /// **The message rather than only the title**, because the title alone is the word the tester
+    /// could not find a meaning for (`F-11`); what makes **Reset day** safe to tap is the sentence
+    /// under it.
+    @Test("Reset day promises the plan back and says the answers go")
+    func resetSaysWhatSurvivesIt() {
+        #expect(String(localized: LoggingStrings.dayResetConfirmTitle) == "Reset this day?")
+        #expect(
+            String(localized: LoggingStrings.dayResetConfirmMessage)
+                == "The plan stays. Your answers for this day are removed.")
+        #expect(String(localized: LoggingStrings.dayResetConfirmAction) == "Reset day")
+        // Naming what it keeps rather than saying "cancel", on the discard dialog's rule.
+        #expect(String(localized: LoggingStrings.dayResetConfirmCancel) == "Keep my answers")
+        // And it is not the free workout's copy, which promises the workout itself is gone.
+        #expect(
+            String(localized: LoggingStrings.dayResetConfirmMessage)
+                != String(localized: LoggingStrings.sessionDiscardConfirmMessage))
     }
 
     /// `FR-17.9.6`: a skip is an outcome, and it is not the word a done row uses.

@@ -241,6 +241,15 @@
 "logging.past-session.empty.message" = "Це тренування розпочали, але не додали до нього жодної вправи.";
 "logging.past-session.write-error.message" = "Не вдалося зберегти цю зміну. Нічого не втрачено — спробуйте ще раз.";
 
+/* The button that names the exit (FR-18.4.3). It writes nothing. */
+"logging.past-session.done.action" = "Готово";
+
+/* FR-18.7.3, FR-18.7.5 — власне меню минулого тренування */
+"logging.past-session.delete.action" = "Видалити тренування";
+"logging.past-session.delete.confirm.title %@" = "Видалити тренування за %@?";
+"logging.past-session.delete.confirm.action" = "Видалити тренування";
+"logging.past-session.delete.confirm.cancel" = "Залишити тренування";
+
 /* FR-15.3 — план проти факту, у тренуванні, що триває */
 "logging.session.exercise.marked-done" = "Позначено виконаним";
 "logging.session.exercise.skipped" = "Пропущено";
@@ -282,7 +291,6 @@
 "logging.week.day.continue" = "Продовжити";
 "logging.week.day.progress %lld %lld" = "%1$lld з %2$lld виконано";
 "logging.week.day.done %@" = "Виконано · %@";
-"logging.week.plan.line %@ %@" = "%1$@ · %2$@";
 "logging.week.plan.target %@ %lld %lld" = "%1$@ × %2$lld × %3$lld";
 "logging.week.plan.target-open %lld %lld" = "%1$lld × %2$lld";
 "logging.week.plan.target.separator" = ", ";
@@ -302,12 +310,17 @@
 
 /* FR-17.9's day checklist (T-17.11). */
 "logging.day.row.skipped" = "Пропущено";
-"logging.day.row.as-planned %@" = "%@ · як заплановано";
-"logging.day.row.planned %@" = "План: %@";
-"logging.day.row.did %@" = "Виконано: %@";
+"logging.day.row.as-planned" = "Як заплановано";
+"logging.day.row.planned" = "План";
+"logging.day.row.did" = "Виконано";
 "logging.day.circle.action" = "Записати як заплановано";
 "logging.day.log.action" = "Записати";
 "logging.day.skip.action" = "Пропустити цю вправу";
+
+/* FR-18.5 — скасування відповіді для одного рядка. */
+"logging.day.row.reset.action" = "Скинути відповідь";
+"logging.day.row.reset.confirm.action" = "Вилучити їх";
+"logging.day.row.reset.confirm.cancel" = "Залишити відповідь";
 "logging.day.log-remaining.action" = "Записати решту як заплановано";
 "logging.day.skip-remaining.action" = "Пропустити решту";
 "logging.day.log-remaining.confirm.action" = "Записати";
@@ -318,6 +331,19 @@
 "logging.day.menu.action" = "Дії з днем";
 "logging.day.change-date.action" = "Змінити дату";
 "logging.day.change-date.done" = "Готово";
+
+/* FR-18.7.2 — шлях від дня до того, що в ньому заплановано. */
+"logging.day.edit-plan.action" = "Редагувати план";
+
+/* FR-18.4.5 — повернення дня до запланованого. */
+"logging.day.reset.action" = "Скинути день";
+"logging.day.reset.confirm.title" = "Скинути цей день?";
+"logging.day.reset.confirm.message" = "План залишиться. Ваші відповіді за цей день буде вилучено.";
+"logging.day.reset.confirm.action" = "Скинути день";
+"logging.day.reset.confirm.cancel" = "Залишити відповіді";
+
+/* The button that names the exit (FR-18.4.1). It writes nothing. */
+"logging.day.done.action" = "Готово";
 "logging.day.add-exercise.action" = "Додати вправу";
 "logging.day.no-rows.headline" = "У цьому дні ще нічого немає";
 "logging.day.no-rows.message" = "Додайте вправу, щоб почати записувати.";
@@ -331,6 +357,11 @@
 "logging.session.set.actual.label" = "Фактично";
 "logging.session.set.details.label" = "Деталі кожного підходу";
 "logging.session.set.save-done.action" = "Зберегти як виконане";
+"logging.session.set.group.heading %lld" = "Група %lld";
+"logging.session.set.group.not-done" = "Не виконано";
+"logging.session.set.group.every-empty.hint" = "У кожній групі 0 підходів. Скористайтеся кнопкою «Пропустити цю вправу» нижче, щоб записати, що ви її не робили.";
+/* FR-18.6.9 — той самий рядок, коли кнопка перенесена з панелі внизу в саму форму. */
+"logging.session.set.group.every-empty.hint.in-form" = "У кожній групі 0 підходів. Скористайтеся кнопкою «Пропустити цю вправу» в кінці форми, щоб записати, що ви її не робили.";
 
 /* FR-17.9.4 — відхилення поруч із фактично виконаним. */
 "logging.session.set.deviation.line %@ %@" = "%1$@ · %2$@";

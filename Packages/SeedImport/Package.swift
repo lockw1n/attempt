@@ -53,9 +53,16 @@ let package = Package(
         ),
         // G-6.3. `RepositoryFakes` is the subject every test here runs against; the dependency lives
         // on this target and only this target, so a consumer of the library links no store.
+        // `Fixtures/` is `DOD-18.5`'s frozen copy of catalogue revision 3, which the suite seeds a
+        // store from before importing the revision that renames an entry. `.copy` rather than
+        // `.process`, the way `SeedContentTests` does it: the loader asks for the file by
+        // subdirectory, so the directory has to survive into the bundle. The shipped payload cannot
+        // stand in for it — `T-18.05` is about to edit it, and a fixture that moves with the subject
+        // asserts nothing.
         .testTarget(
             name: "SeedImportTests",
             dependencies: ["SeedImport", "RepositoryFakes"],
+            resources: [.copy("Fixtures")],
             swiftSettings: strictSettings
         ),
     ]

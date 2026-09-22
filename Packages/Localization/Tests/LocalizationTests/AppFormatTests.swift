@@ -89,31 +89,44 @@ struct AppFormatTests {
     func unitSymbolIsAbbreviated() {
         let weight = Weight(grams: 102_058)
         #expect(weight.formatted(AppFormat.weight(in: .pounds, locale: english)) == "225 lb")
-        #expect(weight.formatted(AppFormat.weight(in: .kilograms, locale: english)) == "102.0 kg")
+        #expect(weight.formatted(AppFormat.weight(in: .kilograms, locale: english)) == "102 kg")
     }
 
-    @Test("The fraction width comes from the step, not from the value")
-    func fractionWidthFollowsPrecision() {
-        let weight = Weight(grams: 100_000)
-        #expect(
-            weight.formatted(AppFormat.weight(in: .kilograms, precision: .whole, locale: english))
-                == "100 kg")
-        #expect(
-            weight.formatted(AppFormat.weight(in: .kilograms, precision: .half, locale: english))
-                == "100.0 kg")
-        #expect(
-            weight.formatted(AppFormat.weight(in: .kilograms, precision: .quarter, locale: english))
-                == "100.00 kg")
+    /// `FR-18.3.5`: the step bounds the fraction and the value decides it — a zero fraction is not
+    /// drawn at any step, and a fraction that is not zero is drawn in full, `42.50` reading `42.5`.
+    @Test(
+        "A weight drops an all-zero fraction and keeps any other, in both locales",
+        arguments: [
+            ("en_US", ["130 kg", "42.5 kg", "42.25 kg", "100 kg", "0 kg", "-20 kg", "225 lb", "227.5 lb"]),
+            ("uk_UA", ["130 кг", "42,5 кг", "42,25 кг", "100 кг", "0 кг", "-20 кг", "225 фнт", "227,5 фнт"]),
+        ])
+    func weightDropsTrailingZero(identifier: String, expected: [String]) {
+        let locale = Locale(identifier: identifier)
+        let kilograms: [(grams: Int, precision: DisplayPrecision)] = [
+            (130_000, .half), (42_500, .quarter), (42_250, .quarter), (100_000, .quarter),
+            (0, .half), (-20_000, .half),
+        ]
+        let pounds: [(grams: Int, precision: DisplayPrecision)] = [(102_058, .whole), (103_192, .half)]
+        let rendered =
+            kilograms.map { render($0.grams, in: .kilograms, at: $0.precision, locale) }
+            + pounds.map { render($0.grams, in: .pounds, at: $0.precision, locale) }
+        #expect(rendered == expected)
+    }
+
+    private func render(
+        _ grams: Int, in unit: MassUnit, at precision: DisplayPrecision, _ locale: Locale
+    ) -> String {
+        Weight(grams: grams).formatted(AppFormat.weight(in: unit, precision: precision, locale: locale))
     }
 
     @Test("A negative mass — assisted work — keeps its sign")
     func negativeMassRenders() {
         let assisted = Weight(grams: -20_000)
-        #expect(assisted.formatted(AppFormat.weight(in: .kilograms, locale: english)) == "-20.0 kg")
+        #expect(assisted.formatted(AppFormat.weight(in: .kilograms, locale: english)) == "-20 kg")
     }
 
     @Test("The rendered digits are the domain's own, never re-rounded here")
-    func digitsAgreeWithTheDomain() {
+    func digitsAgreeWithTheDomain() throws {
         // The pound path is the one that can disagree: it rounds grams to milli-pounds and then to
         // the step, so a style rounding the converted Double instead would drift at the ties.
         for grams in stride(from: -5_000, through: 205_000, by: 227) {
@@ -122,8 +135,10 @@ struct AppFormatTests {
                 let precision = DisplayPrecision.default(for: unit)
                 let rendered = weight.formatted(
                     AppFormat.weight(in: unit, precision: precision, locale: english))
-                let domain = weight.formatted(in: unit, precision: precision)
-                #expect(rendered.hasPrefix(domain + " "), "\(grams) g in \(unit)")
+                // The domain's fraction is fixed width and the style's is not, so compare values.
+                let domain = try #require(Double(weight.formatted(in: unit, precision: precision)))
+                let shown = try #require(Double(rendered.prefix { $0 != " " }))
+                #expect(shown == domain, "\(grams) g in \(unit)")
             }
         }
     }

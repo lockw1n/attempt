@@ -121,6 +121,14 @@ struct ExerciseListStateTests {
         #expect(state.names == ["Sumó Deadlift"])
     }
 
+    /// Any-word would also find "Front Squat"; one substring would find nothing.
+    @Test("Search matches every typed word, in any order (FR-18.1.1)")
+    func searchMatchesEveryWord() async {
+        let state = await Fixtures.loaded()
+        state.searchText = "squat  back "
+        #expect(state.names == ["Back Squat"])
+    }
+
     @Test("Whitespace is not a search")
     func whitespaceIsNotASearch() async {
         let state = await Fixtures.loaded()

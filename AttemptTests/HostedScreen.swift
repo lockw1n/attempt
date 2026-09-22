@@ -74,6 +74,26 @@ final class HostedScreen {
         }
     }
 
+    /// Settles until `condition` holds, or the bound runs out — for a state that arrives behind a
+    /// write rather than behind a layout.
+    ///
+    /// **A bound in turns is a bound in the machine's speed.** Four turns, then twelve, were each
+    /// measured on this Mac and each failed somewhere slower — the whole bundle first, then CI's
+    /// runner, where the same test that takes 0.65 s here never saw its state arrive. The bound is
+    /// generous because it is only ever spent by a test that is about to fail.
+    ///
+    /// - Parameters:
+    ///   - turns: The most turns to allow, 60 ms each. At least 1.
+    ///   - condition: What the caller is waiting to read.
+    /// - Returns: Whether the condition came to hold.
+    func settle(upTo turns: Int = 250, until condition: () -> Bool) async -> Bool {
+        for _ in 0..<turns {
+            if condition() { return true }
+            await settle(turns: 1)
+        }
+        return condition()
+    }
+
     /// The hosted view hierarchy, for a failure message.
     ///
     /// - Returns: One line per view, indented by depth.
@@ -165,6 +185,25 @@ final class HostedScreen {
             })
         else { return .notFound }
         return element.accessibilityActivate() ? .activated : .refused
+    }
+
+    /// Every element labelled `label` that answers to activation.
+    ///
+    /// **Separate from ``activate(label:)`` because a side is not an action.** `FR-18.4.2` is a
+    /// claim about where a toolbar item is drawn, and the only thing here that knows is the
+    /// element's own frame.
+    ///
+    /// **All of them rather than the first**, because a label is not an identifier: a screen may
+    /// carry two controls that say the same thing about different subjects — a day's `⋯` in the
+    /// toolbar and a row's `⋯` beside the row both read *Day options* — and a caller asking where
+    /// one of them is drawn has to say which.
+    ///
+    /// - Parameter label: The elements' accessibility label.
+    /// - Returns: Them, in the order the tree yields them.
+    func elements(labelled label: String) -> [NSObject] {
+        accessibilityElements().filter {
+            $0.accessibilityLabel == label && $0.accessibilityTraits.contains(.button)
+        }
     }
 
     /// Walks one node of the accessibility tree.

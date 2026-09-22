@@ -402,23 +402,11 @@ public final class ExerciseListState {
         return recent.contains(exercise.id)
     }
 
-    /// Whether the name this row is showing matches what the user typed (`FR-1.14.3`).
-    ///
-    /// `localizedStandardContains` is the search a user expects and the one a hand-rolled
-    /// `lowercased().contains` is not: it ignores case *and* diacritics, so "sumo" finds "Sumó" and
-    /// a Turkish locale does not lose the dotted I. Whitespace-only input is no search at all —
-    /// otherwise the first space typed empties the screen.
-    ///
-    /// **Matched against the resolved display name, never against ``RepositoryInterface/Exercise``'s
-    /// two fields in turn.** `FR-1.14.3` says the name shown, and the two readings disagree exactly
-    /// where it matters: an English query would otherwise find a row whose visible name is Cyrillic
-    /// and holds none of what was typed, and a Ukrainian name left as whitespace — which
-    /// ``RepositoryInterface/Exercise/displayName(in:)`` deliberately renders as the English one —
-    /// would be searchable under a name nothing on screen says.
+    /// Whether the name this row is showing matches what the user typed — every word of it
+    /// (`FR-1.14.3`, `FR-18.1.1`). The rule is ``RepositoryInterface/ExerciseNameSearch``'s, and
+    /// it is handed the resolved display name, never the record's two fields.
     private func matchesSearch(_ exercise: Exercise) -> Bool {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return true }
-        return exercise.displayName(in: nameLanguage).localizedStandardContains(query)
+        ExerciseNameSearch.matches(exercise.displayName(in: nameLanguage), query: searchText)
     }
 
     /// Which side of `FR-1.1.2`'s custom/built-in split an exercise falls on.
@@ -447,6 +435,20 @@ public final class ExerciseListState {
     public var isEverythingArchived: Bool {
         guard case .loaded(let exercises) = phase else { return false }
         return !showsArchived && !exercises.isEmpty && exercises.allSatisfy(\.isArchived)
+    }
+
+    /// The name **Create "‹typed›"** would author, or `nil` where there is nothing to create
+    /// (`FR-18.1.3`).
+    ///
+    /// **`nil` is the answer whenever the search field is empty**, which is what makes the door a
+    /// search's and not a filter's: a no-match caused by filters alone has no name in it, and
+    /// offering to create the empty string would author a row the save would refuse anyway.
+    ///
+    /// Trimmed, and its inner runs of whitespace collapsed, so the name stored is the name the label
+    /// quoted — a stray double space typed mid-search is not part of what the lifter meant to name.
+    public var nameToCreate: String? {
+        let words = searchText.split(whereSeparator: \.isWhitespace)
+        return words.isEmpty ? nil : words.joined(separator: " ")
     }
 
     /// Drops the search text and every filter — the action on the "nothing matched" state.

@@ -7,7 +7,7 @@ import SwiftData
 actor SwiftDataBodyweightRepository: BodyweightRepository {
     func entries(in range: ClosedRange<Date>, includingDeleted: Bool) throws -> [BodyweightEntry] {
         let (start, end) = (range.lowerBound, range.upperBound)
-        return try modelContext.rows(
+        return try modelContext.resolvedRows(
             BodyweightEntryEntity.self,
             matching: #Predicate { $0.date >= start && $0.date <= end },
             includingDeleted: includingDeleted
@@ -27,7 +27,7 @@ actor SwiftDataBodyweightRepository: BodyweightRepository {
     }
 
     func deleteEntry(id: UUID) throws {
-        let entries = try modelContext.rows(
+        let entries = try modelContext.allRows(
             BodyweightEntryEntity.self, id: id, includingDeleted: false)
         guard !entries.isEmpty else { throw RepositoryError.recordNotFound(id: id) }
 

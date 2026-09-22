@@ -63,6 +63,7 @@
 "exerciselibrary.list.no-matches.headline" = "No matches";
 "exerciselibrary.list.no-matches.message" = "No exercise matches this search and these filters.";
 "exerciselibrary.list.no-matches.action" = "Clear search and filters";
+"exerciselibrary.list.no-matches.create %@" = "Create “%@”";
 
 /* The read failed. A sentence the user can act on — the error's own description is a diagnostic and
    is never shown (G-3.4). The retry is DesignSystem's own copy. */

@@ -62,8 +62,16 @@ struct HealthAccessStateTests {
         // deadlock the test rather than fail it if the guard were removed — measured: the probe
         // hung for two minutes instead of reporting the count. A hang is not an assertion.
         async let first: Void = state.load()
-        await Task.yield()
+        // The rendezvous, not a yield: the second call has to be issued while the first is provably
+        // standing inside the gate, which is the whole claim in this test's name. A `Task.yield()`
+        // stood here and promised none of that — see ``GatedAuthorizationSource/arrival()``.
+        await source.arrival()
         async let second: Void = state.load()
+        // THIS ONE STAYS A YIELD, because a refused call reaches nothing and so can be waited on by
+        // nothing. It is the weaker half of this test: were the second call left unscheduled until
+        // after `release()` had let the first one finish, it would read the open gate and the count
+        // below would be 2. The window is narrow — the guard is held across everything between —
+        // and it survived 100 package runs, 40 of them under eight-way CPU contention.
         await Task.yield()
         source.release()
         _ = await (first, second)
@@ -118,7 +126,11 @@ struct HealthAccessStateTests {
 
         source.hold()
         async let refreshing: Void = state.refresh()
-        await Task.yield()
+        // WAIT FOR THE READ, NOT FOR A TURN OF THE SCHEDULER. A `Task.yield()` stood here and is
+        // not a barrier: whether the detached refresh had reached the source by the time this task
+        // resumed was the cooperative pool's business, and roughly once in thirty package runs it
+        // had not — the count below read 1 against a `refresh()` that was working perfectly.
+        await source.arrival()
         // THE COUNT IS WHAT MAKES THE ASSERTION BELOW NON-VACUOUS. A refresh that had not yet
         // reached the source would leave the status untouched for the wrong reason, and this test
         // would pass on a `refresh()` that cleared it the moment it ran.
@@ -173,6 +185,18 @@ private final class AuthorizationSource: BodyweightSampleSource {
 
 /// A source whose status read suspends until it is released, so a second `load()` really does
 /// arrive while the first is still in flight.
+///
+/// **``arrival()`` is what makes the concurrency cases deterministic rather than timing-dependent**,
+/// the same rendezvous `History`'s and `Logging`'s `GatedWorkoutRepository` carry and for the same
+/// reason: it returns once a read has reached the source, so a test knows where the other task is
+/// standing instead of guessing at the scheduler.
+///
+/// **A `@MainActor` class rather than an `actor`**, which is where those two differ from this one.
+/// They conform to `RepositoryInterface` protocols, whose package is `.defaultIsolation(nil)` and
+/// whose protocols refine `Sendable`, so `G-6.4` leaves them no other shape. ``BodyweightSampleSource``
+/// is declared in this module, under `.defaultIsolation(MainActor.self)` and refining nothing — its
+/// requirements are main-actor isolated, an `actor` could satisfy them only through the isolated
+/// conformance `G-6.4` refuses, and the state below is touched on the main actor alone anyway.
 @MainActor
 private final class GatedAuthorizationSource: BodyweightSampleSource {
     /// How many status reads have reached the source.
@@ -182,6 +206,11 @@ private final class GatedAuthorizationSource: BodyweightSampleSource {
 
     private var isReleased = false
 
+    /// Whether a read has reached the source since the gate was last closed.
+    private var hasArrived = false
+
+    private var arrived: CheckedContinuation<Void, Never>?
+
     let isAvailable = true
 
     func authorize() async {}
@@ -190,15 +219,37 @@ private final class GatedAuthorizationSource: BodyweightSampleSource {
 
     func authorizationState() async -> BodyweightSourceAuthorization {
         statusReads += 1
+        hasArrived = true
+        arrived?.resume()
+        arrived = nil
         if !isReleased {
             await withCheckedContinuation { waiting.append($0) }
         }
         return .answered
     }
 
+    /// Suspends until a status read has reached the source since the gate was last closed.
+    ///
+    /// **This is the barrier `Task.yield()` is not.** Yielding reschedules the calling task; it
+    /// promises nothing about a read issued in another one having got anywhere, and under load it
+    /// had not — measured at two failures in sixty package runs on the count in
+    /// ``HealthAccessStateTests/refreshKeepsWhatIsDrawn()`` before this existed.
+    ///
+    /// **With the gate closed it also says where that read is standing.** Nothing suspends between
+    /// the count above and the gate below, so a caller resumed from here knows the read is inside
+    /// the gate rather than merely past the door.
+    func arrival() async {
+        guard !hasArrived else { return }
+        await withCheckedContinuation { arrived = $0 }
+    }
+
     /// Closes the gate again, so a later read suspends the way the first one did.
+    ///
+    /// **It reopens the rendezvous too**: an ``arrival()`` after this waits for a read of its own
+    /// rather than being answered instantly by one from the round before.
     func hold() {
         isReleased = false
+        hasArrived = false
     }
 
     /// Lets every suspended read finish, and every later one through.

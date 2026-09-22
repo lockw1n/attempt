@@ -17,6 +17,8 @@ struct AuthoredEntry {
     var id: UUID
     var name: String
     var ukrainianName: String?
+    var formerNames: [String] = []
+    var formerUkrainianNames: [String] = []
     var movement = "squat"
     var parentExerciseID: UUID?
     var equipment = "barbell"
@@ -46,6 +48,22 @@ struct AuthoredEntry {
         return copy
     }
 
+    /// `self` renamed, listing the name it used to carry (`FR-18.2.1`).
+    func renamed(to value: String, formerly former: [String]) -> AuthoredEntry {
+        var copy = self
+        copy.name = value
+        copy.formerNames = former
+        return copy
+    }
+
+    /// `self` re-translated, listing the Ukrainian name it used to carry (`FR-18.2.1`).
+    func retranslated(to value: String?, formerly former: [String]) -> AuthoredEntry {
+        var copy = self
+        copy.ukrainianName = value
+        copy.formerUkrainianNames = former
+        return copy
+    }
+
     /// `self` with one vocabulary field respelled.
     func spelling(_ field: SeedVocabularyField, as value: String) -> AuthoredEntry {
         var copy = self
@@ -67,6 +85,14 @@ struct AuthoredEntry {
         if let ukrainianName {
             fields.append("\"ukrainianName\": \"\(ukrainianName)\"")
         }
+        // Written only where the entry has one, which is how today's 132 entries are shaped: an
+        // empty list and an absent key must reach the importer as the same thing.
+        if !formerNames.isEmpty {
+            fields.append("\"formerNames\": \(jsonList(formerNames))")
+        }
+        if !formerUkrainianNames.isEmpty {
+            fields.append("\"formerUkrainianNames\": \(jsonList(formerUkrainianNames))")
+        }
         fields.append("\"movement\": \"\(movement)\"")
         if let parentExerciseID {
             fields.append("\"parentExerciseID\": \"\(parentExerciseID.uuidString)\"")
@@ -81,6 +107,11 @@ struct AuthoredEntry {
         }
         return "{ \(fields.joined(separator: ", ")) }"
     }
+}
+
+/// Strings as a JSON array. No escaping: every name this suite authors is plain text.
+func jsonList(_ values: [String]) -> String {
+    "[\(values.map { "\"\($0)\"" }.joined(separator: ", "))]"
 }
 
 /// A whole payload's bytes.
@@ -112,6 +143,12 @@ struct Subject {
         let stack = InMemoryRepositoryStack()
         exercises = stack.exercises
         importer = SeedImporter(exercises: stack.exercises)
+    }
+
+    /// One importer over a repository the test already holds — a counting or embellishing wrapper.
+    init(over repository: any ExerciseRepository) {
+        exercises = repository
+        importer = SeedImporter(exercises: repository)
     }
 
     /// Imports `data`, defaulting the floor to one entry.
@@ -207,6 +244,39 @@ struct DuplicateIDRepository: ExerciseRepository {
     }
 
     func save(_ exercise: Exercise) async throws {
+        try await base.save(exercise)
+    }
+}
+
+/// A repository that forwards everything and counts the saves.
+///
+/// **An actor rather than an `@unchecked Sendable` class** (`G-6.4`), on the same argument the
+/// feature packages' counting doubles give: the counter is mutable state a test reads from outside.
+///
+/// It exists because ``SeedImportSummary/writeCount`` is arithmetic the importer does on its own
+/// branches — a rule that stopped saving and forgot to stop counting would agree with itself. What
+/// `FR-18.2.1`'s "a second import writes nothing" claims is about `save`, so `save` is what is
+/// counted.
+actor CountingExerciseRepository: ExerciseRepository {
+    private let base: any ExerciseRepository
+
+    /// How many times ``save(_:)`` has been called.
+    private(set) var saves = 0
+
+    init(wrapping base: any ExerciseRepository) {
+        self.base = base
+    }
+
+    func exercises(includingDeleted: Bool) async throws -> [Exercise] {
+        try await base.exercises(includingDeleted: includingDeleted)
+    }
+
+    func exercise(id: UUID, includingDeleted: Bool) async throws -> Exercise? {
+        try await base.exercise(id: id, includingDeleted: includingDeleted)
+    }
+
+    func save(_ exercise: Exercise) async throws {
+        saves += 1
         try await base.save(exercise)
     }
 }

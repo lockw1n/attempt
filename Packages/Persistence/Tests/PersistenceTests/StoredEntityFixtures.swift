@@ -131,6 +131,10 @@ extension FixtureEntity {
         #Predicate<FixtureEntity> { $0.id == id }
     }
 
+    static func matchingIDs(_ ids: Set<UUID>) -> Predicate<FixtureEntity> {
+        #Predicate<FixtureEntity> { ids.contains($0.id) }
+    }
+
     static var notDeleted: Predicate<FixtureEntity> {
         #Predicate<FixtureEntity> { $0.deletedAt == nil }
     }
@@ -158,6 +162,10 @@ extension FixtureEntity {
 extension FixtureCacheEntity {
     static func matchingID(_ id: UUID) -> Predicate<FixtureCacheEntity> {
         #Predicate<FixtureCacheEntity> { $0.id == id }
+    }
+
+    static func matchingIDs(_ ids: Set<UUID>) -> Predicate<FixtureCacheEntity> {
+        #Predicate<FixtureCacheEntity> { ids.contains($0.id) }
     }
 
     static var notDeleted: Predicate<FixtureCacheEntity> {

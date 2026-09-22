@@ -116,43 +116,16 @@ extension ActiveSessionStore {
 
     /// Moves the workout to another training day (`FR-1.2.1`, `FR-17.9.7`).
     ///
-    /// **On the store rather than on either screen**, because both of the overflow menu's hosts
-    /// issue it: a day's checklist and the free workout share the menu, and a rebuild written twice
-    /// is two places for the program stamp to be dropped.
+    /// **On the store rather than on either screen it holds a workout for**: a day's checklist and
+    /// the free workout share the menu, and a command written twice is two places for the program
+    /// stamp to be dropped. The *rebuild* is one step further out again —
+    /// ``ActiveSessionStore/dated(_:to:)`` — because `FR-18.7.4`'s third host has no store.
     ///
     /// - Parameter day: The training day, normalised to its start on ``start(on:)``'s rule — the
     ///   day, not the moment the picker was closed.
     public func changeDate(to day: Date) async {
         guard let current = session else { return }
         await update(Self.dated(current, to: day))
-    }
-
-    /// `session` on another training day, and every other field untouched.
-    ///
-    /// Every column is named, on ``DerivedValues/SessionFinish/ended(_:at:)``'s rule: `save(_:)` is
-    /// an upsert over a value whose initialiser defaults the program stamp to `nil`, so a rebuild
-    /// that omitted it would erase which day of which week this workout is.
-    ///
-    /// - Parameters:
-    ///   - session: The workout.
-    ///   - day: The training day it moves to.
-    /// - Returns: The record to store.
-    private static func dated(_ session: WorkoutSession, to day: Date) -> WorkoutSession {
-        WorkoutSession(
-            id: session.id,
-            createdAt: session.createdAt,
-            updatedAt: session.updatedAt,
-            deletedAt: session.deletedAt,
-            date: Calendar.current.startOfDay(for: day),
-            startedAt: session.startedAt,
-            endedAt: session.endedAt,
-            notes: session.notes,
-            bodyweight: session.bodyweight,
-            programRunID: session.programRunID,
-            scheduledWorkoutID: session.scheduledWorkoutID,
-            weekNumber: session.weekNumber,
-            dayIndex: session.dayIndex
-        )
     }
 
     /// One link in ``pendingWrite``'s chain. See ``answerAsPlanned(inEntryIDs:)``.

@@ -23,7 +23,7 @@ struct PlannedTargetPurgeTests {
         _ type: T.Type,
         in harness: RepositoryHarness
     ) throws -> Int {
-        try harness.store().rows(type, includingDeleted: true).count
+        try harness.store().allRows(type, includingDeleted: true).count
     }
 
     // The same transitivity the set edge has: a session's plan is one of its own rows, so a live

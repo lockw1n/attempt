@@ -14,7 +14,10 @@ struct SessionListFinishTests {
     private let today = TrainingLog.epoch
 
     /// The calendar the two days are compared in.
-    private let calendar = Calendar(identifier: .gregorian)
+    ///
+    /// Pinned to UTC, where ``today`` is 22:13: in the machine's own zone the epoch can fall just
+    /// after a local midnight (00:13 in UTC+2), and an hour before it is then yesterday.
+    private let calendar = TrainingLog.utc
 
     /// One session, as the reader turns it into a row.
     private func summary(

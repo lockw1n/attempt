@@ -71,6 +71,14 @@ public enum Typography: Sendable, CaseIterable {
     /// sets aligns without a table.
     case numericValue
 
+    /// A prescribed or performed scheme read off a checklist row — `110 kg × 4 × 4`.
+    ///
+    /// ``numericValue``'s size and digit treatment at the **regular** weight, which is the whole of
+    /// the distinction: a row draws the exercise's name at ``actionLabel`` and its numbers here, and
+    /// with both semibold the row had no first thing to read (`FR-18.3.7`). Not ``numericValue``
+    /// retuned — that role is a number inside a row of *sets*, where nothing heavier sits beside it.
+    case schemeValue
+
     /// Secondary annotation beneath body text, and the smallest role in the scale.
     case caption
 
@@ -89,6 +97,7 @@ public enum Typography: Sendable, CaseIterable {
         case .metricContext: TypeStyle(textStyle: .footnote, weight: .regular)
         case .body: TypeStyle(textStyle: .body, weight: .regular)
         case .numericValue: TypeStyle(textStyle: .body, weight: .semibold, usesMonospacedDigits: true)
+        case .schemeValue: TypeStyle(textStyle: .body, weight: .regular, usesMonospacedDigits: true)
         case .caption: TypeStyle(textStyle: .caption, weight: .regular)
         case .actionLabel: TypeStyle(textStyle: .body, weight: .semibold)
         }

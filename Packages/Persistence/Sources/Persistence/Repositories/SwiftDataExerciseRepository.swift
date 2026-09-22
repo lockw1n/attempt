@@ -15,7 +15,7 @@ import SwiftData
 @ModelActor
 actor SwiftDataExerciseRepository: ExerciseRepository {
     func exercises(includingDeleted: Bool) throws -> [Exercise] {
-        try modelContext.rows(ExerciseEntity.self, includingDeleted: includingDeleted)
+        try modelContext.resolvedRows(ExerciseEntity.self, includingDeleted: includingDeleted)
             .sortedDeterministically { ($0.name, $0.id.uuidString) }
             .map(\.record)
     }

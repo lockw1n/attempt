@@ -118,9 +118,13 @@
         /// sections and the date under a name is in the picture.
         static let exercises = [
             TiledExerciseChoice(
-                exerciseID: UUID(), name: "Back Squat", isTiled: true, lastTrained: trainedDay),
+                exerciseID: UUID(), name: "Back Squat", parentExerciseID: nil, isTiled: true, lastTrained: trainedDay),
             TiledExerciseChoice(
-                exerciseID: UUID(), name: "Triceps Kickback", isTiled: false, lastTrained: nil),
+                exerciseID: UUID(),
+                name: "Triceps Kickback",
+                parentExerciseID: nil,
+                isTiled: false,
+                lastTrained: nil),
         ]
 
         /// The day the trained row was last performed. Fixed, so a reference committed today still

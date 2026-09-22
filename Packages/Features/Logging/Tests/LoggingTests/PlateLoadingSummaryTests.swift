@@ -87,17 +87,17 @@ struct PlateLoadingSummaryTests {
 
     @Test("A load keeps G-3.3's display step, where a denomination does not")
     func loadsAreDrawnAtTheDisplayStep() {
-        // The two sit one under the other as FR-1.4.4's pair, which is the column a fixed fraction
-        // width exists for: at the denomination step they would read `100 kg` over `102.5 kg`.
+        // A zero fraction is dropped here as everywhere (FR-18.3.5); what the display step still
+        // decides is the rounding, which the whole-kilogram case below is the one to show.
         #expect(
             PlateLoadingSummary.load(
                 Weight(grams: 100_000), in: WeightDisplay(unit: .kilograms), locale: Self.english)
-                == "100.0 kg")
+                == "100 kg")
         #expect(
             PlateLoadingSummary.load(
                 Weight(grams: 102_500), in: WeightDisplay(unit: .kilograms), locale: Self.english)
                 == "102.5 kg")
-        // The same weight as a plate, which is what makes the split visible.
+        // The same weight as a plate: once the fraction is zero the two routes agree.
         #expect(
             PlateLoadingSummary.render(Weight(grams: 100_000), in: .kilograms, locale: Self.english)
                 == "100 kg")
@@ -116,7 +116,7 @@ struct PlateLoadingSummaryTests {
             PlateLoadingSummary.load(
                 Weight(grams: 102_500),
                 in: WeightDisplay(unit: .kilograms, precision: .quarter),
-                locale: Self.english) == "102.50 kg")
+                locale: Self.english) == "102.5 kg")
         // The plate is a denomination and keeps its own step whatever the reading setting says.
         #expect(
             PlateLoadingSummary.render(Weight(grams: 1_250), in: .kilograms, locale: Self.english)

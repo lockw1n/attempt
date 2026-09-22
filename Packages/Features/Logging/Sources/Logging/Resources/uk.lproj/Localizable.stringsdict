@@ -230,6 +230,53 @@
 			<string>%lld вправи</string>
 		</dict>
 	</dict>
+	<!-- FR-18.7.5 — що зникне разом із тренуванням. Ціле речення всередині варіанта, разом із
+	     дієсловом: форма для нуля потребує заперечення («не буде вилучено жодного»), якого спільний
+	     початок речення дати не може. -->
+	<key>logging.past-session.delete.confirm.message %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@sets@ Цю дію не можна скасувати.</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>Разом із ним не буде вилучено жодного підходу.</string>
+			<key>one</key>
+			<string>Разом із ним буде вилучено %lld записаний підхід.</string>
+			<key>few</key>
+			<string>Разом із ним буде вилучено %lld записані підходи.</string>
+			<key>many</key>
+			<string>Разом із ним буде вилучено %lld записаних підходів.</string>
+			<key>other</key>
+			<string>Разом із ним буде вилучено %lld записаних підходів.</string>
+		</dict>
+	</dict>
+	<!-- FR-18.5.2 — питання лише там, де рядок містить виконаний підхід, і воно називає кожен
+	     виконаний підхід, який скидання вилучає: розминкові рахуються, невиконані — ні. -->
+	<key>logging.day.row.reset.confirm.title %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Вилучити %#@sets@?</string>
+		<key>sets</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld записаний підхід</string>
+			<key>few</key>
+			<string>%lld записані підходи</string>
+			<key>many</key>
+			<string>%lld записаних підходів</string>
+			<key>other</key>
+			<string>%lld записаних підходів</string>
+		</dict>
+	</dict>
 	<key>logging.day.skip-remaining.confirm.title %lld</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

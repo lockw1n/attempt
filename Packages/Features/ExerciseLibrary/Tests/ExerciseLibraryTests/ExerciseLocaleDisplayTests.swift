@@ -35,6 +35,13 @@ struct ExerciseLocaleDisplayTests {
         let state = await LocaleFixtures.loaded(.ukrainian)
         state.searchText = "Back Squat"
         #expect(state.displayNames.isEmpty)
+
+        // Every word is matched against the shown name too: one word from each of the row's two
+        // names is not a match, though each name holds one of them.
+        state.searchText = "штангою squat"
+        #expect(state.displayNames.isEmpty)
+        state.searchText = "штангою присідання"
+        #expect(state.displayNames == ["Присідання зі штангою"])
     }
 
     @Test("An English screen is searched by the English name, and not by the Ukrainian one")

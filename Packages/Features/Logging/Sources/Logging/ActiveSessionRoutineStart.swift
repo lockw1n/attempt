@@ -25,10 +25,10 @@ extension ActiveSessionStore {
     /// **It refuses while a workout is in progress**, which is ``start(on:)``'s invariant rather
     /// than a new one. A caller that has not looked yet should ``resume()`` first.
     ///
-    /// **The copy is best-effort and the workout is kept either way**, on
-    /// ``start(on:repeating:)``'s argument: a plan that could not be written leaves the lifter in a
-    /// workout they can log into, and discarding it to report the failure would throw away a
-    /// session row `NFR-1.8` has already persisted.
+    /// **The copy is best-effort and the workout is kept either way**: a plan that could not be
+    /// written leaves the lifter in a workout they can log into, which is what ``start(on:)`` would
+    /// have given them, and discarding it to report the failure would throw away a session row
+    /// `NFR-1.8` has already persisted.
     ///
     /// - Parameters:
     ///   - day: The training day the new workout belongs to.

@@ -11,6 +11,11 @@ struct TiledExerciseChoice: Identifiable, Sendable, Equatable {
     /// Its name, drawn `verbatim` — a catalogue row is data, not copy (`G-3.4`).
     let name: String
 
+    /// The exercise it is a variation of, or `nil` for none — what puts it under its parent in
+    /// **Everything else** (`FR-18.1.2`). No default, for ``lastTrained``'s reason: a defaulted `nil`
+    /// would silently file every variation as a root.
+    let parentExerciseID: UUID?
+
     /// Whether it currently has a tile.
     let isTiled: Bool
 
@@ -115,7 +120,8 @@ final class TiledExerciseSelectionState {
     /// runs whatever the first answered — a configured dashboard still wants its **Trained**
     /// section — but only once per visit; see ``trainedDates()``.
     ///
-    /// **A fresh read retires ``writeFailure``**, the rule ``LastWorkoutState/load()`` states: a
+    /// **A fresh read retires ``writeFailure``, and this is where that rule lives** — both
+    /// `RecentRecordsExercisesState/load()` and `RecentRecordsSettingsState/load()` cite it here. A
     /// failed toggle is reported beside the rows it did not change, and those rows are exactly what
     /// this replaces.
     func load() async {
@@ -135,6 +141,7 @@ final class TiledExerciseSelectionState {
                 TiledExerciseChoice(
                     exerciseID: $0.id,
                     name: $0.displayName(in: nameLanguage),
+                    parentExerciseID: $0.parentExerciseID,
                     isTiled: tiled.contains($0.id),
                     lastTrained: trained[$0.id])
             }
