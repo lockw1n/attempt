@@ -179,7 +179,7 @@ struct WeekSummaryReading: View {
     }
 }
 
-/// One line of the card: the week's name over its figures, and beside them its change
+/// One line of the card: the week's name over its figures, and beneath them its change
 /// (`FR-18.9.2`, `FR-18.9.3`).
 ///
 /// **The figures wrap; they do not scale.** `MetricTile` shrinks its numeral because a numeral is
@@ -221,15 +221,20 @@ struct WeekLine: View {
                 context(Text(DashboardStrings.weekUnweighed))
             case .weighed(let workouts, let tonnage):
                 figures(
-                    Text(DashboardStrings.weekLine(workoutsText(workouts), volumeText(tonnage))))
+                    Text(
+                        DashboardStrings.weekLine(
+                            Self.workoutsText(workouts, locale: locale),
+                            Self.volumeText(tonnage, unit: unit, locale: locale))))
                 if let change = model.change {
-                    DeltaIndicator(Self.direction(of: change), value: magnitude(of: change))
+                    DeltaIndicator(
+                        Self.direction(of: change),
+                        value: Self.magnitude(of: change, unit: unit, locale: locale))
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(spoken))
+        .accessibilityLabel(Text(Self.spoken(for: model, unit: unit, locale: locale)))
     }
 
     /// The line's numbers, in the numeric weight so they read as the line's anchor, wrapping
@@ -249,45 +254,77 @@ struct WeekLine: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    /// The sentence VoiceOver reads for this line.
-    private var spoken: LocalizedStringResource {
-        let name = String(localized: DashboardStrings.weekLineName(for: model.name))
+    /// The sentence VoiceOver reads for one line (`G-4.2`).
+    ///
+    /// **A static function rather than a property of the body**, so that a test can read the
+    /// sentence with no host: the accessibility tree of a hosted view is empty without an
+    /// accessibility client, and a sentence only VoiceOver could read would be held by nobody.
+    ///
+    /// **Every piece is rendered for `locale`**, the one the body was given, so the noun and the
+    /// figures inside the sentence agree with the sentence around them and with what the eye gets;
+    /// a piece rendered for the process would not follow a locale set on the environment.
+    ///
+    /// - Parameters:
+    ///   - model: Which week, what it reads, and its change.
+    ///   - unit: The unit the volume is spoken in (`G-3.1`).
+    ///   - locale: Which locale the pieces are rendered for (`G-3.4`).
+    /// - Returns: The sentence.
+    static func spoken(
+        for model: WeekLineModel, unit: MassUnit, locale: Locale
+    ) -> LocalizedStringResource {
+        let name = render(DashboardStrings.weekLineName(for: model.name), locale: locale)
+        var sentence: LocalizedStringResource
         switch model.reading {
         case .quiet:
-            return DashboardStrings.weekSpoken(
-                name, String(localized: DashboardStrings.weekLineQuiet(for: model.name)))
+            sentence = DashboardStrings.weekSpoken(
+                name, render(DashboardStrings.weekLineQuiet(for: model.name), locale: locale))
         case .unweighed(let workouts):
-            return DashboardStrings.weekSpokenFigures(
-                name, workoutsText(workouts), String(localized: DashboardStrings.weekUnweighed))
-        case .weighed(let workouts, let tonnage):
-            guard let change = model.change else {
-                return DashboardStrings.weekSpokenFigures(
-                    name, workoutsText(workouts), volumeText(tonnage))
-            }
-            return DashboardStrings.weekSpokenCompared(
+            sentence = DashboardStrings.weekSpokenFigures(
                 name,
-                workoutsText(workouts),
-                volumeText(tonnage),
-                String(
-                    localized: DashboardStrings.weekChangeSpoken(
-                        Self.direction(of: change), magnitude(of: change))))
+                workoutsText(workouts, locale: locale),
+                render(DashboardStrings.weekUnweighed, locale: locale))
+        case .weighed(let workouts, let tonnage):
+            let workouts = workoutsText(workouts, locale: locale)
+            let volume = volumeText(tonnage, unit: unit, locale: locale)
+            if let change = model.change {
+                sentence = DashboardStrings.weekSpokenCompared(
+                    name,
+                    workouts,
+                    volume,
+                    render(
+                        DashboardStrings.weekChangeSpoken(
+                            direction(of: change),
+                            magnitude(of: change, unit: unit, locale: locale)),
+                        locale: locale))
+            } else {
+                sentence = DashboardStrings.weekSpokenFigures(name, workouts, volume)
+            }
         }
+        sentence.locale = locale
+        return sentence
     }
 
-    /// The workout count with its noun, pluralised.
-    private func workoutsText(_ workouts: Int) -> String {
-        String(localized: DashboardStrings.weekWorkouts(workouts))
+    /// `resource`, rendered for `locale` rather than for the process.
+    private static func render(_ resource: LocalizedStringResource, locale: Locale) -> String {
+        var resource = resource
+        resource.locale = locale
+        return String(localized: resource)
+    }
+
+    /// The workout count with its noun, pluralised for `locale`.
+    private static func workoutsText(_ workouts: Int, locale: Locale) -> String {
+        render(DashboardStrings.weekWorkouts(workouts), locale: locale)
     }
 
     /// The volume, whole, in the display unit — `AppFormat.tonnage`'s one rule for both the line
     /// and its change.
-    private func volumeText(_ tonnage: Weight) -> String {
+    private static func volumeText(_ tonnage: Weight, unit: MassUnit, locale: Locale) -> String {
         AppFormat.tonnage(in: unit, locale: locale).format(tonnage)
     }
 
     /// The change's size, unsigned — the indicator writes the sign.
-    private func magnitude(of change: Weight) -> String {
-        volumeText(Weight(grams: abs(change.grams)))
+    private static func magnitude(of change: Weight, unit: MassUnit, locale: Locale) -> String {
+        volumeText(Weight(grams: abs(change.grams)), unit: unit, locale: locale)
     }
 
     /// Which way the volume moved — the tiles' own rule, so two equal weeks draw the flat

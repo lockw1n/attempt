@@ -106,7 +106,7 @@
    volume that cannot be computed — every set in it was bodyweight or assisted, and an assisted set's
    load is negative, so summing it would make the total fall as more work was done. Names no week,
    because it stands on either line. */
-"dashboard.week.unweighed" = "No load to weigh — bodyweight and assisted sets add no volume.";
+"dashboard.week.unweighed" = "No load to weigh — bodyweight and assisted sets add no volume";
 "dashboard.week.error" = "These weeks' training could not be read.";
 /* What VoiceOver reads for one line: a sentence, the week's name first (G-4.2). Three shapes — a
    quiet line, a line with figures, and last week with its change — each taking pieces the caller has

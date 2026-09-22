@@ -284,4 +284,81 @@ struct WeekSummaryChangeTests {
         #expect(state.weeks?.weekBefore.workoutCount == 1)
     }
 
+    @Test("Training in the week before alone draws two quiet lines, not the empty state")
+    func weekBeforeAloneIsNotTheEmptyState() async throws {
+        // FR-18.9.2 keeps the empty state for one case only, and this is the one nearest to it: two
+        // weeks off after a trained week. The empty state's sentence would say no set was logged in
+        // the week before, which is false; the card draws its lines and each says quiet in words.
+        let fixture = DashboardFixture()
+        let squat = try await fixture.exercise(named: "Back Squat")
+        try await fixture.session(
+            on: weeksAgo(2), exercises: [(squat, [LoggedSet(grams: 100_000, reps: 5)])])
+        let state = WeekSummaryStateTests.state(fixture)
+
+        await state.load()
+
+        let weeks = try #require(state.weeks)
+        #expect(weeks.weekBefore == WeekSummary(workoutCount: 1, tonnage: Weight(grams: 500_000)))
+        #expect(!weeks.isQuiet)
+        #expect(WeekSummaryScreenState.current(state) == .ready(weeks))
+        #expect(WeekLines(weeks).thisWeek.reading == .quiet)
+        #expect(WeekLines(weeks).lastWeek.reading == .quiet)
+        #expect(WeekLines(weeks).lastWeek.change == nil)
+    }
+
+    @Test("Each line reads to VoiceOver as one sentence, in both catalogues")
+    func eachLineIsOneSpokenSentence() {
+        // G-4.2, and G-4.5 for the ear: four shapes of line, each one sentence with one full stop,
+        // the direction said in a word where the eye gets an arrow and a sign. Every piece follows
+        // the locale the line is given, so the Ukrainian sentence has no English noun inside it.
+        let english = Locale(identifier: "en_US")
+        let ukrainian = Locale(identifier: "uk")
+        func spoken(_ model: WeekLineModel, _ locale: Locale) -> String {
+            String(localized: WeekLine.spoken(for: model, unit: .kilograms, locale: locale))
+        }
+        let quiet = WeekLineModel(name: .thisWeek, reading: .quiet, change: nil)
+        let unweighed = WeekLineModel(name: .lastWeek, reading: .unweighed(workouts: 3), change: nil)
+        let figures = WeekLineModel(
+            name: .thisWeek,
+            reading: .weighed(workouts: 1, tonnage: Weight(grams: 4_200_000)),
+            change: nil)
+        let risen = WeekLineModel(
+            name: .lastWeek,
+            reading: .weighed(workouts: 3, tonnage: Weight(grams: 12_400_000)),
+            change: Weight(grams: 100_000))
+        let fallen = WeekLineModel(
+            name: .lastWeek,
+            reading: .weighed(workouts: 3, tonnage: Weight(grams: 12_400_000)),
+            change: Weight(grams: -2_600_000))
+        let flat = WeekLineModel(
+            name: .lastWeek,
+            reading: .weighed(workouts: 3, tonnage: Weight(grams: 12_400_000)),
+            change: .zero)
+
+        #expect(spoken(quiet, english) == "This week: No working sets yet.")
+        #expect(
+            spoken(unweighed, english)
+                == "Last week: 3 workouts, No load to weigh — bodyweight and assisted sets add no volume.")
+        #expect(spoken(figures, english) == "This week: 1 workout, 4,200 kg.")
+        #expect(spoken(risen, english) == "Last week: 3 workouts, 12,400 kg, up 100 kg on the week before.")
+        #expect(
+            spoken(fallen, english)
+                == "Last week: 3 workouts, 12,400 kg, down 2,600 kg on the week before.")
+        #expect(
+            spoken(flat, english) == "Last week: 3 workouts, 12,400 kg, the same as the week before.")
+
+        let risenUkrainian = spoken(risen, ukrainian)
+        #expect(risenUkrainian.hasPrefix("Минулий тиждень: 3 тренування, "))
+        #expect(risenUkrainian.hasSuffix(" більше, ніж тижнем раніше."))
+        #expect(spoken(unweighed, ukrainian).hasPrefix("Минулий тиждень: 3 тренування, Немає ваги"))
+        #expect(spoken(quiet, ukrainian) == "Цей тиждень: Робочих підходів ще немає.")
+        for model in [quiet, unweighed, figures, risen, fallen, flat] {
+            for locale in [english, ukrainian] {
+                let sentence = spoken(model, locale)
+                #expect(sentence.hasSuffix("."), "\(sentence)")
+                #expect(!sentence.contains(".."), "\(sentence)")
+            }
+        }
+    }
+
 }
