@@ -45,6 +45,13 @@ import Foundation
 import RepositoryInterface
 import SwiftData
 
+/// How many ids a resolved filtered read looks up per fetch.
+///
+/// ``StoredEntity/matchingIDs(_:)`` becomes an `IN` clause with one bound variable per id, and
+/// SQLite caps those per statement — 999 on old builds, 32,766 on current ones. Under both, with
+/// room, so the ceiling is never met whatever size a lifter's history reaches.
+let idFetchGroup = 900
+
 /// The row rule 2 picks out of a match set that may hold more than one.
 ///
 /// Later `updatedAt` wins; on a tie, the greater `id.uuidString`. The second clause decides the
@@ -171,24 +178,50 @@ extension ModelContext {
     /// session, the sets of an exercise, a routine's target groups — each is a set of *different*
     /// ids, any one of which may have been duplicated, so the rule applies per id there too.
     ///
-    /// **`predicate` narrows the match set before the rule runs, and `deletedAt` is the only
-    /// column exempt.** The deleted flag is held back until the winner is known because it is
-    /// applied here, in Swift; every other column a caller filters on is applied by the store, so
-    /// a pair whose halves *disagree* about that column is resolved among the halves that matched
-    /// and a loser can stand in for a winner the predicate excluded. ``SwiftDataProgramRepository``
-    /// has the reachable instance: twins where the winner carries `endedAt` and the stale twin does
-    /// not make `currentRun()` answer with the ended run. **This is not decided here and is not
-    /// fixed here** — closing it means fetching by `id` and re-applying `predicate` to the winner,
-    /// which needs a fifth per-type predicate on ``StoredEntity``, since building one in this
-    /// generic context is the `-O` crash that protocol's own comment measures.
+    /// **The winner is picked among every row of an id, not among the rows that matched, and it
+    /// is answered only if it matches itself** (`FR-18.8.3`). `predicate` is applied by the store
+    /// to each row on its own, so a pair whose halves *disagree* about a filtered column has one
+    /// half in the match set and one outside it — and resolving among the matched half alone lets
+    /// a stale loser stand in for a winner the predicate excluded: the ended run answered as the
+    /// run in force, the re-dated session still drawn under its old date. So the read is two
+    /// fetches: what matched, and then every row carrying a matched id through
+    /// ``StoredEntity/matchingIDs(_:)``. Rule 2 runs over the second, `predicate` is re-applied to
+    /// each winner in memory, and the deleted flag last. A row the predicate never matched cannot
+    /// win a place through this — its id is only looked up because a matching twin put it there,
+    /// and it is answered only if it passes the same predicate.
+    ///
+    /// **What it costs: a second fetch whose match set is the first's plus its twins,** sent in
+    /// groups of ``idFetchGroup`` ids so the `IN` clause behind `matchingIDs` never meets SQLite's
+    /// bound-variable ceiling. For `sets(forExerciseID:)`, the largest list read there is, that is
+    /// every set of the exercise fetched twice. No requirement asks for a figure at the size this
+    /// app is used at (`DOD-1.2`), and a read whose first fetch is empty makes no second one.
+    ///
+    /// **The order is the first fetch's** — the order the store answered the predicate in, one
+    /// entry per id at the position its first row held — so a caller sees what it saw before.
     func resolvedRows<T: StoredEntity>(
         _ type: T.Type,
         matching predicate: Predicate<T>,
         includingDeleted: Bool
     ) throws -> [T] {
-        oneRowPerID(
-            try fetch(FetchDescriptor<T>.includingDeleted(matching: predicate)),
-            includingDeleted: includingDeleted)
+        let matched = try fetch(FetchDescriptor<T>.includingDeleted(matching: predicate))
+        guard !matched.isEmpty else { return [] }
+
+        var ids: [UUID] = []
+        var seen: Set<UUID> = []
+        for row in matched where seen.insert(row.id).inserted { ids.append(row.id) }
+
+        var winners: [UUID: T] = [:]
+        winners.reserveCapacity(ids.count)
+        for start in stride(from: 0, to: ids.count, by: idFetchGroup) {
+            let group = Set(ids[start..<min(start + idFetchGroup, ids.count)])
+            let rows = try fetch(FetchDescriptor<T>.includingDeleted(matching: T.matchingIDs(group)))
+            for row in oneRowPerID(rows, includingDeleted: true) { winners[row.id] = row }
+        }
+
+        return try ids.compactMap { id -> T? in
+            guard let winner = winners[id], try predicate.evaluate(winner) else { return nil }
+            return includingDeleted || !winner.isSoftDeleted ? winner : nil
+        }
     }
 
     /// Every row of `type`, one per `id` (`FR-18.8.1`).

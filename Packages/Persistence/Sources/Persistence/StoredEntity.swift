@@ -64,7 +64,7 @@ protocol StoredEntity: PersistentModel {
     // defect by construction — which is how it survived to the first Release build anyone ever
     // ran. `scripts/test-optimized.sh` runs this package's tests at `-O`, where the generic
     // predicate dies with the error above in the first suite that fetches (measured), and CI runs
-    // it. The compile-time half of the guard is that these four have NO default implementation,
+    // it. The compile-time half of the guard is that these five have NO default implementation,
     // so an entity added later does not compile until it supplies its own, beside itself in its
     // own file. **Do not add a protocol extension providing them.** That would compile, satisfy
     // every conformance at once, and reintroduce exactly this bug — the generic context is the
@@ -72,6 +72,13 @@ protocol StoredEntity: PersistentModel {
 
     /// Rows carrying `id` — the plural case included, since two rows may (`G-2.4`).
     static func matchingID(_ id: UUID) -> Predicate<Self>
+
+    /// Rows carrying any id in `ids` — every row of each, for the same reason.
+    ///
+    /// What a filtered list read fetches second, to see the twin its caller's predicate excluded
+    /// (`FR-18.8.3`): a `#Predicate` over a set of ids built in that generic context is the `-O`
+    /// crash above, so it is required here, per type, like the other four.
+    static func matchingIDs(_ ids: Set<UUID>) -> Predicate<Self>
 
     /// Live rows only (`G-1.3`).
     static var notDeleted: Predicate<Self> { get }
